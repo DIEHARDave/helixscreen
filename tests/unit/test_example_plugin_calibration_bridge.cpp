@@ -13,6 +13,7 @@
 #include "lodepng_encode.h"
 #include "panel_widget_registry.h"
 #include "plugin_host.h"
+#include "plugin_menu.h"
 #include "plugin_xml_policy.h"
 #include "translation_loader.h"
 
@@ -747,6 +748,43 @@ TEST_CASE_METHOD(CalibrationFx, "calibration-bridge result dialog screenshot",
         .write(reinterpret_cast<char*>(out), static_cast<std::streamsize>(out_size));
     free(out);
     lv_draw_buf_destroy(snap);
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "Calibrate with this file feeds the waiting calibration",
+                 "[plugin][example]") {
+    namespace pm = helix::plugin_menu;
+    HostRig rig(cb_block(json::object()));
+    rig.host->load_from("examples/plugins");
+    REQUIRE(rig.info("calibration-bridge")->status == PluginStatus::Loaded);
+    const json printer_file{
+        {"source", "printer"}, {"path", "cal/my_tower.gcode"}, {"name", "my_tower.gcode"}};
+    const json usb_file{
+        {"source", "usb"}, {"local_path", "/media/usb0/x.gcode"}, {"name", "x.gcode"}};
+
+    // Nothing waiting: shown greyed with why.
+    auto idle = pm::resolve(pm::MenuKind::PrintFile, printer_file);
+    REQUIRE(idle.size() == 1);
+    CHECK(idle[0].label == "Calibrate with this file");
+    CHECK_FALSE(idle[0].enabled);
+    CHECK(idle[0].reason == "Start a calibration in the slicer first");
+
+    fire_agent_event(rig, "helixcal.available", available_event());
+    auto usb = pm::resolve(pm::MenuKind::PrintFile, usb_file);
+    REQUIRE(usb.size() == 1);
+    CHECK_FALSE(usb[0].enabled);
+    CHECK(usb[0].reason == "Copy the file to the printer first");
+
+    auto ready = pm::resolve(pm::MenuKind::PrintFile, printer_file);
+    REQUIRE(ready.size() == 1);
+    CHECK(ready[0].enabled);
+    pm::activate(ready[0], printer_file);
+    CHECK(cb_str("calibration-bridge__ctx_file") == "cal/my_tower.gcode");
+    CHECK_FALSE(rig.host->runtime("calibration-bridge")->faulted());
+
+    // Start prints the chosen file.
+    rig.host->dispatch_event("calibration-bridge__start");
+    REQUIRE(rig.fake.requests.size() == 1);
+    CHECK(rig.fake.requests[0].params == json{{"filename", "cal/my_tower.gcode"}});
 }
 
 #endif // HELIX_HAS_PLUGINS

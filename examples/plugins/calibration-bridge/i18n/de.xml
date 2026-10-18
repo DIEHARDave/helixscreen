@@ -8,6 +8,10 @@
   <translation tag="Open when a calibration arrives" de="Öffnen, wenn eine Kalibrierung ankommt"/>
   <translation tag="Open the picker when the print finishes" de="Auswahl öffnen, wenn der Druck endet"/>
   <translation tag="Open calibration" de="Kalibrierung öffnen"/>
+  <translation tag="Calibrate with this file" de="Mit dieser Datei kalibrieren"/>
+  <!-- Print details menu -->
+  <translation tag="Copy the file to the printer first" de="Kopieren Sie die Datei zuerst auf den Drucker"/>
+  <translation tag="Start a calibration in the slicer first" de="Starten Sie zuerst eine Kalibrierung im Slicer"/>
   <!-- Overlay -->
   <translation tag="No calibration running" de="Keine Kalibrierung aktiv"/>
   <translation tag="Temperature tower" de="Temperaturturm"/>

@@ -436,7 +436,7 @@ plugin, and plugin rows per menu so a menu never scrolls) are in §10.
 | `print_file` | `source` (`"printer"` or `"usb"`), `path` (relative to the gcodes root; `nil` for a USB file), `local_path` (USB files only), `name`, `estimated_time_s`, `filament` (a list, one per tool: `tool`, `material`, `color`, `grams`), `layer_height`, `object_height`, `tools_used` |
 | `filament_slot` | `unit`, `slot` (both 0-based), `label` (the slot's name as the menu shows it), `tool` (the mapped tool or `nil`), and what is loaded when known: `material`, `color` (hex), `brand`, `spool_id` (Spoolman) |
 | `spool` | `spool_id`, `material`, `color`, `brand`, `remaining_g` |
-| `tile` | `widget` (the declared widget id) |
+| `tile` | `widget` (the widget's name: its declared id without the `<id>__` prefix) |
 
 A field the printer does not report, or that has not loaded yet, is `nil`: the print
 details screen fetches some file metadata after it opens. The handler is an ordinary
@@ -455,10 +455,10 @@ handler is called with the same table when the menu opens and returns `true` (sh
 `false` (hidden), or `{visible = true, enabled = false, reason = "Only for .gcode files"}`
 (shown greyed, with the reason). A check runs in check mode: anything with a side effect
 or a wait (`helix.gcode`, `helix.moonraker`, `helix.http`, `helix.storage` and
-`helix.settings` writes, `helix.sleep`, opening a dialog, overlay, confirm or toast)
-raises at once. It has its own short time budget. A check that raises, overruns or returns
-anything else hides only that item for this opening and counts toward the plugin's error
-limit (§10); the menu always opens.
+`helix.settings` writes, `helix.sleep`, opening a dialog, overlay, confirm or toast,
+registering a handler, observer or timer) raises at once. It has its own short time
+budget. A check that raises, overruns or returns anything else hides only that item for
+this opening and counts toward the plugin's error limit (§10); the menu always opens.
 
 ```lua
 helix.ui.on("can_calibrate", function(file)
@@ -735,6 +735,9 @@ approval* instead of loading; enabling it again approves only the new lines.
 | Dialogs | one `helix.ui.dialog` shown or waiting per plugin | `src/plugin/lua_bind_ui.cpp#kMaxDialogs` |
 | Confirms | one `helix.ui.confirm` shown or waiting per plugin | `src/plugin/lua_bind_ui.cpp#kMaxOpenConfirms` |
 | Canvas list bytes | charged against the plugin memory cap as staged | `include/plugin_canvas.h#DisplayList/bytes` |
+| Menu items | at most 4 per menu per plugin, 16 per manifest; a label is one line of at most 48 bytes | `include/plugin_manifest.h#kMaxMenuItemsPerMenu` |
+| Plugin rows per menu | across every plugin, per opening: print details 8, filament slot 4, spool 6, a tile 4; rows past it are left out in load order | `src/plugin/plugin_menu.cpp#row_cap` |
+| Menu checks | 10 ms of CPU or 100 ms in all, separate from the entry budget; an overrun is an error (it counts toward the error limit), never a fault by itself | `include/lua_runtime.h#LuaRuntime/CheckLimits` |
 
 A fault (time budget, memory, error count, or `main.lua` failing to load) unloads the
 plugin, marks it *faulted* with the reason in Settings > Plugins, and shows a "Plugin
