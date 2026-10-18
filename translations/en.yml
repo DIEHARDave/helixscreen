@@ -499,6 +499,7 @@ translations:
   Calibrate Gates: Calibrate Gates
   Calibrate Gear: Calibrate Gear
   Calibrate Purge Chute: Calibrate Purge Chute
+  Calibrate Toolhead: Calibrate Toolhead
   Calibrate X: Calibrate X
   Calibrate Y: Calibrate Y
   Calibrate All Tools: Calibrate All Tools
@@ -1531,6 +1532,7 @@ translations:
   Grip filament: Grip filament
   Grip the filament: Grip the filament
   Guide the toolhead to the chute's extrude position: Guide the toolhead to the chute's extrude position
+  Guided sensor-to-nozzle, unload and cutter retract calibration: Guided sensor-to-nozzle, unload and cutter retract calibration
   Guides and reference: Guides and reference
   H: H
   HELIXSCREEN: HELIXSCREEN

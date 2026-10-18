@@ -474,6 +474,7 @@
   <translation tag="Calibrate Gates" zh="校准通道"/>
   <translation tag="Calibrate Gear" zh="校准齿轮"/>
   <translation tag="Calibrate Purge Chute" zh="校准排料口"/>
+  <translation tag="Calibrate Toolhead" zh="校准工具头"/>
   <translation tag="Calibrate X" zh="校准 X 轴"/>
   <translation tag="Calibrate Y" zh="校准 Y 轴"/>
   <translation tag="Calibrate input shaping to reduce ringing artifacts in prints" zh="校准输入整形以减少打印中的振纹"/>
@@ -1437,6 +1438,7 @@
   <translation tag="Grip filament" zh="夹持耗材"/>
   <translation tag="Grip the filament" zh="夹持耗材"/>
   <translation tag="Guide the toolhead to the chute&apos;s extrude position" zh="引导工具头到排料口的挤出位置"/>
+  <translation tag="Guided sensor-to-nozzle, unload and cutter retract calibration" zh="引导式校准：传感器至喷嘴、卸载和切刀回抽"/>
   <translation tag="Guides and reference" zh="指南与参考"/>
   <translation tag="H" zh="头"/>
   <translation tag="HELIXSCREEN" zh="HELIXSCREEN"/>

@@ -943,6 +943,20 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
      */
     bool apply_afc_version_response(const nlohmann::json& response);
 
+    /// Ask Klipper which commands AFC registered (printer.gcode.help). Commands
+    /// AFC adds in Python never appear in the objects list, so this is how an
+    /// action backed by one learns whether the installed AFC has it.
+    void detect_afc_commands();
+
+    /**
+     * @brief Apply a printer.gcode.help reply (full JSON-RPC envelope)
+     *
+     * Sets the command-presence flags the device actions read.
+     *
+     * @return true when the reply carried a command table
+     */
+    bool apply_gcode_help_response(const nlohmann::json& response);
+
     /// Issue the one-shot unscoped query that check_afc_feature_level() needs.
     /// @param lane_object Full Klipper object name, e.g. "AFC_stepper lane1".
     void probe_feature_level(const std::string& lane_object);
@@ -1209,6 +1223,9 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
 
     /// Latch for the feature probe: it costs a query, so it runs exactly once.
     bool feature_level_checked_{false};
+
+    /// AFC_TOOLHEAD_CALIBRATION is registered (from printer.gcode.help). Guarded by mutex_.
+    bool has_toolhead_calibration_{false};
 
     /// "AFC_stepper " or "AFC_lane ", learned from the first status frame that
     /// carries a lane. Only the prefix is learnable from a frame; the fields are
