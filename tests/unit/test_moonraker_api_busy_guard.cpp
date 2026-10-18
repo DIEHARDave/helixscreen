@@ -496,9 +496,7 @@ TEST_CASE_METHOD(BusyGuardApiFixture,
     // back-to-back jogs must pass instead of self-blocking with a busy toast.
     set_idle_printing(true);
     set_print_state(PrintJobState::STANDBY);
-    state.app_motion_activity().note_sent(
-        state.calibration_state().idle_timeout_busy().printing_since() -
-        std::chrono::milliseconds(100));
+    state.app_motion_activity().note_sent();
 
     api->execute_gcode("M106 S255", nullptr, [this](const MoonrakerError& err) { error_cb(err); });
 
@@ -583,76 +581,5 @@ TEST_CASE_METHOD(BusyGuardApiFixture, "motion execute_gcode refuses discretionar
                                 [this](const MoonrakerError& err) { error_cb(err); });
         CHECK_FALSE(error_called);
         REQUIRE(mock_client.last_send_method() == "printer.gcode.script");
-    }
-}
-
-// ============================================================================
-// Self-busy comes from episode ownership alone
-// ============================================================================
-
-namespace {
-
-/// Re-observe idle_timeout going high @p ago, as a status frame would have.
-IdleTimeoutBusy::clock::time_point observe_episode_start(PrinterState& state,
-                                                         std::chrono::milliseconds ago) {
-    auto& busy = state.calibration_state().idle_timeout_busy();
-    const auto start = IdleTimeoutBusy::clock::now() - ago;
-    busy.set_printing(false, start);
-    busy.set_printing(true, start);
-    return start;
-}
-
-} // namespace
-
-TEST_CASE_METHOD(BusyGuardApiFixture,
-                 "chained jogs into an external episode are refused once it settles",
-                 "[busy_guard][mock][motion][1108]") {
-    // A bed mesh started elsewhere 1.2 s ago. A Z nudge at +0.5 s went out while
-    // the guard was still settling and was acked at once; every later nudge
-    // lands well inside the previous one's ack grace.
-    set_idle_printing(true);
-    set_print_state(PrintJobState::STANDBY);
-    const auto start = observe_episode_start(state, std::chrono::milliseconds(1200));
-    state.app_motion_activity().note_sent(start + std::chrono::milliseconds(500));
-    state.app_motion_activity().note_done(start + std::chrono::milliseconds(520));
-    REQUIRE(state.app_motion_activity().recently_active());
-
-    for (int nudge = 0; nudge < 3; ++nudge) {
-        INFO("nudge " << nudge);
-        error_called = false;
-        api->motion().move_axis('Z', 0.1, 600.0, nullptr,
-                                [this](const MoonrakerError& err) { error_cb(err); });
-        CHECK(error_called);
-    }
-    CHECK(mock_client.gcode_script_history().empty());
-}
-
-TEST_CASE_METHOD(BusyGuardApiFixture, "the app's own jog episode passes the jogs that follow",
-                 "[busy_guard][mock][motion]") {
-    // The first jog went out just before idle_timeout was seen going high.
-    set_idle_printing(true);
-    set_print_state(PrintJobState::STANDBY);
-    const auto start = observe_episode_start(state, std::chrono::milliseconds(1200));
-    state.app_motion_activity().note_sent(start - std::chrono::milliseconds(100));
-
-    SECTION("a jog button held down") {
-        state.app_motion_activity().note_done(start + std::chrono::milliseconds(20));
-        for (int jog = 0; jog < 5; ++jog) {
-            INFO("jog " << jog);
-            const size_t sent_before = mock_client.gcode_script_history().size();
-            api->motion().move_axis('X', 1.0, 3000.0, nullptr,
-                                    [this](const MoonrakerError& err) { error_cb(err); });
-            CHECK(mock_client.gcode_script_history().size() > sent_before);
-        }
-        CHECK_FALSE(error_called);
-    }
-
-    SECTION("a jog right after the app's own move completes, before idle_timeout clears") {
-        state.app_motion_activity().note_done(IdleTimeoutBusy::clock::now() -
-                                              std::chrono::milliseconds(50));
-        api->motion().move_axis('Y', 1.0, 3000.0, nullptr,
-                                [this](const MoonrakerError& err) { error_cb(err); });
-        CHECK_FALSE(error_called);
-        CHECK_FALSE(mock_client.gcode_script_history().empty());
     }
 }

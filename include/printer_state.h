@@ -756,8 +756,8 @@ class PrinterState {
     /**
      * @brief Like is_blocking_operation_active(), but attributes self-inflicted busy
      *
-     * Treats a busy episode the app's own jog started (see BusyEpisodeOwner) as
-     * NOT blocking; motion sent into an episode someone else started is not.
+     * Treats busy-ness attributable to the app's own recent jog activity (in
+     * flight, or acked within AppMotionActivity::GRACE_WINDOW) as NOT blocking.
      * Manual probe remains an absolute block. Guards for discretionary gcode use
      * THIS predicate so back-to-back jogs don't self-block — idle_timeout reports
      * "Printing" during any move, including our own jog (spec 2026-07-15).

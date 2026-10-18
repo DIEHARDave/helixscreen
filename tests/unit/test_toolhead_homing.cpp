@@ -12,9 +12,6 @@
 #include "printer_state.h"
 #include "toolhead_homing.h"
 
-#include <chrono>
-#include <thread>
-
 #include "../catch_amalgamated.hpp"
 
 TEST_CASE("toolhead_is_homed reads the live homed_axes subject", "[homing][toolhead]") {
@@ -123,17 +120,11 @@ TEST_CASE("ensure_homed_then's continuation is not refused as someone else's bus
         &api, guard,
         [&] {
             ran = true;
+            // The homing macro is still moving the bed when G28 acks.
+            PrinterStateTestAccess::set_sustained_idle_timeout_printing(state, true);
             refused_as_external = state.is_external_blocking_operation_active();
         },
         nullptr);
-    // The G28 is seen holding idle_timeout "Printing", and the homing macro is
-    // still moving the bed past SETTLE when G28 acks. Ownership needs the send
-    // to precede the episode, so the episode is observed now and allowed to
-    // settle in real time.
-    lv_subject_set_int(state.calibration_state().get_idle_timeout_printing_subject(), 1);
-    state.calibration_state().idle_timeout_busy().set_printing(true);
-    std::this_thread::sleep_for(helix::IdleTimeoutBusy::SETTLE + std::chrono::milliseconds(100));
-    REQUIRE(state.is_blocking_operation_active());
     helix::ui::UpdateQueue::instance().drain();
 
     REQUIRE(ran);

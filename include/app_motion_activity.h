@@ -32,15 +32,6 @@ class AppMotionActivity {
         inflight_.fetch_add(1, std::memory_order_relaxed);
     }
 
-    /**
-     * Record a send that can start a busy episode without tracking it in
-     * flight: a G28 whose continuation moves the toolhead once it acks, while
-     * a homing macro may still hold idle_timeout "Printing".
-     */
-    void note_episode_send(clock::time_point now = clock::now()) {
-        episode_.note_sent(now);
-    }
-
     void note_done(clock::time_point now = clock::now()) {
         last_done_ns_.store(now.time_since_epoch().count(), std::memory_order_relaxed);
         // Clamp at zero if a done arrives without a matching send.
