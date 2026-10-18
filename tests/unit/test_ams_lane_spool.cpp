@@ -22,6 +22,7 @@
 #include "config.h"
 #include "filament_tube_stroker.h"
 #include "helix-xml/src/xml/lv_xml.h"
+#include "static_subject_registry.h"
 #include "theme_manager.h"
 #include "ui/ams_drawing_utils.h"
 
@@ -491,4 +492,30 @@ TEST_CASE_METHOD(XMLTestFixture,
     backend->stop();
     ams.clear_backends();
     helix::Config::get_instance()->set<std::string>("/ams/spool_style", "3d");
+}
+
+TEST_CASE_METHOD(XMLTestFixture,
+                 "ams_lane_spool: a printer switch's cleanup leaves no observer on a live subject",
+                 "[ams][lane_spool]") {
+    ui_ams_lane_spool_register();
+    AmsState::instance().init_subjects(true);
+    lv_subject_t* theme = theme_manager_get_changed_subject();
+    lv_subject_t* lane_state = AmsState::instance().get_slot_lane_state_subject(0);
+    REQUIRE(theme != nullptr);
+    const uint32_t theme_before = lv_ll_get_len(&theme->subs_ll);
+    const uint32_t lane_before = lv_ll_get_len(&lane_state->subs_ll);
+
+    lv_obj_t* spool = make_spool(test_screen(), 0);
+    REQUIRE(spool != nullptr);
+    process_lvgl(20);
+    REQUIRE(lv_ll_get_len(&theme->subs_ll) == theme_before + 1);
+    REQUIRE(lv_ll_get_len(&lane_state->subs_ll) > lane_before);
+
+    // Theme and AmsState subjects both outlive this cleanup here, as the theme
+    // subject does across every switch.
+    REQUIRE(StaticSubjectRegistry::instance().deinit_one(
+        "AmsLaneSpoolWidgets", StaticSubjectRegistry::Scope::PrinterSwitch));
+    CHECK(lv_ll_get_len(&theme->subs_ll) == theme_before);
+    CHECK(lv_ll_get_len(&lane_state->subs_ll) == lane_before);
+    lv_obj_delete(spool);
 }

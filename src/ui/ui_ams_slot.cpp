@@ -162,8 +162,6 @@ static void unregister_slot_data(lv_obj_t* obj) {
             // are safely skipped. Using release() here caused use-after-free:
             // zombie observers would fire on subject changes, queue callbacks with
             // stale widget pointers, and crash in apply_status_badge (#579).
-            // Note: cleanup_all_slot_data() uses release() for pre-deinit when
-            // subjects may already be destroyed — that path is correct.
             //
             // Reset the dynamic-subject lifetime BEFORE its observer so the
             // observer's weak_ptr is already expired (secondary-backend subjects
@@ -188,33 +186,34 @@ static void unregister_slot_data(lv_obj_t* obj) {
 }
 
 /**
- * @brief Pre-deinit cleanup: release all slot data while widgets are still alive.
+ * @brief Teardown cleanup: drop all slot data while widgets are still alive.
  *
- * Called via StaticSubjectRegistry BEFORE lv_deinit(). Releases ObserverGuards
- * while global subjects are still valid. After this, the DELETE events fired
- * during lv_deinit() find nothing in the registry and are no-ops.
+ * Runs from StaticSubjectRegistry at every printer switch and before lv_deinit().
+ * reset(), not release(): every guard carries its subject owner's lifetime token,
+ * so it removes its observer from a live subject and skips one AmsState has
+ * already freed, and either way frees the observer's context. After this, the
+ * DELETE events fired later find nothing in the registry and are no-ops.
  */
 static void cleanup_all_slot_data() {
     for (auto& [obj, data] : s_slot_registry) {
         if (!data)
             continue;
 
-        // Release ObserverGuards while global subjects are still alive. Reset the
-        // dynamic-subject lifetime first (same #705 ordering as above).
+        // Reset the dynamic-subject lifetime first (same #705 ordering as above).
         data->status_lifetime.reset();
         data->lane_state_lifetime.reset();
         data->material_lifetime.reset();
         data->name_lifetime.reset();
-        data->status_observer.release();
-        data->lane_state_observer.release();
-        data->material_observer.release();
-        data->name_observer.release();
-        data->remaining_observer.release();
-        data->current_slot_observer.release();
-        data->filament_loaded_observer.release();
-        data->active_loaded_observer.release();
-        data->action_observer.release();
-        data->target_slot_observer.release();
+        data->status_observer.reset();
+        data->lane_state_observer.reset();
+        data->material_observer.reset();
+        data->name_observer.reset();
+        data->remaining_observer.reset();
+        data->current_slot_observer.reset();
+        data->filament_loaded_observer.reset();
+        data->active_loaded_observer.reset();
+        data->action_observer.reset();
+        data->target_slot_observer.reset();
 
         delete data;
     }

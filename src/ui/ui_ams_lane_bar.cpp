@@ -112,9 +112,9 @@ static void unregister_lane_bar_data(lv_obj_t* obj) {
 }
 
 /**
- * @brief Pre-deinit cleanup: release all lane bar data while widgets are still alive.
+ * @brief Teardown cleanup: drop all lane bar data while widgets are still alive.
  *
- * Called via StaticSubjectRegistry BEFORE lv_deinit(), mirroring
+ * Runs at every printer switch and before lv_deinit(); same rule as
  * cleanup_all_slot_data() in ui_ams_slot.cpp.
  */
 static void cleanup_all_lane_bar_data() {
@@ -122,12 +122,12 @@ static void cleanup_all_lane_bar_data() {
         if (!data)
             continue;
         data->active_loaded_lifetime.reset();
-        data->lane_state_observer.release();
-        data->color_observer.release();
-        data->fill_observer.release();
-        data->active_loaded_observer.release();
-        data->has_error_observer.release();
-        data->severity_observer.release();
+        data->lane_state_observer.reset();
+        data->color_observer.reset();
+        data->fill_observer.reset();
+        data->active_loaded_observer.reset();
+        data->has_error_observer.reset();
+        data->severity_observer.reset();
         delete data;
     }
     s_lane_bar_registry.clear();
