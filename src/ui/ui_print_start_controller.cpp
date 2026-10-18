@@ -404,6 +404,19 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
         return;
     }
 
+    // A remap the backend cannot honor stops the print here, before anything
+    // is sent, with the same report a printer-side refusal gets below.
+    if (const AmsError refused = backend->check_preprint_remap(tools_used, remap);
+        !refused.success()) {
+        LOG_ERROR_INTERNAL("[PrintStartController] pre-print remap refused: {}",
+                           refused.technical_msg);
+        report_preprint_failure(refused.user_msg);
+        if (on_abort) {
+            on_abort();
+        }
+        return;
+    }
+
     std::string gcode = backend->build_preprint_gcode(tools_used, remap);
 
     if (gcode.empty()) {
@@ -446,12 +459,7 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
             std::string local = err.message_tag ? err.localized_message() : std::string{};
             tok.defer("PrintStartController::preprint.err", [msg, local, on_abort]() {
                 LOG_ERROR_INTERNAL("[PrintStartController] pre-print config rejected: {}", msg);
-                NOTIFY_ERROR_MODAL(
-                    lv_tr("Print setup failed"), "{}",
-                    !local.empty()
-                        ? local
-                        : std::string(lv_tr("The printer rejected the filament configuration. "
-                                            "The print was not started.")));
+                report_preprint_failure(local);
                 // Notify caller to re-enable UI state — do NOT start.
                 if (on_abort) {
                     on_abort();
@@ -459,6 +467,14 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
             });
         },
         15000);
+}
+
+void PrintStartController::report_preprint_failure(const std::string& reason) {
+    NOTIFY_ERROR_MODAL(lv_tr("Print setup failed"), "{}",
+                       !reason.empty()
+                           ? reason
+                           : std::string(lv_tr("The printer rejected the filament configuration. "
+                                               "The print was not started.")));
 }
 
 bool PrintStartController::divert_to_spool_removal() {

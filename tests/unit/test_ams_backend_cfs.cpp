@@ -6411,13 +6411,18 @@ TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
         CHECK(helix::printer::can_remap(backend));
         CHECK_FALSE(helix::printer::remap_is_persistent(backend.get_remap_strategy()));
 
-        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 5}, {1, 2}}) ==
+        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 5}, {1, 6}}) ==
+              "BOX_PRINT_MAP MAP=0:5,1:6");
+
+        // The format, apart from which slots this box set can feed.
+        CHECK(AmsBackendCfs::print_map_gcode({0, 1}, {{0, 5}, {1, 2}}) ==
               "BOX_PRINT_MAP MAP=0:5,1:2");
         // A used tool the user left alone is still named, at its own slot, so
         // the map says what the whole print means.
-        CHECK(backend.build_preprint_gcode({0, 1, 2}, {{0, 5}}) == "BOX_PRINT_MAP MAP=0:5,1:1,2:2");
+        CHECK(AmsBackendCfs::print_map_gcode({0, 1, 2}, {{0, 5}}) ==
+              "BOX_PRINT_MAP MAP=0:5,1:1,2:2");
         // Tool order is the file's, not the remap's insertion order.
-        CHECK(backend.build_preprint_gcode({}, {{3, 9}, {1, 6}}) == "BOX_PRINT_MAP MAP=1:6,3:9");
+        CHECK(AmsBackendCfs::print_map_gcode({}, {{3, 9}, {1, 6}}) == "BOX_PRINT_MAP MAP=1:6,3:9");
     }
 
     SECTION("no remap sends nothing") {
@@ -6426,6 +6431,33 @@ TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
         CHECK(backend.build_preprint_gcode({0, 1}, {}).empty());
         CHECK(backend.build_preprint_gcode({}, {}).empty());
         CHECK(backend.build_preprint_gcode({0, 1}, {{0, 0}, {1, 1}}).empty());
+    }
+
+    SECTION("a remap to a slot that cannot feed sends nothing and says why") {
+        box["api_revision"] = 3;
+        box["boxes"] = json::array(
+            {json{{"address", 2}, {"online", false}}, json{{"address", 3}, {"online", true}}});
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+
+        // Box 2 (slots 4-7) is not answering.
+        auto err = backend.check_preprint_remap({0}, {{0, 5}});
+        CHECK(err.result == AmsResult::WRONG_STATE);
+        CHECK(err.slot_index == 5);
+        CHECK(err.user_msg.find("Disconnected") != std::string::npos);
+        CHECK(backend.build_preprint_gcode({0}, {{0, 5}}).empty());
+
+        // Box 1 (slots 0-3) is not on the bus at all.
+        err = backend.check_preprint_remap({0}, {{0, 1}});
+        CHECK(err.result == AmsResult::INVALID_SLOT);
+        CHECK(err.slot_index == 1);
+        CHECK(backend.build_preprint_gcode({0}, {{0, 1}}).empty());
+
+        // One bad target refuses the whole map, not just its own entry.
+        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 9}, {1, 5}}).empty());
+
+        // Box 3 answers.
+        CHECK(backend.check_preprint_remap({0}, {{0, 9}}).success());
+        CHECK(backend.build_preprint_gcode({0}, {{0, 9}}) == "BOX_PRINT_MAP MAP=0:9");
     }
 
     SECTION("the pre-print send is not a BOX_MODIFY_TN table write") {

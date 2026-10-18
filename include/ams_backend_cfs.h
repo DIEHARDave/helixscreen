@@ -335,6 +335,12 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     [[nodiscard]] std::string build_preprint_gcode(const std::set<int>& tools_used,
                                                    const std::map<int, int>& remap) const override;
 
+    /// Refuses a remap whose target slot is not one a manual load could
+    /// feed (firmware_slot_locked()) or sits in a box that is not answering.
+    /// @note Takes `mutex_`; callers must NOT hold it.
+    [[nodiscard]] AmsError check_preprint_remap(const std::set<int>& tools_used,
+                                                const std::map<int, int>& remap) const override;
+
     /// The Fork map for the next print, in BOX_PRINT_START's MAP= format: file
     /// tool, then global slot (our bay index). Every tool the file uses is
     /// named, a tool @p remap leaves out at its own slot (box.py's default

@@ -64,7 +64,7 @@ only, so a revision 3 box declares `RemapStrategy::PrePrintSend` and
 starts (`AmsBackendCfs::print_map_gcode`). It names every tool the file uses, an
 unmapped one at its own slot, so the map states the whole print; with nothing remapped
 it sends nothing, since the firmware's default is that map and the command has no
-clearing form. `can_set_tool_mapping()` refuses on this route: `BOX_MODIFY_TN` is a
+clearing form. A remap whose target slot a manual load would refuse (`firmware_slot_locked()`), or that sits in a box reporting `online: false`, is refused by `check_preprint_remap()`: nothing is sent and the print does not start, with the reason in the same "Print setup failed" dialog a printer-side refusal gets. `can_set_tool_mapping()` refuses on this route: `BOX_MODIFY_TN` is a
 stock command. The revision is the only evidence the command exists: it is registered
 in Python, and the app has no registered-command lookup. Below revision 3 Fork has no
 remap route (`RemapStrategy::None`). A reprint sends no map, because the backend does

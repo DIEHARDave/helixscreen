@@ -3206,6 +3206,26 @@ class AmsBackend {
     }
 
     /**
+     * @brief Whether the pre-print send can honor this remap right now.
+     *
+     * The pre-print counterpart to can_set_tool_mapping(): a remap naming a
+     * slot that cannot feed is refused here, and PrintStartController stops
+     * the print with the error's user_msg instead of sending a map the
+     * firmware would act on with a slot it cannot reach. A backend that
+     * refuses here also returns "" from build_preprint_gcode() for the same
+     * arguments. Default success.
+     *
+     * @param tools_used Logical tools the gcode body uses
+     * @param remap      Logical tool -> physical slot, only for changed tools
+     */
+    [[nodiscard]] virtual AmsError check_preprint_remap(const std::set<int>& tools_used,
+                                                        const std::map<int, int>& remap) const {
+        (void)tools_used;
+        (void)remap;
+        return AmsErrorHelper::success();
+    }
+
+    /**
      * @brief Check if backend automatically heats extruder before loading
      *
      * Some backends (like AFC) use material-specific temperatures from their
