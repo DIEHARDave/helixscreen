@@ -12,6 +12,10 @@
  */
 
 #include "ui_modal.h"
+#include "ui_nav.h"
+#include "ui_nav_manager.h"
+#include "ui_overlay_retraction_settings.h"
+#include "ui_panel_calibration_tool_offset.h"
 #include "ui_printer_manager_overlay.h"
 #include "ui_update_queue.h"
 
@@ -19,6 +23,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/printer_manager_overlay_test_access.h"
+#include "../test_helpers/printer_state_test_access.h"
 #include "accel_sensor_manager.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
@@ -33,7 +38,6 @@
 #include "width_sensor_manager.h"
 
 #include <array>
-#include <iterator>
 #include <memory>
 #include <string_view>
 
@@ -310,34 +314,29 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 namespace {
 
 /// The overlay shown on the fixture's screen, with the fixture's API published
-/// as the app's, so the chips read the discovery the test writes.
+/// as the app's, so the chips read the discovery the test writes. The managers
+/// whose counts the chips show are started for real, so the overlay's
+/// observers attach to the subjects production publishes.
 class CapabilityChipsFixture : public LVGLUITestFixture {
   public:
-    // The base fixture registers PrinterState's subjects; the counts the chips
-    // also bind belong to managers it never starts, so stand-ins publish them.
     CapabilityChipsFixture() : previous_api_(get_moonraker_api()) {
         set_moonraker_api(api());
-        helix::AmsState::instance().init_subjects(false);
-        for (size_t i = 0; i < std::size(STAND_INS); ++i) {
-            if (lv_xml_get_subject(nullptr, STAND_INS[i]) == nullptr) {
-                lv_subject_init_int(&stand_ins_[i], 0);
-                lv_xml_register_subject(nullptr, STAND_INS[i], &stand_ins_[i]);
-                registered_[i] = true;
-            }
-        }
+        helix::AmsState::instance().init_subjects(true);
+        helix::ToolState::instance().init_subjects(true);
+        helix::FilamentSensorManager::instance().init_subjects();
+        helix::sensors::WidthSensorManager::instance().init_subjects();
+        helix::sensors::AccelSensorManager::instance().init_subjects();
     }
     ~CapabilityChipsFixture() override {
         ModalStack::instance().clear();
         destroy_printer_manager_overlay();
         helix::ui::UpdateQueue::instance().drain();
         helix::AmsState::instance().clear_backends();
+        helix::sensors::AccelSensorManager::instance().deinit_subjects();
+        helix::sensors::WidthSensorManager::instance().deinit_subjects();
+        helix::FilamentSensorManager::instance().deinit_subjects();
+        helix::ToolState::instance().deinit_subjects();
         helix::AmsState::instance().deinit_subjects();
-        for (size_t i = 0; i < std::size(STAND_INS); ++i) {
-            if (registered_[i]) {
-                lv_xml_unregister_subject(nullptr, STAND_INS[i]);
-                lv_subject_deinit(&stand_ins_[i]);
-            }
-        }
         set_moonraker_api(previous_api_);
     }
 
@@ -357,6 +356,21 @@ class CapabilityChipsFixture : public LVGLUITestFixture {
         process_lvgl(30);
     }
 
+    void click(const char* chip) {
+        lv_obj_t* obj = lv_obj_find_by_name(get_printer_manager_overlay().get_root(), chip);
+        REQUIRE(obj != nullptr);
+        lv_obj_send_event(obj, LV_EVENT_CLICKED, nullptr);
+        settle();
+    }
+
+    /// Discovery as the app hands it over: the API's copy, PrinterState and ToolState.
+    void discover(const nlohmann::json& objects) {
+        api()->hardware().parse_objects(objects);
+        state().set_hardware(api()->hardware());
+        helix::ToolState::instance().init_tools(api()->hardware());
+        helix::ui::UpdateQueue::instance().drain();
+    }
+
     static std::string text_of(const char* subject_name) {
         lv_subject_t* s = lv_xml_get_subject(nullptr, subject_name);
         REQUIRE(s != nullptr);
@@ -370,11 +384,7 @@ class CapabilityChipsFixture : public LVGLUITestFixture {
     }
 
   private:
-    static constexpr const char* STAND_INS[] = {"ams_is_tool_changer", "filament_sensor_count",
-                                                "width_sensor_count", "accel_count", "tool_count"};
     helix::IMoonrakerAPI* previous_api_;
-    std::array<lv_subject_t, std::size(STAND_INS)> stand_ins_{};
-    std::array<bool, std::size(STAND_INS)> registered_{};
 };
 
 void count_chips(lv_obj_t* obj, int& count) {
@@ -407,6 +417,18 @@ std::string shown_chips(lv_obj_t* obj) {
 constexpr const char* CAP_GROUPS[] = {"group_caps_motion",      "group_caps_thermal",
                                       "group_caps_filament",    "group_caps_printing",
                                       "group_caps_electronics", "group_caps_addons"};
+
+/// Beta features pinned for one test, restored after.
+struct ScopedBeta {
+    explicit ScopedBeta(bool on)
+        : previous_(helix::Config::get_instance()->is_beta_features_enabled()) {
+        helix::Config::get_instance()->set<bool>("/beta_features", on);
+    }
+    ~ScopedBeta() {
+        helix::Config::get_instance()->set<bool>("/beta_features", previous_);
+    }
+    bool previous_;
+};
 
 } // namespace
 
@@ -473,6 +495,26 @@ TEST_CASE_METHOD(CapabilityChipsFixture,
 }
 
 TEST_CASE_METHOD(CapabilityChipsFixture,
+                 "PrinterManagerOverlay: new discovery while open re-texts the chips",
+                 "[printer_manager]") {
+    api()->hardware().set_kinematics("corexy");
+    REQUIRE(show() != nullptr);
+    REQUIRE(text_of("pm_chip_text_kinematics") == "CoreXY");
+
+    api()->hardware().set_kinematics("delta");
+    state().capabilities_state().bump_hardware_generation();
+    settle();
+    CHECK(text_of("pm_chip_text_kinematics") == "Delta");
+}
+
+TEST_CASE_METHOD(CapabilityChipsFixture,
+                 "PrinterManagerOverlay: one activation computes the chips once",
+                 "[printer_manager]") {
+    REQUIRE(show() != nullptr);
+    CHECK(PrinterManagerOverlayTestAccess::chip_refresh_count(get_printer_manager_overlay()) == 1);
+}
+
+TEST_CASE_METHOD(CapabilityChipsFixture,
                  "PrinterManagerOverlay: a count that changes while open updates its chip",
                  "[printer_manager]") {
     auto& caps = state().capabilities_state();
@@ -486,39 +528,127 @@ TEST_CASE_METHOD(CapabilityChipsFixture,
     CHECK(text_of("pm_chip_text_power") == "Power · 3");
 }
 
+TEST_CASE_METHOD(
+    CapabilityChipsFixture,
+    "PrinterManagerOverlay: an override that adds QGL says so; one that removes it hides it",
+    "[printer_manager]") {
+    SECTION("ENABLE on an undetected QGL") {
+        PrinterStateTestAccess::set_capability_override(state(), capability::QGL,
+                                                        OverrideState::ENABLE);
+        discover(nlohmann::json{"fan"});
+        lv_obj_t* root = show();
+        REQUIRE(root != nullptr);
+        CHECK(shown(lv_obj_find_by_name(root, "pm_chip_qgl")));
+        CHECK(text_of("pm_chip_text_qgl") == "QGL · set manually");
+    }
+    SECTION("DISABLE on a detected QGL") {
+        PrinterStateTestAccess::set_capability_override(state(), capability::QGL,
+                                                        OverrideState::DISABLE);
+        discover(nlohmann::json{"quad_gantry_level"});
+        lv_obj_t* root = show();
+        REQUIRE(root != nullptr);
+        CHECK_FALSE(shown(lv_obj_find_by_name(root, "pm_chip_qgl")));
+    }
+    PrinterStateTestAccess::set_capability_override(state(), capability::QGL, OverrideState::AUTO);
+}
+
 TEST_CASE_METHOD(CapabilityChipsFixture,
                  "PrinterManagerOverlay: a chip with no screen opens its info popup",
                  "[printer_manager]") {
-    lv_obj_t* root = show();
-    REQUIRE(root != nullptr);
+    REQUIRE(show() != nullptr);
     const helix::CapChipSpec* spec = helix::find_cap_chip_spec("pm_chip_qgl");
     REQUIRE(spec != nullptr);
     REQUIRE(spec->open == nullptr);
     REQUIRE(ModalStack::instance().empty());
 
-    lv_obj_send_event(lv_obj_find_by_name(root, "pm_chip_qgl"), LV_EVENT_CLICKED, nullptr);
-    settle();
+    click("pm_chip_qgl");
     CHECK_FALSE(ModalStack::instance().empty());
 }
 
 TEST_CASE_METHOD(CapabilityChipsFixture,
-                 "PrinterManagerOverlay: a tool changer alone is no multi-filament system",
+                 "PrinterManagerOverlay: a beta screen shows its popup while beta is off",
+                 "[printer_manager]") {
+    ScopedBeta beta(false);
+    REQUIRE(show() != nullptr);
+    const helix::CapChipSpec* spec = helix::find_cap_chip_spec("pm_chip_tool_offsets");
+    REQUIRE(spec != nullptr);
+    REQUIRE(spec->open != nullptr);
+    REQUIRE(spec->beta);
+
+    click("pm_chip_tool_offsets");
+    CHECK(ModalStack::instance().top_component_name() != "");
+    CHECK(helix::ui::get_global_tool_offset_cal_panel().get_root() == nullptr);
+}
+
+TEST_CASE_METHOD(CapabilityChipsFixture, "PrinterManagerOverlay: a chip pushes its screen",
+                 "[printer_manager]") {
+    REQUIRE(show() != nullptr);
+    click("pm_chip_retraction");
+    lv_obj_t* retraction = get_global_retraction_settings().get_root();
+    REQUIRE(retraction != nullptr);
+    CHECK(helix::nav::is_in_stack(retraction));
+    CHECK(ModalStack::instance().empty());
+}
+
+TEST_CASE_METHOD(CapabilityChipsFixture, "PrinterManagerOverlay: a chip opens its modal",
+                 "[printer_manager]") {
+    REQUIRE(show() != nullptr);
+    click("pm_chip_job_queue");
+    CHECK(ModalStack::instance().top_component_name() == "job_queue_modal");
+}
+
+TEST_CASE_METHOD(CapabilityChipsFixture,
+                 "PrinterManagerOverlay: a chip whose screen is a main panel switches to it",
+                 "[printer_manager]") {
+    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    for (auto& p : panels) {
+        p = lv_obj_create(test_screen());
+    }
+    auto& nav = NavigationManager::instance();
+    nav.set_panels(panels.data());
+    nav.set_active(helix::PanelId::Home);
+    REQUIRE(show() != nullptr);
+
+    click("pm_chip_helix_macros");
+    CHECK(nav.get_active() == helix::PanelId::Advanced);
+    nav.set_active(helix::PanelId::Home);
+}
+
+TEST_CASE_METHOD(CapabilityChipsFixture,
+                 "PrinterManagerOverlay: tool changer and multiple extruders",
                  "[printer_manager]") {
     auto& ams = helix::AmsState::instance();
-    auto owned = std::make_unique<helix::AmsBackendMock>(4);
-    helix::AmsBackendMock* mock = owned.get();
-    mock->set_operation_delay(0);
 
-    SECTION("a filament system names itself and its slots") {
-        ams.set_backend(std::move(owned));
+    SECTION("a klipper-toolchanger beside a filament system shows both, with the head count") {
+        discover(nlohmann::json{"toolchanger", "tool T0", "tool T1", "tool T2", "tool T3",
+                                "extruder", "extruder1", "extruder2", "extruder3"});
+        auto mock = std::make_unique<helix::AmsBackendMock>(4);
+        mock->set_operation_delay(0);
+        ams.set_backend(std::move(mock));
         REQUIRE(show() != nullptr);
-        CHECK_FALSE(text_of("pm_chip_text_filament_system").empty());
+        CHECK(int_of("pm_has_tool_changer") == 1);
+        CHECK(text_of("pm_chip_text_tool_changer") == "Tool Changer · 4 Tools");
         CHECK(int_of("pm_has_filament_system") == 1);
+        CHECK_FALSE(text_of("pm_chip_text_filament_system").empty());
     }
-    SECTION("a tool changer gets only its own chip") {
-        mock->set_tool_changer_mode(true);
-        ams.set_backend(std::move(owned));
+    SECTION("two extruders and no tool changer are extruders") {
+        discover(nlohmann::json{"extruder", "extruder1"});
         REQUIRE(show() != nullptr);
+        CHECK(int_of("pm_has_tool_changer") == 1);
+        CHECK(text_of("pm_chip_text_tool_changer") == "2 Extruders");
+    }
+    SECTION("a single extruder has no chip") {
+        discover(nlohmann::json{"extruder"});
+        REQUIRE(show() != nullptr);
+        CHECK(int_of("pm_has_tool_changer") == 0);
+    }
+    SECTION("a tool changer backend alone is no multi-filament system") {
+        auto mock = std::make_unique<helix::AmsBackendMock>(4);
+        mock->set_operation_delay(0);
+        mock->set_tool_changer_mode(true);
+        ams.set_backend(std::move(mock));
+        REQUIRE(show() != nullptr);
+        CHECK(int_of("pm_has_tool_changer") == 1);
         CHECK(text_of("pm_chip_text_filament_system").empty());
         CHECK(int_of("pm_has_filament_system") == 0);
     }

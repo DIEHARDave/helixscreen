@@ -1468,6 +1468,7 @@
   <translation tag="Heat Soaking..." it="Preriscaldamento..."/>
   <translation tag="Heat bed before calibrating for accurate offset with thermal expansion." it="Riscalda il piano prima di calibrare per un offset preciso con espansione termica."/>
   <translation tag="Heat nozzle" it="Riscalda ugello"/>
+  <translation tag="Heat soak lets the enclosure warm up before a print. It is listed because the printer has a heat soak macro or it was turned on in settings; HelixScreen does not run it." it="L&apos;heat soak lascia scaldare la camera prima di una stampa. È elencato perché la stampante ha una macro di heat soak o è stato attivato nelle impostazioni; HelixScreen non lo esegue."/>
   <translation tag="Heat the bed to {}°C" it="Riscalda il piano a {}°C"/>
   <translation tag="Heat the chamber too" it="Riscalda anche la camera"/>
   <translation tag="Heat the extruder to at least {}°C before loading filament" it="Riscalda l&apos;estrusore ad almeno {}°C prima di caricare il filamento"/>
@@ -1515,6 +1516,7 @@
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." it="HelixScreen scriverà questo in printer.cfg e riavvierà Klipper. La stampante si disconnetterà brevemente."/>
   <translation tag="HelixScreen {} is available — tap Update" it="HelixScreen {} è disponibile — tocca Aggiorna"/>
   <translation tag="HelixScreen&apos;s Moonraker plugin is installed, which it uses to run pre-print options. Manage it on the Advanced screen." it="Il plugin Moonraker di HelixScreen è installato e serve per le opzioni pre-stampa. Gestiscilo nella schermata Avanzate."/>
+  <translation tag="HelixScreen&apos;s helper macros are installed in the printer&apos;s config. Install updates on the Advanced screen." it="Le macro di supporto di HelixScreen sono installate nella configurazione della stampante. Installa gli aggiornamenti nella schermata Avanzate."/>
   <translation tag="HelixScreen&apos;s helper macros are installed in the printer&apos;s config. Update or remove them on the Advanced screen." it="Le macro di supporto di HelixScreen sono installate nella configurazione della stampante. Aggiornale o rimuovile nella schermata Avanzate."/>
   <translation tag="Help &amp; About" it="Aiuto e info"/>
   <translation tag="Help Improve HelixScreen" it="Aiuta a migliorare HelixScreen"/>
@@ -2317,6 +2319,7 @@
   <translation tag="Pause, resume, or stop the print" it="Pausa, riprendi o ferma la stampa"/>
   <translation tag="Paused" it="In pausa"/>
   <translation tag="Paused (attention needed)" it="In pausa (attenzione richiesta)"/>
+  <translation tag="Pauses a print at a chosen layer, for a filament swap or an insert. During a print, set the layer from the preview card on the print status screen. This is a beta feature." it="Mette in pausa una stampa a un layer scelto, per cambiare filamento o inserire un oggetto. Durante la stampa, scegli il layer dalla scheda di anteprima nella schermata di stato. È una funzione beta."/>
   <translation tag="Pausing at layer {}." it="Pausa allo strato {}."/>
   <translation tag="Pausing..." it="Sospensione..."/>
   <translation tag="Peak Freq" it="Freq. picco"/>
@@ -3906,6 +3909,7 @@
   <translation tag="you have" it="hai"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" it="{:.0f}-{:.0f} Hz · circa {} min"/>
   <translation tag="{} ({})" it="{} ({})"/>
+  <translation tag="{} Extruders" it="{} estrusori"/>
   <translation tag="{} Hardware Issues" it="{} problemi hardware"/>
   <translation tag="{} Issues Detected" it="{} problemi rilevati"/>
   <translation tag="{} LED strips available" it="{} strisce LED disponibili"/>

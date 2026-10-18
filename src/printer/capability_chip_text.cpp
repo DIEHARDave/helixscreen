@@ -97,10 +97,14 @@ std::string base_text(CapChip chip, const CapabilityChipFacts& f) {
     case CapChip::FilamentSystem:
         return filament_system_text(f.filament_systems);
     case CapChip::ToolChanger:
-        return with_detail(TR_NOOP("Tool Changer"),
-                           f.tool_count > 0
-                               ? fmt::format(fmt::runtime(lv_tr("{} Tools")), f.tool_count)
-                               : std::string());
+        if (f.has_tool_changer) {
+            return with_detail(TR_NOOP("Tool Changer"),
+                               f.head_count > 0
+                                   ? fmt::format(fmt::runtime(lv_tr("{} Tools")), f.head_count)
+                                   : std::string());
+        }
+        return f.head_count > 1 ? fmt::format(fmt::runtime(lv_tr("{} Extruders")), f.head_count)
+                                : std::string();
     case CapChip::FilamentSensors:
         return with_detail(TR_NOOP("Filament Sensors"), count_detail(f.filament_sensor_count, 1));
     case CapChip::WidthSensors:
@@ -108,7 +112,7 @@ std::string base_text(CapChip chip, const CapabilityChipFacts& f) {
     case CapChip::Retraction:
         return lv_tr("Retraction");
     case CapChip::PaCal:
-        return with_detail(TR_NOOP("PA Calibration"), f.pa_provider);
+        return lv_tr("PA Calibration");
     case CapChip::ToolOffsets:
         return lv_tr("Tool Offsets");
     case CapChip::NozzleClean:

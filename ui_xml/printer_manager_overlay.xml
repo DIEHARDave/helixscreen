@@ -151,13 +151,10 @@
         <setting_group name="group_software" event_bubble="true">
           <setting_group_header title="SOFTWARE" event_bubble="true"/>
           <!-- The firmware row names the Klipper fork the printer runs. -->
-          <setting_info_row name="pm_row_klipper" label="Klipper" icon="toy_brick_outline" event_bubble="true">
-            <bind_flag_if_eq subject="pm_is_kalico" flag="hidden" ref_value="1"/>
+          <setting_info_row name="pm_row_klipper"
+                            label="Klipper" icon="toy_brick_outline" bind_label="klipper_firmware_name"
+                            event_bubble="true">
             <text_muted name="value" bind_text="klipper_version"/>
-          </setting_info_row>
-          <setting_info_row name="pm_row_kalico"
-                            label="Kalico" icon="toy_brick_outline" bind_value="klipper_version" event_bubble="true">
-            <bind_flag_if_eq subject="pm_is_kalico" flag="hidden" ref_value="0"/>
           </setting_info_row>
           <setting_info_row name="pm_row_moonraker" label="Moonraker" icon="toy_brick_outline" event_bubble="true">
             <text_muted name="value" bind_text="moonraker_version"/>
@@ -254,7 +251,7 @@
               <bind_flag_if_eq subject="pm_has_filament_system" flag="hidden" ref_value="0"/>
             </capability_chip>
             <capability_chip name="pm_chip_tool_changer" icon="toolbox_outline" text="pm_chip_text_tool_changer">
-              <bind_flag_if_eq subject="ams_is_tool_changer" flag="hidden" ref_value="0"/>
+              <bind_flag_if_eq subject="pm_has_tool_changer" flag="hidden" ref_value="0"/>
             </capability_chip>
             <capability_chip name="pm_chip_filament_sensors" icon="filament_alert" text="pm_chip_text_filament_sensors">
               <bind_flag_if_eq subject="filament_sensor_count" flag="hidden" ref_value="0"/>

@@ -1629,6 +1629,8 @@ translations:
   Heat bed before calibrating for accurate offset with thermal expansion.: Chauffez
     le plateau avant de calibrer pour un offset précis avec la dilatation thermique.
   Heat nozzle: Chauffer la buse
+  ? Heat soak lets the enclosure warm up before a print. It is listed because the printer has a heat soak macro or it was turned on in settings; HelixScreen does not run it.
+  : 'Le heat soak laisse le caisson chauffer avant une impression. Il apparaît car l''imprimante a une macro de heat soak ou il a été activé dans les réglages ; HelixScreen ne le lance pas.'
   Heat the bed to {}°C: Chauffer le plateau à {}°C
   Heat the chamber too: "Chauffer aussi l'enceinte"
   Heat the extruder to at least {}°C before loading filament: Chauffez l'extrudeur à au moins {}°C avant de charger le filament
@@ -1680,6 +1682,7 @@ translations:
   HelixScreen {} is available — tap Update: HelixScreen {} est disponible — appuyez
     sur Mettre à jour
   HelixScreen's Moonraker plugin is installed, which it uses to run pre-print options. Manage it on the Advanced screen.: 'Le plugin Moonraker de HelixScreen est installé ; il sert aux options avant impression. Gérez-le dans l''écran Avancé.'
+  HelixScreen's helper macros are installed in the printer's config. Install updates on the Advanced screen.: 'Les macros d''aide de HelixScreen sont installées dans la configuration de l''imprimante. Installez les mises à jour dans l''écran Avancé.'
   HelixScreen's helper macros are installed in the printer's config. Update or remove them on the Advanced screen.: 'Les macros d''aide de HelixScreen sont installées dans la configuration de l''imprimante. Mettez-les à jour ou supprimez-les dans l''écran Avancé.'
   Help & About: Aide et à propos
   Help Improve HelixScreen: Aidez à améliorer HelixScreen
@@ -2562,6 +2565,8 @@ translations:
   Pause, resume, or stop the print: Mettre en pause, reprendre ou arrêter
   Paused: En pause
   Paused (attention needed): En pause (attention requise)
+  ? Pauses a print at a chosen layer, for a filament swap or an insert. During a print, set the layer from the preview card on the print status screen. This is a beta feature.
+  : 'Met une impression en pause à une couche choisie, pour changer de filament ou poser un insert. Pendant l''impression, choisissez la couche dans la carte d''aperçu de l''écran d''état. C''est une fonction bêta.'
   Pausing at layer {}.: 'Pause à la couche {}.'
   Pausing...: Pause en cours...
   Peak Freq: Fréq. pic
@@ -4365,6 +4370,7 @@ translations:
   you have: vous avez
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · environ {} min'
   '{} ({})': '{} ({})'
+  '{} Extruders': '{} extrudeurs'
   '{} Hardware Issues': '{} problèmes matériels'
   '{} Issues Detected': '{} problèmes détectés'
   '{} LED strips available': '{} bandeaux LED disponibles'

@@ -80,8 +80,20 @@ TEST_CASE("capability_chip_text: filament systems leave the tool changer to its 
     f.filament_systems = {{"Happy Hare", 8, false}, {"ACE", 4, false}};
     CHECK(capability_chip_text(CapChip::FilamentSystem, f) == "Happy Hare · 8, ACE · 4");
 
-    f.tool_count = 4;
+    f.has_tool_changer = true;
+    f.head_count = 4;
     CHECK(capability_chip_text(CapChip::ToolChanger, f) == "Tool Changer · 4 Tools");
+}
+
+TEST_CASE("capability_chip_text: several heads without a tool changer are extruders",
+          "[capability_chip_text]") {
+    CapabilityChipFacts f;
+    f.head_count = 1;
+    CHECK(capability_chip_text(CapChip::ToolChanger, f).empty());
+    f.head_count = 2;
+    CHECK(capability_chip_text(CapChip::ToolChanger, f) == "2 Extruders");
+    f.has_tool_changer = true;
+    CHECK(capability_chip_text(CapChip::ToolChanger, f) == "Tool Changer · 2 Tools");
 }
 
 TEST_CASE("capability_chip_text: MCUs", "[capability_chip_text]") {
@@ -116,11 +128,11 @@ TEST_CASE("capability_chip_text: every chip has text when every fact is known",
     f.probe_type = "Beacon";
     f.accel_count = 1;
     f.fan_count = 4;
-    f.tool_count = 4;
+    f.head_count = 4;
+    f.has_tool_changer = true;
     f.filament_systems = {{"Happy Hare", 8, false}};
     f.filament_sensor_count = 2;
     f.width_sensor_count = 1;
-    f.pa_provider = "Klipper";
     f.mcus = {"stm32h723"};
     f.power_device_count = 1;
     f.led_count = 1;

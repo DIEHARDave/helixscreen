@@ -249,6 +249,11 @@ class ScrewsTiltPanel : public OverlayBase {
 // Defined out of line: the ESP32 build, which excludes this panel, supplies its own.
 ScrewsTiltPanel& get_global_screws_tilt_panel();
 
+/// Open the Screws Tilt panel over @p parent_screen, wired to the active API.
+namespace helix::ui {
+void open_screws_tilt_panel(lv_obj_t* parent_screen);
+} // namespace helix::ui
+
 /**
  * @brief Register XML event callbacks for screws tilt panel
  *

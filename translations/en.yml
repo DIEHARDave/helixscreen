@@ -1569,6 +1569,8 @@ translations:
   Heat bed before calibrating for accurate offset with thermal expansion.: Heat bed
     before calibrating for accurate offset with thermal expansion.
   Heat nozzle: Heat nozzle
+  ? Heat soak lets the enclosure warm up before a print. It is listed because the printer has a heat soak macro or it was turned on in settings; HelixScreen does not run it.
+  : Heat soak lets the enclosure warm up before a print. It is listed because the printer has a heat soak macro or it was turned on in settings; HelixScreen does not run it.
   Heat the bed to {}°C: Heat the bed to {}°C
   Heat the chamber too: Heat the chamber too
   Heat the extruder to at least {}°C before loading filament: Heat the extruder to at least {}°C before loading filament
@@ -1618,6 +1620,7 @@ translations:
   HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.
   HelixScreen {} is available — tap Update: HelixScreen {} is available — tap Update
   HelixScreen's Moonraker plugin is installed, which it uses to run pre-print options. Manage it on the Advanced screen.: HelixScreen's Moonraker plugin is installed, which it uses to run pre-print options. Manage it on the Advanced screen.
+  HelixScreen's helper macros are installed in the printer's config. Install updates on the Advanced screen.: HelixScreen's helper macros are installed in the printer's config. Install updates on the Advanced screen.
   HelixScreen's helper macros are installed in the printer's config. Update or remove them on the Advanced screen.: HelixScreen's helper macros are installed in the printer's config. Update or remove them on the Advanced screen.
   Help & About: Help & About
   Help Improve HelixScreen: Help Improve HelixScreen
@@ -2483,6 +2486,8 @@ translations:
   Pause, resume, or stop the print: Pause, resume, or stop the print
   Paused: Paused
   Paused (attention needed): Paused (attention needed)
+  ? Pauses a print at a chosen layer, for a filament swap or an insert. During a print, set the layer from the preview card on the print status screen. This is a beta feature.
+  : Pauses a print at a chosen layer, for a filament swap or an insert. During a print, set the layer from the preview card on the print status screen. This is a beta feature.
   Pausing at layer {}.: Pausing at layer {}.
   Pausing...: Pausing...
   Peak Freq: Peak Freq
@@ -4225,6 +4230,7 @@ translations:
   you have: you have
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · about {} min'
   '{} ({})': '{} ({})'
+  '{} Extruders': '{} Extruders'
   '{} Hardware Issues': '{} Hardware Issues'
   '{} Issues Detected': '{} Issues Detected'
   '{} LED strips available': '{} LED strips available'

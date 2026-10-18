@@ -528,6 +528,7 @@ void PrinterState::set_hardware(helix::PrinterDiscovery hardware) {
 
     // Delegate capability subject updates to capabilities_state_ component
     capabilities_state_.set_hardware(discovery_, capability_overrides_);
+    versions_state_.set_firmware_name_internal(discovery_.firmware_name());
     print_domain_.set_layer_pause_state_object(helix::layer_pause::state_object(discovery_));
 
     // PLR resume-macro capability comes from the same snapshot, ahead of the
@@ -744,6 +745,7 @@ void PrinterState::set_kinematics(const std::string& kinematics) {
     // Belt Tension compares the two CoreXY diagonals, so only a belt-path
     // kinematics gets the feature.
     capabilities_state_.set_supports_belt_compare(belt_path_kinematics(kinematics));
+    capabilities_state_.bump_hardware_generation();
 
     // Determine if the bed moves on Z based on kinematics type:
     // - CoreXY: bed typically moves on Z (Voron 0/Trident, Bambu, AD5M, etc.)

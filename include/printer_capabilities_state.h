@@ -61,6 +61,7 @@ enum class Capability : uint8_t {
     HasHeatSoak,                 ///< heat soak macro, after the user override
     HasFanFeedback,              ///< fan tachometer feedback (fan_feedback)
     HasLedEffects,               ///< [led_effect] sections
+    HardwareGeneration,          ///< bumped whenever discovery or kinematics changes
     Count
 };
 
@@ -281,6 +282,9 @@ class PrinterCapabilitiesState {
     // ========================================================================
     // Subject accessors
     // ========================================================================
+
+    /// Announce that discovered hardware changed (a new discovery, new kinematics).
+    void bump_hardware_generation();
 
     /// Death signal for every capability subject; pass it to observe<V>().
     [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {

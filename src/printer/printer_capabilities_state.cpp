@@ -14,14 +14,13 @@
 
 #include "layer_pause.h"
 #include "pa_calibration.h"
+#include "printer_fan_state.h"
 #include "sound_manager.h"
 #include "state/subject_macros.h"
 #include "tool_offset_calibration.h"
 #include "webcam_selection.h"
 
 #include <spdlog/spdlog.h>
-
-#include <algorithm>
 
 namespace helix {
 
@@ -76,6 +75,7 @@ constexpr CapabilityDef CAPABILITY_DEFS[] = {
     {Capability::HasHeatSoak, "printer_has_heat_soak", 0},
     {Capability::HasFanFeedback, "printer_has_fan_feedback", 0},
     {Capability::HasLedEffects, "printer_has_led_effects", 0},
+    {Capability::HardwareGeneration, "printer_hardware_generation", 0},
 };
 static_assert(std::size(CAPABILITY_DEFS) == CAPABILITY_COUNT);
 
@@ -185,11 +185,8 @@ void PrinterCapabilitiesState::set_hardware(const PrinterDiscovery& hardware,
     set_capability(Capability::HasFanFeedback, hardware.has_fan_feedback() ? 1 : 0);
     set_capability(Capability::HasLedEffects, hardware.has_led_effects() ? 1 : 0);
 
-    // "fan" is the part cooling fan; any other fan object is an extra one.
-    const auto& fans = hardware.fans();
-    const bool extra_fans =
-        std::any_of(fans.begin(), fans.end(), [](const std::string& f) { return f != "fan"; });
-    set_capability(Capability::HasExtraFans, extra_fans ? 1 : 0);
+    set_capability(Capability::HasExtraFans,
+                   PrinterFanState::count_extra_controllable_fans(hardware.fans()) > 0 ? 1 : 0);
 
     // Install M300 (Klipper gcode beeper) backend now that we know whether
     // the printer answers M300 — a beeper output_pin or an M300 macro in the
@@ -265,6 +262,12 @@ void PrinterCapabilitiesState::set_hardware(const PrinterDiscovery& hardware,
                   hardware.has_firmware_retraction(), hardware.has_chamber_sensor());
     spdlog::debug("[PrinterCapabilitiesState] Hardware set (with overrides): {}",
                   overrides.summary());
+    bump_hardware_generation();
+}
+
+void PrinterCapabilitiesState::bump_hardware_generation() {
+    set_capability(Capability::HardwareGeneration,
+                   capability_value(Capability::HardwareGeneration) + 1);
 }
 
 void PrinterCapabilitiesState::set_sound_backend_available(bool available) {

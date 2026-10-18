@@ -1513,6 +1513,7 @@
   <translation tag="Heat Soaking..." ru="Прогрев..."/>
   <translation tag="Heat bed before calibrating for accurate offset with thermal expansion." ru="Нагрейте стол перед калибровкой для точного смещения с учётом теплового расширения."/>
   <translation tag="Heat nozzle" ru="Нагреть сопло"/>
+  <translation tag="Heat soak lets the enclosure warm up before a print. It is listed because the printer has a heat soak macro or it was turned on in settings; HelixScreen does not run it." ru="Прогрев камеры даёт корпусу нагреться перед печатью. Он показан, потому что у принтера есть макрос прогрева или он включён в настройках; HelixScreen его не запускает."/>
   <translation tag="Heat the bed to {}°C" ru="Нагреть стол до {}°C"/>
   <translation tag="Heat the chamber too" ru="Нагреть и камеру"/>
   <translation tag="Heat the extruder to at least {}°C before loading filament" ru="Перед загрузкой филамента нагрейте экструдер минимум до {}°C"/>
@@ -1560,6 +1561,7 @@
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." ru="HelixScreen записывает это в printer.cfg и перезапускает Klipper. Принтер ненадолго отключится."/>
   <translation tag="HelixScreen {} is available — tap Update" ru="Доступен HelixScreen {} — нажмите «Обновить»"/>
   <translation tag="HelixScreen&apos;s Moonraker plugin is installed, which it uses to run pre-print options. Manage it on the Advanced screen." ru="Плагин Moonraker для HelixScreen установлен; он нужен для параметров перед печатью. Управляйте им на экране «Дополнительно»."/>
+  <translation tag="HelixScreen&apos;s helper macros are installed in the printer&apos;s config. Install updates on the Advanced screen." ru="Вспомогательные макросы HelixScreen установлены в конфигурации принтера. Устанавливайте обновления на экране «Дополнительно»."/>
   <translation tag="HelixScreen&apos;s helper macros are installed in the printer&apos;s config. Update or remove them on the Advanced screen." ru="Вспомогательные макросы HelixScreen установлены в конфигурации принтера. Обновите или удалите их на экране «Дополнительно»."/>
   <translation tag="Help &amp; About" ru="Помощь и о программе"/>
   <translation tag="Help Improve HelixScreen" ru="Помогите улучшить HelixScreen"/>
@@ -2362,6 +2364,7 @@
   <translation tag="Pause, resume, or stop the print" ru="Пауза, продолжение или остановка"/>
   <translation tag="Paused" ru="Приостановлено"/>
   <translation tag="Paused (attention needed)" ru="Приостановлено (требует внимания)"/>
+  <translation tag="Pauses a print at a chosen layer, for a filament swap or an insert. During a print, set the layer from the preview card on the print status screen. This is a beta feature." ru="Ставит печать на паузу на выбранном слое для смены филамента или закладной детали. Во время печати задайте слой в карточке предпросмотра на экране состояния печати. Это бета-функция."/>
   <translation tag="Pausing at layer {}." ru="Пауза на слое {}."/>
   <translation tag="Pausing..." ru="Приостановка..."/>
   <translation tag="Peak Freq" ru="Пиковая частота"/>
@@ -3969,6 +3972,7 @@
   <translation tag="you have" ru="у вас"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" ru="{:.0f}-{:.0f} Гц · примерно {} мин"/>
   <translation tag="{} ({})" ru="{} ({})"/>
+  <translation tag="{} Extruders" ru="Экструдеров: {}"/>
   <translation tag="{} Hardware Issues" ru="Проблем с оборудованием: {}"/>
   <translation tag="{} Issues Detected" ru="Обнаружено проблем: {}"/>
   <translation tag="{} LED strips available" ru="Доступно светодиодных лент: {}"/>

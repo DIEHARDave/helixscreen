@@ -356,3 +356,8 @@ class BedMeshPanel : public OverlayBase {
 // Global instance accessor (needed by main.cpp)
 // Defined out of line: the ESP32 build, which excludes this panel, supplies its own.
 BedMeshPanel& get_global_bed_mesh_panel();
+
+/// Open the Bed Mesh panel over @p parent_screen.
+namespace helix::ui {
+void open_bed_mesh_panel(lv_obj_t* parent_screen);
+} // namespace helix::ui

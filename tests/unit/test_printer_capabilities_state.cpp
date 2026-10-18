@@ -32,7 +32,7 @@ TEST_CASE("set_hardware sets the Shake&Tune, fan tach, LED effect and extra fan 
     caps.init_subjects(false);
 
     PrinterDiscovery full;
-    full.parse_objects(json{"fan", "heater_fan hotend_fan", "fan_feedback", "led_effect rainbow",
+    full.parse_objects(json{"fan", "fan_generic exhaust", "fan_feedback", "led_effect rainbow",
                             "gcode_macro AXES_SHAPER_CALIBRATION"});
     CapabilityOverrides full_overrides;
     full_overrides.set_hardware(full);
@@ -60,7 +60,7 @@ TEST_CASE("set_hardware sets the Shake&Tune, fan tach, LED effect and extra fan 
     caps.deinit_subjects();
 }
 
-TEST_CASE("set_hardware: the part cooling fan alone is not an extra fan",
+TEST_CASE("set_hardware: only fans the user controls besides part cooling are extra",
           "[printer_capabilities]") {
     LVGLTestFixture fixture;
     PrinterCapabilitiesState caps;
@@ -71,6 +71,13 @@ TEST_CASE("set_hardware: the part cooling fan alone is not an extra fan",
     CapabilityOverrides overrides;
     overrides.set_hardware(hw);
     caps.set_hardware(hw, overrides);
+    CHECK(cap(caps, Capability::HasExtraFans) == 0);
+
+    PrinterDiscovery automatic;
+    automatic.parse_objects(json{"fan", "heater_fan hotend_fan", "controller_fan mcu_fan"});
+    CapabilityOverrides automatic_overrides;
+    automatic_overrides.set_hardware(automatic);
+    caps.set_hardware(automatic, automatic_overrides);
     CHECK(cap(caps, Capability::HasExtraFans) == 0);
 
     PrinterDiscovery generic;
@@ -100,6 +107,19 @@ TEST_CASE("set_hardware: heat soak follows its override", "[printer_capabilities
     caps.set_hardware(hw, overrides);
     CHECK(cap(caps, Capability::HasHeatSoak) == 1);
 
+    caps.deinit_subjects();
+}
+
+TEST_CASE("set_hardware bumps the hardware generation", "[printer_capabilities]") {
+    LVGLTestFixture fixture;
+    PrinterCapabilitiesState caps;
+    caps.init_subjects(false);
+    PrinterDiscovery hw;
+    CapabilityOverrides overrides;
+    overrides.set_hardware(hw);
+    const int before = cap(caps, Capability::HardwareGeneration);
+    caps.set_hardware(hw, overrides);
+    CHECK(cap(caps, Capability::HardwareGeneration) == before + 1);
     caps.deinit_subjects();
 }
 

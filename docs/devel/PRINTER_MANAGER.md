@@ -54,7 +54,7 @@ PrinterManagerOverlay (overlay_panel; header: Manage Printers, a text button in 
   +-- pm_details: Sections 2 and 3
   |
   +-- Section 2: Software Versions
-  |     +-- Klipper (or Kalico, on pm_is_kalico) version (bound to klipper_version subject)
+  |     +-- Firmware version: label bound to klipper_firmware_name ("Klipper", "Kalico"), value to klipper_version
   |     +-- Moonraker version (bound to moonraker_version subject)
   |     +-- HelixScreen version (bound to helix_version subject)
   |
@@ -89,8 +89,10 @@ The overlay owns these subjects for its own data:
 | `helix_version` | string | HelixScreen build version |
 | `pm_name_editing` | int | 1 while the name editor is open |
 | `pm_chip_text_<chip>` | string | One per capability chip: its text (see Capability Chips) |
-| `pm_has_kinematics`, `pm_has_build_volume`, `pm_has_filament_system`, `pm_has_mcus` | int | Visibility for chips whose fact has no app-wide subject |
-| `pm_is_kalico` | int | 1 when the firmware is Kalico; swaps the Klipper row for a Kalico row |
+| `pm_has_kinematics`, `pm_has_build_volume`, `pm_has_filament_system`, `pm_has_tool_changer`, `pm_has_mcus` | int | Visibility for chips whose fact has no app-wide subject |
+
+The firmware row's label binds `klipper_firmware_name`, which `PrinterVersionsState`
+publishes from `PrinterDiscovery::firmware_name()`.
 
 Every other chip's visibility binds the subject the rest of the app gates on
 (`printer_has_*`, `power_device_count`, `filament_sensor_count`, `ams_is_tool_changer`,
@@ -110,8 +112,7 @@ get_printer_manager_overlay()     // Singleton, lazy-created
 on_activate()                     // Called each time overlay becomes visible
   -> cancel_name_edit()           // Reset any in-progress edit
   -> refresh_printer_info()       // Re-read config, update subjects + image
-  -> refresh_capability_chips()   // Re-gather facts, republish every chip's text
-  -> observe_chip_counts()        // Re-text count chips when a count changes while open
+  -> observe_chip_inputs()        // Watch what the chips read; schedules ONE refresh_capability_chips()
 ```
 
 `refresh_printer_info()` is called on every activation, ensuring the overlay always shows current data. It:
@@ -378,8 +379,20 @@ primary probe's type, the count subjects, `ToolState`, every `AmsState` backend'
 capabilities (bed mesh, QGL, Z-tilt, nozzle clean, heat soak, speaker). Vendor names in
 chip text come only from those owning modules (`type_name`, `probe_type_to_display_string`).
 
-A tool changer gets its own chip ("Tool Changer · N Tools"); the Multi-Filament chip
-names the other backends and hides when the tool changer is the only one.
+The tool chip reads "Tool Changer · N Tools" when discovery found a klipper-toolchanger
+or any AMS backend is a tool changer, and "N Extruders" for several heads without one
+(IDEX, multi-extruder); N is `ToolState::physical_heads()`. The Multi-Filament chip names
+the other backends and hides when a tool changer is the only one. The Fans chip counts
+controllable fans besides part cooling (`PrinterFanState::count_extra_controllable_fans`).
+
+While the overlay is open, `observe_chip_inputs()` re-texts the chips when discovery
+reruns (`printer_hardware_generation`, bumped by `set_hardware()` and new kinematics),
+the build volume arrives, an AMS backend or slot count changes, the tool list changes,
+or a count a chip shows changes. Requests made before the refresh runs join it, so an
+activation computes the chips once.
+
+A spec with `beta = true` (Belt Tension, Tool Offsets) opens its screen only while beta
+features are on, as the Advanced and Controls entries do; otherwise it shows its popup.
 
 On ESP32, screens absent from the image (bed mesh, input shaper, screws tilt, belt
 tension, PA and tool offset calibration, Spoolman, timelapse) have `open = nullptr`
@@ -399,7 +412,9 @@ there, so their chips show the info popup instead.
 3. **The spec.** Add the `CapChipSpec` row in `printer_manager_chips.cpp` (same order):
    widget name `pm_chip_<snake>`, text subject `pm_chip_text_<snake>`, info title and
    message (`TR_NOOP`, what it is, what HelixScreen does with it, where), and an opener or
-   `nullptr`. Screens not in the ESP32 image go through `PM_DESKTOP_SCREEN()`.
+   `nullptr`, and `beta`. The opener calls the owning module's `open_*()` so every
+   entry point opens it the same way. Screens not in the ESP32 image go through
+   `PM_DESKTOP_SCREEN()`.
 4. **The XML.** Add the chip to its group in `printer_manager_overlay.xml`:
    ```xml
    <capability_chip name="pm_chip_my_feature" icon="my_icon" text="pm_chip_text_my_feature">

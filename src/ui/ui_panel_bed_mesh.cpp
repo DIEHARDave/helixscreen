@@ -1898,3 +1898,11 @@ static void on_profile_delete_cb(lv_event_t* e) {
 BedMeshPanel& get_global_bed_mesh_panel() {
     return helix::lazy_global<BedMeshPanel>("BedMeshPanel");
 }
+
+namespace helix::ui {
+
+void open_bed_mesh_panel(lv_obj_t* parent_screen) {
+    get_global_bed_mesh_panel().show(parent_screen);
+}
+
+} // namespace helix::ui

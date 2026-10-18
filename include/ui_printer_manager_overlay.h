@@ -133,14 +133,17 @@ class PrinterManagerOverlay : public OverlayBase {
      * @brief Recompute every capability chip's text and the overlay-owned
      *        visibility subjects from the current printer
      *
-     * Runs on every activation, so a printer switched while the overlay was
-     * closed never shows the previous printer's details, and again whenever a
-     * count a chip shows changes while it is open.
+     * Runs once per activation, so a printer switched while the overlay was
+     * closed never shows the previous printer's details, and again whenever
+     * discovery, a backend or a count a chip shows changes while it is open.
      */
     void refresh_capability_chips();
 
-    /// Observe the counts the chip texts show; replaces any earlier observers.
-    void observe_chip_counts();
+    /// Schedule one refresh_capability_chips(); further requests before it runs join it.
+    void request_chip_refresh();
+
+    /// Observe what the chips read; replaces any earlier observers and asks for one refresh.
+    void observe_chip_inputs();
 
     //
     // === Subject State ===
@@ -161,11 +164,13 @@ class PrinterManagerOverlay : public OverlayBase {
     lv_subject_t has_kinematics_{};
     lv_subject_t has_build_volume_{};
     lv_subject_t has_filament_system_{};
+    lv_subject_t has_tool_changer_{};
     lv_subject_t has_mcus_{};
-    /// 1 when the firmware is Kalico, which names the SOFTWARE group's firmware row.
-    lv_subject_t is_kalico_{};
 
-    std::vector<ObserverGuard> chip_count_observers_;
+    /// Everything a chip's text or visibility reads that can change while open.
+    std::vector<ObserverGuard> chip_input_observers_;
+    bool chip_refresh_pending_ = false;
+    int chip_refresh_count_ = 0; ///< refreshes run, for tests
 
     char name_buf_[128] = {};
     char model_buf_[128] = {};

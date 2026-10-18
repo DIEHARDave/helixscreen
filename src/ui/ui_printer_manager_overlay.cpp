@@ -67,8 +67,8 @@ void PrinterManagerOverlay::init_subjects() {
         UI_MANAGED_SUBJECT_INT(has_kinematics_, 0, "pm_has_kinematics", subjects_);
         UI_MANAGED_SUBJECT_INT(has_build_volume_, 0, "pm_has_build_volume", subjects_);
         UI_MANAGED_SUBJECT_INT(has_filament_system_, 0, "pm_has_filament_system", subjects_);
+        UI_MANAGED_SUBJECT_INT(has_tool_changer_, 0, "pm_has_tool_changer", subjects_);
         UI_MANAGED_SUBJECT_INT(has_mcus_, 0, "pm_has_mcus", subjects_);
-        UI_MANAGED_SUBJECT_INT(is_kalico_, 0, "pm_is_kalico", subjects_);
         for (const auto& spec : cap_chip_specs()) {
             const auto i = static_cast<size_t>(spec.chip);
             UI_MANAGED_SUBJECT_STRING_N(chip_text_[i], chip_text_bufs_[i].data(), CHIP_TEXT_LEN, "",
@@ -130,12 +130,9 @@ lv_obj_t* PrinterManagerOverlay::create(lv_obj_t* parent) {
     }
 
 #if defined(HELIX_PLATFORM_ESP32)
-    // v1 Core+AMS cut has no camera, so timelapse is unavailable. The chip's XML
-    // already hides it when printer_has_timelapse==0; force it hidden here too so
-    // it never renders regardless of printer capability. Imperative (not a stacked
-    // bind_flag) because the chip already carries a printer_has_timelapse binding
-    // and this helix-xml build has no compound-condition (subject_expr/cond) support.
-    // Compiled out on desktop → zero desktop impact.
+    // The ESP32 image has no camera, so timelapse is unavailable whatever the
+    // printer reports. That is a compile-time fact no subject carries, so the
+    // chip is hidden here rather than by its XML binding.
     if (auto* timelapse_chip =
             helix::ui::find_required(overlay_root_, "pm_chip_timelapse", get_name())) {
         // DECLARATIVE_OK: compile-time capability (#if), no runtime subject exists
@@ -276,8 +273,7 @@ void PrinterManagerOverlay::on_activate() {
     }
 
     refresh_printer_info();
-    refresh_capability_chips();
-    observe_chip_counts();
+    observe_chip_inputs();
 }
 
 void PrinterManagerOverlay::on_deactivating(DeactivateReason) {
@@ -290,7 +286,7 @@ void PrinterManagerOverlay::on_deactivating(DeactivateReason) {
 }
 
 void PrinterManagerOverlay::on_ui_destroyed() {
-    chip_count_observers_.clear();
+    chip_input_observers_.clear();
     printer_image_obj_ = nullptr;
     name_input_ = nullptr;
 }
@@ -354,6 +350,8 @@ void PrinterManagerOverlay::refresh_printer_info() {
 // =============================================================================
 
 void PrinterManagerOverlay::refresh_capability_chips() {
+    chip_refresh_pending_ = false;
+    ++chip_refresh_count_;
     const CapabilityChipFacts facts = gather_capability_chip_facts();
     for (const auto& spec : cap_chip_specs()) {
         const auto i = static_cast<size_t>(spec.chip);
@@ -368,32 +366,47 @@ void PrinterManagerOverlay::refresh_capability_chips() {
             lv_subject_set_int(&subject, value ? 1 : 0);
         }
     };
-    set_if_changed(has_kinematics_, !facts.kinematics.empty());
-    set_if_changed(has_build_volume_, !capability_chip_text(CapChip::BuildVolume, facts).empty());
-    set_if_changed(has_filament_system_,
-                   !capability_chip_text(CapChip::FilamentSystem, facts).empty());
-    set_if_changed(has_mcus_, !facts.mcus.empty());
-
-    auto* api = get_moonraker_api();
-    const PrinterDiscovery& hw = api ? api->hardware() : get_printer_state().get_discovery();
-    set_if_changed(is_kalico_, hw.is_kalico());
+    auto has_text = [&facts](CapChip chip) { return !capability_chip_text(chip, facts).empty(); };
+    set_if_changed(has_kinematics_, has_text(CapChip::Kinematics));
+    set_if_changed(has_build_volume_, has_text(CapChip::BuildVolume));
+    set_if_changed(has_filament_system_, has_text(CapChip::FilamentSystem));
+    set_if_changed(has_tool_changer_, has_text(CapChip::ToolChanger));
+    set_if_changed(has_mcus_, has_text(CapChip::Mcus));
 }
 
-void PrinterManagerOverlay::observe_chip_counts() {
-    chip_count_observers_.clear();
+void PrinterManagerOverlay::request_chip_refresh() {
+    if (chip_refresh_pending_) {
+        return;
+    }
+    chip_refresh_pending_ = true;
+    lifetime_.defer("PrinterManagerOverlay::refresh_capability_chips",
+                    [this]() { refresh_capability_chips(); });
+}
+
+void PrinterManagerOverlay::observe_chip_inputs() {
+    chip_input_observers_.clear();
+    // A refresh deferred before the last deactivation was dropped with it.
+    chip_refresh_pending_ = false;
+    // Attaching notifies at once, so every observer below asks for the same
+    // single refresh this activation needs.
     auto watch = [this](lv_subject_t* subject, const SubjectLifetime& lifetime) {
         if (!subject) {
             return;
         }
-        chip_count_observers_.push_back(helix::ui::observe<int>(
-            subject, this,
-            [](PrinterManagerOverlay* self, int) { self->refresh_capability_chips(); }, lifetime));
+        chip_input_observers_.push_back(helix::ui::observe<int>(
+            subject, this, [](PrinterManagerOverlay* self, int) { self->request_chip_refresh(); },
+            lifetime, helix::ui::Dispatch::Immediate));
     };
 
     PrinterState& ps = get_printer_state();
-    const SubjectLifetime caps_lifetime = ps.capabilities_state().get_subjects_lifetime();
-    watch(ps.capabilities_state().subject(Capability::PowerDeviceCount), caps_lifetime);
-    watch(ps.capabilities_state().subject(Capability::WebcamCount), caps_lifetime);
+    auto& caps = ps.capabilities_state();
+    const SubjectLifetime caps_lifetime = caps.get_subjects_lifetime();
+    watch(caps.subject(Capability::HardwareGeneration), caps_lifetime);
+    watch(caps.subject(Capability::PowerDeviceCount), caps_lifetime);
+    watch(caps.subject(Capability::WebcamCount), caps_lifetime);
+    if (auto* api = get_moonraker_api()) {
+        watch(api->get_build_volume_version_subject(), subject_never_freed());
+    }
 
     auto& accel = helix::sensors::AccelSensorManager::instance();
     watch(accel.get_sensor_count_subject(), accel.get_subjects_lifetime());
@@ -403,8 +416,9 @@ void PrinterManagerOverlay::observe_chip_counts() {
     watch(width.get_sensor_count_subject(), width.get_subjects_lifetime());
 
     auto& ams = AmsState::instance();
+    watch(ams.get_backend_count_subject(), ams.get_subjects_lifetime());
     watch(ams.get_slot_count_subject(), ams.get_subjects_lifetime());
     watch(ams.get_ams_type_subject(), ams.get_subjects_lifetime());
     auto& tools = ToolState::instance();
-    watch(tools.get_tool_count_subject(), tools.get_subjects_lifetime());
+    watch(tools.get_tools_version_subject(), tools.get_subjects_lifetime());
 }

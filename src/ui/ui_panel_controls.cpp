@@ -1188,26 +1188,25 @@ void ControlsPanel::handle_calibration_bed_mesh() {
     // Bed-mesh calibration is excluded from the v1 Core+AMS cut; its panel is a
     // null-vtable link stub. Toast instead of the LoadProhibited crash.
     helix::ui::show_feature_unavailable_toast();
-    return;
+#else
+    helix::ui::open_bed_mesh_panel(parent_screen_);
 #endif
-    get_global_bed_mesh_panel().show(parent_screen_);
 }
 
 void ControlsPanel::handle_calibration_tool_offsets() {
 #if defined(HELIX_PLATFORM_ESP32)
     helix::ui::show_feature_unavailable_toast();
-    return;
+#else
+    helix::ui::open_tool_offset_cal_panel(parent_screen_);
 #endif
-    helix::ui::get_global_tool_offset_cal_panel().show(parent_screen_);
 }
 
 void ControlsPanel::handle_calibration_pa() {
 #if defined(HELIX_PLATFORM_ESP32)
     helix::ui::show_feature_unavailable_toast();
-    return;
+#else
+    helix::ui::open_pa_cal_panel(parent_screen_);
 #endif
-    helix::ui::get_global_pa_cal_panel().set_api(get_moonraker_api());
-    helix::ui::get_global_pa_cal_panel().show(parent_screen_);
 }
 
 void ControlsPanel::handle_calibration_zoffset() {
@@ -1223,10 +1222,9 @@ void ControlsPanel::handle_calibration_zoffset() {
 void ControlsPanel::handle_calibration_screws() {
 #if defined(HELIX_PLATFORM_ESP32)
     helix::ui::show_feature_unavailable_toast();
-    return;
+#else
+    helix::ui::open_screws_tilt_panel(parent_screen_);
 #endif
-    get_global_screws_tilt_panel().set_client(get_moonraker_client(), get_moonraker_api());
-    get_global_screws_tilt_panel().show(parent_screen_);
 }
 
 void ControlsPanel::handle_calibration_motors() {

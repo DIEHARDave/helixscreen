@@ -581,7 +581,7 @@ void BedMeshTileWidget::open_panel() {
         return;
     }
 #if !defined(HELIX_PLATFORM_ESP32)
-    get_global_bed_mesh_panel().show(parent_screen_);
+    helix::ui::open_bed_mesh_panel(parent_screen_);
 #endif
 }
 

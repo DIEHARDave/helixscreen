@@ -71,6 +71,7 @@ void PrinterVersionsState::init_subjects(bool register_xml) {
     INIT_SUBJECT_STRING(klipper_version, "—", subjects_, register_xml);
     INIT_SUBJECT_STRING(moonraker_version, "—", subjects_, register_xml);
     INIT_SUBJECT_STRING(os_version, "—", subjects_, register_xml);
+    INIT_SUBJECT_STRING(klipper_firmware_name, "Klipper", subjects_, register_xml);
     // 0 until a version arrives: an unknown Moonraker is not a degraded one.
     INIT_SUBJECT_INT(moonraker_history_degraded, 0, subjects_, register_xml);
 
@@ -102,6 +103,12 @@ void PrinterVersionsState::set_moonraker_version_internal(const std::string& ver
     lv_subject_set_int(&moonraker_history_degraded_, degraded ? 1 : 0);
     spdlog::debug("[PrinterVersionsState] Moonraker version set: {} (history degraded: {})",
                   version, degraded);
+}
+
+void PrinterVersionsState::set_firmware_name_internal(const std::string& name) {
+    if (name != klipper_firmware_name_buf_) {
+        lv_subject_copy_string(&klipper_firmware_name_, name.c_str());
+    }
 }
 
 void PrinterVersionsState::set_os_version_internal(const std::string& version) {

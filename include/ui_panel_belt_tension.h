@@ -321,6 +321,11 @@ inline BeltTensionPanel& get_global_belt_tension_panel() {
     return helix::lazy_global<BeltTensionPanel>("BeltTensionPanel");
 }
 
+/// Open the Belt Tension panel over @p parent_screen, wired to the active API.
+namespace helix::ui {
+void open_belt_tension_panel(lv_obj_t* parent_screen);
+} // namespace helix::ui
+
 /**
  * @brief Register XML event callbacks for belt tension panel
  *

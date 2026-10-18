@@ -1659,6 +1659,8 @@ translations:
   Heat bed before calibrating for accurate offset with thermal expansion.: Нагрейте
     стол перед калибровкой для точного смещения с учётом теплового расширения.
   Heat nozzle: Нагреть сопло
+  ? Heat soak lets the enclosure warm up before a print. It is listed because the printer has a heat soak macro or it was turned on in settings; HelixScreen does not run it.
+  : 'Прогрев камеры даёт корпусу нагреться перед печатью. Он показан, потому что у принтера есть макрос прогрева или он включён в настройках; HelixScreen его не запускает.'
   Heat the bed to {}°C: Нагреть стол до {}°C
   Heat the chamber too: Нагреть и камеру
   Heat the extruder to at least {}°C before loading filament: Перед загрузкой филамента нагрейте экструдер минимум до {}°C
@@ -1708,6 +1710,7 @@ translations:
   HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: HelixScreen записывает это в printer.cfg и перезапускает Klipper. Принтер ненадолго отключится.
   HelixScreen {} is available — tap Update: Доступен HelixScreen {} — нажмите «Обновить»
   HelixScreen's Moonraker plugin is installed, which it uses to run pre-print options. Manage it on the Advanced screen.: 'Плагин Moonraker для HelixScreen установлен; он нужен для параметров перед печатью. Управляйте им на экране «Дополнительно».'
+  HelixScreen's helper macros are installed in the printer's config. Install updates on the Advanced screen.: 'Вспомогательные макросы HelixScreen установлены в конфигурации принтера. Устанавливайте обновления на экране «Дополнительно».'
   HelixScreen's helper macros are installed in the printer's config. Update or remove them on the Advanced screen.: 'Вспомогательные макросы HelixScreen установлены в конфигурации принтера. Обновите или удалите их на экране «Дополнительно».'
   Help & About: Помощь и о программе
   Help Improve HelixScreen: Помогите улучшить HelixScreen
@@ -2584,6 +2587,8 @@ translations:
   Pause, resume, or stop the print: Пауза, продолжение или остановка
   Paused: Приостановлено
   Paused (attention needed): Приостановлено (требует внимания)
+  ? Pauses a print at a chosen layer, for a filament swap or an insert. During a print, set the layer from the preview card on the print status screen. This is a beta feature.
+  : 'Ставит печать на паузу на выбранном слое для смены филамента или закладной детали. Во время печати задайте слой в карточке предпросмотра на экране состояния печати. Это бета-функция.'
   Pausing at layer {}.: 'Пауза на слое {}.'
   Pausing...: Приостановка...
   Peak Freq: Пиковая частота
@@ -4371,6 +4376,7 @@ translations:
   you have: у вас
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Гц · примерно {} мин'
   '{} ({})': '{} ({})'
+  '{} Extruders': 'Экструдеров: {}'
   '{} Hardware Issues': 'Проблем с оборудованием: {}'
   '{} Issues Detected': 'Обнаружено проблем: {}'
   '{} LED strips available': 'Доступно светодиодных лент: {}'

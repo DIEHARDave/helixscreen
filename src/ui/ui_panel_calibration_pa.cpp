@@ -803,4 +803,10 @@ std::string PACalibrationPanel::selected_heater() const {
 // EVENT TRAMPOLINES
 // ============================================================================
 
+void open_pa_cal_panel(lv_obj_t* parent_screen) {
+    auto& panel = get_global_pa_cal_panel();
+    panel.set_api(get_moonraker_api());
+    panel.show(parent_screen);
+}
+
 } // namespace helix::ui

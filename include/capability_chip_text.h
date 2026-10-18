@@ -75,12 +75,12 @@ struct CapabilityChipFacts {
     BuildVolume build_volume; ///< zero spans = unknown
     std::string probe_type;   ///< probe_type_to_display_string(), "" if none
     int accel_count = 0;
-    int fan_count = 0;
-    int tool_count = 0;
+    int fan_count = 0;  ///< controllable fans besides part cooling
+    int head_count = 0; ///< physical toolheads
+    bool has_tool_changer = false;
     std::vector<FilamentSystemFact> filament_systems;
     int filament_sensor_count = 0;
     int width_sensor_count = 0;
-    std::string pa_provider;       ///< pacal::provider_name(), may be ""
     std::vector<std::string> mcus; ///< PrinterDiscovery::mcu_list()
     int power_device_count = 0;
     int led_count = 0;
@@ -91,7 +91,8 @@ struct CapabilityChipFacts {
 
 /// The chip's text: its label, then " · " and a detail when there is one.
 /// Empty when the chip has nothing to say (an unknown build volume, no
-/// filament system besides a tool changer).
+/// filament system besides a tool changer, a single toolhead). The ToolChanger
+/// chip names a tool changer as one; several heads without one read "N Extruders".
 [[nodiscard]] std::string capability_chip_text(CapChip chip, const CapabilityChipFacts& facts);
 
 /// Klipper's kinematics string as people write it ("corexy" -> "CoreXY").
