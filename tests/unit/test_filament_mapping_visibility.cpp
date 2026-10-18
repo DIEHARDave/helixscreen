@@ -31,8 +31,11 @@
 #include "printer_discovery.h"
 #include "tool_state.h"
 
+#include <cmath>
 #include <memory>
 #include <set>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -148,5 +151,36 @@ TEST_CASE_METHOD(SingleExtruderMappingCardFixture,
     card.update({"#FF0000", "#00FF00"}, {"PLA", "PETG"});
     CHECK(card.should_show());
     CHECK(lv_obj_get_child_count(rows) == 2);
+    process_lvgl(100);
+}
+
+TEST_CASE_METHOD(MappingCardRenderFixture, "A chip centres each label on its band",
+                 "[filament_mapping][chip]") {
+    // The chip row's height is the chip's: at 40px the bands are shorter than
+    // the lane number's line, which then hangs from the band's top unless the
+    // band centres it.
+    lv_obj_set_size(rows, 300, 40);
+    card.update({"#FF0000", "#00FF00"}, {"PLA", "PETG"});
+    REQUIRE(lv_obj_get_child_count(rows) >= 1);
+    lv_obj_t* chip = lv_obj_get_child(rows, 0);
+    lv_obj_update_layout(chip);
+
+    const auto centre_y = [](lv_obj_t* obj) {
+        lv_area_t a;
+        lv_obj_get_coords(obj, &a);
+        return (a.y1 + a.y2) / 2.0;
+    };
+    for (const auto& [band_name, label_name] :
+         {std::pair{"bottom_band", "slot_label"}, std::pair{"top_band", "material_label"}}) {
+        INFO(label_name);
+        lv_obj_t* band = lv_obj_find_by_name(chip, band_name);
+        lv_obj_t* label = lv_obj_find_by_name(chip, label_name);
+        REQUIRE(band != nullptr);
+        REQUIRE(label != nullptr);
+        REQUIRE_FALSE(lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN));
+        REQUIRE(std::string(lv_label_get_text(label)).size() > 0);
+        CAPTURE(lv_obj_get_height(band), lv_obj_get_height(label));
+        CHECK(std::abs(centre_y(label) - centre_y(band)) <= 1.0);
+    }
     process_lvgl(100);
 }
