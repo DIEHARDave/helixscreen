@@ -5,7 +5,8 @@
        C++ creates one per resolved item and owns its tap payload; everything
        visual lives here. The label and reason are plugin text and travel through
        C++ (a leading '#' in a prop reads as a const). A disabled item is greyed,
-       with its reason on the second line. -->
+       with its reason under the label, wrapped rather than cut short when the
+       card is too narrow for it. -->
   <api>
     <prop name="icon" type="string" default="puzzle_outline"/>
     <prop name="disabled" type="string" default="false"/>
@@ -27,7 +28,7 @@
             style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
       <text_body name="item_label" width="100%" text="" long_mode="dots" clickable="false" event_bubble="true"/>
       <text_small name="item_reason"
-                  width="100%" text="" long_mode="dots" hidden="$no_reason" style_text_color="#text_muted"
+                  width="100%" text="" long_mode="wrap" hidden="$no_reason" style_text_color="#text_muted"
                   clickable="false" event_bubble="true"/>
     </lv_obj>
     <event_cb trigger="clicked" callback="plugin_menu_row_cb"/>

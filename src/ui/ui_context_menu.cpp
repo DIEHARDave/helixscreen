@@ -303,6 +303,19 @@ int32_t ContextMenu::row_width_for_text(lv_obj_t* row, lv_obj_t* label, const ch
     int32_t width = lv_obj_get_style_space_left(row, LV_PART_MAIN) +
                     lv_obj_get_style_space_right(row, LV_PART_MAIN);
 
+    // The label may sit in a text column inside the row: that column is the
+    // row's child to measure, from the text plus every padding in between.
+    lv_obj_t* holder = label;
+    int32_t text_inset = lv_obj_get_style_space_left(label, LV_PART_MAIN) +
+                         lv_obj_get_style_space_right(label, LV_PART_MAIN);
+    while (holder && lv_obj_get_parent(holder) != row) {
+        holder = lv_obj_get_parent(holder);
+        if (holder) {
+            text_inset += lv_obj_get_style_space_left(holder, LV_PART_MAIN) +
+                          lv_obj_get_style_space_right(holder, LV_PART_MAIN);
+        }
+    }
+
     int32_t visible = 0;
     const uint32_t child_cnt = lv_obj_get_child_count(row);
     for (uint32_t i = 0; i < child_cnt; i++) {
@@ -311,10 +324,8 @@ int32_t ContextMenu::row_width_for_text(lv_obj_t* row, lv_obj_t* label, const ch
             continue;
         }
         visible++;
-        if (child == label) {
-            width += helix::ui::text_width(text, font, letter_space) +
-                     lv_obj_get_style_space_left(label, LV_PART_MAIN) +
-                     lv_obj_get_style_space_right(label, LV_PART_MAIN);
+        if (child == holder) {
+            width += helix::ui::text_width(text, font, letter_space) + text_inset;
         } else {
             width += lv_obj_get_width(child);
         }

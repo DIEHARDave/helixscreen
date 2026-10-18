@@ -274,10 +274,11 @@ class ContextMenu {
      * @brief How wide @p row must be to show @p text in @p label without dots
      *
      * A dotted label reports its clipped width, and its own text may already
-     * carry the dots, so the text is measured from the caller's copy. Every other
+     * carry the dots, so the text is measured from the caller's copy. The label
+     * may be the row's child or nested in one (a text column); every other
      * visible child counts at its laid-out width, plus the row's padding, the
-     * label's padding and the flex gaps between children. The caller lays the
-     * row out first (once, for a whole set of rows).
+     * padding from the label out to the row and the flex gaps between children.
+     * The caller lays the row out first (once, for a whole set of rows).
      */
     [[nodiscard]] static int32_t row_width_for_text(lv_obj_t* row, lv_obj_t* label,
                                                     const char* text);

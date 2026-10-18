@@ -7,11 +7,13 @@
 
 #include "../test_fixtures.h"
 #include "../test_helpers/plugin_host_test_support.h"
+#include "helix/ui/text_metrics.h"
 #include "plugin_host.h"
 
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -212,6 +214,46 @@ TEST_CASE_METHOD(XMLTestFixture, "plugin items menu lists one plugin's items wit
     lv_obj_t* rows = lv_obj_find_by_name(test_screen(), "plugin_rows");
     CHECK(lv_obj_get_child_count(rows) == 3); // heading + two items
     CHECK(lv_obj_find_by_name(rows, "empty_text") == nullptr);
+    menu.hide();
+    process_lvgl(50);
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "plugin items menu widens to show a long label and its reason",
+                 "[ui][context_menu][plugin]") {
+    REQUIRE(register_component("plugin_items_menu"));
+    TempDir tmp;
+    write_plugin(tmp.path, "c-plug", "Calibration Bridge",
+                 R"({"id":"c","menu":"print_file","label":"Calibrate with this file","icon":"tune",
+                     "handler":"go","check":"why"})",
+                 R"(helix.ui.on("go", function() end)
+                    helix.ui.on("why", function()
+                        return {visible = true, enabled = false,
+                                reason = "Start a calibration in the slicer first"}
+                    end))");
+    HostRig host(enabled_all({{"c-plug", {}}}));
+    host.host->load_from(tmp.path.string());
+
+    helix::ui::PluginItemsMenu menu;
+    REQUIRE(
+        menu.show_for(test_screen(), test_screen(), pm::MenuKind::PrintFile, pm::json::object()));
+    lv_obj_t* rows = lv_obj_find_by_name(test_screen(), "plugin_rows");
+    REQUIRE(rows);
+    lv_obj_update_layout(lv_obj_get_screen(rows));
+    // A dotted label's own text carries the dots, so each is measured from what was set.
+    const std::pair<const char*, const char*> set[] = {
+        {"item_label", "Calibrate with this file"},
+        {"item_reason", "Start a calibration in the slicer first"}};
+    for (const auto& [name, text] : set) {
+        lv_obj_t* l = lv_obj_find_by_name(rows, name);
+        REQUIRE(l);
+        REQUIRE_FALSE(lv_obj_has_flag(l, LV_OBJ_FLAG_HIDDEN));
+        const int32_t need =
+            helix::ui::text_width(text, lv_obj_get_style_text_font(l, LV_PART_MAIN),
+                                  lv_obj_get_style_text_letter_space(l, LV_PART_MAIN));
+        CAPTURE(name, lv_obj_get_width(l), need);
+        // 800x480 has the room: the card fits the text on one line, not dotted or wrapped.
+        CHECK(lv_obj_get_width(l) >= need);
+    }
     menu.hide();
     process_lvgl(50);
 }

@@ -26,15 +26,19 @@ void PluginItemsMenu::on_created(lv_obj_t* backdrop) {
     if (!rows)
         return;
     auto entries = plugin_menu::resolve(kind_, context_, only_plugin_);
-    // The row texts as set, for measuring: a dotted label's own text may carry the dots.
-    std::vector<std::string> texts;
+    // Each row's texts as set, for measuring: a dotted label's own text may carry the dots.
+    struct RowTexts {
+        std::string text;
+        std::string reason;
+    };
+    std::vector<RowTexts> texts;
     std::string group;
     for (const auto& e : entries) {
         if (e.plugin_id != group) {
-            texts.push_back(e.plugin_name);
+            texts.push_back({e.plugin_name, {}});
             group = e.plugin_id;
         }
-        texts.push_back(e.label);
+        texts.push_back({e.label, e.reason});
     }
 
     if (append_plugin_rows(*this, rows, std::move(entries), context_, false) == 0) {
@@ -43,7 +47,7 @@ void PluginItemsMenu::on_created(lv_obj_t* backdrop) {
                                : lv_tr("No actions right now");
         const char* attrs[] = {"text", text, nullptr};
         lv_xml_create(rows, "plugin_menu_empty", attrs);
-        texts.assign(1, text);
+        texts.assign(1, RowTexts{text, {}});
     }
 
     lv_obj_t* menu_card = card();
@@ -60,7 +64,12 @@ void PluginItemsMenu::on_created(lv_obj_t* backdrop) {
         if (!label)
             label = lv_obj_find_by_name(row, "empty_text");
         if (label)
-            widest_row_ = std::max(widest_row_, row_width_for_text(row, label, texts[i].c_str()));
+            widest_row_ =
+                std::max(widest_row_, row_width_for_text(row, label, texts[i].text.c_str()));
+        lv_obj_t* reason = lv_obj_find_by_name(row, "item_reason");
+        if (reason && !texts[i].reason.empty())
+            widest_row_ =
+                std::max(widest_row_, row_width_for_text(row, reason, texts[i].reason.c_str()));
     }
     if (lv_obj_t* title = lv_obj_find_by_name(menu_card, "card_title")) {
         widest_row_ = std::max(widest_row_, row_width_for_text(lv_obj_get_parent(title), title,
