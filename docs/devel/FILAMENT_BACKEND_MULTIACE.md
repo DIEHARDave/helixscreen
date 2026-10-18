@@ -8,9 +8,9 @@ the ACE units are inventory feeding it. Tracking issue: prestonbrown/helixscreen
 > **Status: built from the source read, no hardware seen.** Written against multiACE 1.27b
 > (`multiace/VERSION`) and its engine API document (ENGINE_API.md in its docs). The fixtures in
 > `tests/fixtures/multiace/` are synthesised from its `get_status()`; a tester's capture
-> replaces them. Load/unload/select, the dryer and coded errors are wired; the path-view
-> layout, spool numbering and device actions are not yet (plan:
-> `docs/devel/plans/2026-10-17-multiace-1660.md`).
+> replaces them. Load/unload/select, the dryer, coded errors, the path view, spool numbering
+> and bay editing are wired; device actions and batch preload are not yet (see
+> [Not yet](#not-yet); plan: `docs/devel/plans/2026-10-17-multiace-1660.md`).
 
 ## Detection
 

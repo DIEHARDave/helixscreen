@@ -2892,7 +2892,8 @@ capability set is `TipMethod::CUT`), so a stock Box Turtle shows six.
 Action counts are not fixed either. `afc_default_actions()` returns 26 static actions, and
 `AmsBackendAfc::get_device_actions()` then adds one **Hub Distance** slider per lane and,
 on a multi-extruder rig, swaps the single bowden / toolhead / toolhead-LED entries for
-per-extruder ones. See the [AFC-Specific Features](FILAMENT_BACKEND_AFC.md#afc-specific-features) section for
+per-extruder ones. On an AFC that registers `AFC_TOOLHEAD_CALIBRATION` (learned from
+`printer.gcode.help`), a **Calibrate Toolhead** button leads the Toolhead section. See the [AFC-Specific Features](FILAMENT_BACKEND_AFC.md#afc-specific-features) section for
 details.
 
 #### Guided flows
