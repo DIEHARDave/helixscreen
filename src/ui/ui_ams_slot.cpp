@@ -83,6 +83,7 @@ struct AmsSlotData {
     ObserverGuard active_loaded_observer; ///< Per-slot active-loaded (single highlight source)
     ObserverGuard action_observer;
     ObserverGuard target_slot_observer;
+    ObserverGuard slots_version_observer; ///< Spool table renumber -> badge number
 
     // Lifetime tokens paired with the observers that bind per-backend subjects
     // (status, lane_state, material, name). Secondary-backend (index > 0) subjects
@@ -799,6 +800,22 @@ static void setup_slot_observers(AmsSlotData* data) {
                 auto* d = get_slot_data(o);
                 if (d)
                     evaluate_pulse_state(d);
+            },
+            state.get_subjects_lifetime());
+    }
+
+    // Slots version observer: the badge number follows the whole spool table,
+    // not only this lane's own status. A routing change re-numbers lanes that
+    // had no status change of their own (a lane stops or starts sharing a
+    // spool, and every lane after it shifts), and every such sync bumps this
+    // subject.
+    if (lv_subject_t* version_subject = state.get_slots_version_subject()) {
+        data->slots_version_observer = observe<int>(
+            version_subject, obj,
+            [](lv_obj_t* o, int /*version*/) {
+                auto* d = get_slot_data(o);
+                if (d)
+                    apply_badge_number(d);
             },
             state.get_subjects_lifetime());
     }

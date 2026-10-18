@@ -7,6 +7,7 @@
 // multiACE UI meaningful.
 
 #include "../helix_test_fixture.h"
+#include "../test_helpers/log_capture.h"
 #include "../test_helpers/snapmaker_test_access.h"
 #include "ams_backend_multiace.h"
 #include "moonraker_client_mock.h"
@@ -136,4 +137,37 @@ TEST_CASE_METHOD(MultiaceMockEnv, "the real backend reads the mock's frame", "[m
     CHECK(backend.upstream_slot(0) == std::optional<int>{multiace::bay_global(0, 0)});
     CHECK(backend.spool_display_number(0) ==
           backend.spool_display_number(multiace::bay_global(0, 0)));
+}
+
+TEST_CASE_METHOD(MultiaceMockEnv, "mock multiace clamps out-of-range ACE and SLOT",
+                 "[multiace][mock]") {
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::SNAPMAKER_U1);
+    // A malformed command must not reach the route table or the bay seeds:
+    // ACE 99 clamps to the one unit, SLOT 99 to the last bay.
+    REQUIRE(client.gcode_script("ACE_LOAD_HEAD HEAD=1 ACE=99 SLOT=99") == 0);
+
+    const multiace::StatusDelta d = multiace::parse_ace_status(client.multiace_status_json());
+    REQUIRE(d.head_source.has_value());
+    REQUIRE(d.head_source->at(1).has_value());
+    CHECK(d.head_source->at(1)->ace == 0);
+    CHECK(d.head_source->at(1)->slot == 3);
+    CHECK(d.head_source->at(1)->type == "PLA");
+}
+
+namespace {
+struct MultiaceBadModeEnv : MultiaceMockEnv {
+    MultiaceBadModeEnv() : MultiaceMockEnv("banana", nullptr) {}
+};
+} // namespace
+
+TEST_CASE_METHOD(MultiaceBadModeEnv, "mock multiace rejects a mode word it does not know",
+                 "[multiace][mock]") {
+    LogCapture log;
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::SNAPMAKER_U1);
+
+    // An unknown word falls back to the default with a line saying so, and the
+    // frame still carries a real mode.
+    CHECK(log.count_containing("HELIX_MOCK_MULTIACE_MODE") > 0);
+    const multiace::StatusDelta d = multiace::parse_ace_status(client.multiace_status_json());
+    CHECK(d.mode == std::optional<multiace::Mode>{multiace::Mode::HEAD});
 }

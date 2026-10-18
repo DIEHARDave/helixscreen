@@ -2937,6 +2937,10 @@ bool MoonrakerClientMock::apply_multiace_gcode(const std::string& gcode) {
                     ace = (multiace_mode_ != "multi") ? (h % multiace_units_) : 0;
                     slot = 0;
                 }
+                // HEAD is clamped where it is read; an out-of-range ACE or
+                // SLOT must not reach the route table or the bay seeds.
+                ace = std::clamp(ace, 0, multiace_units_ - 1);
+                slot = std::clamp(slot, 0, 3);
                 if (multiace_route_[i].first >= 0) {
                     // The engine feeds nothing into an occupied head.
                     spdlog::warn("[MoonrakerClientMock] multiACE mock: head {} already loaded - "
@@ -2987,12 +2991,22 @@ nlohmann::json MoonrakerClientMock::pin_watch_status_json() const {
 void MoonrakerClientMock::read_multiace_knobs() {
     std::lock_guard<std::mutex> lock(multiace_mutex_);
     if (const char* mode_env = std::getenv("HELIX_MOCK_MULTIACE_MODE")) {
-        multiace_mode_ = helix::text_io::to_lower(mode_env);
+        const std::string mode = helix::text_io::to_lower(mode_env);
+        if (mode == "multi" || mode == "head") {
+            multiace_mode_ = mode;
+        } else {
+            spdlog::warn("[MoonrakerClientMock] HELIX_MOCK_MULTIACE_MODE='{}' is not 'head' or "
+                         "'multi' - using the default 'head'",
+                         mode_env);
+        }
     }
     if (const char* units_env = std::getenv("HELIX_MOCK_MULTIACE_UNITS")) {
         try {
             multiace_units_ = std::clamp(std::stoi(units_env), 1, 4);
         } catch (...) {
+            spdlog::warn("[MoonrakerClientMock] HELIX_MOCK_MULTIACE_UNITS='{}' is not a number - "
+                         "using 1",
+                         units_env);
             multiace_units_ = 1;
         }
     }

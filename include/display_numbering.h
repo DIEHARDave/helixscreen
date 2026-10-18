@@ -159,6 +159,16 @@ std::string lane_label(LaneNoun noun, int index);
 std::string clear_spool_blocked_hint(LaneNoun noun, int index);
 
 /**
+ * @brief A position label scoped inside its named unit: "<unit> · <body>".
+ *
+ * The one composition behind every unit-qualified position ("Turtle 1 ·
+ * Slot 2", a fed lane's upstream caption "ACE 2 · 3"), so the separator and
+ * spacing cannot drift between them. An empty unit degrades to the body
+ * alone, the single-unit form.
+ */
+std::string unit_scoped_label(std::string_view unit_display_name, std::string_view body);
+
+/**
  * @brief A physical position inside a named unit: "Turtle 1 · Slot 2".
  *
  * @p unit_display_name is user-configured (an AFC unit name) and is not

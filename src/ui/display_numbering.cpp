@@ -147,13 +147,19 @@ std::string clear_spool_blocked_hint(LaneNoun noun, int index) {
                        lane_label(noun, index));
 }
 
+std::string unit_scoped_label(std::string_view unit_display_name, std::string_view body) {
+    if (unit_display_name.empty() || body.empty())
+        return std::string(body);
+    return std::string(unit_display_name) + " " + kUnitSeparator + " " + std::string(body);
+}
+
 std::string lane_label(LaneNoun noun, std::string_view unit_display_name, int index) {
     if (unit_display_name.empty())
         return lane_label(noun, index);
     const std::string body = lane_label(noun, index);
     if (body.empty())
         return {};
-    return std::string(unit_display_name) + " " + kUnitSeparator + " " + body;
+    return unit_scoped_label(unit_display_name, body);
 }
 
 std::string lane_range_label(LaneNoun noun, int first_index, int last_index) {
