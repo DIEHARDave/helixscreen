@@ -214,10 +214,10 @@ class AmsEditOverlay : public OverlayBase {
     bool save_in_flight_ = false;
     /// Bumped by every show_for_slot(). Save completions run on
     /// object_lifetime_ (they are owed to Spoolman and the slot, not to the
-    /// screen). A Spoolman save commits the slot it captured at the start
-    /// through the callback it began with, editor open or not; only the
-    /// editor-side follow-ups (closing it, failure toasts that keep it open)
-    /// check they still belong to the session showing.
+    /// screen) and finish from a SaveCapture: a save commits the slot it
+    /// captured through the callback it began with, editor open or not. Only
+    /// the editor-side follow-ups (closing it, keeping it open on a failure,
+    /// the identity prompt) check the session is still the one showing.
     uint32_t session_ = 0;
     /// True once the editor view has been populated this session. A picker-entry
     /// session reaches the editor first through enter_editor(); later returns
@@ -375,6 +375,28 @@ class AmsEditOverlay : public OverlayBase {
     void fire_completion(bool saved); ///< Idempotent; does NOT pop the overlay
     void close_editor(bool saved);    ///< fire_completion + NavigationManager go_back
     void commit_and_close();
+
+    /// Everything a save needs to finish after the editor is gone.
+    struct SaveCapture {
+        uint32_t session = 0;
+        int slot_index = -1;
+        SlotInfo original; ///< the diff base
+        SlotInfo saving;   ///< the slot this save commits
+        CompletionCallback owed;
+        nlohmann::json chained_spool_patch; ///< More fields riding the Update arm
+        nlohmann::json chained_filament_patch;
+        int chained_spool_id = 0;
+        int chained_filament_id = 0;
+    };
+    SaveCapture capture_save() const;
+    /// The editor that began @p cap is still showing it.
+    bool save_is_live(const SaveCapture& cap) const;
+    /// Close that editor with @p committed, or hand it to @p cap's callback.
+    void deliver_commit(const SaveCapture& cap, const SlotInfo& committed);
+    /// The commit decision (offline lock, relink, Spoolman save, local) over a
+    /// capture; commit_and_close() runs it over the current state.
+    void commit_capture(const SaveCapture& cap);
+    void run_spoolman_save(const SaveCapture& cap, helix::SpoolmanSlotSaver::LinkIntent intent);
 
     friend class ::AmsEditOverlayTestAccess;
     friend class ::AmsEditOverlayViewTestAccess;

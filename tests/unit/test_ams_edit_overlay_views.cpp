@@ -2920,3 +2920,51 @@ TEST_CASE_METHOD(LVGLUITestFixture, "an unset slot rings no colour tile",
     CHECK(subject_int("ams_edit_color_selected") == -1);
     close_editor_overlay();
 }
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "a More-field save commits the slot's other edits even if the editor closed first",
+                 "[ams_edit_overlay][save][session]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+    SpoolInfo& a = mock_spool(client, 7);
+    a.filament_id = 3;
+    a.vendor = "Bambu Lab";
+    a.material = "ASA";
+    a.color_hex = "8A949E";
+    a.comment = "";
+    set_spoolman_available(true);
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    std::vector<AmsEditOverlay::EditResult> results;
+    REQUIRE(
+        overlay.show_for_slot(test_screen(), 0, tracked_slot(), &api,
+                              [&](const AmsEditOverlay::EditResult& r) { results.push_back(r); }));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    access.call_apply_weight(321);                          // slot-side
+    access.set_detail_field("detail_field_comment", "dry"); // spool record
+    access.call_handle_save();
+    access.call_fire_completion(false); // a navbar tap closes it while the PATCH runs
+    for (int i = 0; i < 4; ++i) {
+        UpdateQueue::instance().drain();
+        process_lvgl(20);
+    }
+
+    bool committed = false;
+    for (const auto& r : results) {
+        if (r.saved && r.slot_info.remaining_weight_g == 321) {
+            committed = true;
+        }
+    }
+    CHECK(committed);
+    bool patched = false;
+    for (const auto& upd : client.spoolman_mock().spool_updates) {
+        patched = patched || upd.patch.dump().find("dry") != std::string::npos;
+    }
+    CHECK(patched);
+    close_editor_overlay();
+    set_spoolman_available(false);
+}
