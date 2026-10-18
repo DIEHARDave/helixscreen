@@ -362,17 +362,35 @@ TEST_CASE_METHOD(MacroActivityFixture,
 // The taps then reach the busy branch, and only the toast may treat that
 // episode as the user's: the predicates that gate motion stay as they are.
 
-TEST_CASE_METHOD(MacroActivityFixture,
-                 "busy toast is suppressed for an episode the user's own light taps began",
+namespace {
+
+/// When the current busy episode began, as the main thread observed it.
+BusyEpisodeOwner::clock::time_point episode_start(PrinterState& state) {
+    return state.calibration_state().idle_timeout_busy().printing_since();
+}
+
+} // namespace
+
+TEST_CASE_METHOD(MacroActivityFixture, "a light tap on an idle printer is stamped as the user's",
                  "[busy_guard][1206][mock]") {
-    // The first tap goes out on the normal path while the printer is idle.
+    // The normal path, not just the busy branch, records the send: the tap
+    // that starts a burst goes out while the printer is still idle.
     api->execute_gcode(LIGHT, nullptr, nullptr);
     REQUIRE(mock_client.last_send_method() == "printer.gcode.script");
     REQUIRE_FALSE(macro_note_done_fired());
 
-    // The taps' own SET_PINs have held idle_timeout "Printing" past SETTLE.
+    const auto observed = BusyEpisodeOwner::clock::now() + std::chrono::milliseconds(100);
+    CHECK(state.app_command_episode().owns(observed, observed + std::chrono::milliseconds(100)));
+}
+
+TEST_CASE_METHOD(MacroActivityFixture,
+                 "busy toast is suppressed for an episode the user's own light taps began",
+                 "[busy_guard][1206][mock]") {
+    // The taps' own SET_PINs have held idle_timeout "Printing" past SETTLE;
+    // the first went out just before the flag was seen going high.
     begin_blocking_episode();
     REQUIRE(state.is_external_blocking_operation_active());
+    state.app_command_episode().note_sent(episode_start(state) - std::chrono::milliseconds(200));
 
     const size_t sent_before = mock_client.gcode_script_history().size();
     for (int tap = 0; tap < 10; ++tap) {
@@ -386,8 +404,8 @@ TEST_CASE_METHOD(MacroActivityFixture,
 
 TEST_CASE_METHOD(MacroActivityFixture, "an episode the user's light taps began still refuses a jog",
                  "[busy_guard][1206][1108][mock]") {
-    api->execute_gcode(LIGHT, nullptr, nullptr);
     begin_blocking_episode();
+    state.app_command_episode().note_sent(episode_start(state) - std::chrono::milliseconds(200));
     api->execute_gcode(LIGHT, nullptr, nullptr);
     REQUIRE(state.is_busy_episode_app_initiated());
 
@@ -396,6 +414,20 @@ TEST_CASE_METHOD(MacroActivityFixture, "an episode the user's light taps began s
     api->execute_gcode("G1 X10 F3000", nullptr,
                        [this](const MoonrakerError& err) { error_cb(err); });
     CHECK(error_called);
+}
+
+TEST_CASE_METHOD(MacroActivityFixture,
+                 "busy toast fires for an external episode the user tapped into before it settled",
+                 "[busy_guard][1206][mock]") {
+    // Mainsail starts a bed mesh; half a second later, still inside SETTLE, the
+    // user taps the light and that tap goes out on the normal path, stamped.
+    begin_blocking_episode();
+    state.app_command_episode().note_sent(episode_start(state) + std::chrono::milliseconds(500));
+
+    api->execute_gcode(LIGHT, nullptr, nullptr);
+
+    CHECK_FALSE(state.is_busy_episode_app_initiated());
+    CHECK_FALSE(state.calibration_state().claim_busy_queue_toast());
 }
 
 TEST_CASE_METHOD(MacroActivityFixture,
@@ -454,4 +486,24 @@ TEST_CASE("BusyEpisodeOwner never adopts an episode that began without it", "[bu
         CHECK_FALSE(owner.owns(episode, now));
         owner.note_sent(now);
     }
+}
+
+TEST_CASE_METHOD(MacroActivityFixture,
+                 "a jog that slipped into an external episode before it settled does not unlock "
+                 "later jogs",
+                 "[busy_guard][1108][mock]") {
+    // An external bed mesh observed 3 s ago; one jog went out at +0.5 s while
+    // the guard was still settling, and its grace window has since lapsed.
+    begin_blocking_episode();
+    auto& busy = state.calibration_state().idle_timeout_busy();
+    const auto start = IdleTimeoutBusy::clock::now() - std::chrono::seconds(3);
+    busy.set_printing(false, start);
+    busy.set_printing(true, start);
+    state.app_motion_activity().note_sent(start + std::chrono::milliseconds(500));
+    state.app_motion_activity().note_done(start + std::chrono::milliseconds(520));
+
+    REQUIRE(state.is_external_blocking_operation_active());
+    api->execute_gcode("G1 X10 F3000", nullptr,
+                       [this](const MoonrakerError& err) { error_cb(err); });
+    CHECK(error_called);
 }
