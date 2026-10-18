@@ -29,6 +29,7 @@
  */
 
 #include "../../include/app_macro_activity.h"
+#include "../../include/busy_episode_owner.h"
 #include "../../include/moonraker_api.h"
 #include "../../include/moonraker_client_mock.h"
 #include "../../include/printer_state.h"
@@ -47,6 +48,9 @@ constexpr const char* MACRO = "UNLOAD_FILAMENT";
 /// A benign discretionary command — never stamped, and the thing that used to
 /// trigger the spurious toast.
 constexpr const char* DISCRETIONARY = "M106 S128";
+/// A light tap: discretionary, and on its own enough to read idle_timeout
+/// "Printing" for most of a second.
+constexpr const char* LIGHT = "SET_PIN PIN=relay_light VALUE=1";
 
 class MacroActivityFixture : public helix::BusyGuardFixture {
   public:
@@ -347,4 +351,107 @@ TEST_CASE_METHOD(MacroActivityFixture,
     // Suppression is off, so the toast fired and consumed the once-per-episode
     // latch — normal #1108 behaviour is fully restored despite the leak.
     CHECK_FALSE(state.calibration_state().claim_busy_queue_toast());
+}
+
+// ============================================================================
+// Busy episodes the user's own discretionary commands began
+// ============================================================================
+//
+// Each SET_PIN reads idle_timeout "Printing" for ~0.8 s, so light taps 0.2 s
+// apart hold one episode up past IdleTimeoutBusy::SETTLE on an idle printer.
+// The taps then reach the busy branch, and only the toast may treat that
+// episode as the user's: the predicates that gate motion stay as they are.
+
+TEST_CASE_METHOD(MacroActivityFixture,
+                 "busy toast is suppressed for an episode the user's own light taps began",
+                 "[busy_guard][1206][mock]") {
+    // The first tap goes out on the normal path while the printer is idle.
+    api->execute_gcode(LIGHT, nullptr, nullptr);
+    REQUIRE(mock_client.last_send_method() == "printer.gcode.script");
+    REQUIRE_FALSE(macro_note_done_fired());
+
+    // The taps' own SET_PINs have held idle_timeout "Printing" past SETTLE.
+    begin_blocking_episode();
+    REQUIRE(state.is_external_blocking_operation_active());
+
+    const size_t sent_before = mock_client.gcode_script_history().size();
+    for (int tap = 0; tap < 10; ++tap) {
+        api->execute_gcode(LIGHT, nullptr, nullptr);
+    }
+
+    // Every tap still went out, and none of them toasted: the latch is unclaimed.
+    CHECK(mock_client.gcode_script_history().size() == sent_before + 10);
+    CHECK(state.calibration_state().claim_busy_queue_toast());
+}
+
+TEST_CASE_METHOD(MacroActivityFixture, "an episode the user's light taps began still refuses a jog",
+                 "[busy_guard][1206][1108][mock]") {
+    api->execute_gcode(LIGHT, nullptr, nullptr);
+    begin_blocking_episode();
+    api->execute_gcode(LIGHT, nullptr, nullptr);
+    REQUIRE(state.is_busy_episode_app_initiated());
+
+    // Toast attribution never reaches the predicate motion is gated on.
+    CHECK(state.is_external_blocking_operation_active());
+    api->execute_gcode("G1 X10 F3000", nullptr,
+                       [this](const MoonrakerError& err) { error_cb(err); });
+    CHECK(error_called);
+}
+
+TEST_CASE_METHOD(MacroActivityFixture,
+                 "busy toast fires when the user's last command long predates the episode",
+                 "[busy_guard][1206][mock]") {
+    // A tap well before an external op began does not make that op the user's.
+    state.app_command_episode().note_sent(BusyEpisodeOwner::clock::now() - IdleTimeoutBusy::SETTLE -
+                                          BusyEpisodeOwner::GRACE_WINDOW - std::chrono::seconds(1));
+    begin_blocking_episode();
+
+    api->execute_gcode(LIGHT, nullptr, nullptr);
+
+    CHECK_FALSE(state.calibration_state().claim_busy_queue_toast());
+}
+
+TEST_CASE_METHOD(MacroActivityFixture,
+                 "a silent housekeeping send does not claim an external episode",
+                 "[busy_guard][1206][mock]") {
+    // LedAutoState reacting to a state change sends silently, right as an
+    // external op starts. That send is not the user's, so it claims nothing.
+    api->execute_gcode(LIGHT, nullptr, nullptr, /*timeout_ms=*/0, /*silent=*/true);
+    begin_blocking_episode();
+
+    api->execute_gcode(LIGHT, nullptr, nullptr);
+
+    CHECK_FALSE(state.calibration_state().claim_busy_queue_toast());
+}
+
+TEST_CASE("BusyEpisodeOwner keeps a sustained tap burst the app's own", "[busy_guard][1206]") {
+    // Taps every 200 ms for 6 s, the first just before idle_timeout went high.
+    // Each is asked about before it is stamped, as execute_gcode does.
+    BusyEpisodeOwner owner;
+    const auto t0 = BusyEpisodeOwner::clock::now();
+    const auto episode = t0 + std::chrono::milliseconds(100);
+    owner.note_sent(t0);
+    for (int tap = 1; tap <= 30; ++tap) {
+        const auto now = t0 + tap * std::chrono::milliseconds(200);
+        INFO("tap " << tap);
+        CHECK(owner.owns(episode, now));
+        owner.note_sent(now);
+    }
+    // Once the burst stops, the episode stops passing as the app's.
+    const auto last = t0 + 30 * std::chrono::milliseconds(200);
+    CHECK_FALSE(owner.owns(episode, last + BusyEpisodeOwner::MAX_SELF_BUSY));
+}
+
+TEST_CASE("BusyEpisodeOwner never adopts an episode that began without it", "[busy_guard][1206]") {
+    // An external op starts; the user then taps steadily through it.
+    BusyEpisodeOwner owner;
+    const auto t0 = BusyEpisodeOwner::clock::now();
+    const auto episode = t0;
+    for (int tap = 0; tap < 20; ++tap) {
+        const auto now = t0 + BusyEpisodeOwner::GRACE_WINDOW + std::chrono::seconds(1) +
+                         tap * std::chrono::milliseconds(200);
+        INFO("tap " << tap);
+        CHECK_FALSE(owner.owns(episode, now));
+        owner.note_sent(now);
+    }
 }

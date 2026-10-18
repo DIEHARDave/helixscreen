@@ -722,6 +722,11 @@ bool PrinterState::is_external_blocking_operation_active() {
                calibration_state_.idle_timeout_busy().printing_since());
 }
 
+bool PrinterState::is_busy_episode_app_initiated() {
+    IdleTimeoutBusy& busy = calibration_state_.idle_timeout_busy();
+    return busy.blocking() && app_command_episode_.owns(busy.printing_since());
+}
+
 int PrinterState::get_configured_z_offset_microns() {
     if (capabilities_state_.has_probe()) {
         // Probe printers: z_offset stored in ProbeSensorManager (already in microns)
