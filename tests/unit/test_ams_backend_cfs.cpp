@@ -6425,12 +6425,38 @@ TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
         CHECK(AmsBackendCfs::print_map_gcode({}, {{3, 9}, {1, 6}}) == "BOX_PRINT_MAP MAP=1:6,3:9");
     }
 
-    SECTION("no remap sends nothing") {
+    SECTION("no remap still sends the identity map for the file's tools") {
         box["api_revision"] = 3;
         CfsTestAccess::handle_status(backend, make_cfs_notification(box));
-        CHECK(backend.build_preprint_gcode({0, 1}, {}).empty());
+        CHECK(AmsBackendCfs::print_map_gcode({0, 1}, {}) == "BOX_PRINT_MAP MAP=0:0,1:1");
+        CHECK(backend.build_preprint_gcode({0, 1}, {}) == "BOX_PRINT_MAP MAP=0:0,1:1");
+        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 0}, {1, 1}}) ==
+              "BOX_PRINT_MAP MAP=0:0,1:1");
+    }
+
+    SECTION("with the file's tools unknown, no remap sends nothing") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
         CHECK(backend.build_preprint_gcode({}, {}).empty());
-        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 0}, {1, 1}}).empty());
+        CHECK(backend.build_preprint_gcode({}, {{2, 2}}).empty());
+    }
+
+    SECTION("the map names only the file's tools") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CHECK(AmsBackendCfs::print_map_gcode({0}, {{0, 2}, {3, 1}}) == "BOX_PRINT_MAP MAP=0:2");
+        // A tool the file does not use cannot refuse the print either: slot 1
+        // sits in a box this chain does not have.
+        CHECK(backend.check_preprint_remap({0}, {{0, 9}, {3, 1}}).success());
+        CHECK(backend.build_preprint_gcode({0}, {{0, 9}, {3, 1}}) == "BOX_PRINT_MAP MAP=0:9");
+    }
+
+    SECTION("an unremapped start after a remapped one overwrites the pending map") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        REQUIRE(backend.build_preprint_gcode({0, 1}, {{0, 9}, {1, 10}}) ==
+                "BOX_PRINT_MAP MAP=0:9,1:10");
+        CHECK(backend.build_preprint_gcode({0, 1}, {}) == "BOX_PRINT_MAP MAP=0:0,1:1");
     }
 
     SECTION("a remap to a slot that cannot feed sends nothing and says why") {
@@ -6474,6 +6500,7 @@ TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
         CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::None);
         CHECK_FALSE(backend.requires_preprint_send());
         CHECK(backend.build_preprint_gcode({0, 1}, {{0, 5}, {1, 2}}).empty());
+        CHECK(backend.build_preprint_gcode({0, 1}, {}).empty());
     }
 
     SECTION("revision 1 has none either") {
@@ -6497,6 +6524,7 @@ TEST_CASE("CFS stock keeps its native remap and no pre-print send", "[ams][cfs][
     CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::Native);
     CHECK_FALSE(backend.requires_preprint_send());
     CHECK(backend.build_preprint_gcode({0, 1}, {{0, 5}, {1, 2}}).empty());
+    CHECK(backend.build_preprint_gcode({0, 1}, {}).empty());
 }
 
 // A bay in a box missing from the chain is refused, not sent: box.py registers

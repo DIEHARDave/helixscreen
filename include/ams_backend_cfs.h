@@ -331,24 +331,38 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     }
 
     /// `BOX_PRINT_MAP MAP=<tool>:<slot>,...` for the next print, or "" when
-    /// the firmware has no BOX_PRINT_MAP. See print_map_gcode().
+    /// the firmware has no BOX_PRINT_MAP or check_preprint_remap() refuses.
+    /// See print_map_gcode().
     [[nodiscard]] std::string build_preprint_gcode(const std::set<int>& tools_used,
                                                    const std::map<int, int>& remap) const override;
 
     /// Refuses a remap whose target slot is not one a manual load could
     /// feed (firmware_slot_locked()) or sits in a box that is not answering.
+    /// Only entries print_map_gcode() would send are checked: a tool left at
+    /// its own slot, or one the file does not use, cannot refuse the print.
     /// @note Takes `mutex_`; callers must NOT hold it.
     [[nodiscard]] AmsError check_preprint_remap(const std::set<int>& tools_used,
                                                 const std::map<int, int>& remap) const override;
 
     /// The Fork map for the next print, in BOX_PRINT_START's MAP= format: file
-    /// tool, then global slot (our bay index). Every tool the file uses is
-    /// named, a tool @p remap leaves out at its own slot (box.py's default
-    /// T<n> = slot n), so the map states the whole print. "" when nothing is
-    /// remapped: the firmware's default is already that map, and the command
-    /// has no clearing form.
+    /// tool, then global slot (our bay index).
+    ///
+    /// With @p tools_used known the map names exactly those tools, a tool
+    /// @p remap leaves out at its own slot (box.py's default T<n> = slot n),
+    /// and it goes out even when nothing is remapped. The firmware keeps a map
+    /// for the next print loaded within 10 minutes and has no clearing form,
+    /// so only a full map overwrites one a start that never loaded left
+    /// pending. Remap entries for tools the file does not use are dropped: the
+    /// firmware refuses a start whose map disagrees with the file's tools.
+    ///
+    /// With @p tools_used empty (the file's tools are unknown) the map is the
+    /// remap's entries alone, and "" when none moves a tool off its own slot.
     [[nodiscard]] static std::string print_map_gcode(const std::set<int>& tools_used,
                                                      const std::map<int, int>& remap);
+
+    /// Whether the print map carries @p tool: every tool when the file's
+    /// tools are unknown, else only the ones it uses.
+    [[nodiscard]] static bool print_map_names_tool(const std::set<int>& tools_used, int tool);
 
     /// The firmware registers BOX_PRINT_MAP: revision 3 and later. The command
     /// is registered in Python, so no gcode_macro lookup can see it, and the
