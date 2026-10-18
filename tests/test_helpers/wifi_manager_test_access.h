@@ -181,6 +181,18 @@ class WiFiManagerTestAccess {
         return wm.breaker_open();
     }
 
+    /// Shorten the user-op deadlines and stall limit (milliseconds).
+    static void set_user_op_timeouts(WiFiManager& wm, uint32_t connect_ms, uint32_t other_ms,
+                                     uint32_t stall_ms) {
+        wm.user_op_timeouts_ = {connect_ms, other_ms, stall_ms};
+    }
+
+    /// Close the lane the way the destructor does, without destroying.
+    static void shut_control_lane(WiFiManager& wm) {
+        std::lock_guard<std::mutex> lock(wm.control_mutex_);
+        wm.control_shutdown_ = true;
+    }
+
     /// The backend event WiFiManager subscribes to for scan results, fired
     /// on the calling thread as the backend's event loop would.
     static void fire_scan_complete(WiFiManager& wm) {

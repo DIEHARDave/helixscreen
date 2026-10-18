@@ -187,7 +187,8 @@ void WiFiManager::register_backend_callbacks(bool silent) {
             const bool wifi_configured = Config::get_instance()->is_wifi_expected();
             // The radio change itself is control traffic: it goes down the lane.
             auto set_radio = [this](bool on) {
-                submit_control("reassert_radio", [this, on]() { backend_->set_radio_enabled(on); });
+                submit_control("reassert_radio", ControlKind::User,
+                               [this, on]() { backend_->set_radio_enabled(on); });
             };
             if (!want_on && backend_) {
                 const auto iface = backend_->resolved_interface();
@@ -281,21 +282,13 @@ void WiFiManager::handle_init_failed(bool silent, const std::string& msg) {
             if (!backend_) {
                 return;
             }
-            wait_for_radio_ops();
-            backend_->stop();
-            // The stopped backend can never deliver the SCAN_COMPLETE a
-            // successful trigger_scan() owed, so resolve the scheduler now —
-            // the same resolution the synchronous-failure paths in start_scan()
-            // and scan_timer_callback() use. Without it, a scan outstanding at
-            // the swap latches should_trigger() false for the rest of this
-            // scan session (prestonbrown/helixscreen#1405). The contract and
-            // its one exception (stop) are stated on WifiBackend::trigger_scan.
-            scan_scheduler_.on_scan_failed();
-            backend_.reset();
-            backend_ = std::make_unique<WifiBackendWpaSupplicant>();
-            backend_->set_silent(silent);
-            register_backend_callbacks(silent);
-            backend_->start_async();
+            // Calls still queued were meant for the failed backend: drop them
+            // after the one in progress rather than make the swap wait on them.
+            {
+                std::lock_guard<std::mutex> lock(control_mutex_);
+                control_paused_ = true;
+            }
+            swap_to_wpa_supplicant(silent);
         });
         return;
     }
@@ -309,6 +302,38 @@ void WiFiManager::handle_init_failed(bool silent, const std::string& msg) {
     } else {
         spdlog::debug("[WiFiManager] WiFi init failed (silent): {}", msg);
     }
+}
+
+void WiFiManager::swap_to_wpa_supplicant(bool silent) {
+#if !defined(__APPLE__) && !defined(__ANDROID__) && !defined(ESP_PLATFORM)
+    // A call in progress usually returns at once. Waiting longer would hold
+    // the LVGL thread for as long as it takes, which on a wedged daemon is
+    // unbounded, so past a short bound look again later instead.
+    if (!wait_for_radio_ops_for(std::chrono::milliseconds(200))) {
+        after_ms(100, [this, silent]() { swap_to_wpa_supplicant(silent); });
+        return;
+    }
+    backend_->stop();
+    // The stopped backend can never deliver the SCAN_COMPLETE a
+    // successful trigger_scan() owed, so resolve the scheduler now —
+    // the same resolution the synchronous-failure paths in start_scan()
+    // and scan_timer_callback() use. Without it, a scan outstanding at
+    // the swap latches should_trigger() false for the rest of this
+    // scan session (prestonbrown/helixscreen#1405). The contract and
+    // its one exception (stop) are stated on WifiBackend::trigger_scan.
+    scan_scheduler_.on_scan_failed();
+    backend_.reset();
+    backend_ = std::make_unique<WifiBackendWpaSupplicant>();
+    backend_->set_silent(silent);
+    {
+        std::lock_guard<std::mutex> lock(control_mutex_);
+        control_paused_ = false;
+    }
+    register_backend_callbacks(silent);
+    backend_->start_async();
+#else
+    (void)silent;
+#endif
 }
 
 void WiFiManager::init_self_reference(std::shared_ptr<WiFiManager> self) {
@@ -434,20 +459,59 @@ void WiFiManager::start_scan(
 
     // Trigger immediate scan. A trigger still in flight from before stop_scan()
     // serves this session too: its SCAN_COMPLETE reaches the callback just set.
+    // The caller is waiting on its callback to clear a "scanning" state, so it
+    // is answered whatever becomes of the trigger.
+    user_scan_waiting_ = true;
+    const uint64_t generation = ++scan_wait_generation_;
     if (request_scan(/*user_refresh=*/true) == ScanRequest::Refused) {
-        // The caller is waiting on its callback to clear a "scanning" state;
-        // an empty list says there is nothing to show without leaving it spinning.
-        async_lifetime_.defer("WiFiManager::scan_refused", [this]() {
-            std::function<void(const std::vector<WiFiNetwork>&)> cb;
-            {
-                std::lock_guard<std::mutex> lock(callback_mutex_);
-                cb = scan_callback_;
-            }
-            if (cb) {
-                cb({});
-            }
-        });
+        async_lifetime_.defer("WiFiManager::scan_refused", [this]() { answer_scan_waiter(); });
+    } else {
+        watch_scan_waiter(generation);
     }
+}
+
+void WiFiManager::answer_scan_waiter() {
+    if (!user_scan_waiting_) {
+        return;
+    }
+    user_scan_waiting_ = false;
+    ++scan_wait_generation_;
+    deliver_last_scan_results();
+}
+
+void WiFiManager::deliver_last_scan_results() {
+    std::function<void(const std::vector<WiFiNetwork>&)> cb;
+    {
+        std::lock_guard<std::mutex> lock(callback_mutex_);
+        cb = scan_callback_;
+    }
+    // The last list, not an empty one: nothing new was learned, and an empty
+    // list would wipe the networks the user is looking at.
+    if (cb) {
+        cb(last_scan_results_);
+    }
+}
+
+void WiFiManager::watch_scan_waiter(uint64_t generation) {
+    uint32_t poll_ms;
+    {
+        std::lock_guard<std::mutex> lock(breaker_mutex_);
+        poll_ms = std::min<uint32_t>(1000, breaker_.config().slow_call_ms);
+    }
+    after_ms(poll_ms, [this, generation]() {
+        // A trigger that left the lane is answered by SCAN_COMPLETE or by
+        // apply_scan_trigger_result().
+        if (generation != scan_wait_generation_ || !user_scan_waiting_ || !scan_trigger_inflight_) {
+            return;
+        }
+        if (control_stalled()) {
+            spdlog::debug("[WiFiManager] Scan trigger stuck behind a stalled WiFi control call — "
+                          "answering with the last results");
+            answer_scan_waiter();
+            return;
+        }
+        watch_scan_waiter(generation);
+    });
 }
 
 WiFiManager::ScanRequest WiFiManager::request_scan(bool user_refresh) {
@@ -474,7 +538,7 @@ WiFiManager::ScanRequest WiFiManager::request_scan(bool user_refresh) {
     }
     scan_trigger_inflight_ = true;
     submit_control(
-        "trigger_scan",
+        "trigger_scan", ControlKind::Health,
         [this, tok = async_lifetime_.token(), user_refresh]() {
             const auto started = std::chrono::steady_clock::now();
             WiFiError result = backend_->trigger_scan();
@@ -484,10 +548,7 @@ WiFiManager::ScanRequest WiFiManager::request_scan(bool user_refresh) {
             });
         },
         [this, tok = async_lifetime_.token()]() {
-            {
-                std::lock_guard<std::mutex> lock(breaker_mutex_);
-                breaker_.abandon_probe();
-            }
+            breaker_abandon_probe();
             tok.defer("WiFiManager::scan_trigger_dropped", [this]() {
                 apply_scan_trigger_result(
                     WiFiError(WiFiResult::BACKEND_ERROR, "Scan trigger dropped unrun", ""),
@@ -520,6 +581,8 @@ void WiFiManager::apply_scan_trigger_result(const WiFiError& result, bool user_r
     if (scan_timer_) {
         lv_timer_set_period(scan_timer_, scan_scheduler_.next_interval_ms());
     }
+    // A refresh coalesced onto this trigger waits on it whichever kind it was.
+    answer_scan_waiter();
 
     if (!user_refresh) {
         LOG_WARN_INTERNAL("Periodic scan failed: {}", result.technical_msg);
@@ -569,6 +632,8 @@ void WiFiManager::stop_scan() {
         std::lock_guard<std::mutex> lock(callback_mutex_);
         scan_callback_ = nullptr;
     }
+    user_scan_waiting_ = false;
+    ++scan_wait_generation_;
 }
 
 void WiFiManager::scan_timer_callback(lv_timer_t* timer) {
@@ -649,13 +714,20 @@ void WiFiManager::connect(const std::string& ssid, const std::string& password,
     spdlog::debug("[WiFiManager] Connect callback registered for '{}'", helix::redact::ssid(ssid));
 
     const uint64_t generation = ++connect_generation_;
-    submit_control("connect_network",
-                   [this, tok = async_lifetime_.token(), generation, ssid, password, is_hidden]() {
-                       WiFiError result = backend_->connect_network(ssid, password, is_hidden);
-                       tok.defer("WiFiManager::connect_result", [this, generation, ssid, result]() {
-                           apply_connect_result(generation, ssid, result);
-                       });
-                   });
+    // The deadline is the connect watchdog's first leg: it covers a join stuck
+    // behind another call, and apply_connect_result() re-arms the watchdog for
+    // the events once the backend accepts the join.
+    submit_user_op(
+        "connect_network", user_op_timeouts_.connect_ms,
+        [this, generation, ssid, password, is_hidden]() -> std::function<void()> {
+            WiFiError result = backend_->connect_network(ssid, password, is_hidden);
+            return [this, generation, ssid, result]() {
+                apply_connect_result(generation, ssid, result);
+            };
+        },
+        [this, generation, ssid]() {
+            apply_connect_result(generation, ssid, unresponsive_error());
+        });
 }
 
 void WiFiManager::apply_connect_result(uint64_t generation, const std::string& ssid,
@@ -725,13 +797,15 @@ void WiFiManager::disconnect() {
     }
     ++connect_generation_;
 
-    submit_control("disconnect_network", [this, tok = async_lifetime_.token()]() {
-        WiFiError result = backend_->disconnect_network();
-        if (!result.success()) {
-            tok.defer("WiFiManager::disconnect_failed",
-                      []() { NOTIFY_WARNING("{}", lv_tr("Could not disconnect from WiFi")); });
-        }
-    });
+    submit_user_op(
+        "disconnect_network", user_op_timeouts_.other_ms,
+        [this]() -> std::function<void()> {
+            if (backend_->disconnect_network().success()) {
+                return nullptr;
+            }
+            return []() { NOTIFY_WARNING("{}", lv_tr("Could not disconnect from WiFi")); };
+        },
+        []() { NOTIFY_WARNING("{}", lv_tr("WiFi isn't responding")); });
 }
 
 void WiFiManager::forget(const std::string& ssid,
@@ -749,12 +823,14 @@ void WiFiManager::forget(const std::string& ssid,
     // overlay restarts scanning immediately afterwards.
     mark_association_change();
 
-    submit_control("forget_network", [this, tok = async_lifetime_.token(), ssid,
-                                      cb = std::move(on_complete)]() mutable {
-        WiFiError result = backend_->forget_network(ssid);
-        tok.defer("WiFiManager::forget_result",
-                  [ssid, result, cb = std::move(cb)]() { report_forget_result(ssid, result, cb); });
-    });
+    submit_user_op(
+        "forget_network", user_op_timeouts_.other_ms,
+        [this, ssid, on_complete]() -> std::function<void()> {
+            WiFiError result = backend_->forget_network(ssid);
+            return
+                [ssid, result, on_complete]() { report_forget_result(ssid, result, on_complete); };
+        },
+        [ssid, on_complete]() { report_forget_result(ssid, unresponsive_error(), on_complete); });
 }
 
 void WiFiManager::report_forget_result(
@@ -977,37 +1053,41 @@ void WiFiManager::set_enabled_async(bool enabled, helix::LifetimeToken token,
     }
 
     // Idempotent; covers unit tests and any call site that runs before
-    // Application calls HttpExecutor::start_all().
-    helix::http::HttpExecutor::fast().start();
+    // Application calls HttpExecutor::start_all(). A pool stopped at exit stays
+    // stopped.
+    if (!lane_pooled_) {
+        helix::http::HttpExecutor::fast().start();
+    }
 
-    // Guards the toast below against the manager outliving neither more nor
-    // less than it should: taken on the main thread, where `this` is valid.
-    auto mgr_token = async_lifetime_.token();
-
-    submit_control("set_radio_enabled", [this, enabled, token, mgr_token,
-                                         cb = std::move(on_complete)]() mutable {
-        WiFiError result = apply_radio_enabled(enabled);
-        const bool success = result.success();
-        const bool actual = backend_->is_running() && backend_->is_radio_enabled();
-
-        // Neither deferred body dereferences `this`: report_radio_result is
-        // static, and the caller's lambda carries its own captures. That keeps
-        // both safe even if the manager is destroyed between here and the next
-        // UpdateQueue tick.
-        const bool wired_fallback = has_non_wifi_fallback();
-        mgr_token.defer("WiFiManager::report_radio_result",
-                        [enabled, result, wired_fallback, success, actual]() {
-                            report_radio_result(enabled, result, wired_fallback);
-                            // Queued ahead of the caller's callback below, so a
-                            // caller that saves in that callback flushes this
-                            // write with it rather than costing a second save.
-                            persist_radio_expectation(enabled, success, actual);
-                        });
-        if (cb) {
-            token.defer("WiFiManager::set_enabled_async",
-                        [cb = std::move(cb), success, actual]() { cb(success, actual); });
+    // The outcome is recorded under the manager's lifetime (the user-op
+    // answer), and handed to the caller only while its token lives.
+    auto answer = [token, cb = std::move(on_complete)](bool success, bool actual) {
+        if (cb && !token.expired()) {
+            cb(success, actual);
         }
-    });
+    };
+
+    submit_user_op(
+        "set_radio_enabled", user_op_timeouts_.other_ms,
+        [this, enabled, answer]() -> std::function<void()> {
+            WiFiError result = apply_radio_enabled(enabled);
+            const bool success = result.success();
+            const bool actual = backend_->is_running() && backend_->is_radio_enabled();
+            const bool wired_fallback = has_non_wifi_fallback();
+            return [enabled, result, wired_fallback, success, actual, answer]() {
+                report_radio_result(enabled, result, wired_fallback);
+                // Ahead of the caller's callback, so a caller that saves in
+                // that callback flushes this write with it rather than
+                // costing a second save.
+                persist_radio_expectation(enabled, success, actual);
+                answer(success, actual);
+            };
+        },
+        [this, enabled, answer]() {
+            // Nothing is known to have reached the radio, so nothing is persisted.
+            report_radio_result(enabled, unresponsive_error(), has_non_wifi_fallback());
+            answer(false, is_enabled());
+        });
 }
 
 void WiFiManager::get_status_async(
@@ -1016,7 +1096,18 @@ void WiFiManager::get_status_async(
         return;
     }
     if (!helix::http::HttpExecutor::fast().running()) {
-        on_done(backend_ ? backend_->get_status() : WifiBackend::ConnectionStatus{});
+        if (!lane_pooled_) {
+            on_done(backend_ ? backend_->get_status() : WifiBackend::ConnectionStatus{});
+            return;
+        }
+        // The pool has stopped (app exit): no read may run on this thread.
+        WifiBackend::ConnectionStatus cached;
+        {
+            std::lock_guard<std::mutex> lock(status_waiters_mutex_);
+            cached = cached_status_;
+        }
+        cached.unresponsive = true;
+        on_done(cached);
         return;
     }
     const bool stalled = control_stalled();
@@ -1039,12 +1130,9 @@ void WiFiManager::get_status_async(
     // A read dropped unrun clears the in-flight mark, so the next caller
     // starts a read that also answers everyone still waiting.
     submit_control(
-        "get_status", [this]() { run_status_reads(); },
+        "get_status", ControlKind::Health, [this]() { run_status_reads(); },
         [this]() {
-            {
-                std::lock_guard<std::mutex> lock(breaker_mutex_);
-                breaker_.abandon_probe();
-            }
+            breaker_abandon_probe();
             std::lock_guard<std::mutex> lock(status_waiters_mutex_);
             status_read_inflight_ = false;
         });
@@ -1052,6 +1140,8 @@ void WiFiManager::get_status_async(
 
 void WiFiManager::run_status_reads() {
     // `this` is valid for the whole body: see radio_op_mutex_.
+    // get_status_async() admitted the first read; each later one asks again.
+    bool first = true;
     for (;;) {
         std::vector<StatusWaiter> batch;
         {
@@ -1062,12 +1152,14 @@ void WiFiManager::run_status_reads() {
             }
             batch.swap(status_waiters_);
         }
-        // Every waiter in the batch asked before this read began.
-        const auto started = std::chrono::steady_clock::now();
-        WifiBackend::ConnectionStatus status =
-            backend_ ? backend_->get_status() : WifiBackend::ConnectionStatus{};
-        const bool answered_in_time = record_health_call(started);
-        {
+        const bool admitted = first || breaker_allows_call();
+        first = false;
+        WifiBackend::ConnectionStatus status;
+        if (admitted) {
+            // Every waiter in the batch asked before this read began.
+            const auto started = std::chrono::steady_clock::now();
+            status = backend_ ? backend_->get_status() : WifiBackend::ConnectionStatus{};
+            const bool answered_in_time = record_health_call(started);
             std::lock_guard<std::mutex> lock(status_waiters_mutex_);
             if (answered_in_time) {
                 cached_status_ = status;
@@ -1077,6 +1169,10 @@ void WiFiManager::run_status_reads() {
                 status = cached_status_;
                 status.unresponsive = breaker_open();
             }
+        } else {
+            std::lock_guard<std::mutex> lock(status_waiters_mutex_);
+            status = cached_status_;
+            status.unresponsive = true;
         }
         for (auto& w : batch) {
             w.token.defer("WiFiManager::get_status_async",
@@ -1094,16 +1190,32 @@ bool WiFiManager::cached_connected() {
 // Control lane
 // ============================================================================
 
-void WiFiManager::submit_control(const char* tag, std::function<void()> work,
+void WiFiManager::submit_control(const char* tag, ControlKind kind, std::function<void()> work,
                                  std::function<void()> on_dropped) {
     if (!helix::http::HttpExecutor::fast().running()) {
-        // No pool to run on (ESP32): its backend answers from memory.
-        work();
+        if (!lane_pooled_) {
+            // No pool to run on (ESP32): its backend answers from memory.
+            work();
+            return;
+        }
+        spdlog::debug("[WiFiManager] Control lane: '{}' dropped, the worker pool has stopped", tag);
+        if (on_dropped) {
+            on_dropped();
+        }
         return;
     }
+    lane_pooled_ = true;
     {
-        std::lock_guard<std::mutex> lock(control_mutex_);
-        control_queue_.push_back({tag, std::move(work), std::move(on_dropped)});
+        std::unique_lock<std::mutex> lock(control_mutex_);
+        if (control_shutdown_ || control_paused_) {
+            lock.unlock();
+            spdlog::debug("[WiFiManager] Control lane: '{}' dropped, the lane is closed", tag);
+            if (on_dropped) {
+                on_dropped();
+            }
+            return;
+        }
+        control_queue_.push_back({tag, kind, std::move(work), std::move(on_dropped)});
         if (control_lane_active_) {
             return;
         }
@@ -1140,7 +1252,7 @@ void WiFiManager::run_control_ops() {
                 control_lane_active_ = false;
                 return;
             }
-            if (control_shutdown_) {
+            if (control_shutdown_ || control_paused_) {
                 break;
             }
             op = std::move(control_queue_.front());
@@ -1150,6 +1262,7 @@ void WiFiManager::run_control_ops() {
         {
             std::lock_guard<std::mutex> lock(control_mutex_);
             control_op_started_ = std::chrono::steady_clock::now();
+            control_op_kind_ = op.kind;
         }
         op.work();
         {
@@ -1215,6 +1328,11 @@ bool WiFiManager::breaker_open() {
     return breaker_.open();
 }
 
+void WiFiManager::breaker_abandon_probe() {
+    std::lock_guard<std::mutex> lock(breaker_mutex_);
+    breaker_.abandon_probe();
+}
+
 bool WiFiManager::control_stalled() {
     uint32_t slow_ms;
     {
@@ -1222,8 +1340,92 @@ bool WiFiManager::control_stalled() {
         slow_ms = breaker_.config().slow_call_ms;
     }
     std::lock_guard<std::mutex> lock(control_mutex_);
-    return control_op_started_ && std::chrono::steady_clock::now() - *control_op_started_ >=
-                                      std::chrono::milliseconds(slow_ms);
+    if (!control_op_started_) {
+        return false;
+    }
+    const uint32_t limit_ms =
+        control_op_kind_ == ControlKind::Health ? slow_ms : user_op_timeouts_.stall_ms;
+    return std::chrono::steady_clock::now() - *control_op_started_ >=
+           std::chrono::milliseconds(limit_ms);
+}
+
+bool WiFiManager::control_unresponsive() {
+    return control_stalled() || breaker_open();
+}
+
+WiFiError WiFiManager::unresponsive_error() {
+    return WiFiError(WiFiResult::TIMEOUT, "WiFi control call did not return in time",
+                     lv_tr("WiFi isn't responding"));
+}
+
+void WiFiManager::submit_user_op(const char* tag, uint32_t deadline_ms,
+                                 std::function<std::function<void()>()> work,
+                                 std::function<void()> on_unanswered) {
+    if (control_unresponsive()) {
+        spdlog::warn("[WiFiManager] WiFi control is not answering — '{}' not sent", tag);
+        async_lifetime_.defer(tag, std::move(on_unanswered));
+        return;
+    }
+
+    // Exactly one of the result, the deadline and the drop answers the
+    // caller; whichever moves the op to Answered first.
+    enum : int { Queued, Running, Answered };
+    auto phase = std::make_shared<std::atomic<int>>(Queued);
+    auto answer_unanswered = [phase, on_unanswered]() {
+        if (phase->exchange(Answered) != Answered) {
+            on_unanswered();
+        }
+    };
+
+    after_ms(deadline_ms, [tag, deadline_ms, phase, answer_unanswered]() {
+        if (phase->load() != Answered) {
+            spdlog::warn("[WiFiManager] '{}' got no answer within {}ms", tag, deadline_ms);
+        }
+        answer_unanswered();
+    });
+
+    auto tok = async_lifetime_.token();
+    submit_control(
+        tag, ControlKind::User,
+        [tok, tag, phase, work = std::move(work)]() {
+            int expected = Queued;
+            if (!phase->compare_exchange_strong(expected, Running)) {
+                return; // the caller was already told it failed; do not act now
+            }
+            std::function<void()> apply = work();
+            tok.defer(tag, [phase, apply = std::move(apply)]() {
+                if (phase->exchange(Answered) != Answered && apply) {
+                    apply();
+                }
+            });
+        },
+        [tok, tag, answer_unanswered]() { tok.defer(tag, answer_unanswered); });
+}
+
+void WiFiManager::after_ms(uint32_t ms, std::function<void()> fn) {
+    if (!lv_is_initialized()) {
+        return;
+    }
+    struct Pending {
+        helix::LifetimeToken token;
+        std::function<void()> fn;
+    };
+    // TIMER_DTOR_OK: the timer owns its context and checks the manager's token
+    // before acting, so one outliving the manager runs nothing.
+    lv_timer_t* timer = lv_timer_create(
+        [](lv_timer_t* t) {
+            std::unique_ptr<Pending> pending(static_cast<Pending*>(lv_timer_get_user_data(t)));
+            if (!pending->token.expired()) {
+                pending->fn();
+            }
+        },
+        ms, new Pending{async_lifetime_.token(), std::move(fn)});
+    lv_timer_set_repeat_count(timer, 1); // one-shot: LVGL deletes it after the callback
+}
+
+bool WiFiManager::wait_for_radio_ops_for(std::chrono::milliseconds timeout) {
+    std::unique_lock<std::mutex> lock(radio_op_mutex_);
+    return radio_op_cv_.wait_for(lock, timeout, [this] { return radio_ops_inflight_ == 0; });
 }
 
 void WiFiManager::begin_radio_op() {
@@ -1320,6 +1522,9 @@ void WiFiManager::handle_scan_complete(const std::string& event_data) {
                     // then apply whatever interval it decides on to the live timer.
                     manager->scan_scheduler_.on_scan_complete(data->networks.size(),
                                                               manager->cached_connected());
+                    manager->last_scan_results_ = data->networks;
+                    manager->user_scan_waiting_ = false;
+                    ++manager->scan_wait_generation_;
                     if (manager->scan_timer_) {
                         lv_timer_set_period(manager->scan_timer_,
                                             manager->scan_scheduler_.next_interval_ms());
@@ -1350,7 +1555,7 @@ void WiFiManager::handle_scan_complete(const std::string& event_data) {
         helix::ui::queue_update<ScanCallbackData>(
             std::make_unique<ScanCallbackData>(ScanCallbackData{self_, {}}),
             [](ScanCallbackData* data) {
-                LOG_WARN_INTERNAL("async_call: calling callback with empty results");
+                LOG_WARN_INTERNAL("async_call: calling callback with the last results");
                 if (auto manager = data->manager.lock()) {
                     // Couldn't fetch results even though the trigger/scan
                     // itself succeeded — still an unresolved attempt, not
@@ -1363,15 +1568,9 @@ void WiFiManager::handle_scan_complete(const std::string& event_data) {
                         lv_timer_set_period(manager->scan_timer_,
                                             manager->scan_scheduler_.next_interval_ms());
                     }
-
-                    std::function<void(const std::vector<WiFiNetwork>&)> cb;
-                    {
-                        std::lock_guard<std::mutex> lock(manager->callback_mutex_);
-                        cb = manager->scan_callback_;
-                    }
-                    if (cb) {
-                        cb({});
-                    }
+                    manager->user_scan_waiting_ = false;
+                    ++manager->scan_wait_generation_;
+                    manager->deliver_last_scan_results();
                 } else {
                     spdlog::debug(
                         "[WiFiManager] Manager destroyed before async callback - safely ignored");
@@ -1401,8 +1600,14 @@ void WiFiManager::handle_connected(const std::string& event_data) {
         connecting_in_progress_ = false; // Connection complete
     }
     {
+        // The SSID and address this event joined are unknown here; the cached
+        // ones may be another network's. Keep only the adapter's own MAC until
+        // the next status read fills the rest.
         std::lock_guard<std::mutex> lock(status_waiters_mutex_);
-        cached_status_.connected = true;
+        WifiBackend::ConnectionStatus fresh;
+        fresh.connected = true;
+        fresh.mac_address = cached_status_.mac_address;
+        cached_status_ = fresh;
     }
 
     // Fan out to passive UI observers regardless of whether there's an active
