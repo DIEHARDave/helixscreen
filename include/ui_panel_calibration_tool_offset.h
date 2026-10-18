@@ -194,4 +194,7 @@ void init_tool_offset_row_handler();
 // Defined out of line: the ESP32 build, which excludes this panel, supplies its own.
 ToolOffsetCalibrationPanel& get_global_tool_offset_cal_panel();
 
+/// Open the tool offset calibration panel over @p parent_screen.
+void open_tool_offset_cal_panel(lv_obj_t* parent_screen);
+
 } // namespace helix::ui

@@ -93,6 +93,13 @@ class PrinterVersionsState {
      */
     void set_os_version_internal(const std::string& version);
 
+    /**
+     * @brief Set the firmware's name ("Klipper", "Kalico"; must be on UI thread)
+     *
+     * Labels the row that shows klipper_version, so a fork reads as itself.
+     */
+    void set_firmware_name_internal(const std::string& name);
+
     // ========================================================================
     // Subject accessors
     // ========================================================================
@@ -154,11 +161,13 @@ class PrinterVersionsState {
     lv_subject_t moonraker_version_{};
     lv_subject_t os_version_{};
     lv_subject_t moonraker_history_degraded_{};
+    lv_subject_t klipper_firmware_name_{};
 
     // String buffers for subject storage
     char klipper_version_buf_[64]{};
     char moonraker_version_buf_[64]{};
     char os_version_buf_[64]{};
+    char klipper_firmware_name_buf_[32]{};
 
     // Raw form of the klipper version, as reported (see get_klipper_version_raw)
     std::string klipper_version_raw_;

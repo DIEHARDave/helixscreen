@@ -816,10 +816,9 @@ void ProbeOverlay::handle_bed_mesh() {
 #if defined(HELIX_PLATFORM_ESP32)
     // Secondary entry to bed-mesh calibration (excluded, null-vtable stub on v1).
     helix::ui::show_feature_unavailable_toast();
-    return;
+#else
+    helix::ui::open_bed_mesh_panel(lv_display_get_screen_active(nullptr));
 #endif
-
-    get_global_bed_mesh_panel().show(lv_display_get_screen_active(nullptr));
 }
 
 // ============================================================================

@@ -15,7 +15,7 @@ It serves as the central hub for printer identity and hardware capabilities, dis
 
 - **Printer identity** -- name (editable inline), model, and image (swappable)
 - **Software versions** -- Klipper, Moonraker, and HelixScreen
-- **Hardware capabilities** -- auto-detected features shown as filterable chips
+- **Capabilities** -- everything HelixScreen detected on this printer, as grouped chips with detail text; each chip opens the screen that uses it, or a short info popup
 
 It follows the standard OverlayBase lifecycle and uses the `overlay_panel` XML component for navigation (back button, title bar).
 
@@ -24,7 +24,11 @@ It follows the standard OverlayBase lifecycle and uses the `overlay_panel` XML c
 | File | Purpose |
 |------|---------|
 | `include/ui_printer_manager_overlay.h` | Class declaration, subjects, callbacks |
-| `src/ui/ui_printer_manager_overlay.cpp` | Implementation (refresh, name edit, chip nav) |
+| `src/ui/ui_printer_manager_overlay.cpp` | Implementation (refresh, name edit, chip text subjects) |
+| `include/printer_manager_chips.h` | Chip spec table, fact gathering, tap dispatch |
+| `src/ui/printer_manager_chips.cpp` | One `CapChipSpec` per chip: name, text subject, info copy, opener |
+| `include/capability_chip_text.h` | `CapChip`, `CapabilityChipFacts`, `capability_chip_text()` (pure) |
+| `ui_xml/components/capability_chip.xml` | The chip: icon, bound text, tap callback |
 | `ui_xml/printer_manager_overlay.xml` | Declarative layout (3 sections) |
 | `tests/unit/test_printer_manager_overlay.cpp` | Unit tests |
 | `include/printer_image_manager.h` | Image import/conversion/selection |
@@ -56,13 +60,15 @@ PrinterManagerOverlay (overlay_panel; header: Manage Printers, a text button in 
   +-- pm_details: Sections 2 and 3
   |
   +-- Section 2: Software Versions
-  |     +-- Klipper version (bound to klipper_version subject)
+  |     +-- Firmware version: label bound to klipper_firmware_name ("Klipper", "Kalico"), value to klipper_version
   |     +-- Moonraker version (bound to moonraker_version subject)
   |     +-- HelixScreen version (bound to helix_version subject)
   |
-  +-- Section 3: Hardware Capabilities
-        +-- Capability chips (flow-wrapped, subject-bound visibility)
-        +-- Clickable chips navigate to feature overlays
+  +-- Section 3: Capabilities, six setting_groups
+        +-- MOTION & LEVELING, THERMAL & AIR, FILAMENT & TOOLHEAD,
+        |   PRINTING, ELECTRONICS & ACCESSORIES, ADD-ONS
+        +-- capability_chip instances (flow-wrapped, subject-bound visibility)
+        +-- every chip taps through pm_chip_clicked
 ```
 
 Landscape is two columns: the identity card on the left (`#pm_identity_width` wide,
@@ -80,37 +86,24 @@ near-neighbour; picking a model in `PrinterTypeOverlay` goes through
 
 ### Subject Bindings
 
-The overlay owns three subjects for its own data:
+The overlay owns these subjects for its own data:
 
 | Subject Name | Type | Description |
 |---|---|---|
 | `printer_manager_name` | string | User-editable printer name |
 | `printer_manager_model` | string | Printer model from config |
 | `helix_version` | string | HelixScreen build version |
+| `pm_name_editing` | int | 1 while the name editor is open |
+| `pm_chip_text_<chip>` | string | One per capability chip: its text (see Capability Chips) |
+| `pm_has_kinematics`, `pm_has_build_volume`, `pm_has_filament_system`, `pm_has_tool_changer`, `pm_has_mcus` | int | Visibility for chips whose fact has no app-wide subject |
 
-Capability chip visibility is driven by subjects defined elsewhere (in `PrinterState`):
+The firmware row's label binds `klipper_firmware_name`, which `PrinterVersionsState`
+publishes from `PrinterDiscovery::firmware_name()`.
 
-| Subject | Controls |
-|---|---|
-| `printer_has_probe` | Probe chip |
-| `printer_has_bed_mesh` | Bed Mesh chip |
-| `printer_has_heater_bed` | Heated Bed chip |
-| `printer_has_led` | LEDs chip |
-| `printer_has_accelerometer` | ADXL chip |
-| `printer_has_qgl` | QGL chip |
-| `printer_has_z_tilt` | Z-Tilt chip |
-| `printer_has_firmware_retraction` | Retraction chip |
-| `printer_has_spoolman` | Spoolman chip |
-| `printer_has_timelapse` | Timelapse chip |
-| `printer_has_screws_tilt` | Screws Tilt chip |
-| `printer_has_webcam` | Webcam chip |
-| `printer_has_extra_fans` | Fans chip |
-| `printer_has_chamber_sensor` | Chamber chip |
-| `printer_has_speaker` | Speaker chip |
-| `printer_has_nozzle_clean` | Nozzle Clean chip |
-| `ams_type` | AMS chip (hidden when 0) |
-
-All chips use `<bind_flag_if_eq flag="hidden" ref_value="0"/>` -- they are hidden when the subject value is 0, visible when non-zero.
+Every other chip's visibility binds the subject the rest of the app gates on
+(`printer_has_*`, `power_device_count`, `filament_sensor_count`, `ams_is_tool_changer`,
+`helix_macros_status`, ...). The chip list in `printer_manager_overlay.xml` is the
+reference for which subject hides which chip.
 
 ---
 
@@ -125,6 +118,7 @@ get_printer_manager_overlay()     // Singleton, lazy-created
 on_activate()                     // Called each time overlay becomes visible
   -> cancel_name_edit()           // Reset any in-progress edit
   -> refresh_printer_info()       // Re-read config, update subjects + image
+  -> observe_chip_inputs()        // Watch what the chips read; schedules ONE refresh_capability_chips()
 ```
 
 `refresh_printer_info()` is called on every activation, ensuring the overlay always shows current data. It:
@@ -397,46 +391,45 @@ image live, and one whose units drop back to disconnected switches it back. Each
 
 ## Capability Chips
 
-Capability chips are pill-shaped UI elements displayed in a flow-wrapped container. Each chip has:
+The CAPABILITIES area lists what HelixScreen detected on this printer, and only that: a
+capability that was not detected has no chip. Chips sit under six `setting_group`s; a
+group whose chips are all hidden collapses, header included, because each group's chip
+row (`pm_chips_<group>`) has no vertical padding and the chips carry their own vertical
+margins, so an empty row measures zero and `setting_group` treats the group as empty.
 
-- An icon (Material Design icon via the `icon` component)
-- A label (via `text_small`)
-- Subject-driven visibility (`bind_flag_if_eq` hides when capability is 0)
-- Optional click handler for navigation
+Three pieces make a chip:
 
-### Chip Categories
+| Piece | Where | Owns |
+|---|---|---|
+| Visibility | `printer_manager_overlay.xml`, a binding nested in each `capability_chip` | Which subject (or inline `cond=`) hides it. Always the subject the app's own gating uses |
+| Text | `capability_chip_text(CapChip, CapabilityChipFacts)` | The label, then ` · ` and a detail ("Probe · Beacon", "Tool Changer · 4 Tools", "QGL · set manually") |
+| Tap | `CapChipSpec::open` in `printer_manager_chips.cpp` | The screen it opens; `nullptr` shows `info_title` / `info_message` in `modal_alert` |
 
-| Chip | Subject | Clickable | Navigates To |
-|---|---|---|---|
-| Probe | `printer_has_probe` | No | -- |
-| Bed Mesh | `printer_has_bed_mesh` | Yes | BedMeshPanel |
-| Heated Bed | `printer_has_heater_bed` | No | -- |
-| LEDs | `printer_has_led` | Yes | LED Settings Overlay |
-| ADXL | `printer_has_accelerometer` | Yes | InputShaperPanel |
-| QGL | `printer_has_qgl` | No | -- |
-| Z-Tilt | `printer_has_z_tilt` | No | -- |
-| Retraction | `printer_has_firmware_retraction` | Yes | RetractionSettingsOverlay |
-| Spoolman | `printer_has_spoolman` | Yes | SpoolmanPanel |
-| Timelapse | `printer_has_timelapse` | Yes | TimelapseSettingsOverlay |
-| Screws Tilt | `printer_has_screws_tilt` | Yes | ScrewsTiltPanel |
-| Webcam | `printer_has_webcam` | No | -- |
-| AMS | `ams_type` | Yes | AMS Panel |
-| Fans | `printer_has_extra_fans` | Yes | FanControlOverlay |
-| Chamber | `printer_has_chamber_sensor` | No | -- |
-| Speaker | `printer_has_speaker` | Yes | SoundSettingsOverlay |
-| Nozzle Clean | `printer_has_nozzle_clean` | No | -- |
+`gather_capability_chip_facts()` reads the facts on the main thread: the API's
+`PrinterDiscovery` (kinematics, build volume, MCUs, fans, LEDs, LED effects), the
+primary probe's type, the count subjects, `ToolState`, every `AmsState` backend's
+`get_system_info()`, and `CapabilityOverrides::is_forced_on()` for the overridable
+capabilities (bed mesh, QGL, Z-tilt, nozzle clean, heat soak, speaker). Vendor names in
+chip text come only from those owning modules (`type_name`, `probe_type_to_display_string`).
 
-### Chip Navigation Pattern
+The tool chip reads "Tool Changer · N Tools" when discovery found a klipper-toolchanger
+or any AMS backend is a tool changer, and "N Extruders" for several heads without one
+(IDEX, multi-extruder); N is `ToolState::physical_heads()`. The Multi-Filament chip names
+the other backends and hides when a tool changer is the only one. The Fans chip counts
+controllable fans besides part cooling (`PrinterFanState::count_extra_controllable_fans`).
 
-Clickable chips open the panel through its global accessor's `OverlayBase::show()`, which creates it on first use:
+While the overlay is open, `observe_chip_inputs()` re-texts the chips when discovery
+reruns (`printer_hardware_generation`, bumped by `set_hardware()` and new kinematics),
+the build volume arrives, an AMS backend or slot count changes, the tool list changes,
+or a count a chip shows changes. Requests made before the refresh runs join it, so an
+activation computes the chips once.
 
-```cpp
-void on_chip_bed_mesh_clicked(lv_event_t*) {
-    get_global_bed_mesh_panel().show(lv_display_get_screen_active(nullptr));
-}
-```
+A spec with `beta = true` (Belt Tension, Tool Offsets) opens its screen only while beta
+features are on, as the Advanced and Controls entries do; otherwise it shows its popup.
 
-The panel object owns its root, so the chip keeps no pointer to it.
+On ESP32, screens absent from the image (bed mesh, input shaper, screws tilt, belt
+tension, PA and tool offset calibration, Spoolman, timelapse) have `open = nullptr`
+there, so their chips show the info popup instead.
 
 ---
 
@@ -444,46 +437,26 @@ The panel object owns its root, so the chip keeps no pointer to it.
 
 ### Adding a New Capability Chip
 
-1. **Add the subject** in `PrinterState` (if not already present):
-   ```cpp
-   // In printer_state.h / printer_state.cpp
-   lv_subject_t printer_has_my_feature_;
-   ```
-
-2. **Add the chip XML** in `printer_manager_overlay.xml` inside the capabilities section:
+1. **The capability subject.** Use the one the app already gates on. If none exists,
+   add a `Capability` and a `CAPABILITY_DEFS` row in
+   `src/printer/printer_capabilities_state.cpp` and set it in `set_hardware()`.
+2. **The text.** Add a `CapChip` enumerator (display order) and its case in
+   `capability_chip_text()`, with a `[capability_chip_text]` test.
+3. **The spec.** Add the `CapChipSpec` row in `printer_manager_chips.cpp` (same order):
+   widget name `pm_chip_<snake>`, text subject `pm_chip_text_<snake>`, info title and
+   message (`TR_NOOP`, what it is, what HelixScreen does with it, where), and an opener or
+   `nullptr`, and `beta`. The opener calls the owning module's `open_*()` so every
+   entry point opens it the same way. Screens not in the ESP32 image go through
+   `PM_DESKTOP_SCREEN()`.
+4. **The XML.** Add the chip to its group in `printer_manager_overlay.xml`:
    ```xml
-   <lv_obj name="pm_chip_my_feature"
-           width="content" height="content" style_bg_color="#card_bg" style_bg_opa="255"
-           style_radius="16" style_pad_top="#space_xs" style_pad_bottom="#space_xs"
-           style_pad_left="#space_sm" style_pad_right="#space_sm"
-           flex_flow="row" style_pad_gap="#space_xs" style_flex_cross_place="center"
-           scrollable="false" style_border_width="0" clickable="true">
+   <capability_chip name="pm_chip_my_feature" icon="my_icon" text="pm_chip_text_my_feature">
      <bind_flag_if_eq subject="printer_has_my_feature" flag="hidden" ref_value="0"/>
-     <event_cb trigger="clicked" callback="pm_chip_my_feature_clicked"/>
-     <icon src="my_icon" size="xs" variant="success"/>
-     <text_small text="My Feature"/>
-   </lv_obj>
+   </capability_chip>
    ```
+5. `make translation-sync && make translations`, then translate the new keys.
 
-3. **Add the callback** in `ui_printer_manager_overlay.h`:
-   ```cpp
-   static void on_chip_my_feature_clicked(lv_event_t* e);
-   lv_obj_t* my_feature_panel_ = nullptr;
-   ```
-
-4. **Register the callback** in `register_callbacks()`:
-   ```cpp
-   lv_xml_register_event_cb(nullptr, "pm_chip_my_feature_clicked",
-                            on_chip_my_feature_clicked);
-   ```
-
-5. **Implement navigation** in the `.cpp`:
-   ```cpp
-   void PrinterManagerOverlay::on_chip_my_feature_clicked(lv_event_t* e) {
-       (void)e;
-       get_global_my_feature_panel().show(lv_display_get_screen_active(nullptr));
-   }
-   ```
+The `[printer_manager]` tests fail if a chip has no spec or a spec no chip.
 
 ### Adding a Shipped Printer Image
 

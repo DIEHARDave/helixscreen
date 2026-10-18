@@ -754,3 +754,13 @@ void ScrewsTiltPanel::handle_share_clicked() {
 ScrewsTiltPanel& get_global_screws_tilt_panel() {
     return helix::lazy_global<ScrewsTiltPanel>("ScrewsTiltPanel");
 }
+
+namespace helix::ui {
+
+void open_screws_tilt_panel(lv_obj_t* parent_screen) {
+    auto& panel = get_global_screws_tilt_panel();
+    panel.set_client(get_moonraker_client(), get_moonraker_api());
+    panel.show(parent_screen);
+}
+
+} // namespace helix::ui

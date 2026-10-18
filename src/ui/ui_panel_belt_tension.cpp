@@ -61,14 +61,22 @@ BeltTensionPanel::~BeltTensionPanel() {
     chart_host_results_ = nullptr;
 }
 
+namespace helix::ui {
+
+void open_belt_tension_panel(lv_obj_t* parent_screen) {
+    auto& panel = get_global_belt_tension_panel();
+    panel.set_api(get_moonraker_client(), get_moonraker_api());
+    panel.show(parent_screen);
+}
+
+} // namespace helix::ui
+
 void init_belt_tension_row_handler() {
     register_xml_callbacks({
         {"on_belt_tension_row_clicked",
          [](lv_event_t*) {
              spdlog::debug("[BeltTension] Belt Tension row clicked");
-             auto& panel = get_global_belt_tension_panel();
-             panel.set_api(get_moonraker_client(), get_moonraker_api());
-             panel.show(lv_display_get_screen_active(nullptr));
+             helix::ui::open_belt_tension_panel(lv_display_get_screen_active(nullptr));
          }},
     });
     spdlog::trace("[BeltTension] Row click callback registered");

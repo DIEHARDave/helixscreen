@@ -387,6 +387,11 @@ class PrinterDiscovery {
         is_kalico_ = kalico;
     }
 
+    /// The firmware's own name, as people know it: "Kalico" for that fork, else "Klipper".
+    [[nodiscard]] const char* firmware_name() const {
+        return is_kalico_ ? "Kalico" : "Klipper";
+    }
+
     [[nodiscard]] bool supports_leveling() const {
         return has_qgl() || has_z_tilt() || has_bed_mesh();
     }

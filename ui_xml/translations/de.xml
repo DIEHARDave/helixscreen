@@ -128,8 +128,15 @@
   <translation tag="= Loosen" de="= Lösen"/>
   <translation tag="= Tighten" de="= Anziehen"/>
   <translation tag="A" de="A"/>
+  <translation tag="A buzzer or speaker for alerts and sounds. Set what plays in the sound settings." de="Ein Summer oder Lautsprecher für Warnungen und Töne. Lege in den Soundeinstellungen fest, was abgespielt wird."/>
+  <translation tag="A camera Moonraker streams. Add the camera widget to the home screen to watch it, and see it during a print." de="Eine Kamera, die Moonraker streamt. Füge das Kamera-Widget zum Startbildschirm hinzu, um sie anzusehen, auch während eines Drucks."/>
+  <translation tag="A fan that pulls the enclosure air through a filter. Control it on the chamber temperature screen." de="Ein Lüfter, der die Luft im Gehäuse durch einen Filter zieht. Steuere ihn im Kammertemperatur-Bildschirm."/>
   <translation tag="A few minutes, nearly all of it heating. You judge nothing by eye." de="Ein paar Minuten, fast alles Aufheizen. Du beurteilst nichts mit dem Auge."/>
+  <translation tag="A heat soak macro is set up on the printer. HelixScreen detects it but does not run it." de="Auf dem Drucker ist ein Heat-Soak-Makro eingerichtet. HelixScreen erkennt es, führt es aber nicht aus."/>
+  <translation tag="A heater that warms the air inside the enclosure. Set its temperature on the chamber temperature screen." de="Eine Heizung, die die Luft im Gehäuse wärmt. Stelle die Temperatur im Kammertemperatur-Bildschirm ein."/>
+  <translation tag="A height map of the bed that Klipper uses to make up for an uneven surface. View and calibrate it on the Bed Mesh screen." de="Eine Höhenkarte des Heizbetts, mit der Klipper Unebenheiten ausgleicht. Ansehen und kalibrieren im Bettnetz-Bildschirm."/>
   <translation tag="A macro printed stray template text &apos;{}&apos;: check its Jinja tags" de="Ein Makro hat überzähligen Vorlagentext &apos;{}&apos; ausgegeben: Jinja-Tags prüfen"/>
+  <translation tag="A macro that wipes the nozzle. HelixScreen can run it before a print from the pre-print options." de="Ein Makro, das die Düse abwischt. HelixScreen kann es vor einem Druck über die Vordruck-Optionen ausführen."/>
   <translation tag="A motor IO pin couldn&apos;t be restored. Power-cycle the printer to recover" de="Ein Motor-IO-Pin konnte nicht wiederhergestellt werden. Drucker aus- und einschalten, um fortzufahren"/>
   <translation tag="A motor&apos;s parameters couldn&apos;t be written. Power-cycle the printer to retry" de="Die Parameter eines Motors konnten nicht geschrieben werden. Drucker aus- und einschalten und erneut versuchen"/>
   <translation tag="A newer version of the helper macros is available" de="Eine neuere Version der Hilfsmakros ist verfügbar"/>
@@ -139,13 +146,17 @@
   <translation tag="A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes." de="Auf diesem Gate läuft ein Druck. HelixScreen hat seine eigene Kopie gelöscht; leere ihn nach Druckende erneut."/>
   <translation tag="A print is running. Apply the result after it ends." de="Ein Druck läuft. Übernimm das Ergebnis, wenn er fertig ist."/>
   <translation tag="A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop." de="Ein Druck wurde gestartet, während Spulen als auf dem Heizbett liegend markiert sind. Falls sie noch dort liegen, stoppe den Drucker sofort mit dem Notaus."/>
+  <translation tag="A sensor that measures the distance to the bed. HelixScreen uses it for Z offset calibration and probe tests on the Probe screen." de="Ein Sensor, der den Abstand zum Heizbett misst. HelixScreen nutzt ihn für die Z-Offset-Kalibrierung und Sondentests im Sonden-Bildschirm."/>
+  <translation tag="A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen." de="Ein Sensor, der die Lufttemperatur im Gehäuse misst. Beobachte sie im Kammertemperatur-Bildschirm."/>
   <translation tag="A spool may be tangled or the drive gear is jammed" de="Eine Spule ist möglicherweise verheddert oder das Antriebsrad blockiert"/>
+  <translation tag="A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen." de="Ein System, das mehrere Filamente zum Werkzeugkopf führt, angezeigt mit der Slot-Anzahl. Verwalte die Slots im Filamentsystem-Bildschirm."/>
   <translation tag="A · 1,-1" de="A · 1,-1"/>
   <translation tag="ABS" de="ABS"/>
   <translation tag="ACCELEROMETERS" de="BESCHLEUNIGUNGSSENSOREN"/>
   <translation tag="ACCEPT failed: {}" de="ACCEPT fehlgeschlagen: {}"/>
   <translation tag="ACE Moonraker bridge not found. Install ace_status.py for full support." de="ACE Moonraker-Bridge nicht gefunden. Installieren Sie ace_status.py für volle Unterstützung."/>
   <translation tag="ACTIONS" de="AKTIONEN"/>
+  <translation tag="ADD-ONS" de="ZUSATZ"/>
   <translation tag="ADXL" de="ADXL"/>
   <translation tag="AFC" de="AFC"/>
   <translation tag="AFC Update Available" de="AFC-Update verfügbar"/>
@@ -253,6 +264,7 @@
   <translation tag="Analyzing data..." de="Analysiere Daten..."/>
   <translation tag="Analyzing data... {}s" de="Analysiere Daten... {}s"/>
   <translation tag="Android logcat" de="Android-Logcat"/>
+  <translation tag="Animated light effects configured on the printer. Turn them on and off from the LED controls." de="Am Drucker eingerichtete animierte Lichteffekte. Schalte sie in der LED-Steuerung ein und aus."/>
   <translation tag="Animations" de="Animationen"/>
   <translation tag="Anonymous data to help improve HelixScreen" de="Anonyme Daten zur Verbesserung von HelixScreen"/>
   <translation tag="Anonymous stats — no personal data, ever." de="Anonyme Statistiken — niemals persönliche Daten."/>
@@ -340,6 +352,7 @@
   <translation tag="Bed" de="Heizbett"/>
   <translation tag="Bed (°C)" de="Bett (°C)"/>
   <translation tag="Bed Clear Check" de="Bett-frei-Prüfung"/>
+  <translation tag="Bed Drying" de="Bett-Trocknung"/>
   <translation tag="Bed Heater" de="Bettheizung"/>
   <translation tag="Bed Level" de="Bettnivellierung"/>
   <translation tag="Bed Leveling" de="Bettnivellierung"/>
@@ -414,6 +427,7 @@
   <translation tag="Brush nozzle" de="Düse abbürsten"/>
   <translation tag="Buffer Status" de="Pufferstatus"/>
   <translation tag="Buffer tube problem" de="Problem mit dem Pufferschlauch"/>
+  <translation tag="Build Volume" de="Bauraum"/>
   <translation tag="Build Volume: " de="Bauraum: "/>
   <translation tag="Building preview: %d%%" de="Vorschau wird erstellt: %d%%"/>
   <translation tag="Bundle Uploaded" de="Paket hochgeladen"/>
@@ -542,6 +556,7 @@
   <translation tag="Chamber" de="Kammer"/>
   <translation tag="Chamber (°C)" de="Kammer (°C)"/>
   <translation tag="Chamber Cooling Fan" de="Kammer-Kühllüfter"/>
+  <translation tag="Chamber Dryer" de="Kammertrockner"/>
   <translation tag="Chamber Fan" de="Kammerlüfter"/>
   <translation tag="Chamber Heater" de="Kammerheizung"/>
   <translation tag="Chamber Heater Fan" de="Kammer-Heizlüfter"/>
@@ -665,6 +680,7 @@
   <translation tag="Compact" de="Kompakt"/>
   <translation tag="Compare belt paths with a resonance sweep" de="Riemenpfade mit einem Resonanz-Sweep vergleichen"/>
   <translation tag="Compare your belt paths" de="Riemenpfade vergleichen"/>
+  <translation tag="Compares the two belt paths of a CoreXY printer with the accelerometer, so you can even out their tension. Run it on the Belt Tension screen." de="Vergleicht die beiden Riemenwege eines CoreXY-Druckers mit dem Beschleunigungssensor, damit du ihre Spannung angleichen kannst. Starte es im Riemenspannung-Bildschirm."/>
   <translation tag="Complete" de="Abgeschlossen"/>
   <translation tag="Complete!" de="Abgeschlossen!"/>
   <translation tag="Completed" de="Abgeschlossen"/>
@@ -975,6 +991,7 @@
   <translation tag="E-Stop Confirmation" de="Notaus-Bestätigung"/>
   <translation tag="EDDY CURRENT" de="EDDY CURRENT"/>
   <translation tag="EEPROM error on CFS unit" de="EEPROM-Fehler an der CFS-Einheit"/>
+  <translation tag="ELECTRONICS &amp; ACCESSORIES" de="ELEKTRONIK &amp; ZUBEHÖR"/>
   <translation tag="EMERGENCY STOP" de="NOTAUS"/>
   <translation tag="EMPTY" de="LEER"/>
   <translation tag="ETA {}" de="Ende {}"/>
@@ -1095,6 +1112,8 @@
   <translation tag="Excellent Accuracy" de="Ausgezeichnete Genauigkeit"/>
   <translation tag="Exception: {}" de="Ausnahme: {}"/>
   <translation tag="Exclude" de="Ausschließen"/>
+  <translation tag="Exclude Object" de="Objekt ausschließen"/>
+  <translation tag="Exclude Object lets you skip a failed part mid-print from the print status screen." de="Mit Objekt ausschließen überspringst du ein fehlgeschlagenes Teil mitten im Druck über den Druckstatus-Bildschirm."/>
   <translation tag="Exclude Object?" de="Objekt ausschließen?"/>
   <translation tag="Exclude Objects" de="Objekte ausschließen"/>
   <translation tag="Excluded" de="Ausgeschlossen"/>
@@ -1134,6 +1153,7 @@
   <translation tag="Extruding prime line..." de="Prime-Linie extrudieren..."/>
   <translation tag="FAILED" de="FEHLGESCHLAGEN"/>
   <translation tag="FILAMENT" de="FILAMENT"/>
+  <translation tag="FILAMENT &amp; TOOLHEAD" de="FILAMENT &amp; WERKZEUGKOPF"/>
   <translation tag="FILAMENTS" de="FILAMENTE"/>
   <translation tag="FILTERS" de="FILTER"/>
   <translation tag="Factory Reset" de="Werkseinstellungen"/>
@@ -1249,11 +1269,13 @@
   <translation tag="Fan" de="Lüfter"/>
   <translation tag="Fan Calibration" de="Lüfter-Kalibrierung"/>
   <translation tag="Fan Speeds" de="Lüftergeschwindigkeiten"/>
+  <translation tag="Fan Tach" de="Lüfterdrehzahl"/>
   <translation tag="Fan Transfer" de="Lüfterwärmeübertragung"/>
   <translation tag="Fan available but not assigned to any role" de="Lüfter verfügbar, aber keiner Rolle zugewiesen"/>
   <translation tag="Fan control failed: {}" de="Lüftersteuerung fehlgeschlagen: {}"/>
   <translation tag="FanSelect" de="Lüfter auswählen"/>
   <translation tag="Fans" de="Lüfter"/>
+  <translation tag="Fans besides the part cooling fan. Control them on the Fans screen." de="Lüfter außer dem Bauteillüfter. Steuere sie im Lüfter-Bildschirm."/>
   <translation tag="Farther" de="Weiter"/>
   <translation tag="Favorites" de="Favoriten"/>
   <translation tag="Feature not available" de="Funktion nicht verfügbar"/>
@@ -1283,6 +1305,7 @@
   <translation tag="Filament Mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer" de="Filament-Zuordnung wird von diesem Drucker nicht unterstützt, daher verwendet der Druck die am Drucker zugewiesenen Werkzeuge"/>
   <translation tag="Filament Runout" de="Filament aufgebraucht"/>
   <translation tag="Filament Sensor" de="Filamentsensor"/>
+  <translation tag="Filament Sensors" de="Filamentsensoren"/>
   <translation tag="Filament System Error" de="Filamentsystemfehler"/>
   <translation tag="Filament Used" de="Filament verwendet"/>
   <translation tag="Filament already exists" de="Filament bereits vorhanden"/>
@@ -1339,6 +1362,7 @@
   <translation tag="File not found on printer." de="Datei auf dem Drucker nicht gefunden."/>
   <translation tag="File not found: {}" de="Datei nicht gefunden: {}"/>
   <translation tag="Filename" de="Dateiname"/>
+  <translation tag="Filter Fan" de="Filterlüfter"/>
   <translation tag="Fine" de="Fein"/>
   <translation tag="Fine Inner" de="Fein Innen"/>
   <translation tag="Fine Outer" de="Fein Außen"/>
@@ -1448,6 +1472,7 @@
   <translation tag="Heat Soaking..." de="Aufwärmen..."/>
   <translation tag="Heat bed before calibrating for accurate offset with thermal expansion." de="Bett vor der Kalibrierung heizen für genauen Offset mit Wärmeausdehnung."/>
   <translation tag="Heat nozzle" de="Düse aufheizen"/>
+  <translation tag="Heat soak lets the enclosure warm up before a print. It is listed because the printer has a heat soak macro or it was turned on in settings; HelixScreen does not run it." de="Heat Soak lässt den Bauraum vor einem Druck aufwärmen. Er wird angezeigt, weil der Drucker ein Heat-Soak-Makro hat oder er in den Einstellungen eingeschaltet wurde; HelixScreen führt ihn nicht aus."/>
   <translation tag="Heat the bed to {}°C" de="Bett auf {}°C heizen"/>
   <translation tag="Heat the chamber too" de="Kammer ebenfalls heizen"/>
   <translation tag="Heat the extruder to at least {}°C before loading filament" de="Erhitzen Sie den Extruder vor dem Laden von Filament auf mindestens {}°C"/>
@@ -1486,12 +1511,17 @@
   <translation tag="Heating..." de="Heizt..."/>
   <translation tag="Heating: %d / %d°C" de="Aufheizen: %d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" de="Höhenkarte und Ebenheit des aktiven Bettnetzes"/>
+  <translation tag="HelixPrint Plugin" de="HelixPrint-Plugin"/>
   <translation tag="HelixScreen" de="HelixScreen"/>
   <translation tag="HelixScreen Crashed" de="HelixScreen abgestürzt"/>
+  <translation tag="HelixScreen Macros" de="HelixScreen-Makros"/>
   <translation tag="HelixScreen is detecting your display orientation" de="HelixScreen erkennt Ihre Display-Ausrichtung"/>
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." de="HelixScreen wird sich mit Ihrem Filamentwechsler für Multi-Spulen/Farb-Druckoperationen integrieren."/>
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." de="HelixScreen schreibt dies in die printer.cfg und startet Klipper neu. Der Drucker wird kurz getrennt."/>
   <translation tag="HelixScreen {} is available — tap Update" de="HelixScreen {} ist verfügbar — auf Aktualisieren tippen"/>
+  <translation tag="HelixScreen&apos;s Moonraker plugin is installed, which it uses to run pre-print options. Manage it on the Advanced screen." de="Das Moonraker-Plugin von HelixScreen ist installiert; damit laufen die Druckvorbereitungsoptionen. Verwalten Sie es im Bildschirm Erweitert."/>
+  <translation tag="HelixScreen&apos;s helper macros are installed in the printer&apos;s config. Install updates on the Advanced screen." de="Die Hilfsmakros von HelixScreen sind in der Druckerkonfiguration installiert. Installieren Sie Updates im Bildschirm Erweitert."/>
+  <translation tag="HelixScreen&apos;s helper macros are installed in the printer&apos;s config. Update or remove them on the Advanced screen." de="Die Hilfsmakros von HelixScreen sind in der Druckerkonfiguration installiert. Aktualisieren oder entfernen Sie sie im Bildschirm Erweitert."/>
   <translation tag="Help &amp; About" de="Hilfe &amp; Über"/>
   <translation tag="Help Improve HelixScreen" de="HelixScreen verbessern helfen"/>
   <translation tag="Help improve HelixScreen?" de="HelixScreen verbessern helfen?"/>
@@ -1546,6 +1576,7 @@
   <translation tag="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)" de="Wie lange gedrückt werden muss, damit es als langes Drücken zählt, in ms (erhöhen, wenn der Bearbeitungsmodus oder andere Aktionen versehentlich auslösen)"/>
   <translation tag="How many labels to print" de="Wie viele Etiketten drucken"/>
   <translation tag="How the Jog tab arranges its buttons" de="Wie der Verfahren-Tab seine Tasten anordnet"/>
+  <translation tag="How the printer&apos;s axes are driven, as its Klipper config declares it. HelixScreen uses it to decide how homing works and which belt and motion tools apply." de="Wie die Achsen des Druckers angetrieben werden, so wie die Klipper-Konfiguration es angibt. HelixScreen entscheidet damit, wie das Homing funktioniert und welche Riemen- und Bewegungswerkzeuge passen."/>
   <translation tag="How the toolhead icon appears" de="Darstellung des Toolhead-Symbols"/>
   <translation tag="Hub" de="Hub"/>
   <translation tag="Hub &amp; Cutter" de="Hub &amp; Schneider"/>
@@ -1664,6 +1695,7 @@
   <translation tag="K so far" de="Bisheriges K"/>
   <translation tag="KEYBOARD LAYOUT" de="TASTATURLAYOUT"/>
   <translation tag="KLICKY CONTROLS" de="KLICKY-STEUERUNG"/>
+  <translation tag="Kalico" de="Kalico"/>
   <translation tag="Keep Navigation Bar" de="Navigationsleiste behalten"/>
   <translation tag="Keep Printing" de="Weiter drucken"/>
   <translation tag="Keep Spool Info on Eject" de="Spuleninfo beim Auswerfen behalten"/>
@@ -1676,11 +1708,13 @@
   <translation tag="Keep waiting" de="Weiter warten"/>
   <translation tag="Kick away" de="Wegschieben"/>
   <translation tag="Kinematics" de="Kinematik"/>
+  <translation tag="Klippain Shake&amp;Tune macros are installed on the printer. HelixScreen detects them but does not use them; run them from Mainsail or Fluidd." de="Klippain-Shake&amp;Tune-Makros sind auf dem Drucker installiert. HelixScreen erkennt sie, nutzt sie aber nicht; starte sie über Mainsail oder Fluidd."/>
   <translation tag="Klipper" de="Klipper"/>
   <translation tag="Klipper Error" de="Klipper-Fehler"/>
   <translation tag="Klipper failed to start with the skip macros, so they were removed" de="Klipper startete nicht mit den Überspring-Makros, daher wurden sie entfernt"/>
   <translation tag="Klipper failed to start. Remove the helix_skips.cfg include from printer.cfg." de="Klipper konnte nicht starten. Entferne den Include von helix_skips.cfg aus printer.cfg."/>
   <translation tag="Klipper firmware has disconnected from the host. Try restarting Klipper or performing a firmware restart." de="Klipper-Firmware hat die Verbindung zum Host getrennt. Versuchen Sie, Klipper neu zu starten oder einen Firmware-Neustart durchzuführen."/>
+  <translation tag="Klipper handles retraction itself (G10/G11). Adjust the lengths and speeds in the retraction settings." de="Klipper übernimmt die Retraktion selbst (G10/G11). Passe Längen und Geschwindigkeiten in den Retraktionseinstellungen an."/>
   <translation tag="Klipper has disconnected from Moonraker. Check for errors in your printer interface." de="Klipper hat die Verbindung zu Moonraker getrennt. Prüfe die Druckeroberfläche auf Fehler."/>
   <translation tag="Klipper has entered an error state. This is typically caused by an MCU connection failure or configuration error. Try a firmware restart." de="Klipper ist in einen Fehlerzustand eingetreten. Dies wird typischerweise durch einen MCU-Verbindungsfehler oder einen Konfigurationsfehler verursacht. Versuchen Sie einen Firmware-Neustart."/>
   <translation tag="Klipper has entered shutdown state." de="Klipper ist in den Shutdown-Zustand gewechselt."/>
@@ -1696,6 +1730,7 @@
   <translation tag="Klippy Errors" de="Klippy-Fehler"/>
   <translation tag="Klippy Shutdowns" de="Klippy-Abschaltungen"/>
   <translation tag="LED Controls" de="LED-Steuerung"/>
+  <translation tag="LED Effects" de="LED-Effekte"/>
   <translation tag="LED Light" de="LED-Licht"/>
   <translation tag="LED Mode" de="LED-Modus"/>
   <translation tag="LED Settings" de="LED-Einstellungen"/>
@@ -1730,6 +1765,7 @@
   <translation tag="Layer" de="Schicht"/>
   <translation tag="Layer Height" de="Schichthöhe"/>
   <translation tag="Layer Macro captures one frame per layer change. Best for most prints." de="Layer-Makro erfasst ein Bild pro Schichtwechsel. Am besten für die meisten Drucke."/>
+  <translation tag="Layer Pause" de="Schichtpause"/>
   <translation tag="Layer mode captures one frame per layer change. Best for most prints." de="Schichtmodus nimmt ein Bild pro Schichtwechsel auf. Am besten für die meisten Drucke."/>
   <translation tag="Layer {} of {} · {:.2f} mm" de="Schicht {} von {} · {:.2f} mm"/>
   <translation tag="Layer {} of {}." de="Schicht {} von {}."/>
@@ -1750,6 +1786,7 @@
   <translation tag="Light Mode" de="Hellmodus"/>
   <translation tag="Light will switch when the current operation finishes" de="Das Licht schaltet sich, sobald der aktuelle Vorgang abgeschlossen ist."/>
   <translation tag="Lights that follow the printer&apos;s state" de="Leuchten, die sich nach dem Druckerstatus richten"/>
+  <translation tag="Lights the printer can control. Choose which ones HelixScreen uses in the LED settings." de="Lichter, die der Drucker steuern kann. Wähle in den LED-Einstellungen, welche HelixScreen verwendet."/>
   <translation tag="Line the nozzle up with the purge chute so purged filament drops straight in." de="Richten Sie die Düse über der Entlüftungsrinne aus, damit das entlüftete Filament direkt hineinfällt."/>
   <translation tag="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer." de="Zeile {} ruft {} auf, das dieser Drucker als Notaus behandelt. Slicen Sie die Datei mit einem Profil für diesen Drucker neu."/>
   <translation tag="Linear rails" de="Linearschienen"/>
@@ -1825,9 +1862,11 @@
   <translation tag="MCU bridge daemon is shut down" de="Der MCU-Bridge-Dienst ist beendet"/>
   <translation tag="MCU, host, and auxiliary temperature monitoring" de="MCU-, Host- und Zusatztemperaturüberwachung"/>
   <translation tag="MCU: " de="MCU: "/>
+  <translation tag="MCUs" de="MCUs"/>
   <translation tag="MDI Icons" de="MDI-Icons"/>
   <translation tag="MISSING CONFIGURED" de="KONFIGURIERT FEHLT"/>
   <translation tag="MMU command failed" de="MMU-Befehl fehlgeschlagen"/>
+  <translation tag="MOTION &amp; LEVELING" de="BEWEGUNG &amp; NIVELLIERUNG"/>
   <translation tag="MPC" de="MPC"/>
   <translation tag="MPC thermal model calibrated for {} at {}°C." de="MPC-Wärmemodell für {} bei {}°C kalibriert."/>
   <translation tag="Machine Limits" de="Maschinenlimits"/>
@@ -1905,6 +1944,8 @@
   <translation tag="Measured filament diameter" de="Gemessener Filamentdurchmesser"/>
   <translation tag="Measured pressure advance" de="Gemessener Pressure Advance"/>
   <translation tag="Measurement incomplete. Try again." de="Messung unvollständig. Bitte erneut versuchen."/>
+  <translation tag="Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen." de="Misst das Heizbett an jeder Stellschraube und zeigt, wie weit sie gedreht werden muss. Starte es im Schraubenneigung-Bildschirm."/>
+  <translation tag="Measures vibration for input shaping. Run resonance tests on the Input Shaper screen." de="Misst Vibrationen für das Input Shaping. Starte Resonanztests im Input-Shaper-Bildschirm."/>
   <translation tag="Measuring" de="Messen"/>
   <translation tag="Measuring Path {}" de="Messe Pfad {}"/>
   <translation tag="Measuring accelerometer noise..." de="Messe Beschleunigungssensor-Rauschen..."/>
@@ -1930,7 +1971,9 @@
   <translation tag="Monitoring" de="Überwachung"/>
   <translation tag="Month" de="Monat"/>
   <translation tag="Moonraker" de="Moonraker"/>
+  <translation tag="Moonraker is connected to Spoolman, which tracks your spools and how much filament is left. Browse them on the Spoolman screen." de="Moonraker ist mit Spoolman verbunden, das deine Spulen und das restliche Filament erfasst. Durchsuche sie im Spoolman-Bildschirm."/>
   <translation tag="Moonraker is not responding at {}. It runs on this printer, so check that the Klipper and Moonraker services started." de="Moonraker antwortet nicht unter {}. Es läuft auf diesem Drucker, prüfe also, ob die Dienste Klipper und Moonraker gestartet sind."/>
+  <translation tag="Moonraker keeps a queue of prints to run one after another. View it in the job queue." de="Moonraker führt eine Warteschlange von Drucken, die nacheinander laufen. Sieh sie in der Auftragswarteschlange an."/>
   <translation tag="Moonraker restarted but Spoolman not connected. Check server." de="Moonraker neu gestartet, aber Spoolman nicht verbunden. Server prüfen."/>
   <translation tag="Moonraker restarting...&#10;Waiting for reconnection..." de="Moonraker wird neu gestartet...&#10;Warte auf Wiederverbindung..."/>
   <translation tag="Moonraker: " de="Moonraker: "/>
@@ -2229,6 +2272,7 @@
   <translation tag="Override auto-detection if your chamber sensor or heater isn&apos;t named &apos;chamber&apos;." de="Auto-Erkennung überschreiben, wenn Kammersensor oder -heizung nicht &apos;chamber&apos; heißt."/>
   <translation tag="P" de="B"/>
   <translation tag="PA" de="PA"/>
+  <translation tag="PA Calibration" de="PA-Kalibrierung"/>
   <translation tag="PATH A · 1,-1" de="PFAD A · 1,-1"/>
   <translation tag="PATH B · 1,1" de="PFAD B · 1,1"/>
   <translation tag="PAUSED" de="PAUSIERT"/>
@@ -2245,6 +2289,7 @@
   <translation tag="PRINTER" de="DRUCKER"/>
   <translation tag="PRINTER VISUALS" de="DRUCKERDARSTELLUNG"/>
   <translation tag="PRINTERS" de="DRUCKER"/>
+  <translation tag="PRINTING" de="DRUCKEN"/>
   <translation tag="PROBE SENSORS" de="TASTSENSOREN"/>
   <translation tag="PTFE tube connection loose" de="PTFE-Schlauchverbindung lose"/>
   <translation tag="Pair" de="Koppeln"/>
@@ -2282,6 +2327,7 @@
   <translation tag="Pause, resume, or stop the print" de="Druck pausieren, fortsetzen, stoppen"/>
   <translation tag="Paused" de="Pausiert"/>
   <translation tag="Paused (attention needed)" de="Pausiert (Aufmerksamkeit erforderlich)"/>
+  <translation tag="Pauses a print at a chosen layer, for a filament swap or an insert. During a print, set the layer from the preview card on the print status screen. This is a beta feature." de="Hält einen Druck bei einer gewählten Schicht an, für einen Filamentwechsel oder ein Einlegeteil. Legen Sie die Schicht während eines Drucks über die Vorschaukarte im Druckstatus fest. Dies ist eine Beta-Funktion."/>
   <translation tag="Pausing at layer {}." de="Pause bei Schicht {}."/>
   <translation tag="Pausing..." de="Pausiert..."/>
   <translation tag="Peak Freq" de="Spitzenfreq."/>
@@ -2337,6 +2383,7 @@
   <translation tag="Post-Sensor Clear" de="Nachlauf nach Sensor"/>
   <translation tag="Power" de="Strom"/>
   <translation tag="Power Devices" de="Stromgeräte"/>
+  <translation tag="Power devices Moonraker can switch. Turn them on and off on the Power screen." de="Stromgeräte, die Moonraker schalten kann. Schalte sie im Strom-Bildschirm ein und aus."/>
   <translation tag="Power off the printer or screen" de="Drucker oder Bildschirm ausschalten"/>
   <translation tag="Power was lost during the print; the printer stopped and saved its progress" de="Während des Drucks fiel der Strom aus; der Drucker hat angehalten und den Fortschritt gespeichert"/>
   <translation tag="Pre-heat the extruder first" de="Zuerst den Extruder vorheizen"/>
@@ -2525,6 +2572,7 @@
   <translation tag="Purge &amp; Wipe" de="Entlüften &amp; Abwischen"/>
   <translation tag="Purge Chute Calibration" de="Entlüftungsrinnen-Kalibrierung"/>
   <translation tag="Purge Length" de="Entlüftungslänge"/>
+  <translation tag="Purge Line" de="Spüllinie"/>
   <translation tag="Purge chute calibration failed: {}" de="Kalibrierung der Entlüftungsrinne fehlgeschlagen: {}"/>
   <translation tag="Purge chute position saved." de="Position der Entlüftungsrinne gespeichert."/>
   <translation tag="Purge failed: {}" de="Purge fehlgeschlagen: {}"/>
@@ -2543,6 +2591,7 @@
   <translation tag="QUICK BUTTONS" de="SCHNELLTASTEN"/>
   <translation tag="Quad Gantry Level" de="Quad Gantry Level"/>
   <translation tag="Quad Gantry Level complete" de="Quad Gantry Level abgeschlossen"/>
+  <translation tag="Quad Gantry Level squares a gantry driven by four Z motors to the bed. HelixScreen offers it on the Controls and Motion screens." de="Quad Gantry Level richtet eine Brücke mit vier Z-Motoren am Heizbett aus. HelixScreen bietet es in den Bildschirmen Steuerung und Bewegung an."/>
   <translation tag="Quad Gantry Level started..." de="Quad Gantry Level gestartet..."/>
   <translation tag="Queue empty" de="Warteschlange leer"/>
   <translation tag="Queue: Paused" de="Warteschlange: Pausiert"/>
@@ -2924,6 +2973,8 @@
   <translation tag="Sensor mismatch — check extruder and CFS sensors" de="Sensoren stimmen nicht überein. Extruder- und CFS-Sensoren prüfen"/>
   <translation tag="Sensor to Nozzle" de="Sensor zur Düse"/>
   <translation tag="Sensors" de="Sensoren"/>
+  <translation tag="Sensors that detect filament running out or jamming. Set what each one does in the sensor settings." de="Sensoren, die erkennen, wenn das Filament ausgeht oder klemmt. Lege in den Sensoreinstellungen fest, was jeder bewirkt."/>
+  <translation tag="Sensors that measure the filament diameter as it feeds. Configure them in the sensor settings." de="Sensoren, die den Filamentdurchmesser beim Einzug messen. Konfiguriere sie in den Sensoreinstellungen."/>
   <translation tag="Separate on/off macros. HelixScreen tracks the state." de="Separate Ein-/Aus-Makros. HelixScreen verfolgt den Status."/>
   <translation tag="Server Setup" de="Server-Einrichtung"/>
   <translation tag="Service hours for the filter, nozzle, and rails" de="Wartungsstunden für Filter, Düse und Schienen"/>
@@ -2954,6 +3005,7 @@
   <translation tag="Setup Timelapse" de="Zeitraffer einrichten"/>
   <translation tag="Several printers match - choose yours" de="Mehrere Drucker passen - Drucker auswählen"/>
   <translation tag="Shadow Intensity" de="Schattenintensität"/>
+  <translation tag="Shake&amp;Tune" de="Shake&amp;Tune"/>
   <translation tag="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together." de="Rüttelt den Werkzeugkopf entlang jeder Diagonale und legt die beiden Antworten übereinander. Gleich gespannte Riemen haben ihre Spitze an derselben Stelle."/>
   <translation tag="Share Usage Data" de="Nutzungsdaten teilen"/>
   <translation tag="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected." de="Teilen Sie anonyme Nutzungsstatistiken, um HelixScreen zu verbessern. Es werden niemals persönliche Daten erfasst."/>
@@ -3173,6 +3225,7 @@
   <translation tag="TD-1 filament color detection" de="TD-1-Filamentfarberkennung"/>
   <translation tag="TEMPERATURE SENSORS" de="TEMPERATURSENSOREN"/>
   <translation tag="THEME COLORS" de="THEMENFARBEN"/>
+  <translation tag="THERMAL &amp; AIR" de="THERMIK &amp; LUFT"/>
   <translation tag="TOGGLE: {}" de="UMSCHALTEN: {}"/>
   <translation tag="TOOLS" de="WERKZEUGE"/>
   <translation tag="TPU" de="TPU"/>
@@ -3246,16 +3299,20 @@
   <translation tag="That tool is already loaded" de="Dieses Werkzeug ist bereits geladen"/>
   <translation tag="The CFS odometer hardware is faulty and needs repair or replacement" de="Die Wegmesshardware des CFS ist defekt und muss repariert oder ersetzt werden"/>
   <translation tag="The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints." de="Das HelixPrint-Plugin ermöglicht schnelle G-Code-Modifikationen direkt auf Ihrem Drucker – wie das Überspringen des Bettnetzes für schnelle Neudrucke."/>
+  <translation tag="The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings." de="Das Moonraker-Zeitraffer-Plugin ist installiert. Lege in den Zeitraffer-Einstellungen fest, wie aufgenommen wird."/>
   <translation tag="The Spoolman spool currently loaded" de="Aktuell geladene Spoolman-Spule"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." de="Der animierte Bildschirmschoner wurde auf diesem Gerät ausgeschaltet, um zu verhindern, dass er Drucke stört. Sie können ihn unter Einstellungen &gt; Anzeige wieder aktivieren."/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." de="Das Heizbett ist abgekühlt. Nimm die Spulen vom Heizbett und bestätige dann."/>
+  <translation tag="The bed heater. Set its temperature and watch its graph on the bed temperature screen." de="Die Heizbettheizung. Stelle die Temperatur ein und beobachte den Verlauf im Heizbett-Temperatur-Bildschirm."/>
   <translation tag="The bed is too small for the test tower, or its size is unknown." de="Das Bett ist zu klein für den Testturm oder seine Größe ist unbekannt."/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." de="Das Heizbett schaltet ab. Die Spulen bleiben als auf dem Heizbett liegend gesperrt, bis du bestätigst, dass sie entnommen sind."/>
   <translation tag="The bed was reported dirty, so this print cannot resume." de="Das Heizbett wurde als verschmutzt gemeldet, daher kann dieser Druck nicht fortgesetzt werden."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" de="Der Puffer ist möglicherweise nicht angeschlossen, klemmt oder ist defekt. Vor dem erneuten Versuch prüfen"/>
   <translation tag="The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer" de="Der Puffer hat 16 Sekunden lang keine Bewegung erkannt. Auf eine Blockade zwischen CFS und Extruder oder einen klemmenden Puffer prüfen"/>
   <translation tag="The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm." de="Die Kamera hat etwas auf dem Heizbett erkannt, daher hat der Drucker vor dem Drucken angehalten. Wenn das Heizbett frei ist, war es ein Fehlalarm."/>
+  <translation tag="The chamber heater can run a filament drying cycle. Start one from the drying dialog." de="Die Kammerheizung kann einen Filament-Trocknungszyklus ausführen. Starte ihn im Trocknungsdialog."/>
   <translation tag="The chamber wait already ended; nothing was stopped." de="Das Warten auf die Kammer ist bereits beendet; es wurde nichts gestoppt."/>
+  <translation tag="The controller boards Klipper runs on. See their load in the system settings." de="Die Steuerplatinen, auf denen Klipper läuft. Ihre Auslastung siehst du in den Systemeinstellungen."/>
   <translation tag="The cutter blade didn&apos;t return — check for filament wrapped around the cutting mechanism" de="Die Schneidklinge ist nicht zurückgefahren. Prüfen, ob Filament um den Schneidmechanismus gewickelt ist"/>
   <translation tag="The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS" de="Der Schneider ist verstellt. Mit CALIBRATE_CUT_POS neu kalibrieren"/>
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" de="Der Extruder kann es nicht gleichmäßig fördern. Spule auf Verheddern oder Knoten prüfen und den PTFE-Schlauch auf starke Biegungen"/>
@@ -3263,6 +3320,7 @@
   <translation tag="The filament may not have fully retracted — try again or manually pull" de="Das Filament wurde möglicherweise nicht vollständig eingezogen. Erneut versuchen oder von Hand ziehen"/>
   <translation tag="The filament system needs attention" de="Das Filamentsystem erfordert Aufmerksamkeit"/>
   <translation tag="The filament system reported an error" de="Das Filamentsystem meldete einen Fehler"/>
+  <translation tag="The heated bed and enclosure can dry spools placed on the bed. Start a cycle from the bed drying dialog." de="Heizbett und Gehäuse können Spulen trocknen, die auf dem Heizbett liegen. Starte einen Zyklus im Heizbett-Trocknungsdialog."/>
   <translation tag="The heater can&apos;t be changed while the printer is waiting." de="Die Heizung kann nicht geändert werden, während der Drucker wartet."/>
   <translation tag="The heater did not accept the printer&apos;s credentials." de="Die Heizung hat die Zugangsdaten des Druckers nicht akzeptiert."/>
   <translation tag="The heater didn&apos;t accept the command." de="Die Heizung hat den Befehl nicht angenommen."/>
@@ -3286,7 +3344,12 @@
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." de="Der Druck ist pausiert. Ein Werkzeugwechsel bewegt jetzt den Werkzeugkopf und tauscht das Filament an der Düse. Setzen Sie den Druck fort, sobald der Wechsel abgeschlossen ist."/>
   <translation tag="The print is waiting for the chamber to reach {}°C, but the heater is not heating." de="Der Druck wartet darauf, dass die Kammer {}°C erreicht, aber die Heizung heizt nicht."/>
   <translation tag="The print is waiting for the chamber, but the heater is not heating." de="Der Druck wartet auf die Kammer, aber die Heizung heizt nicht."/>
+  <translation tag="The printable size in millimeters (X × Y × Z), from the axis limits in the printer&apos;s Klipper config." de="Die druckbare Größe in Millimetern (X × Y × Z), aus den Achsgrenzen der Klipper-Konfiguration des Druckers."/>
   <translation tag="The printer applied this value and keeps it for this tool." de="Der Drucker hat diesen Wert übernommen und behält ihn für dieses Werkzeug."/>
+  <translation tag="The printer can draw a priming line before a print. HelixScreen offers it in the pre-print options." de="Der Drucker kann vor dem Druck eine Vorbereitungslinie ziehen. HelixScreen bietet das in den Vordruck-Optionen an."/>
+  <translation tag="The printer can measure each tool&apos;s offset automatically. Run it on the tool offset calibration screen." de="Der Drucker kann den Versatz jedes Werkzeugs automatisch messen. Starten Sie dies im Bildschirm Werkzeugversatz-Kalibrierung."/>
+  <translation tag="The printer can measure pressure advance on its own. Run it on the PA calibration screen." de="Der Drucker kann Pressure Advance selbst messen. Starte es im PA-Kalibrierung-Bildschirm."/>
+  <translation tag="The printer can pause at a chosen layer, for a filament swap or an insert. Set the layer from the print preview." de="Der Drucker kann bei einer gewählten Schicht pausieren, etwa für einen Filamentwechsel oder ein Einlegeteil. Lege die Schicht in der Druckvorschau fest."/>
   <translation tag="The printer did not change its bed check" de="Der Drucker hat seine Bettprüfung nicht geändert"/>
   <translation tag="The printer did not change its bed check: {}" de="Der Drucker hat seine Bettprüfung nicht geändert: {}"/>
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." de="Der Drucker extrudiert in einer Ecke und wiederholt, bis die Messwerte übereinstimmen. Du beurteilst nichts mit dem Auge."/>
@@ -3304,6 +3367,8 @@
   <translation tag="The printer lost power while printing {}. Resume where it left off?" de="Der Drucker hatte einen Stromausfall während des Drucks von {}. Dort fortsetzen, wo er aufgehört hat?"/>
   <translation tag="The printer lost power while printing {}. The resumed layer may not line up exactly." de="Der Drucker hatte einen Stromausfall während des Drucks von {}. Die fortgesetzte Schicht passt möglicherweise nicht exakt."/>
   <translation tag="The printer rejected the filament configuration. The print was not started." de="Der Drucker hat die Filamentkonfiguration abgelehnt. Der Druck wurde nicht gestartet."/>
+  <translation tag="The printer reports measured fan speeds. HelixScreen shows them on the Fans screen." de="Der Drucker meldet gemessene Lüfterdrehzahlen. HelixScreen zeigt sie im Lüfter-Bildschirm an."/>
+  <translation tag="The printer swaps between several toolheads. Manage the tools on the filament system screen." de="Der Drucker wechselt zwischen mehreren Werkzeugköpfen. Verwalte die Werkzeuge im Filamentsystem-Bildschirm."/>
   <translation tag="The printer&apos;s firmware chooses where to switch on runout" de="Die Drucker-Firmware wählt selbst, wohin bei Filamentende gewechselt wird"/>
   <translation tag="The requested position is outside the printer&apos;s bounds" de="Die angeforderte Position liegt außerhalb des Druckerbereichs"/>
   <translation tag="The right RFID reader in this CFS unit may need service" de="Der rechte RFID-Leser dieser CFS-Einheit muss möglicherweise gewartet werden"/>
@@ -3753,6 +3818,7 @@
   <translation tag="Z-Tilt Adjust complete" de="Z-Tilt Adjust abgeschlossen"/>
   <translation tag="Z-Tilt Adjust started..." de="Z-Tilt Adjust gestartet..."/>
   <translation tag="Z-Tilt failed: {}" de="Z-Tilt fehlgeschlagen: {}"/>
+  <translation tag="Z-Tilt levels the gantry or bed using its separate Z motors. HelixScreen offers it on the Controls and Motion screens." de="Z-Tilt richtet Brücke oder Heizbett mit den einzelnen Z-Motoren aus. HelixScreen bietet es in den Bildschirmen Steuerung und Bewegung an."/>
   <translation tag="Z-Tilt may still be running — response timed out" de="Z-Tilt läuft möglicherweise noch — Zeitüberschreitung"/>
   <translation tag="Z-Tilt timed out" de="Z-Tilt Zeitüberschreitung"/>
   <translation tag="Z-offset calibration timed out" de="Z-Offset-Kalibrierung Zeitüberschreitung"/>
@@ -3838,6 +3904,7 @@
   <translation tag="remaining before clog detection triggers" de="verbleibend bis Verstopfungserkennung auslöst"/>
   <translation tag="rendering" de="wird gerendert"/>
   <translation tag="reset at {} h" de="zurückgesetzt bei {} Std"/>
+  <translation tag="set manually" de="manuell gesetzt"/>
   <translation tag="sleep {} min" de="Ruhezustand nach {} Min."/>
   <translation tag="slots)" de="Slots)"/>
   <translation tag="started" de="gestartet"/>
@@ -3859,9 +3926,12 @@
   <translation tag="you have" de="Sie haben"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" de="{:.0f}-{:.0f} Hz · ca. {} Min."/>
   <translation tag="{} ({})" de="{} ({})"/>
+  <translation tag="{} Extruders" de="{} Extruder"/>
   <translation tag="{} Hardware Issues" de="{} Hardware-Probleme"/>
   <translation tag="{} Issues Detected" de="{} Probleme erkannt"/>
   <translation tag="{} LED strips available" de="{} LED-Streifen verfügbar"/>
+  <translation tag="{} MCUs" de="{} MCUs"/>
+  <translation tag="{} Tools" de="{} Werkzeuge"/>
   <translation tag="{} and {} are both mapped here" de="{} und {} sind beide hier zugewiesen"/>
   <translation tag="{} available" de="{} verfügbar"/>
   <translation tag="{} axes homed" de="{}-Achsen referenziert"/>

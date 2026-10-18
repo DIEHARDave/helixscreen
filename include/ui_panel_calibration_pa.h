@@ -326,4 +326,7 @@ inline PACalibrationPanel& get_global_pa_cal_panel() {
     return lazy_global<PACalibrationPanel>("PACalibrationPanel");
 }
 
+/// Open the PA calibration panel over @p parent_screen, wired to the active API.
+void open_pa_cal_panel(lv_obj_t* parent_screen);
+
 } // namespace helix::ui

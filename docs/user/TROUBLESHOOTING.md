@@ -1967,6 +1967,25 @@ Auto-detection only commits to a model when it is confident enough. Below that b
 
 ---
 
+### A feature is missing for hardware my printer has
+
+**Symptoms:**
+- A screen or button you expect (Bed Mesh, Input Shaper, LED controls, filament sensors, a probe calibration) never appears
+- A feature shows the wrong hardware, such as the wrong probe type
+
+**Check what HelixScreen detected:**
+
+1. Tap the **printer image** on the Home Panel to open the Printer Manager
+2. Scroll to **Capabilities**. It lists everything HelixScreen found, with details such as the probe type, kinematics and number of tools
+
+If the item is missing there, HelixScreen did not detect it, and the screens that depend on it stay hidden. Common causes:
+
+- The Klipper section is missing or commented out in `printer.cfg`, or Klipper failed to load it. Check that Klipper is running without errors in Mainsail or Fluidd
+- The hardware is set up under a section name HelixScreen does not recognize yet. Please [report it](#getting-help) with your config section so it can be added
+- A few capabilities (bed mesh, QGL, Z-tilt, nozzle clean, heat soak, speaker) can be turned on or off by hand with a [capability override](CONFIGURATION.md#capability-overrides). An override set to `disable` hides the feature even when the hardware is present
+
+If the detail is wrong (for example **Probe · BLTouch** on a Beacon), include a screenshot of the Capabilities section in your report.
+
 ### Reset HelixScreen or re-run the setup wizard
 
 **Option 1: Factory Reset from the UI (easiest).** Go to **Settings > System > Factory Reset** and confirm. This wipes all HelixScreen settings, clears the backup copies so the old settings cannot come back, and restarts the Setup Wizard on the next start. It does not touch Klipper, Moonraker, or any files on the printer itself.

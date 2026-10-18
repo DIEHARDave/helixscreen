@@ -136,6 +136,13 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Navigation buttons read by shape, not just colour** - inactive buttons use outline icons
   and the active one is larger and filled, which survives washed-out panels and colour-blind
   eyes. (thanks @just-trey)
+- **Printer Manager lists everything HelixScreen detected** - the Capabilities section grows
+  from 18 chips to over 40, grouped as Motion & Leveling, Thermal & Air, Filament & Toolhead,
+  Printing, Electronics & Accessories and Add-ons. Chips carry details so you can confirm
+  detection at a glance (Probe · Beacon, CoreXY, 350×350×340, Tool Changer · 4 Tools, 2 MCUs),
+  capabilities forced on in settings say "set manually", and every chip is tappable: it opens
+  the screen that uses it, or a short note on what it is. A Kalico printer's software row
+  says Kalico.
 
 **Home screen widgets**
 
@@ -1291,6 +1298,8 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Printer identification**
 
+- **Fans in the Printer Manager** - the Fans capability chip never appeared on any printer.
+  It now shows when the printer has controllable fans besides part cooling, with their count.
 - **Extra heaters counted as tools** - a heater named like `extruder_mixing` could turn a
   three-tool machine into a four-tool AD5X.
 - **Creality CFS machines** (#1498) - plain and CFS K1 variants, and the K2 Plus and Pro, are

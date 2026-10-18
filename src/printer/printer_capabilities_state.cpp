@@ -14,6 +14,7 @@
 
 #include "layer_pause.h"
 #include "pa_calibration.h"
+#include "printer_fan_state.h"
 #include "sound_manager.h"
 #include "state/subject_macros.h"
 #include "tool_offset_calibration.h"
@@ -70,6 +71,11 @@ constexpr CapabilityDef CAPABILITY_DEFS[] = {
     {Capability::HasExtraFans, "printer_has_extra_fans", 0},
     {Capability::PowerDeviceCount, "power_device_count", 0},
     {Capability::SensorCount, "sensor_count", 0},
+    {Capability::HasShakeTune, "printer_has_shaketune", 0},
+    {Capability::HasHeatSoak, "printer_has_heat_soak", 0},
+    {Capability::HasFanFeedback, "printer_has_fan_feedback", 0},
+    {Capability::HasLedEffects, "printer_has_led_effects", 0},
+    {Capability::HardwareGeneration, "printer_hardware_generation", 0},
 };
 static_assert(std::size(CAPABILITY_DEFS) == CAPABILITY_COUNT);
 
@@ -166,6 +172,7 @@ void PrinterCapabilitiesState::set_hardware(const PrinterDiscovery& hardware,
     set_capability(Capability::HasZTilt, overrides.has_z_tilt() ? 1 : 0);
     set_capability(Capability::HasBedMesh, overrides.has_bed_mesh() ? 1 : 0);
     set_capability(Capability::HasNozzleClean, overrides.has_nozzle_clean() ? 1 : 0);
+    set_capability(Capability::HasHeatSoak, overrides.has_heat_soak() ? 1 : 0);
 
     // Hardware capabilities (no user override support yet - set directly from detection)
     spdlog::debug("[PrinterCapabilitiesState] has_probe={} has_led={} has_accel={}",
@@ -174,6 +181,12 @@ void PrinterCapabilitiesState::set_hardware(const PrinterDiscovery& hardware,
     set_capability(Capability::HasHeaterBed, hardware.has_heater_bed() ? 1 : 0);
     set_capability(Capability::HasLed, hardware.has_led() ? 1 : 0);
     set_capability(Capability::HasAccelerometer, hardware.has_accelerometer() ? 1 : 0);
+    set_capability(Capability::HasShakeTune, hardware.has_klippain_shaketune() ? 1 : 0);
+    set_capability(Capability::HasFanFeedback, hardware.has_fan_feedback() ? 1 : 0);
+    set_capability(Capability::HasLedEffects, hardware.has_led_effects() ? 1 : 0);
+
+    set_capability(Capability::HasExtraFans,
+                   PrinterFanState::count_extra_controllable_fans(hardware.fans()) > 0 ? 1 : 0);
 
     // Install M300 (Klipper gcode beeper) backend now that we know whether
     // the printer answers M300 — a beeper output_pin or an M300 macro in the
@@ -249,6 +262,12 @@ void PrinterCapabilitiesState::set_hardware(const PrinterDiscovery& hardware,
                   hardware.has_firmware_retraction(), hardware.has_chamber_sensor());
     spdlog::debug("[PrinterCapabilitiesState] Hardware set (with overrides): {}",
                   overrides.summary());
+    bump_hardware_generation();
+}
+
+void PrinterCapabilitiesState::bump_hardware_generation() {
+    set_capability(Capability::HardwareGeneration,
+                   capability_value(Capability::HardwareGeneration) + 1);
 }
 
 void PrinterCapabilitiesState::set_sound_backend_available(bool available) {

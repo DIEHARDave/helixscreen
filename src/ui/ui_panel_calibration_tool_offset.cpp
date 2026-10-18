@@ -510,12 +510,16 @@ void ToolOffsetCalibrationPanel::on_tools_changed() {
 void init_tool_offset_row_handler() {
     register_xml_callbacks({
         {"on_tool_offset_row_clicked",
-         [](lv_event_t*) { get_global_tool_offset_cal_panel().show(lv_screen_active()); }},
+         [](lv_event_t*) { open_tool_offset_cal_panel(lv_screen_active()); }},
     });
 }
 
 ToolOffsetCalibrationPanel& get_global_tool_offset_cal_panel() {
     return helix::lazy_global<ToolOffsetCalibrationPanel>("ToolOffsetCalibrationPanel");
+}
+
+void open_tool_offset_cal_panel(lv_obj_t* parent_screen) {
+    get_global_tool_offset_cal_panel().show(parent_screen);
 }
 
 } // namespace helix::ui

@@ -57,6 +57,11 @@ enum class Capability : uint8_t {
     HasExtraFans,                ///< controllable fans beyond part cooling
     PowerDeviceCount,            ///< power devices (0 = none)
     SensorCount,                 ///< Moonraker sensors (0 = none)
+    HasShakeTune,                ///< Klippain Shake&Tune macros
+    HasHeatSoak,                 ///< heat soak macro, after the user override
+    HasFanFeedback,              ///< fan tachometer feedback (fan_feedback)
+    HasLedEffects,               ///< [led_effect] sections
+    HardwareGeneration,          ///< bumped whenever discovery or kinematics changes
     Count
 };
 
@@ -277,6 +282,14 @@ class PrinterCapabilitiesState {
     // ========================================================================
     // Subject accessors
     // ========================================================================
+
+    /// Announce that discovered hardware changed (a new discovery, new kinematics).
+    void bump_hardware_generation();
+
+    /// Death signal for every capability subject; pass it to observe<V>().
+    [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
+        return subjects_.get_subjects_lifetime();
+    }
 
     /// The subject for one capability. Valid once init_subjects() has run.
     lv_subject_t* subject(Capability cap) const {
