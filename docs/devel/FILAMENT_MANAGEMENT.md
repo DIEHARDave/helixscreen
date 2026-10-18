@@ -909,10 +909,14 @@ the re-parse cost matters.
 `FilamentCatalog::load_codes("cfs").resolve_code("cfs", mat_id)`
 (`src/printer/ams_backend_cfs.cpp`). On the UI side,
 `FilamentCatalogSelector` (`src/ui/ui_filament_catalog_selector.cpp`) is the
-vendor/type/product browser embedded in the AMS edit overlay
-(`src/ui/ui_ams_edit_overlay.cpp`); `FilamentCatalogPickerModal`
-(`src/ui/ui_filament_catalog_picker.cpp`) is a thin `Modal` over it for other
-entry points. `FilamentProductEditModal`
+vendor/type/product browser; `FilamentCatalogPickerModal`
+(`src/ui/ui_filament_catalog_picker.cpp`) is a thin `Modal` over it, which the
+spool editor opens from "Browse catalog..." (§ "Edit Spool"). The editor's
+dropdowns read the pure family queries `all_families()`,
+`variants_in_family()`, `brands_in_family()` and `products_in_family()`, keyed
+on `filament::display_family()`; a recycled grade (`rPLA`) files under its
+polymer there as the Recycled variant, while `extract_base_material()` keeps it a
+material of its own for compatibility and temperatures. `FilamentProductEditModal`
 (`src/ui/ui_filament_product_edit_modal.cpp`) is the production author of the
 user overlay: its form handler builds the product objects and calls
 `FilamentCatalog::save_user_products()`. `material_settings_manager.cpp`,
@@ -1470,6 +1474,68 @@ chip is written imperatively during the rebuild: storing mappings without rebuil
 the stale lane on screen, which is why `set_mappings()` never skips the rebuild. The chip
 width is set from C++ after creation because a numeric width on a component `<view>` root is
 not honoured by `lv_xml_create`.
+
+### Edit Spool (`ui_ams_edit_overlay`)
+
+The lane context menu's **Edit Spool** opens `AmsEditOverlay`
+(`src/ui/ui_ams_edit_overlay.cpp`) straight into its editor view; **Spoolman**
+opens it on the spool picker instead. The title is the lane in the backend's
+noun ("Gate 3"). The same menu carries **Assigned Tool**, shown only where
+`helix::printer::can_write_mapping_table()` says a mapping write lands
+(`ams_slot_tool_row_visible`); the editor itself never remaps tools.
+
+**Identity is a dropdown cascade**: Material (families, Spoolman recents first,
+else PLA/PETG/ABS/ASA/PA/TPU/PC lead), Variant (the family's catalog variants),
+Brand (Generic once, then the family's makers, recents first) and Product (that
+brand's lines, hidden under Generic). Material and Brand end in "Browse
+catalog...", which opens `FilamentCatalogPickerModal`; a pick there seeds all
+four rows. The callbacks read `lv_dropdown_get_selected()` on the event target
+(the event_cb carries no user_data). The rules live in pure statics
+(`include/ui_ams_edit_overlay.h#AmsEditOverlay`): `selection_from_slot()` keeps a
+value the catalog lacks as its own selected option, so an untouched open+Save
+writes nothing; `apply_family_change()` keeps the brand when it makes the new
+material, else Generic, resets the variant to Basic and drops the product.
+Re-picking the selected option is a no-op.
+
+**Layout.** Two layouts are always built and one is hidden by `bind_flag`: the
+split one (form left, colour column right) at the short landscape class, the
+stacked one elsewhere. They cannot be one `<if>`, because the engine refuses a
+`<repeat>` inside `<if>`. Each colour grid leads with the app's rainbow custom
+swatch (a count change rebuilds a `<repeat>` at the end of its row, so the
+fixed tile goes first); the summary swatch is the primary 44px colour entry.
+Every non-swatch control reaches 44px: Reset to tag, More and the Add link sit
+in one short bar and reach it through `ext_click_area`, as the weight pill does.
+The editor fits without scrolling at 800x480, 480x320, 480x272 and 320x480,
+including the tag-badged worst case; only the opened More section scrolls.
+
+**Summary, temperatures, tags.** The summary line ("eSUN Silk PETG, Blue") and
+the temperature line follow the selection live: a picked product's range, else
+the material database's range once the selection moved, else the slot's stored
+values. A backend's `tag_reading()` drives a "from tag" badge (`tag_badge`
+component) on the summary and on every row whose shown value is the tag's
+(`ams::tag_provenance()` over the form's current values), and Reset to tag
+restores every field the tag states through `ams::reset_to_tag()`.
+
+**Saving.** Save in the header is dirty-gated, a More-field edit included. Back
+with unsaved edits asks Save or Discard; a dismissal keeps the editor open.
+On a Spoolman-linked slot an identity change (material, brand or colour) asks
+**Update in Spoolman** (`SpoolmanSlotSaver::LinkIntent::UpdateLinked`:
+find-or-create a filament and repoint the spool, never editing the shared
+filament record) or **Unlink, keep on this slot** (the logistics fields are
+dropped with the link). An untracked slot reaches Spoolman only through **Add to
+Spoolman + label** (`LinkIntent::CreateAndRebind`), which prints the new spool's
+label when a label printer is set up. The More fields (price, location, lot,
+notes) PATCH the spool the slot names, and only once that spool's record has
+landed: a picker relink or QR scan blanks them until the new record arrives,
+and a late record for a spool the slot no longer names is dropped.
+
+**Lifetime.** `show_for_slot()` resets every per-session field, because a
+picker-entry session reaches the editor without `enter_editor()`. One fetch of
+the linked spool feeds identity and More; a cover (keypad, QR scanner) drops it
+with `lifetime_`, and `on_activate()` re-arms it. Save completions are owed to
+Spoolman and the slot, so they run on `object_lifetime_` and check the session
+they began in; Back, the weight keypad and the scanner stay shut while a save
+is in flight, so its completion never pops something pushed on top.
 
 ### Error State Visualization
 
