@@ -148,6 +148,17 @@ class ActionPromptModal : public Modal {
     void on_hide() override;
 
   private:
+    /// Points the AFC diagram at this prompt's own text, so a prompt that names no
+    /// fault never shows one an earlier modal published, and remembers the value it
+    /// replaced.
+    void publish_fault_path();
+    /// Hands the diagram back to the modal underneath, unless a later modal
+    /// published over this prompt's value.
+    void restore_fault_path();
+    int fault_path_before_ = 0;    ///< afc_fault_segment when this prompt published
+    int fault_path_published_ = 0; ///< the value this prompt published
+    bool fault_path_held_ = false; ///< published and not yet handed back
+
     // Grants white-box access to button widgets / containers for layout tests.
     friend struct ::ActionPromptModalTestAccess;
 
@@ -191,12 +202,14 @@ class ActionPromptModal : public Modal {
         std::vector<GridRow> grid_rows;
         std::vector<lv_obj_t*> swatch_rows; ///< rows holding only swatch tiles
         int32_t swatch_cols = 0;            ///< most swatches in any of them
+        std::vector<lv_obj_t*> wrap_rows;   ///< content-sized rows, capped at their width
     };
 
     /**
      * @brief Size the card, grid cells and swatch tiles, and cap the scroll area
      *
-     * The card widens for swatch tiles, grid cells split their row, swatch tiles
+     * The card widens for swatch tiles, grid cells split their row, a wrap-row label
+     * wider than its row ends in an ellipsis, swatch tiles
      * take the height left under the card's cap, and prompt_scroll is capped at
      * that height so text and buttons scroll while the footer stays on the card.
      */

@@ -155,17 +155,6 @@ std::vector<std::vector<PromptButton>> split_button_rows(const std::vector<Promp
     return rows;
 }
 
-/// Points the AFC diagram at this prompt's own text, so a prompt that names no
-/// fault never shows one an earlier modal published.
-void publish_fault_path(const PromptData& data) {
-    std::string text;
-    for (const auto& line : data.text_lines) {
-        text += line;
-        text += '\n';
-    }
-    afc_fault_path_publish(text);
-}
-
 } // namespace
 
 ButtonRowLayout choose_button_row_layout(const ButtonRowMeasure& m) {
@@ -213,9 +202,10 @@ void ActionPromptModal::set_dismiss_callback(DismissCallback callback) {
 bool ActionPromptModal::show_prompt(lv_obj_t* parent, const PromptData& data) {
     prompt_data_ = data;
     // Before Modal::show(): the diagram binds its subject when the XML is built.
-    publish_fault_path(prompt_data_);
+    publish_fault_path();
 
     if (!Modal::show(parent)) {
+        restore_fault_path();
         return false;
     }
 
@@ -226,8 +216,36 @@ bool ActionPromptModal::show_prompt(lv_obj_t* parent, const PromptData& data) {
 bool ActionPromptModal::show_owned_prompt(lv_obj_t* parent, const PromptData& data) {
     auto modal = std::make_unique<ActionPromptModal>();
     modal->prompt_data_ = data;
-    publish_fault_path(data);
-    return Modal::show_owned(std::move(modal), parent);
+    modal->publish_fault_path();
+    const int published = modal->fault_path_published_;
+    const int before = modal->fault_path_before_;
+    if (!Modal::show_owned(std::move(modal), parent)) {
+        afc_fault_path_restore(published, before);
+        return false;
+    }
+    return true;
+}
+
+void ActionPromptModal::publish_fault_path() {
+    std::string text;
+    for (const auto& line : prompt_data_.text_lines) {
+        text += line;
+        text += '\n';
+    }
+    // A prompt re-shown while open keeps the value it found the first time.
+    if (!fault_path_held_) {
+        fault_path_before_ = afc_fault_path_current();
+        fault_path_held_ = true;
+    }
+    const auto segment = afc_fault_path_publish(text);
+    fault_path_published_ = segment ? static_cast<int>(*segment) : 0;
+}
+
+void ActionPromptModal::restore_fault_path() {
+    if (fault_path_held_) {
+        afc_fault_path_restore(fault_path_published_, fault_path_before_);
+        fault_path_held_ = false;
+    }
 }
 
 // ============================================================================
@@ -241,6 +259,7 @@ void ActionPromptModal::on_show() {
 
 void ActionPromptModal::on_hide() {
     clear_dynamic_content();
+    restore_fault_path();
     spdlog::debug("[ActionPromptModal] on_hide()");
     if (!dismiss_callback_) {
         return;
@@ -352,6 +371,8 @@ void ActionPromptModal::create_buttons() {
         } else if (layout.kind == ButtonRowKind::EqualRow && measure.all_swatches) {
             rows.swatch_rows.push_back(row);
             rows.swatch_cols = std::max(rows.swatch_cols, layout.cols);
+        } else if (layout.kind == ButtonRowKind::Wrap) {
+            rows.wrap_rows.push_back(row);
         }
     }
 
@@ -457,6 +478,26 @@ void ActionPromptModal::fit_rows(const RowFit& rows) {
         const uint32_t n = lv_obj_get_child_count(grid.row);
         for (uint32_t i = 0; i < n; ++i) {
             lv_obj_set_width(lv_obj_get_child(grid.row, static_cast<int32_t>(i)), cell);
+        }
+    }
+    // A content-sized button grows with its label, so one label wider than the row
+    // would widen the button past the card. Such a label keeps one line and ends in
+    // an ellipsis instead.
+    for (lv_obj_t* row : rows.wrap_rows) {
+        const int32_t row_w = lv_obj_get_content_width(row);
+        const uint32_t n = lv_obj_get_child_count(row);
+        for (uint32_t i = 0; i < n; ++i) {
+            lv_obj_t* button = lv_obj_get_child(row, static_cast<int32_t>(i));
+            lv_obj_t* label = lv_obj_get_child_by_type(button, 0, &lv_label_class);
+            const int32_t cap = row_w - lv_obj_get_style_pad_left(button, LV_PART_MAIN) -
+                                lv_obj_get_style_pad_right(button, LV_PART_MAIN);
+            if (label == nullptr || cap <= 0 || lv_obj_get_width(label) <= cap) {
+                continue;
+            }
+            lv_obj_set_size(
+                label, cap,
+                lv_font_get_line_height(lv_obj_get_style_text_font(label, LV_PART_MAIN)));
+            lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_DOTS);
         }
     }
     lv_obj_update_layout(screen);
