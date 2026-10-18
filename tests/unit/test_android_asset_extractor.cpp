@@ -33,6 +33,7 @@ std::string resolve_asset_build_stamp(const std::string& apk_stamp,
 bool asset_extraction_can_skip(const std::string& resolved_stamp, const std::string& disk_stamp);
 bool asset_extraction_succeeded(int dirs_requested, int dirs_extracted, int file_failures);
 bool is_non_shippable_config_file(const std::string& filename);
+bool asset_dir_is_user_layer(const std::string& asset_path);
 } // namespace helix
 
 // ============================================================================
@@ -338,4 +339,62 @@ TEST_CASE("Shipped config seeds still extract", "[android][asset][config]") {
     CHECK_FALSE(is_non_shippable_config_file("printer_database.json"));
     CHECK_FALSE(is_non_shippable_config_file("printing_tips.json"));
     CHECK_FALSE(is_non_shippable_config_file("default_layout.json"));
+}
+
+// ============================================================================
+// User config layer: an update may seed it, never rewrite it
+// ============================================================================
+
+TEST_CASE("config/ and everything under it is the user layer", "[android][asset][config]") {
+    CHECK(asset_dir_is_user_layer("config"));
+    CHECK(asset_dir_is_user_layer("config/themes"));
+    CHECK(asset_dir_is_user_layer("config/printer_database.d"));
+}
+
+TEST_CASE("Shipped trees outside config/ are rewritten on update", "[android][asset][config]") {
+    // The read-only seeds find_readable() falls back to live under assets/config/,
+    // so a new release's copies must replace the old ones.
+    CHECK_FALSE(asset_dir_is_user_layer("assets/config"));
+    CHECK_FALSE(asset_dir_is_user_layer("assets/config/themes/defaults"));
+    CHECK_FALSE(asset_dir_is_user_layer("ui_xml"));
+    CHECK_FALSE(asset_dir_is_user_layer("configs"));
+    CHECK_FALSE(asset_dir_is_user_layer(""));
+}
+
+// ============================================================================
+// App-private storage layout
+// ============================================================================
+
+static bool is_under(const std::string& path, const std::string& dir) {
+    return path == dir || path.rfind(dir + "/", 0) == 0;
+}
+
+TEST_CASE("Assets extract into data/ under the app's files dir", "[android][asset][backup]") {
+    const AndroidStorageLayout layout =
+        android_storage_layout("/data/user/0/org.helixscreen.app/files");
+    CHECK(layout.data_dir == "/data/user/0/org.helixscreen.app/files/data");
+}
+
+TEST_CASE("Settings backups live in app storage outside the extracted tree",
+          "[android][asset][backup]") {
+    const std::string files = "/data/user/0/org.helixscreen.app/files";
+    const AndroidStorageLayout layout = android_storage_layout(files);
+
+    // Writable without root, and kept across an app update.
+    CHECK(is_under(layout.backup_dir, files));
+    CHECK(is_under(layout.backup_fallback_dir, files));
+    // An extraction rewrites and prunes under data_dir; a backup there would not
+    // survive the update it exists for.
+    CHECK_FALSE(is_under(layout.backup_dir, layout.data_dir));
+    CHECK_FALSE(is_under(layout.backup_fallback_dir, layout.data_dir));
+    CHECK(layout.backup_dir != layout.backup_fallback_dir);
+}
+
+TEST_CASE("A trailing slash on the files dir does not leak into the layout",
+          "[android][asset][backup]") {
+    const AndroidStorageLayout layout =
+        android_storage_layout("/data/data/org.helixscreen.app/files/");
+    CHECK(layout.data_dir == "/data/data/org.helixscreen.app/files/data");
+    CHECK(layout.backup_dir == "/data/data/org.helixscreen.app/files/state");
+    CHECK(layout.backup_fallback_dir == "/data/data/org.helixscreen.app/files/.helixscreen");
 }

@@ -412,6 +412,7 @@ int Application::run(int argc, char** argv) {
 #ifdef __ANDROID__
     // Extract APK assets to internal storage before data root resolution
     helix::android_extract_assets_if_needed();
+    helix::android_configure_backup_dirs();
 #endif
 
     // Ensure we're running from the project root
