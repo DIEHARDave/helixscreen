@@ -469,6 +469,10 @@ class ModalStack {
     // Check if any modals are visible (not counting those in exit animation)
     bool empty() const;
 
+    /// Bring every visible (non-exiting) backdrop to the front, bottom to top, so
+    /// the stack keeps its order above anything created after it (an overlay).
+    void raise_visible_to_foreground();
+
     /// True while a visible (non-exiting) modal, or an external cover, holds the
     /// navbar chrome under a backdrop.
     bool covers_chrome() const;
