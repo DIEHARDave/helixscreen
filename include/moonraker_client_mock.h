@@ -779,10 +779,10 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// toward the other path's, so the defaults start with a visible delta.
     void set_belt_peaks_hz(float a_hz, float b_hz);
 
-    /// Script one path's peak across successive WINDOWED sweeps (FREQ_START/
-    /// FREQ_END given); the last entry holds once the list runs out. A NaN
-    /// entry writes a featureless curve (floor plus noise, no peak). Full
-    /// sweeps ignore the script and keep the re-measure walk.
+    /// Script one path's peak across its sweeps after the first, full or
+    /// windowed; the last entry holds once the list runs out. A NaN entry
+    /// writes a featureless curve (floor plus noise, no peak). While either
+    /// path has a script, no sweep applies the re-measure walk.
     void set_belt_tune_script(char path_letter, std::vector<float> peaks_hz);
 
     /// Parse and apply a `<A|B>:<hz|flat>,...` script (HELIX_MOCK_BELT_TUNE_SCRIPT).
@@ -2248,8 +2248,8 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// Measurements taken per path; every one after the first walks that
     /// path's peak toward the other's, so repeated tuning converges.
     int belt_measure_count_[2]{0, 0};
-    /// Per-path scripted peaks for windowed sweeps (NaN = flat) and the next
-    /// entry to play.
+    /// Per-path scripted peaks for every sweep after the first (NaN = flat)
+    /// and the next entry to play.
     std::vector<float> belt_script_[2];
     size_t belt_script_pos_[2]{0, 0};
     BeltMockFailure belt_failure_{BeltMockFailure::NONE};

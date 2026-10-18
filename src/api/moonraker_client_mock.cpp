@@ -365,7 +365,7 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
     }
 
     // HELIX_MOCK_BELT_TUNE_SCRIPT=<A|B>:<hz|flat>,... — that path's peak for
-    // successive windowed sweeps.
+    // each sweep after its first.
     if (const char* script_env = std::getenv("HELIX_MOCK_BELT_TUNE_SCRIPT")) {
         apply_belt_tune_script(script_env);
     }
@@ -6418,8 +6418,8 @@ void MoonrakerClientMock::apply_belt_tune_script(const std::string& spec) {
         start = end + 1;
     }
     set_belt_tune_script(letter, std::move(peaks));
-    spdlog::info("[MoonrakerClientMock] Belt path {} tune script: {} windowed sweeps", letter,
-                 belt_script_[letter == 'A' ? 0 : 1].size());
+    spdlog::info("[MoonrakerClientMock] Belt path {} tune script: {} sweeps after the first",
+                 letter, belt_script_[letter == 'A' ? 0 : 1].size());
 }
 
 std::string MoonrakerClientMock::belt_csv_path(const std::string& axis_name,
@@ -6635,9 +6635,11 @@ void MoonrakerClientMock::dispatch_test_resonances_response(const std::string& g
     const bool windowed = win_lo && win_hi && *win_hi > *win_lo;
 
     float sweep_peak_hz = belt_peaks_hz_[idx];
-    if (windowed) {
-        // A windowed sweep plays the next scripted peak, the last one holding.
-        // It never applies the re-measure walk below.
+    const bool scripted = !belt_script_[0].empty() || !belt_script_[1].empty();
+    if (belt_measure_count_[idx] > 0 && scripted) {
+        // Every sweep after a path's first, full or windowed, plays its next
+        // scripted peak, the last one holding. A script on either path turns
+        // the re-measure walk off for both.
         auto& script = belt_script_[idx];
         if (!script.empty()) {
             sweep_peak_hz = script[std::min(belt_script_pos_[idx], script.size() - 1)];
@@ -6646,7 +6648,7 @@ void MoonrakerClientMock::dispatch_test_resonances_response(const std::string& g
                 belt_peaks_hz_[idx] = sweep_peak_hz;
             }
         }
-    } else if (belt_measure_count_[idx] > 0) {
+    } else if (belt_measure_count_[idx] > 0 && !windowed) {
         // Each full re-measurement after the first walks this path's peak
         // toward the other's by at most 4 Hz: tightening a belt moves its
         // resonance, and the clamp keeps the walk from overshooting past equal.
