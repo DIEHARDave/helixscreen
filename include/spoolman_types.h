@@ -9,6 +9,7 @@
 #include "lane_observation.h"
 
 #include <cstdint>
+#include <cstdio>
 #include <functional>
 #include <optional>
 #include <string>
@@ -290,6 +291,19 @@ std::vector<std::string> recent_material_families(const std::vector<SpoolInfo>& 
  */
 // NAMESPACE_OK: sits beside sort_spools_by_recency at file scope
 std::vector<std::string> recent_brands(const std::vector<SpoolInfo>& spools);
+
+namespace helix {
+/// A spool price as its edit field shows it: two decimals, blank for none
+/// (zero or the negative "unknown" sentinel).
+inline std::string format_spool_price(double price) {
+    if (price <= 0) {
+        return {};
+    }
+    char buf[24];
+    snprintf(buf, sizeof(buf), "%.2f", price);
+    return buf;
+}
+} // namespace helix
 
 // ============================================================================
 // SpoolInfo → SlotInfo Conversion

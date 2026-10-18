@@ -2764,3 +2764,11 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the colour grid wraps inside the editor's w
     }
     close_editor_overlay();
 }
+
+TEST_CASE("format_spool_price shows two decimals and blanks no price",
+          "[ams_edit_overlay][more][price]") {
+    CHECK(format_spool_price(19.5) == "19.50");
+    CHECK(format_spool_price(19.995) == "20.00"); // the editor keeps 19.995 behind it
+    CHECK(format_spool_price(0).empty());
+    CHECK(format_spool_price(-1).empty());
+}

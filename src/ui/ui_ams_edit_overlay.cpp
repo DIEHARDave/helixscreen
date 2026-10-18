@@ -96,23 +96,6 @@ std::vector<std::string> hoist_recents(const std::vector<std::string>& base,
     return out;
 }
 
-/// The price field's text for a stored price; blank for none.
-std::string format_price(double price) {
-    if (price <= 0) {
-        return {};
-    }
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%.2f", price);
-    return buf;
-}
-
-/// The option a dropdown's value_changed event picked. The dropdowns' event_cb
-/// carries no user_data: the widget's own selection is the index.
-int dropdown_index(lv_event_t* e) {
-    lv_obj_t* dd = lv_event_get_target_obj(e);
-    return dd ? static_cast<int>(lv_dropdown_get_selected(dd)) : -1;
-}
-
 } // namespace
 
 // ============================================================================
@@ -1540,7 +1523,7 @@ void AmsEditOverlay::populate_detail_fields() {
     // Negative values are the "unknown" sentinel — render blank rather than a
     // literal "-1" (and a blank field can't trip the negative-value Save
     // validation on an untouched, weight-unknown untracked slot).
-    const std::string price = format_price(detail_working_.price);
+    const std::string price = format_spool_price(detail_working_.price);
     const struct {
         const char* widget;
         std::string value;
@@ -1567,7 +1550,7 @@ void AmsEditOverlay::read_detail_fields() {
     // The field shows the price at two decimals; text that still reads as the
     // stored price keeps it exactly, so an untouched open is not an edit.
     std::string s = text_of("detail_field_price");
-    if (s == format_price(detail_original_.price)) {
+    if (s == format_spool_price(detail_original_.price)) {
         detail_working_.price = detail_original_.price;
     } else {
         detail_working_.price = s.empty() ? 0 : std::atof(s.c_str());
@@ -2219,19 +2202,19 @@ void AmsEditOverlay::register_callbacks() {
          [](lv_event_t*) { get_ams_edit_overlay().handle_add_to_spoolman(); }},
         {"ams_edit_material_dd_cb",
          [](lv_event_t* e) {
-             get_ams_edit_overlay().handle_option_selected(0, dropdown_index(e));
+             get_ams_edit_overlay().handle_option_selected(0, helix::ui::event_selected(e));
          }},
         {"ams_edit_variant_dd_cb",
          [](lv_event_t* e) {
-             get_ams_edit_overlay().handle_option_selected(1, dropdown_index(e));
+             get_ams_edit_overlay().handle_option_selected(1, helix::ui::event_selected(e));
          }},
         {"ams_edit_brand_dd_cb",
          [](lv_event_t* e) {
-             get_ams_edit_overlay().handle_option_selected(2, dropdown_index(e));
+             get_ams_edit_overlay().handle_option_selected(2, helix::ui::event_selected(e));
          }},
         {"ams_edit_product_dd_cb",
          [](lv_event_t* e) {
-             get_ams_edit_overlay().handle_option_selected(3, dropdown_index(e));
+             get_ams_edit_overlay().handle_option_selected(3, helix::ui::event_selected(e));
          }},
         {"ams_edit_print_label_cb",
          [](lv_event_t*) {
