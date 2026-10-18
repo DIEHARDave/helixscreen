@@ -85,7 +85,7 @@ Runs on the K1's built-in screen. K1C and K1 Max are the most thoroughly tested 
 
 ### Creality K2 / K2 Plus / K2 Pro
 
-Runs on the K2's built-in screen and, unlike the K1, **works with stock firmware and stock Moonraker**, no custom firmware required. This is the flagship CFS integration. The base K2 is detected as its own machine with its own artwork, and differs from the Plus and Pro in one way that matters here: it has no chamber heater, so there is no chamber control to show.
+Runs on the K2's built-in screen and, unlike the K1, **works with stock firmware and stock Moonraker**, no custom firmware required. This is the flagship CFS integration. The base K2 is detected as its own machine with its own artwork, and differs from the Plus and Pro in one way that matters here: it has no chamber heater, so there is no chamber control to show. With a CFS connected, the home screen picture of the base K2 shows the CFS on top of the printer.
 
 **What works:**
 - **Full CFS multi-material** — up to 4 units × 4 slots (16 colors): per-slot color, material type, and remaining filament length; per-unit temperature and humidity; load/unload
@@ -100,6 +100,11 @@ Runs on the K2's built-in screen and, unlike the K1, **works with stock firmware
 **Status:** Tested — runs natively with CFS support.
 
 > **Community firmware:** the list above describes **stock** Creality firmware. Some owners replace it with a community build that swaps in its own rewritten CFS module — those are auto-detected and fully supported, including load, unload and filament changes. See [Filament → CFS](filament.md#creality-filament-system-cfs).
+>
+> On the K2 Plus community firmware (the Kalico-based port with its own CFS module), recent module versions add more:
+> - **Per-box readings**: each CFS unit shows its own temperature and humidity
+> - **Filament Mapping**: the tool-to-slot choices you make when starting a print are sent to the CFS just before the print starts, and apply to that print only. If a mapping points at a slot the CFS cannot feed from, or at a unit that has stopped answering, the print does not start and HelixScreen tells you why. Older module versions have no Filament Mapping
+> - **Disconnected units**: a CFS unit that stops answering is marked **Disconnected** on its card until it comes back
 
 > **Good to know:** The K2's portrait panel is software-rotated to landscape — that is the supported configuration. Running it un-rotated with the portrait layout is alpha and mostly untested. On this lower-power CPU, animations and 3D bed-mesh rendering may be throttled. The CFS material database is fetched from Creality's cloud.
 

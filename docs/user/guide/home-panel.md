@@ -1079,6 +1079,14 @@ This enables SIMD-accelerated JPEG decoding, which is **3-5x faster** than the b
 
 **Tap the Printer Image widget** to open the Printer Manager overlay. This is your central place to view and customize your printer's identity.
 
+You can also reach it without the widget, which helps if you removed Printer Image from your home screen or your layout has no room for it:
+
+1. Tap the **gear icon** in the navigation bar to open Settings
+2. In the **Printer** group, tap **Printer** (the row reads *Name, image and model*)
+3. The Printer Manager opens. Tap the back arrow to return to Settings
+
+The steps below start from the printer image, but every one of them works the same from **Settings > Printer**.
+
 ### Changing the Printer Name
 
 1. Tap the **printer image** on the Home Panel to open the Printer Manager
@@ -1113,7 +1121,7 @@ The list is filtered to your printer's motion type, the same way the setup wizar
 2. Tap the **printer image** again (marked with a pencil badge) to open the Image Picker
 3. The picker shows a scrollable list on the left and a live preview on the right
 4. Choose from one of three sources:
-   - **Auto-Detect** (default) — HelixScreen selects an image based on your printer type reported by Klipper
+   - **Auto-Detect** (default) — HelixScreen selects an image based on your printer type reported by Klipper. Some printers have a second picture for optional hardware: a Creality K2 with a CFS connected shows the K2 with the CFS on top. The picture switches on its own once the CFS reports in, and back if it is disconnected. An image you pick yourself always stays in place
    - **Shipped Images** — Over 25 pre-rendered images covering Voron, Creality, FlashForge, Anycubic, RatRig, FLSUN, and more
    - **Custom Images** — Your own images (see below)
 5. Tap an image to select it — your choice takes effect immediately

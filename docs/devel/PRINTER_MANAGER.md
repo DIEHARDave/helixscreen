@@ -6,7 +6,12 @@ How the Printer Manager overlay works, its sub-components (inline name editing, 
 
 ## Overview
 
-The Printer Manager is a full-screen overlay accessed by tapping the printer image on the home panel. It serves as the central hub for printer identity and hardware capabilities, displaying:
+The Printer Manager is a full-screen overlay with two entry points, both calling `get_printer_manager_overlay().show()`:
+
+- **Home panel**: tapping the Printer Image widget (`src/ui/panel_widgets/printer_image_widget.cpp#handle_printer_manager_clicked`)
+- **Settings > Printer**: the `row_printer` row at the top of the Printer group in `ui_xml/settings_panel.xml`, wired to `on_printer_clicked` through `nav_row<get_printer_manager_overlay>()` in `src/ui/ui_panel_settings.cpp#register_settings_panel_callbacks`. It keeps the overlay reachable on a layout without the Printer Image widget
+
+It serves as the central hub for printer identity and hardware capabilities, displaying:
 
 - **Printer identity** -- name (editable inline), model, and image (swappable)
 - **Software versions** -- Klipper, Moonraker, and HelixScreen
@@ -31,7 +36,8 @@ It follows the standard OverlayBase lifecycle and uses the `overlay_panel` XML c
 | `include/prerendered_images.h` | Screen-responsive image size selection |
 | `include/ui_overlay_printer_type.h` | Model-correction overlay (click-to-correct row) |
 | `src/ui/ui_overlay_printer_type.cpp` | Type list, selection, `apply_type_choice()` routing |
-| `config/printer_database.json` | Printer definitions, heuristics, images |
+| `assets/config/printer_database.json` | Printer definitions, heuristics, images |
+| `include/printer_image_variants.h` | `image_variants` matcher: pure, over `HardwareFacts` |
 | `include/capability_matrix.h` | Pre-print operation capability merging |
 | `include/capability_overrides.h` | User overrides for auto-detected capabilities |
 
@@ -277,10 +283,10 @@ The XML also uses responsive consts for the image container:
 
 ### Image Resolution Priority
 
-When displaying the printer image in the Printer Manager:
+`PrinterImageManager::get_displayed_image_path()` decides what every surface shows:
 
-1. **User-selected image** -- `PrinterImageManager::get_active_image_path()` checks config for `shipped:` or `custom:` ID
-2. **Auto-detected image** -- `helix::printer_images::get_best_printer_image()` looks up the printer type in `printer_database.json`
+1. **User-selected image** -- `PrinterImageManager::get_active_image_path()` checks config for a `shipped:` or `custom:` ID
+2. **Auto-detected image** -- `get_detected_image_path()` looks up the configured printer type in `printer_database.json`, applying `image_variants` (see [Image Lookup](#image-lookup))
 3. **Fallback** -- `generic-corexy.png` if nothing else matches
 
 ### Auto-Import
@@ -291,7 +297,7 @@ On overlay activation, `auto_import_raw_images()` scans `config/custom_images/` 
 
 ## Printer Database
 
-The printer database (`config/printer_database.json`) is the source of truth for printer identity, detection heuristics, and image mappings.
+The printer database (`assets/config/printer_database.json`) is the source of truth for printer identity, detection heuristics, and image mappings.
 
 ### Entry Structure
 
@@ -359,7 +365,7 @@ Detection scores are combined across multiple heuristics. A confidence of >= 70 
 
 ### Image Lookup
 
-`PrinterDetector::get_image_for_printer(name)` returns the `image` field for a given printer name. Note: there is no `PrinterDatabase` class -- the printer database is a JSON file (`config/printer_database.json`) accessed through `PrinterDetector` static methods. `helix::printer_images::get_best_printer_image()` then resolves this to an LVGL path, preferring pre-rendered `.bin` files.
+`PrinterDetector::get_image_for_printer(name)` returns the `image` field for a given printer name. Note: there is no `PrinterDatabase` class -- the printer database is a JSON file (`assets/config/printer_database.json`) accessed through `PrinterDetector` static methods. The two-argument overload, `get_image_for_printer(name, facts)`, applies `image_variants`. `helix::printer_images::get_best_image_for_file()` then resolves a filename to an LVGL path, preferring pre-rendered `.bin` files.
 
 **What the connected printer shows** comes from one resolver,
 `src/system/printer_image_manager.cpp#get_displayed_image_path`: the
@@ -377,15 +383,15 @@ only in the database.
 
 | Condition | Holds when | Values |
 |---|---|---|
-| `filament_system` | a registered filament-system backend is of this kind (any of them, not only the active one) | an `AmsType` spelling `ams_type_from_string()` parses: `cfs`, `afc`, `happy_hare`, `ace`, `tool_changer`, `ad5x_ifs`, `snapmaker`, `qidi_box`, `openams` |
+| `filament_system` | a registered backend of this kind (any of them, not only the active one) has at least one unit that is `connected` and not `absent`. A backend registered from the firmware object alone, before a unit reports in, does not count | an `AmsType` spelling `ams_type_from_string()` parses that `is_filament_system()` accepts: `cfs`, `afc`, `happy_hare`, `ace`, `ad5x_ifs`, `snapmaker`, `qidi_box`, `openams`. `tool_changer` is not a filament system and never matches |
 
 A condition key or value the build does not know makes its variant never match, so the
 entry degrades to its plain image; the `[printer_database][schema]` test fails on one, and
 `scripts/check_printer_images.py` fails on a variant image that is not on disk. A new
 condition is a new `HardwareFacts` field, a branch in `condition_holds()`, and its
-gathering in `PrinterImageManager`. The home widget re-resolves when AmsState's
-backend count or type changes, so a filament system registering after connect switches the
-image live. Each variant image needs its own `regions.json` entry for the callout chips.
+gathering in `PrinterImageManager` (`src/system/printer_image_manager.cpp#detected_hardware_facts`). The home widget re-resolves when AmsState's
+backend count, type or data revision changes, so a filament system whose units report in after connect switches the
+image live, and one whose units drop back to disconnected switches it back. Each variant image needs its own `regions.json` entry for the callout chips.
 
 ---
 
@@ -485,6 +491,13 @@ The panel object owns its root, so the chip keeps no pointer to it.
 2. Run `make gen-printer-images` to create pre-rendered `.bin` variants
 3. Add a printer entry in `config/printer_database.json` with `"image": "my-printer.png"`
 4. The image will appear in both the auto-detect lookup and the shipped images list
+
+An image for optional hardware (a printer with its filament unit attached) is a variant, not a new entry:
+
+1. Add the PNG as above, named `<entry image>-<hardware>.png` (`creality-k2-cfs.png`)
+2. Tag its callout points in `assets/images/printers/regions.json` under its own basename; a variant shares nothing with the plain image's entry
+3. Add `"image_variants": [{"when": {"filament_system": "cfs"}, "image": "creality-k2-cfs.png"}]` to the printer entry, keeping its plain `image`
+4. `scripts/check_printer_images.py` and `[printer_database][schema]` check that the image exists and the condition is known
 
 ### Adding a Custom Image Import Source
 

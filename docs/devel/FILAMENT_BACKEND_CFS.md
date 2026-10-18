@@ -13,8 +13,8 @@ The `box` Klipper object is shared by several firmwares that agree on almost not
 
 | Printer family | Stock firmware path | Macro dialect | Detection signal |
 |----------------|--------------------|---------------|-----------------|
-| K2, K2 Pro, K2 Plus (built-in CFS) | Creality K2 firmware | `CR_BOX_*` primitives + `BOX_SAVE_FAN`/`BOX_MODE_WAIT` envelope | `PrinterDetector::is_creality_k1() == false` |
-| K1, K1C, K1 Max (official CFS upgrade ≥ v2.3.5.33) | Creality K1 CFS upgrade firmware | Plain `BOX_*` primitives, no mode-wait (fan-save **does** exist — see below) | `PrinterDetector::is_creality_k1() == true` |
+| K2, K2 Pro, K2 Plus (built-in CFS) | Creality K2 firmware | `CR_BOX_*` primitives + `BOX_SAVE_FAN`/`BOX_MODE_WAIT` envelope | neither `is_creality_k1()` nor `is_creality_hi()` |
+| K1, K1C, K1 Max (official CFS upgrade ≥ v2.3.5.33) | Creality K1 CFS upgrade firmware | Plain `BOX_*` primitives, no mode-wait (fan-save **does** exist — see below) | `PrinterDetector::is_creality_k1()` or `is_creality_hi()` |
 | K2 Plus on a community Kalico port | [`Jacob10383/kalico`](https://github.com/Jacob10383/kalico) + a reimplemented box.py | High-level `BOX_SELECT_SLOT` (or bare `T<n>`) / `BOX_UNLOAD` | `api_version == 1` in the box payload |
 
 **Axis 2 — box schema** (`CfsSchema`), detected per-payload by `AmsBackendCfs::detect_schema()`:
@@ -64,7 +64,7 @@ only, so a revision 3 box declares `RemapStrategy::PrePrintSend` and
 starts (`AmsBackendCfs::print_map_gcode`). It names every tool the file uses, an
 unmapped one at its own slot, so the map states the whole print; with nothing remapped
 it sends nothing, since the firmware's default is that map and the command has no
-clearing form. A remap whose target slot a manual load would refuse (`firmware_slot_locked()`), or that sits in a box reporting `online: false`, is refused by `check_preprint_remap()`: nothing is sent and the print does not start, with the reason in the same "Print setup failed" dialog a printer-side refusal gets. `can_set_tool_mapping()` refuses on this route: `BOX_MODIFY_TN` is a
+clearing form. A remap whose target slot a manual load would refuse (`firmware_slot_locked()`), or that sits in a unit reading disconnected (a `boxes[]` entry with `online: false`, or the chain-wide `driver_ready: false`), is refused by `check_preprint_remap()`: nothing is sent and the print does not start, with the reason in the same "Print setup failed" dialog a printer-side refusal gets. `can_set_tool_mapping()` refuses on this route: `BOX_MODIFY_TN` is a
 stock command. The revision is the only evidence the command exists: it is registered
 in Python, and the app has no registered-command lookup. Below revision 3 Fork has no
 remap route (`RemapStrategy::None`). A reprint sends no map, because the backend does
@@ -159,10 +159,11 @@ present on both families and are now emitted on both.
 | File | Role |
 |------|------|
 | `include/ams_backend_cfs.h` | `CfsMacroVariant` enum, `AmsBackendCfs` class, static `load_gcode/unload_gcode/swap_gcode(idx, variant)` helpers (load and swap take the Fork `BOX_SELECT_SLOT` choice) |
-| `src/printer/ams_backend_cfs.cpp` | `wrap_with_park_k1` / `wrap_with_park_k2` envelopes, K1-vs-K2 body emission |
+| `src/printer/ams_backend_cfs.cpp` | `wrap_with_park_k1` / `wrap_with_park_k2` envelopes, K1-vs-K2 body emission, both schema parsers, the Fork revision gates and `BOX_PRINT_MAP` |
+| `include/cfs_status_parse.h` / `src/printer/cfs_status_parse.cpp` | Pure parse of the small status objects around a `box` frame (frame shape, filament sensor) into `std::optional` structs |
 | `include/printer_discovery.h` | `box` object handler — enables CFS for both K1 and K2 (#968 gate flipped) |
 
-`AmsBackendCfs::macro_variant_` is latched in the constructor by querying `PrinterDetector::is_creality_k1()`. All member operations (`load_filament`, `unload_filament`, `change_tool`) thread `macro_variant_` into the gcode helpers. Static call sites without an explicit variant default to `K2` to preserve existing test behavior.
+`AmsBackendCfs::macro_variant_` starts in the constructor from the model, `K1` when `PrinterDetector::is_creality_k1()` or `is_creality_hi()` matches and `K2` otherwise, and that model answer is kept in `model_macro_variant_`. The first flat frame carrying `api_version == 1` switches it to `Fork`; a later stock (`T<n>`) frame hands back the model's variant (`src/printer/ams_backend_cfs.cpp#handle_box_frame`). All member operations (`load_filament`, `unload_filament`, `change_tool`) thread `macro_variant_` into the gcode helpers. Static call sites without an explicit variant default to `K2` to preserve existing test behavior.
 
 **A bay's global index is the firmware's slot number on both schemas,** `(box address - 1) * 4
 + local`, so every per-bay store (lane_data overrides, lane records, RFID baselines, insert
