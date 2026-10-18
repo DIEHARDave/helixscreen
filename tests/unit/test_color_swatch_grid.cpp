@@ -2,8 +2,12 @@
 
 #include "ui_color_picker.h"
 #include "ui_swatch.h"
+#include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_helpers/scoped_geometry.h"
+#include "display_settings_manager.h"
+#include "lvgl/src/misc/lv_area_private.h" // lv_area_is_in
 
 #include <cstring>
 #include <fstream>
@@ -186,4 +190,90 @@ TEST_CASE("swatch token ladders keep every touch target at the floor, per size c
               6 * tier_value(globals, "swatch_grid_size", cls) +
                   5 * tier_value(globals, "swatch_grid_gap", cls));
     }
+}
+
+namespace {
+
+bool shown(lv_obj_t* obj) {
+    for (; obj; obj = lv_obj_get_parent(obj)) {
+        if (lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN))
+            return false;
+    }
+    return true;
+}
+
+/// The preset grid the picker shows: it builds one per layout (tabbed and
+/// two-column) and hides the one the breakpoint does not use.
+lv_obj_t* shown_grid(lv_obj_t* root) {
+    lv_obj_t* found = nullptr;
+    for (uint32_t i = 0; i < lv_obj_get_child_count(root); ++i) {
+        lv_obj_t* child = lv_obj_get_child(root, static_cast<int32_t>(i));
+        const char* name = lv_obj_get_name(child);
+        if (name && strcmp(name, "color_swatch_grid") == 0 && shown(child))
+            return child;
+        if (!found)
+            found = shown_grid(child);
+    }
+    return found;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "ColorPicker: the shown preset grid fits its dialog card at every size",
+                 "[color_swatch][color_picker][layout]") {
+    auto& display = helix::DisplaySettingsManager::instance();
+    const bool animations = display.get_animations_enabled();
+    display.set_animations_enabled(false);
+    struct Size {
+        int32_t w, h;
+    };
+    for (const Size sz :
+         {Size{480, 320}, Size{320, 480}, Size{480, 272}, Size{480, 400}, Size{800, 480}}) {
+        for (const auto palette :
+             {helix::ui::ColorPicker::Palette::General, helix::ui::ColorPicker::Palette::Theme}) {
+            CAPTURE(sz.w, sz.h, static_cast<int>(palette));
+            helix::test::ScopedGeometry geometry(sz.w, sz.h);
+            helix::ui::ColorPicker picker;
+            picker.set_palette(palette);
+            REQUIRE(picker.show_with_color(test_screen(), 0x808080));
+            lv_obj_t* dialog = picker.dialog();
+            REQUIRE(dialog != nullptr);
+            lv_obj_update_layout(dialog);
+
+            lv_area_t card;
+            lv_obj_get_coords(dialog, &card);
+            const lv_area_t screen{0, 0, sz.w - 1, sz.h - 1};
+            CAPTURE(card.x1, card.y1, card.x2, card.y2);
+            CHECK(lv_area_is_in(&card, &screen, 0));
+            // The card shows all of its content: nothing scrolls off its bottom or side.
+            CHECK(lv_obj_get_scroll_bottom(dialog) <= 0);
+            CHECK(lv_obj_get_scroll_right(dialog) <= 0);
+
+            lv_obj_t* grid = shown_grid(dialog);
+            REQUIRE(grid != nullptr);
+            lv_area_t g;
+            lv_obj_get_coords(grid, &g);
+            CAPTURE(g.x1, g.y1, g.x2, g.y2);
+            CHECK(lv_area_is_in(&g, &card, 0));
+            CHECK(lv_obj_get_scroll_bottom(grid) <= 0);
+            CHECK(lv_obj_get_scroll_right(grid) <= 0);
+            uint32_t swatches = 0;
+            for (uint32_t i = 0; i < lv_obj_get_child_count(grid); ++i) {
+                lv_obj_t* swatch = lv_obj_get_child(grid, static_cast<int32_t>(i));
+                if (!shown(swatch))
+                    continue;
+                ++swatches;
+                lv_area_t s;
+                lv_obj_get_coords(swatch, &s);
+                CAPTURE(i, s.x1, s.y1, s.x2, s.y2);
+                CHECK(lv_area_is_in(&s, &g, 0));
+            }
+            CHECK(swatches == helix::ui::swatch_palette(palette).size());
+            picker.hide();
+            helix::ui::UpdateQueue::instance().drain();
+            process_lvgl(10);
+        }
+    }
+    display.set_animations_enabled(animations);
 }
