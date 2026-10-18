@@ -895,8 +895,7 @@ void AmsEditOverlay::refresh_tag_state() {
     if (backend && slot_index_ >= 0) {
         tag_ = backend->tag_reading(slot_index_);
     }
-    const bool tag_color = tag_ && tag_->color_rgb.has_value();
-    lv_subject_set_int(&reset_tag_visible_subject_, tag_color ? 1 : 0);
+    lv_subject_set_int(&reset_tag_visible_subject_, (tag_ && !tag_->empty()) ? 1 : 0);
     bool from_tag = false;
     if (tag_) {
         const ams::TagProvenance prov = ams::tag_provenance(
@@ -1081,7 +1080,7 @@ void AmsEditOverlay::update_temp_display() {
             from_catalog = true;
         }
     }
-    if (!from_catalog && !type.empty()) {
+    if (!from_catalog && nozzle_min == 0 && nozzle_max == 0 && bed_temp == 0 && !type.empty()) {
         if (auto mat = filament::find_material(type)) {
             nozzle_min = mat->nozzle_min;
             nozzle_max = mat->nozzle_max;
@@ -1246,13 +1245,25 @@ void AmsEditOverlay::handle_quick_swatch(lv_obj_t* swatch) {
     update_sync_button_state();
 }
 
-void AmsEditOverlay::handle_reset_color() {
-    if (!tag_ || !tag_->color_rgb) {
+void AmsEditOverlay::handle_reset_to_tag() {
+    // Every field the tag states goes back to the tag's values - material,
+    // brand, product line, colour, temperatures, total weight - through the
+    // shared ams::reset_to_tag(). The editor's staging (selection, pending
+    // colour) re-derives from the restored slot, and dirty state follows the
+    // working/original diff: a slot that never left the tag's values resets
+    // clean, one edited past them resets dirty.
+    if (!tag_) {
         return;
     }
-    details_color_ = *tag_->color_rgb;
-    details_color_set_ = true;
+    working_info_ = ams::reset_to_tag(working_info_, *tag_);
+    sel_ = selection_from_slot(working_info_);
+    selection_moved_ = false;
+    details_color_ = working_info_.color_rgb;
+    details_color_set_ = false;
+    rebuild_chip_rows();
     update_summary();
+    update_temp_display();
+    refresh_tag_state();
     update_sync_button_state();
 }
 
@@ -1839,7 +1850,7 @@ void AmsEditOverlay::register_callbacks() {
          }},
         {"ams_edit_custom_color_cb", [](lv_event_t*) { get_ams_edit_overlay().open_color_view(); }},
         {"ams_edit_reset_color_cb",
-         [](lv_event_t*) { get_ams_edit_overlay().handle_reset_color(); }},
+         [](lv_event_t*) { get_ams_edit_overlay().handle_reset_to_tag(); }},
         {"ams_edit_color_swatch_cb",
          [](lv_event_t* e) {
              get_ams_edit_overlay().handle_color_swatch(lv_event_get_target_obj(e));

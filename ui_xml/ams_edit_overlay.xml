@@ -37,8 +37,8 @@
     <!-- Chip row geometry: dense one-tap pills, sized to sit four rows high on
          a 272px-tall landscape panel. -->
     <px name="ams_edit_chip_h_micro" value="24"/>
-    <px name="ams_edit_chip_h_tiny" value="26"/>
-    <px name="ams_edit_chip_h_small" value="24"/>
+    <px name="ams_edit_chip_h_tiny" value="21"/>
+    <px name="ams_edit_chip_h_small" value="22"/>
     <px name="ams_edit_chip_h_medium" value="30"/>
     <px name="ams_edit_chip_h_large" value="32"/>
     <px name="ams_edit_chip_gap_micro" value="4"/>
@@ -51,6 +51,41 @@
     <px name="ams_edit_chip_gap_half_small" value="3"/>
     <px name="ams_edit_chip_gap_half_medium" value="3"/>
     <px name="ams_edit_chip_gap_half_large" value="4"/>
+    <!-- The stacked colour grid's swatch size: the cramped classes take the
+         micro size so the folded grid leaves room for the product row. -->
+    <px name="ams_edit_grid_gap_micro" value="#swatch_grid_gap"/>
+    <px name="ams_edit_grid_gap_tiny" value="6"/>
+    <px name="ams_edit_grid_gap_small" value="6"/>
+    <px name="ams_edit_grid_gap_medium" value="#swatch_grid_gap"/>
+    <px name="ams_edit_grid_gap_large" value="#swatch_grid_gap"/>
+    <px name="ams_edit_grid_gap_xlarge" value="#swatch_grid_gap"/>
+    <px name="ams_edit_grid_gap_xxlarge" value="#swatch_grid_gap"/>
+    <px name="ams_edit_grid_swatch_micro" value="#swatch_grid_size_micro"/>
+    <px name="ams_edit_grid_swatch_tiny" value="#swatch_grid_size_micro"/>
+    <px name="ams_edit_grid_swatch_small" value="#swatch_grid_size_micro"/>
+    <px name="ams_edit_grid_swatch_medium" value="#swatch_grid_size"/>
+    <px name="ams_edit_grid_swatch_large" value="#swatch_grid_size"/>
+    <px name="ams_edit_grid_swatch_xlarge" value="#swatch_grid_size"/>
+    <px name="ams_edit_grid_swatch_xxlarge" value="#swatch_grid_size"/>
+    <!-- Vertical gap between the editor's rows: the theme's space_xs (4)
+         everywhere except the cramped small class, where the stack needs two
+         pixels back to fit the fold. -->
+    <px name="ams_edit_vgap_micro" value="4"/>
+    <px name="ams_edit_vgap_tiny" value="1"/>
+    <px name="ams_edit_vgap_small" value="1"/>
+    <px name="ams_edit_vgap_medium" value="4"/>
+    <px name="ams_edit_vgap_large" value="4"/>
+    <px name="ams_edit_vgap_xlarge" value="4"/>
+    <px name="ams_edit_vgap_xxlarge" value="4"/>
+    <!-- The collapsed More row's vertical padding, trimmed at the cramped
+         classes for the same reason. -->
+    <px name="ams_edit_more_pad_micro" value="0"/>
+    <px name="ams_edit_more_pad_tiny" value="0"/>
+    <px name="ams_edit_more_pad_small" value="0"/>
+    <px name="ams_edit_more_pad_medium" value="2"/>
+    <px name="ams_edit_more_pad_large" value="2"/>
+    <px name="ams_edit_more_pad_xlarge" value="2"/>
+    <px name="ams_edit_more_pad_xxlarge" value="2"/>
     <!-- Row label column ("Material", "Variant"): fixed so the four rows
          align; sized for the longest locale at text_small. -->
     <px name="ams_edit_row_label_w_micro" value="56"/>
@@ -96,7 +131,7 @@
       <!-- EDITOR VIEW (ams_edit_view=0): the entry view.               -->
       <!-- ============================================================ -->
       <lv_obj name="editor_view"
-              width="100%" flex_grow="1" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
+              width="100%" flex_grow="1" flex_flow="column" style_pad_gap="#ams_edit_vgap" scrollable="false">
         <bind_flag_if_not_eq subject="ams_edit_view" flag="hidden" ref_value="0"/>
 
         <!-- Summary: colour dot + "eSUN Silk PETG, Blue" + from-tag badge.
@@ -311,7 +346,7 @@
             <repeat count="ams_edit_color_row_count">
               <color_swatch index="${i}"
                             color_subject="general_swatch_color_${i}" selected_subject="ams_edit_color_selected"
-                            callback="ams_edit_quick_swatch_cb" size="#swatch_grid_size" hit="#swatch_grid_gap_half"
+                            callback="ams_edit_quick_swatch_cb" size="#ams_edit_grid_swatch" hit="#swatch_grid_gap_half"
                             reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring"/>
             </repeat>
           </lv_obj>
@@ -322,8 +357,8 @@
              slot, so the section only opens there. -->
         <lv_obj name="more_row"
                 width="100%" height="content" flex_flow="row" style_flex_cross_place="center" style_pad_hor="#space_sm"
-                style_pad_ver="#space_xxs" style_pad_gap="#space_sm" style_radius="#border_radius" style_bg_opa="0"
-                style_border_width="0" scrollable="false" clickable="true">
+                style_pad_ver="#ams_edit_more_pad" style_pad_gap="#space_sm" style_radius="#border_radius"
+                style_bg_opa="0" style_border_width="0" scrollable="false" clickable="true">
           <style name="styles.press_wash" selector="pressed"/>
           <event_cb trigger="clicked" callback="ams_edit_more_toggle_cb"/>
           <icon name="more_chevron" src="chevron_down" size="sm" variant="muted" clickable="false" event_bubble="true"/>

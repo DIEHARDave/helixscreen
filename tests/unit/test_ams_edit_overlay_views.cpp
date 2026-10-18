@@ -113,6 +113,12 @@ class AmsEditOverlayViewTestAccess {
     void call_apply_weight(float grams) {
         overlay_.apply_weight(grams);
     }
+    void set_tag(const helix::ams::TagReading& tag) {
+        overlay_.tag_ = tag;
+    }
+    void call_handle_reset_to_tag() {
+        overlay_.handle_reset_to_tag();
+    }
     void call_handle_add_to_spoolman() {
         overlay_.handle_add_to_spoolman();
     }
@@ -1755,5 +1761,67 @@ TEST_CASE_METHOD(LVGLUITestFixture, "weight pill keypad stages remaining grams",
     UpdateQueue::instance().drain();
     CHECK(access.working_info().remaining_weight_g == 750);
     CHECK(access.working_info().total_weight_g == 750);
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "Reset to tag restores identity, not just the colour",
+                 "[ams_edit_overlay][chips][tag]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    // The slot opens DRIFTED from the tag (the values firmware last showed);
+    // only a working reset can bring the tag's values back.
+    helix::ams::TagReading tag;
+    tag.material = "PETG";
+    tag.brand = "Polymaker";
+    tag.color_rgb = 0x112233;
+    tag.total_weight_g = 1000;
+
+    SlotInfo info = untracked_slot();
+    info.material = "PLA";
+    info.brand = "eSUN";
+    info.color_rgb = 0xFF6600;
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    access.set_tag(tag);
+
+    // The user moves the selection away, then resets.
+    AmsEditOverlay::SpoolEditSelection moved = access.sel();
+    moved.family = "ABS";
+    access.set_sel(moved);
+    access.call_handle_reset_to_tag();
+    UpdateQueue::instance().drain();
+
+    CHECK(access.working_info().material == "PETG");
+    CHECK(access.working_info().brand == "Polymaker");
+    CHECK(access.working_info().color_rgb == 0x112233);
+    CHECK(access.working_info().total_weight_g == 1000);
+    CHECK(access.sel().family == "PETG");
+    CHECK(access.sel().brand == "Polymaker");
+
+    // The reset moved the slot off its opened-on values, so Save is live.
+    CHECK(access.is_dirty());
+
+    close_editor_overlay();
+
+    // The mirror case: a slot that OPENED on the tag's values resets clean.
+    SlotInfo aligned = untracked_slot();
+    aligned.material = *tag.material;
+    aligned.brand = *tag.brand;
+    aligned.color_rgb = *tag.color_rgb;
+    aligned.total_weight_g = *tag.total_weight_g;
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, aligned, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    access.set_tag(tag);
+    AmsEditOverlay::SpoolEditSelection drift = access.sel();
+    drift.family = "ABS";
+    access.set_sel(drift);
+    access.call_handle_reset_to_tag();
+    UpdateQueue::instance().drain();
+    CHECK(access.working_info().material == "PETG");
+    CHECK_FALSE(access.is_dirty());
+
     close_editor_overlay();
 }

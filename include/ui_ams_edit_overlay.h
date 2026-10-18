@@ -323,7 +323,7 @@ class AmsEditOverlay : public OverlayBase {
     void apply_weight(float grams); ///< Keypad result → remaining weight
     void handle_more_toggle();
     void handle_add_to_spoolman(); ///< Quiet link: create + label
-    void handle_reset_color();     ///< Reset to tag (colour)
+    void handle_reset_to_tag();    ///< Reset every tag-stated field to the tag
 
     // Pure decision for whether handle_save() should create a NEW Spoolman
     // spool from the working slot: only via the explicit "Add to Spoolman"
