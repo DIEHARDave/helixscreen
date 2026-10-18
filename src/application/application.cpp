@@ -503,6 +503,16 @@ int Application::run(int argc, char** argv) {
     // on every rung, so the log has to carry the resolved values: a support case
     // on an overridden box cannot be answered from the rules alone.
     helix::diagnostics::log_diagnostics();
+    if (m_screen_size_env) {
+        if (m_screen_size_env_valid) {
+            spdlog::info("[Application] Screen size from HELIX_SCREEN_SIZE: {}x{}", m_screen_width,
+                         m_screen_height);
+        } else {
+            spdlog::warn("[Application] Invalid HELIX_SCREEN_SIZE='{}' — use named size "
+                         "(micro/tiny/small/medium/large/xlarge) or WxH (e.g. 480x400)",
+                         *m_screen_size_env);
+        }
+    }
     spdlog::debug("[Application] Target: {}x{}", m_screen_width, m_screen_height);
     spdlog::debug("[Application] DPI: {}{}", (m_args.dpi > 0 ? m_args.dpi : LV_DPI_DEF),
                   (m_args.dpi > 0 ? " (custom)" : " (default)"));
@@ -1109,16 +1119,10 @@ bool Application::parse_args(int argc, char** argv) {
     // HELIX_SCREEN_SIZE: screen size override (alternative to -s flag)
     // Only applies if -s was not passed on the command line
     if (m_screen_width == 0 && m_screen_height == 0) {
-        if (auto size_str = EnvConfig::get_screen_size()) {
-            if (helix::parse_screen_size_string(size_str->c_str(), m_screen_width,
-                                                m_screen_height)) {
-                spdlog::info("[Application] Screen size from HELIX_SCREEN_SIZE: {}x{}",
-                             m_screen_width, m_screen_height);
-            } else {
-                spdlog::warn("[Application] Invalid HELIX_SCREEN_SIZE='{}' — use named size "
-                             "(micro/tiny/small/medium/large/xlarge) or WxH (e.g. 480x400)",
-                             *size_str);
-            }
+        m_screen_size_env = EnvConfig::get_screen_size();
+        if (m_screen_size_env) {
+            m_screen_size_env_valid = helix::parse_screen_size_string(
+                m_screen_size_env->c_str(), m_screen_width, m_screen_height);
         }
     }
 

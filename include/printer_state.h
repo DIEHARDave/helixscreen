@@ -80,6 +80,15 @@ enum class KlippyState {
 };
 
 /**
+ * @brief Map a Klipper state string (webhooks.state, printer.info "state") to KlippyState
+ *
+ * Klipper documents exactly ready/startup/shutdown/error. Anything else, such as
+ * Moonraker's own "disconnected", is nullopt: inventing a state for it would be
+ * fail-open on a liveness signal.
+ */
+std::optional<KlippyState> parse_klippy_state(std::string_view state);
+
+/**
  * @brief Print job state (from Moonraker print_stats.state)
  *
  * Represents the state of the current print job as reported by Klipper/Moonraker.
@@ -291,6 +300,17 @@ class PrinterState {
                             bool from_cached_snapshot = false,
                             std::optional<uint64_t> frame_epoch = std::nullopt,
                             bool whole_objects = false);
+
+    /**
+     * @brief Apply a webhooks-shaped klippy status ({state, state_message}), main thread only
+     *
+     * The one path from a reported Klipper state to the klippy subjects: status
+     * frames' webhooks object and a printer.info result both land here. Arguments
+     * as update_from_status().
+     */
+    void apply_klippy_status(const json& webhooks, double eventtime = 0.0,
+                             bool from_cached_snapshot = false,
+                             std::optional<uint64_t> frame_epoch = std::nullopt);
 
     //
     // Domain components. Each owns its subjects and the state behind them;
@@ -514,8 +534,10 @@ class PrinterState {
      * notify_klippy_* message) has set the state.
      *
      * @param state KlippyState enum value
+     * @param state_message The reason reported with it (printer.info's
+     *        state_message), applied with the state; empty leaves the message alone
      */
-    void set_klippy_state_if_unseeded(KlippyState state);
+    void set_klippy_state_if_unseeded(KlippyState state, const std::string& state_message = "");
 
     /**
      * @brief Update printer capability subjects from PrinterDiscovery
@@ -952,7 +974,7 @@ class PrinterState {
 
     /// Main-thread half of set_klippy_state_if_unseeded(): re-checks the guard in
     /// the same serialized order as the webhooks parse, then applies.
-    void set_klippy_state_if_unseeded_internal(KlippyState state);
+    void set_klippy_state_if_unseeded_internal(KlippyState state, const std::string& state_message);
 
     /**
      * @brief Synthesize runtime-dependent options (timelapse, etc.) into the

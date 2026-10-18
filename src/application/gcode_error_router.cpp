@@ -435,21 +435,21 @@ bool GcodeErrorRouter::present_recover_toast(const ErrorEvent& e) {
                     return;
                 spdlog::info("[GcodeError] User tapped Recover for key298");
                 PrinterRecoveryService recovery(a);
-                recovery.recover([]() { spdlog::info("[Recovery] Auto-recovery initiated"); },
-                                 [](const MoonrakerError& err) {
-                                     spdlog::error("[Recovery] Auto-recovery failed: {}",
-                                                   err.message);
-                                     // The callback can run on the WebSocket thread; lv_tr is
-                                     // main-thread only.
-                                     helix::ui::run_on_main("error_toast", [err]() {
-                                         ToastManager::instance().show(
-                                             ToastSeverity::ERROR,
-                                             fmt::format(fmt::runtime(lv_tr("Recovery failed: {}")),
-                                                         err.localized_message())
-                                                 .c_str(),
-                                             6000);
-                                     });
-                                 });
+                recovery.recover(
+                    [](RecoveryOutcome) { spdlog::info("[Recovery] Auto-recovery initiated"); },
+                    [](const MoonrakerError& err) {
+                        spdlog::error("[Recovery] Auto-recovery failed: {}", err.message);
+                        // The callback can run on the WebSocket thread; lv_tr is
+                        // main-thread only.
+                        helix::ui::run_on_main("error_toast", [err]() {
+                            ToastManager::instance().show(
+                                ToastSeverity::ERROR,
+                                fmt::format(fmt::runtime(lv_tr("Recovery failed: {}")),
+                                            err.localized_message())
+                                    .c_str(),
+                                6000);
+                        });
+                    });
             },
             api, /*duration_ms=*/RECOVER_TOAST_MS);
         return true;
