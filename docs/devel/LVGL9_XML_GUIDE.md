@@ -203,7 +203,21 @@ inside that instance:
 `header_bar` does this with its `header_content` strip (between the title
 region and the action buttons). A slot widget should be `width="content"` and
 not clickable, so an unfilled slot costs its container no layout and steals no
-taps.
+taps. The slot centres its flex track, so a child shorter than the header sits
+on the title's centre line.
+
+After the title and the slot, `header_bar` lays out its actions left to right:
+`action_icon`, an icon-only round button (`#button_height_sm` square, drawn by
+`styles.header_icon_button`, hidden unless `hide_action_icon="false"`, with
+`action_icon_hidden_cond` for a breakpoint gate); `action_button_2`, the
+labelled secondary; and `action_button`, the primary (Save, Done).
+Every one is capped at `#header_button_height` so it fits inside the bar. A
+screen whose only header action is a glyph (Motion's cog, Print Status's
+folder, Printer Manager's portrait button) uses `action_icon`; a screen with
+several glyph actions (the spool editor's Spoolman and Scan QR) puts its own
+`ui_button`s in `header_content` with `<style name="styles.header_icon_button"/>`,
+so every round header button has one definition. `action_button_height` sizes
+the text buttons only.
 
 ### 2. Subjects (Reactive Data)
 

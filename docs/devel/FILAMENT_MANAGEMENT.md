@@ -1478,9 +1478,16 @@ not honoured by `lv_xml_create`.
 ### Edit Spool (`ui_ams_edit_overlay`)
 
 The lane context menu's **Edit Spool** opens `AmsEditOverlay`
-(`src/ui/ui_ams_edit_overlay.cpp`) straight into its editor view; **Spoolman**
-opens it on the spool picker instead. The title is the lane in the backend's
-noun ("Gate 3"). The same menu carries **Assigned Tool**, shown only where
+(`src/ui/ui_ams_edit_overlay.cpp`) straight into its editor view; **Select
+Spool** opens it on the spool picker instead. The title is the lane in the
+backend's noun ("Gate 3"). The header carries Save (`action_button`, dirty-gated)
+and, where Spoolman is configured, two round icon buttons left of it on the
+title's centre line: Choose from Spoolman and Scan QR (`ams_edit_scan_enabled`
+also carries the no-camera build gate). They sit in `header_bar`'s
+`header_content` slot, drawn by `styles.header_icon_button` like the header's own
+`action_icon`, in a row padded by their `ext_click_area` reach so each reaches
+the header's height (or 44px) while staying inside its parent's hit box. The
+same menu carries **Assigned Tool**, shown only where
 `helix::printer::can_write_mapping_table()` says a mapping write lands
 (`ams_slot_tool_row_visible`); the editor itself never remaps tools.
 
@@ -1500,17 +1507,37 @@ Re-picking the selected option is a no-op.
 **Layout.** Two layouts are always built and one is hidden by `bind_flag`: the
 split one (form left, colour column right) at the short landscape class, the
 stacked one elsewhere. They cannot be one `<if>`, because the engine refuses a
-`<repeat>` inside `<if>`. Each colour grid leads with the app's rainbow custom
-swatch (a count change rebuilds a `<repeat>` at the end of its row, so the
-fixed tile goes first), and `size_color_grids()` sets each grid's preset count
-from its measured width in whole rows: three in the split column, two in the
-stacked grid, one where height is scarce. The split layout carries the
-temperature line under the form, where the colour column leaves room. The
-summary swatch is the primary 44px colour entry.
+`<repeat>` inside `<if>`. Each colour grid leads with `custom_color_swatch`
+(a count change rebuilds a `<repeat>` at the end of its row, so the fixed tile
+goes first), and `size_color_grids()` sets each grid's preset count from its
+measured width in whole rows: three in the split column, two in the stacked
+grid, one at the small class and below. It runs again from `on_activate()`,
+because the push sets the overlay's final width after the editor was built.
+Both grids size from the shared `swatch_grid_*` tokens and are padded by
+`swatch_grid_gap_half`, so every swatch, the edge rows included, has a 7 mm
+target (`COLOR_SWATCHES.md` § "Preset grids and touch targets"). A grid tap
+stages the colour; the custom tile and the summary swatch (the primary 44px
+colour entry) open the colour view. The ring follows `color_ring_index()`: the
+first visible preset that matches, else the custom tile (-2) for a colour none
+of the shown presets holds, else none. The split layout carries the
+temperature line under the form, where the colour column leaves room.
 Every non-swatch control reaches 44px: Reset to tag, More and the Add link sit
 in one short bar and reach it through `ext_click_area`, as the weight pill does.
 The editor fits without scrolling at 800x480, 480x320, 480x272 and 320x480,
 including the tag-badged worst case; only the opened More section scrolls.
+
+**The colour view** (`ams_edit_view` 2) holds the 30-swatch `color_swatch_grid`
+and the HSV picker (hex field, Select). `update_color_fit()` measures both panes
+with both shown against the overlay's content area, and `color_panes_fit()`
+(pure) says whether they fit side by side or stacked without scrolling
+(`ams_edit_color_fits`). Where they do (800x480 and larger) both show and the
+picker never covers a swatch. Where they do not (480x320, 480x272, 320x480)
+one pane fills the view at a time (`ams_edit_color_pane`): the presets lead
+with the grid's own custom tile (`lead_hidden="false"`), which swaps in the
+picker, and the picker's Presets button swaps back. Both panes are fixed-size,
+so the verdict is cached per room (`color_fit_room_w_`/`_h_`) and the subject
+moves only when it changes: each flip rebuilds the grid. A preset tap applies
+the colour and returns to the editor; Select applies the picker's.
 
 **Summary, temperatures, tags.** The summary line ("eSUN Silk PETG, Blue") and
 the temperature line follow the selection live: a picked product's range, else
@@ -1520,7 +1547,10 @@ component) on the summary and on every row whose shown value is the tag's
 (`ams::tag_provenance()` over the form's current values), and Reset to tag
 restores every field the tag states through `ams::reset_to_tag()`.
 
-**Saving.** Save in the header is dirty-gated, a More-field edit included. Back
+**Saving.** Save in the header is dirty-gated, a More-field edit included. A
+spool picked in a picker-entry session (`open_on_picker`) commits at once
+(`commit_and_close()`); one picked from the editor's header button returns to
+the editor with the spool applied, to be saved. Back
 with unsaved edits asks Save or Discard; a dismissal keeps the editor open.
 On a Spoolman-linked slot an identity change (material, brand or colour) asks
 **Update in Spoolman** (`SpoolmanSlotSaver::LinkIntent::UpdateLinked`:
@@ -1537,8 +1567,10 @@ and a late record for a spool the slot no longer names is dropped.
 picker-entry session reaches the editor without `enter_editor()`. One fetch of
 the linked spool feeds identity and More; a cover (keypad, QR scanner) drops it
 with `lifetime_`, and `on_activate()` re-arms it. Save completions are owed to
-Spoolman and the slot, so they run on `object_lifetime_`. A Spoolman save
-captures the slot it commits and the callback it began with, so it commits even
+Spoolman and the slot, so they run on `object_lifetime_`. Every save runs from
+a `SaveCapture` (`capture_save()`): the slot it commits, its original and saved
+values and the callback it began with. A Spoolman save and a More-field PATCH
+both finish from that capture through `commit_capture()`, so each commits even
 when the editor closed before Spoolman answered; only closing the editor checks
 that the session is still the one showing. Back, the weight keypad and the
 scanner stay shut while a save is in flight, so its completion never pops

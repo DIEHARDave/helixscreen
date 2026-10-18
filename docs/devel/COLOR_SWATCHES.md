@@ -40,12 +40,43 @@ back by `filament_finish_of()`.
 
 | Component | When |
 |-----------|------|
-| `<color_swatch>` | A swatch the user picks: a touch target with a selection ring. Props `color_subject` or `color`, `colors_subject` (CSV), `finish_subject` (a filament name), `fill` (a style; the LED Custom swatch's hue wheel), `selected_subject` + `index`, `callback`, `clickable`, `bubble`, `size`, `hit`, `reach`, `ring`. Grids repeat it (`color_swatch_grid.xml`). |
+| `<color_swatch>` | A swatch the user picks: a touch target with a selection ring. Props `color_subject` or `color`, `colors_subject` (CSV), `finish_subject` (a filament name), `fill` (a style; the LED Custom swatch's hue wheel), `selected_subject` + `index`, `callback`, `clickable`, `bubble`, `size`, `hit`, `reach`, `ring`. Grids repeat it (`<color_swatch_grid>`, below). |
+| `<color_swatch_grid>` | The 30-swatch preset grid, for either palette. Props `swatch_callback` (required), `palette` (`general` default, or `theme`), `selected_subject`, `swatch_size` / `gap` / `gap_half` (the `swatch_grid_*` tokens by default), `lead_hidden` + `lead_callback` (a leading `custom_color_swatch`, hidden by default). |
 | `<custom_color_swatch>` | The rainbow custom-colour swatch (hue wheel, centre glyph, `index` -2) that opens a colour editor: leading a preset grid, closing the LED colour row. Props `icon` (`pencil` default, `plus`), `selected_subject`, `callback`, `size`, `hit`, `reach`, `ring`; sizing defaults to the preset grids' tokens. |
 | `<color_dot>` | A colour that is only shown (a spool in a list, a slot in a row, a tool's dot): no ring, no reach, clicks go to the row. Same colour props plus `size`. |
 | `<swatch_paint>` | The bare painter, for a rounded rect (set `style_radius`) or a fill inside another control (the LED power button). Attributes `color`, `bind_color`, `colors`, `bind_colors`, `finish`, `bind_finish`, `edge="off"`. With no colour it paints nothing. |
 
 A click handler reads the tapped colour with `helix::ui::swatch_color_of(target)`.
+
+### Preset grids and touch targets
+
+`color_swatch_grid` is the one preset grid. Its swatches read
+`<palette>_swatch_color_<i>`, published from `swatch_palette()`
+(`include/ui_color_picker.h`): `general` for filament, LED and general colours, `theme` for
+the theme editor's ramp and hue families (`tests/unit/test_theme_swatch_grid.cpp` pins the
+order). The colour picker shows one or the other; the spool editor's colour view shows
+`general`.
+
+A grid swatch's touch target is the swatch plus `hit` (half the gap) on each side, so the
+pitch `swatch_grid_size + swatch_grid_gap` is the target, and `gap == 2 * gap_half` makes
+neighbouring targets meet without overlapping. Every tier keeps that pitch at 7 mm or more on
+its panel:
+
+| Tier | Swatch | Gap | Pitch | Grid width |
+|------|--------|-----|-------|------------|
+| micro | 26 | 18 | 44 | 246 |
+| tiny (3.5" 480x320, 165 dpi) | 28 | 18 | 46 | 258 |
+| small | 28 | 16 | 44 | 248 |
+| medium, large | 32 | 12 | 44 | 252 |
+
+The tabbed picker (micro and tiny) gives its presets a whole tab and passes the larger
+`picker_tab_swatch_*` tokens (40 + 6). A host that places its own row of `color_swatch`es
+(the spool editor's inline grids) uses the same `swatch_grid_*` tokens and pads its container
+by `swatch_grid_gap_half`, so the outer row and column are hit-testable: LVGL only hit-tests
+a child inside its parent's box.
+
+`custom_color_swatch` defaults to those tokens too, so it tiles as one more grid cell where
+it leads a row; the LED colour row passes its own sizes.
 
 ### C++
 

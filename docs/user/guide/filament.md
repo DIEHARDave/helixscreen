@@ -219,7 +219,7 @@ With it on, the external spool appears on the filament path beside your slots. T
 
 > Added in 1.1.
 
-**Tap the external spool** on the filament path. Alongside the spool bookkeeping (Spool Info, Select Spool, Scan QR, Clear) the menu offers **Load** and **Unload**, which feed and retract the bypass spool itself.
+**Tap the external spool** on the filament path. Alongside the spool bookkeeping (Edit Spool, Select Spool, Scan QR, Clear) the menu offers **Load** and **Unload**, which feed and retract the bypass spool itself.
 
 Bypass load deliberately does not go through the AMS. It runs your configured **Load Filament** macro — the same one the Filament panel's Load button uses, set in Settings > Printing > Macro Buttons — or a plain feed if you have no macro configured. That is what the reporter of this behavior expected: with bypass engaged, the normal load routine takes over. Unload does go through the AMS on backends that expose a bypass unload, because that is how the filament gets back out of the toolhead.
 
@@ -246,8 +246,8 @@ Tapping the mounted toolhead, or any slot's filament tube or spool, opens the sl
 | **Eject** | Push filament fully out of the lane to release the spool, when the slot has filament in its lane but **not** loaded into the toolhead. Replaces the Unload button in that state. Only on backends that support per-lane eject (AFC and Happy Hare). |
 | **Recover** | Pull filament that is stranded partway down the tube back toward its slot, without heating the nozzle. Takes the place of **Unload** when the system can tell that this slot's filament is stuck past the hub. |
 | **Preload** | Happy Hare only. Feed filament from the spool into its gate, ready for a later load. Greyed out during a print, while any filament is loaded, or while the MMU is busy. |
-| **Spool Info** | Open the filament editor to view or change material, color, vendor, and remaining weight. |
-| **Select Spool** | Assign a saved Spoolman spool to this slot. Only shown when Spoolman is configured. |
+| **Edit Spool** | Open the spool editor to view or change material, brand, color, and remaining weight. See [Editing Filament Properties](#editing-filament-properties). |
+| **Select Spool** | Open the spool editor on your list of Spoolman spools, to assign one to this slot. Only shown when Spoolman is configured. |
 | **Scan QR Code** | Scan a filament QR code to auto-fill spool data. Only shown when Spoolman is configured. |
 | **Clear Spool** | Erase everything HelixScreen and the printer's firmware remember about this slot: your saved edits, the slot's spool details, and the Spoolman link, plus the printer's own record where the firmware lets it be wiped (Happy Hare's whole gate map entry, the QIDI Box's stored slot values). What is left afterwards is only what the hardware can physically read - on the ACE, the Snapmaker U1 and a stock CFS the firmware's record cannot be wiped (read-only, or the RFID tag is simply re-read), so the slot repopulates from it. Shown whenever the slot carries an assignment, loaded or not. Refused on the lane feeding an active, paused or preparing print - the button greys out and says why. |
 
@@ -257,38 +257,54 @@ Tapping the mounted toolhead, or any slot's filament tube or spool, opens the sl
 
 - **Backup Slot** (**Backup Lane** on AFC, **Backup Gate** on Happy Hare) — Choose where to switch to if this spool runs out mid-print. The backup must hold a compatible material; a slot holding something else is marked **(incompatible)** and can't be picked. A slot holding the *same* material in a different grade — PLA-CF behind PLA, say — is marked **(different grade)** and *can* be picked: the swap will work, but filled filaments print slower and wear a brass nozzle, and this one happens mid-print without you there, so the label tells you before you choose it. This picker appears on **AFC (Box Turtle)** and on **single-unit Happy Hare** setups; a multi-unit Happy Hare shows its groups read-only, because the command that edits them acts on whichever unit is selected.
 
+**Assigned Tool** - On systems where HelixScreen can set which tool a slot feeds, the menu has an **Assigned Tool** dropdown: pick the tool this slot should feed. See [Assigned Tool](#assigned-tool) below.
+
 **The Creality CFS is different: there is nothing to pick.** Its **Auto-Refill** is managed entirely by the box's firmware. Stock CFS firmware never says which slot it would switch to, so the menu has no Backup Slot row and no backup arrows are drawn between the slots; the line at the bottom of the menu says whether Auto-Refill is on and that the firmware chooses. A community Kalico-based CFS setup that publishes its switch plan is the exception: while Auto-Refill is on, a slot with a planned backup shows the Backup Slot row **greyed out** with that slot in it, and arrows mark the plan. Either way, the box decides for itself which slot can stand in, and it only accepts one holding the **exact same material and the exact same colour**. If nothing matches, or Auto-Refill is switched off, it does not switch at all: the print stays paused and HelixScreen tells you which of the two it was. Auto-Refill itself can be turned on or off from the CFS device actions.
 
 > **Clearing every backup at once:** To remove every Endless Spool backup in one step — back to "a runout just stops the print" — open the AMS Management overlay and tap **Reset Endless Spool**. See [AMS Management (Settings Overlay)](#ams-management-settings-overlay) below.
 
-> **Assigning tools:** Which tool a slot feeds is set in two places. For one print, use the **Filament Mapping** card that appears when you select a multi-tool file: see [Filament Mapping](#filament-mapping) below. To change the printer's own standing assignment, tap **Spool Info** and pick the slot's **Assigned Tool**: see [Assigned Tool](#assigned-tool) below.
+> **Assigning tools:** Which tool a slot feeds is set in two places. For one print, use the **Filament Mapping** card that appears when you select a multi-tool file: see [Filament Mapping](#filament-mapping) below. To change the printer's own standing assignment, pick the slot's **Assigned Tool** in this menu: see [Assigned Tool](#assigned-tool) below.
 
 ### Editing Filament Properties
 
-Tap **Spool Info** in the slot context menu to open the filament editor. This lets you tell HelixScreen what's loaded in each slot — important for systems without automatic detection (RFID).
+Tap a slot and choose **Edit Spool** to open the spool editor. This tells HelixScreen what's loaded in the slot, which matters most on systems that can't read it themselves. The title names the slot (for example **Gate 3** or **Lane 2**). When the slot is linked to a Spoolman spool, the title also shows the Spoolman icon and the spool's number.
 
-**What you can edit:**
+**What the editor shows:**
 
-- **Color** — Tap the color swatch to open a color picker
-- **Vendor** — Select from a dropdown (e.g., Prusament, eSUN, Hatchbox)
-- **Material** — Select the filament type (PLA, PETG, ABS, TPU, Nylon, etc.)
-- **Remaining weight** — Tap the pencil icon to enable a slider and set how full the spool is (0–100%)
+- **Summary line** - a color dot and the filament in words, for example **eSUN Silk PETG, Blue**. It follows your changes as you make them.
+- **Remaining weight** - the pill on the summary line, for example **750 g of 1000 g**. Tap it and type the grams left on the spool.
+- **Temperatures** - the nozzle range and bed temperature for what you've picked: a product's own range when you pick one, otherwise the material's usual range.
+- **Material, Variant, Brand, Product** - four dropdowns that narrow each other down. Pick the material first (PLA, PETG, ABS and so on); **Variant** offers that material's kinds (Basic, Silk, CF and so on); **Brand** lists the makers of it, with **Generic** first; **Product** lists that brand's lines and is hidden while the brand is Generic. Changing the material keeps the brand when it makes the new material and resets the variant to Basic. The Material and Brand lists end in **Browse catalog...**, which opens the full filament catalog; a pick there fills in all four.
+- **Color** - a row of colour swatches. Tap one to use it. The rainbow swatch at the start of the row opens the full colour view (so does tapping the colour dot on the summary line). A ring marks the current colour, on the rainbow swatch when the colour is one the row doesn't show.
 
-**Read-only info:**
+**The colour view** has the full set of preset colours and a custom colour picker (a hue and shade picker, a hex field and **Select**). Tap a preset to use it, or mix a colour and tap **Select**; either takes you back to the editor. On larger screens the presets and the picker show side by side. On small screens (480x320, 480x272 and portrait 320x480) they take turns: tap the rainbow swatch at the start of the presets to switch to the picker, and **Presets** to switch back. Back returns to the editor without changing the colour.
 
-- **Nozzle temperature range** — Recommended printing temperatures (e.g., 200–230°C)
-- **Bed temperature** — Recommended bed temperature (e.g., 60°C)
+**From tag.** On systems that read the spool's RFID or NFC tag, a small **from tag** pill sits beside each value that came from the tag: on the summary line, the material, brand, product, colour and the temperatures. Change a value and its pill goes away. **Reset to tag**, below the form, puts back every value the tag states.
 
-**Spoolman actions** (when Spoolman is configured):
+**Spoolman** (when Spoolman is configured):
 
-- **Choose Saved Spool** — Browse your Spoolman database and assign a spool. This auto-fills the vendor, material, color, and temperatures.
-- **Scan QR Code** — Scan a filament spool's QR code to look it up in Spoolman
-- **More actions button** (▾ dropdown) — Tap the dropdown arrow for additional actions:
-  - **Spool Details** — View the full Spoolman spool record
-  - **Unlink** — Remove the Spoolman association (appears only when a spool is linked)
-  - **Print Label** — Print a physical label for this spool (appears only when a label printer is set up)
+- The two round buttons in the header, left of **Save**, open your **Spoolman spool list** and **Scan QR Code** (scan a spool label to look the spool up). In the list, search for a spool and tap it: the editor comes back with that spool's brand, material, colour and temperatures filled in, ready to save. The list ends in **Not in your spools? Set it up**, which goes back to the editor so you can describe the spool by hand.
+- **Select Spool** in the slot's menu opens the same list directly. Tapping a spool there links it to the slot and saves straight away.
+- **More** (only on a slot linked to a Spoolman spool) opens the spool's **Price**, **Location**, **Lot/Batch Nr** and **Notes**, plus **Print Label** when a label printer is set up. These are saved to the spool in Spoolman.
+- **Add to Spoolman + label** (only on a slot that isn't linked) creates the spool in Spoolman from what you've entered, links it to the slot, and prints its label when a label printer is set up.
 
-Tap **Save** to apply your changes, or **Cancel** to discard them.
+**Saving:**
+
+1. **Save** in the header lights up once something has changed, including a field under **More**.
+2. If the slot is linked to a Spoolman spool and you changed its material, brand or colour, HelixScreen asks **Different filament?**: **Update in Spoolman** points the spool at the matching filament in Spoolman (creating it if needed), and **Unlink, keep on this slot** keeps your changes on the slot only and removes the Spoolman link.
+3. The editor closes once the save is done. A save that is still talking to Spoolman finishes even if you leave the screen. Opening the same slot again before it finishes shows **Still saving this spool…**; try again in a moment.
+
+Tapping Back with unsaved changes asks whether to **Save** or **Discard** them.
+
+**When a save is only partly done**, a message says what did and didn't save:
+
+- **Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved.** The slot's own changes are saved; the **More** fields stay in the editor for when Spoolman is back.
+- **This spool's details haven't loaded from Spoolman yet. Try Save again.** The **More** fields have nothing to save into yet. Nothing is lost; tap Save again in a moment.
+- **Saved to Spoolman, but the spool's price, location, lot and notes didn't save.** Everything else was saved.
+- **Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.**
+- **Spoolman is offline, so brand and material can't be saved.** A linked spool's brand and material come from Spoolman, so they wait until it is reachable.
+
+Which tool a slot feeds is not set here: use **Assigned Tool** in the slot's menu (see [Assigned Tool](#assigned-tool)).
 
 > **Adding brands and products from a file.** The catalog can be extended or corrected by editing `user_filaments.json` instead of using the screen. See [Editing materials and brands by hand](settings/printing.md#editing-materials-and-brands-by-hand).
 
@@ -370,7 +386,7 @@ Keep the `M109` for the first tool last. It sets that tool from its idle tempera
 
 ### Assigned Tool
 
-Separately from Filament Mapping, some filament systems keep their own table of which slot each tool prints from, and it stays in place from one print to the next. Where HelixScreen can write that table (such as AFC, Happy Hare and the QIDI Box), the filament editor shows an **Assigned Tool** dropdown: tap a slot, choose **Spool Info**, and pick the tool that slot should feed. The tool badges in the slot view show the result.
+Separately from Filament Mapping, some filament systems keep their own table of which slot each tool prints from, and it stays in place from one print to the next. Where HelixScreen can write that table (such as AFC, Happy Hare and the QIDI Box), the slot's menu shows an **Assigned Tool** dropdown: tap a slot and pick the tool that slot should feed. The dropdown is left out where the system keeps no table HelixScreen can write, such as the Snapmaker U1 and the ACE. The tool badges in the slot view show the result.
 
 Filament Mapping is chosen per print, from the file you are about to print. Assigned Tool is the printer's standing table, which a print uses when nothing maps it otherwise.
 
@@ -637,7 +653,7 @@ Spoolman is an optional filament-inventory server. Once it's connected, the AMS 
 
 - Spool name and material type shown per slot
 - Remaining filament weight shown
-- Tap a slot's **Spool Info** or **Select Spool** to assign a saved spool — see [Editing Filament Properties](#editing-filament-properties) and the [Slot Context Menu](#slot-context-menu)
+- Tap a slot's **Select Spool**, or **Edit Spool** and the Spoolman button in its header, to assign a saved spool. See [Editing Filament Properties](#editing-filament-properties) and the [Slot Context Menu](#slot-context-menu)
 
 Connecting a server, the full spool-inventory panel, the new-spool wizard, and how remaining weight is tracked all live on their own page: **[Filament Tracking & Spoolman](filament-tracking.md)**.
 

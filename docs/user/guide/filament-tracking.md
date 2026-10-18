@@ -27,7 +27,7 @@ Out of the box, HelixScreen tracks filament on its own. Nothing to enable.
 
 **Single spool (no AMS):** Tap the spool icon on the Filament panel to configure the **external spool** — set the material, color, and brand. Once set, the whole UI knows your filament: preset heat buttons show the right temperature, purge heats correctly, and the Home panel's Active Spool widget shows it. See [External Spool Configuration](filament.md#external-spool-configuration).
 
-**AMS / multi-material:** Each slot carries its own material, color, vendor, and remaining weight. On systems with **RFID** readers (Creality CFS, Snapmaker U1), spool info is detected automatically when you seat a spool. On systems without RFID, tap a slot's **Spool Info** to enter it yourself. See [Editing Filament Properties](filament.md#editing-filament-properties).
+**AMS / multi-material:** Each slot carries its own material, color, vendor, and remaining weight. On systems with **RFID** readers (Creality CFS, Snapmaker U1), spool info is detected automatically when you seat a spool. On systems without RFID, tap a slot and choose **Edit Spool** to enter it yourself. See [Editing Filament Properties](filament.md#editing-filament-properties).
 
 This information persists on the printer — it survives restarts, and it's written where OrcaSlicer 2.3.2+ can read it, so your slicer's filament panel stays in sync. See [Syncing with OrcaSlicer](filament.md#syncing-with-orcaslicer-232-and-later).
 
@@ -88,7 +88,7 @@ Once connected, a few things light up:
 
 - **Spool inventory panel** — Reach it from the **Filament** nav tab. A scrollable, searchable list of every spool in your Spoolman database, each shown with a color-coded 3D spool, its weight, and remaining percentage. Search by vendor, material, or color; filter by storage location. Tap a spool for a context menu to **set it active**, edit, print a label, duplicate, or delete.
 - **Assign to the printer** — Setting a spool "active" tells HelixScreen (and Spoolman) that this is the spool currently feeding the printer. The Home panel's Active Spool widget reflects it.
-- **Assign to an AMS slot** — In the slot editor, tap **Choose Saved Spool** to pick from Spoolman and auto-fill that slot's vendor, material, color, and temperatures. See [Editing Filament Properties](filament.md#editing-filament-properties).
+- **Assign to an AMS slot** - Tap a slot and choose **Select Spool**, or tap the Spoolman button in the spool editor's header, to pick from Spoolman and auto-fill that slot's brand, material, color, and temperatures. See [Editing Filament Properties](filament.md#editing-filament-properties).
 - **Scan to assign** — If you print QR-coded spool labels, scan one to look the spool up in Spoolman and link it, instead of picking from the list. See [Barcode Scanner](barcode-scanner.md) and [Label Printing](label-printing.md).
 
 ### Adding a spool
@@ -121,12 +121,12 @@ However it's tracked, remaining filament shows up in the same places:
 |---|---|
 | **Active Spool widget** (Home panel) | Current spool's material, color, and remaining vs. total weight |
 | **AMS sidebar** | Remaining weight of the loaded slot |
-| **Spool Info editor** | A per-slot remaining bar with percentage and weight |
+| **Edit Spool** editor | The slot's remaining weight out of the spool's total, for example 750 g of 1000 g |
 | **Spoolman inventory panel** | Weight and remaining percentage for every spool, with a warning icon on any spool that's running low (under 100 g) |
 
 **Runout** — actually running out of filament mid-print — is handled by your filament sensors and multi-filament hardware, not by the weight number. The printer's firmware pauses the print; HelixScreen then guides you through reloading. On **AFC (Box Turtle)** and **Happy Hare**, a backup slot you configured can take over automatically (Endless Spool). On the **Creality CFS**, **Auto-Refill** is run by the box itself and always pauses first: it switches only when Auto-Refill is on and another slot holds the exact same material and colour, and otherwise leaves the print paused for you. See [Reading Error States](filament.md#reading-error-states) and the Endless Spool notes in [Filament Management](filament.md#slot-context-menu).
 
-> **Tip:** The remaining weight is only as good as the starting number. Whenever you load a fresh spool, set its full weight — either by entering it in the Spool Info editor or by assigning a fresh Spoolman spool — so the estimate has an accurate starting point.
+> **Tip:** The remaining weight is only as good as the starting number. Whenever you load a fresh spool, set its weight, either by entering the remaining grams in the Edit Spool editor or by assigning a fresh Spoolman spool, so the estimate has an accurate starting point.
 
 ---
 
