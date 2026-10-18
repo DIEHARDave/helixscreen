@@ -411,14 +411,26 @@ bool PluginHost::load(PluginInfo& info) {
                 screen->show_setting(key, value);
         }
     };
-    l.ui.open = [this, id](const std::string& component, std::function<void()> on_closed,
+    l.ui.open = [this, id](const std::string& component, PluginUi::Callbacks cb,
                            const PluginUi::Attrs& attrs) {
-        return overlays_.open(id, component, std::move(on_closed), attrs);
+        return surfaces_.open_overlay(id, component, std::move(cb), attrs);
+    };
+    l.ui.dialog = [this, id](const std::string& component, PluginUi::Callbacks cb,
+                             const PluginUi::Attrs& attrs) {
+        return surfaces_.open_dialog(id, component, std::move(cb), attrs);
     };
     l.ui.open_count = [this](const std::string& plugin_id) {
-        return overlays_.open_count(plugin_id);
+        return surfaces_.overlay_count(plugin_id);
     };
-    l.ui.close = [this](int handle) { overlays_.close(handle); };
+    l.ui.dialog_count = [this](const std::string& plugin_id) {
+        return surfaces_.dialog_count(plugin_id);
+    };
+    l.ui.close = [this](int handle) { surfaces_.close(handle); };
+    l.ui.is_open = [this](int handle) { return surfaces_.is_open(handle); };
+    l.ui.queue_confirm = [this, id](std::function<bool()> present,
+                                    std::function<void()> cancelled) {
+        surfaces_.queue_confirm(id, std::move(present), std::move(cancelled));
+    };
     l.ctx->ui = &l.ui;
     register_plugin_translations(root);
     for (Installer install :
@@ -486,7 +498,7 @@ void PluginHost::unload(const std::string& id) {
     }
     // Overlays go before the runtime does too, and silently: the plugin's on_close
     // hooks point at a Lua state that is about to close.
-    presenter_.drop_plugin(id);
+    surfaces_.drop_plugin(id);
     overlays_.close_all(id);
     // Its generated settings screen leaves the same way, through navigation, so
     // the close callback that erases it runs on every path.

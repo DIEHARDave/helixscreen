@@ -11,6 +11,7 @@
 #include "plugin_overlay_host.h"
 #include "plugin_permissions.h"
 #include "plugin_presenter.h"
+#include "plugin_surfaces.h"
 
 #include <cstdint>
 #include <functional>
@@ -163,6 +164,8 @@ class PluginHost {
     bool widget_defs_dirty_ = false;
     PluginOverlayHost overlays_;
     PluginPresenter presenter_;
+    /// Destroyed first: it closes dialogs that still point back at it.
+    PluginSurfaces surfaces_{overlays_, presenter_};
     /// Generated settings screens currently open. More than one only while an
     /// earlier one is still sliding out.
     std::vector<std::unique_ptr<PluginSettingsOverlay>> settings_screens_;
