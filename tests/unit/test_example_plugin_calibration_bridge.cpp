@@ -10,11 +10,13 @@
 #include "../test_fixtures.h"
 #include "../test_helpers/plugin_host_test_support.h"
 #include "locale_formats.h"
+#include "lodepng_encode.h"
 #include "panel_widget_registry.h"
 #include "plugin_host.h"
 #include "plugin_xml_policy.h"
 #include "translation_loader.h"
 
+#include <cstdlib>
 #include <fstream>
 #include <iterator>
 #include <lvgl.h>
@@ -100,6 +102,9 @@ class CalibrationFx : public XMLTestFixture {
         for (auto& p : panels)
             p = lv_obj_create(lv_screen_active());
         NavigationManager::instance().set_panels(panels.data());
+        // The result dialog is built from the app's dialog chrome.
+        REQUIRE(register_component("divider_vertical"));
+        REQUIRE(register_component("modal_button_row"));
     }
     ~CalibrationFx() override {
         NavigationManager::instance().go_back();
@@ -132,13 +137,16 @@ TEST_CASE_METHOD(XMLTestFixture, "calibration-bridge loads as an overlay-only pl
     // No widget: the overlay is the whole UI, so nothing lands in the registry.
     CHECK(helix::find_widget_def("calibration-bridge__tile") == nullptr);
 
-    const std::string path = "examples/plugins/calibration-bridge/ui/calibration-bridge__ask.xml";
-    std::ifstream in(path);
-    REQUIRE(in);
-    std::string xml((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-    CHECK(check_plugin_xml("calibration-bridge",
-                           {"calibration-bridge__tile", "calibration-bridge__ask"},
-                           xml) == std::string());
+    for (const char* stem : {"calibration-bridge__ask", "calibration-bridge__result"}) {
+        const std::string path =
+            std::string("examples/plugins/calibration-bridge/ui/") + stem + ".xml";
+        std::ifstream in(path);
+        REQUIRE(in);
+        std::string xml((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        CHECK(check_plugin_xml("calibration-bridge",
+                               {"calibration-bridge__ask", "calibration-bridge__result"},
+                               xml) == std::string());
+    }
     CHECK(cb_int("calibration-bridge__state") == 0);
 }
 
@@ -362,29 +370,33 @@ TEST_CASE_METHOD(XMLTestFixture, "accept without a selection or a print is a no-
     CHECK(cb_int("calibration-bridge__state") == 3);
 }
 
-TEST_CASE_METHOD(CalibrationFx, "the overlay dropdown carries the choices and the pick",
+namespace {
+/// The picker dropdown of the result dialog on screen, or nullptr.
+lv_obj_t* live_picker() {
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    if (!dialog || ModalStack::instance().top_visible_tag() != "calibration-bridge")
+        return nullptr;
+    return lv_obj_find_by_name(dialog, "calibration-bridge__pick");
+}
+} // namespace
+
+TEST_CASE_METHOD(CalibrationFx, "the result dialog carries the choices and the pick",
                  "[plugin][example]") {
     HostRig rig(
         cb_block(json{{"auto_open", true}, {"companion_url", "https://orca-pc:8732/helixcal"}}));
     REQUIRE(register_component("header_bar"));
     rig.host->load_from("examples/plugins");
-    fire_agent_event(rig, "helixcal.available", available_event());
+    run_to_asking(rig);
+    process_lvgl(600);
     drain();
-    CHECK(NavigationManager::instance().has_open_overlays());
 
-    lv_obj_t* dd = lv_obj_find_by_name(lv_screen_active(), "calibration-bridge__pick");
+    lv_obj_t* dd = live_picker();
     REQUIRE(dd);
     CHECK(std::string(lv_dropdown_get_options(dd)).rfind("190\u00B0C\n195\u00B0C", 0) == 0);
     CHECK(lv_dropdown_get_selected(dd) == 0); // first option pre-selected
 
     // The real widget path: selecting drives bind_value onto the subject, and
     // accept posts the value behind the label the user read.
-    rig.host->dispatch_event("calibration-bridge__start");
-    rig.fake.requests[0].reply(RpcResult{true, json{{"ok", true}}, {}});
-    drain();
-    set_print_state("printing");
-    set_print_state("complete");
-    REQUIRE(cb_int("calibration-bridge__state") == 3);
     lv_dropdown_set_selected(dd, 3); // 0-based: the fourth option, 205
     // A tap on the list selects and then sends VALUE_CHANGED; the library
     // call alone does not, and it is the event bind_value listens on.
@@ -399,14 +411,6 @@ TEST_CASE_METHOD(CalibrationFx, "the overlay dropdown carries the choices and th
             CHECK(json::parse(q.c).value("value", 0) == 205);
 }
 
-namespace {
-/// The picker dropdown of the overlay that is on the nav stack, or nullptr.
-lv_obj_t* live_picker() {
-    lv_obj_t* dd = lv_obj_find_by_name(lv_screen_active(), "calibration-bridge__pick");
-    return dd && NavigationManager::instance().has_open_overlays() ? dd : nullptr;
-}
-} // namespace
-
 TEST_CASE_METHOD(CalibrationFx, "auto_ask at print completion leaves the picker open",
                  "[plugin][example]") {
     HostRig rig(cb_block(json{{"auto_open", true}}));
@@ -414,7 +418,7 @@ TEST_CASE_METHOD(CalibrationFx, "auto_ask at print completion leaves the picker 
     rig.host->load_from("examples/plugins");
     fire_agent_event(rig, "helixcal.available", available_event());
     process_lvgl(600);
-    REQUIRE(live_picker());
+    CHECK_FALSE(live_picker()); // nothing to answer yet
 
     rig.host->dispatch_event("calibration-bridge__start");
     rig.fake.requests[0].reply(RpcResult{true, json{{"ok", true}}, {}});
@@ -429,23 +433,74 @@ TEST_CASE_METHOD(CalibrationFx, "auto_ask at print completion leaves the picker 
     CHECK(std::string(lv_dropdown_get_options(dd)).rfind("190\u00B0C\n195\u00B0C", 0) == 0);
 }
 
-TEST_CASE_METHOD(CalibrationFx, "a second available event replaces the showing choices",
+TEST_CASE_METHOD(CalibrationFx,
+                 "completion opens the result dialog behind the stock completion modal",
                  "[plugin][example]") {
-    HostRig rig(cb_block(json{{"auto_open", true}}));
-    REQUIRE(register_component("header_bar"));
+    HostRig rig(cb_block(json::object()));
     rig.host->load_from("examples/plugins");
-    fire_agent_event(rig, "helixcal.available", available_event());
+    lv_obj_t* app = Modal::show("print_cancel_confirm_modal"); // stands in for print completion
+    REQUIRE(app != nullptr);
+    run_to_asking(rig);
     process_lvgl(600);
-    REQUIRE(live_picker());
+    CHECK_FALSE(live_picker());
+    CHECK(ModalStack::instance().top_dialog() == app);
 
-    json ev = available_event();
-    ev["choices"] = json::array({200, 205, 210});
-    fire_agent_event(rig, "helixcal.available", ev);
-    process_lvgl(600);
+    Modal::hide(app);
     drain();
-    lv_obj_t* dd = live_picker();
-    REQUIRE(dd);
-    CHECK(std::string(lv_dropdown_get_options(dd)) == "200\u00B0C\n205\u00B0C\n210\u00B0C");
+    process_lvgl(600);
+    CHECK(live_picker());
+}
+
+TEST_CASE_METHOD(CalibrationFx, "accept posts the choice and closes the result dialog",
+                 "[plugin][example]") {
+    HostRig rig(cb_block(json{{"companion_url", "https://orca-pc:8732/helixcal"}}));
+    rig.host->load_from("examples/plugins");
+    run_to_asking(rig);
+    process_lvgl(600);
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    REQUIRE(live_picker());
+    lv_obj_t* use = lv_obj_find_by_name(dialog, "calibration-bridge__use");
+    REQUIRE(use);
+    lv_obj_send_event(use, LV_EVENT_CLICKED, nullptr);
+    drain();
+    process_lvgl(600);
+    CHECK(cb_int("calibration-bridge__state") == 4);
+    CHECK(http_count(rig) == 1);
+    CHECK_FALSE(live_picker());
+}
+
+TEST_CASE_METHOD(CalibrationFx, "dismissing the result dialog keeps the result askable",
+                 "[plugin][example]") {
+    HostRig rig(cb_block(json::object()));
+    rig.host->load_from("examples/plugins");
+    run_to_asking(rig);
+    process_lvgl(600);
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    REQUIRE(live_picker());
+    lv_obj_send_event(ModalStack::instance().backdrop_for(dialog), LV_EVENT_CLICKED, nullptr);
+    drain();
+    process_lvgl(600);
+    CHECK_FALSE(live_picker());
+    CHECK(cb_int("calibration-bridge__state") == 3);
+
+    rig.host->dispatch_event("calibration-bridge__open_result");
+    process_lvgl(600);
+    CHECK(live_picker());
+}
+
+TEST_CASE_METHOD(CalibrationFx, "a reset calibration withdraws a queued result dialog",
+                 "[plugin][example]") {
+    HostRig rig(cb_block(json::object()));
+    rig.host->load_from("examples/plugins");
+    lv_obj_t* app = Modal::show("print_cancel_confirm_modal");
+    run_to_asking(rig); // the result dialog is queued behind the app modal
+    fire_agent_event(rig, "helixcal.cancel", json::object());
+    REQUIRE(cb_int("calibration-bridge__state") == 0);
+
+    Modal::hide(app);
+    drain();
+    process_lvgl(600);
+    CHECK_FALSE(live_picker());
 }
 
 namespace {
@@ -652,6 +707,46 @@ TEST_CASE_METHOD(XMLTestFixture, "the state machine speaks German", "[plugin][ex
 
     lv_translation_set_language("en");
     helix::ui::locale_set_language("en");
+}
+
+// The result dialog over the overlay, for eyes rather than assertions. Hidden;
+// run on demand:
+//   HELIX_SHOT_DIR=/tmp/out ./build/bin/helix-tests '[calibration_bridge_shot]'
+TEST_CASE_METHOD(CalibrationFx, "calibration-bridge result dialog screenshot",
+                 "[.][calibration_bridge_shot]") {
+    const char* dir = std::getenv("HELIX_SHOT_DIR");
+    REQUIRE(dir != nullptr);
+    HostRig rig(cb_block(json{{"auto_open", true}}));
+    REQUIRE(register_component("header_bar"));
+    rig.host->load_from("examples/plugins");
+    run_to_asking(rig);
+    process_lvgl(800);
+    drain();
+    REQUIRE(ModalStack::instance().top_visible_tag() == "calibration-bridge");
+    lv_obj_update_layout(lv_screen_active());
+    lv_draw_buf_t* snap = lv_snapshot_take(lv_screen_active(), LV_COLOR_FORMAT_ARGB8888);
+    REQUIRE(snap != nullptr);
+    const int w = static_cast<int>(snap->header.w);
+    const int h = static_cast<int>(snap->header.h);
+    std::vector<unsigned char> rgba(static_cast<size_t>(w) * h * 4);
+    for (int y = 0; y < h; ++y) {
+        const auto* row =
+            reinterpret_cast<const lv_color32_t*>(snap->data + y * snap->header.stride);
+        for (int x = 0; x < w; ++x) {
+            unsigned char* d = &rgba[(static_cast<size_t>(y) * w + x) * 4];
+            d[0] = row[x].red;
+            d[1] = row[x].green;
+            d[2] = row[x].blue;
+            d[3] = 255;
+        }
+    }
+    unsigned char* out = nullptr;
+    size_t out_size = 0;
+    REQUIRE(lodepng_encode32(&out, &out_size, rgba.data(), w, h) == 0);
+    std::ofstream(std::string(dir) + "/calibration-bridge-result.png", std::ios::binary)
+        .write(reinterpret_cast<char*>(out), static_cast<std::streamsize>(out_size));
+    free(out);
+    lv_draw_buf_destroy(snap);
 }
 
 #endif // HELIX_HAS_PLUGINS

@@ -1817,6 +1817,8 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel, bool hide_previous
         // Show overlay
         lv_obj_remove_flag(overlay_panel, LV_OBJ_FLAG_HIDDEN);
         helix::ui::bring_to_front(overlay_panel);
+        // Modals stay above any overlay, including one pushed while they show.
+        ModalStack::instance().raise_visible_to_foreground();
         // Claim taps landing anywhere within the panel bounds. Overlays are
         // narrower than the screen and sit in front of a full-screen, clickable
         // dismiss-backdrop. Without this, a touch that misses an interactive

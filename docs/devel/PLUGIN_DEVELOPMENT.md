@@ -214,6 +214,10 @@ Allowed elements (`src/plugin/plugin_xml_policy.cpp#is_allowed_element`):
 - `event_cb`
 - the app chrome widgets `overlay_panel`, `ui_card`, `icon`, `text_heading`,
   `text_body`, `text_muted`, `text_small`, `text_xs`, `text_tiny`
+- the app dialog chrome `ui_dialog`, `modal_header` and `modal_button_row`, for a
+  component opened with `helix.ui.dialog` (rules below)
+- `consts` and, inside it only, the value elements `px`, `int`, `percentage`, `color`
+  and `string` (see Responsive sizing)
 - `plugin_canvas`, the plugin drawing surface (below)
 - the plugin's own components, by name
 
@@ -228,12 +232,26 @@ Attribute rules (`src/plugin/plugin_xml_policy.cpp#check_plugin_attr`):
   attribute must read `plugin_event`.
 - `user_data` carries the target: `<id>__<name>` optionally followed by `:arg`. The host
   runs the `helix.ui.on` handler `name` with `arg` as a string, or `nil` without a colon.
+  On `modal_button_row` and `modal_header`, a prop ending in `_user_data`
+  (`primary_user_data`) is a target too and follows the same rule.
 - Every subject reference (`subject`, `*_subject`, and any `bind_*` attribute) must name a
   subject this plugin owns, spelled `<id>__<name>`.
 - Object `name=` attributes must be `<id>__<name>`, so a screen-wide lookup never
-  resolves a plugin object.
+  resolves a plugin object. On `modal_button_row` and `modal_header`, so must every
+  prop ending in `_name`, which is how they name their objects (`primary_name`). On
+  your own components, `_name` and `_user_data` props are ordinary props.
+- `modal_button_row` and `modal_header` name their objects with app names by default
+  (`btn_primary`, `header_title`), so a plugin must pass every one of their name props,
+  owned: `primary_name`, `secondary_name`, `tertiary_name`, `quaternary_name`,
+  `tertiary_divider_name` and `quaternary_divider_name` on the button row; `icon_name`,
+  `title_name` and `close_name` on the header. A missing one fails the load with the prop
+  named.
 - A `$`-prop indirection on any of these attributes is refused.
-- `cond` and `*_cond` expressions may name only the plugin's own subjects. Identifiers in
+- `ui_breakpoint`, `ui_breakpoint_v` and `ui_is_portrait` are readable as `subject=` on
+  a `bind_flag_if_*` or `bind_style_if_*`, and as identifiers in `cond`; nowhere else
+  (not in `bind_value`, `bind_text` or any other binding).
+- `cond` and `*_cond` expressions may name only the plugin's own subjects and the three
+  layout subjects above. Identifiers in
   the expression grammar are `[A-Za-z_][A-Za-z0-9_]*`, and every owned name starts with
   the id, so **a plugin whose id contains a hyphen cannot use `cond` at all**. Use
   `bind_flag_if_eq` (and the other `bind_flag_*` elements) instead; led-effects does.
@@ -261,6 +279,38 @@ from its breakpoint tier upward, so on most screens the XML engine silently subs
 default font - a trap an author cannot see on an oversized dev display. The policy rejects
 a suffixed token on `style_text_font`, and `helix.canvas` text enforces the same rule
 (`src/ui/theme_fonts.cpp#theme_manager_font_token_is_base`).
+
+### Responsive sizing
+
+A plugin component sizes itself the way an app component does.
+
+- **App tokens** (`#space_md`, `#font_heading`, the `#dialog_content_*` height ladder,
+  `UI_CONTRIBUTOR_GUIDE.md` §3) already resolve to the screen's breakpoint.
+- **Your own constants** go in a `<consts>` block in any of your `ui/` files, named
+  `<id>__<name>`, and every one of your components can use them as `#<id>__<name>`:
+
+  ```xml
+  <consts>
+    <px name="my-plugin__card_w_small" value="200"/>
+    <px name="my-plugin__card_w_medium" value="260"/>
+    <px name="my-plugin__card_w_large" value="320"/>
+    <px name="my-plugin__gap" value="6"/>
+  </consts>
+  ```
+
+  A `px` constant with a `_small`/`_medium`/`_large` set resolves to the screen's tier on
+  the narrow axis, exactly as an app token does, with the same optional tiers and
+  fallbacks (`_micro`, `_tiny`, `_xlarge`, `_xxlarge`) and the same DPI scaling; reference
+  it by the base name (`#my-plugin__card_w`). A partial set (`_small` and `_large` without
+  `_medium`) fails the load with the constant and the missing tier named. `int`,
+  `percentage`, `color` and `string` constants, and `px` without a tier suffix, register
+  as written. The resolver is the app's own
+  (`helix::theme_manager_resolve_px_tables` in `src/ui/theme_responsive.cpp`), and it runs
+  again when the screen changes size, so a component created afterwards gets the new tier.
+- **Layout switches** read `ui_breakpoint` (narrow axis), `ui_breakpoint_v` (vertical) or
+  `ui_is_portrait` in a conditional bind, for example
+  `<bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="2"/>` hides an
+  object below the small tier.
 
 ### plugin_canvas
 
@@ -307,8 +357,38 @@ Subjects are the plugin's whole output: XML binds to them, Lua sets them.
 |---|---|---|
 | `helix.ui.on(name, fn)` | | registers the handler a `plugin_event` or an `action` setting row fires; `name` is 1-48 chars of `[a-z0-9_-]`; `fn(arg)` receives the `user_data` argument string or `nil` |
 | `helix.ui.toast(msg[, severity])` | | `severity` is `"info"` (default), `"success"`, `"warning"` or `"error"` |
-| `helix.ui.confirm(title, msg[, opts])` | | `opts.severity` (`"info"`, `"warning"`, `"error"`), `opts.confirm_text` (default `"OK"`), `opts.on_confirm`, `opts.on_cancel`; a dismissed dialog runs `on_cancel` too; at most one open dialog per plugin; not during `on_unload` |
-| `helix.ui.overlay(component[, attrs])` | handle | opens one of the plugin's own components full-screen; a component the plugin already has open is a no-op returning the same handle (the showing overlay keeps its attrs and `on_close`); `attrs` is a table of string attributes passed to the component plus an optional `on_close` function; `handle.close()` closes it; the plugin unloading closes every open overlay; not during `on_unload` |
+| `helix.ui.confirm(title, msg[, opts])` | | `opts.severity` (`"info"`, `"warning"`, `"error"`), `opts.confirm_text` (default `"OK"`), `opts.on_confirm`, `opts.on_cancel`; a dismissed dialog runs `on_cancel` too; at most one shown or waiting per plugin; waits its turn like every plugin surface (below); not during `on_unload` |
+| `helix.ui.overlay(component[, attrs])` | handle | opens one of the plugin's own components full-screen; requesting a component the plugin already has shown or waiting returns that handle and changes nothing (it keeps its attrs and callbacks); `attrs` is a table of string attributes passed to the component plus optional `on_open` and `on_close` functions; not during `on_unload` |
+| `helix.ui.dialog(component[, attrs])` | handle | opens one of the plugin's own components as a dialog: a centred card over a dimmed backdrop, dismissed like any app dialog. Build it from `ui_dialog`, `modal_header` and `modal_button_row` (§7) so it looks like one. `attrs` as for `overlay`; at most one dialog shown or waiting per plugin; not during `on_unload` |
+
+A handle from `overlay` or `dialog` has `close()` and `is_open()` (both also callable as
+`h:close()`). `close()` closes a shown surface or withdraws one still waiting.
+`is_open()` is true only while it is on screen.
+
+`on_open()` runs when the surface actually appears. `on_close(how)` runs exactly once,
+however it ended, with `how` one of:
+
+| `how` | Meaning |
+|---|---|
+| `"user"` | the user dismissed it: backdrop tap, back or ESC, navigating back from an overlay |
+| `"plugin"` | the plugin called `close()` after it appeared. A button in your own component reaches your `helix.ui.on` handler, which records the answer and calls `close()`, so an answer reports `"plugin"` |
+| `"app"` | the app closed it: a remote-control sweep, or a hot reload of the component |
+| `"cancelled"` | the plugin called `close()` while it was still waiting; it never appeared |
+
+Unloading the plugin (including a printer switch, which reloads every plugin) closes
+and withdraws everything it has shown or waiting and runs none of these callbacks.
+
+**Presentation order.** A plugin surface never covers an app dialog. While one is
+showing (an error, a warning, the print-complete dialog, the PIN pad, the lock screen,
+the abort or busy screen), every plugin dialog, overlay and confirm waits, in the order
+requested across all plugins, and appears when the screen is clear. An app dialog always
+opens on top of a plugin surface, and the plugin surface is still there when it closes.
+Plugin dialogs from different plugins show one at a time, but a plugin never waits on
+its own dialog: its confirm or overlay opens over it at once. Presenting wakes the
+display; if waking brings up the lock screen, the surface waits until it is unlocked.
+`src/plugin/plugin_presenter.cpp#decide` is the rule. To ask something when a print
+finishes, watch `print_state` and open a dialog when it reads `"complete"`; it appears
+once the user has dealt with the print-complete dialog (`examples/plugins/calibration-bridge`).
 | `helix.ui.text_width(str[, font])` | integer px | width `str` draws at in the live theme font, measured the way `c:text` draws it (no letter spacing, one line); `font` is a base token without the `font_` prefix (default `"body"`), and a size-suffixed or unknown token is an error, as for canvas text; `str` is at most 1024 bytes. Call it where the layout is decided (a widget hook, a canvas redraw), since the theme font changes with the display tier |
 
 ### helix.widget (`src/plugin/lua_bind_widget.cpp`)
@@ -561,6 +641,8 @@ approval* instead of loading; enabling it again approves only the new lines.
 | Canvas opa | 0 to 100 percent on line/polyline/arc/rect/circle, and fill_opa on polyline | `src/plugin/lua_bind_canvas.cpp` |
 | Canvas text | at most 256 bytes per string | `src/plugin/lua_bind_canvas.cpp` |
 | Measured text | at most 1024 bytes per `helix.ui.text_width` string | `src/plugin/lua_bind_ui.cpp` |
+| Dialogs | one `helix.ui.dialog` shown or waiting per plugin | `src/plugin/lua_bind_ui.cpp#kMaxDialogs` |
+| Confirms | one `helix.ui.confirm` shown or waiting per plugin | `src/plugin/lua_bind_ui.cpp#kMaxOpenConfirms` |
 | Canvas list bytes | charged against the plugin memory cap as staged | `include/plugin_canvas.h#DisplayList/bytes` |
 
 A fault (time budget, memory, error count, or `main.lua` failing to load) unloads the

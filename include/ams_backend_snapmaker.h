@@ -528,6 +528,13 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     AmsError execute_device_action(const std::string& action_id,
                                    const std::any& value = {}) override;
 
+    /// The saved unload-at-end list (SettingsManager's end-of-print unload
+    /// tools) as one SET_PRINT_PREFERENCES line, sized to the toolheads the
+    /// firmware reports; empty until it has reported them. The firmware clears
+    /// its list when every print ends, so build_preprint_gcode() carries it on
+    /// every start.
+    [[nodiscard]] std::string end_unload_gcode() const;
+
     /// The command one action produces, or empty when the id is not ours.
     /// Separated from execute_device_action so the mapping is testable without
     /// a Moonraker client.

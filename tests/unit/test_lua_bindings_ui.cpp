@@ -422,7 +422,7 @@ struct FakeUi {
     PluginUi::Attrs last_attrs;
 
     PluginUi ui{
-        [this](const std::string& component, std::function<void()>, const PluginUi::Attrs& attrs) {
+        [this](const std::string& component, PluginUi::Callbacks, const PluginUi::Attrs& attrs) {
             if (reject)
                 return 0;
             ++opened;

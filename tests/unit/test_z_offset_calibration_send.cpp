@@ -223,26 +223,44 @@ TEST_CASE_METHOD(CalibrationSendFixture, "Calibration abort: a hot-reload rebuil
 
 namespace {
 
-/// Start a calibration on a homed printer with 0-350 XY travel and return
-/// every line sent, joined, up to and including the one carrying @p command.
-std::string start_script(ZOffsetCalibrationStrategy strategy, const std::string& command) {
+/// A calibration start's outcome: every script sent, and the panel's state
+/// once it settles.
+struct StartOutcome {
+    std::vector<std::string> scripts;
+    ZOffsetCalibrationPanel::State state = ZOffsetCalibrationPanel::State::IDLE;
+};
+
+/// Start a calibration on a homed printer with @p hw discovered. @p
+/// travel_known gives it 0-350 XY travel; without it neither the travel nor
+/// the plate is known.
+StartOutcome start_calibration(ZOffsetCalibrationStrategy strategy, helix::PrinterDiscovery hw = {},
+                               bool travel_known = true) {
     auto& ps = get_printer_state();
     helix::PrinterStateTestAccess::pin_z_offset_strategy(ps, strategy);
-    ps.update_from_status(
-        json{{"toolhead", json{{"homed_axes", "xyz"},
-                               {"axis_minimum", json::array({0.0, 0.0, 0.0, 0.0})},
-                               {"axis_maximum", json::array({350.0, 350.0, 340.0, 0.0})}}}});
+    json toolhead{{"homed_axes", "xyz"}};
+    if (travel_known) {
+        toolhead["axis_minimum"] = json::array({0.0, 0.0, 0.0, 0.0});
+        toolhead["axis_maximum"] = json::array({350.0, 350.0, 340.0, 0.0});
+    }
+    ps.update_from_status(json{{"toolhead", toolhead}});
     helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 
     MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24);
     MoonrakerAPI api(client, ps);
-    api.hardware() = helix::PrinterDiscovery{};
+    api.hardware() = std::move(hw);
     ZOffsetCalibrationPanel panel;
     panel.set_api(&api);
     ZOffsetCalibrationTestAccess::begin_probe_sequence(panel);
     helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    return {client.gcode_script_history(), panel.get_state()};
+}
+
+/// Every line sent on start, joined, up to and including the one carrying
+/// @p command; empty when @p command was never sent.
+std::string start_script(ZOffsetCalibrationStrategy strategy, const std::string& command,
+                         helix::PrinterDiscovery hw = {}) {
     std::string sent;
-    for (const auto& s : client.gcode_script_history()) {
+    for (const auto& s : start_calibration(strategy, std::move(hw)).scripts) {
         sent += sent.empty() ? s : "\n" + s;
         if (s.find(command) != std::string::npos) {
             return sent;
@@ -272,4 +290,35 @@ TEST_CASE_METHOD(CalibrationSendFixture,
                  "[ui_integration][zoffset][zoffset_center]") {
     CHECK(start_script(ZOffsetCalibrationStrategy::FIRMWARE_MANAGED, "G1 Z0.1") ==
           "G90\nG1 Z5.0 F600\nG1 X175.0 Y175.0 F6000\nG1 Z0.1 F300");
+}
+
+TEST_CASE_METHOD(CalibrationSendFixture,
+                 "Calibration start: the discovered probe offset puts the probe on centre",
+                 "[ui_integration][zoffset][zoffset_center]") {
+    helix::PrinterDiscovery hw;
+    hw.parse_probe_xy_offset(json{{"probe", {{"x_offset", -40.0}, {"y_offset", 10.0}}}});
+    CHECK(start_script(ZOffsetCalibrationStrategy::PROBE_CALIBRATE, "PROBE_CALIBRATE",
+                       std::move(hw)) ==
+          "G90\nG1 Z5.0 F600\nG1 X215.0 Y165.0 F6000\nPROBE_CALIBRATE");
+}
+
+TEST_CASE_METHOD(CalibrationSendFixture,
+                 "Calibration start: a nozzle reading point ignores the probe offset",
+                 "[ui_integration][zoffset][zoffset_center]") {
+    // The manual calibration reads at the nozzle, so the head itself parks on
+    // the plate centre; the probe offset shifts the target only where a probe
+    // does the reading.
+    helix::PrinterDiscovery hw;
+    hw.parse_probe_xy_offset(json{{"probe", {{"x_offset", -40.0}, {"y_offset", 10.0}}}});
+    CHECK(start_script(ZOffsetCalibrationStrategy::FIRMWARE_MANAGED, "G1 Z0.1", std::move(hw)) ==
+          "G90\nG1 Z5.0 F600\nG1 X175.0 Y175.0 F6000\nG1 Z0.1 F300");
+}
+
+TEST_CASE_METHOD(CalibrationSendFixture,
+                 "Calibration start: the manual gcode offset refuses an unknown plate",
+                 "[ui_integration][zoffset][zoffset_center]") {
+    // Lowering to Z0.1 at a guessed XY can put the nozzle off the plate.
+    const auto start = start_calibration(ZOffsetCalibrationStrategy::FIRMWARE_MANAGED, {}, false);
+    CHECK(start.scripts.empty());
+    CHECK(start.state == ZOffsetCalibrationPanel::State::ERROR);
 }

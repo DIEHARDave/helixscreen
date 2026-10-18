@@ -359,6 +359,7 @@
   <translation tag="Bed mesh calibration failed: {}" zh="热床网格校准失败：{}"/>
   <translation tag="Bed mesh operation timed out" zh="热床网格操作超时"/>
   <translation tag="Bed mesh..." zh="热床网格..."/>
+  <translation tag="Bed size unknown" zh="热床尺寸未知"/>
   <translation tag="Bed tab moves lift to this height first" zh="热床标签页的移动会先抬升到此高度"/>
   <translation tag="Bed target set to {}°C" zh="热床目标已设为 {}°C"/>
   <translation tag="Bed temp must be 0-%d°C" zh="热床温度必须为 0-%d°C"/>
@@ -1178,6 +1179,7 @@
   <translation tag="Failed to load profile" zh="加载配置文件失败"/>
   <translation tag="Failed to load spools" zh="加载料盘失败"/>
   <translation tag="Failed to modify G-code: {}" zh="修改 G-code 失败: {}"/>
+  <translation tag="Failed to move to calibration position" zh="无法移动到校准位置"/>
   <translation tag="Failed to open history" zh="打开历史记录失败"/>
   <translation tag="Failed to open history list" zh="打开历史列表失败"/>
   <translation tag="Failed to open temperature graph" zh="打开温度图表失败"/>
@@ -1212,6 +1214,7 @@
   <translation tag="Failed to send command: {}" zh="发送命令失败: {}"/>
   <translation tag="Failed to send print data" zh="发送打印数据失败"/>
   <translation tag="Failed to send status request" zh="发送状态请求失败"/>
+  <translation tag="Failed to set Z-offset" zh="无法设置 Z 偏移"/>
   <translation tag="Failed to set active spool" zh="设置活动料盘失败"/>
   <translation tag="Failed to set flow rate: {}" zh="设置流量失败: {}"/>
   <translation tag="Failed to set pressure advance: {}" zh="设置压力提前失败: {}"/>
@@ -1219,6 +1222,8 @@
   <translation tag="Failed to set temperature: {}" zh="设置温度失败: {}"/>
   <translation tag="Failed to set {} temp: {}" zh="设置 {} 温度失败: {}"/>
   <translation tag="Failed to show confirmation dialog" zh="显示确认对话框失败"/>
+  <translation tag="Failed to start Z offset calibration" zh="无法开始 Z 偏移校准"/>
+  <translation tag="Failed to start bed heating" zh="无法开始加热热床"/>
   <translation tag="Failed to start installer: " zh="启动安装程序失败: "/>
   <translation tag="Failed to start print: {}" zh="开始打印失败: {}"/>
   <translation tag="Failed to start uninstaller: " zh="启动卸载程序失败: "/>
@@ -2976,6 +2981,7 @@
   <translation tag="Snapmaker U1" zh="Snapmaker U1"/>
   <translation tag="Snapshot only" zh="仅快照"/>
   <translation tag="Soft" zh="柔和"/>
+  <translation tag="Soft filament is never unloaded" zh="软性耗材不会卸载"/>
   <translation tag="Software Updates" zh="软件更新"/>
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." zh="部分耗材与切片软件的意图不符。"/>
   <translation tag="Some mapped slots are short on filament:" zh="部分已映射槽位耗材不足："/>

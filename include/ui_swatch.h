@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -101,6 +102,9 @@ struct SwatchPoint {
 };
 using SwatchPolygon = std::vector<SwatchPoint>;
 
+/// How much of the pixel centred on (x, y) a shape covers, 0..1.
+using SwatchCoverage = std::function<float(float x, float y)>;
+
 /// The outline of a @p area rounded by @p radius (clamped to half the short
 /// side; LV_RADIUS_CIRCLE gives a circle or a stadium), as a convex polygon.
 SwatchPolygon swatch_shape_polygon(const lv_area_t& area, int32_t radius);
@@ -193,6 +197,13 @@ void draw_swatch(lv_layer_t* layer, const lv_area_t& area, const SwatchPaint& pa
 /// spool_canvas lays over the filament it draws.
 void swatch_paint_finish_pixels(lv_draw_buf_t* buf, const lv_area_t& area, int32_t radius,
                                 SwatchFinish finish);
+
+/// The same over any shape inside @p area: @p cover says which pixels are in
+/// it, so a texture can follow an outline no rounded rect describes. Marble
+/// keeps one density at every size here, so a large drawing is as flecked as a
+/// small one.
+void swatch_paint_finish_pixels(lv_draw_buf_t* buf, const lv_area_t& area,
+                                const SwatchCoverage& cover, SwatchFinish finish);
 
 /// The paint for a spool colour: its multi-colour list when it has two or more
 /// parseable entries, else @p rgb.

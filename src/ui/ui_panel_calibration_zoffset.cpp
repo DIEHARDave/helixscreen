@@ -454,7 +454,7 @@ static zoffset_cal::ApproachInputs approach_inputs(IMoonrakerAPI& api, PrinterSt
 void ZOffsetCalibrationPanel::start_calibration() {
     if (!api_) {
         spdlog::error("[ZOffsetCal] No IMoonrakerAPI");
-        on_calibration_result(false, "No printer connection");
+        on_calibration_result(false, lv_tr("No printer connection"));
         return;
     }
 
@@ -479,7 +479,7 @@ void ZOffsetCalibrationPanel::start_calibration() {
                 // No bg-thread tok.expired() — tok.defer() gates on the main thread (L081).
                 spdlog::error("[ZOffsetCal] Failed to start bed heating: {}", err.message);
                 tok.defer("ZOffsetCalibrationPanel::on_calibration_result(bed_heat)", [this]() {
-                    on_calibration_result(false, "Failed to start bed heating");
+                    on_calibration_result(false, lv_tr("Failed to start bed heating"));
                 });
             });
 
@@ -529,7 +529,7 @@ void ZOffsetCalibrationPanel::begin_probe_sequence() {
             // Lowering to Z0.1 at a guessed XY can put the nozzle off the plate.
             spdlog::warn(
                 "[ZOffsetCal] Plate bounds unknown, not starting gcode_offset calibration");
-            on_calibration_result(false, "Bed size unknown");
+            on_calibration_result(false, lv_tr("Bed size unknown"));
             return;
         }
         std::string gcode = approach.gcode + "G1 Z0.1 F300";
@@ -558,10 +558,11 @@ void ZOffsetCalibrationPanel::begin_probe_sequence() {
                                          "connection was interrupted"));
                 } else {
                     spdlog::error("[ZOffsetCal] Failed to move to position: {}", err.message);
-                    tok.defer(
-                        "ZOffsetCalibrationPanel::on_calibration_result(move_fail)", [this]() {
-                            on_calibration_result(false, "Failed to move to calibration position");
-                        });
+                    tok.defer("ZOffsetCalibrationPanel::on_calibration_result(move_fail)",
+                              [this]() {
+                                  on_calibration_result(
+                                      false, lv_tr("Failed to move to calibration position"));
+                              });
                 }
             },
             IAdvancedAPI::PROBING_TIMEOUT_MS);
@@ -619,7 +620,7 @@ void ZOffsetCalibrationPanel::begin_probe_sequence() {
                 } else {
                     spdlog::error("[ZOffsetCal] Failed to start calibration: {}", err.message);
                     tok.defer("ZOffsetCalibrationPanel::on_calibration_result(cal_fail)", [this]() {
-                        on_calibration_result(false, "Failed to start Z offset calibration");
+                        on_calibration_result(false, lv_tr("Failed to start Z offset calibration"));
                     });
                 }
             },
@@ -718,8 +719,9 @@ void ZOffsetCalibrationPanel::send_accept() {
             [this, tok](const MoonrakerError& err) {
                 // No bg-thread tok.expired() — tok.defer() gates on the main thread (L081).
                 spdlog::error("[ZOffsetCal] SET_GCODE_OFFSET failed: {}", err.message);
-                tok.defer("ZOffsetCalibrationPanel::on_calibration_result(gcode_fail)",
-                          [this]() { on_calibration_result(false, "Failed to set Z-offset"); });
+                tok.defer("ZOffsetCalibrationPanel::on_calibration_result(gcode_fail)", [this]() {
+                    on_calibration_result(false, lv_tr("Failed to set Z-offset"));
+                });
             });
     } else if (!helix::zoffset::save_enabled()) {
         // Saving is off for this printer: ACCEPT stages the result for Klipper's

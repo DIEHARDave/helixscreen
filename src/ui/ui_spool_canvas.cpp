@@ -338,49 +338,95 @@ static void draw_gradient_rect(SpoolLayer* layer, int32_t x1, int32_t y1, int32_
     }
 }
 
-// A multi-colour filament's bands across the part of the wound filament the
-// viewer sees (the back cap and the body up to the front flange), split the way
-// every swatch splits (helix::ui::swatch_split_thresholds()), each band shaded
-// top to bottom like a single-colour filament.
+// How a wound body is lit: the top is lifted toward white and the bottom
+// pressed toward black, from the filament's side colour. A matte filament
+// scatters light, so its body carries a much shallower ramp than a glossy one.
 namespace {
+struct BodyShade {
+    uint8_t lift;
+    uint8_t drop;
+
+    static BodyShade of(helix::ui::SwatchFinish finish) {
+        return finish == helix::ui::SwatchFinish::Matte ? BodyShade{28, 14} : BodyShade{70, 35};
+    }
+    lv_color_t side(lv_color_t base) const {
+        return ams_draw::darken_color(base, 30);
+    }
+    lv_color_t top(lv_color_t base) const {
+        return ams_draw::lighten_color(side(base), lift);
+    }
+    lv_color_t bottom(lv_color_t base) const {
+        return ams_draw::darken_color(side(base), drop);
+    }
+};
+
+// A multi-colour filament wound on the spool. A dual or triple colour strand
+// carries its colours side by side, so the winding shows them as thin
+// alternating stripes, one strand wide, cycling through the colours along the
+// axis. Each stripe is a wrap circle seen in perspective: it arcs toward the
+// back cap at mid-height and returns to its axis position at the top and
+// bottom of the filament. Within one row the arc is a constant leftward shift,
+// so a row is the strand sequence slid left by the cap's curve there.
 struct FilamentBands {
     std::vector<lv_color_t> colors;
-    std::vector<float> t;
     lv_area_t field;
+    float strand; // one strand's width along the axis, in pixels
+    float bulge;  // how far a wrap arcs left at mid-height: the cap's x radius
+    float blend;  // share of a strand each seam blends over
+    BodyShade shading;
 
-    FilamentBands(std::vector<lv_color_t> c, const lv_area_t& visible)
-        : colors(std::move(c)), t(helix::ui::swatch_split_thresholds(visible, 0, colors.size())),
-          field(visible) {}
+    FilamentBands(std::vector<lv_color_t> c, const lv_area_t& axis, float strand_px, float arc,
+                  bool soft, BodyShade shade)
+        : colors(std::move(c)), field(axis), strand(std::max(strand_px, 1.0f)), bulge(arc),
+          // A silk strand's colours shade into each other where they meet;
+          // other strands meet at a hard, anti-aliased seam.
+          blend(soft ? 0.8f : std::min(1.0f, 0.75f / std::max(strand_px, 1.0f))), shading(shade) {}
 
-    size_t band_at(int32_t x, int32_t y) const {
-        const float w = static_cast<float>(lv_area_get_width(&field));
-        const float h = static_cast<float>(lv_area_get_height(&field));
-        const float f = ((x + 0.5f - field.x1) * w + (y + 0.5f - field.y1) * h) / (w * w + h * h);
-        size_t k = 0;
-        while (k < t.size() && f >= t[k])
-            ++k;
-        return k;
+    // Strand k spans [k, k + 1) of @p u and is colour k mod n; seams sit at
+    // the integers.
+    lv_color_t color_at(float u) const {
+        const size_t n = colors.size();
+        auto color_of_strand = [&](float k) {
+            const auto i = static_cast<long>(k) % static_cast<long>(n);
+            return colors[static_cast<size_t>(i < 0 ? i + static_cast<long>(n) : i)];
+        };
+        const float half = blend / 2.0f;
+        const float seam = std::round(u);
+        if (std::fabs(u - seam) < half) {
+            float t = (u - seam + half) / blend;
+            t = t * t * (3.0f - 2.0f * t);
+            return lv_color_mix(color_of_strand(seam), color_of_strand(seam - 1.0f),
+                                static_cast<uint8_t>(255.0f * t));
+        }
+        return color_of_strand(std::floor(u));
     }
 
-    lv_color_t shade(size_t k, float g) const {
-        const lv_color_t side = ams_draw::darken_color(colors[k], 30);
-        return ams_draw::blend_color(ams_draw::lighten_color(side, 70),
-                                     ams_draw::darken_color(side, 35), g);
-    }
-
-    // Row @p y from @p xa to @p xb at opacity @p opa, split into band spans.
+    // Row @p y from @p xa to @p xb at opacity @p opa, bands curved per row.
     void fill_row(SpoolLayer* layer, int32_t y, int32_t xa, int32_t xb, float g,
                   lv_opa_t opa) const {
+        const float h = static_cast<float>(lv_area_get_height(&field));
+        const float cy = static_cast<float>(field.y1) + h / 2.0f;
+        const float ny = h > 0.0f ? (static_cast<float>(y) + 0.5f - cy) / (h / 2.0f) : 0.0f;
+        // The wrap circles follow the filament ellipse's curvature.
+        const float curve = std::sqrt(std::max(0.0f, 1.0f - ny * ny));
+        const float shift = bulge * curve;
+        auto color_of = [&](int32_t x) {
+            const lv_color_t base = color_at(
+                (static_cast<float>(x) + 0.5f + shift - static_cast<float>(field.x1)) / strand);
+            return ams_draw::blend_color(shading.top(base), shading.bottom(base), g);
+        };
+
         lv_draw_fill_dsc_t dsc;
         lv_draw_fill_dsc_init(&dsc);
         dsc.opa = opa;
         int32_t from = xa;
         while (from <= xb) {
-            const size_t k = band_at(from, y);
+            const lv_color_t c = color_of(from);
             int32_t to = from;
-            while (to < xb && band_at(to + 1, y) == k)
+            while (to < xb && lv_color_eq(color_of(to + 1), c)) {
                 ++to;
-            dsc.color = shade(k, g);
+            }
+            dsc.color = c;
             lv_area_t span = {from, y, to, y};
             spool_fill(layer, &dsc, &span);
             from = to + 1;
@@ -555,8 +601,8 @@ static void render_spool_pixels(SpoolCanvasData* data) {
     // Matte filament is drawn in its muted colour; the other finishes texture
     // the body once it is drawn.
     const bool matte = data->finish == helix::ui::SwatchFinish::Matte;
+    const BodyShade shading = BodyShade::of(data->finish);
     lv_color_t filament_color = matte ? helix::ui::swatch_matte_color(data->color) : data->color;
-    lv_color_t filament_side = ams_draw::darken_color(filament_color, 30);
     std::vector<lv_color_t> band_colors = data->colors;
     if (matte) {
         for (auto& c : band_colors)
@@ -589,18 +635,23 @@ static void render_spool_pixels(SpoolCanvasData* data) {
     // Gradient: lighter at top (lit), darker at bottom (shadow)
     // ========================================
     if (fill > 0.01f) {
-        // Gradient colors for 3D lighting effect (stronger gradient)
-        lv_color_t fil_light = ams_draw::lighten_color(filament_side, 70); // Top: much brighter
-        lv_color_t fil_dark = ams_draw::darken_color(filament_side, 35);   // Bottom: darker
+        lv_color_t fil_light = shading.top(filament_color);
+        lv_color_t fil_dark = shading.bottom(filament_color);
 
         int32_t fil_top = cy - filament_ry;
         int32_t fil_bottom = cy + filament_ry;
+        // What the viewer sees of the filament: the back cap's left edge to
+        // where the front flange covers the body.
+        const lv_area_t visible = {left_x - filament_rx, fil_top, right_x, fil_bottom};
         if (band_colors.size() >= 2) {
-            // The split spans what the viewer sees of the filament: the back
-            // cap's left edge to where the front flange covers the body.
-            const lv_area_t visible = {left_x - filament_rx, fil_top, right_x - flange_rx,
-                                       fil_bottom};
-            const FilamentBands bands(band_colors, visible);
+            // Every wrap is the back cap's circle slid along the axis, so each
+            // stripe bulges exactly as the cap does. A 1.75 mm strand on a
+            // spool about 200 mm across is an eightieth of its diameter.
+            const bool soft = data->finish == helix::ui::SwatchFinish::Silk;
+            const lv_area_t axis = {left_x, fil_top, right_x, fil_bottom};
+            const float strand_px = std::max(2.0f, 2.0f * static_cast<float>(flange_ry) / 80.0f);
+            const FilamentBands bands(band_colors, axis, strand_px, static_cast<float>(filament_rx),
+                                      soft, shading);
             draw_banded_ellipse(&layer, left_x, cy, filament_rx, filament_ry, bands);
             draw_banded_rect(&layer, left_x, fil_top, right_x, fil_bottom, bands);
         } else {
@@ -611,9 +662,21 @@ static void render_spool_pixels(SpoolCanvasData* data) {
             draw_gradient_rect(&layer, left_x, fil_top, right_x, fil_bottom, fil_light, fil_dark);
         }
 
-        // 2b': the finish's texture over the body, written into the buffer
-        const lv_area_t body = {left_x, fil_top, right_x, fil_bottom};
-        helix::ui::swatch_paint_finish_pixels(data->draw_buf, body, 0, data->finish);
+        // 2b': the finish's texture over everything drawn of the filament,
+        // back cap included, written into the buffer.
+        const float cap_rx = static_cast<float>(std::max<int32_t>(filament_rx, 1));
+        const float cap_ry = static_cast<float>(std::max<int32_t>(filament_ry, 1));
+        const helix::ui::SwatchCoverage wound = [=](float x, float y) {
+            if (y < static_cast<float>(fil_top) || y > static_cast<float>(fil_bottom + 1))
+                return 0.0f;
+            if (x >= static_cast<float>(left_x))
+                return x <= static_cast<float>(right_x + 1) ? 1.0f : 0.0f;
+            const float dx = (x - static_cast<float>(left_x)) / cap_rx;
+            const float dy = (y - static_cast<float>(cy)) / cap_ry;
+            const float d = std::sqrt(dx * dx + dy * dy);
+            return std::clamp((1.0f - d) * cap_rx + 0.5f, 0.0f, 1.0f);
+        };
+        helix::ui::swatch_paint_finish_pixels(data->draw_buf, visible, wound, data->finish);
 
         // 2c: Front face ellipse (will be covered by front flange anyway)
         lv_color_t front_light = ams_draw::lighten_color(filament_color, 70);

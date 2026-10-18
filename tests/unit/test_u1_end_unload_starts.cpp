@@ -1,0 +1,98 @@
+// Copyright (C) 2025-2026 356C LLC
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// The U1 forgets its unload-at-end list when each print ends, so every way a
+// print starts carries it: a reprint with no recorded routing and a restart
+// from the beginning included.
+
+#if HELIX_HAS_SNAPMAKER
+
+#include "ui_print_start_controller.h"
+#include "ui_resume_dispatch.h"
+#include "ui_update_queue.h"
+
+#include "../lvgl_test_fixture.h"
+#include "../test_helpers/registered_backend.h"
+#include "../test_helpers/snapmaker_test_access.h"
+#include "ams_backend_snapmaker.h"
+#include "config.h"
+#include "moonraker_api.h"
+#include "moonraker_client_mock.h"
+#include "printer_state.h"
+#include "settings_manager.h"
+
+#include <string>
+
+#include "../catch_amalgamated.hpp"
+#include "hv/json.hpp"
+
+using namespace helix;
+
+namespace {
+
+constexpr const char* kUnload = "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,0,0]";
+
+struct U1StartFx : LVGLTestFixture {
+    MoonrakerClientMock client{MoonrakerClientMock::PrinterType::VORON_24};
+    PrinterState ps;
+
+    U1StartFx() {
+        helix::Config::get_instance();
+        SettingsManager::instance().init_subjects();
+        SettingsManager::instance().set_end_of_print_unload_tools(0b0001);
+        ps.init_subjects(false);
+        ps.set_klippy_state_sync(KlippyState::READY);
+        client.connect("ws://mock/websocket", []() {}, []() {});
+    }
+    ~U1StartFx() override {
+        SettingsManager::instance().set_end_of_print_unload_tools(0);
+        client.stop_temperature_simulation();
+        client.disconnect();
+    }
+
+    /// Every script sent, joined: the unload line may ride in any of them.
+    std::string all_scripts() const {
+        std::string out;
+        for (const auto& s : client.gcode_script_history())
+            out += s + "\n";
+        return out;
+    }
+};
+
+void report_heads(AmsBackendSnapmaker& backend) {
+    SnapmakerTestAccess::handle_status(
+        backend, nlohmann::json{{"print_task_config",
+                                 {{"end_unload_filament", {false, false, false, false}}}}});
+}
+
+} // namespace
+
+TEST_CASE_METHOD(U1StartFx, "a U1 reprint with no recorded routing still sends the unload list",
+                 "[end_unload][preprint]") {
+    MoonrakerAPI api{client, ps};
+    helix::ui::PrintStartController controller{ps, &api};
+    test::RegisteredBackend<AmsBackendSnapmaker> backend(nullptr, nullptr);
+    report_heads(*backend);
+    REQUIRE(backend->requires_preprint_send());
+
+    controller.initiate_reprint("cal.gcode", "cal.gcode", {0}, []() {}, []() {});
+    helix::ui::UpdateQueue::instance().drain();
+    const std::string sent = all_scripts();
+    CHECK(sent.find(kUnload) != std::string::npos);
+    // No routing was recorded, so no map is invented.
+    CHECK(sent.find("SET_PRINT_EXTRUDER_MAP") == std::string::npos);
+}
+
+TEST_CASE_METHOD(U1StartFx,
+                 "a U1 restart from the beginning sends the unload list after the cancel",
+                 "[end_unload][preprint]") {
+    MoonrakerAPI api{client, ps};
+    test::RegisteredBackend<AmsBackendSnapmaker> backend(nullptr, nullptr);
+    report_heads(*backend);
+
+    helix::ui::restart_print_from_beginning(&api, "cal.gcode", "[test]", nullptr);
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(all_scripts().find(std::string("CANCEL_PRINT_BASE\n") + kUnload) != std::string::npos);
+}
+
+#endif // HELIX_HAS_SNAPMAKER
