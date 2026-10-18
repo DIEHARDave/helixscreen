@@ -152,21 +152,46 @@ operation whose step bar is the stage list:
 Neither direction sends `OPEN`: the feeder buttons stay a separate control.
 
 The prompt is Klipper's own action prompt, raised with `RESPOND TYPE=command` lines, so it
-shows on this screen and on Mainsail/Fluidd alike, and it needs `[respond]`. Its buttons
+shows on this screen and on Mainsail/Fluidd alike, and it needs `[respond]`. Its payload is
+**English whatever this screen's language is** - the RESPOND lines are console text every
+client shows verbatim, so no locale of ours may decide what Mainsail displays. Its buttons
 answer with `RESPOND TYPE=command MSG=HELIX_MOUNT_FEED_CONTINUE` / `..._CANCEL`; the backend
-watches the console for that exact echo (`mount_feed::parse_reply()`). The sidebar's Cancel
-(`AmsBackendToolChanger::cancel()`) and the prompt's Cancel both turn the rest of the run
-into the cleanup: prompt closed, `M104 S0`, carriage restored. A stage that fails does the
-same; Klipper's own error line reports the failure.
+watches the console for that exact echo (`mount_feed::parse_console()`). The sidebar's Cancel
+(`AmsBackendToolChanger::cancel()`), the prompt's Cancel, and a prompt **dismissed** anywhere
+(the screen's own dismiss sends `action:prompt_end`, whose echo is the only trace) all turn
+the rest of the run into the cleanup: prompt closed, `M104 S0`, carriage restored. A stage
+that fails does the same; Klipper's own error line reports the failure.
 
-**Macro first.** When the printer defines `LOAD_FILAMENT` / `UNLOAD_FILAMENT` taking `T=`
-(read from the macro's template through `MacroParamCache`, `mount_feed::macro_takes_tool()`),
-the feed or retract stage calls `LOAD_FILAMENT T=<n> TEMP=<t>` / `UNLOAD_FILAMENT T=<n>`
-instead of the built-in moves. topi314's macros (github.com/topi314/klipper, branch
-`ducr10`, `macros/filament.cfg`) are that shape. Stock MedusaHC has none.
+**The wait has a ceiling.** Nobody inserting the filament for three minutes
+(`mount_feed::PROMPT_TIMEOUT_MS`) unwinds the run the same way - a hot nozzle must not sit
+unattended - and raises an error toast. A `LvglTimerGuard` watches the wait while LVGL is
+up; unit tests drive `handle_wait_elapsed()` through `ToolChangerTestAccess` instead.
+
+**Load all / Unload all.** `max_heads_per_filament_op()` answers the tool count, so the
+sidebar's picker accepts several heads on this backend. A Load of several asks **once**, up
+front ("Insert filament into Tools 1, 2, 4 as far as it goes, then tap Continue"), then
+works tool by tool: each tool's opening stage preheats the **next** one to 65% of its
+material temperature (`SET_HEATER_TEMPERATURE HEATER=extruder<n>`, the Klipper multi-extruder
+naming - `extruder` for tool 0), so its own `M109` starts from heat. An Unload of several
+runs the same sequence with no prompt. At the end the carriage is restored to the tool the
+run found on it (or parked). A stop mid-sequence - cancel, timeout, failed stage - turns
+every heater in the plan off, restores the carriage, and toasts the tools that did complete
+(`mount_feed::Run::completed_heads()`).
+
+**Macro first, both levels.** When the printer defines `LOAD_FILAMENT` / `UNLOAD_FILAMENT`
+taking `T=` (read from the macro's template through `MacroParamCache`,
+`mount_feed::macro_takes_tool()`), the feed or retract stage calls
+`LOAD_FILAMENT T=<n> TEMP=<t>` / `UNLOAD_FILAMENT T=<n>` instead of the built-in moves.
+When it defines `LOAD_ALL_FILAMENT` / `UNLOAD_ALL_FILAMENT` and the selection is **every**
+tool, the batch is that one macro instead (`TEMP=` when its template takes it) and HelixScreen
+sequences nothing. topi314's macros (github.com/topi314/klipper, branch `ducr10`,
+`macros/filament.cfg`) are that shape. Stock MedusaHC has none.
 
 While a run is active its stage owns the published action and step: the swap frames its
-Mount and Restore stages raise (`operation`, the gripper) do not end it. The backend claims
+Mount and Restore stages raise (`operation`, the gripper) do not end it. The step bar is
+the stage list, one stride per tool for a multi-tool run ("Tool 2 of 3: Purge"), built by
+`get_operation_step_model()` from the live run; `Run::phase_index()` publishes the index
+into it. The backend claims
 `filament_ops_self_home`, so a load or unload is refused while a print is running or
 paused, and `supports_auto_heat_on_load/unload`, so the UI does not preheat the active tool
 before the backend mounts another.
