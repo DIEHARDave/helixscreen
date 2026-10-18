@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace helix::plugin {
 
@@ -50,7 +51,21 @@ bool is_allowlisted_app_component(std::string_view name) {
     return name == "overlay_panel" || name == "ui_card" || name == "icon" ||
            name == "text_heading" || name == "text_body" || name == "text_muted" ||
            name == "text_small" || name == "text_xs" || name == "text_tiny" ||
-           name == "plugin_canvas";
+           name == "plugin_canvas" || name == "ui_dialog" || name == "modal_header" ||
+           name == "modal_button_row";
+}
+
+/// The props through which an allowlisted app component names its own objects.
+const std::vector<const char*>* required_object_names(std::string_view el) {
+    static const std::vector<const char*> kButtonRow = {
+        "primary_name",    "secondary_name",        "tertiary_name",
+        "quaternary_name", "tertiary_divider_name", "quaternary_divider_name"};
+    static const std::vector<const char*> kHeader = {"icon_name", "title_name", "close_name"};
+    if (el == "modal_button_row")
+        return &kButtonRow;
+    if (el == "modal_header")
+        return &kHeader;
+    return nullptr;
 }
 
 bool is_allowed_element(const Walk& w, std::string_view el) {
@@ -138,6 +153,18 @@ void on_start(void* ud, const XML_Char* name, const XML_Char** attrs) {
             }
         }
     }
+    // App chrome that names its own objects by default must be given owned names,
+    // or a default (btn_primary, header_title) would land on screen.
+    if (const auto* required = required_object_names(el)) {
+        for (const char* prop : *required) {
+            bool given = false;
+            for (int i = 0; attrs[i] && !given; i += 2)
+                given = std::string_view(attrs[i]) == prop;
+            if (!given)
+                fail(w, "<" + std::string(el) + "> needs " + prop + "=\"" + w.id +
+                            "__<name>\": its default name is the app's");
+        }
+    }
     // On these elements name= declares a prop or refers to a style (style,
     // remove_style*, bind_style*); it names no object.
     bool names_object = el != "prop" && el != "style" && !starts_with(el, "remove_style") &&
@@ -169,10 +196,11 @@ std::optional<std::string> check_plugin_attr(std::string_view id, std::string_vi
     bool is_subject =
         name == "subject" || ends_with(name, "_subject") || starts_with(name, "bind_");
     bool is_cond = name == "cond" || ends_with(name, "_cond");
-    bool is_target = name == "user_data";
+    bool is_target = name == "user_data" || ends_with(name, "_user_data");
     // Screen-wide lookups by name (lv_obj_find_by_name from lv_layer_top or the
-    // screen) must never resolve to a plugin object.
-    bool is_object_name = name == "name";
+    // screen) must never resolve to a plugin object. A component prop ending in
+    // _name names one of its objects (modal_button_row's primary_name).
+    bool is_object_name = name == "name" || ends_with(name, "_name");
     if (!is_callback && !is_subject && !is_cond && !is_target && !is_object_name)
         return std::nullopt;
     if (!value.empty() && value.front() == '$')
@@ -185,10 +213,10 @@ std::optional<std::string> check_plugin_attr(std::string_view id, std::string_vi
         return std::string(name) + "=\"" + std::string(value) + "\": subject must be named " +
                std::string(id) + "__<name>";
     if (is_object_name && !is_owned_name(id, value))
-        return "name=\"" + std::string(value) + "\": object names must be " + std::string(id) +
-               "__<name>";
+        return std::string(name) + "=\"" + std::string(value) + "\": object names must be " +
+               std::string(id) + "__<name>";
     if (is_target && !is_owned_name(id, value.substr(0, value.find(':'))))
-        return "user_data=\"" + std::string(value) + "\": handler must be named " +
+        return std::string(name) + "=\"" + std::string(value) + "\": handler must be named " +
                std::string(id) + "__<name>";
     if (is_cond) {
         std::string why;

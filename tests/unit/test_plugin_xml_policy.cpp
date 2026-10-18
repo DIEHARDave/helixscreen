@@ -245,4 +245,51 @@ TEST_CASE("plugin object names are plugin-owned", "[plugin][xml_policy]") {
     CHECK_FALSE(check_plugin_attr("ab", "name", "ab__root").has_value());
 }
 
+namespace {
+const char* kButtonRowNames =
+    R"( primary_name="ab__ok" secondary_name="ab__no" tertiary_name="ab__t"
+        quaternary_name="ab__q" tertiary_divider_name="ab__dt" quaternary_divider_name="ab__dq")";
+const char* kHeaderNames = R"( icon_name="ab__hi" title_name="ab__ht" close_name="ab__hc")";
+} // namespace
+
+TEST_CASE("modal_button_row with owned names and plugin_event passes", "[plugin][xml_policy]") {
+    CHECK(check_plugin_xml("ab", {},
+                           view_with(std::string(R"(<ui_dialog><modal_header title="Pick")") +
+                                     kHeaderNames +
+                                     R"(/><modal_button_row primary_callback="plugin_event"
+                    primary_user_data="ab__accept:1")" +
+                                     kButtonRowNames + "/></ui_dialog>"))
+              .empty());
+}
+
+TEST_CASE("a missing or unowned *_name on dialog chrome is rejected", "[plugin][xml_policy]") {
+    // Missing: the component's default btn_primary would land on screen.
+    CHECK(check_plugin_xml("ab", {},
+                           view_with(R"(<modal_button_row primary_callback="plugin_event"/>)"))
+              .find("primary_name") != std::string::npos);
+    CHECK(check_plugin_xml("ab", {}, view_with(R"(<modal_header title="x"/>)")).find("icon_name") !=
+          std::string::npos);
+    // Unowned.
+    std::string unowned = kButtonRowNames;
+    unowned.replace(unowned.find("ab__ok"), 6, "btn_ok");
+    CHECK_FALSE(
+        check_plugin_xml("ab", {}, view_with("<modal_button_row" + unowned + "/>")).empty());
+    // Any *_name attribute is an object name.
+    CHECK(check_plugin_attr("ab", "primary_name", "btn_primary").has_value());
+    CHECK_FALSE(check_plugin_attr("ab", "primary_name", "ab__ok").has_value());
+}
+
+TEST_CASE("dialog chrome callbacks must be plugin_event", "[plugin][xml_policy]") {
+    CHECK_FALSE(
+        check_plugin_xml("ab", {},
+                         view_with(std::string(R"(<modal_button_row primary_callback="on_save")") +
+                                   kButtonRowNames + "/>"))
+            .empty());
+}
+
+TEST_CASE("*_user_data must name an owned handler", "[plugin][xml_policy]") {
+    CHECK(check_plugin_attr("ab", "primary_user_data", "other__go").has_value());
+    CHECK_FALSE(check_plugin_attr("ab", "primary_user_data", "ab__go:2").has_value());
+}
+
 #endif // HELIX_HAS_PLUGINS

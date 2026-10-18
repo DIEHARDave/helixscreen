@@ -194,4 +194,19 @@ TEST_CASE_METHOD(SurfacesFx, "unload: shown and queued surfaces close, no callba
     CHECK_FALSE(NavigationManager::instance().has_open_overlays());
 }
 
+TEST_CASE_METHOD(SurfacesFx, "a plugin dialog's primary button reaches the plugin handler",
+                 "[plugin][bindings][ui]") {
+    REQUIRE(lua(R"(helix.ui.on("pick", function(arg) rec("pick:" .. tostring(arg)) end)
+        d = helix.ui.dialog("widget-demo__choose"))"));
+    settle();
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    REQUIRE(dialog != nullptr);
+    lv_obj_t* ok = lv_obj_find_by_name(dialog, "widget-demo__ok");
+    REQUIRE(ok != nullptr);
+    CHECK(lv_obj_find_by_name(dialog, "btn_primary") == nullptr);
+    lv_obj_send_event(ok, LV_EVENT_CLICKED, nullptr);
+    settle();
+    CHECK(events() == "pick:2");
+}
+
 #endif // HELIX_HAS_PLUGINS
