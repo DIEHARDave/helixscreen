@@ -803,17 +803,40 @@ bool Modal::show_owned(std::unique_ptr<Modal> modal, lv_obj_t* parent, const cha
     return true;
 }
 
-// If any visible (non-exiting) modal remains, bring the new topmost one to the
-// foreground so it isn't left buried behind a backdrop that is on its way out.
+void ModalStack::raise_visible_to_foreground() {
+    for (const auto& entry : stack_) {
+        if (!entry.exiting && entry.backdrop) {
+            helix::ui::bring_to_front(entry.backdrop);
+        }
+    }
+}
+
+void ModalStack::set_tag(lv_obj_t* backdrop, std::string tag) {
+    for (auto& entry : stack_) {
+        if (entry.backdrop == backdrop) {
+            entry.tag = std::move(tag);
+            return;
+        }
+    }
+}
+
+bool ModalStack::has_visible_untagged() const {
+    return std::any_of(stack_.begin(), stack_.end(),
+                       [](const ModalEntry& e) { return !e.exiting && e.tag.empty(); });
+}
+
+std::string ModalStack::top_visible_tag() const {
+    for (auto it = stack_.rbegin(); it != stack_.rend(); ++it) {
+        if (!it->exiting && !it->tag.empty()) {
+            return it->tag;
+        }
+    }
+    return {};
+}
+
+// Visible modals come back in front of a backdrop that is on its way out.
 static void raise_top_modal_to_foreground(ModalStack& stack) {
-    lv_obj_t* top = stack.top_dialog();
-    if (!top) {
-        return;
-    }
-    lv_obj_t* top_backdrop = stack.backdrop_for(top);
-    if (top_backdrop && !stack.is_exiting(top_backdrop)) {
-        helix::ui::bring_to_front(top_backdrop);
-    }
+    stack.raise_visible_to_foreground();
 }
 
 static const char* close_reason_name(ModalCloseReason reason) {

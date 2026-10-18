@@ -375,6 +375,7 @@ translations:
   'Bed mesh calibration failed: {}': 'Bed mesh calibration failed: {}'
   Bed mesh operation timed out: Bed mesh operation timed out
   'Bed mesh...': 'Bed mesh...'
+  Bed size unknown: Bed size unknown
   Bed tab moves lift to this height first: Bed tab moves lift to this height first
   Bed target set to {}°C: Bed target set to {}°C
   Bed temp must be 0-%d°C: Bed temp must be 0-%d°C
@@ -1254,6 +1255,7 @@ translations:
   Failed to load profile: Failed to load profile
   Failed to load spools: Failed to load spools
   'Failed to modify G-code: {}': 'Failed to modify G-code: {}'
+  Failed to move to calibration position: Failed to move to calibration position
   Failed to open history: Failed to open history
   Failed to open history list: Failed to open history list
   Failed to open temperature graph: Failed to open temperature graph
@@ -1288,6 +1290,7 @@ translations:
   'Failed to send command: {}': 'Failed to send command: {}'
   Failed to send print data: Failed to send print data
   Failed to send status request: Failed to send status request
+  Failed to set Z-offset: Failed to set Z-offset
   Failed to set active spool: Failed to set active spool
   'Failed to set flow rate: {}': 'Failed to set flow rate: {}'
   'Failed to set pressure advance: {}': 'Failed to set pressure advance: {}'
@@ -1295,6 +1298,8 @@ translations:
   'Failed to set temperature: {}': 'Failed to set temperature: {}'
   'Failed to set {} temp: {}': 'Failed to set {} temp: {}'
   Failed to show confirmation dialog: Failed to show confirmation dialog
+  Failed to start Z offset calibration: Failed to start Z offset calibration
+  Failed to start bed heating: Failed to start bed heating
   'Failed to start installer: ': 'Failed to start installer: '
   'Failed to start print: {}': 'Failed to start print: {}'
   'Failed to start uninstaller: ': 'Failed to start uninstaller: '
@@ -3185,6 +3190,7 @@ translations:
   Snapmaker U1: Snapmaker U1
   Snapshot only: Snapshot only
   Soft: Soft
+  Soft filament is never unloaded: Soft filament is never unloaded
   Software Updates: Software Updates
   Some filaments don't match the slicer's intent.: Some filaments don't match the
     slicer's intent.

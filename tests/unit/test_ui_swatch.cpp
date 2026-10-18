@@ -16,6 +16,7 @@
 #include "helix-xml/src/xml/lv_xml.h"
 #include "lvgl/src/draw/lv_draw_private.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include "../catch_amalgamated.hpp"
@@ -218,6 +219,25 @@ TEST_CASE("swatch_texture_points: deterministic, inside the shape", "[swatch]") 
     }
     const auto p3 = helix::ui::swatch_texture_points(a, LV_RADIUS_CIRCLE, 50, 8);
     CHECK((p3[0].x != p1[0].x || p3[0].y != p1[0].y));
+}
+
+TEST_CASE("swatch_texture_points: spread evenly, no bare patches", "[swatch]") {
+    // 256 points over 64x64 is four per 8x8 cell on average; random sampling
+    // leaves some cells with fewer than two.
+    const auto points = helix::ui::swatch_texture_points({0, 0, 63, 63}, 0, 256, 7);
+    int cells[8][8] = {};
+    for (const auto& p : points) {
+        const int cx = std::clamp(static_cast<int>(p.x) / 8, 0, 7);
+        const int cy = std::clamp(static_cast<int>(p.y) / 8, 0, 7);
+        ++cells[cy][cx];
+    }
+    int fewest = 1 << 30;
+    for (const auto& row : cells) {
+        for (int n : row) {
+            fewest = std::min(fewest, n);
+        }
+    }
+    CHECK(fewest >= 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -501,4 +521,25 @@ TEST_CASE_METHOD(LVGLTestFixture, "clear_swatch_color: an emptied swatch paints 
     CHECK(center_alpha() == 0);
     helix::ui::apply_swatch_color(sw, 0x00FF00, "");
     CHECK(center_alpha() == 255);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "swatch_paint_finish_pixels: silk sheens the shape corner to corner", "[swatch]") {
+    lv_draw_buf_t* buf = lv_draw_buf_create(80, 40, LV_COLOR_FORMAT_ARGB8888, 0);
+    REQUIRE(buf != nullptr);
+    for (int32_t y = 0; y < 40; ++y) {
+        auto* row = reinterpret_cast<lv_color32_t*>(buf->data + y * buf->header.stride);
+        for (int32_t x = 0; x < 80; ++x) {
+            row[x] = {100, 100, 100, 255};
+        }
+    }
+    helix::ui::swatch_paint_finish_pixels(buf, {0, 0, 79, 39}, 0, helix::ui::SwatchFinish::Silk);
+    auto at = [&](int32_t x, int32_t y) {
+        return reinterpret_cast<const lv_color32_t*>(buf->data + y * buf->header.stride)[x];
+    };
+    // A tall region (a spool body) needs sheen at its ends, not a band across the middle.
+    CHECK(at(3, 2).green > 105);
+    CHECK(at(76, 37).green > 105);
+    CHECK(at(40, 20).green > at(3, 2).green);
+    lv_draw_buf_destroy(buf);
 }

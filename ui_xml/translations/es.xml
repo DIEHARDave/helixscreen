@@ -357,6 +357,7 @@
   <translation tag="Bed mesh calibration failed: {}" es="Falló la calibración de la malla de cama: {}"/>
   <translation tag="Bed mesh operation timed out" es="Malla de cama — tiempo de espera agotado"/>
   <translation tag="Bed mesh..." es="Malla de cama..."/>
+  <translation tag="Bed size unknown" es="Tamaño de cama desconocido"/>
   <translation tag="Bed tab moves lift to this height first" es="Los movimientos de la pestaña Cama suben primero a esta altura"/>
   <translation tag="Bed target set to {}°C" es="Cama configurada a {}°C"/>
   <translation tag="Bed temp must be 0-%d°C" es="La temperatura de la cama debe ser 0-%d°C"/>
@@ -1175,6 +1176,7 @@
   <translation tag="Failed to load profile" es="Error al cargar perfil"/>
   <translation tag="Failed to load spools" es="Error al cargar bobinas"/>
   <translation tag="Failed to modify G-code: {}" es="Error al modificar G-code: {}"/>
+  <translation tag="Failed to move to calibration position" es="No se pudo mover a la posición de calibración"/>
   <translation tag="Failed to open history" es="Error al abrir historial"/>
   <translation tag="Failed to open history list" es="Error al abrir lista de historial"/>
   <translation tag="Failed to open temperature graph" es="Error al abrir gráfico de temperatura"/>
@@ -1209,6 +1211,7 @@
   <translation tag="Failed to send command: {}" es="Error al enviar comando: {}"/>
   <translation tag="Failed to send print data" es="Error al enviar los datos de impresión"/>
   <translation tag="Failed to send status request" es="Error al enviar la solicitud de estado"/>
+  <translation tag="Failed to set Z-offset" es="No se pudo establecer el offset Z"/>
   <translation tag="Failed to set active spool" es="Error al establecer bobina activa"/>
   <translation tag="Failed to set flow rate: {}" es="Error al configurar flujo: {}"/>
   <translation tag="Failed to set pressure advance: {}" es="Error al ajustar Pressure Advance: {}"/>
@@ -1216,6 +1219,8 @@
   <translation tag="Failed to set temperature: {}" es="Error al configurar temperatura: {}"/>
   <translation tag="Failed to set {} temp: {}" es="Error al configurar temp. de {}: {}"/>
   <translation tag="Failed to show confirmation dialog" es="Error al mostrar diálogo de confirmación"/>
+  <translation tag="Failed to start Z offset calibration" es="No se pudo iniciar la calibración del offset Z"/>
+  <translation tag="Failed to start bed heating" es="No se pudo iniciar el calentamiento de la cama"/>
   <translation tag="Failed to start installer: " es="Error al iniciar el instalador: "/>
   <translation tag="Failed to start print: {}" es="Error al iniciar impresión: {}"/>
   <translation tag="Failed to start uninstaller: " es="Error al iniciar el desinstalador: "/>
@@ -2966,6 +2971,7 @@
   <translation tag="Snapmaker U1" es="Snapmaker U1"/>
   <translation tag="Snapshot only" es="Solo instantánea"/>
   <translation tag="Soft" es="Suave"/>
+  <translation tag="Soft filament is never unloaded" es="El filamento suave nunca se descarga"/>
   <translation tag="Software Updates" es="Actualizaciones de software"/>
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." es="Algunos filamentos no coinciden con la intención del laminador."/>
   <translation tag="Some mapped slots are short on filament:" es="Algunas ranuras asignadas tienen poco filamento:"/>

@@ -434,6 +434,7 @@ translations:
   'Bed mesh calibration failed: {}': 'Ошибка калибровки сетки стола: {}'
   Bed mesh operation timed out: Сетка стола — время ожидания истекло
   Bed mesh...: Сетка стола...
+  Bed size unknown: 'Размер стола неизвестен'
   Bed tab moves lift to this height first: Перемещения на вкладке «Стол» сначала поднимают до этой высоты
   Bed target set to {}°C: Целевая температура стола {}°C
   Bed temp must be 0-%d°C: Температура стола должна быть 0-%d°C
@@ -1338,6 +1339,7 @@ translations:
   Failed to load profile: Не удалось загрузить профиль
   Failed to load spools: Не удалось загрузить катушки
   'Failed to modify G-code: {}': 'Не удалось изменить G-code: {}'
+  Failed to move to calibration position: 'Не удалось переместиться в позицию калибровки'
   Failed to open history: Не удалось открыть историю
   Failed to open history list: Не удалось открыть список истории
   Failed to open temperature graph: Не удалось открыть график температуры
@@ -1373,6 +1375,7 @@ translations:
   'Failed to send command: {}': 'Не удалось отправить команду: {}'
   Failed to send print data: Не удалось отправить данные печати
   Failed to send status request: Не удалось отправить запрос статуса
+  Failed to set Z-offset: 'Не удалось установить Z-смещение'
   Failed to set active spool: Не удалось установить активную катушку
   'Failed to set flow rate: {}': 'Не удалось задать поток: {}'
   'Failed to set pressure advance: {}': 'Не удалось задать Pressure Advance: {}'
@@ -1380,6 +1383,8 @@ translations:
   'Failed to set temperature: {}': 'Не удалось задать температуру: {}'
   'Failed to set {} temp: {}': 'Не удалось задать темп. {}: {}'
   Failed to show confirmation dialog: Не удалось показать диалог подтверждения
+  Failed to start Z offset calibration: 'Не удалось запустить калибровку Z-смещения'
+  Failed to start bed heating: 'Не удалось запустить нагрев стола'
   'Failed to start installer: ': 'Не удалось запустить установщик: '
   'Failed to start print: {}': 'Не удалось начать печать: {}'
   'Failed to start uninstaller: ': 'Не удалось запустить деинсталлятор: '
@@ -3316,6 +3321,7 @@ translations:
   Snapmaker U1: Snapmaker U1
   Snapshot only: Только снимок
   Soft: Мягкий
+  Soft filament is never unloaded: "Мягкий филамент никогда не выгружается"
   Software Updates: Обновления ПО
   Some filaments don't match the slicer's intent.: Некоторые филаменты не соответствуют
     замыслу слайсера.

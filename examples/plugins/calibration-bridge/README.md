@@ -13,9 +13,10 @@ through Moonraker agent events; the screen starts the pre-sliced calibration
 print, asks which result is best, and posts the answer back to the
 companion, which (once Orca plugins can write) lands it in the profile.
 
-This is the screen half of that story, and the plugin system's first
-**overlay-only** plugin: no home tile, because calibration is episodic. The
-companion event is the front door; a settings action row is the manual one.
+This is the screen half of that story: no home tile, because calibration is
+episodic. An overlay holds the flow and a dialog asks the question when the
+print completes. The companion event is the front door; a settings action
+row is the manual one.
 
 The author guide is [docs/devel/PLUGIN_DEVELOPMENT.md](../../docs/devel/PLUGIN_DEVELOPMENT.md).
 
@@ -54,9 +55,7 @@ payload):
   empty.
 
   A new `available` event is logged and ignored while a calibration print is
-  starting, running or waiting for an answer. One that arrives while the
-  picker is open before the print starts replaces the choices (the overlay
-  reopens with the new list).
+  starting, running or waiting for an answer.
 
 - `helixcal.cancel` - `{}`. Resets to idle. While the calibration print is
   starting or running it is ignored: a remote event never stops a print.
@@ -84,29 +83,45 @@ companion listening on the printer itself cannot receive the answer.
 
 ## What it demonstrates
 
-- **Overlay-only plugins**: `widgets: []` in the manifest, the overlay is
-  the whole UI. Entry points: the agent event (auto-open), the settings
-  action row, and a toast when nothing is running.
+- **No home tile**: `widgets: []` in the manifest. The overlay holds the
+  flow; entry points are the agent event (auto-open), the settings action
+  row, and a toast when nothing is running.
+- **A question asked at print completion**: `helix.ui.dialog` opens
+  `calibration-bridge__result` when the print completes. It waits behind the
+  app's own print-complete dialog, so it never covers it, and `on_close(how)`
+  says how it ended: "Use this" answers and closes it (`"plugin"`), "Later"
+  or a backdrop tap leaves the question open, and the overlay's **Pick
+  result** asks again. Resetting the calibration withdraws it, even while it
+  is still waiting (`"cancelled"`).
+- **App dialog chrome in plugin XML**: the dialog is a `ui_dialog` with the
+  app's `modal_header` and `modal_button_row`, every object it names owned
+  (`primary_name="calibration-bridge__use"`, ...), and its buttons reach the
+  plugin through `plugin_event` with `*_user_data`.
+- **A responsive constant**: the dropdown's width is
+  `#calibration-bridge__pick_w`, a `_small`/`_medium`/`_large` set the
+  screen resolves to its own tier.
 - `helix.moonraker.on_agent_event`: the companion channel, filtered by
   event name, delivered on the main thread.
 - **A dropdown fed from an event**: XML cannot build widgets at runtime, so
   the choice list rides in through a component prop (`<api><prop>`,
-  newline-separated) filled by `helix.ui.overlay` attrs at open time - and
+  newline-separated) filled by `helix.ui.dialog` attrs at open time - and
   the selection writes back through the engine's two-way
   `bind_value` subject binding, the one widget-to-Lua path that needs no
-  widget access. **Next** accepts the held selection.
+  widget access. **Use this** accepts the held selection.
 - `helix.moonraker.call("printer.print.start", ...)`: the `moonraker_write`
   permission starting the pre-sliced print, then `helix.printer.watch` on
-  `print_state` handing over to the picker on completion (or back to
+  `print_state` handing over to the question on completion (or back to
   available with the reason on failure).
 - The quiet failure policy: a refused event, a failed print start (with
   Moonraker's reason) or a failed POST is a status line, never a toast storm
   and never a fault. A failed cancel adds one toast, because a print is
   still running.
-- `helix.ui.confirm` guarding the one destructive button, and
-  `helix.ui.overlay`'s `on_close` to swap an overlay whose attrs are fixed at
-  open time (close, then reopen from the callback).
-- `i18n/de.xml`: the overlay, the state machine's words and the manifest.
+- `helix.ui.confirm` guarding the one destructive button (it opens over the
+  plugin's own overlay at once, since a plugin never waits on itself), and
+  the dialog's `on_close` to swap a dialog whose attrs are fixed at open time
+  (close, then reopen from the callback).
+- `i18n/de.xml`: the overlay, the dialog, the state machine's words and the
+  manifest.
 
 ## Run it
 
@@ -129,5 +144,7 @@ tests, which post exactly the payloads in the contract, end to end.
   the agent-event and print-state wiring, the result POST, the status-key
   re-render on language switch.
 - `ui/calibration-bridge__ask.xml` the overlay: context card (printer, filament, print file, profile value), Start row,
-  printing line, picker row (label + dropdown), result row, Cancel/Next.
+  printing line, Pick result row, result row, Cancel.
+- `ui/calibration-bridge__result.xml` the dialog: header, context line, the
+  dropdown, Use this / Later.
 - `i18n/de.xml` the translation pack.

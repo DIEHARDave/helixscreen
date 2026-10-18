@@ -137,6 +137,8 @@ At startup, `theme_manager` measures the axis that token follows, picks the matc
 
 One function does the choosing for every token: `theme_manager_resolve_px_tokens()` (`src/ui/theme_responsive.cpp`). Both the startup registration and the resize path apply its output verbatim, so a token cannot get one tier at boot and another after a rotation.
 
+Plugin constants ride the same ladder. `theme_manager_resolve_px_tokens()` reads the `ui_xml/` tables and hands them to `helix::theme_manager_resolve_px_tables()`, which picks the tier and applies the DPI scale; a plugin's own `<consts>` go through that second function too, on the narrow axis only (`PLUGIN_DEVELOPMENT.md` §7, Responsive sizing).
+
 ### CRITICAL: Never define the base name in globals.xml
 
 This is the most common mistake. Do NOT do this:

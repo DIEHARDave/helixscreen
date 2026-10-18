@@ -396,6 +396,7 @@
   <translation tag="Bed mesh calibration failed: {}" ru="Ошибка калибровки сетки стола: {}"/>
   <translation tag="Bed mesh operation timed out" ru="Сетка стола — время ожидания истекло"/>
   <translation tag="Bed mesh..." ru="Сетка стола..."/>
+  <translation tag="Bed size unknown" ru="Размер стола неизвестен"/>
   <translation tag="Bed tab moves lift to this height first" ru="Перемещения на вкладке «Стол» сначала поднимают до этой высоты"/>
   <translation tag="Bed target set to {}°C" ru="Целевая температура стола {}°C"/>
   <translation tag="Bed temp must be 0-%d°C" ru="Температура стола должна быть 0-%d°C"/>
@@ -1217,6 +1218,7 @@
   <translation tag="Failed to load profile" ru="Не удалось загрузить профиль"/>
   <translation tag="Failed to load spools" ru="Не удалось загрузить катушки"/>
   <translation tag="Failed to modify G-code: {}" ru="Не удалось изменить G-code: {}"/>
+  <translation tag="Failed to move to calibration position" ru="Не удалось переместиться в позицию калибровки"/>
   <translation tag="Failed to open history" ru="Не удалось открыть историю"/>
   <translation tag="Failed to open history list" ru="Не удалось открыть список истории"/>
   <translation tag="Failed to open temperature graph" ru="Не удалось открыть график температуры"/>
@@ -1251,6 +1253,7 @@
   <translation tag="Failed to send command: {}" ru="Не удалось отправить команду: {}"/>
   <translation tag="Failed to send print data" ru="Не удалось отправить данные печати"/>
   <translation tag="Failed to send status request" ru="Не удалось отправить запрос статуса"/>
+  <translation tag="Failed to set Z-offset" ru="Не удалось установить Z-смещение"/>
   <translation tag="Failed to set active spool" ru="Не удалось установить активную катушку"/>
   <translation tag="Failed to set flow rate: {}" ru="Не удалось задать поток: {}"/>
   <translation tag="Failed to set pressure advance: {}" ru="Не удалось задать Pressure Advance: {}"/>
@@ -1258,6 +1261,8 @@
   <translation tag="Failed to set temperature: {}" ru="Не удалось задать температуру: {}"/>
   <translation tag="Failed to set {} temp: {}" ru="Не удалось задать темп. {}: {}"/>
   <translation tag="Failed to show confirmation dialog" ru="Не удалось показать диалог подтверждения"/>
+  <translation tag="Failed to start Z offset calibration" ru="Не удалось запустить калибровку Z-смещения"/>
+  <translation tag="Failed to start bed heating" ru="Не удалось запустить нагрев стола"/>
   <translation tag="Failed to start installer: " ru="Не удалось запустить установщик: "/>
   <translation tag="Failed to start print: {}" ru="Не удалось начать печать: {}"/>
   <translation tag="Failed to start uninstaller: " ru="Не удалось запустить деинсталлятор: "/>
@@ -3020,6 +3025,7 @@
   <translation tag="Snapmaker U1" ru="Snapmaker U1"/>
   <translation tag="Snapshot only" ru="Только снимок"/>
   <translation tag="Soft" ru="Мягкий"/>
+  <translation tag="Soft filament is never unloaded" ru="Мягкий филамент никогда не выгружается"/>
   <translation tag="Software Updates" ru="Обновления ПО"/>
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." ru="Некоторые филаменты не соответствуют замыслу слайсера."/>
   <translation tag="Some mapped slots are short on filament:" ru="В некоторых сопоставленных слотах мало филамента:"/>

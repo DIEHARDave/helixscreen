@@ -357,6 +357,7 @@
   <translation tag="Bed mesh calibration failed: {}" it="Calibrazione della mesh del piano non riuscita: {}"/>
   <translation tag="Bed mesh operation timed out" it="Mesh piano — tempo scaduto"/>
   <translation tag="Bed mesh..." it="Mesh piano..."/>
+  <translation tag="Bed size unknown" it="Dimensione del piatto sconosciuta"/>
   <translation tag="Bed tab moves lift to this height first" it="I movimenti della scheda Piano salgono prima a questa altezza"/>
   <translation tag="Bed target set to {}°C" it="Obiettivo piano impostato a {}°C"/>
   <translation tag="Bed temp must be 0-%d°C" it="La temperatura del piano deve essere 0-%d°C"/>
@@ -1175,6 +1176,7 @@
   <translation tag="Failed to load profile" it="Impossibile caricare il profilo"/>
   <translation tag="Failed to load spools" it="Caricamento bobine fallito"/>
   <translation tag="Failed to modify G-code: {}" it="Impossibile modificare G-code: {}"/>
+  <translation tag="Failed to move to calibration position" it="Impossibile spostarsi nella posizione di calibrazione"/>
   <translation tag="Failed to open history" it="Apertura cronologia fallita"/>
   <translation tag="Failed to open history list" it="Apertura lista cronologia fallita"/>
   <translation tag="Failed to open temperature graph" it="Impossibile aprire grafico temperature"/>
@@ -1209,6 +1211,7 @@
   <translation tag="Failed to send command: {}" it="Impossibile inviare comando: {}"/>
   <translation tag="Failed to send print data" it="Impossibile inviare i dati di stampa"/>
   <translation tag="Failed to send status request" it="Impossibile inviare la richiesta di stato"/>
+  <translation tag="Failed to set Z-offset" it="Impossibile impostare l&apos;offset Z"/>
   <translation tag="Failed to set active spool" it="Impostazione bobina attiva fallita"/>
   <translation tag="Failed to set flow rate: {}" it="Impossibile impostare flusso: {}"/>
   <translation tag="Failed to set pressure advance: {}" it="Impossibile impostare il Pressure Advance: {}"/>
@@ -1216,6 +1219,8 @@
   <translation tag="Failed to set temperature: {}" it="Impossibile impostare temperatura: {}"/>
   <translation tag="Failed to set {} temp: {}" it="Impossibile impostare temp. {}: {}"/>
   <translation tag="Failed to show confirmation dialog" it="Impossibile mostrare dialogo di conferma"/>
+  <translation tag="Failed to start Z offset calibration" it="Impossibile avviare la calibrazione dell&apos;offset Z"/>
+  <translation tag="Failed to start bed heating" it="Impossibile avviare il riscaldamento del piatto"/>
   <translation tag="Failed to start installer: " it="Impossibile avviare l&apos;installer: "/>
   <translation tag="Failed to start print: {}" it="Impossibile avviare stampa: {}"/>
   <translation tag="Failed to start uninstaller: " it="Impossibile avviare il programma di disinstallazione: "/>
@@ -2966,6 +2971,7 @@
   <translation tag="Snapmaker U1" it="Snapmaker U1"/>
   <translation tag="Snapshot only" it="Solo istantanea"/>
   <translation tag="Soft" it="Morbido"/>
+  <translation tag="Soft filament is never unloaded" it="Il filamento morbido non viene mai scaricato"/>
   <translation tag="Software Updates" it="Aggiornamenti software"/>
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." it="Alcuni filamenti non corrispondono alle intenzioni dello slicer."/>
   <translation tag="Some mapped slots are short on filament:" it="Alcuni slot assegnati hanno poco filamento:"/>
