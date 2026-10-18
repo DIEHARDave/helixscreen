@@ -243,11 +243,10 @@ void AppearanceSettingsOverlay::handle_explorer_theme_changed(int index) {
         }
     }
 
-    theme_manager_preview(theme);
+    // One apply per pick: each costs about a second on slow hardware.
+    theme_manager_preview(theme, preview_is_dark_);
 
     lv_subject_set_int(&theme_apply_disabled_subject_, index == original_theme_index_ ? 1 : 0);
-
-    handle_preview_dark_mode_toggled(preview_is_dark_);
 
     spdlog::debug("[{}] Explorer preview: theme '{}' (index {})", get_name(), theme_name, index);
 }
@@ -332,8 +331,8 @@ void AppearanceSettingsOverlay::handle_apply_theme_clicked() {
     DisplaySettingsManager::instance().set_theme_by_index(selected_index);
     std::string theme_name = DisplaySettingsManager::instance().get_theme_name();
 
-    theme_manager_apply_theme(theme_manager_get_active_theme(), theme_manager_is_dark_mode());
-
+    // The preview already shows this theme, and closing the explorer applies
+    // original_theme_ once more, so no apply here.
     original_theme_index_ = selected_index;
     original_theme_ = theme_manager_get_active_theme();
 
