@@ -103,7 +103,7 @@ void DisplaySettingsOverlay::register_callbacks() {
          [](lv_event_t* e) {
              DisplaySettingsManager::instance().set_sleep_while_printing(event_checked(e));
          }},
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
         {"on_screensaver_changed",
          [](lv_event_t* e) {
              get_display_settings_overlay().handle_screensaver_changed(event_selected(e));
@@ -315,7 +315,7 @@ void DisplaySettingsOverlay::init_screensaver_dropdown() {
 }
 
 void DisplaySettingsOverlay::handle_screensaver_changed(int index) {
-#ifndef HELIX_ENABLE_SCREENSAVER
+#if !HELIX_ENABLE_SCREENSAVER
     (void)index;
 #else
     if (index < 0 || static_cast<size_t>(index) >= screensaver_choices_.size()) {
