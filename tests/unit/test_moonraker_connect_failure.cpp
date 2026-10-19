@@ -28,11 +28,11 @@ using namespace helix;
 
 namespace {
 
-/// A listening loopback socket on an ephemeral port. close_listener() frees
-/// the port, leaving an address that refuses connections.
+/// A loopback socket bound to an ephemeral port. Without listen() it holds
+/// the port, so nothing else can take it, and refuses every connection.
 class LoopbackListener {
   public:
-    LoopbackListener() {
+    explicit LoopbackListener(bool listening) {
         fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
         REQUIRE(fd_ >= 0);
         sockaddr_in addr{};
@@ -40,7 +40,9 @@ class LoopbackListener {
         addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         addr.sin_port = 0;
         REQUIRE(::bind(fd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0);
-        REQUIRE(::listen(fd_, 8) == 0);
+        if (listening) {
+            REQUIRE(::listen(fd_, 8) == 0);
+        }
         socklen_t len = sizeof(addr);
         REQUIRE(::getsockname(fd_, reinterpret_cast<sockaddr*>(&addr), &len) == 0);
         port_ = ntohs(addr.sin_port);
@@ -111,17 +113,15 @@ ConnectFailureKind failure_after_one_attempt(const std::string& url) {
 } // namespace
 
 TEST_CASE("A connection to a closed port reports Refused",
-          "[moonraker][client][connect_failure][eventloop]") {
-    LoopbackListener listener;
-    const std::string url = listener.url();
-    listener.close_listener();
+          "[moonraker][client][connect_failure][eventloop][slow]") {
+    LoopbackListener bound_only(/*listening=*/false);
 
-    CHECK(failure_after_one_attempt(url) == ConnectFailureKind::Refused);
+    CHECK(failure_after_one_attempt(bound_only.url()) == ConnectFailureKind::Refused);
 }
 
 TEST_CASE("A peer that accepts TCP and drops the upgrade is not called refused",
-          "[moonraker][client][connect_failure][eventloop]") {
-    LoopbackListener listener;
+          "[moonraker][client][connect_failure][eventloop][slow]") {
+    LoopbackListener listener(/*listening=*/true);
     listener.accept_and_drop();
 
     CHECK(failure_after_one_attempt(listener.url()) == ConnectFailureKind::Unknown);
