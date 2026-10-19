@@ -766,3 +766,104 @@ exit 0'
 
     ! grep -q 'symlink_dir' "$(user_conf_of "$root")"
 }
+
+# A Pi-style HOME with a Moonraker checkout and a moonraker.conf that has no
+# [helix_print] yet, the restart path shimmed as in setup_instrumented_home.
+setup_plain_home() {
+    local home="$1"
+    mkdir -p "$home/moonraker/moonraker/components" "$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n' > "$home/printer_data/config/moonraker.conf"
+    for cmd in sudo service; do
+        mock_command_script "$cmd" 'exit 0'
+    done
+    mock_real_curl 0
+    mock_command_script "wget" 'exit 8'
+}
+
+# Every [helix_print] header under config dir $1, across all its files but
+# the backups an edit leaves.
+count_helix_sections() {
+    find "$1" -type f ! -name '*.bak.*' -exec grep -h '^\[helix_print\]' {} + | wc -l | tr -d ' '
+}
+
+@test "auto install leaves a [helix_print] in an included file as the only one" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    mkdir -p "$c/conf.d"
+    printf '[server]\nhost: 0.0.0.0\n\n[include conf.d/*.conf]\n' > "$c/moonraker.conf"
+    printf '[helix_print]\nenabled: True\n' > "$c/conf.d/helix.conf"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    [ "$(count_helix_sections "$c")" -eq 1 ] || fail "duplicate [helix_print]: $(cat "$c"/moonraker.conf "$c"/conf.d/*)"
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" || fail "moonraker.conf was edited"
+    [ -L "$home/moonraker/moonraker/components/helix_print.py" ]
+}
+
+@test "auto uninstall removes a [helix_print] that lives in an included file" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[include helix.conf]\n' > "$c/moonraker.conf"
+    printf '[helix_print]\nenabled: True\n\n[octoprint_compat]\n' > "$c/helix.conf"
+    ln -s "$REPO_ROOT/moonraker-plugin/helix_print.py" "$home/moonraker/moonraker/components/helix_print.py"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    [ "$(count_helix_sections "$c")" -eq 0 ] || fail "[helix_print] survived: $(cat "$c/helix.conf")"
+    grep -q '^\[octoprint_compat\]' "$c/helix.conf" || fail "the include's other sections were lost"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+}
+
+@test "auto install refuses a components dir it cannot write, and writes nothing" {
+    [ "$(id -u)" -ne 0 ] || skip "running as root ignores the read-only mode"
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    cp -R "$c" "$BATS_TEST_TMPDIR/config.before"
+    chmod 0555 "$home/moonraker/moonraker/components"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    chmod 0755 "$home/moonraker/moonraker/components"
+
+    [ "$status" -eq 1 ]
+    contains "Cannot write to components directory" "$output"
+    [ ! -e "$home/moonraker/moonraker/components/helix_print.py" ]
+    diff -r "$BATS_TEST_TMPDIR/config.before" "$c" || fail "the config dir changed"
+}
+
+@test "auto install refuses a moonraker.conf it cannot write, and writes nothing" {
+    [ "$(id -u)" -ne 0 ] || skip "running as root ignores the read-only mode"
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    chmod 0444 "$c/moonraker.conf"
+    cp -R "$c" "$BATS_TEST_TMPDIR/config.before"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    chmod 0644 "$c/moonraker.conf"
+
+    [ "$status" -eq 1 ]
+    contains "Cannot write to $c/moonraker.conf" "$output"
+    [ ! -e "$home/moonraker/moonraker/components/helix_print.py" ] \
+        && [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+    diff -r "$BATS_TEST_TMPDIR/config.before" "$c" || fail "the config dir changed"
+}
+
+# Pins behaviour that already holds: the section starts on a line of its own.
+@test "auto install after a moonraker.conf with no trailing newline keeps its last line" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0' > "$c/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    grep -qx 'host: 0.0.0.0' "$c/moonraker.conf" || fail "last line damaged: $(cat "$c/moonraker.conf")"
+    grep -qx '\[helix_print\]' "$c/moonraker.conf" || fail "no section line: $(cat "$c/moonraker.conf")"
+}

@@ -49,6 +49,11 @@ error() {
     exit 1
 }
 
+# helix_print_section_files: which config files hold [helix_print].
+[ -f "$SCRIPT_DIR/helix_print_conf.sh" ] || error "Missing $SCRIPT_DIR/helix_print_conf.sh"
+# shellcheck source=moonraker-plugin/helix_print_conf.sh
+. "$SCRIPT_DIR/helix_print_conf.sh"
+
 # Moonraker source roots on known vendor layouts. Keep in step with
 # MOONRAKER_SRC_PATHS in scripts/lib/installer/moonraker.sh; a bats test
 # fails when an entry there is missing here.
@@ -565,16 +570,15 @@ auto_uninstall() {
         strip_phase_tracking_instrumentation "$config_dir" || exit_status=$EXIT_UNINSTALL_NEEDS_ATTENTION
     fi
 
-    # Remove config section if possible, from moonraker.conf and from the
-    # user file a mod-owned moonraker.conf includes. The plugin itself is
-    # already gone at this point, so a failure backing up or editing a config
-    # here is "needs attention", not a failed uninstall, and must not trip
-    # set -e and skip the rest of this function.
+    # Remove the config section from every file Moonraker reads it from:
+    # moonraker.conf and anything it includes, such as the user file a
+    # mod-owned moonraker.conf includes. The plugin itself is already gone at
+    # this point, so a failure backing up or editing a config here is "needs
+    # attention", not a failed uninstall, and must not trip set -e and skip
+    # the rest of this function.
     if [ -n "$config_dir" ] && [ -f "$config_dir/moonraker.conf" ]; then
-        section_file=$(helix_conf_file "$config_dir")
-        for file in "$config_dir/moonraker.conf" "$section_file"; do
+        for file in $(helix_print_section_files "$config_dir/moonraker.conf" "$(running_moonraker_root)"); do
             remove_helix_section "$file" || exit_status=$EXIT_UNINSTALL_NEEDS_ATTENTION
-            [ "$section_file" = "$config_dir/moonraker.conf" ] && break
         done
     fi
 
@@ -656,9 +660,15 @@ auto_install() {
 
     # Auto-configure moonraker.conf if possible
     if [ -n "$section_file" ]; then
-        # Check if [helix_print] section already exists
-        if grep -q '^\[helix_print\]' "$config_dir/moonraker.conf" "$section_file" 2>/dev/null; then
-            info "Config section [helix_print] already exists"
+        # A section in any file Moonraker reads counts, so the install never
+        # writes a second one beside it.
+        section_holder=""
+        for file in $(helix_print_section_files "$config_dir/moonraker.conf" "$(running_moonraker_root)"); do
+            section_holder="$file"
+            break
+        done
+        if [ -n "$section_holder" ]; then
+            info "Config section [helix_print] already exists in $section_holder"
         else
             # Create backup before modifying config
             if [ -f "$section_file" ]; then
@@ -671,12 +681,10 @@ auto_install() {
             printf '\n' >> "$section_file"
             printf '%s\n' "[helix_print]" >> "$section_file"
             printf '%s\n' "# HelixScreen plugin - auto-configured" >> "$section_file"
+            section_holder="$section_file"
         fi
 
         if klipper_hides_dot_dirs; then
-            section_holder="$section_file"
-            grep -q '^\[helix_print\]' "$section_file" 2>/dev/null \
-                || section_holder="$config_dir/moonraker.conf"
             ensure_visible_symlink_dir "$section_holder"
         fi
     else

@@ -747,13 +747,19 @@ _remove_helix_print_inline() {
         log_warn "$target is a regular file, not a symlink this installer created - leaving it in place"
     fi
 
-    local conf
+    local conf section_conf
     conf=$(find_moonraker_conf)
-    if [ -n "$conf" ] && grep -q '^\[helix_print\]' "$conf" 2>/dev/null; then
+    [ -n "$conf" ] || return 0
+    # Every file Moonraker reads the section from: the conf and its includes.
+    for section_conf in $(helix_print_section_files "$conf"); do
+        if host_path_is_mod_owned "$section_conf"; then
+            log_warn "[helix_print] is in $section_conf, which the firmware mod owns - leaving it in place"
+            continue
+        fi
         local fs
-        fs=$(file_sudo "$conf")
-        $fs cp "$conf" "${conf}.bak.helixscreen-uninstall" 2>/dev/null || true
-        log_info "Removing [helix_print] section from $conf..."
+        fs=$(file_sudo "$section_conf")
+        $fs cp "$section_conf" "${section_conf}.bak.helixscreen-uninstall" 2>/dev/null || true
+        log_info "Removing [helix_print] section from $section_conf..."
         local prog='
             /^\[helix_print\]/ { skip = 1; next }
             /^\[/ { skip = 0 }
@@ -761,12 +767,12 @@ _remove_helix_print_inline() {
         '
         # The program is passed as an argument rather than interpolated into the
         # -c string, so its $0 and $1 stay awk's and are never expanded by a shell.
-        if $fs sh -c 'awk "$1" "$2" > "$2.helixtmp" && mv "$2.helixtmp" "$2"' sh "$prog" "$conf"; then
-            log_success "Removed [helix_print] section from $conf"
+        if $fs sh -c 'awk "$1" "$2" > "$2.helixtmp" && mv "$2.helixtmp" "$2"' sh "$prog" "$section_conf"; then
+            log_success "Removed [helix_print] section from $section_conf"
         else
-            log_warn "Could not remove [helix_print] from $conf - edit it by hand, backup at ${conf}.bak.helixscreen-uninstall"
+            log_warn "Could not remove [helix_print] from $section_conf - edit it by hand, backup at ${section_conf}.bak.helixscreen-uninstall"
         fi
-    fi
+    done
 }
 
 # Remove the HelixPrint Moonraker plugin: the helix_print.py symlink in
@@ -794,7 +800,7 @@ remove_moonraker_plugin() {
     conf=$(find_moonraker_conf)
 
     local has_section=false
-    if [ -n "$conf" ] && grep -q '^\[helix_print\]' "$conf" 2>/dev/null; then
+    if [ -n "$conf" ] && [ -n "$(helix_print_section_files "$conf")" ]; then
         has_section=true
     fi
 

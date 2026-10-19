@@ -499,6 +499,41 @@ CONF
     refute_grep '^\[helix_print\]' "$HELIX_PRINT_CONF"
 }
 
+@test "remove_moonraker_plugin removes a [helix_print] that moonraker.conf includes" {
+    # Only the inline pass runs here (no install tree), so this is the main
+    # installer's own detection: it must follow [include] the way the plugin's
+    # install.sh does.
+    local symlink conf inc
+    setup_helix_print_symlink
+    symlink="$HELIX_PRINT_SYMLINK"
+    conf="$BATS_TEST_TMPDIR/cfg/moonraker.conf"
+    inc="$BATS_TEST_TMPDIR/cfg/conf.d/helix.conf"
+    mkdir -p "$(dirname "$inc")"
+    printf '[server]\nhost: 0.0.0.0\n\n[include conf.d/*.conf]\n' > "$conf"
+    printf '[helix_print]\nenabled: True\n\n[octoprint_compat]\n' > "$inc"
+    cp "$conf" "$BATS_TEST_TMPDIR/conf.before"
+    KLIPPER_HOME=""
+    KLIPPER_CONFIG_DIR=""
+    MOONRAKER_CONF_PATHS="$conf"
+
+    remove_moonraker_plugin 2>/dev/null
+
+    refute test -L "$symlink"
+    refute_grep '^\[helix_print\]' "$inc"
+    grep -q '^\[octoprint_compat\]' "$inc" || fail "the include's other sections were lost"
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$conf" || fail "moonraker.conf itself was edited"
+}
+
+@test "the main installer and the plugin installer share one [helix_print] detection" {
+    local shared="$WORKTREE_ROOT/scripts/lib/installer/helix_print_conf.sh"
+    [ "$(readlink -f "$shared")" = "$(readlink -f "$WORKTREE_ROOT/moonraker-plugin/helix_print_conf.sh")" ] \
+        || fail "scripts/lib/installer/helix_print_conf.sh is not the plugin's own file"
+    grep -q '^helix_print_section_files()' "$UNINSTALL_BUNDLE" \
+        || fail "the uninstaller bundle carries no helix_print_section_files"
+    grep -q '/helix_print_conf.sh"' "$WORKTREE_ROOT/moonraker-plugin/install.sh" \
+        || fail "the plugin's install.sh does not load helix_print_conf.sh"
+}
+
 @test "uninstall removes the plugin before the install tree goes away" {
     # Two uninstall paths reach this: uninstall(), which install.sh --uninstall
     # calls, and the standalone uninstaller's own main(), which does not go
