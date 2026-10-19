@@ -795,6 +795,18 @@ ifneq ($(filter pi32 pi32-fbdev pi32-both,$(PLATFORM_TARGET)),)
     TARGET_LDFLAGS += -static-libstdc++ -static-libgcc
 endif
 
+# The Pi and x86 targets drop unreferenced code and data at link time, as every
+# embedded target above does: each function and object gets its own section and
+# the linker keeps only what is reachable from the entry point, .init_array and
+# the dynamic exports. That is safe because nothing resolves an app symbol by
+# name at runtime: the binaries export none (no -rdynamic), the Bluetooth plugin
+# imports only from its own libraries, and Lua bindings and XML callbacks are
+# registered as function pointers.
+ifneq ($(filter pi pi-fbdev pi-both pi32 pi32-fbdev pi32-both x86 x86-fbdev x86-both x86-desktop,$(PLATFORM_TARGET)),)
+    TARGET_CFLAGS += -ffunction-sections -fdata-sections
+    TARGET_LDFLAGS += -Wl,--gc-sections
+endif
+
 # =============================================================================
 # Cross-Compiler Configuration
 # =============================================================================
