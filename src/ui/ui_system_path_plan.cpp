@@ -63,7 +63,7 @@ int32_t unit_stem_x(const SystemPathData& data, const SysLayout& L, int i) {
         return L.x_off + L.width / 2;
     }
     int32_t margin = LV_MIN(8, L.width / 4);
-    return LV_CLAMP(L.x_off + data.unit_x_positions[i], L.x_off + margin,
+    return LV_CLAMP(L.x_off + margin, L.x_off + data.unit_x_positions[i],
                     L.x_off + L.width - margin);
 }
 
@@ -542,10 +542,10 @@ void append_harness(Route& r, int32_t sx, int32_t sy, int32_t ex, int32_t ey, in
         route_append(r, path, s);
         return;
     }
-    horiz_y = LV_CLAMP(horiz_y, lo, hi);
+    horiz_y = LV_CLAMP(lo, horiz_y, hi);
     int32_t dx = (ex > sx) ? (ex - sx) : (sx - ex);
     int32_t y_approach = horiz_y + dx / 10; // ~10% downward slope along the run
-    y_approach = LV_CLAMP(y_approach, horiz_y, ey - 6);
+    y_approach = LV_CLAMP(horiz_y, y_approach, ey - 6);
     pg::PathPoint pts[4] = {{(float)sx, (float)sy},
                             {(float)sx, (float)horiz_y},
                             {(float)ex, (float)y_approach},
@@ -620,7 +620,7 @@ void plan_multi_tool(const SystemPathData& data, const SysLayout& L, PathPlan& p
             } else {
                 int32_t horiz_y = par_bot_y - parallel_idx * par_step;
                 parallel_idx++;
-                horiz_y = LV_CLAMP(horiz_y, route.start_y + arc_r + 2, end_y - arc_r - 2);
+                horiz_y = LV_CLAMP(route.start_y + arc_r + 2, horiz_y, end_y - arc_r - 2);
                 append_harness(*r, route.start_x, route.start_y, route.end_x, end_y, horiz_y, s);
             }
             if (route.via_box) {
@@ -934,7 +934,7 @@ BypassGeometry compute_bypass_geometry(const SystemPathData& data, const lv_area
             // No horizontal room even at the canvas edge — drop the spool below
             // the toolhead row, centred over the rightmost toolhead, clamped so
             // its lower edge stays on the canvas.
-            bypass_x = LV_CLAMP(rightmost_tool_x, x_off + kBypassSpoolHalf + 4, right_limit);
+            bypass_x = LV_CLAMP(x_off + kBypassSpoolHalf + 4, rightmost_tool_x, right_limit);
             merge_y = nozzle_y + scale * 4 + kBypassSpoolHalf + comfort;
             merge_y = LV_MIN(merge_y, y_off + height - kBypassSpoolHalf - 4);
         }

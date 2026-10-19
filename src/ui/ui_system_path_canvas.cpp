@@ -378,7 +378,7 @@ static void system_path_xml_apply(lv_xml_parser_state_t* state, const char** att
         const char* value = attrs[i + 1];
 
         if (strcmp(name, "unit_count") == 0) {
-            data->unit_count = LV_CLAMP(atoi(value), 0, SystemPathData::kMaxUnits);
+            data->unit_count = LV_CLAMP(0, atoi(value), SystemPathData::kMaxUnits);
             needs_redraw = true;
         } else if (strcmp(name, "active_unit") == 0) {
             data->active_unit = atoi(value);
@@ -447,7 +447,7 @@ void ui_system_path_canvas_set_unit_count(lv_obj_t* obj, int count) {
     auto* data = get_data(obj);
     if (!data)
         return;
-    int clamped = LV_CLAMP(count, 0, SystemPathData::kMaxUnits);
+    int clamped = LV_CLAMP(0, count, SystemPathData::kMaxUnits);
     if (data->unit_count == clamped)
         return;
     data->unit_count = clamped;
@@ -644,7 +644,7 @@ void ui_system_path_canvas_set_total_tools(lv_obj_t* obj, int total_tools) {
     auto* data = get_data(obj);
     if (!data)
         return;
-    int clamped = LV_CLAMP(total_tools, 0, SystemPathData::kMaxTools);
+    int clamped = LV_CLAMP(0, total_tools, SystemPathData::kMaxTools);
     if (data->total_tools == clamped)
         return;
     data->total_tools = clamped;
