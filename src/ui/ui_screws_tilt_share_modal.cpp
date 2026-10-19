@@ -35,13 +35,13 @@ constexpr size_t kAdjBufSize = 24;
  */
 struct ShareSubjects {
     lv_subject_t count{};
-    std::array<lv_subject_t, ScrewsTiltShareModal::MAX_ROWS> name{};
-    std::array<lv_subject_t, ScrewsTiltShareModal::MAX_ROWS> z{};
-    std::array<lv_subject_t, ScrewsTiltShareModal::MAX_ROWS> adj{};
+    std::array<lv_subject_t, ScrewsTiltShareModal::kMaxRows> name{};
+    std::array<lv_subject_t, ScrewsTiltShareModal::kMaxRows> z{};
+    std::array<lv_subject_t, ScrewsTiltShareModal::kMaxRows> adj{};
 
-    char name_bufs[ScrewsTiltShareModal::MAX_ROWS][kNameBufSize] = {};
-    char z_bufs[ScrewsTiltShareModal::MAX_ROWS][kZBufSize] = {};
-    char adj_bufs[ScrewsTiltShareModal::MAX_ROWS][kAdjBufSize] = {};
+    char name_bufs[ScrewsTiltShareModal::kMaxRows][kNameBufSize] = {};
+    char z_bufs[ScrewsTiltShareModal::kMaxRows][kZBufSize] = {};
+    char adj_bufs[ScrewsTiltShareModal::kMaxRows][kAdjBufSize] = {};
 
     SubjectManager manager;
     bool initialized = false;
@@ -70,7 +70,7 @@ void init_share_subjects() {
 
     UI_MANAGED_SUBJECT_INT(s.count, 0, "screws_share_count", s.manager);
 
-    for (size_t i = 0; i < ScrewsTiltShareModal::MAX_ROWS; i++) {
+    for (size_t i = 0; i < ScrewsTiltShareModal::kMaxRows; i++) {
         char name_key[40];
         char z_key[40];
         char adj_key[40];
@@ -92,15 +92,15 @@ void init_share_subjects() {
                                                       []() { deinit_share_subjects(); });
 
     spdlog::debug("[ScrewsTiltShare] Subjects initialized ({} rows)",
-                  ScrewsTiltShareModal::MAX_ROWS);
+                  ScrewsTiltShareModal::kMaxRows);
 }
 
 /// Push one result set into the row subjects; returns the row count rendered.
 int publish_rows(const std::vector<ScrewTiltResult>& results) {
     auto& s = share_subjects();
-    const size_t rows = std::min(results.size(), ScrewsTiltShareModal::MAX_ROWS);
+    const size_t rows = std::min(results.size(), ScrewsTiltShareModal::kMaxRows);
 
-    for (size_t i = 0; i < ScrewsTiltShareModal::MAX_ROWS; i++) {
+    for (size_t i = 0; i < ScrewsTiltShareModal::kMaxRows; i++) {
         if (i >= rows) {
             lv_subject_copy_string(&s.name[i], "");
             lv_subject_copy_string(&s.z[i], "");

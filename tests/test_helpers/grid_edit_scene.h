@@ -46,7 +46,7 @@ struct GridEditScene {
         // uses. 715x475 is the one size near this fixture's display that gives
         // Medium a 12x8 grid AND divides into exact 55px tracks, so there is no
         // LVGL remainder distribution to muddy the pixel arithmetic.
-        constexpr int CELL_PX = 55;
+        constexpr int kCellPx = 55;
         constexpr int content_w = 715;
         constexpr int content_h = 475;
         const auto dims = GridLayout::get_dimensions(UiBreakpoint::Medium, content_w, content_h);
@@ -54,8 +54,8 @@ struct GridEditScene {
         const int nrows = dims.rows;
         REQUIRE(ncols == 12);
         REQUIRE(nrows == 8);
-        REQUIRE(content_w == ncols * CELL_PX + (ncols - 1) * gutter);
-        REQUIRE(content_h == nrows * CELL_PX + (nrows - 1) * gutter);
+        REQUIRE(content_w == ncols * kCellPx + (ncols - 1) * gutter);
+        REQUIRE(content_h == nrows * kCellPx + (nrows - 1) * gutter);
 
         container = lv_obj_create(parent);
         lv_obj_remove_flag(container, LV_OBJ_FLAG_SCROLLABLE);
@@ -103,7 +103,7 @@ struct GridEditScene {
         // A widget ID parse_widget_array() doesn't recognise is dropped
         // silently, which would make commit_resize_with_snap() bail at its
         // find_config_index_for_widget() guard and never start an animation.
-        REQUIRE(config->page_entries(PAGE_INDEX).size() == 1);
+        REQUIRE(config->page_entries(kPageIndex).size() == 1);
     }
 
     ~GridEditScene() {
@@ -113,7 +113,7 @@ struct GridEditScene {
     GridEditScene(const GridEditScene&) = delete;
     GridEditScene& operator=(const GridEditScene&) = delete;
 
-    static constexpr size_t PAGE_INDEX = 1;
+    static constexpr size_t kPageIndex = 1;
 };
 
 } // namespace helix

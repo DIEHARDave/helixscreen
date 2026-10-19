@@ -390,7 +390,7 @@ AmsError AmsBackendMock::start() {
                 uint32_t rgb;
                 const char* multi;
             };
-            static constexpr FinishLane LANES[] = {
+            static constexpr FinishLane kLanes[] = {
                 {"Silk PLA", "Silk PLA", "Gold", 0xD4AF37, ""},
                 {"Silk PLA", "Silk Tri-Colour", "Gold Silver Copper", 0xD4AF37,
                  "#D4AF37,#C0C0C0,#B87333"},
@@ -406,7 +406,7 @@ AmsError AmsBackendMock::start() {
                     if (!entry) {
                         continue;
                     }
-                    const FinishLane& lane = LANES[static_cast<size_t>(i) % std::size(LANES)];
+                    const FinishLane& lane = kLanes[static_cast<size_t>(i) % std::size(kLanes)];
                     entry->info.material = lane.material;
                     entry->info.product_name = lane.product;
                     entry->info.color_name = lane.color_name;

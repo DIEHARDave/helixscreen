@@ -73,7 +73,7 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: real drag lands on the gutter-aw
     // display that gives Medium a 12x8 grid AND divides into exact 55px tracks,
     // so there is no LVGL remainder distribution to muddy the arithmetic:
     // content = tracks*cell + (tracks-1)*gutter, both axes.
-    constexpr int CELL_PX = 55;
+    constexpr int kCellPx = 55;
     constexpr int content_w = 715;
     constexpr int content_h = 475;
     const auto dims = GridLayout::get_dimensions(UiBreakpoint::Medium, content_w, content_h);
@@ -81,8 +81,8 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: real drag lands on the gutter-aw
     const int nrows = dims.rows;
     REQUIRE(ncols == 12);
     REQUIRE(nrows == 8);
-    REQUIRE(content_w == ncols * CELL_PX + (ncols - 1) * gutter);
-    REQUIRE(content_h == nrows * CELL_PX + (nrows - 1) * gutter);
+    REQUIRE(content_w == ncols * kCellPx + (ncols - 1) * gutter);
+    REQUIRE(content_h == nrows * kCellPx + (nrows - 1) * gutter);
 
     lv_obj_t* container = lv_obj_create(test_screen());
     lv_obj_remove_flag(container, LV_OBJ_FLAG_SCROLLABLE);
@@ -144,19 +144,19 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: real drag lands on the gutter-aw
     mgr.get_widget_config(panel_id).mark_dirty();
     mgr.clear_panel_config(panel_id);
     auto& config = mgr.get_widget_config(panel_id);
-    constexpr int PAGE_INDEX = 1; // "spy" page above
+    constexpr int kPageIndex = 1; // "spy" page above
 
     // Sanity check on the config wiring itself, not the drag: "humidity" is
     // a real registered widget ID (panel_widget_registry.cpp) — an ID
     // parse_widget_array() doesn't recognize is silently dropped
     // (find_widget_def() == nullptr), which would make the drag below fail
     // with "widget not in config" rather than a snap-target mismatch.
-    const auto& spy_entries = config.page_entries(static_cast<size_t>(PAGE_INDEX));
+    const auto& spy_entries = config.page_entries(static_cast<size_t>(kPageIndex));
     REQUIRE(spy_entries.size() == 1);
     REQUIRE(spy_entries[0].id == "humidity");
 
     GridEditMode em;
-    em.enter(container, &config, PAGE_INDEX);
+    em.enter(container, &config, kPageIndex);
     em.select_widget(widget);
     REQUIRE(em.selected_widget() == widget);
 
@@ -203,7 +203,7 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: real drag lands on the gutter-aw
     // axis to prove the point) but it still exercises real gutter-aware pixel
     // math, and a bug that only broke rows would still fail it.
     constexpr int kExpectedRow = 1 * STEP;
-    const int target_px_y = kExpectedRow * (CELL_PX + gutter);
+    const int target_px_y = kExpectedRow * (kCellPx + gutter);
 
     lv_area_t content_area;
     lv_obj_get_content_coords(container, &content_area);
@@ -287,13 +287,13 @@ TEST_CASE_METHOD(XMLTestFixture,
     // Height uses the same generous cell size for the same reason: the
     // container's single row is this height, so it must clear the edge zone
     // on its own with no gutter to help.
-    constexpr int CELL_PX = 80;
+    constexpr int kCellPx = 80;
     constexpr int kColspan = 2;
     constexpr int kRowspan = 1;
     const int content_w = kContentW;
     // Exactly one row's worth of content — no interior gutter since there is
     // only one track.
-    const int content_h = CELL_PX;
+    const int content_h = kCellPx;
 
     lv_obj_t* container = lv_obj_create(test_screen());
     lv_obj_remove_flag(container, LV_OBJ_FLAG_SCROLLABLE);
@@ -340,14 +340,14 @@ TEST_CASE_METHOD(XMLTestFixture,
     mgr.get_widget_config(panel_id).mark_dirty();
     mgr.clear_panel_config(panel_id);
     auto& config = mgr.get_widget_config(panel_id);
-    constexpr int PAGE_INDEX = 1;
+    constexpr int kPageIndex = 1;
 
-    const auto& spy_entries = config.page_entries(static_cast<size_t>(PAGE_INDEX));
+    const auto& spy_entries = config.page_entries(static_cast<size_t>(kPageIndex));
     REQUIRE(spy_entries.size() == 1);
     REQUIRE(spy_entries[0].id == "humidity");
 
     GridEditMode em;
-    em.enter(container, &config, PAGE_INDEX);
+    em.enter(container, &config, kPageIndex);
     em.select_widget(widget);
     REQUIRE(em.selected_widget() == widget);
 

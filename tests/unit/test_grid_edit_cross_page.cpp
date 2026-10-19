@@ -39,7 +39,7 @@ constexpr int kFrameX2 = 709;
 /// A two-track widget, and one wide enough that its leading side crosses a
 /// border while the pointer is still clear of the edge zone.
 constexpr int kWidgetW = 120;
-constexpr int WIDE_W = 400;
+constexpr int kWideW = 400;
 
 CrossPageInput cross_move(int pointer_x, int widget_left, uint32_t elapsed_ms,
                           int widget_w = kWidgetW) {
@@ -166,30 +166,30 @@ TEST_CASE("a crossing requests one flip and re-arms once the widget is back insi
     // zones: nothing but the crossing can ask for a flip.
     SECTION("right") {
         const int x = kFrameX2 - zone_px() - 20;
-        const int crossed_left = kFrameX2 - WIDE_W / 2 + 30;
-        const int inside_left = kFrameX2 - WIDE_W / 2 - 30;
+        const int crossed_left = kFrameX2 - kWideW / 2 + 30;
+        const int inside_left = kFrameX2 - kWideW / 2 - 30;
         REQUIRE(x > crossed_left);
         REQUIRE(x - 60 > inside_left);
         CrossPageState state;
-        CHECK(cross_page_step(state, cross_move(x, crossed_left, 33, WIDE_W)).flip_dir == 1);
-        CHECK(cross_page_step(state, cross_move(x, crossed_left, 33, WIDE_W)).flip_dir == 0);
-        CHECK(cross_page_step(state, cross_move(x - 20, crossed_left - 20, 33, WIDE_W)).flip_dir ==
+        CHECK(cross_page_step(state, cross_move(x, crossed_left, 33, kWideW)).flip_dir == 1);
+        CHECK(cross_page_step(state, cross_move(x, crossed_left, 33, kWideW)).flip_dir == 0);
+        CHECK(cross_page_step(state, cross_move(x - 20, crossed_left - 20, 33, kWideW)).flip_dir ==
               0);
-        CHECK(cross_page_step(state, cross_move(x - 60, inside_left, 33, WIDE_W)).flip_dir == 0);
-        CHECK(cross_page_step(state, cross_move(x, crossed_left, 33, WIDE_W)).flip_dir == 1);
+        CHECK(cross_page_step(state, cross_move(x - 60, inside_left, 33, kWideW)).flip_dir == 0);
+        CHECK(cross_page_step(state, cross_move(x, crossed_left, 33, kWideW)).flip_dir == 1);
     }
 
     SECTION("left") {
         const int x = kFrameX1 + zone_px() + 20;
-        const int crossed_left = kFrameX1 - WIDE_W / 2 - 30;
-        const int inside_left = kFrameX1 - WIDE_W / 2 + 30;
-        REQUIRE(x < crossed_left + WIDE_W);
-        REQUIRE(x + 60 < inside_left + WIDE_W);
+        const int crossed_left = kFrameX1 - kWideW / 2 - 30;
+        const int inside_left = kFrameX1 - kWideW / 2 + 30;
+        REQUIRE(x < crossed_left + kWideW);
+        REQUIRE(x + 60 < inside_left + kWideW);
         CrossPageState state;
-        CHECK(cross_page_step(state, cross_move(x, crossed_left, 33, WIDE_W)).flip_dir == -1);
-        CHECK(cross_page_step(state, cross_move(x, crossed_left, 33, WIDE_W)).flip_dir == 0);
-        CHECK(cross_page_step(state, cross_move(x + 60, inside_left, 33, WIDE_W)).flip_dir == 0);
-        CHECK(cross_page_step(state, cross_move(x, crossed_left, 33, WIDE_W)).flip_dir == -1);
+        CHECK(cross_page_step(state, cross_move(x, crossed_left, 33, kWideW)).flip_dir == -1);
+        CHECK(cross_page_step(state, cross_move(x, crossed_left, 33, kWideW)).flip_dir == 0);
+        CHECK(cross_page_step(state, cross_move(x + 60, inside_left, 33, kWideW)).flip_dir == 0);
+        CHECK(cross_page_step(state, cross_move(x, crossed_left, 33, kWideW)).flip_dir == -1);
     }
 }
 
@@ -275,9 +275,9 @@ TEST_CASE("a drop creates a page anywhere on the page past the last, from the la
           "past its right border, and from the first page past its left border",
           "[1638][grid_edit][cross_page]") {
     const int x = kFrameX2 - zone_px() - 20;
-    const int past_right = kFrameX2 - WIDE_W / 2 + 30;
-    const int inside = kFrameX2 - WIDE_W / 2 - 30;
-    const int past_left = kFrameX1 - WIDE_W / 2 - 30;
+    const int past_right = kFrameX2 - kWideW / 2 + 30;
+    const int inside = kFrameX2 - kWideW / 2 - 30;
+    const int past_left = kFrameX1 - kWideW / 2 - 30;
     const int left_of_zone = kFrameX1 + zone_px() + 20;
 
     struct Row {
@@ -306,7 +306,7 @@ TEST_CASE("a drop creates a page anywhere on the page past the last, from the la
     };
     for (const Row& row : rows) {
         INFO(row.what);
-        CrossPageInput in = cross_move(row.pointer_x, row.widget_left, 33, WIDE_W);
+        CrossPageInput in = cross_move(row.pointer_x, row.widget_left, 33, kWideW);
         in.page_index = row.page_index;
         in.page_count = 2;
         in.has_next_page_slot = row.has_next_page_slot;

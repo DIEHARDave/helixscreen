@@ -392,7 +392,7 @@ void AbortManager::send_firmware_restart() {
     set_state(State::SENT_RESTART);
     set_progress_message("Restarting...");
 
-    auto* rt = lv_timer_create(restart_timer_cb, RESTART_TIMEOUT_MS, this);
+    auto* rt = lv_timer_create(restart_timer_cb, kRestartTimeoutMs, this);
     lv_timer_set_repeat_count(rt, 1);
     restart_timer_.reset(rt);
 
@@ -843,7 +843,7 @@ void AbortManager::cancel_timer_cb(lv_timer_t* timer) {
     }
 }
 
-static_assert(AbortManager::RESTART_TIMEOUT_MS >
+static_assert(AbortManager::kRestartTimeoutMs >
                   RecoveryTiming{}.chain_deadline_ms + RecoveryTiming{}.script_timeout_ms +
                       RecoveryTiming{}.poll_interval_ms +
                       MoonrakerRequestTracker::kDefaultRequestTimeoutMs,
@@ -853,7 +853,7 @@ void AbortManager::restart_timer_cb(lv_timer_t* timer) {
     auto* self = static_cast<AbortManager*>(lv_timer_get_user_data(timer));
     if (self) {
         self->restart_timer_.release(); // One-shot auto-deleted by LVGL
-        spdlog::warn("[AbortManager] Recovery never reported back after {}ms", RESTART_TIMEOUT_MS);
+        spdlog::warn("[AbortManager] Recovery never reported back after {}ms", kRestartTimeoutMs);
         self->complete_abort("Abort complete (restart timeout). Check printer status.");
     }
 }

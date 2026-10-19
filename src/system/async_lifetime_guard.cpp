@@ -207,14 +207,14 @@ struct Counter {
 Counter g_counters[kMaxTrackedTags + 1];
 
 constexpr const char* kOtherTag = "(other)";
-constexpr const char* NULL_TAG = "(null)";
+constexpr const char* kNullTag = "(null)";
 
 } // namespace
 
 void note_skipped(const char* tag) noexcept {
     // nullptr is normalised once, up front, so the hot-path scan and the claim
     // path agree on the key and two nullptr skips can never land in two slots.
-    const char* key = tag ? tag : NULL_TAG;
+    const char* key = tag ? tag : kNullTag;
 
     // Hot path: a tag already holding a slot this window. Cache-friendly linear
     // scan over a 1 KB table. Acquire-load pairs with the CAS release below.

@@ -188,8 +188,8 @@ struct Panel {
 };
 
 constexpr int kCols = 4, ROW = 215, VIEW = 425, FILES = 50;
-constexpr int ROWS = (FILES + kCols - 1) / kCols;
-constexpr int BOTTOM = ROWS * ROW - VIEW;
+constexpr int kRows = (FILES + kCols - 1) / kCols;
+constexpr int BOTTOM = kRows * ROW - VIEW;
 
 /// Down to the bottom and back, twice, in uneven steps, with decodes and
 /// completions landing between steps at random; then the lane drains.
@@ -207,7 +207,7 @@ void scroll(Panel& panel, unsigned seed) {
         path.push_back(0);
     }
     for (int y : path) {
-        const auto win = helix::ui::compute_window(y, VIEW, ROW, ROWS, 0);
+        const auto win = helix::ui::compute_window(y, VIEW, ROW, kRows, 0);
         panel.show(static_cast<size_t>(win.first * kCols),
                    static_cast<size_t>(std::min(FILES, win.last * kCols)));
         // The lane decodes far slower than the main thread scrolls and runs

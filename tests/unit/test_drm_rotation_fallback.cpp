@@ -150,8 +150,8 @@ TEST_CASE("The plane transform composes over an affine placed in panel space",
     // it is handed. Composed that way a sample lands at A(P(raw)), the frame the
     // wizard solved A in. Composed the other way A runs on a sample P already
     // turned, and a translation lands doubled and mirrored.
-    static constexpr int32_t PANEL_W = 800;
-    static constexpr int32_t PANEL_H = 480;
+    static constexpr int32_t kPanelW = 800;
+    static constexpr int32_t kPanelH = 480;
     static constexpr int kPlaneDegrees = 180;
 
     helix::TouchCalibration cal;
@@ -165,15 +165,15 @@ TEST_CASE("The plane transform composes over an affine placed in panel space",
 
     const auto plane = [](helix::Point p) {
         const PointerXY turned =
-            rotate_pointer_for_plane({p.x, p.y}, kPlaneDegrees, PANEL_W, PANEL_H);
+            rotate_pointer_for_plane({p.x, p.y}, kPlaneDegrees, kPanelW, kPanelH);
         return helix::Point{turned.x, turned.y};
     };
     const auto calibrate = [&cal](helix::Point p) {
-        return helix::apply_calibration_in_panel_space(cal, p, cal.capture_rotation, PANEL_W,
-                                                       PANEL_H);
+        return helix::apply_calibration_in_panel_space(cal, p, cal.capture_rotation, kPanelW,
+                                                       kPanelH);
     };
 
-    const helix::Point expected = helix::transform_point(cal, plane(raw), PANEL_W - 1, PANEL_H - 1);
+    const helix::Point expected = helix::transform_point(cal, plane(raw), kPanelW - 1, kPanelH - 1);
     // Inside the panel on both axes, so no clamp can hide the translation.
     REQUIRE(expected.x == 799 - 100 + 12);
     REQUIRE(expected.y == 479 - 50 - 7);

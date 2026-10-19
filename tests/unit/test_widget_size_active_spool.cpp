@@ -55,8 +55,8 @@ using namespace helix::widget_size;
 
 namespace {
 
-constexpr uint32_t kTestSpoolColor = 0x00FF00; // distinct green, != DEFAULT_COLOR
-constexpr uint32_t kDefaultWhite = 0xE0E0E0;   // ui_spool_canvas.cpp DEFAULT_COLOR
+constexpr uint32_t kTestSpoolColor = 0x00FF00; // distinct green, != kDefaultColor
+constexpr uint32_t kDefaultWhite = 0xE0E0E0;   // ui_spool_canvas.cpp kDefaultColor
 
 bool color_is(lv_color_t c, uint32_t rgb) {
     return c.red == ((rgb >> 16) & 0xFF) && c.green == ((rgb >> 8) & 0xFF) &&

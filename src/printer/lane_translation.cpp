@@ -154,7 +154,7 @@ static_assert(std::tuple_size_v<decltype(kFieldRoster)> ==
               "every Observation field needs a row above: a field with no row is dropped by "
               "both translations while the store amends it, with nothing red");
 
-static_assert(std::tuple_size_v<decltype(kFieldRoster)> <= DeclaredFields::CAPACITY,
+static_assert(std::tuple_size_v<decltype(kFieldRoster)> <= DeclaredFields::kCapacity,
               "DeclaredFields addresses a roster row per bit, so the roster may not outgrow it");
 
 template <typename Fn> void for_each_field(Fn&& fn) {

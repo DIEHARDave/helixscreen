@@ -462,18 +462,18 @@ TEST_CASE("compute_range_fit: a valid fit never returns min == max on an axis",
 
 namespace {
 
-constexpr int PANEL_W = 800;
-constexpr int PANEL_H = 480;
+constexpr int kPanelW = 800;
+constexpr int kPanelH = 480;
 constexpr int kEmitMinX = 900, EMIT_MAX_X = 3200;
 constexpr int kEmitMinY = 700, EMIT_MAX_Y = 3800;
 constexpr int kDeclaredMax = 4095;
 
 void compressed_capture(Point screen, Point& out_touch, Point& out_raw) {
-    out_raw.x = raw_for_pixel(screen.x, PANEL_W - 1, kEmitMinX, EMIT_MAX_X);
-    out_raw.y = raw_for_pixel(screen.y, PANEL_H - 1, kEmitMinY, EMIT_MAX_Y);
+    out_raw.x = raw_for_pixel(screen.x, kPanelW - 1, kEmitMinX, EMIT_MAX_X);
+    out_raw.y = raw_for_pixel(screen.y, kPanelH - 1, kEmitMinY, EMIT_MAX_Y);
     // What lv_evdev hands us under the wrong declared range.
-    out_touch.x = evdev_calibrate(out_raw.x, 0, kDeclaredMax, 0, PANEL_W - 1);
-    out_touch.y = evdev_calibrate(out_raw.y, 0, kDeclaredMax, 0, PANEL_H - 1);
+    out_touch.x = evdev_calibrate(out_raw.x, 0, kDeclaredMax, 0, kPanelW - 1);
+    out_touch.y = evdev_calibrate(out_raw.y, 0, kDeclaredMax, 0, kPanelH - 1);
 }
 
 } // namespace
@@ -481,7 +481,7 @@ void compressed_capture(Point screen, Point& out_touch, Point& out_raw) {
 TEST_CASE_METHOD(LVGLTestFixture, "TouchCalibrationPanel: raw readings reach the range solver",
                  "[touch][touch-calibration][range-fit][1276]") {
     TouchCalibrationPanel panel;
-    panel.set_screen_size(PANEL_W, PANEL_H);
+    panel.set_screen_size(kPanelW, kPanelH);
     panel.start();
 
     for (int step = 0; step < 3; step++) {
@@ -521,7 +521,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     {
         TouchCalibrationPanel panel;
-        panel.set_screen_size(PANEL_W, PANEL_H);
+        panel.set_screen_size(kPanelW, kPanelH);
         panel.start();
         for (int step = 0; step < 3; step++) {
             Point touch, raw;
@@ -537,7 +537,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     {
         TouchCalibrationPanel panel;
-        panel.set_screen_size(PANEL_W, PANEL_H);
+        panel.set_screen_size(kPanelW, kPanelH);
         panel.start();
         for (int step = 0; step < 3; step++) {
             Point touch, raw;
@@ -566,7 +566,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     // would produce a plausible-looking range that maps the panel wrongly, which
     // is worse than not solving at all.
     TouchCalibrationPanel panel;
-    panel.set_screen_size(PANEL_W, PANEL_H);
+    panel.set_screen_size(kPanelW, kPanelH);
     panel.start();
 
     for (int step = 0; step < 3; step++) {

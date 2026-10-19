@@ -99,10 +99,10 @@ TEST_CASE("Portrait geometry stops the overlay above the nav bar",
     // the test harness display is landscape, and detect_layout_type() reads the
     // widget's screen. This asserts the values ui_set_overlay_geometry writes.
     constexpr int32_t kNavHeight = 112;
-    constexpr int32_t GAP = 16;
+    constexpr int32_t kGap = 16;
 
-    const auto h = compute_overlay_heights(480, 800, kNavHeight, GAP);
-    const auto w = compute_overlay_widths(480, 800, 54, GAP);
+    const auto h = compute_overlay_heights(480, 800, kNavHeight, kGap);
+    const auto w = compute_overlay_widths(480, 800, 54, kGap);
 
     // Full width, short height, top-anchored: together they leave the nav bar
     // visible below the overlay.

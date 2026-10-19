@@ -51,7 +51,7 @@ namespace {
 /// commit so a test can take its animation-count baseline with everything else
 /// (notably select_widget()'s infinite selection pulse) already running.
 lv_obj_t* arm_resize(GridEditMode& em, GridEditScene& scene) {
-    em.enter(scene.container, scene.config, static_cast<int>(GridEditScene::PAGE_INDEX));
+    em.enter(scene.container, scene.config, static_cast<int>(GridEditScene::kPageIndex));
     em.select_widget(scene.widget);
     REQUIRE(em.selected_widget() == scene.widget);
 

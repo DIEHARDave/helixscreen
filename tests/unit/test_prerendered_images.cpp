@@ -258,7 +258,7 @@ TEST_CASE("Prerendered image edge cases", "[assets][edge]") {
 //   bytes 4-7: compressed size
 //   bytes 8-11: decompressed size
 
-static constexpr uint8_t LVGL_MAGIC = 0x19;
+static constexpr uint8_t kLvglMagic = 0x19;
 static constexpr uint16_t kLvglFlagCompressed = 0x08;
 static constexpr uint32_t kLvglCompressLz4 = 2;
 
@@ -317,7 +317,7 @@ TEST_CASE("LZ4-compressed prerendered images have valid headers", "[assets][lz4]
             LvglCompressBlock comp{};
             INFO("File: " << entry.path().filename().string());
             REQUIRE(read_bin_header(entry.path().string(), hdr, comp));
-            REQUIRE(hdr.magic == LVGL_MAGIC);
+            REQUIRE(hdr.magic == kLvglMagic);
 
             if ((hdr.flags & kLvglFlagCompressed) == 0) {
                 // Stale or regenerated-without-compression file; warn but don't fail
@@ -352,7 +352,7 @@ TEST_CASE("LZ4-compressed prerendered images have valid headers", "[assets][lz4]
             LvglCompressBlock comp{};
             INFO("File: " << entry.path().filename().string());
             REQUIRE(read_bin_header(entry.path().string(), hdr, comp));
-            REQUIRE(hdr.magic == LVGL_MAGIC);
+            REQUIRE(hdr.magic == kLvglMagic);
 
             if ((hdr.flags & kLvglFlagCompressed) == 0) {
                 // Stale or regenerated-without-compression file; warn but don't fail

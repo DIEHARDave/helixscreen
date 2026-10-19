@@ -27,7 +27,7 @@ struct Provider {
 
 // The U1's `filament_parameters` module exists to answer this query; it
 // publishes nothing through status, only through the console response.
-constexpr Provider PROVIDERS[] = {
+constexpr Provider kProviders[] = {
     {"Snapmaker U1", "filament_parameters", "FILAMENT_PARA_GET_ALL_INFO"},
 };
 
@@ -36,7 +36,7 @@ const Provider* match(const PrinterDiscovery& hw) {
         return nullptr;
     }
     const auto& objects = hw.printer_objects();
-    for (const Provider& p : PROVIDERS) {
+    for (const Provider& p : kProviders) {
         if (std::find(objects.begin(), objects.end(), p.detect_object) != objects.end()) {
             return &p;
         }

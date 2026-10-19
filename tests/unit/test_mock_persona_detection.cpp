@@ -88,7 +88,7 @@ void check_mirrors_capture(const helix::PrinterDiscovery& hw, const std::string&
 } // namespace
 
 TEST_CASE("Every persona has a detection expectation", "[mock][persona][detect]") {
-    for (const auto& p : helix::mock::PERSONAS) {
+    for (const auto& p : helix::mock::kPersonas) {
         bool listed = false;
         for (const auto& e : kExpected)
             listed = listed || e.id == p.id;

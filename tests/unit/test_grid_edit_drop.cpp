@@ -28,7 +28,7 @@ namespace {
 
 /// A 12x8 track grid, and a one-cell widget of two tracks each way.
 constexpr int kCols = 12;
-constexpr int ROWS = 8;
+constexpr int kRows = 8;
 constexpr int SPAN = 2;
 /// Two config pages: page 1 is the last, page 2 the next-page slot.
 constexpr int kPages = 2;
@@ -68,7 +68,7 @@ DropInput without_slot(DropInput in) {
 }
 
 GridLayout occupied_by(const std::vector<GridPlacement>& widgets) {
-    GridLayout grid(UiBreakpoint::Medium, {kCols, ROWS});
+    GridLayout grid(UiBreakpoint::Medium, {kCols, kRows});
     for (const GridPlacement& widget : widgets) {
         REQUIRE(grid.place(widget));
     }
@@ -348,7 +348,7 @@ TEST_CASE("a swap that does not fit both ways commits nothing", "[1503][grid_edi
     const GridPlacement near_wide{"wide", 2, 0, 2 * SPAN, SPAN};
     const GridPlacement tall{"tall", 4, 0, SPAN, 2 * SPAN};
     DropInput from_bottom = release_on(0, 4, 0);
-    from_bottom.origin_row = ROWS - SPAN;
+    from_bottom.origin_row = kRows - SPAN;
     check_rows({
         {"a wider widget whose origin landing overlaps the dragged one's",
          release_on(0, 2, 0),
@@ -387,7 +387,7 @@ TEST_CASE("a placement is refused outside the def's spans, off whole cells, or o
     def.rowspan = 2;
     def.max_colspan = 8;
     def.max_rowspan = 4;
-    GridLayout occupancy(UiBreakpoint::Medium, {kCols, ROWS});
+    GridLayout occupancy(UiBreakpoint::Medium, {kCols, kRows});
     REQUIRE(occupancy.place({"other", 8, 0, 2, 2}));
 
     CHECK(helix::placement_refusal(def, occupancy, 0, 0, 8, 4).empty());

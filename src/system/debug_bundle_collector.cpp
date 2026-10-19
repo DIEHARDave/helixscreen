@@ -1489,15 +1489,15 @@ static std::vector<PlatformFile> platform_diagnostic_files(const std::string& pl
 
 // Fetch a text file from Moonraker. Returns body + HTTP status; an HTTP-status
 // of 404 is a normal "not present on this device" signal callers should treat
-// as skip-silently. Truncates the body at MAX_TEXT_BYTES to keep bundles small.
+// as skip-silently. Truncates the body at kMaxTextBytes to keep bundles small.
 static RawHttpResult http_get_text(const std::string& base_url, const std::string& endpoint,
                                    int timeout_sec) {
     auto raw = http_get_raw(base_url, endpoint, timeout_sec);
     // Cap text-file capture at 256 KB. Diagnostic files we currently ship are
     // < 8 KB; the cap is a guardrail against future entries that grow large.
-    constexpr size_t MAX_TEXT_BYTES = 256 * 1024;
-    if (raw.body.size() > MAX_TEXT_BYTES) {
-        raw.body.resize(MAX_TEXT_BYTES);
+    constexpr size_t kMaxTextBytes = 256 * 1024;
+    if (raw.body.size() > kMaxTextBytes) {
+        raw.body.resize(kMaxTextBytes);
         raw.body += "\n[truncated]\n";
     }
     return raw;

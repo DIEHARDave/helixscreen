@@ -1012,7 +1012,7 @@ Select which printer the mock Moonraker client impersonates. Drives the mock's r
 
 | Property | Value |
 |----------|-------|
-| **Values** | see `include/mock_persona.h#PERSONAS`: currently `voron_24`, `voron_trident`, `k1`, `k1max`, `ad5m`, `creator5`, `creator5_zmod`, `generic_corexy`, `generic_bedslinger`, `multi_extruder`, `delta`, `snapmaker_u1`, `cc1`, `ad5x`, `k2`. Matched exactly (case-sensitive); an unrecognised value falls back to `voron_24` with a warning listing the valid ids |
+| **Values** | see `include/mock_persona.h#kPersonas`: currently `voron_24`, `voron_trident`, `k1`, `k1max`, `ad5m`, `creator5`, `creator5_zmod`, `generic_corexy`, `generic_bedslinger`, `multi_extruder`, `delta`, `snapmaker_u1`, `cc1`, `ad5x`, `k2`. Matched exactly (case-sensitive); an unrecognised value falls back to `voron_24` with a warning listing the valid ids |
 | **Default** | `voron_24` (Voron 2.4); unset and empty both select it silently |
 | **File** | `include/mock_persona.h` |
 

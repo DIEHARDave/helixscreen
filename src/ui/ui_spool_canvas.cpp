@@ -36,7 +36,7 @@
 // (ams_tray_projection.h), shared with the box and lid.
 static constexpr float kHubRadius = 0.10f; // Center hub hole radius
 static constexpr int32_t kDefaultSize = 64;
-static constexpr uint32_t DEFAULT_COLOR = 0xE0E0E0; // Default white/light filament
+static constexpr uint32_t kDefaultColor = 0xE0E0E0; // Default white/light filament
 
 // Current-spool glow layer, grown from the spool's silhouette. Capable
 // hardware gets a soft halo and a tight rim; reduced effects a solid outline.
@@ -51,7 +51,7 @@ static constexpr int kGlowRimBoxR = 1; // one box pass ~ Gaussian sigma 0.8
 static constexpr uint8_t kGlowRimLighten = 60;
 static constexpr lv_opa_t kGlowHaloSecondOpa = 153; // 60%
 static constexpr int32_t kGlowMargin = kGlowHaloDilate + kGlowHaloPasses * kGlowHaloBoxR;
-static constexpr int32_t OUTLINE_PX = 2;
+static constexpr int32_t kOutlinePx = 2;
 static constexpr uint8_t kGlowDiscShape = 0xFF; // fill_bucket of a flat-style (disc) glow
 
 // Note: Spool body colors now come from theme tokens in globals.xml:
@@ -170,7 +170,7 @@ struct SpoolCanvasData {
     lv_obj_t* canvas = nullptr;
     lv_draw_buf_t* draw_buf = nullptr;
     int32_t size = kDefaultSize;
-    lv_color_t color = lv_color_hex(DEFAULT_COLOR);
+    lv_color_t color = lv_color_hex(kDefaultColor);
     float fill_level = 1.0f;
     /// A multi-colour filament's colours (two or more), else empty: the body
     /// is split the way every swatch splits (helix::ui::swatch_split_thresholds).
@@ -540,7 +540,7 @@ static std::vector<uint8_t> grow_and_soften(std::vector<uint8_t> a, int32_t w, i
 
 // Paint the glow for a padded alpha mask into @p buf (same dimensions): two
 // accent halo passes (100%, then 60%) and a lighter tight rim, or under
-// reduced effects the mask grown by OUTLINE_PX in solid accent.
+// reduced effects the mask grown by kOutlinePx in solid accent.
 static void paint_glow(lv_draw_buf_t* buf, const std::vector<uint8_t>& mask, SpoolGlow glow,
                        lv_color_t accent) {
     const int32_t w = buf->header.w;
@@ -553,7 +553,7 @@ static void paint_glow(lv_draw_buf_t* buf, const std::vector<uint8_t>& mask, Spo
         halo = grow_and_soften(mask, w, h, kGlowHaloDilate, kGlowHaloBoxR, kGlowHaloPasses);
         rim = grow_and_soften(mask, w, h, kGlowRimDilate, kGlowRimBoxR, 1);
     } else {
-        halo = grow_and_soften(mask, w, h, OUTLINE_PX, 0, 0);
+        halo = grow_and_soften(mask, w, h, kOutlinePx, 0, 0);
     }
     const lv_color_t rim_color = ams_draw::lighten_color(accent, kGlowRimLighten);
     for (int32_t y = 0; y < h; y++) {
@@ -809,7 +809,7 @@ static void* spool_canvas_xml_create(lv_xml_parser_state_t* state, const char** 
     auto data_ptr = std::make_unique<SpoolCanvasData>();
     data_ptr->canvas = canvas;
     data_ptr->size = kDefaultSize;
-    data_ptr->color = lv_color_hex(DEFAULT_COLOR);
+    data_ptr->color = lv_color_hex(kDefaultColor);
     data_ptr->fill_level = 1.0f;
 
     sync_draw_buf(data_ptr.get());
@@ -892,7 +892,7 @@ lv_obj_t* ui_spool_canvas_create(lv_obj_t* parent, int32_t size) {
     auto data_ptr = std::make_unique<SpoolCanvasData>();
     data_ptr->canvas = canvas;
     data_ptr->size = size;
-    data_ptr->color = lv_color_hex(DEFAULT_COLOR);
+    data_ptr->color = lv_color_hex(kDefaultColor);
     data_ptr->fill_level = 1.0f;
 
     if (!sync_draw_buf(data_ptr.get())) {
@@ -990,7 +990,7 @@ float ui_spool_canvas_get_fill_level(lv_obj_t* canvas) {
 
 lv_color_t ui_spool_canvas_get_color(lv_obj_t* canvas) {
     auto* data = get_data(canvas);
-    return data ? data->color : lv_color_hex(DEFAULT_COLOR);
+    return data ? data->color : lv_color_hex(kDefaultColor);
 }
 
 void ui_spool_canvas_invalidate_cache(void) {
@@ -1113,7 +1113,7 @@ static void paint_glow_layer(lv_obj_t* glow, SpoolGlowData& g) {
         return;
     }
     const SpoolGlow mode = g.simple ? SpoolGlow::Outline : SpoolGlow::Halo;
-    const int32_t margin = g.simple ? OUTLINE_PX : kGlowMargin;
+    const int32_t margin = g.simple ? kOutlinePx : kGlowMargin;
     const lv_color_t accent = helix::ui::tube_accent();
     // A glow depends only on the silhouette, never the filament color, so the
     // key carries the accent where a spool render carries its color.

@@ -69,10 +69,10 @@ namespace helix {
 // names ("home", "print-select") — strip a trailing "_panel" and map '_' -> '-'.
 static std::string panel_short_name(int idx) {
     std::string n = PanelFactory::kPanelNames[idx];
-    static const std::string SUFFIX = "_panel";
-    if (n.size() > SUFFIX.size() &&
-        n.compare(n.size() - SUFFIX.size(), SUFFIX.size(), SUFFIX) == 0) {
-        n.erase(n.size() - SUFFIX.size());
+    static const std::string kSuffix = "_panel";
+    if (n.size() > kSuffix.size() &&
+        n.compare(n.size() - kSuffix.size(), kSuffix.size(), kSuffix) == 0) {
+        n.erase(n.size() - kSuffix.size());
     }
     std::replace(n.begin(), n.end(), '_', '-');
     return n;

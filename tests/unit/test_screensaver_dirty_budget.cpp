@@ -25,14 +25,14 @@ using helix::test::SaverLoad;
 namespace {
 
 // The panel a two-core board drives, so coverage is a fraction of the real canvas.
-constexpr uint32_t PANEL_W = 800;
-constexpr uint32_t PANEL_H = 480;
-constexpr int64_t kPanelPx = static_cast<int64_t>(PANEL_W) * PANEL_H;
+constexpr uint32_t kPanelW = 800;
+constexpr uint32_t kPanelH = 480;
+constexpr int64_t kPanelPx = static_cast<int64_t>(kPanelW) * kPanelH;
 
 /// Flies `stars` for `frames` and averages what each frame asked to have redrawn.
 SaverLoad measure(int stars, int frames) {
-    std::vector<uint8_t> bytes(static_cast<size_t>(PANEL_W) * PANEL_H * 2, 0);
-    FrameTarget target{bytes.data(), PANEL_W * 2, PANEL_W, PANEL_H, helix::ui::PixelFormat::RGB565};
+    std::vector<uint8_t> bytes(static_cast<size_t>(kPanelW) * kPanelH * 2, 0);
+    FrameTarget target{bytes.data(), kPanelW * 2, kPanelW, kPanelH, helix::ui::PixelFormat::RGB565};
     std::minstd_rand rng(20260916);
     StarfieldSim sim;
     sim.init(target, rng, 0);

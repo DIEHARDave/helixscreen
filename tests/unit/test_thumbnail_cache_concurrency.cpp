@@ -200,14 +200,14 @@ TEST_CASE("Concurrent eviction leaves the cache at or below its limit",
     // thread sets the SAME value, so any difference in outcome comes from the
     // interleaving rather than from disagreeing limits. This also exercises the
     // unsynchronized max_size_ write the issue calls out as a plain data race.
-    constexpr int THREADS = 6;
+    constexpr int kThreads = 6;
     std::atomic<int> ready{0};
     std::vector<std::thread> threads;
-    threads.reserve(THREADS);
-    for (int t = 0; t < THREADS; ++t) {
+    threads.reserve(kThreads);
+    for (int t = 0; t < kThreads; ++t) {
         threads.emplace_back([&] {
             ready.fetch_add(1);
-            while (ready.load() < THREADS) {
+            while (ready.load() < kThreads) {
             }
             for (int i = 0; i < 10; ++i) {
                 cache.set_max_size(LIMIT);

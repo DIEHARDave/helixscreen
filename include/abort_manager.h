@@ -244,7 +244,7 @@ class AbortManager {
     /// timing out after that: 120s + 90s + 2s + 60s = 272s with the defaults.
     /// This sits above that, so it fires only when the chain never reports back;
     /// the static_assert in abort_manager.cpp keeps the two in step.
-    static constexpr uint32_t RESTART_TIMEOUT_MS = 300000; ///< 5 minutes
+    static constexpr uint32_t kRestartTimeoutMs = 300000; ///< 5 minutes
 
   private:
     friend class AbortManagerTestAccess;

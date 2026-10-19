@@ -150,7 +150,7 @@ struct PersonaEntry {
 /// Every HELIX_MOCK_PRINTER value. Row 0 is the default persona. One row per
 /// line: scripts/screenshot.sh extracts the ids with sed.
 // clang-format off
-inline constexpr std::array<PersonaEntry, 15> PERSONAS = {{
+inline constexpr std::array<PersonaEntry, 15> kPersonas = {{
     {"voron_24", PrinterType::VORON_24, "Voron 2.4", ""},
     {"voron_trident", PrinterType::VORON_TRIDENT, "Voron Trident", ""},
     {"k1", PrinterType::CREALITY_K1, "Creality K1", "Creality K1C"},
@@ -171,7 +171,7 @@ inline constexpr std::array<PersonaEntry, 15> PERSONAS = {{
 
 /// The persona whose id is exactly `id` (case-sensitive), or nullptr.
 [[nodiscard]] inline const PersonaEntry* find_persona(std::string_view id) {
-    for (const auto& p : PERSONAS) {
+    for (const auto& p : kPersonas) {
         if (p.id == id) {
             return &p;
         }
@@ -184,17 +184,17 @@ inline constexpr std::array<PersonaEntry, 15> PERSONAS = {{
 /// back to the default, with *recognised set false so the caller can warn.
 [[nodiscard]] inline const PersonaEntry& resolve_persona(const char* env,
                                                          bool* recognised = nullptr) {
-    const PersonaEntry* found = (env && env[0]) ? find_persona(env) : &PERSONAS[0];
+    const PersonaEntry* found = (env && env[0]) ? find_persona(env) : &kPersonas[0];
     if (recognised) {
         *recognised = found != nullptr;
     }
-    return found ? *found : PERSONAS[0];
+    return found ? *found : kPersonas[0];
 }
 
 /// Every persona id, comma-separated in table order.
 [[nodiscard]] inline std::string persona_ids() {
     std::string out;
-    for (const auto& p : PERSONAS) {
+    for (const auto& p : kPersonas) {
         if (!out.empty()) {
             out += ", ";
         }

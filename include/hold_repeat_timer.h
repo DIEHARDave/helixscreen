@@ -39,7 +39,7 @@ class HoldRepeatTimer {
         hold_.press();
         press_tick_ = lv_tick_get();
         stop_timer();
-        timer_ = lv_timer_create(&HoldRepeatTimer::on_timer, POLL_MS, this);
+        timer_ = lv_timer_create(&HoldRepeatTimer::on_timer, kPollMs, this);
     }
 
     /// Finger up: ticks stop; a fired repeat still swallows the click.
@@ -116,7 +116,7 @@ class HoldRepeatTimer {
     }
 
     /// 50 ms divides both 400 and 150, so repeats land exactly on a poll.
-    static constexpr uint32_t POLL_MS = 50;
+    static constexpr uint32_t kPollMs = 50;
 
     HoldRepeat hold_;
     FireFn fire_ = nullptr;

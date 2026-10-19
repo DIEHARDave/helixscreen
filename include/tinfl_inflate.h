@@ -25,7 +25,7 @@ namespace helix {
 template <bool Zlib> struct TinflInflate {
 #if defined(HELIX_PLATFORM_ESP32)
     using Decompressor = tinfl_decompressor;
-    static constexpr size_t WINDOW = TINFL_LZ_DICT_SIZE;
+    static constexpr size_t kWindow = TINFL_LZ_DICT_SIZE;
     static void init(Decompressor* d) {
         tinfl_init(d);
     }
@@ -49,7 +49,7 @@ template <bool Zlib> struct TinflInflate {
     }
 #else
     using Decompressor = tinfl_copy::tinfl_decompressor;
-    static constexpr size_t WINDOW = TINFL_LZ_DICT_SIZE;
+    static constexpr size_t kWindow = TINFL_LZ_DICT_SIZE;
     static void init(Decompressor* d) {
         tinfl_init(d);
     }

@@ -66,7 +66,7 @@ struct ObjectDef {
 };
 
 // Exact objects from the CSS HTML, in order
-static constexpr ObjectDef OBJECTS[] = {
+static constexpr ObjectDef kObjects[] = {
     // First group
     {-0.02f, -0.17f, true, false, 10000, 0}, // t1 p6
     {0.10f, -0.19f, true, false, 24000, 0},  // t3 p7
@@ -132,19 +132,19 @@ static constexpr ObjectDef OBJECTS[] = {
     {0.30f, -0.24f, true, true, 24000, 20000}, // t9 p21
     {-0.29f, 0.50f, true, true, 24000, 20000}, // t9 p26
 };
-static constexpr int NUM_OBJECTS = sizeof(OBJECTS) / sizeof(OBJECTS[0]);
+static constexpr int NUM_OBJECTS = sizeof(kObjects) / sizeof(kObjects[0]);
 
 namespace helix::ui {
 namespace {
 
 struct ToasterLevel {
     uint32_t period_ms; // frame period in ms
-    int sprites;        // sprites flown, a prefix of OBJECTS[]
+    int sprites;        // sprites flown, a prefix of kObjects[]
 };
 
 // The ladder, most expensive level first. Every visible sprite costs dirty-region work each
 // frame, and a halved rate that still flies every sprite saves little, so the rungs past half
-// rate thin the flock rather than slow it again. OBJECTS[] is ordered by delay and wave, so a
+// rate thin the flock rather than slow it again. kObjects[] is ordered by delay and wave, so a
 // prefix keeps a representative mix.
 constexpr ToasterLevel kToasterLevels[] = {
     {kSaverFastPeriod, NUM_OBJECTS},
@@ -228,7 +228,7 @@ void FlyingToasterScreensaver::spawn_objects(size_t count) {
     m_objects.reserve(active_count);
 
     for (int i = 0; i < active_count; i++) {
-        const auto& def = OBJECTS[i];
+        const auto& def = kObjects[i];
 
         // Convert CSS right/top percentages to LVGL left/top coordinates.
         // CSS: right: R% means element's right edge is R% from container right.

@@ -30,7 +30,7 @@ namespace {
 /// with an allocator that counts and can be told to fail.
 struct TestInflate {
     using Decompressor = tinfl_copy::tinfl_decompressor;
-    static constexpr size_t WINDOW = TINFL_LZ_DICT_SIZE;
+    static constexpr size_t kWindow = TINFL_LZ_DICT_SIZE;
     static inline int live = 0;
     static inline int fail_after = -1; ///< allocations left before one fails; -1 never
 

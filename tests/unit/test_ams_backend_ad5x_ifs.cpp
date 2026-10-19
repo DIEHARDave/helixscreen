@@ -9115,7 +9115,7 @@ namespace {
 // The exact swatch grid zmod renders for "Select color" (bundle 482NB943,
 // 17:34:19.0-19.2 and 17:35:29.6-29.9). Order matters: the bug landed the slot
 // on whichever entry came LAST, so #161616 is the value that showed on screen.
-const std::vector<std::string> ZMOD_PALETTE = {
+const std::vector<std::string> kZmodPalette = {
     "ffffff", "fef043", "dcf478", "0acc38", "067749", "0c6283", "0de2a0", "75d9f3",
     "45a8f9", "2750e0", "46328e", "a03cf7", "f330f9", "d4b0dc", "f95d73", "f72224",
     "7c4b00", "f98d33", "fdebd5", "d3c4a3", "af7836", "898989", "bcbcbc", "161616"};
@@ -9158,7 +9158,7 @@ TEST_CASE("AD5X IFS regression: COLOR palette render never moves the slot (#1065
     Ad5xIfsTestAccess::set_material(backend, 0, "PETG");
     const size_t syncs_before = Ad5xIfsTestAccess::external_sync_count(backend);
 
-    for (const auto& hex : ZMOD_PALETTE) {
+    for (const auto& hex : kZmodPalette) {
         REQUIRE_FALSE(
             Ad5xIfsTestAccess::on_gcode_response_line(backend, palette_button(1, "PETG", hex)));
         // Not just "ends correct" — never moves at all.
