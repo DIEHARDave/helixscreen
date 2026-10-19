@@ -11,10 +11,17 @@
  * three facts, so these run the production Runner against it end to end.
  */
 
+#include "ui_snapmaker_nozzle_offset_overlay.h"
+#include "ui_update_queue.h"
+
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/scoped_env.h"
+#include "../test_helpers/update_queue_test_access.h"
+#include "app_globals.h"
+#include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "moonraker_error.h"
+#include "printer_state.h"
 #include "snapmaker_nozzle_offset.h"
 
 #include <algorithm>
@@ -273,4 +280,35 @@ TEST_CASE_METHOD(NozzleCalFixture, "mock: connect-time reconcile sends nothing w
         CHECK(line.find("0003-0530-0000-0009") == std::string::npos);
     }
     CHECK_FALSE(client.nozzle_calibration_active());
+}
+
+TEST_CASE_METHOD(NozzleCalFixture, "mock: the overlay exits a live run when the app shuts down",
+                 "[mock][snapmaker][nozzle_offset][reconcile]") {
+    helix::PrinterState state;
+    state.init_subjects(false);
+    state.set_klippy_state_sync(helix::KlippyState::READY);
+    MoonrakerAPIMock api{client, state};
+    client.connect("ws://mock/websocket", [] {}, [] {});
+    set_moonraker_api(&api);
+    set_moonraker_client(&client);
+
+    auto& overlay = helix::ui::get_snapmaker_nozzle_offset_overlay();
+    overlay.runner().start();
+    for (int guard = 0; guard < 20 && !client.nozzle_calibration_active(); ++guard) {
+        process_lvgl(200);
+    }
+    REQUIRE(client.nozzle_calibration_active());
+    REQUIRE(run_live());
+
+    overlay.on_deactivating(DeactivateReason::Shutdown);
+    process_lvgl(1300);
+    CHECK_FALSE(client.nozzle_calibration_active());
+
+    // Leave the singleton's run ended for the tests after this one.
+    overlay.runner().cancel();
+    process_lvgl(1300);
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    overlay.runner().reset();
+    set_moonraker_client(nullptr);
+    set_moonraker_api(nullptr);
 }
