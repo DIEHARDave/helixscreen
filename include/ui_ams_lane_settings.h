@@ -76,11 +76,11 @@ using BackupEligibleFn = std::function<helix::printer::BackupEligibility(int slo
 
 /// Route @p tool to @p slot, warning when another tool already maps there. A
 /// negative @p tool writes nothing: a mapping is cleared by mapping that tool
-/// to another slot.
-void commit_assigned_tool(AmsBackend& backend, int slot, int tool);
+/// to another slot. False when the backend refused the write (already toasted).
+[[nodiscard]] bool commit_assigned_tool(AmsBackend& backend, int slot, int tool);
 
 /// Set @p slot's backup to @p backup (-1 clears it). True when it was written.
-bool commit_backup(AmsBackend& backend, int slot, int backup);
+[[nodiscard]] bool commit_backup(AmsBackend& backend, int slot, int backup);
 
 /// Toast why @p backup cannot stand in for @p slot.
 void notify_backup_refused(const AmsBackend& backend, int slot, int backup);

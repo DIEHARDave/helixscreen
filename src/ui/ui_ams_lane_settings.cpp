@@ -109,9 +109,9 @@ int backup_of(const AmsBackend& backend, int slot) {
     return helix::printer::endless_spool_backup_for(backend.get_endless_spool_config(), slot);
 }
 
-void commit_assigned_tool(AmsBackend& backend, int slot, int tool) {
+bool commit_assigned_tool(AmsBackend& backend, int slot, int tool) {
     if (tool < 0) {
-        return;
+        return true;
     }
     spdlog::info("[LaneSettings] Assigned tool for slot {}: tool {}", slot, tool);
 
@@ -135,7 +135,9 @@ void commit_assigned_tool(AmsBackend& backend, int slot, int tool) {
     if (!result.success()) {
         // notify_ams_error() logs the technical message itself.
         helix::ui::notify_ams_error(result, lv_tr("Couldn't assign the tool"));
+        return false;
     }
+    return true;
 }
 
 bool commit_backup(AmsBackend& backend, int slot, int backup) {

@@ -1496,19 +1496,33 @@ bool AmsEditOverlay::lane_settings_dirty() const {
            lane_working_.backup != lane_original_.backup;
 }
 
-void AmsEditOverlay::commit_lane_settings() {
+bool AmsEditOverlay::commit_lane_settings() {
     if (!lane_settings_dirty()) {
-        return;
+        return true;
     }
-    if (AmsBackend* backend = AmsState::instance().get_backend()) {
-        if (lane_working_.tool >= 0 && lane_working_.tool != lane_original_.tool) {
-            lane_settings::commit_assigned_tool(*backend, slot_index_, lane_working_.tool);
-        }
-        if (lane_working_.backup != lane_original_.backup) {
-            lane_settings::commit_backup(*backend, slot_index_, lane_working_.backup);
+    AmsBackend* backend = AmsState::instance().get_backend();
+    if (!backend) {
+        // The lane went with its backend; there is nothing left to write to.
+        spdlog::warn("[AmsEditOverlay] No backend for slot {}; lane settings not written",
+                     slot_index_);
+        return true;
+    }
+    bool all_written = true;
+    if (lane_working_.tool >= 0 && lane_working_.tool != lane_original_.tool) {
+        if (lane_settings::commit_assigned_tool(*backend, slot_index_, lane_working_.tool)) {
+            lane_original_.tool = lane_working_.tool;
+        } else {
+            all_written = false;
         }
     }
-    lane_original_ = lane_working_;
+    if (lane_working_.backup != lane_original_.backup) {
+        if (lane_settings::commit_backup(*backend, slot_index_, lane_working_.backup)) {
+            lane_original_.backup = lane_working_.backup;
+        } else {
+            all_written = false;
+        }
+    }
+    return all_written;
 }
 
 // ============================================================================
@@ -2070,7 +2084,12 @@ void AmsEditOverlay::handle_save() {
     // The lane's settings go to the backend, not to Spoolman, so they land
     // whatever the spool's own save does next.
     const bool lane_changed = lane_settings_dirty();
-    commit_lane_settings();
+    if (!commit_lane_settings()) {
+        // The refusal has toasted. The editor stays open with that field
+        // still staged, and the slot's own edits wait for the same Save.
+        stay_open_after_failed_save();
+        return;
+    }
     if (lane_changed && !is_dirty()) {
         // Only the lane's settings changed: there is no slot edit to commit.
         close_editor(false);

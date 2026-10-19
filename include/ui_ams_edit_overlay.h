@@ -322,9 +322,10 @@ class AmsEditOverlay : public OverlayBase {
     /// A staged change Save would write. "None" for the tool writes nothing: a
     /// mapping is cleared by mapping that tool elsewhere.
     [[nodiscard]] bool lane_settings_dirty() const;
-    /// Write the staged changes through the backend, then take them as the
-    /// lane's settings.
-    void commit_lane_settings();
+    /// Write the staged changes through the backend, taking each one that was
+    /// written as the lane's setting. False when a write was refused: that
+    /// field stays staged, so the next Save retries it.
+    [[nodiscard]] bool commit_lane_settings();
 
     // === Subjects for XML binding ===
     SubjectManager subjects_;
