@@ -173,6 +173,23 @@ run_env_setup() {
     [ "$output" = "helix-screen egl" ]
 }
 
+@test "e2e: a helix-screen-egl left by an older release is never run" {
+    # Every update path replaces bin/ wholesale, but a stale copy must not
+    # matter if one survives: it would pass its probe and run an old build.
+    install_recording_binary helix-screen-fbdev
+    install_recording_binary helix-screen-egl
+    mock_command_script "ldd" 'exit 0'
+    export MOCK_PROBE_RC=0
+
+    unset HELIX_DISPLAY_BACKEND
+    run launcher_backend
+    [ "$output" = "helix-screen egl" ]
+
+    export HELIX_DISPLAY_BACKEND=egl
+    run launcher_backend
+    [ "$output" = "helix-screen egl" ]
+}
+
 @test "e2e: a crash on the EGL rung retries helix-screen with drm, not fbdev" {
     install_recording_binary helix-screen-fbdev
     # Appends one line per run, and crashes only when presenting through EGL.
