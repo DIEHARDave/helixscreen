@@ -39,6 +39,15 @@ using namespace helix;
 
 namespace {
 
+constexpr std::pair<const char*, const char*> kAmsComponents[] = {
+    {"ams_unit_detail", "A:ui_xml/components/ams_unit_detail.xml"},
+    {"ams_loaded_card", "A:ui_xml/components/ams_loaded_card.xml"},
+    {"ams_environment_indicator", "A:ui_xml/components/ams_environment_indicator.xml"},
+    {"ams_env_pill", "A:ui_xml/components/ams_env_pill.xml"},
+    {"ams_sidebar", "A:ui_xml/components/ams_sidebar.xml"},
+    {"ams_panel", "A:ui_xml/ams_panel.xml"},
+};
+
 void register_ams_widgets_and_xml_once() {
     static bool done = false;
     if (done) {
@@ -49,14 +58,36 @@ void register_ams_widgets_and_xml_once() {
     ui_filament_path_canvas_register();
     ui_endless_spool_arrows_register();
     helix::ui::AmsOperationSidebar::register_callbacks_static();
-    lv_xml_register_component_from_file("A:ui_xml/components/ams_unit_detail.xml");
-    lv_xml_register_component_from_file("A:ui_xml/components/ams_loaded_card.xml");
-    lv_xml_register_component_from_file("A:ui_xml/components/ams_environment_indicator.xml");
-    lv_xml_register_component_from_file("A:ui_xml/components/ams_env_pill.xml");
-    lv_xml_register_component_from_file("A:ui_xml/components/ams_sidebar.xml");
-    lv_xml_register_component_from_file("A:ui_xml/ams_panel.xml");
+    for (const auto& [name, path] : kAmsComponents) {
+        (void)name;
+        lv_xml_register_component_from_file(path);
+    }
     done = true;
 }
+
+/// Registers the AMS components again, so their styles take the design tokens
+/// of the current geometry. A component resolves its tokens when it is
+/// registered, and the first registration in the process may have run at
+/// another size.
+void reregister_ams_components() {
+    register_ams_widgets_and_xml_once();
+    for (const auto& [name, path] : kAmsComponents) {
+        lv_xml_component_unregister(name);
+        lv_xml_register_component_from_file(path);
+    }
+}
+
+/// Re-registers the AMS components when it goes out of scope. Declared before a
+/// ScopedGeometry, it runs after that geometry is restored.
+class ReregisterAmsComponentsOnExit {
+  public:
+    ReregisterAmsComponentsOnExit() = default;
+    ~ReregisterAmsComponentsOnExit() {
+        reregister_ams_components();
+    }
+    ReregisterAmsComponentsOnExit(const ReregisterAmsComponentsOnExit&) = delete;
+    ReregisterAmsComponentsOnExit& operator=(const ReregisterAmsComponentsOnExit&) = delete;
+};
 
 uint32_t rgb(lv_color_t c) {
     return lv_color_to_u32(c) & 0xFFFFFF;
@@ -299,6 +330,8 @@ TEST_CASE_METHOD(XMLTestFixture,
 // label. English shows whole; a longer translation ellipsizes on one line.
 TEST_CASE_METHOD(XMLTestFixture, "AMS sidebar action labels fit at 480x320",
                  "[ui_integration][ams][i18n]") {
+    ReregisterAmsComponentsOnExit restore_tokens;
     helix::test::ScopedGeometry tiny(480, 320);
+    reregister_ams_components();
     check_action_labels(*this, {"en"});
 }
