@@ -8,6 +8,7 @@
 #include "ui_frequency_response_chart.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
+#include "ui_shaper_sweep_chart.h"
 #include "ui_timer_guard.h"
 #include "ui_update_queue.h"
 
@@ -102,6 +103,8 @@ BeltTensionPanel::~BeltTensionPanel() {
     // lifetime_'s destructor auto-invalidates all outstanding tokens.
 
     stall_guard_.end();
+    // The stream's thread may not outlive the panel; no LVGL this late.
+    preview_.stop();
 
     accel_observer_.reset();
     print_active_observer_.reset();
@@ -544,6 +547,7 @@ void BeltTensionPanel::cleanup() {
     spdlog::debug("[BeltTension] Cleaning up");
 
     cancel_run();
+    clear_previews();
     hide_retest_menu();
     note_age_timer_.reset();
 
@@ -1010,6 +1014,8 @@ void BeltTensionPanel::start_next_measurement() {
         return;
     }
 
+    // Armed before the sweep is sent, so its first console line starts the stream.
+    arm_preview(path);
     calibrator_->measure_path(
         path, [this](int percent, float freq_hz) { on_sweep_progress(percent, freq_hz); },
         [this, path](helix::calibration::BeltResponse response) {
@@ -1026,6 +1032,7 @@ void BeltTensionPanel::on_sweep_progress(int /*percent*/, float freq_hz) {
     stall_guard_.end();
     stall_guard_.begin(kStallTimeoutMs, [this]() { on_stall(); });
 
+    preview_.note_console_frequency(freq_hz);
     if (chart_) {
         ui_frequency_response_chart_set_cursor(chart_, freq_hz, path_color(queue_.front()));
     }
@@ -1038,9 +1045,13 @@ void BeltTensionPanel::on_sweep_complete(helix::calibration::BeltPath path,
         return; // a cancelled run's transcript is stale the moment it lands
     }
     stall_guard_.end();
+    preview_.stop();
 
     const int idx = path_index(path);
     if (run_kind_ == RunKind::CHECK) {
+        // The CSV curve replaces the preview now. A tuning or calibration run
+        // draws its curves only once the run is in, so the preview holds until then.
+        preview_live_[idx] = false;
         auto& run = runs_[idx];
         run.curve = std::move(response.xyz);
         run.in_plane = std::move(response.in_plane);
@@ -1249,6 +1260,7 @@ void BeltTensionPanel::cancel_run() {
     queue_.clear();
     stall_guard_.end();
     elapsed_timer_.reset();
+    clear_previews();
     if (chart_) {
         ui_frequency_response_chart_clear_cursor(chart_);
     }
@@ -1598,6 +1610,7 @@ const helix::calibration::BeltTuneRound& BeltTensionPanel::add_tune_round() {
 }
 
 void BeltTensionPanel::finish_tune_round() {
+    clear_previews();
     run_window_.reset();
     run_kind_ = RunKind::CHECK;
     if (!tune_) {
@@ -1616,6 +1629,7 @@ void BeltTensionPanel::finish_tune_round() {
 }
 
 void BeltTensionPanel::finish_calibration() {
+    clear_previews();
     run_window_.reset();
     run_kind_ = RunKind::CHECK;
     if (!tune_) {
@@ -1660,6 +1674,7 @@ void BeltTensionPanel::reset_tune_gauge_range() {
 }
 
 void BeltTensionPanel::end_tuning() {
+    clear_previews();
     tune_.reset();
     tune_low_ram_accepted_ = false;
     tune_has_curves_ = false;
@@ -2070,37 +2085,14 @@ void BeltTensionPanel::probe_klippy_socket() {
         return;
     }
 
-    api_->rest().get_server_config(
-        lifetime_.bg_cb(
-            "BeltTension::server_config",
-            [this](const RestResponse& resp) {
-                // Moonraker wraps its payload in "result"; older builds return
-                // the object bare.
-                klippy_socket_path_.clear();
-                if (resp.data.is_object()) {
-                    const json& root =
-                        resp.data.contains("result") ? resp.data["result"] : resp.data;
-                    if (root.is_object() && root.contains("config") && root["config"].is_object()) {
-                        const json& cfg = root["config"];
-                        if (cfg.contains("server") && cfg["server"].is_object()) {
-                            const json& srv = cfg["server"];
-                            if (srv.contains("klippy_uds_address") &&
-                                srv["klippy_uds_address"].is_string()) {
-                                klippy_socket_path_ = srv["klippy_uds_address"].get<std::string>();
-                            }
-                        }
-                    }
-                }
-                klippy_socket_reachable_ =
-                    !klippy_socket_path_.empty() &&
-                    helix::calibration::BeltStreamClient::socket_reachable(klippy_socket_path_);
-                spdlog::debug("[BeltTension] klippy uds '{}' reachable={}", klippy_socket_path_,
-                              klippy_socket_reachable_);
-                refresh_gate();
-            }),
-        lifetime_.bg_cb("BeltTension::server_config_err", [this](const MoonrakerError& err) {
-            spdlog::debug("[BeltTension] /server/config failed: {}", err.message);
-            klippy_socket_reachable_ = false;
+    helix::calibration::query_klippy_uds_address(
+        *api_, lifetime_.bg_cb("BeltTension::server_config", [this](std::string path) {
+            klippy_socket_path_ = std::move(path);
+            klippy_socket_reachable_ =
+                !klippy_socket_path_.empty() &&
+                helix::calibration::BeltStreamClient::socket_reachable(klippy_socket_path_);
+            spdlog::debug("[BeltTension] klippy uds '{}' reachable={}", klippy_socket_path_,
+                          klippy_socket_reachable_);
             refresh_gate();
         }));
 }
@@ -2173,7 +2165,15 @@ ui_frequency_response_chart_t* BeltTensionPanel::ensure_chart() {
         const char letter = 'A' + idx;
         series_[idx] = ui_frequency_response_chart_add_series(
             chart_, fmt::format(lv_tr("Path {}"), letter).c_str(), path_color(path_at(idx)));
-        ui_frequency_response_chart_set_series_style(chart_, series_[idx], {3, true, true});
+        ui_frequency_response_chart_set_series_style(chart_, series_[idx],
+                                                     helix::ui::kShaperMeasuredStyle);
+
+        // The preview stands in for the path's own curve, so it carries its name.
+        preview_series_[idx] = ui_frequency_response_chart_add_series(
+            chart_, fmt::format(lv_tr("Path {}"), letter).c_str(), path_color(path_at(idx)));
+        ui_frequency_response_chart_set_series_style(chart_, preview_series_[idx],
+                                                     helix::ui::kShaperMeasuredStyle);
+        ui_frequency_response_chart_show_series(chart_, preview_series_[idx], false);
 
         ghost_series_[idx] = ui_frequency_response_chart_add_series(
             chart_, fmt::format(lv_tr("Path {} before"), letter).c_str(), path_color(path_at(idx)));
@@ -2203,6 +2203,7 @@ void BeltTensionPanel::apply_path_colors() {
         const lv_color_t color = path_color(path_at(idx));
         ui_frequency_response_chart_set_series_color(chart_, series_[idx], color);
         ui_frequency_response_chart_set_series_color(chart_, ghost_series_[idx], color);
+        ui_frequency_response_chart_set_series_color(chart_, preview_series_[idx], color);
         for (const int id : tune_ghost_series_[idx]) {
             ui_frequency_response_chart_set_series_color(chart_, id, color);
         }
@@ -2264,6 +2265,7 @@ void BeltTensionPanel::push_chart_data() {
         push_series_data(series_[idx], current[idx], tallest);
         push_series_data(ghost_series_[idx], previous[idx], tallest_bin(previous[idx]));
     }
+    refresh_preview_series();
 }
 
 void BeltTensionPanel::push_series_data(int series_id, const helix::calibration::BeltCurve& curve,
@@ -2341,6 +2343,71 @@ void BeltTensionPanel::push_tune_chart_data() {
                                             marked ? 1 : 0);
     ui_frequency_response_chart_set_markers(chart_, series_[adj], marked ? &adj_mark : nullptr,
                                             marked ? 1 : 0);
+    refresh_preview_series();
+}
+
+void BeltTensionPanel::arm_preview(helix::calibration::BeltPath path) {
+    if (!chart_) {
+        return;
+    }
+    const auto target = helix::calibration::live_sweep_target(
+        {klippy_socket_path_, klippy_socket_reachable_, sweep_cfg_},
+        helix::calibration::SweepAxis::DIAGONAL, run_window_);
+    if (!target) {
+        spdlog::debug("[BeltTension] No live preview for path {}: socket '{}' reachable={}",
+                      path_letter(path), klippy_socket_path_, klippy_socket_reachable_);
+        return;
+    }
+    preview_.arm(*target, [this, path](const std::vector<helix::calibration::SweepPoint>& points) {
+        on_preview_points(path, points);
+    });
+}
+
+void BeltTensionPanel::on_preview_points(
+    helix::calibration::BeltPath path, const std::vector<helix::calibration::SweepPoint>& points) {
+    const int idx = path_index(path);
+    preview_points_[idx] = points;
+    if (std::any_of(points.begin(), points.end(),
+                    [](const helix::calibration::SweepPoint& p) { return p.clean; })) {
+        preview_live_[idx] = true;
+    }
+    refresh_preview_series();
+}
+
+void BeltTensionPanel::refresh_preview_series() {
+    if (!chart_) {
+        return;
+    }
+    const auto [lo, hi] = ui_frequency_response_chart_get_freq_range(chart_);
+    for (int idx = 0; idx < 2; ++idx) {
+        if (!preview_live_[idx]) {
+            ui_frequency_response_chart_show_series(chart_, preview_series_[idx], false);
+            continue;
+        }
+        const auto laid = helix::calibration::layout_preview(
+            preview_points_[idx], helix::calibration::SweepColumn::XYZ, lo, hi);
+        helix::calibration::BeltCurve curve;
+        curve.reserve(laid.freqs.size());
+        for (size_t i = 0; i < laid.freqs.size(); ++i) {
+            curve.emplace_back(laid.freqs[i], laid.amps[i]);
+        }
+        // Each preview reads 0-100% of its own tallest point.
+        push_series_data(preview_series_[idx], curve, laid.max_amp);
+        if (laid.max_amp > 0.0f) {
+            ui_frequency_response_chart_show_series(chart_, series_[idx], false);
+        }
+    }
+}
+
+void BeltTensionPanel::clear_previews() {
+    preview_.stop();
+    for (int idx = 0; idx < 2; ++idx) {
+        preview_points_[idx].clear();
+        preview_live_[idx] = false;
+        if (chart_) {
+            ui_frequency_response_chart_show_series(chart_, preview_series_[idx], false);
+        }
+    }
 }
 
 void BeltTensionPanel::destroy_chart() {
@@ -2351,6 +2418,7 @@ void BeltTensionPanel::destroy_chart() {
     chart_ = nullptr;
     series_[0] = series_[1] = -1;
     ghost_series_[0] = ghost_series_[1] = -1;
+    preview_series_[0] = preview_series_[1] = -1;
     for (auto& ids : tune_ghost_series_) {
         ids[0] = ids[1] = -1;
     }

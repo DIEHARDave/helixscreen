@@ -12,6 +12,7 @@
 #include "belt_tension_calibrator.h"
 #include "belt_tension_types.h"
 #include "belt_tune_session.h"
+#include "live_sweep_preview.h"
 #include "memory_utils.h"
 #include "operation_timeout_guard.h"
 #include "overlay_base.h"
@@ -339,6 +340,18 @@ class BeltTensionPanel : public OverlayBase {
     void push_tune_chart_data();
     /// One curve into a series as a percentage of `tallest`; hidden when empty.
     void push_series_data(int series_id, const helix::calibration::BeltCurve& curve, float tallest);
+    /// Arm the live preview for `path`'s sweep, which starts now. No-op without
+    /// a chart or without a live_sweep_target().
+    void arm_preview(helix::calibration::BeltPath path);
+    /// Main thread: the preview's points so far for `path`.
+    void on_preview_points(helix::calibration::BeltPath path,
+                           const std::vector<helix::calibration::SweepPoint>& points);
+    /// Lay each live path's preview out on the chart's current axis in place of
+    /// its own series. Runs at the end of every chart push.
+    void refresh_preview_series();
+    /// Stop the stream and drop both previews; the next chart push shows each
+    /// path's own series again.
+    void clear_previews();
     void run_after_ram_check(std::function<void()> go);
     /// Re-check the gate before any sweep starts; false (logged) when it is
     /// shut. `action` names the button in the log.
@@ -469,6 +482,16 @@ class BeltTensionPanel : public OverlayBase {
     lv_obj_t* chart_host_results_ = nullptr;
     lv_obj_t* chart_host_tuning_ = nullptr;
     lv_obj_t* chart_host_wide_ = nullptr;
+    /// One series per path for its live preview, styled like series_.
+    int preview_series_[2] = {-1, -1};
+    helix::calibration::LiveSweepPreview preview_;
+    /// The points each path's preview shows.
+    std::vector<helix::calibration::SweepPoint> preview_points_[2];
+    /// The path's preview stands in for its series: from its first point until
+    /// the chart draws the CSV curve that preview was measuring. A full check
+    /// swaps at that path's CSV; a tuning or calibration run keeps every
+    /// preview until the run's last sweep is in.
+    bool preview_live_[2] = {false, false};
 
     /// Render tier override for tests; nullopt reads PlatformCapabilities.
     std::optional<helix::PlatformTier> tier_override_;

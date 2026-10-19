@@ -39,6 +39,7 @@
 #include "../test_helpers/mock_kinematics_env.h"
 #include "../test_helpers/printer_state_test_access.h"
 #include "../test_helpers/scoped_env.h"
+#include "../test_helpers/sweep_preview_fakes.h"
 #include "app_globals.h"
 #include "belt_tension_types.h"
 #include "lvgl/lvgl.h"
@@ -113,6 +114,8 @@ class BeltPanelFixture : public XMLTestFixture {
         roomy.total_kb = 4 * 1024 * 1024;
         roomy.available_kb = 3 * 1024 * 1024;
         panel_->set_memory_for_test(roomy);
+        // Every case streams from a source the test drives, never klippy's socket.
+        panel_->preview_.set_source_factory(helix::calibration::test::manual_factory(log_));
 
         helix::ui::register_belt_path_sketch_widget();
         helix::ui::register_belt_gap_gauge_widget();
@@ -135,6 +138,8 @@ class BeltPanelFixture : public XMLTestFixture {
         panel_->destroy_overlay_ui(view_);
         UpdateQueue::instance().drain();
         panel_->set_api(nullptr, nullptr);
+        panel_->preview_.stop();
+        panel_->preview_.set_source_factory(nullptr);
         panel_->deinit_subjects();
         MoonrakerClientMock::remove_belt_csvs();
     }
@@ -159,6 +164,26 @@ class BeltPanelFixture : public XMLTestFixture {
     }
     int panel_series_id(int path_index) {
         return panel_->series_[path_index];
+    }
+    /// What the preview's sources saw.
+    helix::calibration::test::SourceLog& source_log() {
+        return log_;
+    }
+    helix::calibration::LiveSweepPreview& panel_preview() {
+        return panel_->preview_;
+    }
+    int panel_preview_series_id(int path_index) {
+        return panel_->preview_series_[path_index];
+    }
+    void panel_preview_points(helix::calibration::BeltPath path,
+                              const std::vector<helix::calibration::SweepPoint>& points) {
+        panel_->on_preview_points(path, points);
+    }
+    void panel_set_socket_reachable(bool reachable) {
+        panel_->klippy_socket_reachable_ = reachable;
+    }
+    std::optional<helix::calibration::BeltSweepWindow> panel_run_window() {
+        return panel_->run_window_;
     }
     lv_obj_t* panel_chart_host_tuning() {
         return panel_->chart_host_tuning_;
@@ -343,6 +368,7 @@ class BeltPanelFixture : public XMLTestFixture {
         lv_xml_register_subject(nullptr, "printer_has_accelerometer", &s);
     }
 
+    helix::calibration::test::SourceLog log_;
     MoonrakerClientMock client_;
     PrinterState api_state_;
     MoonrakerAPIMock api_;
@@ -3406,4 +3432,254 @@ TEST_CASE("a genuine 0% earlier similarity still shows", "[belt][panel]") {
     REQUIRE(fx.pump_until_state(kResults));
     CHECK(fx.text("bt_similarity_was") == "was 0%");
     CHECK(fx.state_int("bt_has_similarity_was") == 1);
+}
+
+// ============================================================================
+// Live sweep preview (prestonbrown/helixscreen#1812)
+// ============================================================================
+
+namespace {
+
+using helix::calibration::BeltPath;
+using helix::calibration::LiveSweepPreview;
+using helix::calibration::SweepPoint;
+
+/// Clean points 1 Hz apart over [lo_hz, hi_hz], psd_x = f, y = z = 0.
+std::vector<SweepPoint> ramp_points(int lo_hz, int hi_hz) {
+    std::vector<SweepPoint> points;
+    for (int f = lo_hz; f <= hi_hz; ++f) {
+        SweepPoint p;
+        p.freq_hz = static_cast<float>(f);
+        p.psd_x = static_cast<float>(f);
+        p.clean = true;
+        points.push_back(p);
+    }
+    return points;
+}
+
+bool pump_until_created(BeltPanelFixture& fx, int want, uint32_t budget_ms = 60000) {
+    for (uint32_t t = 0; t < budget_ms && fx.source_log().created < want; t += 100) {
+        fx.pump_ms(100);
+    }
+    return fx.source_log().created == want;
+}
+
+bool series_visible(BeltPanelFixture& fx, int series_id) {
+    return ui_frequency_response_chart_is_series_visible(fx.panel_chart(), series_id);
+}
+
+} // namespace
+
+TEST_CASE("a full check draws each path live until its CSV lands", "[belt][panel][preview]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    auto& log = fx.source_log();
+
+    fx.panel().handle_start_clicked();
+    // The laps are no sweep: nothing is armed, let alone streaming.
+    REQUIRE(fx.text("bt_run_title") == "Settling belts");
+    CHECK(log.created == 0);
+    CHECK(fx.panel_preview().state() == LiveSweepPreview::State::IDLE);
+
+    // Path A's first console line starts the stream.
+    REQUIRE(pump_until_created(fx, 1));
+    CHECK(fx.text("bt_run_title") == "Measuring Path A");
+    CHECK(log.accel_chip == "adxl345");
+    CHECK_FALSE(log.socket_path.empty());
+    CHECK(log.plan.freq_start_hz == 5.0f);
+    CHECK(log.plan.freq_end_hz == 135.0f);
+    CHECK(log.plan.hz_per_sec == 1.0f);
+
+    auto* chart = fx.panel_chart();
+    REQUIRE(chart != nullptr);
+    const int live_a = fx.panel_preview_series_id(0);
+    REQUIRE(live_a >= 0);
+    CHECK_FALSE(series_visible(fx, live_a));
+
+    // One clean point on each of the axis's 1 Hz slots up to 60 Hz, psd_x = f.
+    // The axis is the band, or a curve an earlier run of this panel left.
+    const auto [lo, hi] = ui_frequency_response_chart_get_freq_range(chart);
+    REQUIRE(hi > 60.0f);
+    const size_t slots = static_cast<size_t>(std::lround(hi - lo)) + 1;
+    const auto slot_hz = [lo = lo, hi = hi, slots](size_t i) {
+        return lo + static_cast<float>(i) * (hi - lo) / static_cast<float>(slots - 1);
+    };
+    std::vector<SweepPoint> points;
+    for (size_t i = 0; i < slots && slot_hz(i) <= 60.0f; ++i) {
+        SweepPoint p;
+        p.freq_hz = slot_hz(i);
+        p.psd_x = slot_hz(i);
+        p.clean = true;
+        points.push_back(p);
+    }
+    REQUIRE(points.size() > 10);
+    const float tallest = points.back().psd_x;
+    fx.panel_preview_points(BeltPath::PATH_A, points);
+    CHECK(series_visible(fx, live_a));
+    CHECK_FALSE(series_visible(fx, fx.panel_series_id(0)));
+    // Each value is a share of the preview's own tallest; nothing past 60 Hz.
+    const auto amps = ui_frequency_response_chart_get_series_amplitudes(chart, live_a);
+    REQUIRE(amps.size() == slots);
+    for (size_t i = 0; i < amps.size(); ++i) {
+        INFO("slot " << i << " at " << slot_hz(i) << " Hz");
+        if (i < points.size()) {
+            CHECK(amps[i] == Catch::Approx(100.0f * slot_hz(i) / tallest));
+        } else {
+            CHECK(std::isnan(amps[i]));
+        }
+    }
+    const auto live_style = ui_frequency_response_chart_get_series_style(chart, live_a);
+    const auto csv_style =
+        ui_frequency_response_chart_get_series_style(chart, fx.panel_series_id(0));
+    CHECK(live_style.line_width == csv_style.line_width);
+    CHECK(live_style.glow == csv_style.glow);
+    CHECK(live_style.fill == csv_style.fill);
+
+    // A's CSV replaces its preview the moment it lands; B arms its own stream.
+    REQUIRE(pump_until_created(fx, 2));
+    CHECK(fx.text("bt_run_title") == "Measuring Path B");
+    CHECK_FALSE(series_visible(fx, live_a));
+    CHECK(series_visible(fx, fx.panel_series_id(0)));
+    CHECK(fx.panel_run(0).has);
+    CHECK(log.stopped >= 1);
+    CHECK(log.accel_chip == "adxl345");
+}
+
+TEST_CASE("a tuning round keeps each preview until the round is in",
+          "[belt][panel][preview][tune]") {
+    BeltPanelFixture fx;
+    get_printer_state().set_printer_type_sync("Voron 2.4");
+    fx.mock().set_belt_tune_script('B', {98.3f, 104.0f});
+    enter_tuning(fx);
+    calibrate(fx);
+    auto& log = fx.source_log();
+    const int before = log.created;
+
+    fx.panel().handle_tune_measure_clicked();
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseSweeping);
+    REQUIRE(pump_until_created(fx, before + 1));
+    REQUIRE(fx.text("bt_run_title") == "Measuring Path A");
+    // The stream ramps over the window Klipper sweeps, floored and ceiled.
+    const auto window = fx.panel_run_window();
+    REQUIRE(window.has_value());
+    CHECK(log.plan.freq_start_hz == std::floor(window->freq_start_hz));
+    CHECK(log.plan.freq_end_hz == std::ceil(window->freq_end_hz));
+
+    auto* chart = fx.panel_chart();
+    REQUIRE(chart != nullptr);
+    const auto [lo, hi] = ui_frequency_response_chart_get_freq_range(chart);
+    const int live_a = fx.panel_preview_series_id(0);
+    const int live_b = fx.panel_preview_series_id(1);
+    fx.panel_preview_points(BeltPath::PATH_A, ramp_points(static_cast<int>(std::ceil(lo)),
+                                                          static_cast<int>(std::floor(hi))));
+    REQUIRE(series_visible(fx, live_a));
+
+    // A's sweep is in and B is streaming: A's preview stays frozen in place.
+    REQUIRE(pump_until_created(fx, before + 2));
+    REQUIRE(fx.text("bt_run_title") == "Measuring Path B");
+    CHECK(series_visible(fx, live_a));
+    CHECK_FALSE(series_visible(fx, fx.panel_series_id(0)));
+    fx.panel_preview_points(BeltPath::PATH_B, ramp_points(static_cast<int>(std::ceil(lo)),
+                                                          static_cast<int>(std::floor(hi))));
+    CHECK(series_visible(fx, live_b));
+
+    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping; t += 100) {
+        fx.pump_ms(100);
+    }
+    REQUIRE(fx.state_int("bt_tune_phase") != kPhaseSweeping);
+    CHECK_FALSE(series_visible(fx, live_a));
+    CHECK_FALSE(series_visible(fx, live_b));
+    CHECK(series_visible(fx, fx.panel_series_id(0)));
+    CHECK(series_visible(fx, fx.panel_series_id(1)));
+    CHECK(log.stopped == log.created);
+}
+
+TEST_CASE("Stop mid-sweep drops the preview and its stream", "[belt][panel][preview]") {
+    BeltPanelFixture fx;
+    helix::ui::modal_init_subjects();
+    REQUIRE(fx.register_component("modal_dialog"));
+    REQUIRE(fx.wait_gate_open());
+    auto& log = fx.source_log();
+
+    fx.panel().handle_start_clicked();
+    REQUIRE(pump_until_created(fx, 1));
+    fx.panel_preview_points(BeltPath::PATH_A, ramp_points(5, 40));
+    const int live_a = fx.panel_preview_series_id(0);
+    REQUIRE(series_visible(fx, live_a));
+
+    fx.panel().handle_stop_clicked();
+    fx.pump_ms(200);
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    REQUIRE(dialog != nullptr);
+    lv_obj_send_event(lv_obj_find_by_name(dialog, "btn_primary"), LV_EVENT_CLICKED, nullptr);
+    fx.pump_ms(200);
+    REQUIRE(fx.state_int("belt_tension_state") ==
+            static_cast<int>(BeltTensionPanel::ViewState::START));
+    CHECK(log.stopped == log.created);
+    CHECK(fx.panel_preview().state() == LiveSweepPreview::State::IDLE);
+    CHECK_FALSE(series_visible(fx, live_a));
+    CHECK_FALSE(series_visible(fx, fx.panel_preview_series_id(1)));
+}
+
+TEST_CASE("a sweep that dies drops the preview and its stream", "[belt][panel][preview]") {
+    BeltPanelFixture fx;
+    fx.mock().set_belt_failure(BeltMockFailure::STALL);
+    REQUIRE(fx.wait_gate_open());
+    auto& log = fx.source_log();
+
+    fx.panel().handle_start_clicked();
+    REQUIRE(pump_until_created(fx, 1));
+    fx.panel_preview_points(BeltPath::PATH_A, ramp_points(5, 40));
+    const int live_a = fx.panel_preview_series_id(0);
+    REQUIRE(series_visible(fx, live_a));
+
+    fx.pump_ms(15000);
+    fx.pump_ms(BeltTensionPanel::kStallTimeoutMs + 2000);
+    REQUIRE(fx.state_int("belt_tension_state") ==
+            static_cast<int>(BeltTensionPanel::ViewState::ERROR));
+    CHECK(log.stopped == log.created);
+    CHECK(fx.panel_preview().state() == LiveSweepPreview::State::IDLE);
+    CHECK_FALSE(series_visible(fx, live_a));
+}
+
+TEST_CASE("no chart means no stream", "[belt][panel][preview]") {
+    BeltPanelFixture fx(helix::PlatformTier::EMBEDDED);
+    REQUIRE(fx.wait_gate_open());
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(static_cast<int>(BeltTensionPanel::ViewState::RESULTS)));
+    CHECK(fx.panel_chart() == nullptr);
+    CHECK(fx.source_log().created == 0);
+}
+
+TEST_CASE("an unreachable socket sweeps on the CSV alone", "[belt][panel][preview]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.text("bt_run_title") == "Settling belts");
+    fx.panel_set_socket_reachable(false);
+    REQUIRE(fx.pump_until_state(static_cast<int>(BeltTensionPanel::ViewState::RESULTS)));
+    CHECK(fx.source_log().created == 0);
+    CHECK(fx.panel_run(0).has);
+    CHECK(fx.panel_run(1).has);
+}
+
+TEST_CASE("the screensaver keeps the stream; leaving stops it", "[belt][panel][preview]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    auto& log = fx.source_log();
+    fx.panel().handle_start_clicked();
+    REQUIRE(pump_until_created(fx, 1));
+    REQUIRE(log.last != nullptr);
+
+    fx.panel().on_deactivate(DeactivateReason::Suspended);
+    UpdateQueue::instance().drain();
+    CHECK(log.stopped == 0);
+    REQUIRE(log.last != nullptr);
+    CHECK(log.last->running());
+    CHECK(fx.panel_preview().state() == LiveSweepPreview::State::STREAMING);
+
+    fx.panel().on_deactivate(DeactivateReason::NavigateAway);
+    UpdateQueue::instance().drain();
+    CHECK(log.stopped == 1);
+    CHECK(fx.panel_preview().state() == LiveSweepPreview::State::IDLE);
 }
