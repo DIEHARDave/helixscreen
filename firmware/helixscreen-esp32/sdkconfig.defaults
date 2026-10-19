@@ -71,6 +71,8 @@ CONFIG_PTHREAD_TASK_STACK_SIZE_DEFAULT=8192
 # internal DRAM we can't spare given the app core's static footprint.
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
 CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y
+# uxTaskGetSystemState() for the serial console's per-task "stack" report.
+CONFIG_FREERTOS_USE_TRACE_FACILITY=y
 
 # OTA A/B with rollback: new image must confirm healthy boot or the
 # bootloader reverts to the previous slot.
