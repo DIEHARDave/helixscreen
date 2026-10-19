@@ -1,0 +1,93 @@
+// Copyright (C) 2025-2026 356C LLC
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "remote_screen_settings_manager.h"
+
+#include "config.h"
+#include "spdlog/spdlog.h"
+#include "static_subject_registry.h"
+
+#include <iterator>
+
+using namespace helix;
+
+using settings::Scope;
+// Row order is RemoteScreenSettingsManager::Key.
+static constexpr settings::PersistedSetting kRemoteScreenSettings[] = {
+    {"settings_remote_screen_enabled", "/remote_screen/enabled", Scope::Global, true, 0, 0, 1,
+     "remote_screen_enabled"},
+    {"settings_remote_screen_control", "/remote_screen/control", Scope::Global, true, 0, 0, 1,
+     "remote_screen_control"},
+};
+
+RemoteScreenSettingsManager& RemoteScreenSettingsManager::instance() {
+    static RemoteScreenSettingsManager instance;
+    return instance;
+}
+
+settings::TableView RemoteScreenSettingsManager::persisted_table() {
+    return {kRemoteScreenSettings, std::size(kRemoteScreenSettings)};
+}
+
+RemoteScreenSettingsManager::RemoteScreenSettingsManager() : settings_(kRemoteScreenSettings) {}
+
+void RemoteScreenSettingsManager::init_subjects() {
+    if (subjects_initialized_) {
+        return;
+    }
+    settings_.init(subjects_);
+    UI_MANAGED_SUBJECT_INT(available_subject_, 0, "remote_screen_available", subjects_);
+    // A config edited by hand can hold control without view.
+    if (get_control() && !get_enabled()) {
+        settings_.set(Key::Control, false);
+    }
+    subjects_initialized_ = true;
+    StaticSubjectRegistry::instance().register_deinit("RemoteScreenSettingsManager", []() {
+        RemoteScreenSettingsManager::instance().deinit_subjects();
+    });
+}
+
+void RemoteScreenSettingsManager::deinit_subjects() {
+    if (!subjects_initialized_) {
+        return;
+    }
+    subjects_.deinit_all();
+    subjects_initialized_ = false;
+}
+
+void RemoteScreenSettingsManager::set_enabled(bool enabled) {
+    spdlog::info("[RemoteScreenSettings] Share screen {}", enabled ? "on" : "off");
+    settings_.set(Key::Enabled, enabled);
+    if (!enabled && get_control()) {
+        settings_.set(Key::Control, false);
+    }
+    notify_changed();
+}
+
+void RemoteScreenSettingsManager::set_control(bool control) {
+    if (control && !get_enabled()) {
+        spdlog::debug("[RemoteScreenSettings] Control refused while sharing is off");
+        // Re-publish so a toggle that flipped optimistically flips back.
+        settings_.set(Key::Control, false);
+        return;
+    }
+    spdlog::info("[RemoteScreenSettings] Remote control {}", control ? "on" : "off");
+    settings_.set(Key::Control, control);
+    notify_changed();
+}
+
+void RemoteScreenSettingsManager::notify_changed() {
+    if (change_handler_) {
+        change_handler_();
+    }
+}
+
+void RemoteScreenSettingsManager::set_available(bool available) {
+    if (subjects_initialized_) {
+        lv_subject_set_int(&available_subject_, available ? 1 : 0);
+    }
+}
+
+int RemoteScreenSettingsManager::get_port() const {
+    return Config::get_instance()->get<int>("/remote_screen/port", kRemoteScreenDefaultPort);
+}

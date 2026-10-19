@@ -1,0 +1,63 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- HelixScreen's screen, served by the printer itself (prestonbrown/helixscreen#1825). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HelixScreen</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; }
+  body { display: flex; align-items: center; justify-content: center; }
+  #screen { max-width: 100%; max-height: 100%; object-fit: contain; touch-action: none;
+            user-select: none; -webkit-user-drag: none; }
+  #status { position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
+            font: 13px system-ui, sans-serif; color: #ddd; background: rgba(0,0,0,.6);
+            padding: 4px 10px; border-radius: 4px; display: none; }
+</style>
+</head>
+<body>
+<img id="screen" alt="Printer screen">
+<div id="status"></div>
+<script>
+(function () {
+  "use strict";
+  var img = document.getElementById("screen");
+  var status = document.getElementById("status");
+  // The server caps its own encode rate; polling faster only returns cached frames.
+  var kPollMs = 200;
+  var kRetryMs = 1000;
+  var timer = null;
+
+  function show(text) {
+    status.textContent = text;
+    status.style.display = text ? "block" : "none";
+  }
+
+  function schedule(ms) {
+    clearTimeout(timer);
+    if (!document.hidden) timer = setTimeout(next, ms);
+  }
+
+  function next() {
+    var probe = new Image();
+    probe.onload = function () {
+      img.src = probe.src;
+      show("");
+      schedule(kPollMs);
+    };
+    probe.onerror = function () {
+      show("Waiting for the printer screen…");
+      schedule(kRetryMs);
+    };
+    probe.src = "snapshot.jpg?t=" + Date.now();
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) schedule(0);
+  });
+  next();
+})();
+</script>
+</body>
+</html>

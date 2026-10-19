@@ -9,6 +9,7 @@
 #include "ui_printer_list_overlay.h"
 
 #include "config.h"
+#include "remote_screen_settings_manager.h"
 
 #include <spdlog/spdlog.h>
 
@@ -63,6 +64,10 @@ void ConnectionSettingsOverlay::register_callbacks() {
                      get_connection_settings_overlay().refresh_printer_host();
                  }
              });
+         }},
+        {"on_remote_screen_changed",
+         [](lv_event_t* e) {
+             RemoteScreenSettingsManager::instance().set_enabled(helix::ui::event_checked(e));
          }},
     });
 }

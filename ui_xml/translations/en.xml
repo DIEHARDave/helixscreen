@@ -3038,6 +3038,7 @@
   <translation tag="Shadow Intensity" en="Shadow Intensity"/>
   <translation tag="Shake&amp;Tune" en="Shake&amp;Tune"/>
   <translation tag="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together." en="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together."/>
+  <translation tag="Share Screen" en="Share Screen"/>
   <translation tag="Share Usage Data" en="Share Usage Data"/>
   <translation tag="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected." en="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected."/>
   <translation tag="Share this code in Discord or support:" en="Share this code in Discord or support:"/>
@@ -3052,6 +3053,7 @@
   <translation tag="Show sliced colors" en="Show sliced colors"/>
   <translation tag="Show temp for" en="Show temp for"/>
   <translation tag="Show text labels on icon-only home screen widgets" en="Show text labels on icon-only home screen widgets"/>
+  <translation tag="Show this screen as a webcam in Mainsail and Fluidd" en="Show this screen as a webcam in Mainsail and Fluidd"/>
   <translation tag="Show up/down buttons on long lists" en="Show up/down buttons on long lists"/>
   <translation tag="Show whatever curves you last had visible on the full graph." en="Show whatever curves you last had visible on the full graph."/>
   <translation tag="Showing the 50 newest files. See more in the printer&apos;s web UI." en="Showing the 50 newest files. See more in the printer&apos;s web UI."/>

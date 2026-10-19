@@ -3257,6 +3257,7 @@ translations:
   Shadow Intensity: Shadow Intensity
   Shake&Tune: Shake&Tune
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.
+  Share Screen: Share Screen
   Share Usage Data: Share Usage Data
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: Share
     anonymous usage statistics to help us make HelixScreen better. No personal data
@@ -3275,6 +3276,7 @@ translations:
   Show temp for: Show temp for
   Show text labels on icon-only home screen widgets: Show text labels on icon-only
     home screen widgets
+  Show this screen as a webcam in Mainsail and Fluidd: Show this screen as a webcam in Mainsail and Fluidd
   Show up/down buttons on long lists: Show up/down buttons on long lists
   Show whatever curves you last had visible on the full graph.: Show whatever curves
     you last had visible on the full graph.

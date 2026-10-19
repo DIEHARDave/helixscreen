@@ -3336,6 +3336,7 @@ translations:
   Shadow Intensity: Intensidad de Sombra
   Shake&Tune: 'Shake&Tune'
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: Sacude el cabezal a lo largo de cada diagonal y superpone las dos respuestas. Las correas igualadas alcanzan su pico juntas.
+  Share Screen: 'Compartir pantalla'
   Share Usage Data: Compartir datos de uso
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: Comparta
     estadísticas de uso anónimas para ayudarnos a mejorar HelixScreen. Nunca se recopilan
@@ -3354,6 +3355,7 @@ translations:
   Show temp for: Mostrar temperatura de
   Show text labels on icon-only home screen widgets: Mostrar etiquetas de texto en
     widgets de solo icono
+  Show this screen as a webcam in Mainsail and Fluidd: 'Mostrar esta pantalla como cámara web en Mainsail y Fluidd'
   Show up/down buttons on long lists: Mostrar botones arriba/abajo en listas largas
   Show whatever curves you last had visible on the full graph.: Mostrar las curvas
     que tenías visibles por última vez en el gráfico completo.

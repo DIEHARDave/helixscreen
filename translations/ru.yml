@@ -3379,6 +3379,7 @@ translations:
   Shadow Intensity: Интенсивность тени
   Shake&Tune: 'Shake&Tune'
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: Раскачивает печатающую головку вдоль каждой диагонали и накладывает два отклика. У одинаково натянутых ремней пики совпадают.
+  Share Screen: 'Поделиться экраном'
   Share Usage Data: Делиться данными использования
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: Делитесь
     анонимной статистикой использования, чтобы помочь нам улучшить HelixScreen. Персональные
@@ -3398,6 +3399,7 @@ translations:
   Show temp for: Показывать темп. для
   Show text labels on icon-only home screen widgets: Показывать текстовые подписи
     на виджетах главного экрана
+  Show this screen as a webcam in Mainsail and Fluidd: 'Показывать этот экран как веб-камеру в Mainsail и Fluidd'
   Show up/down buttons on long lists: Показывать кнопки вверх/вниз в длинных списках
   Show whatever curves you last had visible on the full graph.: Показывать те кривые,
     что были видны на полном графике в последний раз.

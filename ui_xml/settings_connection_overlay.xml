@@ -2,7 +2,7 @@
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Connection Settings Overlay -->
-<!-- How this screen reaches the network and its printers: network, printers, Moonraker host -->
+<!-- How this screen reaches the network and its printers: network, printers, Moonraker host, screen sharing -->
 <component>
   <view name="settings_connection_overlay" extends="overlay_panel" title="Connection" bg_color="#screen_bg">
     <!-- Content Area - no padding, rows handle their own -->
@@ -31,6 +31,16 @@
         <setting_action_row name="row_printer_host"
                             label="Host" icon="lan" bind_description="printer_host_value"
                             callback="on_change_host_clicked"/>
+        <!-- ================================================================== -->
+        <!-- SCREEN SHARING (hidden where the firmware serves the screen itself) -->
+        <!-- ================================================================== -->
+        <lv_obj name="container_remote_screen" width="100%" style_pad_all="0" scrollable="false">
+          <bind_flag_if_eq subject="remote_screen_available" flag="hidden" ref_value="0"/>
+          <setting_toggle_row name="row_remote_screen"
+                              label="Share Screen" icon="webcam"
+                              description="Show this screen as a webcam in Mainsail and Fluidd"
+                              subject="settings_remote_screen_enabled" callback="on_remote_screen_changed"/>
+        </lv_obj>
       </setting_group>
     </lv_obj>
   </view>

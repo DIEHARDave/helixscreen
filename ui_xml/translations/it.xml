@@ -3038,6 +3038,7 @@
   <translation tag="Shadow Intensity" it="Intensità ombra"/>
   <translation tag="Shake&amp;Tune" it="Shake&amp;Tune"/>
   <translation tag="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together." it="Scuote la testina lungo ciascuna diagonale e sovrappone le due risposte. Cinghie bilanciate hanno il picco insieme."/>
+  <translation tag="Share Screen" it="Condividi schermo"/>
   <translation tag="Share Usage Data" it="Condividi dati d&apos;uso"/>
   <translation tag="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected." it="Condividi statistiche di utilizzo anonime per aiutarci a migliorare HelixScreen. Nessun dato personale viene mai raccolto."/>
   <translation tag="Share this code in Discord or support:" it="Condividi questo codice su Discord o al supporto:"/>
@@ -3052,6 +3053,7 @@
   <translation tag="Show sliced colors" it="Mostra colori sezionati"/>
   <translation tag="Show temp for" it="Mostra temperatura per"/>
   <translation tag="Show text labels on icon-only home screen widgets" it="Mostra etichette di testo sui widget con sole icone nella schermata home"/>
+  <translation tag="Show this screen as a webcam in Mainsail and Fluidd" it="Mostra questo schermo come webcam in Mainsail e Fluidd"/>
   <translation tag="Show up/down buttons on long lists" it="Mostra i pulsanti su/giù negli elenchi lunghi"/>
   <translation tag="Show whatever curves you last had visible on the full graph." it="Mostra le curve che erano visibili l&apos;ultima volta sul grafico completo."/>
   <translation tag="Showing the 50 newest files. See more in the printer&apos;s web UI." it="Vengono mostrati i 50 file più recenti. Vedi gli altri nell&apos;interfaccia web della stampante."/>
