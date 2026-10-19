@@ -16,6 +16,7 @@
 
 #include "../fake_moonraker_client.h"
 #include "../test_fixtures.h"
+#include "../test_helpers/config_test_access.h"
 #include "../test_helpers/moonraker_manager_test_access.h"
 #include "../test_helpers/scoped_moonraker_client.h"
 #include "ams_backend_mock.h"
@@ -25,11 +26,14 @@
 #include "moonraker_manager.h"
 #include "platform_info.h"
 #include "printer_retarget.h"
+#include "printer_state.h"
+#include "printer_switch_flow.h"
 #include "utils/network_validation.h"
 
 #include <lvgl.h>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "../catch_amalgamated.hpp"
 
@@ -434,4 +438,62 @@ TEST_CASE_METHOD(ChangeHostRestoreFixture,
     REQUIRE(status != nullptr);
     CHECK(std::string(lv_label_get_text(status)) ==
           lv_tr(helix::connect_failure_hint(kind, helix::is_android_platform())));
+}
+
+// The K-Touch hands Add to PrinterSwitchFlow::add_printer, which reports whether it switched.
+// Reached from inside an UpdateQueue drain the flow can only defer and say no, so the modal
+// must ask from the next tick, where the answer is final.
+TEST_CASE_METHOD(ChangeHostRestoreFixture,
+                 "Add printer: a Save pressed inside a drain gets the switch's final answer",
+                 "[change_host][multi-printer][switch_flow]") {
+    Config* cfg = Config::get_instance();
+    const nlohmann::json saved_data = helix::ConfigTestAccess::data(*cfg);
+    const std::string saved_active = helix::ConfigTestAccess::active_printer_id(*cfg);
+    const bool saved_read_only = helix::ConfigTestAccess::read_only_mode(*cfg);
+    helix::ConfigTestAccess::read_only_mode(*cfg) = false;
+    get_printer_state().init_subjects(false);
+
+    std::vector<std::string> events;
+    helix::AsyncLifetimeGuard async;
+    helix::PrinterSwitchFlow flow(cfg, async,
+                                  {[&] { events.push_back("teardown"); },
+                                   [&] {
+                                       events.push_back("rebuild");
+                                       return false;
+                                   },
+                                   [&] { events.push_back("home"); }});
+    flow.set_connected_printer_id(cfg->get_active_printer_id());
+
+    std::vector<bool> answers;
+    helix::ui::show_add_printer_modal([&](const std::string& host, int port) {
+        answers.push_back(flow.add_printer(host, port));
+        return answers.back();
+    });
+    UpdateQueue::instance().drain();
+    lv_obj_t* dialog = Modal::get_top();
+    REQUIRE(dialog != nullptr);
+    lv_subject_copy_string(lv_xml_get_subject(nullptr, "change_host_ip"), "10.9.9.9");
+    click(dialog, "btn_test_connection");
+    REQUIRE(client_->get_last_url() == kTestedUrl);
+    lv_subject_set_int(lv_xml_get_subject(nullptr, "change_host_validated"), 1);
+
+    lv_obj_t* save = lv_obj_find_by_name(dialog, "modal_save_btn");
+    REQUIRE(save != nullptr);
+    helix::ui::queue_update("test::save_in_drain",
+                            [save] { lv_obj_send_event(save, LV_EVENT_CLICKED, nullptr); });
+    UpdateQueue::instance().drain();
+    lv_timer_handler();
+    UpdateQueue::instance().drain();
+    lv_timer_handler();
+    UpdateQueue::instance().drain();
+
+    CHECK(answers == std::vector<bool>{true});
+    CHECK(events == std::vector<std::string>{"teardown", "rebuild", "home"});
+    // The switch retargets the client itself; a hand-back to the saved printer would
+    // cycle the transport through a printer the config no longer names.
+    CHECK(client_->get_last_url() == kTestedUrl);
+
+    helix::ConfigTestAccess::data(*cfg) = saved_data;
+    helix::ConfigTestAccess::active_printer_id(*cfg) = saved_active;
+    helix::ConfigTestAccess::read_only_mode(*cfg) = saved_read_only;
 }
