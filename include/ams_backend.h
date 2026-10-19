@@ -2737,13 +2737,43 @@ class AmsBackend {
      * tools states that default rather than guessing one; a reprint sends it to
      * overwrite any map the printer still holds for its next print. A backend
      * whose jobs carry their own crossover (Snapmaker U1) answers false: there
-     * an identity map is a confident wrong answer, and an unknown routing sends
-     * no map at all.
+     * an identity map written for a reprint is a confident wrong answer, so an
+     * unknown routing writes no map. What such a reprint may still send is
+     * print_routing_resets_to_identity()'s question.
      *
      * Default false.
      */
     [[nodiscard]] virtual bool default_print_routing_is_identity() const {
         return false;
+    }
+
+    /**
+     * @brief Does the firmware return its routing to identity when each print ends?
+     *
+     * Then a print whose start writes no map runs file tool n at slot n, so a
+     * reprint with an unknown routing can still tell the firmware which slots
+     * the file uses (build_unrouted_preprint_gcode()) without writing a map.
+     * Without it, that reprint sends only the routing-free part of the
+     * pre-print step.
+     *
+     * Default false.
+     */
+    [[nodiscard]] virtual bool print_routing_resets_to_identity() const {
+        return false;
+    }
+
+    /**
+     * @brief The pre-print step for a reprint whose routing is unknown.
+     *
+     * Asked only of a backend answering print_routing_resets_to_identity(): the
+     * slots @p tools_used run at under the firmware's default routing, and no
+     * map. A backend that cannot vouch for that default right now answers the
+     * routing-free part instead. Default: the routing-free part.
+     */
+    [[nodiscard]] virtual std::string
+    build_unrouted_preprint_gcode(const std::set<int>& tools_used) const {
+        (void)tools_used;
+        return build_preprint_gcode({}, {});
     }
 
     /**

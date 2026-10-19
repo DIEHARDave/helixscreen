@@ -3071,6 +3071,51 @@ std::string AmsBackendSnapmaker::build_preprint_gcode(const std::set<int>& tools
     return gcode;
 }
 
+std::string AmsBackendSnapmaker::used_extruders_line(const std::set<int>& heads) {
+    std::string csv;
+    for (int head : heads) {
+        if (!csv.empty()) {
+            csv += ',';
+        }
+        csv += std::to_string(head);
+    }
+    return fmt::format("SET_PRINT_USED_EXTRUDERS EXTRUDERS={}", csv);
+}
+
+std::string
+AmsBackendSnapmaker::build_unrouted_preprint_gcode(const std::set<int>& tools_used) const {
+    const helix::FirmwareRouting routing = default_routing();
+    std::set<int> heads;
+    bool map_at_default = true;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        for (int t : tools_used) {
+            const int head = routing.head(t);
+            if (head < 0) {
+                continue;
+            }
+            heads.insert(head);
+            if (static_cast<size_t>(t) < extruder_map_table_.size() &&
+                extruder_map_table_[static_cast<size_t>(t)] != head) {
+                map_at_default = false;
+            }
+        }
+    }
+    const std::string unload = end_unload_gcode();
+    if (heads.empty() || !map_at_default) {
+        if (!map_at_default) {
+            spdlog::warn("[Snapmaker] preprint: the firmware holds a non-default extruder map; "
+                         "sending no used heads for an unrouted reprint");
+        }
+        return unload;
+    }
+    std::string gcode = used_extruders_line(heads);
+    if (!unload.empty()) {
+        gcode += "\n" + unload;
+    }
+    return gcode;
+}
+
 std::string AmsBackendSnapmaker::preprint_gcode(const std::set<int>& tools_used,
                                                 const std::map<int, int>& remap) {
     if (tools_used.empty()) {
@@ -3133,14 +3178,7 @@ std::string AmsBackendSnapmaker::preprint_gcode(const std::set<int>& tools_used,
         used_heads.insert(physical);
     }
 
-    std::string csv;
-    for (int head : used_heads) {
-        if (!csv.empty()) {
-            csv += ',';
-        }
-        csv += std::to_string(head);
-    }
-    lines.push_back(fmt::format("SET_PRINT_USED_EXTRUDERS EXTRUDERS={}", csv));
+    lines.push_back(used_extruders_line(used_heads));
 
     // Join with newlines, no trailing newline.
     std::string out;

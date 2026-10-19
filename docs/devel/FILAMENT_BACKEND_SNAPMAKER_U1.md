@@ -539,6 +539,22 @@ firmware's `extruder_map_table` holds the live logical-to-physical answer for th
 print, and `get_tool_mapping()` publishes it (read-only; the write side is the pre-print
 gcode).
 
+**A reprint with no known routing.** A reprint replays the routing the backend saw the
+last print configured with (`last_print_tool_mapping()`). When it saw none (a slicer or
+Fluidd start, or the app restarted since), no map is written: an identity map is a wrong
+answer for a crossover print. The used heads still go out. `<klipper>/klippy/extras/print_task_config.py`'s
+`reset_print_info()` sets `extruder_map_table` back to its default at every print end
+(complete, cancel, error), so a print whose start writes no map runs tool n on head n, and
+`build_unrouted_preprint_gcode()` sends `SET_PRINT_USED_EXTRUDERS` for the file's tools at
+those heads, plus the unload choice (`print_routing_resets_to_identity()`). The file's tools
+come from `file_tools_used()` (scanned tools, else per-tool weights). Nothing goes when the
+tools cannot be read, or when the firmware's live map reads other than its default for a
+used tool (a map a start that never printed left behind). A file cannot set its own
+routing: `SET_PRINT_EXTRUDER_MAP`, `SET_PRINT_USED_EXTRUDERS` and
+`SET_PRINT_TASK_PARAMETERS` all refuse while `print_stats.state` is printing or paused
+(`id=531`), which is when a file's lines run
+(`src/ui/ui_print_start_controller.cpp#reprint_impl`).
+
 ### Slot Overrides and lane_data
 
 Per-slot user overrides persist through `FilamentSlotOverrideStore` under the

@@ -394,3 +394,85 @@ TEST_CASE_METHOD(LoaderFixture,
     CHECK(used_heads);
     CHECK(started);
 }
+
+namespace {
+/// A U1 backend whose firmware is not known to reset its routing.
+class NoResetSnapmaker : public helix::AmsBackendSnapmaker {
+  public:
+    using AmsBackendSnapmaker::AmsBackendSnapmaker;
+    [[nodiscard]] bool print_routing_resets_to_identity() const override {
+        return false;
+    }
+};
+
+std::vector<std::string> scripts_containing(MoonrakerClientMock& client, const std::string& what) {
+    std::vector<std::string> out;
+    for (const auto& script : client.gcode_script_history()) {
+        if (script.find(what) != std::string::npos) {
+            out.push_back(script);
+        }
+    }
+    return out;
+}
+
+/// No configured task seen: the firmware map as @p map reads, nothing used.
+nlohmann::json unconfigured_task(const std::vector<int>& map) {
+    return nlohmann::json{
+        {"print_task_config",
+         {{"extruders_used", {false, false, false, false}}, {"extruder_map_table", map}}}};
+}
+} // namespace
+
+TEST_CASE_METHOD(LoaderFixture, "an unrouted U1 reprint names the file's heads and writes no map",
+                 "[print_start_inputs][reprint]") {
+    get_printer_state().update_from_status(nlohmann::json{{"webhooks", {{"state", "ready"}}}});
+    helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> backend_reg(api.get(), nullptr);
+    helix::PlantedGcode file("reprint_unrouted.gcode", "", kT0T2Footer);
+    helix::ui::PrintStartController controller(get_printer_state(), api.get());
+
+    SECTION("the firmware map at its default: the heads go, no map") {
+        helix::SnapmakerTestAccess::handle_status(*backend_reg,
+                                                  unconfigured_task({0, 1, 2, 3, 0, 0, 0, 0}));
+        client.clear_gcode_script_history();
+        controller.initiate_reprint(file.name(), "", {}, [] {}, [] {});
+        drain();
+        CHECK(scripts_containing(client, "SET_PRINT_USED_EXTRUDERS EXTRUDERS=0,2").size() == 1);
+        CHECK(scripts_containing(client, "SET_PRINT_EXTRUDER_MAP").empty());
+    }
+    SECTION("a map left pending routes elsewhere: no heads") {
+        helix::SnapmakerTestAccess::handle_status(*backend_reg,
+                                                  unconfigured_task({2, 1, 0, 3, 0, 0, 0, 0}));
+        client.clear_gcode_script_history();
+        controller.initiate_reprint(file.name(), "", {}, [] {}, [] {});
+        drain();
+        CHECK(scripts_containing(client, "SET_PRINT_USED_EXTRUDERS").empty());
+        CHECK(scripts_containing(client, "SET_PRINT_EXTRUDER_MAP").empty());
+    }
+    SECTION("a file whose tools cannot be read: no heads") {
+        helix::SnapmakerTestAccess::handle_status(*backend_reg,
+                                                  unconfigured_task({0, 1, 2, 3, 0, 0, 0, 0}));
+        client.clear_gcode_script_history();
+        controller.initiate_reprint("not_on_the_printer.gcode", "", {}, [] {}, [] {});
+        drain();
+        CHECK(scripts_containing(client, "SET_PRINT_USED_EXTRUDERS").empty());
+    }
+}
+
+TEST_CASE_METHOD(LoaderFixture,
+                 "an unrouted reprint on firmware that keeps its routing sends no heads",
+                 "[print_start_inputs][reprint]") {
+    get_printer_state().update_from_status(nlohmann::json{{"webhooks", {{"state", "ready"}}}});
+    helix::test::RegisteredBackend<NoResetSnapmaker> backend_reg(api.get(), nullptr);
+    helix::SnapmakerTestAccess::handle_status(*backend_reg,
+                                              unconfigured_task({0, 1, 2, 3, 0, 0, 0, 0}));
+    helix::PlantedGcode file("reprint_noreset.gcode", "", kT0T2Footer);
+    helix::ui::PrintStartController controller(get_printer_state(), api.get());
+    client.clear_gcode_script_history();
+
+    bool started = false;
+    controller.initiate_reprint(file.name(), "", {}, [&started] { started = true; }, [] {});
+    drain();
+    CHECK(scripts_containing(client, "SET_PRINT_USED_EXTRUDERS").empty());
+    CHECK(scripts_containing(client, "SET_PRINT_EXTRUDER_MAP").empty());
+    CHECK(started);
+}

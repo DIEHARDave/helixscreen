@@ -394,7 +394,7 @@ void PrintStartController::execute_print_start() {
 void PrintStartController::send_backend_preprint_then(const std::set<int>& tools_used,
                                                       const std::map<int, int>& remap,
                                                       std::function<void()> on_done,
-                                                      std::function<void()> on_abort) {
+                                                      std::function<void()> on_abort, bool routed) {
     AmsBackend* backend = AmsState::instance().get_backend();
     if (!backend) {
         // No backend — nothing to pre-send; proceed with the start step.
@@ -418,7 +418,8 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
         return;
     }
 
-    std::string gcode = backend->build_preprint_gcode(tools_used, remap);
+    std::string gcode = routed ? backend->build_preprint_gcode(tools_used, remap)
+                               : backend->build_unrouted_preprint_gcode(tools_used);
 
     if (gcode.empty()) {
         // Nothing the firmware needs (e.g. no parsed tools) — start immediately.
@@ -625,12 +626,10 @@ void PrintStartController::reprint_impl(const std::string& filename, const std::
                 // Not known (no configured task observed, e.g. the app started after
                 // the print ended). Sending a map here means inventing a routing: an
                 // identity map is a confident wrong answer for exactly the files that
-                // need one. The firmware keeps whatever map the last job left; only
-                // the routing-free per-print preferences go out, and the log says so.
-                //
-                // The cost is the SET_PRINT_USED_EXTRUDERS spurious-feed suppression,
-                // which cannot be computed either: the used-head set is derived from
-                // the same routing.
+                // need one, so none is written. A firmware whose routing returns to
+                // identity at each print end still runs the file's tools at their own
+                // slots, and can be told which those are; any other gets only the
+                // routing-free per-print preferences.
                 spdlog::warn("[PrintStartController] Reprint: no recorded print routing; sending "
                              "no extruder map rather than writing a default one over it");
             }
@@ -648,6 +647,10 @@ void PrintStartController::reprint_impl(const std::string& filename, const std::
                     on_error();
                 }
             };
+            if (!remap && backend->print_routing_resets_to_identity()) {
+                send_backend_preprint_then(tools_used, {}, start, abort, /*routed=*/false);
+                return;
+            }
             // With the routing unknown only the routing-free part goes out (an
             // empty tool set): the backend's per-print preferences.
             send_backend_preprint_then(remap ? tools_used : std::set<int>{},

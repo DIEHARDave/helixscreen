@@ -410,6 +410,19 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// The next print to begin within kStartFromHereWindow is this screen's.
     void note_print_start_from_here() override;
 
+    /// print_task_config.py's reset_print_info() returns extruder_map_table to
+    /// identity at every print end (complete, cancel, error).
+    [[nodiscard]] bool print_routing_resets_to_identity() const override {
+        return true;
+    }
+
+    /// SET_PRINT_USED_EXTRUDERS for @p tools_used at their default heads, no
+    /// map, plus the per-print unload choice. Only while the firmware's map
+    /// still reads its default for every used tool: a map a failed start left
+    /// pending would route them elsewhere, and then only the unload choice goes.
+    [[nodiscard]] std::string
+    build_unrouted_preprint_gcode(const std::set<int>& tools_used) const override;
+
     /// The builder above, as a free-standing function.
     ///
     /// It reads no member state — the routing is entirely a function of its two
@@ -422,6 +435,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// format moved.
     [[nodiscard]] static std::string preprint_gcode(const std::set<int>& tools_used,
                                                     const std::map<int, int>& remap);
+
+    /// `SET_PRINT_USED_EXTRUDERS EXTRUDERS=<heads>`, ascending.
+    [[nodiscard]] static std::string used_extruders_line(const std::set<int>& heads);
 
     /// Which lines of a filament record write to send.
     enum class RecordLines { Both, Identity, Colour };
