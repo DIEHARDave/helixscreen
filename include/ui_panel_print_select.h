@@ -1026,6 +1026,12 @@ class PrintSelectPanel : public PanelBase {
     /// A successful install restarts Moonraker so the plugin loads.
     void show_plugin_install_modal();
 
+    /// The boot-time prompt: opens once a session when discovery finds the
+    /// plugin absent. While a job holds the machine it is deferred, and the
+    /// lifecycle observer offers it again once the job lets go.
+    void maybe_prompt_plugin_install();
+    bool plugin_prompt_deferred_ = false;
+
     //
     // === Internal Methods ===
     //

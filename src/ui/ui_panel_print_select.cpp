@@ -810,7 +810,12 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     if (print_lifecycle_subject) {
         print_lifecycle_observer_ = observe<int>(
             print_lifecycle_subject, this,
-            [](PrintSelectPanel* self, int) { self->update_print_button_state(); },
+            [](PrintSelectPanel* self, int) {
+                self->update_print_button_state();
+                if (self->plugin_prompt_deferred_) {
+                    self->maybe_prompt_plugin_install();
+                }
+            },
             printer_state_.get_subjects_lifetime());
     }
 
@@ -834,25 +839,8 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     if (plugin_subject) {
         helix_plugin_observer_ = observe<int>(
             plugin_subject, this,
-            [](PrintSelectPanel* self, int plugin_state) {
-                // Only show modal when state is explicitly 0 (checked and not installed)
-                // Skip if -1 (unknown/pre-discovery) or 1 (installed)
-                if (plugin_state != 0) {
-                    return;
-                }
-                // Installing blocks this thread while the script runs and then
-                // restarts Moonraker, so never offer it while a job holds the machine.
-                if (job_holds_machine(self->printer_state_.print_state().get_print_lifecycle())) {
-                    spdlog::info("[PrintSelectPanel] helix_print plugin not available; a job "
-                                 "holds the machine, so no install prompt");
-                    return;
-                }
-                if (self->plugin_installer_.should_prompt_install()) {
-                    spdlog::info("[PrintSelectPanel] helix_print plugin not available, showing "
-                                 "install prompt");
-                    helix::HelixPluginInstaller::settle_prompt_for_session();
-                    self->show_plugin_install_modal();
-                }
+            [](PrintSelectPanel* self, int /*plugin_state*/) {
+                self->maybe_prompt_plugin_install();
             },
             printer_state_.get_subjects_lifetime());
         spdlog::trace("[{}] Registered observer on helix_plugin_installed for install prompt",
@@ -3512,6 +3500,32 @@ void PrintSelectPanel::on_preflight_remap() {
 // apply_remap(), dispatched on RemapStrategy. Print-start is likewise already
 // strategy-dispatched (PrintStartController), so Native and PrePrintSend both
 // read the same shared card store and need no special opener.
+void PrintSelectPanel::maybe_prompt_plugin_install() {
+    // Only when discovery has explicitly found it absent (0): not -1 (not
+    // probed yet), 1 (installed) or 2 (installed but disabled).
+    if (printer_state_.plugin_status_state().helix_plugin_state() != helix::kHelixPluginAbsent) {
+        plugin_prompt_deferred_ = false;
+        return;
+    }
+    // Installing blocks this thread while the script runs and then restarts
+    // Moonraker, so the prompt waits for the job to let go of the machine.
+    if (job_holds_machine(printer_state_.print_state().get_print_lifecycle())) {
+        if (!plugin_prompt_deferred_) {
+            spdlog::info("[{}] helix_print plugin not available; a job holds the machine, so "
+                         "the install prompt waits for it to end",
+                         get_name());
+        }
+        plugin_prompt_deferred_ = true;
+        return;
+    }
+    plugin_prompt_deferred_ = false;
+    if (plugin_installer_.should_prompt_install()) {
+        spdlog::info("[{}] helix_print plugin not available, showing install prompt", get_name());
+        helix::HelixPluginInstaller::settle_prompt_for_session();
+        show_plugin_install_modal();
+    }
+}
+
 void PrintSelectPanel::show_plugin_install_modal() {
     plugin_install_modal_.set_installer(&plugin_installer_);
     plugin_install_modal_.set_moonraker_restarter(

@@ -286,3 +286,49 @@ TEST_CASE_METHOD(PromptFixture, "discovery's probe still reads an absent plugin 
     CHECK(plugin_state() == kHelixPluginAbsent);
     CHECK(prompt() != nullptr);
 }
+
+TEST_CASE_METHOD(PromptFixture, "an install prompt deferred by a print opens when the print ends",
+                 "[plugin_installer][print_select]") {
+    test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
+    drain();
+    set_plugin_installed(false);
+    REQUIRE(prompt() == nullptr);
+
+    test::set_wire_state(get_printer_state(), PrintJobState::COMPLETE);
+    drain();
+    REQUIRE_FALSE(job_holds_machine(get_printer_state().print_state().get_print_lifecycle()));
+
+    CHECK(prompt() != nullptr);
+}
+
+TEST_CASE_METHOD(PromptFixture, "a prompt shown after a deferral still opens only once a session",
+                 "[plugin_installer][print_select]") {
+    test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
+    drain();
+    set_plugin_installed(false);
+    test::set_wire_state(get_printer_state(), PrintJobState::COMPLETE);
+    drain();
+    REQUIRE(prompt() != nullptr);
+    click("btn_cancel");
+    REQUIRE(prompt() == nullptr);
+
+    test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
+    drain();
+    test::set_wire_state(get_printer_state(), PrintJobState::COMPLETE);
+    drain();
+
+    CHECK(prompt() == nullptr);
+}
+
+TEST_CASE_METHOD(PromptFixture, "a deferred prompt stays closed when the plugin turns up meanwhile",
+                 "[plugin_installer][print_select]") {
+    test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
+    drain();
+    set_plugin_installed(false);
+    set_plugin_installed(true);
+
+    test::set_wire_state(get_printer_state(), PrintJobState::COMPLETE);
+    drain();
+
+    CHECK(prompt() == nullptr);
+}
