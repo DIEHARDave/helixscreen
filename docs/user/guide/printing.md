@@ -256,7 +256,7 @@ You can also keep the Speed / Flow and Z-Offset readings on the home screen and 
 |-----------|-------|--------------|
 | Speed % | 50-200% | Overall print speed multiplier |
 | Flow % | 75-125% | Extrusion rate multiplier |
-| Pressure Advance (beta) | 0-2 | Live pressure advance of the active extruder |
+| Pressure Advance | 0-2 | Live pressure advance of the active extruder |
 
 Next to each percentage, the overlay shows what it means right now: how fast the toolhead is actually moving in mm/s (0 when it is standing still) and the live volumetric flow in mm³/s.
 
@@ -269,7 +269,7 @@ The choice is remembered. On the smallest screens Print Status has no Speed / Fl
 
 > **Note:** Volumetric flow assumes 1.75 mm filament. On a 2.85 mm printer it reads low.
 
-**Pressure Advance** ([beta](beta-features.md)). The **PA** row beside the reset button shows the pressure advance the printer reports for the active extruder and changes it by 0.001 per tap (0.005 too on wider screens). Like speed and flow, the change lasts until the printer restarts or something else sets it (many slicers set it at the start of each print). While a [pressure advance test tower](calibration.md#pressure-advance-tuning-test-tower) is printing, a **Tuner** button here takes you back to the full-screen tuner.
+**Pressure Advance**. The **PA** row beside the reset button shows the pressure advance the printer reports for the active extruder and changes it by 0.001 per tap (0.005 too on wider screens). Like speed and flow, the change lasts until the printer restarts or something else sets it (many slicers set it at the start of each print). While a [pressure advance test tower](calibration.md#pressure-advance-tuning-test-tower) is printing, a **Tuner** button here takes you back to the full-screen tuner.
 
 The overlay also includes Z-Offset / baby-step controls (see below).
 

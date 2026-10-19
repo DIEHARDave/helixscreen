@@ -424,7 +424,7 @@ the build volume arrives, an AMS backend or slot count changes, the tool list ch
 or a count a chip shows changes. Requests made before the refresh runs join it, so an
 activation computes the chips once.
 
-A spec with `beta = true` (Belt Tension, Tool Offsets) opens its screen only while beta
+A spec with `beta = true` (Tool Offsets) opens its screen only while beta
 features are on, as the Advanced and Controls entries do; otherwise it shows its popup.
 
 On ESP32, screens absent from the image (bed mesh, input shaper, screws tilt, belt

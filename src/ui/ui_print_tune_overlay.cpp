@@ -417,7 +417,7 @@ void PrintTuneOverlay::update_pa_display() {
 }
 
 void PrintTuneOverlay::handle_pa_adjust(int steps) {
-    if (!printer_state_ || !helix::tune::pressure_advance_enabled()) {
+    if (!printer_state_) {
         return;
     }
 #if !defined(HELIX_PLATFORM_ESP32)

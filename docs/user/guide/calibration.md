@@ -210,7 +210,7 @@ Tapping **Stop** during a run performs an emergency stop, since the calibration 
 
 ---
 
-## Belt Tension *(Beta)*
+## Belt Tension
 
 > Added in 1.1.
 
@@ -218,7 +218,7 @@ For CoreXY printers: compares the tension of the two belt paths by driving each 
 
 ### Requirements
 
-The row appears under **Advanced > Calibration** once [beta features are enabled](beta-features.md), and only when your Klipper config has an accelerometer. **Start check** stays disabled until all of these hold:
+The row appears under **Advanced > Calibration** when your Klipper config has an accelerometer. **Start check** stays disabled until all of these hold:
 
 - A **CoreXY** printer. The check compares the two diagonals only a CoreXY has, so it is unavailable on other kinematics
 - An **accelerometer** configured in Klipper, and exactly one. When more than one accelerometer reports during the sweep, the check stops with a message rather than guess which one to compare
@@ -343,7 +343,7 @@ Leaving the screen while it is still heating stops the run. Once measuring has s
 
 ## Pressure Advance Tuning (test tower)
 
-> Added in 1.1. A [beta feature](beta-features.md).
+> Added in 1.1.
 
 Works on any Klipper printer. HelixScreen prints a small test tower, raises pressure advance as the tower grows, and lets you take over while you watch the corners. You pick the height that looked best, and that value is applied.
 

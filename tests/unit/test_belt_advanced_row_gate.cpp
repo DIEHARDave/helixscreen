@@ -3,12 +3,15 @@
 
 /**
  * @file test_belt_advanced_row_gate.cpp
- * @brief The Advanced panel's Belt Tension row follows belt-compare support.
+ * @brief The Advanced panel's Belt Tension row follows belt-compare support,
+ *        and which Advanced rows beta features gate.
  *
- * Builds the real advanced_panel.xml and drives the two subjects the row's
- * visibility binding reads: printer_has_accelerometer and
+ * Builds the real advanced_panel.xml and drives the two subjects the belt
+ * row's visibility binding reads: printer_has_accelerometer and
  * printer_supports_belt_compare (1 only on corexy/limited_corexy). The row is
- * shown when both are 1 and hidden when either is 0.
+ * shown when both are 1 and hidden when either is 0, with beta features off.
+ * Belt Tension and Pressure Advance Tuning need no beta features; Tool Offsets
+ * does (prestonbrown/helixscreen#1736).
  */
 
 #include "ui_status_pill.h"
@@ -42,15 +45,40 @@ class AdvancedBeltRowFixture : public XMLTestFixture {
         // entry, so every subject below is a function-local STATIC: a fixture
         // member would dangle after this test and any later consumer of the
         // name dereferences freed memory.
-        ensure_subject("show_beta_features", 1);
+        ensure_subject("show_beta_features", 0);
         ensure_subject("printer_has_accelerometer", 1);
         ensure_subject("printer_supports_belt_compare", 0);
+        ensure_subject("printer_has_tool_offset_cal", 0);
+        beta_ = subject("show_beta_features");
+        beta_before_ = lv_subject_get_int(beta_);
+        lv_subject_set_int(beta_, 0);
 
         panel_ = create_component("advanced_panel");
         REQUIRE(panel_ != nullptr);
         row_ = lv_obj_find_by_name(panel_, "row_belt_tension");
         REQUIRE(row_ != nullptr);
         process_lvgl(50);
+    }
+
+    ~AdvancedBeltRowFixture() override {
+        lv_subject_set_int(beta_, beta_before_);
+    }
+
+    /// Hidden itself or under a hidden ancestor, up to the panel root. A
+    /// <beta_feature> wrapper hides the wrapper, not the row inside it.
+    bool hidden_in_panel(lv_obj_t* obj) const {
+        for (; obj && obj != panel_; obj = lv_obj_get_parent(obj)) {
+            if (lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    lv_obj_t* row(const char* name) {
+        lv_obj_t* obj = lv_obj_find_by_name(panel_, name);
+        REQUIRE(obj != nullptr);
+        return obj;
     }
 
     lv_subject_t* subject(const char* name) {
@@ -61,6 +89,8 @@ class AdvancedBeltRowFixture : public XMLTestFixture {
 
     lv_obj_t* panel_ = nullptr;
     lv_obj_t* row_ = nullptr;
+    lv_subject_t* beta_ = nullptr;
+    int beta_before_ = 0;
 
   private:
     /// Registers `name` in the global XML scope at `value` when absent,
@@ -68,9 +98,9 @@ class AdvancedBeltRowFixture : public XMLTestFixture {
     /// untouched.
     static void ensure_subject(const char* name, int value) {
         if (!lv_xml_get_subject(nullptr, name)) {
-            static lv_subject_t subjects[3];
+            static lv_subject_t subjects[4];
             static size_t next = 0;
-            REQUIRE(next < 3);
+            REQUIRE(next < 4);
             lv_subject_init_int(&subjects[next], value);
             lv_xml_register_subject(nullptr, name, &subjects[next]);
             next++;
@@ -80,8 +110,10 @@ class AdvancedBeltRowFixture : public XMLTestFixture {
 
 } // namespace
 
-TEST_CASE_METHOD(AdvancedBeltRowFixture, "Advanced Belt Tension row needs belt-compare support",
+TEST_CASE_METHOD(AdvancedBeltRowFixture,
+                 "Advanced Belt Tension row needs belt-compare support, not beta features",
                  "[belt][advanced][xml]") {
+    REQUIRE(lv_subject_get_int(beta_) == 0);
     auto* accel = subject("printer_has_accelerometer");
     auto* belt = subject("printer_supports_belt_compare");
 
@@ -90,21 +122,43 @@ TEST_CASE_METHOD(AdvancedBeltRowFixture, "Advanced Belt Tension row needs belt-c
     lv_subject_set_int(accel, 1);
     lv_subject_set_int(belt, 0);
     process_lvgl(10);
-    CHECK(lv_obj_has_flag(row_, LV_OBJ_FLAG_HIDDEN));
+    CHECK(hidden_in_panel(row_));
 
     // Belt-path kinematics plus an accelerometer shows it.
     lv_subject_set_int(belt, 1);
     process_lvgl(10);
-    CHECK_FALSE(lv_obj_has_flag(row_, LV_OBJ_FLAG_HIDDEN));
+    CHECK_FALSE(hidden_in_panel(row_));
 
     // Losing support hides it again.
     lv_subject_set_int(belt, 0);
     process_lvgl(10);
-    CHECK(lv_obj_has_flag(row_, LV_OBJ_FLAG_HIDDEN));
+    CHECK(hidden_in_panel(row_));
 
     // Support alone is not enough: no accelerometer, no row.
     lv_subject_set_int(belt, 1);
     lv_subject_set_int(accel, 0);
     process_lvgl(10);
-    CHECK(lv_obj_has_flag(row_, LV_OBJ_FLAG_HIDDEN));
+    CHECK(hidden_in_panel(row_));
+}
+
+TEST_CASE_METHOD(AdvancedBeltRowFixture,
+                 "Advanced Pressure Advance Tuning row shows with beta features off",
+                 "[pa_tune][advanced][xml]") {
+    REQUIRE(lv_subject_get_int(beta_) == 0);
+    CHECK_FALSE(hidden_in_panel(row("row_pa_tuning")));
+}
+
+TEST_CASE_METHOD(AdvancedBeltRowFixture, "Advanced Tool Offsets row stays a beta feature",
+                 "[belt][advanced][xml]") {
+    lv_subject_set_int(subject("printer_has_tool_offset_cal"), 1);
+    lv_obj_t* tool_offsets = row("row_tool_offsets");
+
+    process_lvgl(10);
+    CHECK(hidden_in_panel(tool_offsets));
+
+    lv_subject_set_int(beta_, 1);
+    process_lvgl(10);
+    CHECK_FALSE(hidden_in_panel(tool_offsets));
+
+    lv_subject_set_int(subject("printer_has_tool_offset_cal"), 0);
 }

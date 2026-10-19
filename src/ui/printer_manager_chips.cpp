@@ -203,7 +203,7 @@ constexpr std::array<CapChipSpec, kCapChipCount> kSpecs = {{
     {C::BeltTension, "pm_chip_belt_tension", "pm_chip_text_belt_tension", TR_NOOP("Belt Tension"),
      TR_NOOP("Compares the two belt paths of a CoreXY printer with the accelerometer, so you can "
              "even out their tension. Run it on the Belt Tension screen."),
-     PM_DESKTOP_SCREEN(open_belt_tension), true},
+     PM_DESKTOP_SCREEN(open_belt_tension), false},
     {C::ShakeTune, "pm_chip_shake_tune", "pm_chip_text_shake_tune", TR_NOOP("Shake&Tune"),
      TR_NOOP("Klippain Shake&Tune macros are installed on the printer. HelixScreen detects them "
              "but does not use them; run them from Mainsail or Fluidd."),

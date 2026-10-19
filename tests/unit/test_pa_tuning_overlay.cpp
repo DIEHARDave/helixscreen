@@ -6,10 +6,12 @@
 
 #include "../lvgl_test_fixture.h"
 #include "app_globals.h"
+#include "config.h"
 #include "moonraker_api.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "printer_state.h"
+#include "spoolman_types.h"
 #include "tool_state.h"
 #include "tune_controller.h"
 
@@ -141,6 +143,54 @@ TEST_CASE_METHOD(TunerFixture, "the Tune row's nudge during a run goes through t
     // The ramp no longer overwrites it at the next band.
     printing(22);
     CHECK(client.last_send_script() == "SET_PRESSURE_ADVANCE EXTRUDER=extruder ADVANCE=0.0010");
+}
+
+TEST_CASE_METHOD(TunerFixture, "with beta features off a result saves to the active spool",
+                 "[pa_tune][pa_tuner][spoolman]") {
+    struct BetaOff {
+        bool prev = Config::get_instance()->is_beta_features_enabled();
+        BetaOff() {
+            Config::get_instance()->set<bool>("/beta_features", false);
+        }
+        ~BetaOff() {
+            Config::get_instance()->set<bool>("/beta_features", prev);
+        }
+    } beta_off;
+    client.set_mock_spoolman_enabled(true);
+    auto& server = client.spoolman_mock();
+    const int active = server.get_mock_active_spool_id();
+    REQUIRE(active > 0);
+    // Mock spools carry no filament id; Save to Spool writes to the filament.
+    for (auto& spool : server.get_mock_spools()) {
+        if (spool.id == active) {
+            spool.filament_id = 7;
+        }
+    }
+
+    start_session();
+    printing(1);
+    report_k(0.0);
+    printing(22);
+    report_k(0.01);
+    status({{"print_stats", {{"state", "complete"}}}});
+    REQUIRE(overlay.stage() == PaTuningOverlay::PICK);
+    overlay.select_band_for_test(1);
+    overlay.apply_pick_for_test();
+    // Spoolman status, then the spool itself: one queued reply each.
+    helix::ui::UpdateQueue::instance().drain();
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(overlay.stage() == PaTuningOverlay::RESULT);
+    INFO(lv_subject_get_string(lv_xml_get_subject(nullptr, "pa_tune_spoolman_text")));
+
+    lv_subject_t* can_save = lv_xml_get_subject(nullptr, "pa_tune_can_save_spool");
+    REQUIRE(can_save != nullptr);
+    CHECK(lv_subject_get_int(can_save) == 1);
+
+    const size_t patches = server.filament_updates.size();
+    overlay.save_to_spool_for_test();
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(server.filament_updates.size() == patches + 1);
+    CHECK(server.filament_updates.back().data["extra"][kSpoolmanPaExtraKey] == "0.0100");
 }
 
 TEST_CASE("AMS lanes into one hotend are one head, and select no tool", "[pa_tune][pa_tuner]") {

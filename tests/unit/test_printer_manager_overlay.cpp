@@ -594,6 +594,16 @@ TEST_CASE_METHOD(CapabilityChipsFixture,
     CHECK(helix::ui::get_global_tool_offset_cal_panel().get_root() == nullptr);
 }
 
+TEST_CASE_METHOD(CapabilityChipsFixture,
+                 "PrinterManagerOverlay: the Belt Tension chip opens its screen with beta off",
+                 "[printer_manager][belt]") {
+    ScopedBeta beta(false);
+    const helix::CapChipSpec* spec = helix::find_cap_chip_spec("pm_chip_belt_tension");
+    REQUIRE(spec != nullptr);
+    REQUIRE(spec->open != nullptr);
+    CHECK_FALSE(spec->beta);
+}
+
 TEST_CASE_METHOD(CapabilityChipsFixture, "PrinterManagerOverlay: a chip pushes its screen",
                  "[printer_manager]") {
     REQUIRE(show() != nullptr);

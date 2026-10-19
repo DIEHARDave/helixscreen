@@ -80,7 +80,7 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 **Calibration**
 
 - **Pressure advance tuning on a live test print** (#982) - Advanced > Calibration > Pressure
-  Advance Tuning (beta) prints a small test tower and raises pressure advance with height; tap - or
+  Advance Tuning prints a small test tower and raises pressure advance with height; tap - or
   + at any moment to take over, then pick the height band that looked best from what the
   printer reported. The result is applied, can be saved to the spool's Spoolman filament
   (applied again whenever that filament becomes active, never mid-print), and is kept in
