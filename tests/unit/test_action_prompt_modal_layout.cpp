@@ -669,6 +669,72 @@ TEST_CASE_METHOD(ActionPromptLayoutFixture,
     check_afc_calibration_fits(modal_, test_screen());
 }
 
+TEST_CASE_METHOD(ActionPromptLayoutFixture,
+                 "ActionPromptModal: six-unit AFC calibration fits a 480x320 card",
+                 "[action_prompt][layout][ui_integration]") {
+    helix::test::ScopedGeometry tiny(480, 320);
+    check_afc_calibration_fits(modal_, test_screen());
+}
+
+// On a 480x320 screen the prompt's buttons take the compact height, so the hex
+// prompt shows its labelled buttons, both swatch rows and its footer without
+// scrolling.
+TEST_CASE_METHOD(ActionPromptLayoutFixture,
+                 "ActionPromptModal: the hex color prompt fits a 480x320 card unscrolled",
+                 "[action_prompt][layout][ui_integration][hex_color][1806]") {
+    helix::test::ScopedGeometry tiny(480, 320);
+    REQUIRE(modal_.show_prompt(test_screen(), parse_prompt(helix::demo::hex_color_prompt_lines())));
+    lv_obj_t* dialog = modal_.dialog();
+    REQUIRE(dialog != nullptr);
+    lv_obj_update_layout(test_screen());
+
+    const auto& btns = ActionPromptModalTestAccess::buttons(modal_);
+    REQUIRE(btns.size() == 16); // three labelled, twelve swatches, one footer
+    const lv_area_t card = coords_of(dialog);
+    const lv_area_t screen = coords_of(test_screen());
+    CHECK(lv_area_is_in(&card, &screen, 0));
+
+    const int32_t compact_h = theme_manager_get_spacing("button_height_sm");
+    for (size_t i = 0; i < 3; ++i) {
+        CAPTURE(i);
+        CHECK(lv_obj_get_height(btns[i]) == compact_h);
+    }
+    CHECK(lv_obj_get_height(btns.back()) == compact_h);
+
+    lv_obj_t* scroll = lv_obj_find_by_name(dialog, "prompt_scroll");
+    REQUIRE(scroll != nullptr);
+    CHECK(lv_obj_get_scroll_bottom(scroll) <= 0);
+    for (size_t i = 0; i < btns.size(); ++i) {
+        const lv_area_t a = coords_of(btns[i]);
+        CAPTURE(i, a.y1, a.y2, card.y2);
+        CHECK(lv_area_is_in(&a, &card, 0));
+    }
+
+    modal_.hide();
+}
+
+// The Z-Mod picker's three swatch rows at 480x320: the card stays on screen and
+// the footer on the card.
+TEST_CASE_METHOD(ActionPromptLayoutFixture,
+                 "ActionPromptModal: Z-Mod swatch grid keeps its footer on a 480x320 card",
+                 "[action_prompt][layout][ui_integration][hex_color][1806][swatch]") {
+    helix::test::ScopedGeometry tiny(480, 320);
+    REQUIRE(modal_.show_prompt(test_screen(), make_zmod_color_prompt()));
+    lv_obj_t* dialog = modal_.dialog();
+    REQUIRE(dialog != nullptr);
+    lv_obj_update_layout(test_screen());
+
+    const auto& btns = ActionPromptModalTestAccess::buttons(modal_);
+    REQUIRE(btns.size() == 25);
+    const lv_area_t card = coords_of(dialog);
+    const lv_area_t screen = coords_of(test_screen());
+    CHECK(lv_area_is_in(&card, &screen, 0));
+    const lv_area_t footer = coords_of(btns.back());
+    CHECK(lv_area_is_in(&footer, &card, 0));
+
+    modal_.hide();
+}
+
 // One label longer than the card is wide must not pan the prompt sideways.
 TEST_CASE_METHOD(ActionPromptLayoutFixture,
                  "ActionPromptModal: a wrap-row label wider than the card ends in an ellipsis",
