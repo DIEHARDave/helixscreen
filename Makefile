@@ -1388,13 +1388,31 @@ screenshots: $(BIN)
 #   .debug  — DWARF debug info for addr2line (file:line, inlined frames)
 # =============================================================================
 OBJCOPY_CMD := $(CROSS_COMPILE)objcopy
+READELF_CMD := $(CROSS_COMPILE)readelf
+
+# Writes $(1).sym and $(1).debug from binary $(1) while it still has a symbol
+# table. Every build reaches this step, including one that relinked nothing, and
+# by then the binary is the stripped one from the last build: reading it again
+# would overwrite the maps with empty files. So a stripped binary keeps the maps
+# its link wrote, and a stripped binary with no map, or an empty map, fails the
+# build, since crash reports from it could not be symbolized.
+define extract-symbols
+	@if $(READELF_CMD) -S $(1) | grep -q '\.symtab'; then \
+		$(NM_CMD) -nC $(1) > $(1).sym && \
+		$(OBJCOPY_CMD) --only-keep-debug $(1) $(1).debug && \
+		echo "Symbol map: $(1).sym, debug info: $(1).debug"; \
+	elif [ -s $(1).sym ]; then \
+		echo "$(1) is already stripped; keeping the symbol map from its link"; \
+	else \
+		echo "$(RED)$(BOLD)ERROR: $(1) has no symbol table and no symbol map from its link$(RESET)"; \
+		exit 1; \
+	fi
+	@test -s $(1).sym || { echo "$(RED)$(BOLD)ERROR: $(1).sym is empty$(RESET)"; exit 1; }
+endef
 
 symbols: $(TARGET)
 ifeq ($(STRIP_BINARY),yes)
-	$(NM_CMD) -nC $(TARGET) > $(TARGET).sym
-	@echo "Symbol map: $(TARGET).sym"
-	$(OBJCOPY_CMD) --only-keep-debug $(TARGET) $(TARGET).debug
-	@echo "Debug info: $(TARGET).debug ($(shell du -h $(TARGET).debug 2>/dev/null | cut -f1 || echo '?'))"
+	$(call extract-symbols,$(TARGET))
 else
 	@echo "STRIP_BINARY not set — skipping symbol extraction"
 endif
