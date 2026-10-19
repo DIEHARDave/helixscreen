@@ -33,6 +33,7 @@
 #include "spoolman_manager.h"
 #include "spoolman_slot_saver.h"
 #include "src/ui/panel_widgets/active_spool_widget.h"
+#include "text_io.h"
 
 #include <algorithm>
 #include <cmath>
@@ -178,6 +179,15 @@ class AmsEditOverlayViewTestAccess {
     std::string dropdown_options(const char* name) {
         lv_obj_t* dd = overlay_.find_widget(name);
         return dd ? lv_dropdown_get_options(dd) : std::string();
+    }
+    /// The "Browse catalog..." sheet is up.
+    bool catalog_sheet_visible() const {
+        return overlay_.catalog_sheet_ && overlay_.catalog_sheet_->is_visible();
+    }
+    void hide_catalog_sheet() {
+        if (catalog_sheet_visible()) {
+            overlay_.catalog_sheet_->hide();
+        }
     }
     std::string dropdown_selected(const char* name) {
         lv_obj_t* dd = overlay_.find_widget(name);
@@ -2644,6 +2654,119 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the brand list names Generic once",
     const auto brands = split_options(access.dropdown_options("dropdown_brand"));
     CHECK(std::count(brands.begin(), brands.end(), std::string("Generic")) == 1);
     close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a material with few makers lists Generic once",
+                 "[ams_edit_overlay][dropdown]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    // HIPS has one maker besides Generic; EVA has only Generic. The slot's
+    // brand spelling differs in case from the catalog's.
+    for (const char* material : {"HIPS", "EVA"}) {
+        CAPTURE(material);
+        SlotInfo info = untracked_slot();
+        info.material = material;
+        info.brand = "generic";
+        REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+        UpdateQueue::instance().drain();
+        process_lvgl(10);
+
+        const auto brands = split_options(access.dropdown_options("dropdown_brand"));
+        const auto generics = std::count_if(brands.begin(), brands.end(), [](const auto& b) {
+            return helix::text_io::equals_ignore_case(b, "Generic");
+        });
+        CHECK(generics == 1);
+        REQUIRE_FALSE(brands.empty());
+        CHECK(brands.front() == "Generic");
+        CHECK(brands.back() == lv_tr("Browse catalog..."));
+        CHECK(access.dropdown_selected("dropdown_brand") == "Generic");
+        close_editor_overlay();
+    }
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "picking Browse catalog opens the catalog sheet",
+                 "[ams_edit_overlay][dropdown][callback]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    const std::string browse = lv_tr("Browse catalog...");
+
+    // EVA's brand list is two entries, HIPS three, PLA many.
+    for (const char* material : {"EVA", "HIPS", "PLA"}) {
+        for (const char* row : {"dropdown_brand", "dropdown_material"}) {
+            CAPTURE(material, row);
+            SlotInfo info = untracked_slot();
+            info.material = material;
+            REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+            UpdateQueue::instance().drain();
+            process_lvgl(10);
+            const std::string before = access.dropdown_selected(row);
+            REQUIRE_FALSE(access.catalog_sheet_visible());
+
+            REQUIRE(access.pick_dropdown(row, browse));
+            process_lvgl(5);
+            CHECK(access.catalog_sheet_visible());
+            // The row keeps showing the real selection behind the sheet.
+            CHECK(access.dropdown_selected(row) == before);
+            CHECK(access.sel().family == material);
+
+            access.hide_catalog_sheet();
+            process_lvgl(5);
+            close_editor_overlay();
+        }
+    }
+}
+
+TEST_CASE_METHOD(OverlayConsumerCommitFixture, "a Material dropdown pick reaches the saved slot",
+                 "[ams_edit_overlay][dropdown][callback][commit]") {
+    SlotInfo start = untracked_slot();
+    start.material = "TPU-85A";
+    REQUIRE(backend->sync_external_identity(0, start).success());
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    bool fired = false;
+    AmsEditOverlay::EditResult captured;
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, start, nullptr,
+                                  [&](const AmsEditOverlay::EditResult& r) {
+                                      fired = true;
+                                      captured = r;
+                                      commit_like_consumer(r);
+                                  }));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    REQUIRE(access.pick_dropdown("dropdown_material", "HIPS"));
+    process_lvgl(5);
+    SECTION("Brand left as it opened") {}
+    SECTION("Brand re-picked as Generic") {
+        REQUIRE(access.pick_dropdown("dropdown_brand", "Generic"));
+        process_lvgl(5);
+    }
+    CHECK(access.dropdown_selected("dropdown_brand") == "Generic");
+
+    // A colour change rides the same save, so Save is open whatever the
+    // dropdowns staged.
+    access.call_open_color_view();
+    access.call_apply_color(0x1E88E5);
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    // Header Save, through its XML-registered callback.
+    lv_obj_t* save = access.widget("action_button");
+    REQUIRE(save != nullptr);
+    REQUIRE(access.save_disabled() == 0);
+    lv_obj_send_event(save, LV_EVENT_CLICKED, nullptr);
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    REQUIRE(fired);
+    CHECK(captured.saved);
+    CHECK(captured.slot_info.material == "HIPS");
+    CHECK(captured.slot_info.brand == "Generic");
+    CHECK(backend->get_slot_info(0).material == "HIPS");
+    CHECK(backend->get_slot_info(0).brand == "Generic");
+    CHECK(backend->get_slot_info(0).color_rgb == 0x1E88E5);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "a variant the catalog lacks shows as the selected entry",
