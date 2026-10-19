@@ -933,8 +933,9 @@ else ifneq ($(CROSS_COMPILE)$(filter x86 x86-fbdev x86-both,$(PLATFORM_TARGET)),
     endif
     # Add target-specific linker flags (e.g., -lstdc++fs for GCC 8)
     LDFLAGS += $(TARGET_LDFLAGS)
-    # DRM backend requires libdrm for display; libinput for LVGL input drivers
-    ifeq ($(DISPLAY_BACKEND),drm)
+    # DRM backend requires libdrm for display; libinput for LVGL input drivers.
+    # A DLOPEN_GPU_LIBS build loads all of them at runtime instead (mk/implib.mk).
+    ifeq ($(DISPLAY_BACKEND)-$(DLOPEN_GPU_LIBS),drm-)
         LDFLAGS += -ldrm
         ifneq ($(SNAPMAKER_SKIP_LIBINPUT),yes)
             LDFLAGS += -linput
@@ -996,7 +997,7 @@ else
     LDFLAGS := $(LDFLAGS_COMMON) $(WPA_CLIENT_LIB) $(SYSTEMD_LIBS) -lusb-1.0 $(LINUX_SSL_LIBS) -ldl -lstdc++fs
     CXXFLAGS += -isystem /usr/include/libusb-1.0 -DHELIX_HAS_LIBUSB=1
     # The 3D G-code renderer gets GLES2 from the context SDL creates
-    # (gles2_sdl_loader.h), so no -lGLESv2: a desktop without it still starts.
+    # (gles2_loader.h), so no -lGLESv2: a desktop without it still starts.
     PLATFORM := Linux
     WPA_DEPS := $(WPA_CLIENT_LIB)
 endif
@@ -1480,6 +1481,7 @@ include mk/tests.mk
 include mk/images.mk
 include mk/format.mk
 include mk/tools.mk
+include mk/implib.mk
 include mk/display-lib.mk
 include mk/bluetooth.mk
 include mk/splash.mk

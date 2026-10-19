@@ -6,21 +6,28 @@
 namespace helix {
 namespace probe {
 
+/// Exit status of `--probe-egl`, which scripts/helix-launcher.sh reads.
+/// EGL came up on real GPU hardware: take the EGL rung.
+inline constexpr int kProbeEgl = 0;
+/// No EGL here, but the binary carries the display rungs: run DRM dumb buffers,
+/// which fall back to fbdev in-process when DRM is unusable.
+inline constexpr int kProbeDeclined = 1;
+/// A build with no display rungs to choose between: leave the backend to the
+/// app's own auto-detection.
+inline constexpr int kProbeNoRungs = 2;
+
 /// Bring EGL up on this board's scanout node, report what answered, and tear it
 /// down again. Implements the `--probe-egl` one-shot.
 ///
 /// This is the gate the launcher uses to decide whether helix-screen presents
-/// through EGL or steps down to DRM dumb buffers. It is a separate
-/// process from the UI on purpose: a GPU bring-up that aborts inside the driver
-/// takes down only the probe, and the launcher reads that as a refusal.
+/// through EGL or steps down to DRM dumb buffers. It is a separate process from
+/// the UI on purpose: a GPU bring-up that aborts inside the driver takes down
+/// only the probe, and the launcher reads that as a refusal. A missing GPU
+/// library is a refusal too, answered before touching the GPU.
 ///
 /// Runs before logging, config, the instance lock and any chdir, so it answers
 /// on a board that already has HelixScreen running and needs no config dir.
 /// Output is one line on stdout; the exit status is the verdict.
-///
-/// @return 0 when EGL comes up on real GPU hardware, non-zero otherwise —
-///         including a build with no EGL presentation path linked in, so a launcher probing a
-///         binary that cannot answer gets a refusal rather than a booted UI.
 int run_probe_egl();
 
 } // namespace probe

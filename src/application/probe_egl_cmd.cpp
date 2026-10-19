@@ -19,10 +19,11 @@
 
 #include "display_backend.h"
 #include "gcode_gl_fallback.h"
+#include "gles2_loader.h"
+#include "gpu_libs.h"
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
-#include <GLES2/gl2.h>
 #include <algorithm>
 #include <cstring>
 #include <dirent.h>
@@ -159,7 +160,10 @@ NodeVerdict probe_node(int fd) {
     }
 
     if (verdict.failure.empty()) {
-        const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+        const char* renderer =
+            helix::gles2::load(helix::gpu_libs::gles2_proc)
+                ? reinterpret_cast<const char*>(helix::gles2::glGetString(GL_RENDERER))
+                : nullptr;
         if (renderer == nullptr || renderer[0] == '\0') {
             verdict.failure = "context came up but GL_RENDERER is empty";
         } else {
@@ -214,17 +218,29 @@ std::vector<std::string> candidate_nodes() {
 } // namespace
 
 int run_probe_egl() {
+#ifndef HELIX_DLOPEN_GPU_LIBS
+    printf("built without display rungs\n");
+    return kProbeNoRungs;
+#endif
     // GLES for the 3D viewer alone compiles this probe in, but only a binary
     // linked with the EGL presentation path can act on a yes.
     if (helix::make_drm_egl_backend == nullptr) {
         printf("built without EGL presentation\n");
-        return 1;
+        return kProbeDeclined;
+    }
+
+    using helix::gpu_libs::Lib;
+    for (Lib lib : {Lib::Drm, Lib::Gbm, Lib::Egl, Lib::Gles2}) {
+        if (!helix::gpu_libs::available(lib)) {
+            printf("%s is not installed\n", helix::gpu_libs::soname(lib));
+            return kProbeDeclined;
+        }
     }
 
     const std::vector<std::string> nodes = candidate_nodes();
     if (nodes.empty()) {
         printf("no DRM card nodes to probe\n");
-        return 1;
+        return kProbeDeclined;
     }
 
     std::string last_reason;
@@ -261,7 +277,7 @@ int run_probe_egl() {
     }
 
     printf("no GPU presentation available - %s\n", last_reason.c_str());
-    return 1;
+    return kProbeDeclined;
 }
 
 } // namespace probe
@@ -273,8 +289,8 @@ namespace helix {
 namespace probe {
 
 int run_probe_egl() {
-    printf("built without EGL support\n");
-    return 1;
+    printf("built without display rungs\n");
+    return kProbeNoRungs;
 }
 
 } // namespace probe

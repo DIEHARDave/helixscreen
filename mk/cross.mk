@@ -713,7 +713,7 @@ else ifeq ($(PLATFORM_TARGET),x86-desktop)
     # Built in the same Bullseye container as x86. SDL2 comes from lib/sdl2 and
     # links statically; it dlopens the system's X11/Wayland/PulseAudio/ALSA
     # libraries at runtime, so the binary needs no SDL package installed. The
-    # 3D G-code renderer resolves GLES2 the same way (gles2_sdl_loader.h): with
+    # 3D G-code renderer resolves GLES2 the same way (gles2_loader.h): with
     # no GLES on the machine it fails init and the viewer draws in 2D.
     CROSS_COMPILE :=
     TARGET_ARCH := x86_64
@@ -806,6 +806,14 @@ endif
 ifneq ($(filter pi pi-fbdev pi-both pi32 pi32-fbdev pi32-both x86 x86-fbdev x86-both x86-desktop,$(PLATFORM_TARGET)),)
     TARGET_CFLAGS += -ffunction-sections -fdata-sections
     TARGET_LDFLAGS += -Wl,--gc-sections
+endif
+
+# The Pi and x86 DRM builds load libdrm, libinput, libEGL, libGLESv2 and libgbm
+# at runtime instead of linking them (mk/implib.mk), so the one binary starts on
+# a system without them and falls back to fbdev. include/gpu_libs.h is the
+# runtime gate every call into them goes through.
+ifneq ($(filter pi pi-both pi32 pi32-both x86 x86-both,$(PLATFORM_TARGET)),)
+    DLOPEN_GPU_LIBS := yes
 endif
 
 # =============================================================================
@@ -1023,6 +1031,10 @@ ifeq ($(DISPLAY_BACKEND),drm)
     CXXFLAGS += -DHELIX_DISPLAY_DRM -DHELIX_DISPLAY_FBDEV
     SUBMODULE_CFLAGS += -DHELIX_DISPLAY_DRM -DHELIX_DISPLAY_FBDEV
     SUBMODULE_CXXFLAGS += -DHELIX_DISPLAY_DRM -DHELIX_DISPLAY_FBDEV
+    ifeq ($(DLOPEN_GPU_LIBS),yes)
+        CFLAGS += -DHELIX_DLOPEN_GPU_LIBS
+        CXXFLAGS += -DHELIX_DLOPEN_GPU_LIBS
+    endif
     # GPU-accelerated rendering via EGL/OpenGL ES (Pi targets)
     ifeq ($(ENABLE_OPENGLES),yes)
         CFLAGS += -DHELIX_ENABLE_OPENGLES
@@ -3026,10 +3038,6 @@ REL_LABEL.snapmaker-u1 := Snapmaker U1
 REL_LABEL.x86 := x86
 REL_LABEL.x86-desktop := x86 Linux desktop
 
-# Platforms that also ship a framebuffer-only build/<plat>-fbdev binary, which
-# becomes bin/helix-screen-fbdev.
-REL_FBDEV := pi pi32 x86
-
 # config/settings.json seeded from assets/config/presets/<name>.json. Platforms
 # without an entry ship the template only and the installer writes the first-run
 # settings. The AD5M preset has wizard_completed false, so first boot runs
@@ -3080,13 +3088,11 @@ endef
 define release-package
 	@echo "$(CYAN)$(BOLD)Packaging $(REL_LABEL.$(1)) release v$(VERSION)...$(RESET)"
 	$(call release-assert-features,build/$(1)/bin)
-	$(if $(filter $(1),$(REL_FBDEV)),$(call release-assert-features,build/$(1)-fbdev/bin))
 	@mkdir -p $(RELEASE_DIR)/helixscreen/bin
 	@cp build/$(1)/bin/helix-screen $(RELEASE_DIR)/helixscreen/bin/
 	@if [ -f build/$(1)/bin/helix-splash ]; then cp build/$(1)/bin/helix-splash $(RELEASE_DIR)/helixscreen/bin/; fi
 	@if [ -f build/$(1)/bin/helix-watchdog ]; then cp build/$(1)/bin/helix-watchdog $(RELEASE_DIR)/helixscreen/bin/; fi
 	@if [ -f build/$(1)/bin/libhelix-bluetooth.so ]; then cp build/$(1)/bin/libhelix-bluetooth.so $(RELEASE_DIR)/helixscreen/bin/; fi
-	$(if $(filter $(1),$(REL_FBDEV)),@if [ -f build/$(1)-fbdev/bin/helix-screen ]; then cp build/$(1)-fbdev/bin/helix-screen $(RELEASE_DIR)/helixscreen/bin/helix-screen-fbdev; fi)
 	$(release-bin-extra-$(1))
 	@cp scripts/helix-launcher.sh $(RELEASE_DIR)/helixscreen/bin/
 	$(call release-copy-xml-config,$(RELEASE_DIR)/helixscreen)
@@ -3141,11 +3147,11 @@ define release-package
 endef
 
 # Package Pi release
-release-pi: $(INSTALLER_BUNDLES) | build/pi/bin/helix-screen build/pi/bin/helix-splash build/pi-fbdev/bin/helix-screen
+release-pi: $(INSTALLER_BUNDLES) | build/pi/bin/helix-screen build/pi/bin/helix-splash
 	$(call release-package,pi)
 
 # Package Pi 32-bit release (same structure as 64-bit Pi)
-release-pi32: $(INSTALLER_BUNDLES) | build/pi32/bin/helix-screen build/pi32/bin/helix-splash build/pi32-fbdev/bin/helix-screen
+release-pi32: $(INSTALLER_BUNDLES) | build/pi32/bin/helix-screen build/pi32/bin/helix-splash
 	$(call release-package,pi32)
 
 # Package AD5M release
@@ -3182,7 +3188,7 @@ release-snapmaker-u1: $(INSTALLER_BUNDLES) | build/snapmaker-u1/bin/helix-screen
 	$(call release-package,snapmaker-u1)
 
 # Package x86_64 Debian release (same structure as Pi)
-release-x86: $(INSTALLER_BUNDLES) | build/x86/bin/helix-screen build/x86/bin/helix-splash build/x86-fbdev/bin/helix-screen
+release-x86: $(INSTALLER_BUNDLES) | build/x86/bin/helix-screen build/x86/bin/helix-splash
 	$(call release-package,x86)
 
 # Package the x86_64 Linux desktop release: one SDL binary that opens a window,

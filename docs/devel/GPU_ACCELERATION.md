@@ -112,14 +112,22 @@ plane masks and renderer strings, then an A/B of `ENABLE_OPENGLES=no|yes`.
 
 ## How a board gets the EGL rung
 
-Three rungs in two binaries, chosen by `scripts/helix-launcher.sh` at boot
-(`select_binary` picks the binary, `app_display_backend` the rung):
+Three rungs in one binary, chosen by `scripts/helix-launcher.sh#app_display_backend`
+at boot:
 
 ```
-helix-screen         HELIX_DISPLAY_BACKEND=egl   GPU presentation, only if --probe-egl exits 0
-helix-screen         HELIX_DISPLAY_BACKEND=drm   DRM dumb buffers, the default
-helix-screen-fbdev   HELIX_DISPLAY_BACKEND=fbdev /dev/fb0, when the DRM binary's libs are missing
+HELIX_DISPLAY_BACKEND=egl     GPU presentation, only if --probe-egl exits 0
+HELIX_DISPLAY_BACKEND=drm     DRM dumb buffers, when the probe declines
+HELIX_DISPLAY_BACKEND=fbdev   /dev/fb0, after a crash on drm; the app also falls
+                              back here itself when DRM or its libraries are missing
 ```
+
+`helix-screen` links none of libdrm, libinput, libEGL, libGLESv2 or libgbm.
+`mk/implib.mk` generates lazy-loading trampolines for the first four (Implib.so,
+vendored in `tools/implib`), GLES2 resolves through `include/gles2_loader.h`,
+and every path into them asks `include/gpu_libs.h` whether the library loads
+first, because a trampoline whose library is missing aborts the process. So the
+binary starts on a system without a GPU userspace and takes the fbdev rung.
 
 Which of LVGL's two DRM drivers a translation unit carries is a compile-time
 choice, so `mk/egl-link.mk` compiles the units that read the EGL config macros

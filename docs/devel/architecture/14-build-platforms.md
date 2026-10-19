@@ -191,7 +191,7 @@ rasterization is CPU work everywhere, including the Pi. GLES on Pi and x86 belon
 G-code viewer ([`src/rendering/gcode_gles_renderer.cpp`](../../../src/rendering/gcode_gles_renderer.cpp)),
 which owns a private GL context (EGL on DRM builds, SDL's on SDL builds) and no part of the LVGL
 pipeline. SDL builds resolve its GLES2 entry points at runtime
-([`include/gles2_sdl_loader.h`](../../../include/gles2_sdl_loader.h)) rather than linking `libGLESv2`,
+([`include/gles2_loader.h`](../../../include/gles2_loader.h)) rather than linking `libGLESv2`,
 so a desktop without GLES still starts and the viewer draws in 2D. The EGL display backend accelerates
 only *presentation*; drawing follows the draw unit, not the backend. [`../GPU_ACCELERATION.md`](../GPU_ACCELERATION.md) has the measured
 numbers per board.
@@ -253,10 +253,10 @@ whatever its mask advertises: the plane is programmed at the panel's own width a
 out unrotated ([`src/api/drm_rotation_strategy.cpp#choose_drm_rotation_strategy`](../../../src/api/drm_rotation_strategy.cpp)).
 A board whose plane cannot carry the angle falls to the fbdev backend.
 
-**A panel needing 90 or 270 belongs on the EGL path where the board has a GPU, else on the fbdev binary.** Pi targets ship
-`helix-screen` (EGL and DRM dumb buffers) and `helix-screen-fbdev` ([`mk/pi-dual-link.mk`](../../../mk/pi-dual-link.mk)),
-with [`scripts/helix-launcher.sh`](../../../scripts/helix-launcher.sh)
-choosing the rung (EGL only when `--probe-egl` finds a real GPU) and stepping down one rung on a crash. Forcing the fbdev binary is
+**A panel needing 90 or 270 belongs on the EGL path where the board has a GPU, else on fbdev.** Pi and x86 targets ship
+one `helix-screen` carrying all three rungs (EGL, DRM dumb buffers, fbdev), with no load-time dependency on the GPU
+libraries ([`mk/implib.mk`](../../../mk/implib.mk)), and [`scripts/helix-launcher.sh`](../../../scripts/helix-launcher.sh)
+choosing the rung (EGL only when `--probe-egl` finds a real GPU) and stepping down one rung on a crash. Forcing fbdev is
 `HELIX_DISPLAY_BACKEND=fbdev`.
 
 ### Patches: forked fixes, stamp-applied

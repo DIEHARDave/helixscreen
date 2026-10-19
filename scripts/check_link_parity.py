@@ -57,6 +57,8 @@ VARIANTS = {
             "LVGL_DRM_DRIVER_OBJS": "LVGL DRM and libinput drivers",
             # The fbdev binary links no GPU libraries (mk/egl-link.mk).
             "EGL_PATH_OBJS": "EGL presentation path",
+            # Runtime loaders for libraries the fbdev binary never calls.
+            "IMPLIB_OBJS": "display and GPU library trampolines",
         },
     ),
 }

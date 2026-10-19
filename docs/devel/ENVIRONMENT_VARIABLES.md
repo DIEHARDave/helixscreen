@@ -145,7 +145,7 @@ Override the automatic display backend detection.
 |----------|-------|
 | **Values** | `sdl`, `drm`, `fbdev`, `egl` |
 | **Default** | `fbdev` (CPU rendering, maximum compatibility) |
-| **File** | `src/api/display_backend.cpp`, `scripts/helix-launcher.sh#select_binary` |
+| **File** | `src/api/display_backend.cpp`, `scripts/helix-launcher.sh#app_display_backend` |
 
 **Backend comparison:**
 
@@ -160,7 +160,9 @@ The `drm` backend uses DRM (Direct Rendering Manager) dumb buffers with a vsynce
 
 `egl` is the DRM backend presenting through LVGL's EGL driver instead of dumb buffers. The Pi builds link both drivers into `helix-screen`, and the app picks one from this variable; a binary without the EGL path (x86, every single-binary platform) logs that and auto-detects. Setting `HELIX_DISPLAY_BACKEND=egl` tells `scripts/helix-launcher.sh` to take the EGL rung without probing first.
 
-Left unset on an install that carries `helix-screen-fbdev`, the launcher runs `helix-screen --probe-egl` and exports `egl` only when that exits 0, which requires a hardware renderer — a context that resolves to llvmpipe is refused, since it would spend CPU to save CPU. A board whose probe declines steps down to `drm`, never straight to `fbdev`. See `docs/devel/GPU_ACCELERATION.md` for what the rung is worth per board.
+Left unset on a board with a `/dev/dri/card*`, the launcher runs `helix-screen --probe-egl` and exports `egl` only when that exits 0, which requires a hardware renderer — a context that resolves to llvmpipe is refused, since it would spend CPU to save CPU. A board whose probe declines steps down to `drm`, never straight to `fbdev`; a crash steps down one rung the same way (`egl` to `drm`, `drm` to `fbdev`). A build with no rungs answers the probe with 2 and auto-detects. See `docs/devel/GPU_ACCELERATION.md` for what the rung is worth per board.
+
+The Pi and x86 builds are one binary with no load-time dependency on libdrm, libinput, libEGL, libGLESv2 or libgbm: they load at runtime (`mk/implib.mk`, `include/gpu_libs.h`). On a system missing any of them, `drm` and `egl` report unavailable and the app falls back to `fbdev` in-process. `HELIX_DRI_DIR` replaces `/dev/dri` for the launcher's card check, for tests.
 
 ```bash
 # Force SDL backend (useful for debugging on embedded systems)

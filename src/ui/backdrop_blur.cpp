@@ -21,12 +21,14 @@
 #else
 // DRM+EGL embedded: GPU blur path
 #define BACKDROP_BLUR_GPU 1
+#include "gles2_loader.h"
+#include "gpu_libs.h"
+
 #include <EGL/egl.h>
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
 #include <fcntl.h>
 #include <gbm.h>
 #include <unistd.h>
+using namespace helix::gles2;
 #endif
 #endif
 
@@ -584,6 +586,16 @@ static void destroy_gpu_blur() {
 static bool gpu_blur(uint8_t* data, int width, int height) {
     if (s_gpu.init_failed)
         return false;
+
+    // Nothing below may run without the GPU stack: every EGL, GBM and GL call
+    // is a trampoline into a library this system may not have.
+    using helix::gpu_libs::Lib;
+    if (!s_gpu.initialized &&
+        (!helix::gpu_libs::available_all({Lib::Egl, Lib::Gles2, Lib::Gbm, Lib::Drm}) ||
+         !helix::gles2::load(helix::gpu_libs::gles2_proc))) {
+        s_gpu.init_failed = true;
+        return false;
+    }
 
     // Save before init: init_gpu_blur() binds and then releases its own context, which
     // unbinds the caller's (LVGL's display context on the EGL backend). Losing it fails

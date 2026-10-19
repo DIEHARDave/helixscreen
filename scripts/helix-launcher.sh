@@ -852,19 +852,12 @@ for arg in "$@"; do
     esac
 done
 
-# True when every shared library a binary needs resolves on this system.
-# A GPU-linked binary on a board whose userspace has no Mesa presents exactly
-# this way, and it is cheaper to detect than a failed exec.
-libs_resolve() {
-    command -v ldd >/dev/null 2>&1 || return 0
-    ! ldd "$1" 2>/dev/null | grep -q "not found"
-}
-
-# Ask a binary whether EGL comes up on a real GPU here. Exit 0 means yes.
+# Ask a binary whether EGL comes up on a real GPU here. Exit 0 means yes, 2
+# that the binary has no display rungs to choose between, anything else no.
 # Run as a separate process so a GPU bring-up that aborts cannot take the UI
 # down with it, and under a deadline so a wedged driver cannot hold up boot.
-# A binary that carries no EGL presentation path refuses at once, before
-# touching the GPU.
+# A binary that carries no EGL presentation path, or a system missing a GPU
+# library, refuses at once, before touching the GPU.
 probe_egl() {
     if command -v timeout >/dev/null 2>&1; then
         _pe_out=$(timeout 10 "$1" --probe-egl 2>&1)
@@ -878,80 +871,49 @@ probe_egl() {
     return $_pe_rc
 }
 
-# Select the display binary: helix-screen (EGL or DRM dumb buffers, chosen by
-# app_display_backend below) or helix-screen-fbdev, which links no GPU or DRM
-# libraries. Checks: env override → shared lib resolution → default to primary.
-select_binary() {
-    _sb_bin_dir=$1
-    _sb_primary="${_sb_bin_dir}/helix-screen"
-    _sb_fallback="${_sb_bin_dir}/helix-screen-fbdev"
-
-    # A forced backend short-circuits every check below. Naming fbdev on an
-    # install that does not carry the fbdev binary falls through to normal
-    # selection.
-    case "${HELIX_DISPLAY_BACKEND:-}" in
-        fbdev)
-            if [ -x "$_sb_fallback" ]; then
-                echo "$_sb_fallback"
-                return
-            fi
-            ;;
-        egl | drm)
-            echo "$_sb_primary"
-            return
-            ;;
-    esac
-
-    # No fallback available (non-Pi, dev builds)
-    if [ ! -x "$_sb_fallback" ]; then
-        echo "$_sb_primary"
-        return
-    fi
-
-    if ! libs_resolve "$_sb_primary"; then
-        echo "$_sb_fallback"
-        return
-    fi
-
-    echo "$_sb_primary"
+# True when the kernel exposes a DRM card, the only case with a rung above
+# fbdev to choose. HELIX_DRI_DIR stands in for /dev/dri in tests.
+has_dri_card() {
+    for _hd_card in "${HELIX_DRI_DIR:-/dev/dri}"/card*; do
+        if [ -e "$_hd_card" ]; then
+            return 0
+        fi
+    done
+    return 1
 }
 
-# The display backend to hand the app for the binary select_binary() chose;
-# prints nothing when the app should auto-detect. `egl` is the DRM backend
-# presenting through EGL/OpenGL ES, `drm` the same backend presenting through
-# dumb buffers. Only dual-binary installs (Pi and x86, with DRM+fbdev) get one
-# set explicitly; single-binary platforms (AD5M, K1, etc.) auto-detect.
+# The display backend to hand helix-screen; prints nothing when the app should
+# auto-detect. Three rungs: `egl` presents through EGL/OpenGL ES, `drm` through
+# DRM dumb buffers, `fbdev` into /dev/fb0. The app falls back to fbdev itself
+# when DRM or its libraries are missing, so only the top two are probed for.
 #
 # The EGL rung is taken only when the probe reports a hardware renderer.
 # Succeeding into a software rasterizer such as llvmpipe is worse than failing,
-# because it spends CPU to save CPU.
+# because it spends CPU to save CPU. A binary built without rungs (AD5M, K1,
+# U1 and the other single-backend platforms) answers 2 and auto-detects.
 app_display_backend() {
-    _ab_bin=$1
-    _ab_fallback=$2
     if [ -n "${HELIX_DISPLAY_BACKEND:-}" ]; then
         echo "$HELIX_DISPLAY_BACKEND"
         return
     fi
-    case "$(basename "$_ab_bin")" in
-        helix-screen-fbdev)
-            echo fbdev
+    has_dri_card || return 0
+    # Written so a refusal is a value, not a failure `set -e` would act on.
+    _ab_rc=0
+    probe_egl "$1" || _ab_rc=$?
+    case $_ab_rc in
+        0)
+            echo egl
             ;;
+        2) ;;
         *)
-            if [ -x "$_ab_fallback" ]; then
-                if probe_egl "$_ab_bin"; then
-                    echo egl
-                else
-                    log "EGL unavailable here — using DRM dumb buffers"
-                    echo drm
-                fi
-            fi
+            log "EGL unavailable here — using DRM dumb buffers"
+            echo drm
             ;;
     esac
 }
 
 SPLASH_BIN="${BIN_DIR}/helix-splash"
 WATCHDOG_BIN="${BIN_DIR}/helix-watchdog"
-FALLBACK_BIN="${BIN_DIR}/helix-screen-fbdev"
 
 # Point OpenSSL (the app's own, libhv's default context, child processes) at a CA
 # bundle. The shipped bundle comes first, matching find_ca_store() in
@@ -1067,10 +1029,10 @@ if [ -z "${MALLOC_ARENA_MAX:-}" ] && [ -r "$HELIX_MEMINFO_FILE" ]; then
     unset _mem_total_kb
 fi
 
-# Select binary AFTER env file is sourced so HELIX_DISPLAY_BACKEND=fbdev in env file works
-MAIN_BIN=$(select_binary "${BIN_DIR}")
+MAIN_BIN="${BIN_DIR}/helix-screen"
 
-_app_backend=$(app_display_backend "${MAIN_BIN}" "${FALLBACK_BIN}")
+# Decided AFTER the env file is sourced, so HELIX_DISPLAY_BACKEND there wins
+_app_backend=$(app_display_backend "${MAIN_BIN}")
 if [ -n "$_app_backend" ]; then
     export HELIX_DISPLAY_BACKEND="$_app_backend"
 else
@@ -1376,31 +1338,25 @@ while :; do
     # Runtime crash fallback: step down exactly one rung and retry. A GPU
     # failure must not demote the board past DRM dumb buffers to fbdev — that
     # would hide a working middle rung behind a broken top one.
-    RETRY_BIN=""
     RETRY_BACKEND=""
-    if [ "$(basename "${MAIN_BIN}")" = helix-screen ]; then
-        if [ "${HELIX_DISPLAY_BACKEND:-}" = egl ]; then
-            RETRY_BIN="${MAIN_BIN}"
-            RETRY_BACKEND=drm
-        elif [ -x "${FALLBACK_BIN}" ]; then
-            RETRY_BIN="${FALLBACK_BIN}"
-            RETRY_BACKEND=fbdev
-        fi
-    fi
-    if _is_crash_exit ${EXIT_CODE} && [ -n "${RETRY_BIN}" ]; then
-        log "$(basename "${MAIN_BIN}") exited with code ${EXIT_CODE}, retrying with $(basename "${RETRY_BIN}")..."
+    case "${HELIX_DISPLAY_BACKEND:-}" in
+        egl) RETRY_BACKEND=drm ;;
+        drm) RETRY_BACKEND=fbdev ;;
+    esac
+    if _is_crash_exit ${EXIT_CODE} && [ -n "${RETRY_BACKEND}" ]; then
+        log "helix-screen (${HELIX_DISPLAY_BACKEND}) exited with code ${EXIT_CODE}, retrying with ${RETRY_BACKEND}..."
         export HELIX_DISPLAY_BACKEND="${RETRY_BACKEND}"
         if [ "${USE_WATCHDOG}" = "1" ]; then
             # shellcheck disable=SC2086
             "${WATCHDOG_BIN}" ${SPLASH_ARGS} -- \
-                "${RETRY_BIN}" ${EXTRA_FLAGS} ${PASSTHROUGH_ARGS}
+                "${MAIN_BIN}" ${EXTRA_FLAGS} ${PASSTHROUGH_ARGS}
             EXIT_CODE=$?
         else
             # shellcheck disable=SC2086
-            "${RETRY_BIN}" ${EXTRA_FLAGS} ${PASSTHROUGH_ARGS}
+            "${MAIN_BIN}" ${EXTRA_FLAGS} ${PASSTHROUGH_ARGS}
             EXIT_CODE=$?
         fi
-        log "$(basename "${RETRY_BIN}") fallback exited with code ${EXIT_CODE}"
+        log "helix-screen (${RETRY_BACKEND}) fallback exited with code ${EXIT_CODE}"
     fi
 
     _run_end=$(date +%s 2>/dev/null || echo 0)

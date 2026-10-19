@@ -1,6 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Tests for helix-launcher.sh binary selection logic
+# Tests for helix-launcher.sh display rung selection
 
 set -e
 
@@ -64,194 +64,8 @@ extract_launcher_functions() {
     done
 }
 
-# Create a self-contained test script that includes select_binary
-create_test_harness() {
-    local bindir="$1"
-    local harness="$bindir/_test_harness.sh"
-    cat > "$harness" << 'HARNESS_EOF'
-#!/bin/sh
-# Extract select_binary from launcher
-HARNESS_EOF
-    extract_launcher_functions log libs_resolve select_binary >> "$harness"
-    echo 'select_binary "$1"' >> "$harness"
-    chmod +x "$harness"
-    echo "$harness"
-}
-
-# Test: no fallback binary → selects primary
-test_no_fallback_selects_primary() {
-    print_test "No fallback binary → selects primary"
-    local bindir
-    bindir=$(setup_mock_bindir)
-
-    # Create only primary binary
-    echo '#!/bin/sh' > "$bindir/helix-screen"
-    chmod +x "$bindir/helix-screen"
-
-    local harness
-    harness=$(create_test_harness "$bindir")
-
-    local result
-    result=$(sh "$harness" "$bindir")
-
-    assert "[ '$result' = '$bindir/helix-screen' ]" \
-        "Selected primary when no fallback exists"
-
-    cleanup_mock_bindir "$bindir"
-}
-
-# Test: primary has missing libs → selects fbdev
-test_missing_libs_selects_fbdev() {
-    print_test "Primary has missing libs → selects fbdev"
-    local bindir
-    bindir=$(setup_mock_bindir)
-
-    # Create both binaries
-    echo '#!/bin/sh' > "$bindir/helix-screen"
-    echo '#!/bin/sh' > "$bindir/helix-screen-fbdev"
-    chmod +x "$bindir/helix-screen" "$bindir/helix-screen-fbdev"
-
-    # Create a fake ldd that reports missing libs for primary
-    local fake_ldd="$bindir/ldd"
-    cat > "$fake_ldd" << 'EOF'
-#!/bin/sh
-case "$1" in
-    *helix-screen-fbdev)
-        echo "	linux-vdso.so.1 => (0x00007ffd)"
-        echo "	libc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x00007f)"
-        ;;
-    *helix-screen)
-        echo "	linux-vdso.so.1 => (0x00007ffd)"
-        echo "	libEGL.so.1 => not found"
-        echo "	libGLESv2.so.2 => not found"
-        echo "	libc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x00007f)"
-        ;;
-esac
-EOF
-    chmod +x "$fake_ldd"
-
-    local harness
-    harness=$(create_test_harness "$bindir")
-    local result
-    result=$(PATH="$bindir:$PATH" sh "$harness" "$bindir")
-
-    assert "[ '$result' = '$bindir/helix-screen-fbdev' ]" \
-        "Selected fbdev when primary has missing GL libs"
-
-    cleanup_mock_bindir "$bindir"
-}
-
-# Test: primary libs all satisfied → selects primary (DRM)
-test_libs_satisfied_selects_primary() {
-    print_test "Primary libs all satisfied → selects primary"
-    local bindir
-    bindir=$(setup_mock_bindir)
-
-    echo '#!/bin/sh' > "$bindir/helix-screen"
-    echo '#!/bin/sh' > "$bindir/helix-screen-fbdev"
-    chmod +x "$bindir/helix-screen" "$bindir/helix-screen-fbdev"
-
-    # Create a fake ldd that reports all libs found
-    local fake_ldd="$bindir/ldd"
-    cat > "$fake_ldd" << 'EOF'
-#!/bin/sh
-echo "	linux-vdso.so.1 => (0x00007ffd)"
-echo "	libEGL.so.1 => /usr/lib/aarch64-linux-gnu/libEGL.so.1 (0x00007f)"
-echo "	libGLESv2.so.2 => /usr/lib/aarch64-linux-gnu/libGLESv2.so.2 (0x00007f)"
-echo "	libc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x00007f)"
-EOF
-    chmod +x "$fake_ldd"
-
-    local harness
-    harness=$(create_test_harness "$bindir")
-    local result
-    result=$(PATH="$bindir:$PATH" sh "$harness" "$bindir")
-
-    assert "[ '$result' = '$bindir/helix-screen' ]" \
-        "Selected primary when all libs satisfied"
-
-    cleanup_mock_bindir "$bindir"
-}
-
-# Test: HELIX_DISPLAY_BACKEND forced to fbdev → skips DRM
-test_env_forced_fbdev() {
-    print_test "HELIX_DISPLAY_BACKEND=fbdev → selects fbdev"
-    local bindir
-    bindir=$(setup_mock_bindir)
-
-    echo '#!/bin/sh' > "$bindir/helix-screen"
-    echo '#!/bin/sh' > "$bindir/helix-screen-fbdev"
-    chmod +x "$bindir/helix-screen" "$bindir/helix-screen-fbdev"
-
-    local harness
-    harness=$(create_test_harness "$bindir")
-    local result
-    result=$(HELIX_DISPLAY_BACKEND=fbdev sh "$harness" "$bindir")
-
-    assert "[ '$result' = '$bindir/helix-screen-fbdev' ]" \
-        "Selected fbdev when HELIX_DISPLAY_BACKEND=fbdev"
-
-    cleanup_mock_bindir "$bindir"
-}
-
-# Test: ldd not available → tries primary (best effort)
-test_no_ldd_selects_primary() {
-    print_test "ldd not available → selects primary (best effort)"
-    local bindir
-    bindir=$(setup_mock_bindir)
-
-    echo '#!/bin/sh' > "$bindir/helix-screen"
-    echo '#!/bin/sh' > "$bindir/helix-screen-fbdev"
-    chmod +x "$bindir/helix-screen" "$bindir/helix-screen-fbdev"
-
-    local harness
-    harness=$(create_test_harness "$bindir")
-    # Create a wrapper dir with symlinks to essentials but NOT ldd
-    local wrapper_dir="$bindir/_no_ldd"
-    mkdir -p "$wrapper_dir"
-    for cmd in sh grep command env; do
-        local cmd_path
-        cmd_path=$(command -v "$cmd" 2>/dev/null || true)
-        [ -n "$cmd_path" ] && ln -sf "$cmd_path" "$wrapper_dir/$cmd"
-    done
-    local result
-    result=$(PATH="$wrapper_dir" sh "$harness" "$bindir")
-
-    assert "[ '$result' = '$bindir/helix-screen' ]" \
-        "Selected primary when ldd not available"
-
-    cleanup_mock_bindir "$bindir"
-}
-
-# Test: both binaries present, no env override, ldd says both fine → primary
-test_both_fine_selects_primary() {
-    print_test "Both binaries fine → selects primary"
-    local bindir
-    bindir=$(setup_mock_bindir)
-
-    echo '#!/bin/sh' > "$bindir/helix-screen"
-    echo '#!/bin/sh' > "$bindir/helix-screen-fbdev"
-    chmod +x "$bindir/helix-screen" "$bindir/helix-screen-fbdev"
-
-    local fake_ldd="$bindir/ldd"
-    cat > "$fake_ldd" << 'EOF'
-#!/bin/sh
-echo "	libc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x00007f)"
-EOF
-    chmod +x "$fake_ldd"
-
-    local harness
-    harness=$(create_test_harness "$bindir")
-    local result
-    result=$(PATH="$bindir:$PATH" sh "$harness" "$bindir")
-
-    assert "[ '$result' = '$bindir/helix-screen' ]" \
-        "Selected primary when both binaries have satisfied deps"
-
-    cleanup_mock_bindir "$bindir"
-}
-
-# Build a mock helix-screen whose --probe-egl exits with the given code.
+# Build a mock helix-screen whose --probe-egl prints a verdict and exits with
+# the given code. Every probe leaves a mark, so a test can prove none ran.
 make_mock_primary() {
     local path="$1"
     local rc="$2"
@@ -259,6 +73,7 @@ make_mock_primary() {
     cat > "$path" << EOF
 #!/bin/sh
 if [ "\$1" = "--probe-egl" ]; then
+    echo probed >> "$path.probes"
     echo "$verdict"
     exit $rc
 fi
@@ -266,25 +81,15 @@ EOF
     chmod +x "$path"
 }
 
-# Test: a forced EGL rung runs the primary, which carries the EGL path
-test_env_forced_egl_selects_primary() {
-    print_test "HELIX_DISPLAY_BACKEND=egl → selects primary"
-    local bindir
-    bindir=$(setup_mock_bindir)
-
-    echo '#!/bin/sh' > "$bindir/helix-screen"
-    echo '#!/bin/sh' > "$bindir/helix-screen-fbdev"
-    chmod +x "$bindir/helix-screen" "$bindir/helix-screen-fbdev"
-
-    local harness
-    harness=$(create_test_harness "$bindir")
-    local result
-    result=$(HELIX_DISPLAY_BACKEND=egl sh "$harness" "$bindir" 2>/dev/null)
-
-    assert "[ '$result' = '$bindir/helix-screen' ]" \
-        "Selected the primary for the EGL rung"
-
-    cleanup_mock_bindir "$bindir"
+# A /dev/dri stand-in, with or without a card node.
+make_dri_dir() {
+    local bindir="$1"
+    local with_card="$2"
+    mkdir -p "$bindir/dri"
+    if [ "$with_card" = yes ]; then
+        : > "$bindir/dri/card0"
+    fi
+    echo "$bindir/dri"
 }
 
 # Create a harness that prints the backend the launcher hands the app
@@ -292,131 +97,100 @@ create_backend_harness() {
     local bindir="$1"
     local harness="$bindir/_backend_harness.sh"
     echo '#!/bin/sh' > "$harness"
-    extract_launcher_functions log probe_egl app_display_backend >> "$harness"
+    extract_launcher_functions log probe_egl has_dri_card app_display_backend >> "$harness"
     # shellcheck disable=SC2016 # the harness expands its own arguments
-    echo 'app_display_backend "$1" "$2"' >> "$harness"
+    echo 'app_display_backend "$1"' >> "$harness"
     chmod +x "$harness"
     echo "$harness"
 }
 
-# Test: probe reports a hardware renderer → the app is told egl
+# Run the harness against a mock whose probe exits RC, on a system with or
+# without a DRM card, with HELIX_DISPLAY_BACKEND as given (empty = unset).
+backend_for() {
+    local bindir="$1" rc="$2" card="$3" forced="$4"
+    make_mock_primary "$bindir/helix-screen" "$rc" "mock verdict"
+    local dri harness
+    dri=$(make_dri_dir "$bindir" "$card")
+    harness=$(create_backend_harness "$bindir")
+    if [ -n "$forced" ]; then
+        HELIX_DRI_DIR="$dri" HELIX_DISPLAY_BACKEND="$forced" \
+            sh "$harness" "$bindir/helix-screen" 2>/dev/null
+    else
+        HELIX_DRI_DIR="$dri" sh "$harness" "$bindir/helix-screen" 2>/dev/null
+    fi
+}
+
+probe_count() {
+    if [ -f "$1/helix-screen.probes" ]; then
+        wc -l < "$1/helix-screen.probes" | tr -d ' '
+    else
+        echo 0
+    fi
+}
+
 test_probe_ok_tells_app_egl() {
     print_test "EGL probe succeeds → app is told egl"
-    local bindir
+    local bindir result
     bindir=$(setup_mock_bindir)
-
-    make_mock_primary "$bindir/helix-screen" 0 "V3D 7.1.7"
-    echo '#!/bin/sh' > "$bindir/helix-screen-fbdev"
-    chmod +x "$bindir/helix-screen-fbdev"
-
-    local harness
-    harness=$(create_backend_harness "$bindir")
-    local result
-    result=$(sh "$harness" "$bindir/helix-screen" "$bindir/helix-screen-fbdev" 2>/dev/null)
-
+    result=$(backend_for "$bindir" 0 yes "")
     assert "[ '$result' = 'egl' ]" "EGL rung taken when the probe reports a hardware renderer"
-
     cleanup_mock_bindir "$bindir"
 }
 
-# Test: probe rejects a software renderer → drm, never fbdev.
 # Demoting two rungs on a GPU failure would hide a working middle rung.
-test_probe_fail_tells_app_drm_not_fbdev() {
-    print_test "EGL probe fails → app is told drm, not fbdev"
-    local bindir
+test_probe_declines_tells_app_drm_not_fbdev() {
+    print_test "EGL probe declines → app is told drm, not fbdev"
+    local bindir result
     bindir=$(setup_mock_bindir)
-
-    make_mock_primary "$bindir/helix-screen" 1 "software renderer (llvmpipe) - declining"
-    echo '#!/bin/sh' > "$bindir/helix-screen-fbdev"
-    chmod +x "$bindir/helix-screen-fbdev"
-
-    local harness
-    harness=$(create_backend_harness "$bindir")
-    local result
-    result=$(sh "$harness" "$bindir/helix-screen" "$bindir/helix-screen-fbdev" 2>/dev/null)
-
+    result=$(backend_for "$bindir" 1 yes "")
     assert "[ '$result' = 'drm' ]" "DRM dumb buffers when the probe declined"
-
     cleanup_mock_bindir "$bindir"
 }
 
-# Test: HELIX_DISPLAY_BACKEND=egl overrides a declining probe
+test_probe_no_rungs_leaves_auto() {
+    print_test "Binary without rungs → app auto-detects"
+    local bindir result
+    bindir=$(setup_mock_bindir)
+    result=$(backend_for "$bindir" 2 yes "")
+    assert "[ -z '$result' ]" "No backend passed on when the binary has no rungs"
+    cleanup_mock_bindir "$bindir"
+}
+
+test_no_dri_card_skips_probe() {
+    print_test "No DRM card → app auto-detects, no probe"
+    local bindir result
+    bindir=$(setup_mock_bindir)
+    result=$(backend_for "$bindir" 0 no "")
+    assert "[ -z '$result' ]" "No backend passed on without a DRM card"
+    assert "[ '$(probe_count "$bindir")' = 0 ]" "The probe never ran"
+    cleanup_mock_bindir "$bindir"
+}
+
 test_env_forced_egl_skips_probe() {
     print_test "HELIX_DISPLAY_BACKEND=egl → app is told egl without probing"
-    local bindir
+    local bindir result
     bindir=$(setup_mock_bindir)
-
-    make_mock_primary "$bindir/helix-screen" 1 "would decline"
-    echo '#!/bin/sh' > "$bindir/helix-screen-fbdev"
-    chmod +x "$bindir/helix-screen-fbdev"
-
-    local harness
-    harness=$(create_backend_harness "$bindir")
-    local result
-    result=$(HELIX_DISPLAY_BACKEND=egl sh "$harness" "$bindir/helix-screen" \
-        "$bindir/helix-screen-fbdev" 2>/dev/null)
-
+    result=$(backend_for "$bindir" 1 yes egl)
     assert "[ '$result' = 'egl' ]" "Forced EGL even though the probe would decline"
-
+    assert "[ '$(probe_count "$bindir")' = 0 ]" "The probe never ran"
     cleanup_mock_bindir "$bindir"
 }
 
-# Test: HELIX_DISPLAY_BACKEND=drm overrides a succeeding probe
 test_env_forced_drm_skips_probe() {
     print_test "HELIX_DISPLAY_BACKEND=drm → app is told drm without probing"
-    local bindir
+    local bindir result
     bindir=$(setup_mock_bindir)
-
-    make_mock_primary "$bindir/helix-screen" 0 "V3D 7.1.7"
-    echo '#!/bin/sh' > "$bindir/helix-screen-fbdev"
-    chmod +x "$bindir/helix-screen-fbdev"
-
-    local harness
-    harness=$(create_backend_harness "$bindir")
-    local result
-    result=$(HELIX_DISPLAY_BACKEND=drm sh "$harness" "$bindir/helix-screen" \
-        "$bindir/helix-screen-fbdev" 2>/dev/null)
-
+    result=$(backend_for "$bindir" 0 yes drm)
     assert "[ '$result' = 'drm' ]" "Forced drm outranks a probe that would succeed"
-
     cleanup_mock_bindir "$bindir"
 }
 
-# Test: the fbdev binary is told fbdev, and its probe is never consulted
-test_fbdev_binary_tells_app_fbdev() {
-    print_test "fbdev binary selected → app is told fbdev"
-    local bindir
+test_env_forced_fbdev() {
+    print_test "HELIX_DISPLAY_BACKEND=fbdev → app is told fbdev"
+    local bindir result
     bindir=$(setup_mock_bindir)
-
-    make_mock_primary "$bindir/helix-screen-fbdev" 0 "should never be consulted"
-
-    local harness
-    harness=$(create_backend_harness "$bindir")
-    local result
-    result=$(sh "$harness" "$bindir/helix-screen-fbdev" "$bindir/helix-screen-fbdev" 2>/dev/null)
-
-    assert "[ '$result' = 'fbdev' ]" "fbdev binary told fbdev"
-
-    cleanup_mock_bindir "$bindir"
-}
-
-# Test: a single-binary install auto-detects and is never probed
-test_single_binary_leaves_auto() {
-    print_test "No fbdev binary → app auto-detects, no probe"
-    local bindir
-    bindir=$(setup_mock_bindir)
-
-    # Exits 0 if it is ever probed, so reaching the probe would print egl
-    # and this test would fail: the dual-install gate is what keeps it out.
-    make_mock_primary "$bindir/helix-screen" 0 "should never be consulted"
-
-    local harness
-    harness=$(create_backend_harness "$bindir")
-    local result
-    result=$(sh "$harness" "$bindir/helix-screen" "$bindir/helix-screen-fbdev" 2>/dev/null)
-
-    assert "[ -z '$result' ]" "No backend passed on for a single-binary install"
-
+    result=$(backend_for "$bindir" 0 yes fbdev)
+    assert "[ '$result' = 'fbdev' ]" "Forced fbdev reaches the app"
     cleanup_mock_bindir "$bindir"
 }
 
@@ -426,19 +200,13 @@ main() {
     echo -e "${CYAN}Project:${RESET} $PROJECT_ROOT"
     echo ""
 
-    test_no_fallback_selects_primary
-    test_missing_libs_selects_fbdev
-    test_libs_satisfied_selects_primary
-    test_env_forced_fbdev
-    test_no_ldd_selects_primary
-    test_both_fine_selects_primary
-    test_env_forced_egl_selects_primary
     test_probe_ok_tells_app_egl
-    test_probe_fail_tells_app_drm_not_fbdev
+    test_probe_declines_tells_app_drm_not_fbdev
+    test_probe_no_rungs_leaves_auto
+    test_no_dri_card_skips_probe
     test_env_forced_egl_skips_probe
     test_env_forced_drm_skips_probe
-    test_fbdev_binary_tells_app_fbdev
-    test_single_binary_leaves_auto
+    test_env_forced_fbdev
 
     # Print summary
     echo ""

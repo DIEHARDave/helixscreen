@@ -1,9 +1,9 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#if defined(ENABLE_GLES_3D) && defined(HELIX_DISPLAY_SDL)
+#ifdef ENABLE_GLES_3D
 
-#include "gles2_sdl_loader.h"
+#include "gles2_loader.h"
 
 #include "gl_entry_points.h"
 

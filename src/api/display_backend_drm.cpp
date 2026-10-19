@@ -12,6 +12,7 @@
 #include "config.h"
 #include "drm_rotation_strategy.h"
 #include "env_knobs.h"
+#include "gpu_libs.h"
 #include "helix_display_telemetry.h"
 #include "input_device_scanner.h"
 #include "refresh_timing_env.h"
@@ -64,6 +65,17 @@ set ENABLE_OPENGLES in the build, do not edit LV_USE_OPENGLES in lv_conf.h"
 #include <xf86drmMode.h>
 
 namespace {
+
+/// The libraries this compile of the backend calls into. The EGL presentation
+/// path needs the GPU stack on top of libdrm.
+bool drm_libs_present() {
+    using helix::gpu_libs::Lib;
+#if LV_LINUX_DRM_USE_EGL
+    return helix::gpu_libs::available_all({Lib::Drm, Lib::Gbm, Lib::Egl, Lib::Gles2});
+#else
+    return helix::gpu_libs::available(Lib::Drm);
+#endif
+}
 
 /**
  * @brief Check if a DRM device supports dumb buffers and has a connected display
@@ -238,7 +250,10 @@ std::string auto_detect_drm_device() {
 
 } // namespace
 
-DisplayBackendDRM::DisplayBackendDRM() : drm_device_(auto_detect_drm_device()) {}
+// Without libdrm the device stays empty, which is_available() reports, so no
+// call reaches the library on a system that lacks it.
+DisplayBackendDRM::DisplayBackendDRM()
+    : drm_device_(drm_libs_present() ? auto_detect_drm_device() : std::string()) {}
 
 DisplayBackendDRM::DisplayBackendDRM(const std::string& drm_device) : drm_device_(drm_device) {}
 
@@ -257,6 +272,9 @@ DisplayBackendDRM::~DisplayBackendDRM() {
 }
 
 bool DisplayBackendDRM::is_available() const {
+    if (!drm_libs_present()) {
+        return false;
+    }
     if (drm_device_.empty()) {
         spdlog::debug("[DRM Backend] No DRM device configured");
         return false;
@@ -604,7 +622,9 @@ void DisplayBackendDRM::open_pointer_devices() {
     // If we have an explicit device, try it first
     if (!device_override.empty()) {
 #if LV_USE_LIBINPUT
-        pointer_ = lv_libinput_create(LV_INDEV_TYPE_POINTER, device_override.c_str());
+        if (helix::gpu_libs::available(helix::gpu_libs::Lib::Input)) {
+            pointer_ = lv_libinput_create(LV_INDEV_TYPE_POINTER, device_override.c_str());
+        }
         if (pointer_ != nullptr) {
             pointer_path_ = device_override;
             spdlog::info("[DRM Backend] Libinput pointer device created on {}", device_override);
@@ -626,44 +646,50 @@ void DisplayBackendDRM::open_pointer_devices() {
     // Priority 3: Auto-discover touch device
     spdlog::info("[DRM Backend] Auto-detecting touch/pointer device...");
 
+    // libinput finds the touch device when the library is installed; the sysfs
+    // scanner finds it otherwise. touch_path points into whichever owns it.
+    const char* touch_path = nullptr;
+    std::optional<helix::input::ScannedDevice> scanned_touch;
 #if LV_USE_LIBINPUT
-    // Use libinput to discover touch devices, then prefer evdev driver for
-    // multi-touch gesture recognition (pinch-to-zoom)
-    char* touch_path = lv_libinput_find_dev(LV_LIBINPUT_CAPABILITY_TOUCH, true);
-    if (touch_path) {
-        spdlog::info("[DRM Backend] Found touch device: {}", touch_path);
-        pointer_ = lv_evdev_create(LV_INDEV_TYPE_POINTER, touch_path);
-        if (pointer_ != nullptr) {
-            pointer_is_evdev_ = true;
-            spdlog::info("[DRM Backend] Evdev touch device created on {} (multi-touch enabled)",
-                         touch_path);
-            configure_touch_gestures(pointer_);
-        } else {
-            // Fall back to libinput if evdev fails
-            pointer_ = lv_libinput_create(LV_INDEV_TYPE_POINTER, touch_path);
+    if (helix::gpu_libs::available(helix::gpu_libs::Lib::Input)) {
+        // Prefer the evdev driver on the device libinput finds, for multi-touch
+        // gesture recognition (pinch-to-zoom)
+        char* found = lv_libinput_find_dev(LV_LIBINPUT_CAPABILITY_TOUCH, true);
+        touch_path = found;
+        if (found) {
+            spdlog::info("[DRM Backend] Found touch device: {}", found);
+            pointer_ = lv_evdev_create(LV_INDEV_TYPE_POINTER, found);
             if (pointer_ != nullptr) {
-                spdlog::info("[DRM Backend] Libinput touch device created on {}", touch_path);
+                pointer_is_evdev_ = true;
+                spdlog::info("[DRM Backend] Evdev touch device created on {} (multi-touch enabled)",
+                             found);
+                configure_touch_gestures(pointer_);
             } else {
-                spdlog::warn("[DRM Backend] Failed to create input device for: {}", touch_path);
+                // Fall back to libinput if evdev fails
+                pointer_ = lv_libinput_create(LV_INDEV_TYPE_POINTER, found);
+                if (pointer_ != nullptr) {
+                    spdlog::info("[DRM Backend] Libinput touch device created on {}", found);
+                } else {
+                    spdlog::warn("[DRM Backend] Failed to create input device for: {}", found);
+                }
+            }
+        }
+    } else
+#endif
+    {
+        scanned_touch = helix::input::find_touch_device();
+        if (scanned_touch) {
+            touch_path = scanned_touch->path.c_str();
+            spdlog::info("[DRM Backend] Found touch device via evdev scan: {} ({})",
+                         scanned_touch->path, scanned_touch->name);
+            pointer_ = lv_evdev_create(LV_INDEV_TYPE_POINTER, touch_path);
+            if (pointer_ != nullptr) {
+                pointer_is_evdev_ = true;
+                spdlog::info("[DRM Backend] Evdev touch device created on {}", scanned_touch->path);
+                configure_touch_gestures(pointer_);
             }
         }
     }
-#else
-    // No libinput: the sysfs scanner finds the touchscreen
-    const char* touch_path = nullptr;
-    auto touch = helix::input::find_touch_device();
-    if (touch) {
-        touch_path = touch->path.c_str();
-        spdlog::info("[DRM Backend] Found touch device via evdev scan: {} ({})", touch->path,
-                     touch->name);
-        pointer_ = lv_evdev_create(LV_INDEV_TYPE_POINTER, touch_path);
-        if (pointer_ != nullptr) {
-            pointer_is_evdev_ = true;
-            spdlog::info("[DRM Backend] Evdev touch device created on {}", touch->path);
-            configure_touch_gestures(pointer_);
-        }
-    }
-#endif
 
     // --- Touch calibration detection ---
     if (pointer_ && touch_path) {
@@ -1016,8 +1042,8 @@ void DisplayBackendDRM::open_pointer_devices() {
     }
 
     // If no touch was found, try pointer devices
-    if (!pointer_) {
 #if LV_USE_LIBINPUT
+    if (!pointer_ && helix::gpu_libs::available(helix::gpu_libs::Lib::Input)) {
         // Try pointer devices via libinput (mouse, trackpad)
         // Don't free pointer_path — points into LVGL's internal devices[] array
         char* pointer_path = lv_libinput_find_dev(LV_LIBINPUT_CAPABILITY_POINTER, false);
@@ -1032,8 +1058,8 @@ void DisplayBackendDRM::open_pointer_devices() {
                              pointer_path);
             }
         }
-#endif
     }
+#endif
 
     if (!pointer_) {
         // Fallback to evdev on common device paths
@@ -1114,7 +1140,9 @@ lv_indev_t* DisplayBackendDRM::create_input_keyboard() {
     const char* env_device = std::getenv("HELIX_KEYBOARD_DEVICE");
     if (env_device && env_device[0] != '\0') {
 #if LV_USE_LIBINPUT
-        keyboard_ = lv_libinput_create(LV_INDEV_TYPE_KEYPAD, env_device);
+        if (helix::gpu_libs::available(helix::gpu_libs::Lib::Input)) {
+            keyboard_ = lv_libinput_create(LV_INDEV_TYPE_KEYPAD, env_device);
+        }
         if (keyboard_) {
             spdlog::info("[DRM Backend] Keyboard created on {} (env override)", env_device);
             return keyboard_;

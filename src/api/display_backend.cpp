@@ -17,6 +17,8 @@
 #include <unistd.h>
 
 #ifdef HELIX_DISPLAY_DRM
+#include "gpu_libs.h"
+
 #include <fcntl.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
@@ -51,7 +53,7 @@ int DisplayBackend::detect_panel_orientation() {
 #ifdef HELIX_DISPLAY_DRM
     // Method 2: Query DRM connector "panel orientation" property directly
     // More reliable but requires libdrm
-    {
+    if (helix::gpu_libs::available(helix::gpu_libs::Lib::Drm)) {
         const char* devices[] = {"/dev/dri/card0", "/dev/dri/card1", "/dev/dri/card2"};
         for (const char* dev : devices) {
             int fd = open(dev, O_RDONLY | O_CLOEXEC);
@@ -168,11 +170,16 @@ void diagnose_no_display_hardware() {
     bool have_connected_connector = false;
 #ifdef HELIX_DISPLAY_DRM
     const char* devices[] = {"/dev/dri/card0", "/dev/dri/card1", "/dev/dri/card2"};
+    const bool have_libdrm = helix::gpu_libs::available(helix::gpu_libs::Lib::Drm);
     for (const char* dev : devices) {
         int fd = open(dev, O_RDONLY | O_CLOEXEC);
         if (fd < 0)
             continue;
         have_dri = true;
+        if (!have_libdrm) {
+            close(fd);
+            continue;
+        }
         drmModeRes* resources = drmModeGetResources(fd);
         if (resources) {
             for (int i = 0; i < resources->count_connectors && !have_connected_connector; i++) {
