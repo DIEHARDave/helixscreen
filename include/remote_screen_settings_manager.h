@@ -62,6 +62,9 @@ class RemoteScreenSettingsManager {
     /// Whether the server faces the LAN (pairing rows shown). Set by the server's owner.
     void set_lan_mode(bool lan_mode);
 
+    /// A browser touched the screen recently: drives the on-screen indicator.
+    void set_control_active(bool active);
+
     /// "Forget paired browsers": hands the request to whoever owns the pairing store.
     void forget_paired_browsers();
     void set_forget_handler(std::function<void()> handler) {
@@ -99,6 +102,7 @@ class RemoteScreenSettingsManager {
     std::function<void()> forget_handler_;
     lv_subject_t available_subject_{};
     lv_subject_t lan_mode_subject_{};
+    lv_subject_t control_active_subject_{};
     lv_subject_t pair_code_subject_{};
     char pair_code_buf_[16] = {};
     bool subjects_initialized_ = false;

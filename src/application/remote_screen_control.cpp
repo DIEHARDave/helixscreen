@@ -225,6 +225,11 @@ int PairingStore::retry_after_seconds() const {
     return secs > 0 ? static_cast<int>(secs) + 1 : 0;
 }
 
+bool remote_control_active(std::optional<std::chrono::steady_clock::time_point> last_touch,
+                           std::chrono::steady_clock::time_point now) {
+    return last_touch && now - *last_touch < std::chrono::milliseconds(kRemoteControlActiveMs);
+}
+
 // ---------------------------------------------------------------------------
 // TouchSession
 // ---------------------------------------------------------------------------
@@ -249,6 +254,12 @@ TouchSession::take_stale_release(std::chrono::steady_clock::time_point now) {
 std::optional<std::chrono::steady_clock::time_point> TouchSession::last_event() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return last_at_;
+}
+
+void TouchSession::reset() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    pressed_ = false;
+    last_at_.reset();
 }
 
 } // namespace helix

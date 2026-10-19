@@ -9,6 +9,7 @@
 #include "remote_screen_control.h"
 
 #include <atomic>
+#include <chrono>
 #include <memory>
 #include <string>
 
@@ -48,6 +49,10 @@ class RemoteScreenService {
     /// Start, stop or reconfigure the server to match the settings.
     void apply_settings();
     void shutdown();
+
+    /// The periodic work: release a gone viewer's buffers and a press nobody
+    /// finished, and keep the remote-control indicator current. Main thread.
+    void housekeeping_tick(std::chrono::steady_clock::time_point now);
 
     bool available() const;
     bool running() const;

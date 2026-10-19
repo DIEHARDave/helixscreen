@@ -89,6 +89,11 @@ void RemoteScreenService::init(RemoteScreenManager* screens) {
         screens->add_sink(std::make_unique<ScreenServerSink>(store_));
         screens->start();
         sink_attached_ = true;
+        // On the top layer, so no panel or overlay covers it; it hides itself
+        // through its subject binding.
+        if (!lv_xml_create(lv_layer_top(), "remote_control_indicator", nullptr)) {
+            spdlog::warn("[RemoteScreen] remote_control_indicator creation failed");
+        }
     }
     settings.set_change_handler([this] { apply_settings(); });
     settings.set_forget_handler([this] {
@@ -185,18 +190,23 @@ void RemoteScreenService::apply_server() {
     if (!housekeeping_timer_) {
         housekeeping_timer_ = lv_timer_create(
             [](lv_timer_t* t) {
-                auto* self = static_cast<RemoteScreenService*>(lv_timer_get_user_data(t));
-                if (self->store_->release_if_idle()) {
-                    spdlog::debug("[RemoteScreen] Viewer gone; frame buffers released");
-                }
-                if (auto rel =
-                        self->touch_session_.take_stale_release(std::chrono::steady_clock::now())) {
-                    spdlog::info("[RemoteScreen] Releasing a remote press nobody finished");
-                    remote::RemotePointer::instance().set_logical_state(rel->x, rel->y, false);
-                }
+                static_cast<RemoteScreenService*>(lv_timer_get_user_data(t))
+                    ->housekeeping_tick(std::chrono::steady_clock::now());
             },
             kHousekeepingMs, this);
     }
+}
+
+void RemoteScreenService::housekeeping_tick(std::chrono::steady_clock::time_point now) {
+    if (store_->release_if_idle()) {
+        spdlog::debug("[RemoteScreen] Viewer gone; frame buffers released");
+    }
+    if (auto rel = touch_session_.take_stale_release(now)) {
+        spdlog::info("[RemoteScreen] Releasing a remote press nobody finished");
+        remote::RemotePointer::instance().set_logical_state(rel->x, rel->y, false);
+    }
+    RemoteScreenSettingsManager::instance().set_control_active(
+        serving_.load() && remote_control_active(touch_session_.last_event(), now));
 }
 
 void RemoteScreenService::stop_server() {
@@ -206,6 +216,8 @@ void RemoteScreenService::stop_server() {
         server_.reset();
     }
     cancel_housekeeping_timer();
+    touch_session_.reset();
+    RemoteScreenSettingsManager::instance().set_control_active(false);
     if (remote::RemotePointer::instance().pressed()) {
         auto& ptr = remote::RemotePointer::instance();
         ptr.set_logical_state(ptr.x(), ptr.y(), false);

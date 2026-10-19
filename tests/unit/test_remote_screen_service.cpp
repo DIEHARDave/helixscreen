@@ -12,6 +12,7 @@
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/raw_http_client.h"
 #include "config.h"
+#include "remote_screen_control.h"
 #include "remote_screen_server_sink.h"
 #include "remote_screen_service.h"
 #include "remote_screen_settings_manager.h"
@@ -291,4 +292,23 @@ TEST_CASE_METHOD(TouchFixture,
     CHECK(lv_obj_get_scroll_y(list) > 0);
     CHECK(g_clicks.load() == 0);
     lv_obj_delete(list);
+}
+
+TEST_CASE_METHOD(TouchFixture, "the remote-control indicator follows accepted touches",
+                 "[remote_screen][control]") {
+    auto& svc = RemoteScreenService::instance();
+    lv_subject_t* active = lv_xml_get_subject(nullptr, "remote_screen_control_active");
+    REQUIRE(active != nullptr);
+    const auto now = std::chrono::steady_clock::now();
+    svc.housekeeping_tick(now);
+    CHECK(lv_subject_get_int(active) == 0);
+
+    REQUIRE(touch("down", 10, 10) == 204);
+    REQUIRE(touch("up", 10, 10) == 204);
+    svc.housekeeping_tick(std::chrono::steady_clock::now());
+    CHECK(lv_subject_get_int(active) == 1);
+
+    svc.housekeeping_tick(std::chrono::steady_clock::now() +
+                          std::chrono::milliseconds(kRemoteControlActiveMs + 100));
+    CHECK(lv_subject_get_int(active) == 0);
 }

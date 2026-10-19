@@ -38,6 +38,7 @@ void RemoteScreenSettingsManager::init_subjects() {
     settings_.init(subjects_);
     UI_MANAGED_SUBJECT_INT(available_subject_, 0, "remote_screen_available", subjects_);
     UI_MANAGED_SUBJECT_INT(lan_mode_subject_, 0, "remote_screen_lan_mode", subjects_);
+    UI_MANAGED_SUBJECT_INT(control_active_subject_, 0, "remote_screen_control_active", subjects_);
     UI_MANAGED_SUBJECT_STRING(pair_code_subject_, pair_code_buf_, get_pair_code().c_str(),
                               "remote_screen_pair_code", subjects_);
     // A config edited by hand can hold control without view.
@@ -117,6 +118,12 @@ void RemoteScreenSettingsManager::set_paired_tokens(const std::vector<std::strin
 void RemoteScreenSettingsManager::set_lan_mode(bool lan_mode) {
     if (subjects_initialized_) {
         lv_subject_set_int(&lan_mode_subject_, lan_mode ? 1 : 0);
+    }
+}
+
+void RemoteScreenSettingsManager::set_control_active(bool active) {
+    if (subjects_initialized_ && lv_subject_get_int(&control_active_subject_) != (active ? 1 : 0)) {
+        lv_subject_set_int(&control_active_subject_, active ? 1 : 0);
     }
 }
 

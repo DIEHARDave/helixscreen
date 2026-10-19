@@ -16,6 +16,8 @@ namespace helix {
 /// A press held this long with no further event is released: a browser that went
 /// away mid-drag must not leave the screen pressed.
 constexpr int64_t kTouchStaleMs = 3000;
+/// How long after the last accepted touch the screen shows that a browser is driving it.
+constexpr int64_t kRemoteControlActiveMs = 10000;
 /// Wrong pairing codes allowed per kPairWindowMs before requests are refused.
 constexpr int kPairAttemptsPerWindow = 5;
 constexpr int64_t kPairWindowMs = 60000;
@@ -103,6 +105,10 @@ class PairingStore {
     int total_failures_ = 0;
 };
 
+/// True while a browser touched the screen within kRemoteControlActiveMs of @p now.
+bool remote_control_active(std::optional<std::chrono::steady_clock::time_point> last_touch,
+                           std::chrono::steady_clock::time_point now);
+
 /**
  * @brief Releases a press nobody finished.
  *
@@ -116,6 +122,8 @@ class TouchSession {
     std::optional<TouchEvent> take_stale_release(std::chrono::steady_clock::time_point now);
     /// When the last accepted touch arrived, for the remote-control indicator.
     std::optional<std::chrono::steady_clock::time_point> last_event() const;
+    /// Forget everything: the server stopped, so no earlier touch is still in progress.
+    void reset();
 
   private:
     mutable std::mutex mutex_;

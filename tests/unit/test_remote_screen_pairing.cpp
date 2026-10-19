@@ -205,3 +205,12 @@ TEST_CASE("a down with no follow-up is released after kTouchStaleMs", "[remote_s
     tap.on_event({TouchEvent::Type::Up, 1, 1}, t0 + 50ms);
     CHECK_FALSE(tap.take_stale_release(t0 + 10s));
 }
+
+TEST_CASE("control_active goes 1 on an accepted touch and 0 after kViewerIdleMs",
+          "[remote_screen][control]") {
+    const auto t0 = std::chrono::steady_clock::time_point{} + 1h;
+    CHECK_FALSE(remote_control_active(std::nullopt, t0));
+    CHECK(remote_control_active(t0, t0));
+    CHECK(remote_control_active(t0, t0 + std::chrono::milliseconds(kRemoteControlActiveMs - 1)));
+    CHECK_FALSE(remote_control_active(t0, t0 + std::chrono::milliseconds(kRemoteControlActiveMs)));
+}
