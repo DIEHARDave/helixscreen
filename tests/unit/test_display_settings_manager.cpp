@@ -9,6 +9,7 @@
 #include "runtime_config.h"
 #include "screensaver_registry.h"
 #include "settings_manager.h"
+#include "timezone_env.h"
 
 #include <cstdlib>
 #include <optional>
@@ -423,6 +424,150 @@ TEST_CASE_METHOD(LVGLTestFixture, "DisplaySettingsManager preview_brightness doe
         CHECK(DisplaySettingsManager::instance().preview_brightness(0) == 10);
         CHECK(DisplaySettingsManager::instance().preview_brightness(500) == 100);
         CHECK(config->get<int>("/brightness", -1) == 55);
+    }
+}
+
+// ============================================================================
+// Timezone
+// ============================================================================
+
+TEST_CASE("DisplaySettingsManager::match_timezone resolves a browser zone to an offered one",
+          "[display_settings][timezone]") {
+    using M = DisplaySettingsManager;
+    SECTION("an offered IANA id matches itself, whatever the offsets say") {
+        CHECK(M::match_timezone("America/New_York", -300, -240) == "America/New_York");
+        CHECK(M::match_timezone("America/Phoenix", -420, -420) == "America/Phoenix");
+        CHECK(M::match_timezone("Asia/Tokyo", 0, 0) == "Asia/Tokyo");
+    }
+    SECTION("an unlisted id falls back to the zone with the same January and July offsets") {
+        CHECK(M::match_timezone("America/Toronto", -300, -240) == "America/New_York");
+        CHECK(M::match_timezone("America/Edmonton", -420, -360) == "America/Denver");
+        CHECK(M::match_timezone("Asia/Calcutta", 330, 330) == "Asia/Kolkata");
+        CHECK(M::match_timezone("Australia/Melbourne", 660, 600) == "Australia/Sydney");
+        CHECK(M::match_timezone("Europe/Paris", 60, 120) == "Europe/Berlin");
+        CHECK(M::match_timezone("America/Punta_Arenas", -180, -180) == "America/Sao_Paulo");
+        CHECK(M::match_timezone("", 0, 60) == "Europe/London");
+    }
+    SECTION("no offered zone has those offsets") {
+        CHECK(M::match_timezone("Mars/Olympus_Mons", 17, 17).empty());
+        CHECK(M::match_timezone("", -300, -300 + 30).empty());
+    }
+}
+
+namespace {
+
+// Restores /display/timezone, the process TZ and the subjects around a test.
+struct TimezoneSettingScope {
+    Config* config = Config::get_instance();
+    std::optional<nlohmann::json> stored;
+    std::optional<std::string> saved_tz;
+
+    TimezoneSettingScope() {
+        config->set<int>("/display/sleep_sec", 1200); // makes sure the /display group exists
+        if (const nlohmann::json* node = config->try_get_json("/display/timezone")) {
+            stored = *node;
+        }
+        if (const char* tz = std::getenv("TZ")) {
+            saved_tz = tz;
+        }
+        helix::timezone_env::reset_probe_state();
+    }
+    void erase_setting() {
+        config->get_json("/display").erase("timezone");
+    }
+    ~TimezoneSettingScope() {
+        if (stored) {
+            config->set<nlohmann::json>("/display/timezone", *stored);
+        } else {
+            erase_setting();
+        }
+        helix::timezone_env::reset_probe_state();
+        if (saved_tz) {
+            ::setenv("TZ", saved_tz->c_str(), 1);
+        }
+        ::tzset();
+        DisplaySettingsManager::instance().deinit_subjects();
+        DisplaySettingsManager::instance().init_subjects();
+    }
+};
+
+std::string env_tz() {
+    const char* tz = std::getenv("TZ");
+    return tz ? tz : "<unset>";
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture, "an unpicked timezone follows the system zone",
+                 "[display_settings][timezone]") {
+    REQUIRE(DisplaySettingsManager::kSystemTimezoneAvailable);
+    TimezoneSettingScope scope;
+    DisplaySettingsManager& mgr = DisplaySettingsManager::instance();
+    ::setenv("TZ", "EST5EDT", 1); // the zone the host gave the process
+    scope.erase_setting();
+    mgr.deinit_subjects();
+    mgr.init_subjects();
+
+    SECTION("startup leaves the process zone alone and the row reads System") {
+        CHECK(env_tz() == "EST5EDT");
+        CHECK(mgr.get_timezone().empty());
+        CHECK(mgr.get_timezone_index() == 0);
+        CHECK(DisplaySettingsManager::get_timezone_options().rfind(lv_tr("System"), 0) == 0);
+        CHECK_FALSE(scope.config->exists("/display/timezone"));
+    }
+
+    SECTION("an explicit UTC is a pick, not the system zone") {
+        mgr.set_timezone("UTC");
+        CHECK(env_tz() == "UTC");
+        CHECK(mgr.get_timezone() == "UTC");
+        CHECK(mgr.get_timezone_index() != 0);
+        CHECK(scope.config->get<std::string>("/display/timezone", "") == "UTC");
+    }
+
+    SECTION("choosing System again restores the host zone and forgets the pick") {
+        mgr.set_timezone("Asia/Tokyo");
+        CHECK(env_tz() == "Asia/Tokyo");
+        mgr.set_timezone_by_index(0);
+        CHECK(env_tz() == "EST5EDT");
+        CHECK(mgr.get_timezone().empty());
+        CHECK_FALSE(scope.config->exists("/display/timezone"));
+    }
+
+    SECTION("the startup apply follows the same rule") {
+        helix::timezone_env::reset_probe_state();
+        ::setenv("TZ", "JST-9", 1);
+        CHECK(DisplaySettingsManager::apply_configured_timezone() == 0);
+        CHECK(env_tz() == "JST-9");
+    }
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "a browser-reported zone is adopted only while none is picked",
+                 "[display_settings][timezone]") {
+    TimezoneSettingScope scope;
+    DisplaySettingsManager& mgr = DisplaySettingsManager::instance();
+
+    SECTION("unpicked: the matched zone is applied and saved") {
+        scope.erase_setting();
+        mgr.deinit_subjects();
+        mgr.init_subjects();
+        mgr.adopt_timezone_if_unset("America/Toronto", -300, -240);
+        CHECK(mgr.get_timezone() == "America/New_York");
+        CHECK(env_tz() == "America/New_York");
+        CHECK(scope.config->get<std::string>("/display/timezone", "") == "America/New_York");
+    }
+    SECTION("an existing pick wins") {
+        mgr.set_timezone("Asia/Tokyo");
+        mgr.adopt_timezone_if_unset("America/Toronto", -300, -240);
+        CHECK(mgr.get_timezone() == "Asia/Tokyo");
+        CHECK(scope.config->get<std::string>("/display/timezone", "") == "Asia/Tokyo");
+    }
+    SECTION("an unmatched zone changes nothing") {
+        scope.erase_setting();
+        mgr.deinit_subjects();
+        mgr.init_subjects();
+        mgr.adopt_timezone_if_unset("Mars/Olympus_Mons", 17, 17);
+        CHECK(mgr.get_timezone().empty());
+        CHECK_FALSE(scope.config->exists("/display/timezone"));
     }
 }
 

@@ -77,7 +77,6 @@
 #include "temperature_history_manager.h"
 #include "thermal_rate_model.h"
 #include "timelapse_state.h"
-#include "timezone_env.h"
 #include "translation_loader.h"
 #include "wizard_config_paths.h"
 
@@ -1186,10 +1185,8 @@ bool Application::init_logging() {
     // the setting and its subject) — idempotent, and by then the value already
     // matches. Without this the log's wall clock jumps mid-startup on any device
     // whose configured zone differs from the host's, which reads as a stall in a
-    // debug bundle (#1218: a 5-hour jump inside a single startup sequence).
-    // Unknown zones are left to glibc, which treats an unparseable TZ as UTC —
-    // the same fallback DisplaySettingsManager applies.
-    helix::timezone_env::apply(m_config->get<std::string>("/display/timezone", "UTC").c_str());
+    // debug bundle (#1218).
+    DisplaySettingsManager::apply_configured_timezone();
 
     LogConfig log_config;
 
