@@ -5,6 +5,7 @@
 #include "ui_frequency_response_chart.h"
 
 #include "platform_capabilities.h"
+#include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
 
@@ -20,7 +21,7 @@ using helix::calibration::SweepColumn;
 using helix::calibration::SweepPoint;
 
 lv_color_t shaper_raw_psd_color() {
-    return lv_color_hex(0xB0B0B0);
+    return theme_manager_get_color("text_muted");
 }
 
 bool live_chart_layout_fits(const char* component_name, const char* gate_subject) {
@@ -65,7 +66,7 @@ bool ShaperSweepChart::begin(lv_obj_t* host, char axis,
         ui_frequency_response_chart_set_freq_range(chart_, 0.0f, kShaperChartMaxHz);
         series_ =
             ui_frequency_response_chart_add_series(chart_, "Live PSD", shaper_raw_psd_color());
-        ui_frequency_response_chart_set_series_style(chart_, series_, kShaperMeasuredStyle);
+        ui_frequency_response_chart_set_series_style(chart_, series_, kFrMeasuredCurveStyle);
     }
 
     column_ = (axis == 'Y' || axis == 'y') ? SweepColumn::Y : SweepColumn::X;

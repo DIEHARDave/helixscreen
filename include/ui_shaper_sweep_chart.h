@@ -24,7 +24,8 @@ inline constexpr float kShaperChartMaxHz = 200.0f;
 /// Amplitude axis ceiling over the tallest point.
 inline constexpr float kShaperChartHeadroom = 1.1f;
 
-/// The results charts' raw PSD series color; the live curve uses it too.
+/// The results charts' raw PSD series color (the text_muted token); the live
+/// curve uses it too.
 [[nodiscard]] lv_color_t shaper_raw_psd_color();
 
 /**
@@ -35,10 +36,6 @@ inline constexpr float kShaperChartHeadroom = 1.1f;
  * True when the gate is absent. Main thread.
  */
 [[nodiscard]] bool live_chart_layout_fits(const char* component_name, const char* gate_subject);
-
-/// The measured curve's look on every input shaper chart, live and final:
-/// the belt chart's filled, glowing curve, so the swap to the CSV is seamless.
-inline constexpr FrChartSeriesStyle kShaperMeasuredStyle{3, true, true};
 
 /**
  * @brief The input shaper's live sweep chart

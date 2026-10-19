@@ -130,8 +130,8 @@ TEST_CASE_METHOD(ShaperSweepChartFixture, "ShaperSweepChart draws like the resul
     // The same look as the results' measured curve, as the tier allows it.
     const auto style = ui_frequency_response_chart_get_series_style(chart.chart(), kSeries);
     const auto caps = helix::PlatformCapabilities::detect();
-    const auto expected = fr_chart_effective_style(helix::ui::kShaperMeasuredStyle, caps.tier,
-                                                   caps.supports_animations);
+    const auto expected =
+        fr_chart_effective_style(kFrMeasuredCurveStyle, caps.tier, caps.supports_animations);
     CHECK(style.line_width == expected.line_width);
     CHECK(style.glow == expected.glow);
     CHECK(style.fill == expected.fill);

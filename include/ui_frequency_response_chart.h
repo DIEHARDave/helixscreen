@@ -260,6 +260,11 @@ struct FrChartSeriesStyle {
     bool fill = false; ///< vertical gradient from 35% of the series color to transparent
 };
 
+/// The measured curve's look on every chart that draws one, live and final:
+/// filled and glowing, so a live preview hands over to its CSV curve seamlessly.
+// NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
+inline constexpr FrChartSeriesStyle kFrMeasuredCurveStyle{3, true, true};
+
 /**
  * @brief What a tier may draw (pure)
  *

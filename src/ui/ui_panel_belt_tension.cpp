@@ -8,7 +8,6 @@
 #include "ui_frequency_response_chart.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
-#include "ui_shaper_sweep_chart.h"
 #include "ui_timer_guard.h"
 #include "ui_update_queue.h"
 
@@ -2165,14 +2164,13 @@ ui_frequency_response_chart_t* BeltTensionPanel::ensure_chart() {
         const char letter = 'A' + idx;
         series_[idx] = ui_frequency_response_chart_add_series(
             chart_, fmt::format(lv_tr("Path {}"), letter).c_str(), path_color(path_at(idx)));
-        ui_frequency_response_chart_set_series_style(chart_, series_[idx],
-                                                     helix::ui::kShaperMeasuredStyle);
+        ui_frequency_response_chart_set_series_style(chart_, series_[idx], kFrMeasuredCurveStyle);
 
         // The preview stands in for the path's own curve, so it carries its name.
         preview_series_[idx] = ui_frequency_response_chart_add_series(
             chart_, fmt::format(lv_tr("Path {}"), letter).c_str(), path_color(path_at(idx)));
         ui_frequency_response_chart_set_series_style(chart_, preview_series_[idx],
-                                                     helix::ui::kShaperMeasuredStyle);
+                                                     kFrMeasuredCurveStyle);
         ui_frequency_response_chart_show_series(chart_, preview_series_[idx], false);
 
         ghost_series_[idx] = ui_frequency_response_chart_add_series(
