@@ -1489,7 +1489,7 @@ also carries the no-camera build gate). They sit in `header_bar`'s
 `action_icon`, in a row padded by their `ext_click_area` reach so each reaches
 the header's height (or 44px) while staying inside its parent's hit box.
 
-**The lane's own settings** close the form (`lane_section`, below More): **Assigned
+**The lane's own settings** sit in one row above More (`lane_section`): **Assigned
 Tool**, shown only where `helix::printer::can_write_mapping_table()` says a mapping
 write lands (`ams_edit_tool_row_visible`), and the Endless Spool backup
 (`ams_edit_backup_row_visible`, read-only and disabled per
@@ -1499,8 +1499,10 @@ dropdowns stage `LaneSettings`, Save writes the difference through
 `helix::ui::lane_settings` (`set_tool_mapping()`, `set_endless_spool_backup()`)
 before the slot's own commit, and a Save that changed nothing else closes without a
 slot edit. An incompatible backup is refused at the pick, with a toast, and the
-dropdown goes back to what is staged. They sit last so they never push the identity
-rows below the fold; at every size they are a scroll away.
+dropdown goes back to what is staged. The colour grid keeps one row of presets
+stacked and two in the short-landscape split column (the rainbow tile opens the
+rest), which keeps the row in view on open at 800x480, 480x320 and 480x272. At
+320x480 the two dropdowns stack and the backup's reaches the fold.
 
 **Identity is a dropdown cascade**: Material (families, Spoolman recents first,
 else PLA/PETG/ABS/ASA/PA/TPU/PC lead), Variant (the family's catalog variants),

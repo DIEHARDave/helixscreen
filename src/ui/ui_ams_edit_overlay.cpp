@@ -1145,23 +1145,21 @@ int AmsEditOverlay::grid_preset_count(int grid_width, int tile, int gap, int row
 void AmsEditOverlay::size_color_grids() {
     // The colour areas are subject-counted (a literal <repeat> inside <if> is
     // refused by the engine), sized here from the measured grid width: whole
-    // rows only, three in the split column, two in the stacked grid where
-    // height allows and one where it is scarce.
+    // rows only, two in the split column and one in the stacked grid, which
+    // leaves the lane's settings in view. The rainbow tile opens the rest.
     if (!overlay_root_) {
         return;
     }
     lv_obj_update_layout(overlay_root_);
     const int palette = static_cast<int>(swatch_palette(ColorPicker::Palette::General).size());
-    lv_subject_t* bp = theme_manager_get_breakpoint_subject();
-    const bool short_class = bp && lv_subject_get_int(bp) <= static_cast<int>(UiBreakpoint::Small);
     const struct {
         const char* grid;
         const char* custom;
         int rows;
         lv_subject_t* count;
     } grids[] = {
-        {"color_grid_split", "btn_custom_color_split", 3, &color_col_count_subject_},
-        {"color_grid", "btn_custom_color", short_class ? 1 : 2, &color_row_count_subject_},
+        {"color_grid_split", "btn_custom_color_split", 2, &color_col_count_subject_},
+        {"color_grid", "btn_custom_color", 1, &color_row_count_subject_},
     };
     for (const auto& g : grids) {
         lv_obj_t* grid = find_widget(g.grid);

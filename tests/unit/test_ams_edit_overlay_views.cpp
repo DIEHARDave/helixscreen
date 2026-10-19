@@ -3876,7 +3876,7 @@ TEST_CASE_METHOD(OverlayConsumerCommitFixture,
     close_editor_overlay();
 }
 
-TEST_CASE_METHOD(OverlayConsumerCommitFixture, "the lane rows sit inside the editor at every size",
+TEST_CASE_METHOD(OverlayConsumerCommitFixture, "the lane rows sit in view when the editor opens",
                  "[ams_edit_overlay][lane_settings][layout]") {
     lv_display_t* disp = lv_display_get_default();
     auto& overlay = get_ams_edit_overlay();
@@ -3903,6 +3903,10 @@ TEST_CASE_METHOD(OverlayConsumerCommitFixture, "the lane rows sit inside the edi
                 CHECK(dd.x2 <= box.x2);
                 // Reachable by scrolling, never past the scroller's extent.
                 CHECK(dd.y2 <= box.y2 + lv_obj_get_scroll_bottom(content));
+                // In view when the editor opens wherever one row holds both.
+                if (w > h) {
+                    CHECK(dd.y2 <= box.y2);
+                }
             }
             close_editor_overlay();
         }

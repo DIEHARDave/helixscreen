@@ -307,7 +307,7 @@ Tapping Back with unsaved changes asks whether to **Save** or **Discard** them.
 - **Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.**
 - **Spoolman is offline, so brand and material can't be saved.** A linked spool's brand and material come from Spoolman, so they wait until it is reachable.
 
-**Assigned Tool** and the Endless Spool backup sit at the bottom of the editor, below **More**, on systems that support them; on a small screen scroll down to reach them. They are saved with **Save** too. See [Assigned Tool](#assigned-tool) and [Slot Context Menu](#slot-context-menu) for Endless Spool.
+**Assigned Tool** and the Endless Spool backup sit side by side under the colours, above **More**, on systems that support them. They are saved with **Save** too. See [Assigned Tool](#assigned-tool) and [Slot Context Menu](#slot-context-menu) for Endless Spool.
 
 > **Adding brands and products from a file.** The catalog can be extended or corrected by editing `user_filaments.json` instead of using the screen. See [Editing materials and brands by hand](settings/printing.md#editing-materials-and-brands-by-hand).
 
