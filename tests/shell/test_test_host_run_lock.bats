@@ -195,6 +195,17 @@ wait_for_line() { # <substring> <file>
     [ "$status" -eq 1 ]
 }
 
+@test "safe.directory reaches every exec's git without a global config write" {
+    # Concurrent runs share one container; a `git config --global` write from
+    # each races on /root/.gitconfig.lock and fails one of them.
+    run "$SCRIPT" --commit mutate
+    [ "$status" -eq 0 ]
+    lacks "git config" "$(cat "$MOCK_DOCKER_LOG")"
+    run grep -vF -- "-e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=* " \
+        "$MOCK_DOCKER_LOG"
+    [ "$status" -eq 1 ]
+}
+
 @test "the checkout's local main is brought level with origin/main before the reset" {
     # mutate_diff.py's default base reads the local main; a stale one yields a
     # base that refuses the run.
