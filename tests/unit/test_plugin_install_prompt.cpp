@@ -8,18 +8,26 @@
  * The prompt opens when discovery reports the plugin absent (0), and only then:
  * never on -1 (not probed yet) or 1 (installed). An install from it must leave
  * Moonraker able to load the plugin, which takes a Moonraker restart, because
- * install.sh always runs with --no-restart. These cases drive the real panel's
- * observer over a mock Moonraker client, with install.sh replaced by a stub.
+ * install.sh always runs with --no-restart. It never opens while a job holds the
+ * machine, and at most once a session: not again after it was answered, and not
+ * after the user uninstalled the plugin from Advanced. These cases drive the
+ * real panels' observers over a mock Moonraker client, with install.sh replaced
+ * by a stub.
  */
 
 #include "ui_modal.h"
+#include "ui_panel_advanced.h"
 #include "ui_panel_print_select.h"
 
+#include "../test_helpers/advanced_panel_test_access.h"
 #include "../test_helpers/config_test_access.h"
+#include "../test_helpers/helix_plugin_installer_test_access.h"
 #include "../test_helpers/plugin_script_sandbox.h"
 #include "../test_helpers/print_select_panel_fixture.h"
 #include "../test_helpers/print_select_panel_test_access.h"
+#include "../test_helpers/print_state_test_drivers.h"
 #include "config.h"
+#include "observer_factory.h"
 #include "printer_state.h"
 
 #include <string>
@@ -54,7 +62,12 @@ struct PromptFixture : PrintSelectGlobalStateReset, PrintSelectPanelFixture {
     test::PluginScriptSandbox scripts{PrintSelectPanelTestAccess::plugin_installer(*panel_)};
 
     PromptFixture() {
+        HelixPluginInstallerTestAccess::reset_prompt_session();
         REQUIRE(prompt() == nullptr);
+    }
+
+    ~PromptFixture() override {
+        HelixPluginInstallerTestAccess::reset_prompt_session();
     }
 
     void set_plugin_installed(bool installed) {
@@ -147,4 +160,82 @@ TEST_CASE_METHOD(PromptFixture, "a failed install from the prompt restarts nothi
 
     CHECK(moonraker_restarts() == restarts_before);
     CHECK(result_message().find("restarting") == std::string::npos);
+}
+
+TEST_CASE_METHOD(PromptFixture, "the install prompt stays closed while a job holds the machine",
+                 "[plugin_installer][print_select]") {
+    test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
+    drain();
+    REQUIRE(job_holds_machine(get_printer_state().print_state().get_print_lifecycle()));
+
+    set_plugin_installed(false);
+
+    CHECK(prompt() == nullptr);
+}
+
+TEST_CASE_METHOD(PromptFixture, "an answered install prompt does not reopen this session",
+                 "[plugin_installer][print_select]") {
+    set_plugin_installed(false);
+    REQUIRE(prompt() != nullptr);
+    click("btn_cancel");
+    REQUIRE(prompt() == nullptr);
+
+    // A reconnect reports the plugin absent again; a printer switch or a
+    // Moonraker restart can pass through installed on the way.
+    set_plugin_installed(false);
+    CHECK(prompt() == nullptr);
+    set_plugin_installed(true);
+    set_plugin_installed(false);
+    CHECK(prompt() == nullptr);
+}
+
+TEST_CASE_METHOD(PromptFixture, "uninstalling from Advanced does not open the install prompt",
+                 "[plugin_installer][print_select][advanced]") {
+    helix::ui::modal_init_subjects();
+    AdvancedPanel advanced{get_printer_state(), nullptr};
+    helix::ui::AdvancedPanelTestAccess::set_uninstall_runner(
+        advanced, [](HelixPluginInstaller::UninstallCallback done) {
+            done(UninstallOutcome::SUCCESS, "removed");
+        });
+    helix::ui::AdvancedPanelTestAccess::set_moonraker_restarter(advanced, []() {});
+    set_plugin_installed(true);
+
+    helix::ui::AdvancedPanelTestAccess::tap_uninstall_row(advanced);
+    drain();
+    lv_obj_t* confirm = ModalStack::instance().top_dialog();
+    REQUIRE(confirm != nullptr);
+    lv_obj_t* uninstall = lv_obj_find_by_name(confirm, "btn_primary");
+    REQUIRE(uninstall != nullptr);
+    lv_obj_send_event(uninstall, LV_EVENT_CLICKED, nullptr);
+    drain();
+
+    REQUIRE(get_printer_state().plugin_status_state().helix_plugin_state() == 0);
+    CHECK(prompt() == nullptr);
+}
+
+namespace {
+
+struct NotifyCounter {
+    int notifications = 0;
+};
+
+} // namespace
+
+TEST_CASE_METHOD(PromptFixture, "a repeated absent report does not notify plugin observers",
+                 "[plugin_installer][print_select]") {
+    // What a reconnect's discovery does: it reports the same 0 again. The
+    // subject notifies only on a change, so observers see one transition.
+    NotifyCounter counter;
+    auto guard = helix::ui::observe<int>(
+        get_printer_state().plugin_status_state().get_helix_plugin_installed_subject(), &counter,
+        [](NotifyCounter* c, int) { ++c->notifications; },
+        get_printer_state().get_subjects_lifetime());
+    drain();
+    const int at_attach = counter.notifications;
+
+    set_plugin_installed(false);
+    set_plugin_installed(false);
+    set_plugin_installed(false);
+
+    CHECK(counter.notifications == at_attach + 1);
 }

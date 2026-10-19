@@ -172,11 +172,23 @@ class HelixPluginInstaller {
     /**
      * @brief Check if we should prompt for plugin installation
      *
-     * Returns false if user previously checked "don't ask again".
+     * Returns false with beta features off, before the first-run wizard is
+     * done, once the user checked "don't ask again", and once the prompt is
+     * settled for this session.
      *
      * @return true if we should show the install prompt
      */
     [[nodiscard]] bool should_prompt_install() const;
+
+    /**
+     * @brief Ask no more for the rest of this session
+     *
+     * Called when the prompt is shown, whatever the user answers, and when the
+     * plugin is uninstalled: the plugin then reads as absent, which is no
+     * reason to offer it back. Process-wide, because each panel owns its own
+     * installer. Main thread only.
+     */
+    static void settle_prompt_for_session();
 
     /**
      * @brief Save preference to not prompt again
@@ -209,6 +221,9 @@ class HelixPluginInstaller {
     std::string script_search_root_;
     // How long install.sh may run before it is killed.
     int script_timeout_seconds_ = 60;
+
+    // Set by settle_prompt_for_session(); cleared only by a new process.
+    static bool prompt_settled_for_session_;
 
     // Config key for "don't ask again" preference
     static constexpr const char* kPrefInstallDeclined = "/plugin_install_declined";

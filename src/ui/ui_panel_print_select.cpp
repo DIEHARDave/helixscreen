@@ -837,9 +837,20 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
             [](PrintSelectPanel* self, int plugin_state) {
                 // Only show modal when state is explicitly 0 (checked and not installed)
                 // Skip if -1 (unknown/pre-discovery) or 1 (installed)
-                if (plugin_state == 0 && self->plugin_installer_.should_prompt_install()) {
+                if (plugin_state != 0) {
+                    return;
+                }
+                // Installing blocks this thread while the script runs and then
+                // restarts Moonraker, so never offer it while a job holds the machine.
+                if (job_holds_machine(self->printer_state_.print_state().get_print_lifecycle())) {
+                    spdlog::info("[PrintSelectPanel] helix_print plugin not available; a job "
+                                 "holds the machine, so no install prompt");
+                    return;
+                }
+                if (self->plugin_installer_.should_prompt_install()) {
                     spdlog::info("[PrintSelectPanel] helix_print plugin not available, showing "
                                  "install prompt");
+                    helix::HelixPluginInstaller::settle_prompt_for_session();
                     self->show_plugin_install_modal();
                 }
             },

@@ -504,9 +504,20 @@ bool HelixPluginInstaller::should_prompt_install() const {
         return false;
     }
 
+    if (prompt_settled_for_session_) {
+        spdlog::debug("[PluginInstaller] Plugin prompt already settled this session");
+        return false;
+    }
+
     // If user previously declined, don't prompt
     bool declined = config->get<bool>(kPrefInstallDeclined, false);
     return !declined;
+}
+
+bool HelixPluginInstaller::prompt_settled_for_session_ = false;
+
+void HelixPluginInstaller::settle_prompt_for_session() {
+    prompt_settled_for_session_ = true;
 }
 
 void HelixPluginInstaller::set_install_declined() {

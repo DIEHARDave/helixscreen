@@ -570,6 +570,7 @@ void AdvancedPanel::run_helix_plugin_uninstall() {
         // The plugin itself is gone in both SUCCESS and NEEDS_ATTENTION - only
         // a FAILED uninstall leaves it installed.
         if (outcome != UninstallOutcome::FAILED) {
+            helix::HelixPluginInstaller::settle_prompt_for_session();
             printer_state_.set_helix_plugin_installed(false);
             restart_moonraker_for_plugin();
         }
