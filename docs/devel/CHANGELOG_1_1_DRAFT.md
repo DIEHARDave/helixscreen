@@ -434,11 +434,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   editor. Which tool a slot feeds is picked from Assigned Tool in the slot's menu.
 - **Creality CFS on the K2 Plus community firmware** - on the Kalico-based K2 Plus port and
   its own CFS module, loads use the module's slot selection, and each CFS unit shows its own
-  temperature and humidity. With a recent module, the Filament Mapping you choose when
-  starting a print is sent to the CFS just before the print and applies to that print only;
-  a mapping that points at a slot the CFS cannot feed, or at a unit that has stopped
-  answering, stops the print from starting and says why. A unit that stops answering is
-  marked Disconnected until it comes back.
+  temperature and humidity. With API revision 4 or later of the CFS module, the Filament
+  Mapping you choose when starting a print is sent to the CFS just before the print and
+  applies to that print only; a mapping that points at a slot the CFS cannot feed, or at a
+  unit that has stopped answering, stops the print from starting and says why. With an
+  older module HelixScreen sends no print map, and the print uses the module's own slots.
+  A unit that stops answering is marked Disconnected until it comes back.
 
 - **AFC: Calibrate Toolhead** - on an AFC version that has the guided toolhead calibration,
   the Toolhead section of the filament system's settings starts with a Calibrate Toolhead
