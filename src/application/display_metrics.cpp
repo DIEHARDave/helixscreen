@@ -156,6 +156,22 @@ ResolvedDpi DisplayMetrics::resolve_dpi(int user_override_dpi,
     return {kReferenceDpi, DpiSource::Fallback};
 }
 
+ScaleDecision DisplayMetrics::decide_scale(int user_override_dpi,
+                                           std::optional<double> platform_native_dpi, int native_w,
+                                           int native_h, int logical_w, int logical_h,
+                                           board::Board board, int scale_setting) {
+    std::optional<double> platform_dpi;
+    if (platform_native_dpi) {
+        platform_dpi = logical_dpi(*platform_native_dpi, native_w, native_h, logical_w, logical_h);
+    }
+    ScaleDecision d{};
+    d.resolved = resolve_dpi(user_override_dpi, platform_dpi, board);
+    d.auto_scale = ui_scale_for_dpi(d.resolved.dpi);
+    d.ui_scale = scale_for_setting(scale_setting, d.auto_scale);
+    d.lvgl_dpi = static_cast<int32_t>(std::lround(kReferenceDpi * d.ui_scale));
+    return d;
+}
+
 int32_t DisplayMetrics::scaled_px(int32_t authored_px, double scale) {
     if (!std::isfinite(scale) || scale <= 0.0) {
         return authored_px;

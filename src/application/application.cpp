@@ -288,6 +288,61 @@ std::atomic<bool> s_screenshot_requested{false};
 
 bool s_safe_mode_active = false;
 
+// The --dpi override and the stored UI Scale setting as read at startup. The
+// resize path reuses them, so a setting that "applies after restart" does not
+// sneak in on the first fold.
+int s_user_override_dpi = 0;
+int s_scale_setting = helix::DisplayMetrics::kScaleSettingAutomatic;
+
+/// Measure the drawing surface and decide the UI scale from it.
+///
+/// Android is the one platform whose reported DPI can be trusted: OEMs must
+/// declare it and SDL reads it straight from DisplayMetrics. Every Linux
+/// target is excluded on purpose: a survey of the eight test devices found the
+/// reported physical size wrong or absent on six, including a Pi that reports
+/// the official 7" panel's exact active area for a ~115mm screen.
+helix::ScaleDecision decide_display_scale(lv_display_t* display) {
+    std::optional<double> native_dpi;
+    int native_w = 0, native_h = 0;
+    const int logical_w = lv_display_get_horizontal_resolution(display);
+    const int logical_h = lv_display_get_vertical_resolution(display);
+#ifdef __ANDROID__
+    float ddpi = 0, hdpi = 0, vdpi = 0;
+    if (SDL_GetDisplayDPI(0, &ddpi, &hdpi, &vdpi) == 0 && ddpi > 0) {
+        native_dpi = static_cast<double>(ddpi);
+    }
+    // The SDL driver draws at an integer fraction of the native resolution and
+    // upscales, so the DPI is reported per native pixel while the UI lays out
+    // in logical ones.
+    if (auto* renderer = static_cast<SDL_Renderer*>(lv_sdl_window_get_renderer(display))) {
+        SDL_GetRendererOutputSize(renderer, &native_w, &native_h);
+    }
+    spdlog::info("[Application] Android display DPI: diagonal={:.0f} h={:.0f} v={:.0f}; "
+                 "{}x{} logical, {}x{} native",
+                 ddpi, hdpi, vdpi, logical_w, logical_h, native_w, native_h);
+#endif
+    return helix::DisplayMetrics::decide_scale(s_user_override_dpi, native_dpi, native_w, native_h,
+                                               logical_w, logical_h, helix::board::current(),
+                                               s_scale_setting);
+}
+
+/// Make @p d the process-wide scale: design tokens and fonts read it the next
+/// time theme_manager_refresh_layout_constants() resolves them, and LVGL's own
+/// chrome follows the display DPI.
+void apply_display_scale(lv_display_t* display, const helix::ScaleDecision& d) {
+    helix::DisplayMetrics::set_auto_scale(d.auto_scale);
+    helix::DisplayMetrics::set_active_scale(d.ui_scale);
+    lv_display_set_dpi(display, d.lvgl_dpi);
+    spdlog::info("[Application] Display metrics: dpi={:.0f} (source={}) → ui_scale={:.3f} "
+                 "(auto={:.3f}, setting={}), lvgl_dpi={}",
+                 d.resolved.dpi, helix::dpi_source_name(d.resolved.source), d.ui_scale,
+                 d.auto_scale,
+                 s_scale_setting == helix::DisplayMetrics::kScaleSettingAutomatic
+                     ? std::string("automatic")
+                     : std::to_string(s_scale_setting) + "%",
+                 d.lvgl_dpi);
+}
+
 /**
  * @brief Signal handler for SIGINT/SIGTERM
  *
@@ -1368,42 +1423,6 @@ bool Application::init_display() {
     });
 #endif
 
-    // Android is the one platform whose reported DPI can be trusted: OEMs must
-    // declare it and SDL reads it straight from DisplayMetrics. Every Linux
-    // target is excluded on purpose — a survey of the eight test devices found
-    // the reported physical size wrong or absent on six, including a Pi that
-    // reports the official 7" panel's exact active area for a ~115mm screen.
-    std::optional<double> measured_dpi;
-#ifdef __ANDROID__
-    {
-        float ddpi = 0, hdpi = 0, vdpi = 0;
-        if (SDL_GetDisplayDPI(0, &ddpi, &hdpi, &vdpi) == 0) {
-            spdlog::info("[Application] Android display DPI: diagonal={:.0f} h={:.0f} v={:.0f}",
-                         ddpi, hdpi, vdpi);
-            if (ddpi > 0) {
-                measured_dpi = static_cast<double>(ddpi);
-            }
-        }
-        // The SDL driver draws at an integer fraction of the native resolution
-        // and upscales, so the DPI is reported per native pixel while the UI
-        // lays out in logical ones.
-        int native_w = 0, native_h = 0;
-        auto* renderer =
-            static_cast<SDL_Renderer*>(lv_sdl_window_get_renderer(m_display->display()));
-        if (renderer != nullptr) {
-            SDL_GetRendererOutputSize(renderer, &native_w, &native_h);
-        }
-        if (measured_dpi) {
-            measured_dpi = helix::DisplayMetrics::logical_dpi(*measured_dpi, native_w, native_h,
-                                                              m_screen_width, m_screen_height);
-        }
-        spdlog::info("[Application] Android screen: {}x{} logical, {}x{} native, {:.0f} dpi per "
-                     "logical pixel",
-                     m_screen_width, m_screen_height, native_w, native_h,
-                     measured_dpi.value_or(0.0));
-    }
-#endif
-
     // Register LVGL log handler AFTER lv_init() (called inside display->init())
     // Must be after lv_init() because it resets global state and clears callbacks
     helix::logging::register_lvgl_log_handler();
@@ -1423,46 +1442,33 @@ bool Application::init_display() {
     // scale is flat (exactly 1.0) through 225 DPI, which covers every shipping
     // printer measured, so this is an identity everywhere except phone-class
     // panels.
-    const helix::ResolvedDpi resolved =
-        helix::DisplayMetrics::resolve_dpi(m_args.dpi, measured_dpi, helix::board::current());
-    const double auto_scale = helix::DisplayMetrics::ui_scale_for_dpi(resolved.dpi);
-    helix::DisplayMetrics::set_auto_scale(auto_scale);
-
+    //
     // The stored UI Scale setting wins over the measurement, which is the
     // whole point of exposing it: a panel we scale wrongly, or a user who
     // simply wants larger type, has a way out that does not need a rebuild.
     // Config rather than DisplaySettingsManager because this runs inside
-    // init_display(), before that manager's subjects exist — both read the
+    // init_display(), before that manager's subjects exist; both read the
     // same key. `--dpi` stays upstream of this, overriding the measurement
     // that Automatic then follows.
-    const int scale_setting = Config::get_instance()->get<int>(
-        "/display/ui_scale_percent", helix::DisplayMetrics::kScaleSettingAutomatic);
-    const double ui_scale = helix::DisplayMetrics::scale_for_setting(scale_setting, auto_scale);
-    helix::DisplayMetrics::set_active_scale(ui_scale);
-
-    // What LVGL gets is LV_DPI_DEF scaled by the SAME factor — never a
+    //
+    // What LVGL gets is LV_DPI_DEF scaled by the SAME factor, never a
     // kernel-derived number. LVGL turns its DPI into padding via LV_DPX_CALC,
     // so this makes its internal chrome (and the four lv_dpx() call sites in
     // our own code) grow in step with the design tokens theme_manager scales.
     // The two paths are disjoint, so they add rather than compound. At scale
-    // 1.0 this is exactly LV_DPI_DEF, i.e. byte-identical to the previous
-    // behaviour, which is what keeps a lying kernel driver from reaching the
-    // UI at all (a sun4i-drm CB1 reports 23 DPI and would collapse padding to
-    // 1px via LV_DPX's MAX(..,1) floor).
-    int32_t effective_dpi = static_cast<int32_t>(std::lround(LV_DPI_DEF * ui_scale));
-    int32_t pre_set_dpi = lv_display_get_dpi(m_display->display());
-    lv_display_set_dpi(m_display->display(), effective_dpi);
-    spdlog::info("[Application] Display metrics: dpi={:.0f} (source={}) → ui_scale={:.3f} "
-                 "(auto={:.3f}, setting={}), lvgl_dpi={} (was {} before set)",
-                 resolved.dpi, helix::dpi_source_name(resolved.source), ui_scale, auto_scale,
-                 scale_setting == helix::DisplayMetrics::kScaleSettingAutomatic
-                     ? std::string("automatic")
-                     : std::to_string(scale_setting) + "%",
-                 effective_dpi, pre_set_dpi);
+    // 1.0 this is exactly LV_DPI_DEF, which is what keeps a lying kernel
+    // driver from reaching the UI at all (a sun4i-drm CB1 reports 23 DPI and
+    // would collapse padding to 1px via LV_DPX's MAX(..,1) floor).
+    s_user_override_dpi = m_args.dpi;
+    s_scale_setting = Config::get_instance()->get<int>(
+        "/display/ui_scale_percent", helix::DisplayMetrics::kScaleSettingAutomatic);
+    const int32_t pre_set_dpi = lv_display_get_dpi(m_display->display());
+    const helix::ScaleDecision scale = decide_display_scale(m_display->display());
+    apply_display_scale(m_display->display(), scale);
     if (pre_set_dpi < 50 && m_args.dpi == 0) {
         spdlog::warn("[Application] Display reported dpi={} before set — backend lost LV_DPI_DEF "
                      "between create and theme init. Fix-forward applied (forced to {}).",
-                     pre_set_dpi, effective_dpi);
+                     pre_set_dpi, scale.lvgl_dpi);
     }
 
     // Get active screen
@@ -1497,6 +1503,14 @@ bool Application::init_display() {
         // derives ui_is_portrait from LayoutManager::type() (override-aware),
         // so the type must reflect the new geometry before refresh reads it.
         // #1255.
+        // A foldable changes the native-to-logical ratio, and with it the
+        // DPI of the logical pixel, so the scale is decided again before the
+        // tokens and fonts that read it are refreshed.
+        const helix::ScaleDecision scale = decide_display_scale(disp);
+        if (scale.ui_scale != helix::DisplayMetrics::active_scale()) {
+            apply_display_scale(disp, scale);
+        }
+
         layout.init(w, h);
         theme_manager_refresh_layout_constants(disp);
         // Components register with the tokens and layout variant of the moment;

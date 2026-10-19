@@ -416,3 +416,45 @@ TEST_CASE("an upscaled logical surface is scaled by its own pixel density",
     CHECK(DisplayMetrics::logical_dpi(480.0, 0, 0, 1260, 540) == Catch::Approx(480.0));
     CHECK(DisplayMetrics::logical_dpi(480.0, 2520, 1080, 0, 540) == Catch::Approx(480.0));
 }
+
+TEST_CASE("the scale decision follows the drawing surface it is given",
+          "[display_metrics][decide_scale]") {
+    constexpr int kAuto = DisplayMetrics::kScaleSettingAutomatic;
+
+    // Galaxy Z Flip 7 unfolded: 480 DPI native, drawn 2x.
+    const auto unfolded =
+        DisplayMetrics::decide_scale(0, 480.0, 2520, 1080, 1260, 540, Board::Generic, kAuto);
+    CHECK(unfolded.resolved.source == DpiSource::PlatformMeasured);
+    CHECK(unfolded.resolved.dpi == Catch::Approx(240.0));
+    CHECK(unfolded.ui_scale == Catch::Approx(DisplayMetrics::ui_scale_for_dpi(240.0)));
+    CHECK(unfolded.lvgl_dpi == 168);
+
+    // The same panel drawn at a different integer fraction after a fold or a
+    // resize gets a different scale, which is what the resize path re-decides.
+    const auto native =
+        DisplayMetrics::decide_scale(0, 480.0, 2520, 1080, 2520, 1080, Board::Generic, kAuto);
+    CHECK(native.ui_scale > unfolded.ui_scale);
+    CHECK(native.lvgl_dpi > unfolded.lvgl_dpi);
+
+    // --dpi names the logical surface's DPI directly; the sizes do not touch it.
+    const auto forced =
+        DisplayMetrics::decide_scale(200, 480.0, 2520, 1080, 1260, 540, Board::Generic, kAuto);
+    CHECK(forced.resolved.source == DpiSource::UserOverride);
+    CHECK(forced.ui_scale == Catch::Approx(1.0));
+
+    // A stored percentage wins over the measurement, but the auto scale the
+    // settings row shows still comes from it.
+    const auto fixed =
+        DisplayMetrics::decide_scale(0, 480.0, 2520, 1080, 1260, 540, Board::Generic, 150);
+    CHECK(fixed.ui_scale == Catch::Approx(1.5));
+    CHECK(fixed.auto_scale == Catch::Approx(unfolded.auto_scale));
+    CHECK(fixed.lvgl_dpi == 240);
+
+    // No platform measurement (every Linux target): the surface sizes are
+    // irrelevant and a generic board stays at the authored size.
+    const auto linux_panel =
+        DisplayMetrics::decide_scale(0, std::nullopt, 0, 0, 800, 480, Board::Generic, kAuto);
+    CHECK(linux_panel.resolved.source == DpiSource::Fallback);
+    CHECK(linux_panel.ui_scale == Catch::Approx(1.0));
+    CHECK(linux_panel.lvgl_dpi == 160);
+}
