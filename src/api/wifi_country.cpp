@@ -3,7 +3,11 @@
 
 #include "wifi_country.h"
 
+#include "text_io.h"
+
 #include <cctype>
+#include <charconv>
+#include <cstdint>
 #include <iterator>
 
 namespace helix::wifi::country {
@@ -289,18 +293,6 @@ int table_index(const std::string& upper) {
     return -1;
 }
 
-std::string trim(const std::string& s) {
-    size_t b = 0;
-    size_t e = s.size();
-    while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) {
-        ++b;
-    }
-    while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) {
-        --e;
-    }
-    return s.substr(b, e - b);
-}
-
 } // namespace
 
 size_t table_size() {
@@ -345,7 +337,7 @@ std::string code_at_dropdown_index(int index) {
 }
 
 std::string parse_wpa_get_country(const std::string& reply) {
-    return normalize(trim(reply));
+    return normalize(std::string(helix::text_io::trim(reply)));
 }
 
 std::string parse_iw_reg_get(const std::string& output) {
@@ -382,6 +374,34 @@ Plan plan(const std::string& stored, const std::string& system) {
         return {want == have ? std::string() : want, want};
     }
     return {std::string(), have};
+}
+
+bool proc_status_has_capability(const std::string& proc_status, int bit) {
+    if (bit < 0 || bit > 63) {
+        return false;
+    }
+    const std::string key = "CapEff:";
+    size_t pos = 0;
+    while ((pos = proc_status.find(key, pos)) != std::string::npos) {
+        if (pos == 0 || proc_status[pos - 1] == '\n') {
+            break;
+        }
+        pos += key.size();
+    }
+    if (pos == std::string::npos) {
+        return false;
+    }
+    const size_t eol = proc_status.find('\n', pos);
+    const std::string_view value = helix::text_io::trim(
+        std::string_view(proc_status)
+            .substr(pos + key.size(),
+                    eol == std::string::npos ? std::string::npos : eol - pos - key.size()));
+    uint64_t mask = 0;
+    const auto [end, ec] = std::from_chars(value.data(), value.data() + value.size(), mask, 16);
+    if (ec != std::errc() || end != value.data() + value.size() || value.empty()) {
+        return false;
+    }
+    return ((mask >> bit) & 1U) != 0;
 }
 
 bool should_hint_5ghz(bool supports_5ghz, const std::string& effective_country) {

@@ -312,7 +312,7 @@ class WiFiManager {
      *
      * LVGL thread. @p code "" clears the saved choice and leaves the radio as
      * it is, so the device's own configuration governs it again. A non-empty
-     * code is saved even when the radio refuses it, and reapplied at the next
+     * code is saved only once the radio accepts it, and reapplied at the next
      * start. @p on_done(success) runs on the LVGL thread while @p token lives.
      */
     void set_country_async(const std::string& code, helix::LifetimeToken token,
@@ -415,6 +415,16 @@ class WiFiManager {
      * @param on_change Callback invoked on the UI thread after state changes
      */
     void add_state_observer(helix::LifetimeToken token, std::function<void()> on_change);
+
+    /**
+     * @brief Subscribe to the moments the regulatory country may have changed
+     *
+     * Fires on READY (the backend can now be asked) and on a regulatory
+     * domain change, and on nothing else: reading the country is a control
+     * lane op, so it must not ride every connection transition. Delivered
+     * like add_state_observer().
+     */
+    void add_country_observer(helix::LifetimeToken token, std::function<void()> on_change);
 
     /**
      * @brief Initialize self-reference for async callback safety
@@ -553,10 +563,12 @@ class WiFiManager {
     struct StateObserver {
         helix::LifetimeToken token;
         std::function<void()> callback;
+        bool country_only = false; ///< add_country_observer(): READY and REGDOM_CHANGE only
     };
     std::mutex state_observers_mutex_;
     std::vector<StateObserver> state_observers_;
-    void notify_state_observers();
+    /// @p country_may_have_changed also wakes the country observers.
+    void notify_state_observers(bool country_may_have_changed = false);
 
     // Timer callbacks (must be static for LVGL)
     static void scan_timer_callback(lv_timer_t* timer);

@@ -127,6 +127,27 @@ TEST_CASE("country 5 GHz hint shows only for a dual-band radio in the world doma
     CHECK_FALSE(country::should_hint_5ghz(false, ""));
 }
 
+TEST_CASE("CapEff parsing finds CAP_NET_ADMIN, and only on the CapEff line",
+          "[wifi][wifi_country]") {
+    const std::string service = "Name:\thelix-screen\n"
+                                "CapInh:\t0000000000000000\n"
+                                "CapPrm:\t0000000000401000\n"
+                                "CapEff:\t0000000000400000\n"
+                                "CapBnd:\t000001ffffffffff\n";
+    // CAP_SYS_BOOT (22) is effective; CAP_NET_ADMIN is permitted only.
+    CHECK_FALSE(country::proc_status_has_capability(service, country::kCapNetAdmin));
+    CHECK(country::proc_status_has_capability(service, 22));
+
+    CHECK(
+        country::proc_status_has_capability("CapEff:\t0000000000001000\n", country::kCapNetAdmin));
+    CHECK(country::proc_status_has_capability("CapEff:\t000001ffffffffff", country::kCapNetAdmin));
+    CHECK_FALSE(country::proc_status_has_capability("", country::kCapNetAdmin));
+    CHECK_FALSE(country::proc_status_has_capability("CapEff:\tzz\n", country::kCapNetAdmin));
+    CHECK_FALSE(
+        country::proc_status_has_capability("XCapEff:\t0000000000001000\n", country::kCapNetAdmin));
+    CHECK_FALSE(country::proc_status_has_capability("CapEff:\t0000000000001000\n", 64));
+}
+
 // ============================================================================
 // WiFiManager: persist, apply at startup, rescan on a domain change
 // ============================================================================
@@ -142,6 +163,14 @@ class CountingCountryBackend : public WifiBackendMock {
     }
     int triggers() const {
         return triggers_.load();
+    }
+    /// Stand in for a kernel that refuses the change (no CAP_NET_ADMIN).
+    std::atomic<bool> refuse_country{false};
+    WiFiError set_country(const std::string& code) override {
+        if (refuse_country.load()) {
+            return WiFiError(WiFiResult::PERMISSION_DENIED, "iw reg set exited 1");
+        }
+        return WifiBackendMock::set_country(code);
     }
 
   private:
@@ -273,4 +302,41 @@ TEST_CASE_METHOD(CountryFixture, "a regulatory domain change with no scan sessio
     REQUIRE(WiFiManagerTestAccess::settle(*wm));
     CHECK(radio_country(*backend) == "US");
     CHECK(backend->triggers() == 0);
+}
+
+TEST_CASE_METHOD(CountryFixture, "a country the radio refuses is not saved",
+                 "[wifi][wifi_country]") {
+    SystemSettingsManager::instance().set_wifi_country("FR");
+    start("FR");
+    backend->refuse_country = true;
+    bool ok = true;
+    wm->set_country_async("DE", guard.token(), [&](bool success) { ok = success; });
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK_FALSE(ok);
+    // The previous choice stands; DE would fail again at every start.
+    CHECK(SystemSettingsManager::instance().get_wifi_country() == "FR");
+    CHECK(radio_country(*backend) == "FR");
+}
+
+TEST_CASE_METHOD(CountryFixture,
+                 "country observers wake on a domain change, not on connection changes",
+                 "[wifi][wifi_country]") {
+    start("");
+    int country_wakes = 0;
+    int state_wakes = 0;
+    wm->add_country_observer(guard.token(), [&]() { ++country_wakes; });
+    wm->add_state_observer(guard.token(), [&]() { ++state_wakes; });
+
+    WiFiManagerTestAccess::fire_connected(*wm);
+    WiFiManagerTestAccess::fire_disconnected(*wm);
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(state_wakes >= 2);
+    CHECK(country_wakes == 0);
+
+    wm->set_country_async("US", guard.token(), nullptr);
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(country_wakes >= 1);
 }

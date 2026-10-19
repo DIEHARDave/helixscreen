@@ -11,8 +11,10 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
+#include "system/run_capture.h"
 #include "wifi_5ghz_detection.h"
 #include "wifi_country.h"
+#include "wifi_regdomain.h"
 #include "wifi_saved_config.h"
 
 // find_network_id() is pure string parsing with no OS dependency, and its
@@ -2098,6 +2100,13 @@ WiFiError WifiBackendWpaSupplicant::get_country(std::string& code) {
     if (!is_running()) {
         return WiFiError(WiFiResult::NOT_INITIALIZED, "Backend not started");
     }
+    // The kernel's domain is what the radio runs under. wpa_supplicant's
+    // GET country reads only its own config, which is unset wherever the
+    // domain came from somewhere else (cfg80211's ieee80211_regdom, crda).
+    if (const auto kernel = helix::wifi::regdomain::read_country()) {
+        code = *kernel;
+        return WiFiErrorHelper::success();
+    }
     const std::string reply = send_command("GET country");
     if (reply.empty()) {
         return WiFiErrorHelper::connection_failed("No response from wpa_supplicant GET country");
@@ -2148,21 +2157,13 @@ void WifiBackendWpaSupplicant::resolve_5ghz_support() {
 
         // Fallback: try iw phy info
         // Find phy name from /sys/class/net/wlan0/phy80211/name (or similar)
-        FILE* pipe = popen("iw phy phy0 info 2>/dev/null", "r");
-        if (pipe) {
-            std::string iw_output;
-            char buf[256];
-            while (fgets(buf, sizeof(buf), pipe)) {
-                iw_output += buf;
-            }
-            pclose(pipe);
-
-            if (wifi_parse_iw_phy_has_5ghz(iw_output)) {
-                supports_5ghz_cached_ = true;
-                supports_5ghz_resolved_ = true;
-                spdlog::debug("[WifiBackend] 5GHz support detected via iw phy info");
-                return;
-            }
+        int iw_exit = -1;
+        const std::string iw_output = helix::run_capture("iw phy phy0 info 2>/dev/null", iw_exit);
+        if (wifi_parse_iw_phy_has_5ghz(iw_output)) {
+            supports_5ghz_cached_ = true;
+            supports_5ghz_resolved_ = true;
+            spdlog::debug("[WifiBackend] 5GHz support detected via iw phy info");
+            return;
         }
 
         supports_5ghz_resolved_ = true;

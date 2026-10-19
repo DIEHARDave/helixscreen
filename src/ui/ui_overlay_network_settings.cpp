@@ -329,10 +329,9 @@ void NetworkSettingsOverlay::on_activate() {
     // Registered per activation — on_deactivate() invalidates lifetime_, so
     // a create()-time token would die at the first close and never return.
     if (wifi_manager_) {
-        wifi_manager_->add_state_observer(lifetime_.token(), [this]() {
-            refresh_transport_status();
-            refresh_country();
-        });
+        wifi_manager_->add_state_observer(lifetime_.token(),
+                                          [this]() { refresh_transport_status(); });
+        wifi_manager_->add_country_observer(lifetime_.token(), [this]() { refresh_country(); });
     }
 
     // Backend capabilities: the 2.4GHz-only indicator, and the Forget and

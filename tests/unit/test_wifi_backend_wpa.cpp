@@ -27,15 +27,19 @@
 #include "../test_helpers/wpa_fake_supplicant.h"
 #include "netd_test_server.h" // helix_test::EnvVarGuard
 #include "wifi_backend_wpa_supplicant.h"
+#include "wifi_regdomain.h"
 
 #include <algorithm>
 #include <chrono>
 #include <condition_variable>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <mutex>
 #include <optional>
+#include <sys/stat.h>
 #include <thread>
+#include <unistd.h>
 
 #include "../catch_amalgamated.hpp"
 
@@ -64,9 +68,12 @@ struct WpaFakeFixture {
         // interface, which CI runners do not have.
         net_sysfs_guard.emplace(dir);
         proc_root_guard.emplace(dir);
+        // Hermetic regulatory domain: no iw unless a case installs a fake one.
+        helix::wifi::regdomain::set_iw_for_test("");
     }
 
     ~WpaFakeFixture() {
+        helix::wifi::regdomain::reset_iw_for_test();
         proc_root_guard.reset();
         net_sysfs_guard.reset();
         env_guard.reset();
@@ -194,6 +201,36 @@ TEST_CASE("wpa reads the configured country, and FAIL as none", "[network][wpa][
     fx.fake->set_reply("GET country", "FAIL\n");
     REQUIRE(backend.get_country(code).success());
     CHECK(code.empty());
+}
+
+TEST_CASE("wpa reports the kernel's domain when iw can read it", "[network][wpa][wifi_country]") {
+    WpaFakeFixture fx;
+    WifiBackendWpaSupplicant backend(kWatchdogMs);
+    CHECK_FALSE(backend.supports_country());
+    REQUIRE(backend.start().success());
+    CHECK(backend.supports_country());
+
+    // A domain set outside wpa_supplicant (cfg80211's ieee80211_regdom): its
+    // own config has none, the kernel has DE.
+    const std::string iw = fx.dir + "/fake_iw";
+    {
+        std::FILE* f = std::fopen(iw.c_str(), "w");
+        REQUIRE(f != nullptr);
+        std::fputs("#!/bin/sh\n[ \"$1 $2\" = \"reg get\" ] || exit 1\n"
+                   "printf 'global\\ncountry DE: DFS-ETSI\\n'\n",
+                   f);
+        std::fclose(f);
+        REQUIRE(::chmod(iw.c_str(), 0755) == 0);
+    }
+    helix::wifi::regdomain::set_iw_for_test(iw);
+    fx.fake->set_reply("GET country", "FAIL\n");
+
+    std::string code;
+    REQUIRE(backend.get_country(code).success());
+    CHECK(code == "DE");
+
+    helix::wifi::regdomain::set_iw_for_test("");
+    ::unlink(iw.c_str());
 }
 
 TEST_CASE("wpa set_country sends SET country, then SAVE_CONFIG", "[network][wpa][wifi_country]") {

@@ -115,6 +115,9 @@ class WifiBackendNetworkManager : public WifiBackend {
     // 5GHz support — computed once at start(), never changes
     std::atomic<bool> supports_5ghz_cached_{false};
     std::atomic<bool> supports_5ghz_resolved_{false};
+    /// `iw` is installed and this process may set the regulatory domain
+    /// (root or CAP_NET_ADMIN). Resolved in start(), off the LVGL thread.
+    std::atomic<bool> country_settable_{false};
 
     // Cached `nmcli radio wifi` state. is_radio_enabled() is polled from the
     // UI thread (WiFiManager::is_enabled), so it must not shell out; the cache

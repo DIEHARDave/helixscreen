@@ -61,6 +61,14 @@ std::string parse_iw_reg_get(const std::string& output);
 /// The alpha2= field of a CTRL-EVENT-REGDOM-CHANGE line, "" if absent.
 std::string parse_regdom_change_alpha2(const std::string& event);
 
+/// CAP_NET_ADMIN's bit in a capability mask: what `iw reg set` needs.
+constexpr int kCapNetAdmin = 12;
+
+/// Whether bit @p bit is set in the CapEff (effective capabilities) line of
+/// @p proc_status, the text of /proc/<pid>/status. False when the line is
+/// absent or malformed.
+bool proc_status_has_capability(const std::string& proc_status, int bit);
+
 /// What to do with the radio's country once a backend is up.
 struct Plan {
     /// Country to send to the backend; "" means leave the radio alone.

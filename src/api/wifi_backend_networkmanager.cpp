@@ -7,6 +7,7 @@
 #include "helix_thread.h"
 #include "log_redact.h"
 #include "spdlog/spdlog.h"
+#include "system/run_capture.h"
 
 #if !defined(__APPLE__) && !defined(__ANDROID__)
 // ============================================================================
@@ -16,6 +17,7 @@
 #include "text_io.h"
 #include "wifi_5ghz_detection.h"
 #include "wifi_country.h"
+#include "wifi_regdomain.h"
 
 #include <algorithm>
 #include <array>
@@ -106,6 +108,12 @@ WiFiError WifiBackendNetworkManager::start() {
         status_running_ = false;
     }
 
+    country_settable_.store(helix::wifi::regdomain::find_iw() != nullptr &&
+                            helix::wifi::regdomain::process_may_set());
+    spdlog::debug("[WifiBackend] NM: regulatory country {}",
+                  country_settable_.load() ? "settable"
+                                           : "not settable (needs iw and CAP_NET_ADMIN)");
+
     // Compute 5GHz support once (blocking here is fine — only happens at startup)
     if (!supports_5ghz_resolved_) {
         try {
@@ -114,16 +122,10 @@ WiFiError WifiBackendNetworkManager::start() {
 
             // Fallback: try iw if nmcli didn't give us a clear answer
             if (!supports_5ghz_cached_) {
-                FILE* pipe = popen("iw phy phy0 info 2>/dev/null", "r");
-                if (pipe) {
-                    std::string iw_output;
-                    char buf[256];
-                    while (fgets(buf, sizeof(buf), pipe)) {
-                        iw_output += buf;
-                    }
-                    pclose(pipe);
-                    supports_5ghz_cached_ = wifi_parse_iw_phy_has_5ghz(iw_output);
-                }
+                int iw_exit = -1;
+                const std::string iw_output =
+                    helix::run_capture("iw phy phy0 info 2>/dev/null", iw_exit);
+                supports_5ghz_cached_ = wifi_parse_iw_phy_has_5ghz(iw_output);
             }
         } catch (const std::exception& e) {
             spdlog::warn("[WifiBackend] NM: Error detecting 5GHz support: {}", e.what());
@@ -251,20 +253,8 @@ std::string WifiBackendNetworkManager::exec_nmcli(const std::string& args) {
     std::string cmd = "nmcli " + args + " 2>/dev/null";
     spdlog::trace("[WifiBackend] NM: exec: {}", cmd);
 
-    FILE* pipe = popen(cmd.c_str(), "r");
-    if (!pipe) {
-        spdlog::debug("[WifiBackend] NM: popen failed for: {}", cmd);
-        return "";
-    }
-
-    std::string result;
-    std::array<char, 512> buffer;
-    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
-        result += buffer.data();
-    }
-
-    int ret = pclose(pipe);
-    int exit_code = WIFEXITED(ret) ? WEXITSTATUS(ret) : -1;
+    int exit_code = -1;
+    std::string result = helix::run_capture(cmd, exit_code);
 
     if (exit_code != 0) {
         spdlog::trace("[WifiBackend] NM: nmcli exited with code {}", exit_code);
@@ -283,28 +273,11 @@ WifiBackendNetworkManager::exec_nmcli_full(const std::string& args) {
     NmcliResult nr;
     nr.exit_code = -1;
 
-    FILE* pipe = popen(cmd.c_str(), "r");
-    if (!pipe) {
-        spdlog::debug("[WifiBackend] NM: popen failed for: {}", cmd);
-        unlink(stderr_file.c_str());
-        return nr;
-    }
-
-    std::array<char, 512> buffer;
-    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
-        nr.stdout_output += buffer.data();
-    }
-
-    int ret = pclose(pipe);
-    nr.exit_code = WIFEXITED(ret) ? WEXITSTATUS(ret) : -1;
+    nr.stdout_output = helix::run_capture(cmd, nr.exit_code);
 
     // Read captured stderr
-    FILE* err_fp = fopen(stderr_file.c_str(), "r");
-    if (err_fp) {
-        while (fgets(buffer.data(), buffer.size(), err_fp) != nullptr) {
-            nr.stderr_output += buffer.data();
-        }
-        fclose(err_fp);
+    if (auto err = helix::text_io::read_file(stderr_file)) {
+        nr.stderr_output = std::move(*err);
     }
     unlink(stderr_file.c_str());
 
@@ -990,55 +963,20 @@ bool WifiBackendNetworkManager::is_radio_enabled() const {
 // Regulatory Country
 // ============================================================================
 
-namespace {
-
-const char* find_iw() {
-    for (const char* path : {"/usr/sbin/iw", "/sbin/iw", "/usr/bin/iw", "/bin/iw"}) {
-        if (access(path, X_OK) == 0) {
-            return path;
-        }
-    }
-    return nullptr;
-}
-
-/// Runs `iw <args>`; @p args is a fixed verb plus at most a validated
-/// two-letter code, so the shell sees nothing a caller typed.
-std::string exec_iw(const char* iw, const std::string& args, int& exit_code) {
-    const std::string cmd = std::string(iw) + " " + args + " 2>/dev/null";
-    exit_code = -1;
-    FILE* pipe = popen(cmd.c_str(), "r");
-    if (!pipe) {
-        return {};
-    }
-    std::string out;
-    std::array<char, 512> buffer;
-    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
-        out += buffer.data();
-    }
-    const int ret = pclose(pipe);
-    exit_code = WIFEXITED(ret) ? WEXITSTATUS(ret) : -1;
-    return out;
-}
-
-} // namespace
-
 bool WifiBackendNetworkManager::supports_country() const {
-    return find_iw() != nullptr;
+    return country_settable_.load();
 }
 
 WiFiError WifiBackendNetworkManager::get_country(std::string& code) {
     code.clear();
-    const char* iw = find_iw();
-    if (!iw) {
+    if (!helix::wifi::regdomain::find_iw()) {
         return WiFiError(WiFiResult::NOT_SUPPORTED, "iw not installed");
     }
-    int exit_code = -1;
-    const std::string out = exec_iw(iw, "reg get", exit_code);
-    if (exit_code != 0) {
-        return WiFiError(WiFiResult::BACKEND_ERROR,
-                         "iw reg get exited " + std::to_string(exit_code));
+    const auto country = helix::wifi::regdomain::read_country();
+    if (!country) {
+        return WiFiError(WiFiResult::BACKEND_ERROR, "iw reg get failed");
     }
-    code = helix::wifi::country::parse_iw_reg_get(out);
+    code = *country;
     return WiFiErrorHelper::success();
 }
 
@@ -1047,12 +985,12 @@ WiFiError WifiBackendNetworkManager::set_country(const std::string& code) {
     if (clean.empty()) {
         return WiFiError(WiFiResult::INVALID_PARAMETERS, "Not an ISO 3166-1 alpha-2 country");
     }
-    const char* iw = find_iw();
+    const char* iw = helix::wifi::regdomain::find_iw();
     if (!iw) {
         return WiFiError(WiFiResult::NOT_SUPPORTED, "iw not installed");
     }
     int exit_code = -1;
-    exec_iw(iw, "reg set " + clean, exit_code);
+    helix::wifi::regdomain::exec_iw(iw, "reg set " + clean, exit_code);
     if (exit_code != 0) {
         // iw reg set needs CAP_NET_ADMIN; without it the kernel refuses.
         return WiFiError(WiFiResult::PERMISSION_DENIED,

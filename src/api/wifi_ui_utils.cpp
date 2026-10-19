@@ -15,8 +15,7 @@
 #include <vector>
 
 #ifdef __APPLE__
-#include <array>
-#include <memory>
+#include "system/run_capture.h"
 #endif
 
 #if !defined(__APPLE__) && !defined(HELIX_PLATFORM_ESP32)
@@ -176,21 +175,9 @@ bool wifi_scan_spans_multiple_bands(const std::vector<WiFiNetwork>& networks) {
 std::string wifi_get_device_mac(const std::string& interface) {
 #ifdef __APPLE__
     // macOS: Parse ifconfig output for ether line
-    std::string command = "ifconfig " + interface + " 2>/dev/null";
-    std::array<char, 256> buffer;
-    std::string result;
-
-    // Use popen to execute command and read output
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command.c_str(), "r"), pclose);
-    if (!pipe) {
-        spdlog::error("[wifi_ui] Failed to execute ifconfig for interface '{}'", interface);
-        return "";
-    }
-
-    // Read command output line by line
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-        result += buffer.data();
-    }
+    int exit_code = -1;
+    const std::string result =
+        helix::run_capture("ifconfig " + interface + " 2>/dev/null", exit_code);
 
     // Parse for "ether XX:XX:XX:XX:XX:XX" line
     const std::string ether_prefix = "ether ";

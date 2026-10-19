@@ -249,8 +249,10 @@ class WifiBackendWpaSupplicant : public WifiBackend, private hv::EventLoopThread
     bool supports_forget() const override {
         return true;
     }
+    /// wpa_supplicant sets the country itself, so the only requirement is a
+    /// live control connection.
     bool supports_country() const override {
-        return true;
+        return is_running();
     }
     WiFiError get_country(std::string& code) override;
     WiFiError set_country(const std::string& code) override;
