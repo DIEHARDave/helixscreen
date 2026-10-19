@@ -207,7 +207,11 @@
         "extra_splash_3d_classes": [
           "small"
         ],
-        "extra_splash_3d_reason": "Plain K1 and K1 Max are unmeasured. A 480x400 variant would select `small`; generating it alongside the derived class costs ~1.5MB and guarantees no K1 ships without a splash. Drop it once measured."
+        "extra_splash_3d_reason": "Plain K1 and K1 Max are unmeasured. A 480x400 variant would select `small`; generating it alongside the derived class costs ~1.5MB and guarantees no K1 ships without a splash. Drop it once measured.",
+        "extra_printer_image_sizes": [
+          150
+        ],
+        "extra_printer_image_sizes_reason": "Plain K1 and K1 Max are unmeasured. A 480-wide variant would select the 150px tier; keeping it costs ~2.6MB and guarantees no K1 shows the generic printer. Drop it once measured."
       }
     },
     "k1-dynamic": {
@@ -261,16 +265,24 @@
         "extra_splash_3d_classes": [
           "small"
         ],
-        "extra_splash_3d_reason": "Plain K1 and K1 Max are unmeasured. A 480x400 variant would select `small`; generating it alongside the derived class costs ~1.5MB and guarantees no K1 ships without a splash. Drop it once measured."
+        "extra_splash_3d_reason": "Plain K1 and K1 Max are unmeasured. A 480x400 variant would select `small`; generating it alongside the derived class costs ~1.5MB and guarantees no K1 ships without a splash. Drop it once measured.",
+        "extra_printer_image_sizes": [
+          150
+        ],
+        "extra_printer_image_sizes_reason": "Plain K1 and K1 Max are unmeasured. A 480-wide variant would select the 150px tier; keeping it costs ~2.6MB and guarantees no K1 shows the generic printer. Drop it once measured."
       }
     },
     "mips": {
       "display_name": "Unified MIPS (Creality K1 series + FlashForge AD5X)",
       "panel": {
         "variable": true,
+        "candidates": [
+          "k1",
+          "ad5x"
+        ],
         "verified": true,
         "source": "Both boards measured 2026-09-11: K1C 480x800 rotate 270, AD5X 800x480 rotate 0 — 800x480 effective on each. Which one this binary lands on is a runtime fact (helix::ad5x_mod_layout_present), so the panel is unknown at package time.",
-        "notes": "Ships every size class: the k1 entry's small-class hedge (plain K1 / K1 Max unmeasured) is subsumed by keeping them all."
+        "notes": "Ships what its candidate boards need: the union of the k1 and ad5x splash classes and printer tiers, hedges included. Both are 800x480 effective, so no request exceeds the 300px tier and the source PNGs are dropped."
       },
       "storage": {
         "root": "detected",
