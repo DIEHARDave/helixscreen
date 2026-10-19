@@ -44,7 +44,7 @@ PrintStartCollector (owns lifecycle, phase detection, timing)
 - **PreprintPredictor is a pure-logic class** with zero dependencies on LVGL, Config, or threading. This makes it trivially testable.
 - **PrintStartCollector owns the predictor instance** and manages loading/saving. It also owns the LVGL timer that periodically updates the ETA display.
 - **Static convenience method** `PreprintPredictor::predicted_total_from_config()` allows UI code (print select panel, print status panel) to get predictions without access to the collector.
-- **One estimate function.** `PreprintPredictor::estimate()` turns heating seconds, the predicted phases and a start's phase overrides into the duration map and the absolute total. The collector's countdown and the print details estimate both call it. The countdown passes no overrides, so given the same temperatures, targets and history the two numbers are equal exactly when the details side's overrides change nothing: no toggle turned off, and no toggle left on for a phase `estimate()` adds (before any history, a phase the default map lacks; with history, a phase every entry in the window recorded as skipped).
+- **One estimate function.** `PreprintPredictor::estimate()` turns heating seconds, the predicted phases and a start's phase overrides into the duration map and the absolute total. The collector's countdown and the print details estimate both call it, with the same overrides: `start_print()` hands the collector the toggles print details estimated with (`PrintStartCollector::note_phase_overrides()`), which recomputes the countdown's total. Given the same temperatures, targets and history the two numbers are equal.
 
 ---
 
@@ -355,7 +355,7 @@ The two callers differ only in their inputs:
 | Heat-up from | the temperatures when the collector armed | the current temperatures |
 | Heat-up to | the printer's targets as they appear | the file's `first_layer_extr_temp` / `first_layer_bed_temp` |
 | History | the collector's bucket and window | the same: cold/warm from the current bed temperature through `PreprintPredictor::temp_bucket_for()`, `HostPreStart` when the start would send a pre-start block (`pre_start_block()` non-empty, built from the file's path and its scanned START_PRINT temps as `start_print()` builds it), else `PrinterEdge` |
-| Overrides | none | the bed_mesh, qgl, z_tilt, nozzle_clean and purge_line options: DISABLED skips the phase, ENABLED runs it, an option the printer does not have leaves the phase alone |
+| Overrides | the ones print details used, from `note_phase_overrides()` once `start_print()` sends them; none before that, or for a print started elsewhere | the bed_mesh, qgl, z_tilt, nozzle_clean and purge_line options: DISABLED skips the phase, ENABLED runs it, an option the printer does not have leaves the phase alone |
 
 The details estimate needs the file's temperatures, so until its metadata has loaded - and for
 a USB file, which has no Moonraker metadata to fetch - it is 0 and the detail view hides the
@@ -476,7 +476,7 @@ Entries are stored in the main config file (`config/settings.json`) at the JSON 
   `migrate_v24_to_v25` converts them.
 - `temp_bucket`: Optional. 1 = cold start (bed below 40°C at start), 2 = warm start (40°C or above); omitted means unknown. `PreprintPredictor::temp_bucket_for()` is the one rule: the collector's history load, the entry it saves and the print details estimate all call it. Older versions stored the raw nozzle target temperature here; those values are dropped at load time as a one-shot migration.
 - `window`: Optional. `PreprintWindow` enum int - 1 = `PrinterEdge`, 2 = `HostPreStart`; omitted means legacy (read back as `Unknown`, treated as `PrinterEdge` when filtering). See "Measurement windows" above.
-- `skipped`: Optional. `PrintStartPhase` names of the phases this start's option toggles turned off (bed_mesh, qgl, z_tilt, nozzle_clean, purge_line), as `PrintPreparationManager::start_print()` handed them to `PrintStartCollector::note_skipped_phases()`. `[]` means the start skipped nothing; omitted means unknown - a legacy entry, or a start this screen did not send. `estimate()` reads it to tell a phase no start ran from one the matcher missed.
+- `skipped`: Optional. `PrintStartPhase` names of the phases this start's option toggles turned off (bed_mesh, qgl, z_tilt, nozzle_clean, purge_line), the phases the overrides `PrintPreparationManager::start_print()` handed to `PrintStartCollector::note_phase_overrides()` turn off (`PreprintPredictor::phases_skipped_by()`). `[]` means the start skipped nothing; omitted means unknown - a legacy entry, or a start this screen did not send. `estimate()` reads it to tell a phase no start ran from one the matcher missed.
 
 ### Save Flow
 
@@ -645,7 +645,8 @@ Tests cover:
 The print details side is `[print_preparation][estimate]` in
 `tests/unit/test_print_preparation_manager.cpp` (no metadata, cold and warm printers,
 database defaults, history, toggles), `Print details estimate and the countdown total
-agree` in `tests/unit/test_print_start_collector.cpp` pins the two callers to one number, and
+agree` and `With a phase toggled off, print details and the countdown still agree` in
+`tests/unit/test_print_start_collector.cpp` pin the two callers to one number, and
 `a file's late metadata never lands on the next file shown` in
 `tests/unit/test_print_select_detail_subjects.cpp` pins the dropped stale metadata.
 

@@ -408,9 +408,15 @@ void PrintStartCollector::note_host_side_pre_start(const std::string& dispatched
     load_prediction_history();
 }
 
-void PrintStartCollector::note_skipped_phases(std::set<int> phases) {
-    std::lock_guard<std::mutex> lock(state_mutex_);
-    skipped_phases_ = std::move(phases);
+void PrintStartCollector::note_phase_overrides(helix::PreprintPhaseOverrides overrides) {
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        phase_overrides_ = std::move(overrides);
+        // The total moves with the toggles, in either direction; the anchor
+        // would clamp a larger one back to the old countdown.
+        last_remaining_ = 0;
+    }
+    compute_predicted_weights();
 }
 
 void PrintStartCollector::reset_run_locked() {
@@ -422,7 +428,7 @@ void PrintStartCollector::reset_run_locked() {
     // Assume the narrower window until something says otherwise.
     window_ = helix::PreprintWindow::PrinterEdge;
     host_pre_start_echo_lines_.clear();
-    skipped_phases_.reset();
+    phase_overrides_.reset();
     detected_phases_.clear();
     current_phase_ = PrintStartPhase::INITIALIZING;
     print_start_detected_ = false;
@@ -3044,7 +3050,8 @@ void PrintStartCollector::compute_predicted_weights() {
 
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        const helix::PreprintEstimate estimate = predictor_.estimate(heating);
+        const helix::PreprintEstimate estimate = predictor_.estimate(
+            heating, phase_overrides_.value_or(helix::PreprintPhaseOverrides{}));
 
         float durations_sum = 0.0f;
         for (const auto& [_, dur] : estimate.durations) {
@@ -3280,7 +3287,9 @@ void PrintStartCollector::save_prediction_entry() {
 
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        entry.skipped_phases = skipped_phases_;
+        if (phase_overrides_) {
+            entry.skipped_phases = helix::PreprintPredictor::phases_skipped_by(*phase_overrides_);
+        }
         predictor_.add_entry(entry);
     }
 

@@ -118,6 +118,9 @@ class PreprintPredictor {
     /// at or above kWarmBedC, else 1 (cold)
     [[nodiscard]] static int temp_bucket_for(float bed_c);
 
+    /// The phases @p overrides skips, as a run's history entry records them
+    [[nodiscard]] static std::set<int> phases_skipped_by(const PreprintPhaseOverrides& overrides);
+
     /**
      * @brief Load entries with legacy temp_bucket filtering (backward compat)
      *

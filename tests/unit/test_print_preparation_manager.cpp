@@ -4596,12 +4596,17 @@ TEST_CASE_METHOD(HelixTestFixture,
     manager.set_option_state_provider([](const std::string& id) {
         return id == "bed_mesh" ? 0 : id == "qgl" ? 1 : -1;
     });
-    CHECK(PrintPreparationManagerTestAccess::skipped_preprint_phases(manager) ==
+    const helix::PreprintPhaseOverrides overrides =
+        PrintPreparationManagerTestAccess::preprint_phase_overrides(manager);
+    CHECK(overrides ==
+          helix::PreprintPhaseOverrides{{static_cast<int>(helix::PrintStartPhase::BED_MESH), false},
+                                        {static_cast<int>(helix::PrintStartPhase::QGL), true}});
+    CHECK(helix::PreprintPredictor::phases_skipped_by(overrides) ==
           std::set<int>{static_cast<int>(helix::PrintStartPhase::BED_MESH)});
 }
 
 TEST_CASE_METHOD(HelixTestFixture,
-                 "PrintPreparationManager: starting a print hands its skipped phases to the "
+                 "PrintPreparationManager: starting a print hands its phase toggles to the "
                  "collector",
                  "[print_preparation][estimate]") {
     lv_init_safe();
@@ -4617,7 +4622,7 @@ TEST_CASE_METHOD(HelixTestFixture,
             set_moonraker_manager(nullptr);
         }
     } uninstall;
-    REQUIRE_FALSE(PrintStartCollectorTestAccess::skipped_phases(*collector).has_value());
+    REQUIRE_FALSE(PrintStartCollectorTestAccess::phase_overrides(*collector).has_value());
 
     MockPrinter mock_printer;
     PrintPreparationManager manager;
@@ -4633,8 +4638,10 @@ TEST_CASE_METHOD(HelixTestFixture,
     manager.start_print("part.gcode", "", []() {}, [](bool, const std::string&) {});
     helix::ui::UpdateQueue::instance().drain();
 
-    const auto told = PrintStartCollectorTestAccess::skipped_phases(*collector);
+    const auto told = PrintStartCollectorTestAccess::phase_overrides(*collector);
     REQUIRE(told.has_value());
-    CHECK(*told == std::set<int>{static_cast<int>(helix::PrintStartPhase::BED_MESH)});
+    CHECK(*told ==
+          helix::PreprintPhaseOverrides{{static_cast<int>(helix::PrintStartPhase::BED_MESH), false},
+                                        {static_cast<int>(helix::PrintStartPhase::QGL), true}});
     manager.set_dependencies(nullptr, nullptr);
 }
