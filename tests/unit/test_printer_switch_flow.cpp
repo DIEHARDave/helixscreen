@@ -853,3 +853,70 @@ TEST_CASE_METHOD(SwitchFlowFixture,
     CHECK(events_ == kFullRestart);
     CHECK(cfg_->get_active_printer_id() == "beta");
 }
+
+TEST_CASE_METHOD(SwitchFlowFixture,
+                 "Switch flow: of two picks made in one drain, the later one runs",
+                 "[multi-printer][switch_flow][lifecycle]") {
+    cfg_->add_printer("gamma", nlohmann::json{{"printer_name", "Gamma"}});
+    helix::ui::queue_update("test::pick_beta", [this] { flow_.request_switch("beta"); });
+    helix::ui::queue_update("test::pick_gamma", [this] { flow_.request_switch("gamma"); });
+    UpdateQueue::instance().drain();
+
+    lv_timer_handler();
+    lv_timer_handler();
+
+    CHECK(teardowns() == 1);
+    CHECK(active_at_teardown_ == "gamma");
+    CHECK(cfg_->get_active_printer_id() == "gamma");
+}
+
+TEST_CASE_METHOD(SwitchFlowFixture,
+                 "Switch flow: a pick made in place drops the one waiting for the tick",
+                 "[multi-printer][switch_flow][lifecycle]") {
+    cfg_->add_printer("gamma", nlohmann::json{{"printer_name", "Gamma"}});
+    helix::ui::queue_update("test::pick_beta", [this] { flow_.request_switch("beta"); });
+    UpdateQueue::instance().drain();
+
+    REQUIRE(flow_.request_switch("gamma"));
+    lv_timer_handler();
+
+    CHECK(teardowns() == 1);
+    CHECK(cfg_->get_active_printer_id() == "gamma");
+}
+
+TEST_CASE_METHOD(SwitchFlowFixture,
+                 "Switch flow: a wizard cancel drops a pick still waiting for the tick",
+                 "[multi-printer][switch_flow][lifecycle]") {
+    flow_.add_printer_via_wizard();
+    set_wizard_cancel_callback(nullptr);
+    const std::string added = cfg_->get_active_printer_id();
+    REQUIRE(teardowns() == 1);
+
+    helix::ui::queue_update("test::pick_beta", [this] { flow_.request_switch("beta"); });
+    UpdateQueue::instance().drain();
+    flow_.cancel_add_printer_wizard();
+    lv_timer_handler();
+
+    CHECK(teardowns() == 2);
+    CHECK(cfg_->get_active_printer_id() == "alpha");
+    const auto ids = cfg_->get_printer_ids();
+    CHECK(std::find(ids.begin(), ids.end(), added) == ids.end());
+}
+
+TEST_CASE_METHOD(SwitchFlowFixture,
+                 "Switch flow: a pick made after a wizard cancel runs after the cancel's restart",
+                 "[multi-printer][switch_flow][lifecycle]") {
+    flow_.add_printer_via_wizard();
+    set_wizard_cancel_callback(nullptr);
+    REQUIRE(teardowns() == 1);
+
+    flow_.cancel_add_printer_wizard();
+    std::vector<std::string> active_at_each_teardown;
+    on_rebuild_ = [&] { active_at_each_teardown.push_back(active_at_teardown_); };
+    helix::ui::queue_update("test::pick_beta", [this] { flow_.request_switch("beta"); });
+    UpdateQueue::instance().drain();
+    lv_timer_handler();
+
+    CHECK(active_at_each_teardown == std::vector<std::string>{"alpha", "beta"});
+    CHECK(cfg_->get_active_printer_id() == "beta");
+}
