@@ -206,6 +206,13 @@ start() {
         done
         unset _exit_waited
     fi
+    # The launcher outlives helix-screen while it runs its exit trap, so the
+    # PIDFILE can name a launcher with nothing left under it. The launcher
+    # answers whether one is exiting, and waits it out, so this script and
+    # the platform hooks share one rule.
+    if [ -x "$LAUNCHER" ]; then
+        "$LAUNCHER" --wait-for-predecessor || true
+    fi
 
     if [ -f "$PIDFILE" ]; then
         PID=$(cat "$PIDFILE")
