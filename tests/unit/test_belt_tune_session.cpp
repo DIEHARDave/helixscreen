@@ -17,8 +17,8 @@ using helix::calibration::test::windowed;
 
 namespace {
 
-constexpr float LO = 5.0f;
-constexpr float HI = 135.0f;
+constexpr float kLo = 5.0f;
+constexpr float kHi = 135.0f;
 constexpr float kBinHz = 3200.0f / 4096.0f;
 
 std::string fixture_dir() {
@@ -52,7 +52,7 @@ BeltResponse load_fixture_response(const std::string& name, char path) {
 }
 
 /// A sharp synthetic peak: its zone centroid sits close to it.
-BeltCurve one_peak(float hz, float lo = LO, float hi = HI) {
+BeltCurve one_peak(float hz, float lo = kLo, float hi = kHi) {
     return lorentzian_curve({{hz, 1e4f}}, lo, hi, kBinHz, 0.01f, 1.0f);
 }
 
@@ -62,7 +62,7 @@ BeltResponse peak_response(float hz) {
 
 /// A session whose round 0 is the two responses, compared on psd_xyz as RESULTS does.
 BeltTuneSession session_from(const BeltResponse& a, const BeltResponse& b, BeltTensionerKind kind,
-                             float lo = LO, float hi = HI) {
+                             float lo = kLo, float hi = kHi) {
     return BeltTuneSession(a, b, compare_belt_paths(a.xyz, b.xyz, lo, hi), lo, hi, kind);
 }
 
@@ -72,14 +72,15 @@ BeltTuneSession session_for(float a_hz, float b_hz, BeltTensionerKind kind) {
 }
 
 /// The unexcited floor of a synthetic narrow sweep.
-constexpr float FLOOR = 0.01f;
+constexpr float kFloor = 0.01f;
 
 /// Both paths swept over the session's sweep window: driven bins inside it,
 /// the unexcited floor across the rest of the band.
 const BeltTuneRound& sweep_curves(BeltTuneSession& s, const BeltCurve& a, const BeltCurve& b) {
     REQUIRE(s.sweep_window().has_value());
     const auto w = *s.sweep_window();
-    return s.add_round(windowed(response_from(a), w, FLOOR), windowed(response_from(b), w, FLOOR));
+    return s.add_round(windowed(response_from(a), w, kFloor),
+                       windowed(response_from(b), w, kFloor));
 }
 
 const BeltTuneRound& sweep(BeltTuneSession& s, float a_hz, float b_hz) {
@@ -100,8 +101,8 @@ void baseline(BeltTuneSession& s, float a_hz, float b_hz) {
 BeltResponse triangle(float centre_hz, float scale, BeltSweepWindow swept) {
     BeltCurve c;
     for (int i = 0; i <= 520; ++i) {
-        const float f = LO + 0.25f * static_cast<float>(i);
-        float v = (f < swept.freq_start_hz || f > swept.freq_end_hz) ? FLOOR : 0.0f;
+        const float f = kLo + 0.25f * static_cast<float>(i);
+        float v = (f < swept.freq_start_hz || f > swept.freq_end_hz) ? kFloor : 0.0f;
         if (f == centre_hz) {
             v = 2.0f * scale;
         } else if (f == centre_hz - 0.25f || f == centre_hz + 0.25f) {
@@ -144,7 +145,7 @@ BeltTuneSession tuning(float a_hz, float b0_hz, float b1_hz, BeltTensionerKind k
 /// A flat zone: no peak anywhere in the sweep.
 BeltCurve flat_curve(float level = 5.0f) {
     BeltCurve flat;
-    for (float f = LO; f < HI; f += kBinHz) {
+    for (float f = kLo; f < kHi; f += kBinHz) {
         flat.emplace_back(f, level);
     }
     return flat;
@@ -241,20 +242,20 @@ TEST_CASE("matched tolerance is one bin, at least 1 Hz", "[belt][tune]") {
 TEST_CASE("zone candidates: the amplitude floor follows the in-band maximum", "[belt][tune]") {
     // The 60 Hz pair is 15% of the 100 Hz peak: under the floor. At 25% it counts.
     const auto under = response_from(
-        lorentzian_curve({{100.0f, 1e4f}, {60.0f, 1.5e3f}}, LO, HI, kBinHz, 0.01f, 1.0f));
-    CHECK(tune_zone_candidates(under, under, LO, HI).size() == 1);
+        lorentzian_curve({{100.0f, 1e4f}, {60.0f, 1.5e3f}}, kLo, kHi, kBinHz, 0.01f, 1.0f));
+    CHECK(tune_zone_candidates(under, under, kLo, kHi).size() == 1);
     const auto over = response_from(
-        lorentzian_curve({{100.0f, 1e4f}, {60.0f, 2.5e3f}}, LO, HI, kBinHz, 0.01f, 1.0f));
-    CHECK(tune_zone_candidates(over, over, LO, HI).size() == 2);
+        lorentzian_curve({{100.0f, 1e4f}, {60.0f, 2.5e3f}}, kLo, kHi, kBinHz, 0.01f, 1.0f));
+    CHECK(tune_zone_candidates(over, over, kLo, kHi).size() == 2);
 
     // compare_belt_paths records the stronger curve's in-band maximum.
-    const auto a = lorentzian_curve({{60.0f, 5e3f}}, LO, HI);
-    const auto b = lorentzian_curve({{60.0f, 7e3f}}, LO, HI);
+    const auto a = lorentzian_curve({{60.0f, 5e3f}}, kLo, kHi);
+    const auto b = lorentzian_curve({{60.0f, 7e3f}}, kLo, kHi);
     float top = 0.0f;
     for (const auto& [f, v] : b) {
         top = std::max(top, v);
     }
-    CHECK(compare_belt_paths(a, b, LO, HI).band_max_psd == Catch::Approx(top));
+    CHECK(compare_belt_paths(a, b, kLo, kHi).band_max_psd == Catch::Approx(top));
 }
 
 TEST_CASE("tune peak: prominence over the unexcited floor", "[belt][tune]") {
@@ -279,16 +280,16 @@ TEST_CASE("tune peak: prominence over the unexcited floor", "[belt][tune]") {
 
     SECTION("a window at the floor holds no peak") {
         const BeltSweepWindow w{95.0f, 117.0f};
-        const auto flat = windowed(lorentzian_curve({}, LO, HI, kBinHz, 5.0f), w, 5.0f);
-        REQUIRE(unexcited_floor_psd(flat, w, LO, HI).has_value());
-        CHECK_FALSE(window_holds_peak(flat, w, w, LO, HI));
+        const auto flat = windowed(lorentzian_curve({}, kLo, kHi, kBinHz, 5.0f), w, 5.0f);
+        REQUIRE(unexcited_floor_psd(flat, w, kLo, kHi).has_value());
+        CHECK_FALSE(window_holds_peak(flat, w, w, kLo, kHi));
     }
 
     SECTION("with too few unexcited bins, the window's own minimum is the floor") {
         const BeltSweepWindow w{95.0f, 117.0f};
         const auto only_window = lorentzian_curve({{106.0f, 1e4f}}, 95.0f, 117.5f);
-        CHECK_FALSE(unexcited_floor_psd(only_window, w, LO, HI).has_value());
-        CHECK(window_holds_peak(only_window, w, w, LO, HI));
+        CHECK_FALSE(unexcited_floor_psd(only_window, w, kLo, kHi).has_value());
+        CHECK(window_holds_peak(only_window, w, w, kLo, kHi));
     }
 }
 
@@ -387,8 +388,8 @@ TEST_CASE("already matched: a 2 Hz gap is not already matched", "[belt][tune]") 
 
 TEST_CASE("already matched: a pair within one bin", "[belt][tune]") {
     // 1.5 Hz bins: the pair is 1.5 Hz apart, over the 1 Hz floor but within a bin.
-    const auto a = response_from(lorentzian_curve({{99.5f, 1e4f}}, LO, HI, 1.5f));
-    const auto b = response_from(lorentzian_curve({{101.0f, 1e4f}}, LO, HI, 1.5f));
+    const auto a = response_from(lorentzian_curve({{99.5f, 1e4f}}, kLo, kHi, 1.5f));
+    const auto b = response_from(lorentzian_curve({{101.0f, 1e4f}}, kLo, kHi, 1.5f));
     auto s = session_from(a, b, BeltTensionerKind::SCREW);
     CHECK(s.tolerance_hz() == Catch::Approx(1.5f).margin(0.01f));
     CHECK(s.stage() == BeltTuneStage::ALREADY_MATCHED);
@@ -593,9 +594,9 @@ TEST_CASE("calibration: registered zones walk best move first; unmoved ones are 
     // B is looser in all three zones. The turn moves 97 by 3 Hz, 47 by 2 Hz
     // and 72 not at all.
     const auto a = response_from(lorentzian_curve({{50.0f, 1e4f}, {75.0f, 1e4f}, {100.0f, 1e4f}},
-                                                  LO, HI, kBinHz, 0.01f, 1.0f));
+                                                  kLo, kHi, kBinHz, 0.01f, 1.0f));
     const auto b = [](float low, float mid, float high) {
-        return response_from(lorentzian_curve({{low, 1e4f}, {mid, 1e4f}, {high, 1e4f}}, LO, HI,
+        return response_from(lorentzian_curve({{low, 1e4f}, {mid, 1e4f}, {high, 1e4f}}, kLo, kHi,
                                               kBinHz, 0.01f, 1.0f));
     };
     auto s = session_from(a, b(47.0f, 72.0f, 97.0f), BeltTensionerKind::SCREW);
@@ -852,7 +853,7 @@ TEST_CASE("no-turn rounds on real data: a repeat narrow sweep is never a turn ve
 TEST_CASE("range: a widened zone at the top of a K1C band still sweeps inside it", "[belt][tune]") {
     constexpr float kK1cMax = 133.33f;
     auto s = session_from(peak_response(126.0f), peak_response(114.0f), BeltTensionerKind::SPRING,
-                          LO, kK1cMax);
+                          kLo, kK1cMax);
     REQUIRE(s.zone().has_value());
     REQUIRE(s.zone()->source == BeltZoneSource::TALLEST_UNPAIRED);
     REQUIRE(s.adjusted_path() == BeltPath::PATH_B);
@@ -949,7 +950,7 @@ TEST_CASE("tune round outcomes", "[belt][tune]") {
     }
     SECTION("NO_PEAK: a flat adjusted path leaves the gap alone") {
         const auto w = *s.sweep_window();
-        const auto& r = s.add_round(windowed(peak_response(104.0f), w, FLOOR),
+        const auto& r = s.add_round(windowed(peak_response(104.0f), w, kFloor),
                                     windowed(response_from(flat_curve()), w, 5.0f));
         CHECK(r.outcome == BeltTuneOutcome::NO_PEAK);
         CHECK_FALSE(r.reference_lost);
@@ -960,7 +961,7 @@ TEST_CASE("tune round outcomes", "[belt][tune]") {
         const auto w = *s.sweep_window();
         SECTION("its zone is flat") {
             const auto& r = s.add_round(windowed(response_from(flat_curve()), w, 5.0f),
-                                        windowed(peak_response(101.0f), w, FLOOR));
+                                        windowed(peak_response(101.0f), w, kFloor));
             CHECK(r.outcome == BeltTuneOutcome::NO_PEAK);
             CHECK(r.reference_lost);
         }
@@ -1331,7 +1332,7 @@ TEST_CASE("tune session: a turn carried past a peakless round is still a turn", 
     }
     SECTION("NO_PEAK, then an untouched round that closed the gap") {
         const auto w = *s.sweep_window();
-        REQUIRE(s.add_round(windowed(peak_response(104.0f), w, FLOOR),
+        REQUIRE(s.add_round(windowed(peak_response(104.0f), w, kFloor),
                             windowed(response_from(flat_curve()), w, 5.0f))
                     .outcome == BeltTuneOutcome::NO_PEAK);
         const auto& r = sweep(s, 104.0f, 102.0f);
@@ -1362,7 +1363,7 @@ TEST_CASE("tune advice: a turn carried past a peakless round still doubles", "[b
     s.record_turns(1.0f);
     const auto w = *s.sweep_window();
     REQUIRE(s.add_round(windowed(response_from(flat_curve()), w, 5.0f),
-                        windowed(peak_response(100.0f), w, FLOOR))
+                        windowed(peak_response(100.0f), w, kFloor))
                 .outcome == BeltTuneOutcome::NO_PEAK);
     // The stepper is left untouched; the turn moved nothing.
     const auto& r = sweep(s, 104.0f, 100.0f);
@@ -1439,10 +1440,10 @@ namespace {
 /// moved B 2 Hz in each, the 100 Hz zone first.
 BeltTuneSession two_zone_session(BeltTensionerKind kind) {
     const auto a = response_from(
-        lorentzian_curve({{50.0f, 1e4f}, {104.0f, 1e4f}}, LO, HI, kBinHz, 0.01f, 1.0f));
+        lorentzian_curve({{50.0f, 1e4f}, {104.0f, 1e4f}}, kLo, kHi, kBinHz, 0.01f, 1.0f));
     const auto b = [](float low, float high) {
         return response_from(
-            lorentzian_curve({{low, 1e4f}, {high, 1e4f}}, LO, HI, kBinHz, 0.01f, 1.0f));
+            lorentzian_curve({{low, 1e4f}, {high, 1e4f}}, kLo, kHi, kBinHz, 0.01f, 1.0f));
     };
     auto s = session_from(a, b(46.0f, 98.0f), kind);
     REQUIRE(s.add_calibration_sweep(a, b(48.0f, 101.0f)).registered);
@@ -1453,9 +1454,9 @@ BeltTuneSession two_zone_session(BeltTensionerKind kind) {
 } // namespace
 
 TEST_CASE("tune zones: a later zone starts from its own baseline", "[belt][tune]") {
-    const auto a = lorentzian_curve({{50.0f, 1e4f}, {104.0f, 1e4f}}, LO, HI, kBinHz, 0.01f, 1.0f);
+    const auto a = lorentzian_curve({{50.0f, 1e4f}, {104.0f, 1e4f}}, kLo, kHi, kBinHz, 0.01f, 1.0f);
     const auto b = [](float low, float high) {
-        return lorentzian_curve({{low, 1e4f}, {high, 1e4f}}, LO, HI, kBinHz, 0.01f, 1.0f);
+        return lorentzian_curve({{low, 1e4f}, {high, 1e4f}}, kLo, kHi, kBinHz, 0.01f, 1.0f);
     };
     auto s = two_zone_session(BeltTensionerKind::SCREW);
     sweep_curves(s, a, b(48.0f, 101.0f));
@@ -1505,9 +1506,9 @@ TEST_CASE("tune zones: a swap sticks across zones", "[belt][tune]") {
 
 TEST_CASE("tune zones: spring walks every candidate", "[belt][tune]") {
     const auto a = response_from(
-        lorentzian_curve({{50.0f, 1e4f}, {104.0f, 1e4f}}, LO, HI, kBinHz, 0.01f, 1.0f));
+        lorentzian_curve({{50.0f, 1e4f}, {104.0f, 1e4f}}, kLo, kHi, kBinHz, 0.01f, 1.0f));
     const auto b = response_from(
-        lorentzian_curve({{46.0f, 1e4f}, {100.0f, 1e4f}}, LO, HI, kBinHz, 0.01f, 1.0f));
+        lorentzian_curve({{46.0f, 1e4f}, {100.0f, 1e4f}}, kLo, kHi, kBinHz, 0.01f, 1.0f));
     auto s = session_from(a, b, BeltTensionerKind::SPRING);
     REQUIRE(s.candidates().size() == 2);
     REQUIRE(s.has_next_zone());
@@ -1542,7 +1543,7 @@ BeltCurve with_spike(BeltCurve curve, float hz, float value) {
 
 /// Each path's peaks, the same on both, as a response with 0.9 in-plane share.
 BeltResponse peaks_response(std::vector<std::pair<float, float>> peaks) {
-    return response_from(lorentzian_curve(std::move(peaks), LO, HI, kBinHz, 0.01f, 1.0f));
+    return response_from(lorentzian_curve(std::move(peaks), kLo, kHi, kBinHz, 0.01f, 1.0f));
 }
 
 } // namespace
@@ -1680,8 +1681,8 @@ TEST_CASE("zone power hint: equal, exactly 3x and zero power give none", "[belt]
 TEST_CASE("zone candidates: a peak needs half its motion in the XY plane", "[belt][tune]") {
     const auto peak = one_peak(100.0f);
     const auto b = response_from(peak, 0.9f);
-    CHECK(tune_zone_candidates(response_from(peak, 0.4f), b, LO, HI).empty());
-    CHECK(tune_zone_candidates(response_from(peak, 0.5f), b, LO, HI).size() == 1);
+    CHECK(tune_zone_candidates(response_from(peak, 0.4f), b, kLo, kHi).empty());
+    CHECK(tune_zone_candidates(response_from(peak, 0.5f), b, kLo, kHi).size() == 1);
 }
 
 TEST_CASE("in-plane fraction: no per-axis columns reads 1, no xyz power reads 0", "[belt][tune]") {
@@ -1699,9 +1700,9 @@ TEST_CASE("zone candidates: without per-axis columns, psd_xyz is tuned", "[belt]
     const auto a = load_fixture_response("voron24_settled", 'A');
     const auto b = load_fixture_response("voron24_settled", 'B');
     const auto bare =
-        tune_zone_candidates(BeltResponse{a.xyz, {}}, BeltResponse{b.xyz, {}}, LO, HI);
+        tune_zone_candidates(BeltResponse{a.xyz, {}}, BeltResponse{b.xyz, {}}, kLo, kHi);
     const auto same =
-        tune_zone_candidates(BeltResponse{a.xyz, a.xyz}, BeltResponse{b.xyz, b.xyz}, LO, HI);
+        tune_zone_candidates(BeltResponse{a.xyz, a.xyz}, BeltResponse{b.xyz, b.xyz}, kLo, kHi);
     REQUIRE_FALSE(bare.empty());
     REQUIRE(bare.size() == same.size());
     for (size_t i = 0; i < bare.size(); ++i) {
@@ -1717,13 +1718,13 @@ TEST_CASE("zone candidates: a weaker candidate within 10 Hz of a stronger one is
           "[belt][tune]") {
     SECTION("30 and 37 Hz keep only 37") {
         const auto r = peaks_response({{30.0f, 1e4f}, {37.0f, 1.5e4f}});
-        const auto c = tune_zone_candidates(r, r, LO, HI);
+        const auto c = tune_zone_candidates(r, r, kLo, kHi);
         REQUIRE(c.size() == 1);
         CHECK(c[0].zone.adj_hz == Catch::Approx(37.0f).margin(0.5f));
     }
     SECTION("30 and 45 Hz keep both") {
         const auto r = peaks_response({{30.0f, 1e4f}, {45.0f, 1.5e4f}});
-        const auto c = tune_zone_candidates(r, r, LO, HI);
+        const auto c = tune_zone_candidates(r, r, kLo, kHi);
         REQUIRE(c.size() == 2);
         CHECK(c[0].zone.adj_hz == Catch::Approx(45.0f).margin(0.5f));
         CHECK(c[1].zone.adj_hz == Catch::Approx(30.0f).margin(0.5f));
@@ -1735,7 +1736,7 @@ TEST_CASE("zone candidates: a weaker candidate within 10 Hz of a stronger one is
                                        {80.0f, 6e3f},
                                        {100.0f, 7e3f},
                                        {120.0f, 8e3f}});
-        const auto c = tune_zone_candidates(r, r, LO, HI);
+        const auto c = tune_zone_candidates(r, r, kLo, kHi);
         REQUIRE(c.size() == static_cast<size_t>(belt_tune::kMaxZoneCandidates));
         const float want[] = {120.0f, 100.0f, 80.0f, 60.0f};
         for (size_t i = 0; i < c.size(); ++i) {
@@ -1746,7 +1747,7 @@ TEST_CASE("zone candidates: a weaker candidate within 10 Hz of a stronger one is
 
 TEST_CASE("zone candidates: a matched pair is a candidate", "[belt][tune]") {
     const auto r = response_from(one_peak(100.0f));
-    const auto c = tune_zone_candidates(r, r, LO, HI);
+    const auto c = tune_zone_candidates(r, r, kLo, kHi);
     REQUIRE(c.size() == 1);
     CHECK(c[0].zone.source == BeltZoneSource::PAIRED);
     CHECK(c[0].zone.adj_hz == c[0].zone.ref_hz);
@@ -1754,7 +1755,7 @@ TEST_CASE("zone candidates: a matched pair is a candidate", "[belt][tune]") {
 
 TEST_CASE("zone candidates: an unpaired tallest peak steers against the nearest", "[belt][tune]") {
     const auto c = tune_zone_candidates(response_from(one_peak(110.0f)),
-                                        response_from(one_peak(98.0f)), LO, HI);
+                                        response_from(one_peak(98.0f)), kLo, kHi);
     REQUIRE(c.size() == 1);
     CHECK(c[0].zone.source == BeltZoneSource::TALLEST_UNPAIRED);
     CHECK(c[0].zone.adj_hz == Catch::Approx(110.0f).margin(0.5f));
@@ -1795,7 +1796,7 @@ TEST_CASE("zone sweep window: whole Hz, inside the printer's range", "[belt][tun
 TEST_CASE("zone analysis: the sweep margins never reach a centroid, power or floor",
           "[belt][tune]") {
     const BeltSweepWindow zone{90.0f, 110.0f};
-    const auto clean = lorentzian_curve({{100.0f, 1e4f}}, LO, HI, kBinHz, 0.01f, 1.0f);
+    const auto clean = lorentzian_curve({{100.0f, 1e4f}}, kLo, kHi, kBinHz, 0.01f, 1.0f);
     const float spike = 10.0f * 1e4f;
     for (const float at : {85.0f, 125.0f}) {
         INFO("spike at " << at);
