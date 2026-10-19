@@ -867,3 +867,86 @@ count_helix_sections() {
     grep -qx 'host: 0.0.0.0' "$c/moonraker.conf" || fail "last line damaged: $(cat "$c/moonraker.conf")"
     grep -qx '\[helix_print\]' "$c/moonraker.conf" || fail "no section line: $(cat "$c/moonraker.conf")"
 }
+
+# A cat that fails part-way through writing a config file: the first bytes of
+# a staged copy reach its stdout, then it errors. Any other cat runs normally.
+mock_cat_failing_midway() {
+    local real
+    real=$(command -v cat)
+    mock_command_script "cat" "case \"\$1\" in *.tmp|*.helixtmp*) head -c 12 \"\$1\"; exit 1;; esac
+exec $real \"\$@\""
+}
+
+# An awk that fails part-way through the section removal's rewrite; any other
+# awk runs normally.
+mock_awk_failing_midway() {
+    local real
+    real=$(command -v awk)
+    mock_command_script "awk" "case \"\$*\" in *'skip = 1'*|*'done = 1'*) printf '[server]\\n'; exit 1;; esac
+exec $real \"\$@\""
+}
+
+@test "a section removal whose write fails part-way leaves moonraker.conf whole" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_instrumented_home "$home"
+    local c="$home/printer_data/config"
+    write_original_printer_cfg "$c/printer.cfg"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+    mock_cat_failing_midway
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+
+    # Removed or left in place, but never cut short.
+    grep -qx 'host: 0.0.0.0' "$c/moonraker.conf" && grep -qx '\[octoprint_compat\]' "$c/moonraker.conf" \
+        || fail "moonraker.conf damaged: $(cat "$c/moonraker.conf")"
+}
+
+@test "a section removal whose rewrite fails reports it and leaves no staging file" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_instrumented_home "$home"
+    local c="$home/printer_data/config"
+    write_original_printer_cfg "$c/printer.cfg"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+    mock_awk_failing_midway
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+
+    [ "$status" -eq 2 ] || fail "want needs-attention (2), got $status: $output"
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" || fail "moonraker.conf damaged"
+    [ -z "$(find "$c" -name 'moonraker.conf.*tmp*')" ] || fail "staging file left: $(ls "$c")"
+}
+
+@test "a symlink_dir insert whose write fails part-way leaves the user conf whole" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    add_running_klipper "$root" hides
+    local conf
+    conf=$(user_conf_of "$root")
+    printf '\n[helix_print]\n' >> "$conf"
+    cp "$conf" "$BATS_TEST_TMPDIR/conf.before"
+    mock_cat_failing_midway
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$root/data/.mod/.forge-x$FORGEX_PLUGIN/install.sh" --no-restart --auto
+
+    # Set or left unset, but never cut short.
+    grep -qx '  0.0.0.0/0' "$conf" && grep -qx '\[helix_print\]' "$conf" \
+        || fail "user conf damaged: $(cat "$conf")"
+}
+
+@test "a section rewrite through a symlinked config keeps the link" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_instrumented_home "$home"
+    local c="$home/printer_data/config"
+    write_original_printer_cfg "$c/printer.cfg"
+    mkdir -p "$home/real"
+    mv "$c/moonraker.conf" "$home/real/moonraker.conf"
+    ln -s "$home/real/moonraker.conf" "$c/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    [ -L "$c/moonraker.conf" ] || fail "the symlink was replaced by a file"
+    refute_grep '^\[helix_print\]' "$home/real/moonraker.conf"
+    grep -q '^\[octoprint_compat\]' "$home/real/moonraker.conf"
+}

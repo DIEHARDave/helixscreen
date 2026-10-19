@@ -278,6 +278,23 @@ klipper_hides_dot_dirs() {
     return 1
 }
 
+# Replace config file @1 with the output of awk program @2 run over it. The
+# new text is written beside the real file (a symlinked config is followed and
+# stays a symlink) into a copy that keeps its mode, then renamed over it, so a
+# write that fails part-way leaves the original whole. Returns 1 when the file
+# could not be rewritten.
+rewrite_with_awk() {
+    _rw_real=$(readlink -f "$1" 2>/dev/null) || _rw_real=""
+    [ -n "$_rw_real" ] || _rw_real="$1"
+    _rw_tmp="$_rw_real.helixtmp.$$"
+    if cp -p "$_rw_real" "$_rw_tmp" 2>/dev/null && awk "$2" "$_rw_real" > "$_rw_tmp" \
+        && mv -f "$_rw_tmp" "$_rw_real"; then
+        return 0
+    fi
+    rm -f "$_rw_tmp"
+    return 1
+}
+
 # Give [helix_print] in @1 a visible `symlink_dir: helix_print`, unless the
 # section already sets symlink_dir (the user's value stands).
 ensure_visible_symlink_dir() {
@@ -289,8 +306,8 @@ ensure_visible_symlink_dir() {
         return 0
     fi
     info "Klipper skips hidden directories here: setting symlink_dir: helix_print"
-    awk '{ print } !done && /^\[helix_print\]/ { print "symlink_dir: helix_print"; done = 1 }' \
-        "$file" > "$file.tmp" && cat "$file.tmp" > "$file" && rm -f "$file.tmp"
+    rewrite_with_awk "$file" \
+        '{ print } !done && /^\[helix_print\]/ { print "symlink_dir: helix_print"; done = 1 }'
 }
 
 # Remove the [helix_print] section from one config file, with a backup.
@@ -307,11 +324,11 @@ remove_helix_section() {
     info "Removing [helix_print] section from $(basename "$file")"
     # Use awk for cross-platform config section removal
     # This correctly handles helix_print as the last section in the file
-    if ! (awk '
+    if ! rewrite_with_awk "$file" '
         /^\[helix_print\]/ { skip = 1; next }
         /^\[/ { skip = 0 }
         !skip { print }
-    ' "$file" > "$file.tmp" && cat "$file.tmp" > "$file" && rm -f "$file.tmp"); then
+    '; then
         warn "Could not remove [helix_print] from $(basename "$file") - see $backup_file"
         return 1
     fi
