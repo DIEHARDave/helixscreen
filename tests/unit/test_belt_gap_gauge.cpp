@@ -19,40 +19,40 @@ using namespace helix::ui;
 using helix::calibration::belt_tune::kGaugeWarnHz;
 
 TEST_CASE("belt gap gauge x mapping", "[belt][gauge]") {
-    constexpr int TRACK = 201;
-    constexpr float RANGE = 10.0f;
+    constexpr int kTrack = 201;
+    constexpr float kRange = 10.0f;
 
     SECTION("zero is centred") {
-        CHECK(belt_gap_gauge_x(0.0f, RANGE, TRACK) == 100);
+        CHECK(belt_gap_gauge_x(0.0f, kRange, kTrack) == 100);
     }
     SECTION("plus and minus range reach the ends") {
-        CHECK(belt_gap_gauge_x(RANGE, RANGE, TRACK) == TRACK - 1);
-        CHECK(belt_gap_gauge_x(-RANGE, RANGE, TRACK) == 0);
+        CHECK(belt_gap_gauge_x(kRange, kRange, kTrack) == kTrack - 1);
+        CHECK(belt_gap_gauge_x(-kRange, kRange, kTrack) == 0);
     }
     SECTION("beyond the range clamps to the track") {
-        CHECK(belt_gap_gauge_x(50.0f, RANGE, TRACK) == TRACK - 1);
-        CHECK(belt_gap_gauge_x(-50.0f, RANGE, TRACK) == 0);
+        CHECK(belt_gap_gauge_x(50.0f, kRange, kTrack) == kTrack - 1);
+        CHECK(belt_gap_gauge_x(-50.0f, kRange, kTrack) == 0);
     }
     SECTION("half range sits half way to the end") {
-        CHECK(belt_gap_gauge_x(5.0f, RANGE, TRACK) == 150);
-        CHECK(belt_gap_gauge_x(-5.0f, RANGE, TRACK) == 50);
+        CHECK(belt_gap_gauge_x(5.0f, kRange, kTrack) == 150);
+        CHECK(belt_gap_gauge_x(-5.0f, kRange, kTrack) == 50);
     }
     SECTION("degenerate inputs stay inside the track") {
-        CHECK(belt_gap_gauge_x(3.0f, 0.0f, TRACK) == 100);
-        CHECK(belt_gap_gauge_x(3.0f, RANGE, 0) == 0);
+        CHECK(belt_gap_gauge_x(3.0f, 0.0f, kTrack) == 100);
+        CHECK(belt_gap_gauge_x(3.0f, kRange, 0) == 0);
     }
 }
 
 TEST_CASE("belt gap severity bands", "[belt][gauge]") {
-    constexpr float TOL = 1.0f;
-    CHECK(belt_gap_severity(0.0f, TOL) == GapSeverity::MATCHED);
-    CHECK(belt_gap_severity(TOL, TOL) == GapSeverity::MATCHED);
-    CHECK(belt_gap_severity(-TOL, TOL) == GapSeverity::MATCHED);
-    CHECK(belt_gap_severity(TOL + 0.01f, TOL) == GapSeverity::NEAR);
-    CHECK(belt_gap_severity(kGaugeWarnHz, TOL) == GapSeverity::NEAR);
-    CHECK(belt_gap_severity(-kGaugeWarnHz, TOL) == GapSeverity::NEAR);
-    CHECK(belt_gap_severity(kGaugeWarnHz + 0.01f, TOL) == GapSeverity::FAR);
-    CHECK(belt_gap_severity(-8.0f, TOL) == GapSeverity::FAR);
+    constexpr float kTol = 1.0f;
+    CHECK(belt_gap_severity(0.0f, kTol) == GapSeverity::MATCHED);
+    CHECK(belt_gap_severity(kTol, kTol) == GapSeverity::MATCHED);
+    CHECK(belt_gap_severity(-kTol, kTol) == GapSeverity::MATCHED);
+    CHECK(belt_gap_severity(kTol + 0.01f, kTol) == GapSeverity::NEAR);
+    CHECK(belt_gap_severity(kGaugeWarnHz, kTol) == GapSeverity::NEAR);
+    CHECK(belt_gap_severity(-kGaugeWarnHz, kTol) == GapSeverity::NEAR);
+    CHECK(belt_gap_severity(kGaugeWarnHz + 0.01f, kTol) == GapSeverity::FAR);
+    CHECK(belt_gap_severity(-8.0f, kTol) == GapSeverity::FAR);
     // A tolerance wider than the warning band still reads matched inside it.
     CHECK(belt_gap_severity(3.5f, 4.0f) == GapSeverity::MATCHED);
 }

@@ -825,8 +825,8 @@ TEST_CASE("too little headroom refuses the sweep", "[belt][panel]") {
 
 namespace {
 
-constexpr int TUNING = static_cast<int>(BeltTensionPanel::ViewState::TUNING);
-constexpr int RESULTS = static_cast<int>(BeltTensionPanel::ViewState::RESULTS);
+constexpr int kTuning = static_cast<int>(BeltTensionPanel::ViewState::TUNING);
+constexpr int kResults = static_cast<int>(BeltTensionPanel::ViewState::RESULTS);
 constexpr int kPhaseAdjust = 0;
 constexpr int kPhaseSweeping = 1;
 constexpr int kPhaseMatched = 2;
@@ -837,16 +837,16 @@ constexpr int kPhaseAlreadyMatched = 4;
 void enter_tuning(BeltPanelFixture& fx) {
     REQUIRE(fx.wait_gate_open());
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     fx.panel().handle_tune_clicked();
-    REQUIRE(fx.state_int("belt_tension_state") == TUNING);
+    REQUIRE(fx.state_int("belt_tension_state") == kTuning);
 }
 
 /// One Measure or Re-measure: every sweep it starts, a baseline chained onto
 /// a registered calibration included, then back out of SWEEPING.
 void tune_round(BeltPanelFixture& fx) {
     fx.panel().handle_tune_measure_clicked();
-    REQUIRE(fx.state_int("belt_tension_state") == TUNING);
+    REQUIRE(fx.state_int("belt_tension_state") == kTuning);
     REQUIRE(fx.state_int("bt_tune_phase") == kPhaseSweeping);
     for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping; t += 100) {
         fx.pump_ms(100);
@@ -1032,7 +1032,7 @@ TEST_CASE("the Tune button names the job by verdict", "[belt][panel][tune]") {
         fx.mock().set_belt_peaks_hz(104.0f, 98.0f);
         REQUIRE(fx.wait_gate_open());
         fx.panel().handle_start_clicked();
-        REQUIRE(fx.pump_until_state(RESULTS));
+        REQUIRE(fx.pump_until_state(kResults));
         REQUIRE(fx.state_int("bt_verdict") !=
                 static_cast<int>(helix::calibration::BeltVerdict::MATCHED));
         CHECK(fx.text("bt_tune_cta") == "Tune Belts");
@@ -1042,7 +1042,7 @@ TEST_CASE("the Tune button names the job by verdict", "[belt][panel][tune]") {
         fx.mock().set_belt_peaks_hz(104.0f, 104.0f);
         REQUIRE(fx.wait_gate_open());
         fx.panel().handle_start_clicked();
-        REQUIRE(fx.pump_until_state(RESULTS));
+        REQUIRE(fx.pump_until_state(kResults));
         REQUIRE(fx.state_int("bt_verdict") ==
                 static_cast<int>(helix::calibration::BeltVerdict::MATCHED));
         CHECK(fx.text("bt_tune_cta") == "Fine-tune");
@@ -1122,7 +1122,7 @@ TEST_CASE("matched belts open on Good Enough", "[belt][panel][tune]") {
     // Good Enough: back to RESULTS, nothing swept.
     fx.mock().clear_gcode_script_history();
     fx.panel().handle_tune_done_clicked();
-    CHECK(fx.state_int("belt_tension_state") == RESULTS);
+    CHECK(fx.state_int("belt_tension_state") == kResults);
     fx.pump_ms(2000);
     CHECK(fx.mock().gcode_script_history().empty());
 
@@ -1146,7 +1146,7 @@ TEST_CASE("Tune Belts waits for the printer's sweep range", "[belt][panel][tune]
     BeltPanelFixture fx;
     REQUIRE(fx.wait_gate_open());
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     REQUIRE(fx.state_int("bt_tune_range_known") == 1);
     CHECK_FALSE(lv_obj_has_state(named(fx, "btn_tune"), LV_STATE_DISABLED));
 
@@ -1159,7 +1159,7 @@ TEST_CASE("Tune Belts waits for the printer's sweep range", "[belt][panel][tune]
 
     fx.mock().clear_gcode_script_history();
     fx.panel().handle_tune_clicked();
-    CHECK(fx.state_int("belt_tension_state") == RESULTS);
+    CHECK(fx.state_int("belt_tension_state") == kResults);
     CHECK(fx.panel_session() == nullptr);
     fx.pump_ms(2000);
     CHECK(fx.mock().gcode_script_history().empty());
@@ -1173,7 +1173,7 @@ TEST_CASE("the settle's range query enables Tune Belts", "[belt][panel][tune]") 
     REQUIRE(fx.state_int("bt_tune_range_known") == 0);
     // Start's settle re-reads [resonance_tester], and the printer answers.
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     CHECK(fx.state_int("bt_tune_range_known") == 1);
     CHECK_FALSE(lv_obj_has_state(named(fx, "btn_tune"), LV_STATE_DISABLED));
 }
@@ -1184,7 +1184,7 @@ TEST_CASE("a failed range query keeps the range the printer reported", "[belt][p
     fx.panel_query_hw_facts();
     REQUIRE(fx.wait_gate_open());
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     REQUIRE(fx.state_int("bt_tune_range_known") == 1);
     const std::string sweep = fx.text("bt_hw_sweep");
     INFO("sweep: " << sweep);
@@ -1198,7 +1198,7 @@ TEST_CASE("a failed range query keeps the range the printer reported", "[belt][p
     CHECK(fx.text("bt_hw_sweep") == sweep);
     CHECK_FALSE(lv_obj_has_state(named(fx, "btn_tune"), LV_STATE_DISABLED));
     fx.panel().handle_tune_clicked();
-    CHECK(fx.state_int("belt_tension_state") == TUNING);
+    CHECK(fx.state_int("belt_tension_state") == kTuning);
 }
 
 TEST_CASE("a calibration turn that doesn't register asks for another", "[belt][panel][tune]") {
@@ -1219,7 +1219,7 @@ TEST_CASE("a calibration turn that doesn't register asks for another", "[belt][p
     // A calibration sweep feeds the session, never RESULTS' runs.
     CHECK(fx.panel_run(0).curve == before_a);
     CHECK(fx.panel_run(1).curve == before_b);
-    CHECK(fx.state_int("belt_tension_state") == TUNING);
+    CHECK(fx.state_int("belt_tension_state") == kTuning);
 }
 
 TEST_CASE("the second turn registers and chains a narrow baseline without settling",
@@ -1505,7 +1505,7 @@ TEST_CASE("Good enough returns to RESULTS without sweeping", "[belt][panel][tune
     fx.mock().clear_gcode_script_history();
 
     fx.panel().handle_tune_done_clicked();
-    CHECK(fx.state_int("belt_tension_state") == RESULTS);
+    CHECK(fx.state_int("belt_tension_state") == kResults);
     fx.pump_ms(2000);
     CHECK(resonance_lines(fx).empty());
     CHECK(fx.text("bt_similarity") == similarity);
@@ -1539,7 +1539,7 @@ TEST_CASE("Confirm runs one full pair and reports the tuning", "[belt][panel][tu
 
     fx.mock().clear_gcode_script_history();
     fx.panel().handle_tune_confirm_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     const auto lines = resonance_lines(fx);
     REQUIRE(lines.size() == 2);
     for (const auto& l : lines) {
@@ -1611,7 +1611,7 @@ TEST_CASE("a zone matched at its baseline reports no round count", "[belt][panel
     REQUIRE(fx.panel_session()->total_rounds() == 0);
 
     fx.panel().handle_tune_confirm_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     INFO("facts: " << fx.text("bt_facts"));
     CHECK(fx.text("bt_facts").find("Tuned in") == std::string::npos);
     // The calibration turn is still reported.
@@ -1722,12 +1722,12 @@ TEST_CASE("a spring printer skips calibration", "[belt][panel][tune]") {
     get_printer_state().set_printer_type_sync("Test Spring Printer");
     REQUIRE(fx.wait_gate_open());
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     fx.mock().clear_gcode_script_history();
 
     // The strongest zone at once: its baseline pair sweeps straight from Tune.
     fx.panel().handle_tune_clicked();
-    REQUIRE(fx.state_int("belt_tension_state") == TUNING);
+    REQUIRE(fx.state_int("belt_tension_state") == kTuning);
     CHECK(fx.state_int("bt_tune_phase") == kPhaseSweeping);
     CHECK(fx.text("bt_tune_instruction") == "Measure this zone first");
     for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping; t += 100) {
@@ -1953,7 +1953,7 @@ TEST_CASE("the power hint names the stronger path", "[belt][panel][tune]") {
         helix::ScopedEnv replay_b("HELIX_MOCK_BELT_CSV_B", csv_b.c_str());
         REQUIRE(fx.wait_gate_open());
         fx.panel().handle_start_clicked();
-        REQUIRE(fx.pump_until_state(RESULTS));
+        REQUIRE(fx.pump_until_state(kResults));
         fx.panel().handle_tune_clicked();
         for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping;
              t += 100) {
@@ -2000,7 +2000,7 @@ TEST_CASE("waking the screen mid-tuning keeps the session", "[belt][panel][tune]
         fx.panel().on_deactivate(DeactivateReason::Suspended);
         fx.panel().on_activate();
         fx.pump_ms(500);
-        CHECK(fx.state_int("belt_tension_state") == TUNING);
+        CHECK(fx.state_int("belt_tension_state") == kTuning);
         CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
         CHECK(fx.text("bt_tune_round") == "Round 2");
         CHECK(fx.text("bt_tune_zone") == zone);
@@ -2017,14 +2017,14 @@ TEST_CASE("waking the screen mid-tuning keeps the session", "[belt][panel][tune]
         fx.pump_ms(300);
         fx.panel().on_deactivate(DeactivateReason::Suspended);
         fx.panel().on_activate();
-        CHECK(fx.state_int("belt_tension_state") == TUNING);
+        CHECK(fx.state_int("belt_tension_state") == kTuning);
         CHECK(fx.state_int("bt_tune_phase") == kPhaseSweeping);
         CHECK_FALSE(fx.panel_detection_pending());
         for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == kPhaseSweeping;
              t += 100) {
             fx.pump_ms(100);
         }
-        CHECK(fx.state_int("belt_tension_state") == TUNING);
+        CHECK(fx.state_int("belt_tension_state") == kTuning);
         CHECK(fx.text("bt_tune_round") == "Round 3");
     }
     SECTION("leaving after a suspension makes the next entry a fresh one") {
@@ -2107,7 +2107,7 @@ TEST_CASE("Continue on the low-RAM warning re-checks the gate", "[belt][panel][t
         fx.panel().handle_tune_measure_clicked();
         fx.pump_ms(200);
         continue_dialog();
-        CHECK(fx.state_int("belt_tension_state") == TUNING);
+        CHECK(fx.state_int("belt_tension_state") == kTuning);
         CHECK(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
     }
     SECTION("a tuning round") {
@@ -2117,26 +2117,26 @@ TEST_CASE("Continue on the low-RAM warning re-checks the gate", "[belt][panel][t
         fx.panel().handle_tune_measure_clicked();
         fx.pump_ms(200);
         continue_dialog();
-        CHECK(fx.state_int("belt_tension_state") == TUNING);
+        CHECK(fx.state_int("belt_tension_state") == kTuning);
         CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
         CHECK(fx.text("bt_tune_round") == round);
     }
     SECTION("a Re-test leaves both results in place") {
         REQUIRE(fx.wait_gate_open());
         fx.panel().handle_start_clicked();
-        REQUIRE(fx.pump_until_state(RESULTS));
+        REQUIRE(fx.pump_until_state(kResults));
         const std::string note_a = fx.text("bt_note_a");
         fx.panel().set_memory_for_test(small);
         fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_A);
         fx.pump_ms(200);
         continue_dialog();
-        CHECK(fx.state_int("belt_tension_state") == RESULTS);
+        CHECK(fx.state_int("belt_tension_state") == kResults);
         CHECK(fx.text("bt_note_a") == note_a);
         // Path A's result survived: Tune can still start from the comparison.
         lv_subject_set_int(get_printer_state().print_state().get_print_active_subject(), 0);
         fx.pump_ms(200);
         fx.panel().handle_tune_clicked();
-        CHECK(fx.state_int("belt_tension_state") == TUNING);
+        CHECK(fx.state_int("belt_tension_state") == kTuning);
     }
 }
 
@@ -2176,7 +2176,7 @@ TEST_CASE("the low-RAM warning is asked once per tuning session", "[belt][panel]
     // A new tuning session asks again.
     fx.panel().handle_tune_done_clicked();
     fx.panel().handle_tune_clicked();
-    REQUIRE(fx.state_int("belt_tension_state") == TUNING);
+    REQUIRE(fx.state_int("belt_tension_state") == kTuning);
     fx.panel().handle_tune_measure_clicked();
     fx.pump_ms(200);
     CHECK(fx.panel_low_ram_dialog() != nullptr);
@@ -2205,7 +2205,7 @@ TEST_CASE("a Stop confirmed after the round ended stops nothing", "[belt][panel]
     fx.mock().clear_gcode_script_history();
     lv_obj_send_event(lv_obj_find_by_name(dialog, "btn_primary"), LV_EVENT_CLICKED, nullptr);
     fx.pump_ms(2000);
-    CHECK(fx.state_int("belt_tension_state") == TUNING);
+    CHECK(fx.state_int("belt_tension_state") == kTuning);
     CHECK(fx.text("bt_tune_round") == round);
     for (const auto& g : std::vector<std::string>(fx.mock().gcode_script_history())) {
         INFO(g);
@@ -2253,7 +2253,7 @@ TEST_CASE("an untouched stepper is a repeat check", "[belt][panel][tune]") {
     tune_round(fx);
     REQUIRE(fx.state_int("bt_tune_phase") == kPhaseMatched);
     fx.panel().handle_tune_confirm_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     // Only the turned rounds booked anything.
     INFO("facts: " << fx.text("bt_facts"));
     CHECK(fx.text("bt_facts").find("B tightened about") != std::string::npos);
@@ -2274,7 +2274,7 @@ TEST_CASE("the gate re-reads the calibrator when a sweep ends", "[belt][panel][g
         REQUIRE(fx.wait_gate_open());
         fx.panel().handle_start_clicked();
         notify_mid_sweep();
-        REQUIRE(fx.pump_until_state(RESULTS));
+        REQUIRE(fx.pump_until_state(kResults));
         CHECK(fx.state_int("bt_can_start") == 1);
     }
     SECTION("a tuning round") {
@@ -2495,7 +2495,7 @@ void enter_results_with_menu(BeltPanelFixture& fx) {
     REQUIRE(fx.register_component("belt_retest_menu"));
     REQUIRE(fx.wait_gate_open());
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
 }
 
 } // namespace
@@ -2721,7 +2721,7 @@ TEST_CASE("a fresh Start ends the tuning session", "[belt][panel][tune]") {
 
     fx.panel().handle_start_clicked();
     CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
 }
 
@@ -2790,7 +2790,7 @@ TEST_CASE("a closed gate stops a Re-test", "[belt][panel][gating]") {
     BeltPanelFixture fx;
     REQUIRE(fx.wait_gate_open());
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
 
     lv_subject_set_int(get_printer_state().print_state().get_print_active_subject(), 1);
     fx.pump_ms(200);
@@ -2800,7 +2800,7 @@ TEST_CASE("a closed gate stops a Re-test", "[belt][panel][gating]") {
     fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_A);
     fx.pump_ms(2000);
     CHECK(resonance_lines(fx).empty());
-    CHECK(fx.state_int("belt_tension_state") == RESULTS);
+    CHECK(fx.state_int("belt_tension_state") == kResults);
 }
 
 TEST_CASE("cleanup closes the Re-test menu", "[belt][panel][compact]") {
@@ -3011,9 +3011,9 @@ TEST_CASE("the run title reads Settling belts while the laps run", "[belt][panel
     }
     SECTION("a tuning round, in the sweeping row") {
         fx.panel().handle_start_clicked();
-        REQUIRE(fx.pump_until_state(RESULTS));
+        REQUIRE(fx.pump_until_state(kResults));
         fx.panel().handle_tune_clicked();
-        REQUIRE(fx.state_int("belt_tension_state") == TUNING);
+        REQUIRE(fx.state_int("belt_tension_state") == kTuning);
         fx.panel().handle_tune_measure_clicked();
         REQUIRE(fx.state_int("bt_tune_phase") == kPhaseSweeping);
         lv_obj_t* title = lv_obj_find_by_name(fx.view(), "tune_run_title");
@@ -3028,11 +3028,11 @@ TEST_CASE("Re-test settles once before its single sweep", "[belt][panel][settle]
     BeltPanelFixture fx;
     REQUIRE(fx.wait_gate_open());
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
 
     fx.mock().clear_gcode_script_history();
     fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_B);
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     CHECK(run_steps(fx) == std::vector<std::string>{"settle", "full"});
 }
 
@@ -3052,7 +3052,7 @@ TEST_CASE("Confirm settles once before its pair", "[belt][panel][settle][tune]")
     SECTION("Confirm") {
         fx.mock().clear_gcode_script_history();
         fx.panel().handle_tune_confirm_clicked();
-        REQUIRE(fx.pump_until_state(RESULTS));
+        REQUIRE(fx.pump_until_state(kResults));
         CHECK(run_steps(fx) == std::vector<std::string>{"settle", "full", "full"});
     }
 }
@@ -3171,7 +3171,7 @@ TEST_CASE("a wake re-asks the probe point the suspension expired", "[belt][panel
     fx.pump_ms(500);
     REQUIRE(run_steps(fx).empty());
     fx.panel().on_activate();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     CHECK(run_steps(fx) == std::vector<std::string>{"settle", "full", "full"});
 }
 
@@ -3216,7 +3216,7 @@ TEST_CASE("a tool changer's laps keep to the central half", "[belt][panel][settl
     fx.mock().clear_gcode_script_history();
 
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     const auto axis_max =
         helix::mock::descriptor(MoonrakerClientMock::PrinterType::VORON_24).axis_max;
     // A quarter of the span in from each end.
@@ -3243,7 +3243,7 @@ TEST_CASE("ages refresh on RESULTS", "[belt][panel]") {
     BeltPanelFixture fx;
     REQUIRE(fx.wait_gate_open());
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     REQUIRE(fx.text("bt_note_a") == "just now");
     lv_timer_t* timer = fx.panel_note_age_timer();
     REQUIRE(timer != nullptr);
@@ -3265,7 +3265,7 @@ TEST_CASE("was N% sits under the similarity only after a re-test", "[belt][panel
     BeltPanelFixture fx;
     REQUIRE(fx.wait_gate_open());
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     // A fresh check replaced nothing.
     CHECK(fx.text("bt_similarity_was").empty());
     CHECK(fx.state_int("bt_has_similarity_was") == 0);
@@ -3275,13 +3275,13 @@ TEST_CASE("was N% sits under the similarity only after a re-test", "[belt][panel
 
     const std::string before = fx.text("bt_similarity");
     fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_B);
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     CHECK(fx.text("bt_similarity_was") == "was " + before);
     CHECK_FALSE(lv_hidden(was));
 
     // A fresh Start drops the history again.
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     CHECK(fx.text("bt_similarity_was").empty());
     CHECK(lv_hidden(was));
 }
@@ -3318,9 +3318,9 @@ TEST_CASE("a ghost keeps its own scale", "[belt][panel][chart]") {
     BeltPanelFixture fx;
     REQUIRE(fx.wait_gate_open());
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_A);
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     std::remove(csv_a.c_str());
 
     auto* chart = fx.panel_chart();
@@ -3347,11 +3347,11 @@ TEST_CASE("a tuning ghost keeps its own scale", "[belt][panel][chart][tune]") {
     {
         helix::ScopedEnv replay("HELIX_MOCK_BELT_CSV_B", csv_b.c_str());
         fx.panel().handle_start_clicked();
-        REQUIRE(fx.pump_until_state(RESULTS));
+        REQUIRE(fx.pump_until_state(kResults));
     }
     std::remove(csv_b.c_str());
     fx.panel().handle_tune_clicked();
-    REQUIRE(fx.state_int("belt_tension_state") == TUNING);
+    REQUIRE(fx.state_int("belt_tension_state") == kTuning);
     INFO("phase " << fx.state_int("bt_tune_phase") << " instr " << fx.text("bt_tune_instruction")
                   << " zone " << fx.text("bt_tune_zone"));
     if (fx.state_int("bt_tune_path") != 1) {
@@ -3400,10 +3400,10 @@ TEST_CASE("a genuine 0% earlier similarity still shows", "[belt][panel]") {
     BeltPanelFixture fx;
     REQUIRE(fx.wait_gate_open());
     fx.panel().handle_start_clicked();
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     fx.panel_set_similarity(0.0f);
     fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_B);
-    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.pump_until_state(kResults));
     CHECK(fx.text("bt_similarity_was") == "was 0%");
     CHECK(fx.state_int("bt_has_similarity_was") == 1);
 }
