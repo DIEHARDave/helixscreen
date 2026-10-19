@@ -2249,6 +2249,8 @@ translations:
   No USB printers found: No USB printers found
   No actions right now: No actions right now
   No active Spoolman spool.: No active Spoolman spool.
+  "No answer: check the IP address and that this device is on the printer's Wi-Fi, not mobile data.": "No answer: check the IP address and that this device is on the printer's Wi-Fi, not mobile data."
+  "No answer: check the IP address and that this device is on the printer's network.": "No answer: check the IP address and that this device is on the printer's network."
   No buffer data available: No buffer data available
   No camera — use USB barcode scanner: No camera — use USB barcode scanner
   No chamber temperature sensor detected: No chamber temperature sensor detected
@@ -3659,6 +3661,7 @@ translations:
   The printer lost power during a print. The resumed layer may not line up exactly.: The printer lost power during a print. The resumed layer may not line up exactly.
   The printer lost power while printing {}. Resume where it left off?: The printer lost power while printing {}. Resume where it left off?
   The printer lost power while printing {}. The resumed layer may not line up exactly.: The printer lost power while printing {}. The resumed layer may not line up exactly.
+  'The printer refused that port: check the port (Moonraker is usually 7125).': 'The printer refused that port: check the port (Moonraker is usually 7125).'
   The printer rejected the filament configuration. The print was not started.: The
     printer rejected the filament configuration. The print was not started.
   The printer reports measured fan speeds. HelixScreen shows them on the Fans screen.: The printer reports measured fan speeds. HelixScreen shows them on the Fans screen.

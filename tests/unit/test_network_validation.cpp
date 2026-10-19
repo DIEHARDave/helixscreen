@@ -90,3 +90,53 @@ TEST_CASE("Network validation: Edge cases", "[validation][network][edge]") {
     REQUIRE(is_valid_port("1") == true);
     REQUIRE(is_valid_port("65535") == true);
 }
+
+// ============================================================================
+// Connection test failure classification
+// ============================================================================
+
+#include <cerrno>
+#include <string>
+
+using helix::classify_connect_failure;
+using helix::connect_failure_hint;
+using helix::ConnectFailureKind;
+
+TEST_CASE("Connect failure: socket errors classify by what the user should check",
+          "[validation][network][connect_failure]") {
+    CHECK(classify_connect_failure(ETIMEDOUT, 0) == ConnectFailureKind::Timeout);
+    CHECK(classify_connect_failure(EHOSTUNREACH, 0) == ConnectFailureKind::Timeout);
+    CHECK(classify_connect_failure(ENETUNREACH, 0) == ConnectFailureKind::Timeout);
+    CHECK(classify_connect_failure(ECONNREFUSED, 0) == ConnectFailureKind::Refused);
+    CHECK(classify_connect_failure(0, 0) == ConnectFailureKind::Unknown);
+    CHECK(classify_connect_failure(ECONNRESET, 0) == ConnectFailureKind::Unknown);
+}
+
+TEST_CASE("Connect failure: ENOTCONN defers to the socket's pending error",
+          "[validation][network][connect_failure]") {
+    CHECK(classify_connect_failure(ENOTCONN, ECONNREFUSED) == ConnectFailureKind::Refused);
+    CHECK(classify_connect_failure(ENOTCONN, EHOSTUNREACH) == ConnectFailureKind::Timeout);
+    CHECK(classify_connect_failure(ENOTCONN, 0) == ConnectFailureKind::Unknown);
+    // A pending error is only consulted for ENOTCONN: a decisive io error stands.
+    CHECK(classify_connect_failure(ETIMEDOUT, ECONNREFUSED) == ConnectFailureKind::Timeout);
+}
+
+TEST_CASE("Connect failure: each kind gets its own hint, mobile data on Android only",
+          "[validation][network][connect_failure]") {
+    const std::string timeout_desktop = connect_failure_hint(ConnectFailureKind::Timeout, false);
+    const std::string timeout_android = connect_failure_hint(ConnectFailureKind::Timeout, true);
+    const std::string refused = connect_failure_hint(ConnectFailureKind::Refused, false);
+    const std::string unknown = connect_failure_hint(ConnectFailureKind::Unknown, false);
+
+    CHECK(timeout_android.find("mobile data") != std::string::npos);
+    CHECK(timeout_desktop.find("mobile data") == std::string::npos);
+    CHECK(timeout_desktop.find("IP address") != std::string::npos);
+    CHECK(refused.find("port") != std::string::npos);
+    CHECK(refused == connect_failure_hint(ConnectFailureKind::Refused, true));
+    CHECK(unknown == "Connection failed. Check IP/port and try again.");
+    CHECK(unknown == connect_failure_hint(ConnectFailureKind::Unknown, true));
+
+    CHECK(timeout_desktop != refused);
+    CHECK(timeout_desktop != unknown);
+    CHECK(refused != unknown);
+}

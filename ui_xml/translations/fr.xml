@@ -2094,6 +2094,8 @@
   <translation tag="No USB printers found" fr="Aucune imprimante USB trouvée"/>
   <translation tag="No actions right now" fr="Aucune action pour le moment"/>
   <translation tag="No active Spoolman spool." fr="Aucune bobine Spoolman active."/>
+  <translation tag="No answer: check the IP address and that this device is on the printer&apos;s Wi-Fi, not mobile data." fr="Aucune réponse : vérifiez l&apos;adresse IP et que cet appareil est sur le Wi-Fi de l&apos;imprimante, pas en données mobiles."/>
+  <translation tag="No answer: check the IP address and that this device is on the printer&apos;s network." fr="Aucune réponse : vérifiez l&apos;adresse IP et que cet appareil est sur le réseau de l&apos;imprimante."/>
   <translation tag="No buffer data available" fr="Aucune donnée de tampon disponible"/>
   <translation tag="No camera — use USB barcode scanner" fr="Aucune caméra — utilisez un scanner de code-barres USB"/>
   <translation tag="No chamber temperature sensor detected" fr="Aucun capteur de température d&apos;enceinte détecté"/>
@@ -3396,6 +3398,7 @@
   <translation tag="The printer lost power during a print. The resumed layer may not line up exactly." fr="L&apos;imprimante a été mise hors tension pendant une impression. La couche reprise peut ne pas s&apos;aligner exactement."/>
   <translation tag="The printer lost power while printing {}. Resume where it left off?" fr="L&apos;imprimante a été mise hors tension pendant l&apos;impression de {}. Reprendre là où elle s&apos;est arrêtée ?"/>
   <translation tag="The printer lost power while printing {}. The resumed layer may not line up exactly." fr="L&apos;imprimante a été mise hors tension pendant l&apos;impression de {}. La couche reprise peut ne pas s&apos;aligner exactement."/>
+  <translation tag="The printer refused that port: check the port (Moonraker is usually 7125)." fr="L&apos;imprimante a refusé ce port : vérifiez le port (Moonraker utilise généralement 7125)."/>
   <translation tag="The printer rejected the filament configuration. The print was not started." fr="L&apos;imprimante a rejeté la configuration du filament. L&apos;impression n&apos;a pas été démarrée."/>
   <translation tag="The printer reports measured fan speeds. HelixScreen shows them on the Fans screen." fr="L&apos;imprimante signale les vitesses mesurées des ventilateurs. HelixScreen les affiche sur l&apos;écran Ventilateurs."/>
   <translation tag="The printer swaps between several toolheads. Manage the tools on the filament system screen." fr="L&apos;imprimante change entre plusieurs têtes d&apos;outil. Gérez les outils sur l&apos;écran du système de filament."/>

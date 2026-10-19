@@ -2094,6 +2094,8 @@
   <translation tag="No USB printers found" es="No se encontraron impresoras USB"/>
   <translation tag="No actions right now" es="No hay acciones ahora"/>
   <translation tag="No active Spoolman spool." es="No hay bobina activa en Spoolman."/>
+  <translation tag="No answer: check the IP address and that this device is on the printer&apos;s Wi-Fi, not mobile data." es="Sin respuesta: comprueba la dirección IP y que este dispositivo esté en el Wi-Fi de la impresora, no en datos móviles."/>
+  <translation tag="No answer: check the IP address and that this device is on the printer&apos;s network." es="Sin respuesta: comprueba la dirección IP y que este dispositivo esté en la red de la impresora."/>
   <translation tag="No buffer data available" es="Sin datos de búfer disponibles"/>
   <translation tag="No camera — use USB barcode scanner" es="Sin cámara — use un escáner de código de barras USB"/>
   <translation tag="No chamber temperature sensor detected" es="No se detectó sensor de temperatura de cámara"/>
@@ -3396,6 +3398,7 @@
   <translation tag="The printer lost power during a print. The resumed layer may not line up exactly." es="La impresora perdió corriente durante una impresión. La capa reanudada puede no alinearse con exactitud."/>
   <translation tag="The printer lost power while printing {}. Resume where it left off?" es="La impresora perdió corriente mientras imprimía {}. ¿Reanudar donde se quedó?"/>
   <translation tag="The printer lost power while printing {}. The resumed layer may not line up exactly." es="La impresora perdió corriente mientras imprimía {}. La capa reanudada puede no alinearse con exactitud."/>
+  <translation tag="The printer refused that port: check the port (Moonraker is usually 7125)." es="La impresora rechazó ese puerto: comprueba el puerto (Moonraker suele usar el 7125)."/>
   <translation tag="The printer rejected the filament configuration. The print was not started." es="La impresora rechazó la configuración de filamento. La impresión no se inició."/>
   <translation tag="The printer reports measured fan speeds. HelixScreen shows them on the Fans screen." es="La impresora informa de las velocidades medidas de los ventiladores. HelixScreen las muestra en la pantalla Ventiladores."/>
   <translation tag="The printer swaps between several toolheads. Manage the tools on the filament system screen." es="La impresora cambia entre varios cabezales. Gestiona las herramientas en la pantalla del sistema de filamento."/>

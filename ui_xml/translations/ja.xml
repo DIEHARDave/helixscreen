@@ -2094,6 +2094,8 @@
   <translation tag="No USB printers found" ja="USBプリンターが見つかりません"/>
   <translation tag="No actions right now" ja="現在利用できる操作はありません"/>
   <translation tag="No active Spoolman spool." ja="Spoolmanで使用中のスプールがありません。"/>
+  <translation tag="No answer: check the IP address and that this device is on the printer&apos;s Wi-Fi, not mobile data." ja="応答がありません: IPアドレスと、このデバイスがモバイルデータではなくプリンターのWi-Fiに接続されているか確認してください。"/>
+  <translation tag="No answer: check the IP address and that this device is on the printer&apos;s network." ja="応答がありません: IPアドレスと、このデバイスがプリンターと同じネットワークにあるか確認してください。"/>
   <translation tag="No buffer data available" ja="バッファーデータがありません"/>
   <translation tag="No camera — use USB barcode scanner" ja="カメラなし — USB バーコードスキャナーを使用してください"/>
   <translation tag="No chamber temperature sensor detected" ja="チャンバー温度センサーが検出されません"/>
@@ -3396,6 +3398,7 @@
   <translation tag="The printer lost power during a print. The resumed layer may not line up exactly." ja="印刷中にプリンターの電源が失われました。再開したレイヤーがわずかにずれる可能性があります。"/>
   <translation tag="The printer lost power while printing {}. Resume where it left off?" ja="{} の印刷中にプリンターの電源が失われました。中断した箇所から再開しますか？"/>
   <translation tag="The printer lost power while printing {}. The resumed layer may not line up exactly." ja="{} の印刷中にプリンターの電源が失われました。再開したレイヤーがわずかにずれる可能性があります。"/>
+  <translation tag="The printer refused that port: check the port (Moonraker is usually 7125)." ja="プリンターがそのポートを拒否しました: ポートを確認してください(Moonrakerは通常7125)。"/>
   <translation tag="The printer rejected the filament configuration. The print was not started." ja="プリンターがフィラメント設定を拒否しました。印刷は開始されませんでした。"/>
   <translation tag="The printer reports measured fan speeds. HelixScreen shows them on the Fans screen." ja="プリンターはファンの実測回転数を報告します。HelixScreenはファン画面に表示します。"/>
   <translation tag="The printer swaps between several toolheads. Manage the tools on the filament system screen." ja="プリンターは複数のツールヘッドを切り替えます。ツールはフィラメントシステム画面で管理できます。"/>
