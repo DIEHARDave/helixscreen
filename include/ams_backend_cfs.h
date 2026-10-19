@@ -330,6 +330,12 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
         return fork_print_map_ ? RemapStrategy::PrePrintSend : RemapStrategy::None;
     }
 
+    /// Fork firmware loads file tool n from slot n unless a print map says
+    /// otherwise (box.py's default T<n> = slot n).
+    [[nodiscard]] bool default_print_routing_is_identity() const override {
+        return macro_variant_ == CfsMacroVariant::Fork;
+    }
+
     /// `BOX_PRINT_MAP MAP=<tool>:<slot>,...` for the next print, or "" when
     /// the firmware has no BOX_PRINT_MAP or check_preprint_remap() refuses.
     /// See print_map_gcode().

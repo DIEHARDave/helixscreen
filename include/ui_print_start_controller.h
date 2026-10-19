@@ -150,9 +150,11 @@ class PrintStartController {
      * There is no detail view here and no reprint picker, so the routing comes
      * from AmsBackend::last_print_tool_mapping() — the routing the printer ran
      * the job with — via FilamentMapper::reprint_remap(). When that is not known
-     * the pre-print send is SKIPPED rather than defaulted: an empty remap makes
+     * the map is SKIPPED rather than defaulted: an empty remap makes
      * build_preprint_gcode write every used tool to its firmware-default head,
-     * which erases the crossover the print actually used.
+     * which erases the crossover the print actually used. A backend whose
+     * firmware default is that identity (default_print_routing_is_identity())
+     * gets the empty remap instead, so its map for the file's tools goes out.
      *
      * @param filename   Raw filename to reprint (already on the printer).
      * @param path       Directory path relative to gcodes root (unused by the

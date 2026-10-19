@@ -600,28 +600,29 @@ void PrintStartController::reprint_impl(const std::string& filename, const std::
         // Where the reprint's routing comes from. The normal start path reads
         // the detail view's colour/type match; a reprint has no detail view, no
         // swatch card and no picker, so the only thing that knows how this job
-        // was routed is the printer — and only while its task was configured,
-        // which is what last_print_tool_mapping() snapshots.
-        //
-        // This used to pass an empty remap. build_preprint_gcode resolves a tool
-        // it is not told about to that tool's firmware-default head, so the
-        // reprint wrote SET_PRINT_EXTRUDER_MAP CONFIG_EXTRUDER=n MAP_EXTRUDER=n
-        // for every used tool and erased the crossover the original print ran
-        // with — a remapped file could not be reprinted correctly at all.
-        const auto remap = routing ? routing
-                                   : helix::FilamentMapper::reprint_remap(
-                                         backend->last_print_tool_mapping(), tools_used);
-        if (!remap) {
-            // Not known (no configured task observed — e.g. the app started after
+        // was routed is the printer, and only while its task was configured,
+        // which is what last_print_tool_mapping() snapshots. An empty remap is
+        // not "no routing": build_preprint_gcode resolves a tool it is not told
+        // about to that tool's firmware-default head.
+        auto remap = routing ? routing
+                             : helix::FilamentMapper::reprint_remap(
+                                   backend->last_print_tool_mapping(), tools_used);
+        if (!remap && backend->default_print_routing_is_identity()) {
+            // The firmware's own default is tool n = slot n, so the empty remap
+            // sends exactly that for the file's tools and overwrites any map the
+            // printer still holds for its next print.
+            remap = std::map<int, int>{};
+        } else if (!remap) {
+            // Not known (no configured task observed, e.g. the app started after
             // the print ended). Sending a map here means inventing a routing: an
             // identity map is a confident wrong answer for exactly the files that
             // need one. The firmware keeps whatever map the last job left; only
             // the routing-free per-print preferences go out, and the log says so.
             //
             // The cost is the SET_PRINT_USED_EXTRUDERS spurious-feed suppression,
-            // which cannot be computed either — the used-head set is derived from
+            // which cannot be computed either: the used-head set is derived from
             // the same routing.
-            spdlog::warn("[PrintStartController] Reprint: no recorded print routing — sending "
+            spdlog::warn("[PrintStartController] Reprint: no recorded print routing; sending "
                          "no extruder map rather than writing a default one over it");
         }
 

@@ -71,9 +71,11 @@ a tool the file does not use. With the file's tools unknown it carries only the 
 entries, and nothing goes out when none moves a tool. A remap whose target slot a manual load would refuse (`firmware_slot_locked()`), or that sits in a unit reading disconnected (a `boxes[]` entry with `online: false`, or the chain-wide `driver_ready: false`), is refused by `check_preprint_remap()`: nothing is sent and the print does not start, with the reason in the same "Print setup failed" dialog a printer-side refusal gets. `can_set_tool_mapping()` refuses on this route: `BOX_MODIFY_TN` is a
 stock command. The revision is the only evidence the command exists: it is registered
 in Python, and the app has no registered-command lookup. Below revision 3 Fork has no
-remap route (`RemapStrategy::None`). A reprint sends no map, because the backend does
-not record the last print's routing (`last_print_tool_mapping()` is empty), so the
-controller passes no tool set.
+remap route (`RemapStrategy::None`). A reprint has no recorded routing to replay
+(`last_print_tool_mapping()` is empty), but Fork answers
+`default_print_routing_is_identity()`, so the controller sends the identity map for the
+file's tools: the same line a start with no remap sends, overwriting any map a failed
+start left pending.
 
 A `Flat` box whose module we cannot identify still has its control paths refused by `reject_if_flat_schema()`. Full field mapping, command signatures and remaining gaps: `printer-research/CREALITY_CFS_K2_INTERNALS.md` § "Community Kalico port".
 

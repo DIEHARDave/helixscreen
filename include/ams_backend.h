@@ -2717,6 +2717,24 @@ class AmsBackend {
     }
 
     /**
+     * @brief Does the firmware route each file tool to its own slot by default?
+     *
+     * When last_print_tool_mapping() is not known, a reprint has no routing to
+     * replay. A backend answering true runs every tool the pre-print send leaves
+     * out at the slot of the same number, so the identity map for the file's
+     * tools states that default rather than guessing one; a reprint sends it to
+     * overwrite any map the printer still holds for its next print. A backend
+     * whose jobs carry their own crossover (Snapmaker U1) answers false: there
+     * an identity map is a confident wrong answer, and an unknown routing sends
+     * no map at all.
+     *
+     * Default false.
+     */
+    [[nodiscard]] virtual bool default_print_routing_is_identity() const {
+        return false;
+    }
+
+    /**
      * @brief Does this backend echo its tool mapping back from the printer?
      *
      * get_tool_mapping() is written from two directions — a backend updates it

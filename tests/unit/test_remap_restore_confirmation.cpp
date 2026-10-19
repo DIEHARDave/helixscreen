@@ -888,3 +888,62 @@ TEST_CASE("pre-print send: a remap to a box that is not answering stops the prin
     helix::ui::UpdateQueue::instance().drain();
     AmsState::instance().set_backend(nullptr);
 }
+
+// A Fork box keeps a print map for the next file it loads, so a reprint with no
+// recorded routing still sends the file's tools at their own slots: that is the
+// firmware default, and it overwrites a map a failed remapped start left pending.
+TEST_CASE("reprint: a Fork print-map box sends the identity map for the file's tools",
+          "[print-start][print_map][reprint]") {
+    LVGLTestFixture fx;
+    AmsState::instance().init_subjects(true);
+    auto owned = std::make_unique<CapturingCfsBackend>();
+    auto* cfs = owned.get();
+    AmsState::instance().set_backend(std::move(owned));
+
+    const auto print_map_lines = [](const Harness& h) {
+        std::vector<std::string> lines;
+        for (const auto& script : h.client.gcode_script_history()) {
+            if (script.find("BOX_PRINT_MAP") != std::string::npos) {
+                lines.push_back(script);
+            }
+        }
+        return lines;
+    };
+    const auto reprint = [](Harness& h) {
+        h.client.clear_gcode_script_history();
+        h.controller.initiate_reprint("part.gcode", "part.gcode", {0, 1}, [] {}, [] {});
+        helix::ui::UpdateQueue::instance().drain();
+    };
+
+    SECTION("revision 3 sends every used tool at its own slot") {
+        CfsTestAccess::handle_status(*cfs, fork_print_map_frame());
+        REQUIRE(cfs->requires_preprint_send());
+        REQUIRE(cfs->last_print_tool_mapping().empty());
+        Harness h;
+        reprint(h);
+        const auto lines = print_map_lines(h);
+        REQUIRE(lines.size() == 1);
+        CHECK(lines[0] == "BOX_PRINT_MAP MAP=0:0,1:1");
+    }
+
+    SECTION("revision 2 has no print map to send") {
+        auto frame = fork_print_map_frame();
+        frame["params"][0]["box"]["api_revision"] = 2;
+        CfsTestAccess::handle_status(*cfs, frame);
+        REQUIRE_FALSE(cfs->requires_preprint_send());
+        Harness h;
+        reprint(h);
+        CHECK(print_map_lines(h).empty());
+    }
+
+    SECTION("a stock box sends no print map") {
+        CfsTestAccess::handle_status(*cfs, cfs_box_frame(1));
+        REQUIRE_FALSE(cfs->default_print_routing_is_identity());
+        Harness h;
+        reprint(h);
+        CHECK(print_map_lines(h).empty());
+    }
+
+    helix::ui::UpdateQueue::instance().drain();
+    AmsState::instance().set_backend(nullptr);
+}
