@@ -16,6 +16,7 @@
 #include "lvgl/lvgl.h"
 #include "moonraker_events.h"
 #include "moonraker_manager.h"
+#include "platform_info.h"
 #include "printer_retarget.h"
 #include "printer_state.h"
 #include "text_io.h"
@@ -284,7 +285,11 @@ void ChangeHostModal::on_test_failure() {
     if (!is_visible())
         return;
 
-    set_status("icon_close_circle", "danger", "Connection failed");
+    IMoonrakerClient* client = get_moonraker_client();
+    const ConnectFailureKind kind =
+        client ? client->last_connect_failure() : ConnectFailureKind::Unknown;
+    set_status("icon_close_circle", "danger",
+               lv_tr(connect_failure_hint(kind, helix::is_android_platform())));
     lv_subject_set_int(&testing_subject_, 0);
 
     spdlog::debug("[ChangeHostModal] Test failed, keeping Save disabled");
