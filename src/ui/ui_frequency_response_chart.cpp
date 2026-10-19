@@ -1554,7 +1554,7 @@ int32_t ui_frequency_response_chart_y_gutter_width(const lv_font_t* font) {
     constexpr int32_t kMinGutter = 36;
     int32_t widest = 0;
     // Every shape the amplitude formatter emits, at its widest.
-    for (const char* sample : {"100%", "99.5k", "99.5m", "99.5u", "100e9"}) {
+    for (const char* sample : {"100%", "99.5k", "99.5m", "99.5u", "100e9", "9.95e9"}) {
         widest = std::max(widest, text_width(font, sample));
     }
     return std::max(kMinGutter, widest);

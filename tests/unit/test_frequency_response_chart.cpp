@@ -1491,7 +1491,7 @@ TEST_CASE("the gutter holds every amplitude label the axis prints",
     const int32_t gutter = ui_frequency_response_chart_y_gutter_width(font);
     // Spans of 22 per decade: their quarter steps need a decimal ("16.5m").
     for (const float top : {0.000022f, 0.00022f, 0.0022f, 0.022f, 0.22f, 2.2f, 22.0f, 220.0f,
-                            2200.0f, 22000.0f, 220000.0f, 2.2e6f, 22e6f}) {
+                            2200.0f, 22000.0f, 220000.0f, 2.2e6f, 22e6f, 2.2e9f, 22e9f}) {
         for (const bool percent : {false, true}) {
             if (percent && top > 100.0f) {
                 continue;
