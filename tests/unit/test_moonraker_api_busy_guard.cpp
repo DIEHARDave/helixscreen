@@ -701,3 +701,30 @@ TEST_CASE_METHOD(BusyGuardApiFixture,
         CHECK(mock_client.gcode_script_history().empty());
     }
 }
+
+TEST_CASE_METHOD(BusyGuardApiFixture,
+                 "a held jog into a housekeeping burst is adopted once the jog in flight acks",
+                 "[busy_guard][mock][motion]") {
+    // Hold-to-jog repeats every 150 ms without waiting for acks, so the first
+    // ask after SETTLE can find the previous repeat still in flight.
+    set_idle_printing(true);
+    set_print_state(PrintJobState::STANDBY);
+    const auto start = observe_episode_start(state, std::chrono::milliseconds(1200));
+    state.app_motion_activity().note_sent(start + std::chrono::milliseconds(300));
+    state.app_motion_activity().note_done(start + std::chrono::milliseconds(310));
+    state.app_motion_activity().note_sent(IdleTimeoutBusy::clock::now() -
+                                          std::chrono::milliseconds(50));
+
+    // Undecided while that repeat is in flight...
+    api->motion().move_axis('X', 1.0, 3000.0, nullptr,
+                            [this](const MoonrakerError& err) { error_cb(err); });
+    REQUIRE(error_called);
+
+    // ...and the app's once it acks promptly.
+    state.app_motion_activity().note_done();
+    error_called = false;
+    api->motion().move_axis('X', 1.0, 3000.0, nullptr,
+                            [this](const MoonrakerError& err) { error_cb(err); });
+    CHECK_FALSE(error_called);
+    CHECK_FALSE(mock_client.gcode_script_history().empty());
+}

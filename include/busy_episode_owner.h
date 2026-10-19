@@ -34,20 +34,29 @@ namespace helix {
  *   - a tracked send made before the episode settled (within
  *     IdleTimeoutBusy::SETTLE of its start) that acked promptly adopts it:
  *     a housekeeping burst can start an episode that the app's own fast
- *     jogs then keep up.
+ *     jogs then keep up. While such a send is still in flight and not stuck,
+ *     the episode reads as not owned and the decision waits for a later ask.
+ * Adoption trusts that a prompt ack means nobody else holds Klipper's gcode
+ * lock. An external operation that releases the lock between its commands
+ * (a host streaming gcode line by line, a probe sequence sent command by
+ * command) lets a jog ack promptly in its first SETTLE, and is adopted.
  * Untracked sends (fire-and-forget, or acked only when a long command ends)
  * have no ack to witness either way and only count from before the start.
  *
  * Asks come late (the first one ~SETTLE into the episode, after more sends
  * have landed), so the recent send times are kept rather than only the last.
- * Ownership is decided once per episode, on the first ask, and lapses
+ * Ownership is decided once per episode, on the first ask that can settle it,
+ * and lapses
  * MAX_SELF_BUSY after the latest activity: an ack, an untracked send or
  * note_still_active(). A tracked send alone does not extend it; one that
  * never acks is stuck, not activity. More than HISTORY sends between an
  * episode's start and its first ask reads as not owned.
  *
- * Thread-safe: sends are stamped on the main thread, acks may arrive on the
- * websocket thread.
+ * Thread-safe: sends are stamped on the main thread and acks arrive on the
+ * websocket thread. Every field is its own atomic, and the in-flight count
+ * only steps down by compare-and-swap, so an ack racing a send never loses
+ * the send. Acks are counted where they land rather than deferred to the
+ * main thread: the next jog's ask must see an ack that already arrived.
  */
 class BusyEpisodeOwner {
   public:
@@ -74,9 +83,10 @@ class BusyEpisodeOwner {
             ns - progress_ns_.load(std::memory_order_relaxed) > grace_ns()) {
             slow_ack_ns_.store(ns, std::memory_order_relaxed);
         }
-        // Clamp at zero if a done arrives without a matching send.
-        if (inflight_.fetch_sub(1, std::memory_order_relaxed) <= 0) {
-            inflight_.store(0, std::memory_order_relaxed);
+        // A done without a matching send leaves the count at zero.
+        int count = inflight_.load(std::memory_order_relaxed);
+        while (count > 0 &&
+               !inflight_.compare_exchange_weak(count, count - 1, std::memory_order_relaxed)) {
         }
         progress_ns_.store(ns, std::memory_order_relaxed);
         last_done_ns_.store(ns, std::memory_order_relaxed);
@@ -111,8 +121,11 @@ class BusyEpisodeOwner {
         }
         const long long start_ns = episode_start.time_since_epoch().count();
         if (decided_episode_ns_.load(std::memory_order_relaxed) != start_ns) {
-            episode_owned_.store(sent_in(start_ns - grace_ns(), start_ns) || adopted(start_ns, now),
-                                 std::memory_order_relaxed);
+            const bool started = sent_in(start_ns - grace_ns(), start_ns);
+            if (!started && adoption_pending(start_ns, now)) {
+                return false;
+            }
+            episode_owned_.store(started || adopted(start_ns, now), std::memory_order_relaxed);
             decided_episode_ns_.store(start_ns, std::memory_order_relaxed);
         }
         if (stuck(now) || slow_ack_ns_.load(std::memory_order_relaxed) >= start_ns) {
@@ -160,6 +173,14 @@ class BusyEpisodeOwner {
             }
         }
         return false;
+    }
+
+    /// A tracked send could still adopt the episode once it acks.
+    bool adoption_pending(long long start_ns, clock::time_point now) const {
+        return inflight() > 0 && !stuck(now) &&
+               sent_in(start_ns + 1, start_ns + std::chrono::duration_cast<clock::duration>(
+                                                    IdleTimeoutBusy::SETTLE)
+                                                    .count());
     }
 
     bool sent_in(long long lo, long long hi) const {
