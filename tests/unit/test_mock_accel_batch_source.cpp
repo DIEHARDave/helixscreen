@@ -35,7 +35,7 @@ TEST_CASE("mock_sweep_axis_gain is a Lorentzian on a floor", "[mock][sweep_previ
 }
 
 TEST_CASE("MockAccelBatchSource streams a sweep the estimator can follow",
-          "[mock][sweep_preview]") {
+          "[mock][sweep_preview][slow]") {
     const SweepPlan plan{5.0f, 30.0f, 1.0f};
     MockAccelBatchSource source(
         plan, MockSweepResponse{20.0f, 3.0f, 300.0f, {0.671f, 0.671f, 0.316f}}, 50.0);

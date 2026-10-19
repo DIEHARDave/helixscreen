@@ -291,7 +291,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "HELIX_SWEEP_PREVIEW_OFF keeps the preview idl
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "LiveSweepPreview drops a real thread's points after stop",
-                 "[sweep_preview][session]") {
+                 "[sweep_preview][session][slow]") {
     const SweepPlan plan{5.0f, 135.0f, 1.0f};
     auto factory = [plan](const SweepPlan&) -> std::unique_ptr<IAccelBatchSource> {
         return std::make_unique<LoopBatchSource>(spec_for(plan), peak_gain(40.0f));

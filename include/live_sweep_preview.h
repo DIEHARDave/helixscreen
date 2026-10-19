@@ -244,7 +244,7 @@ class LiveSweepPreview {
     bool no_lock_logged_ = false;
     bool niced_ = false;
     /// Loop thread CPU time at the first batch (loop thread only) and at the
-    /// latest, for the stop log line the CB1 measurement reads.
+    /// latest, for the stop log line: the loop thread's CPU cost of a sweep.
     int64_t loop_cpu_first_ns_ = -1;
     std::atomic<int64_t> loop_cpu_ns_{0};
     std::atomic<double> stream_time_s_{0.0};
