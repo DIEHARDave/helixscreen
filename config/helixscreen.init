@@ -212,6 +212,7 @@ start() {
     # the platform hooks share one rule.
     if [ -x "$LAUNCHER" ]; then
         "$LAUNCHER" --wait-for-predecessor || true
+        export HELIX_PREDECESSOR_WAITED=1
     fi
 
     if [ -f "$PIDFILE" ]; then
@@ -239,6 +240,10 @@ start() {
     # hooks), then the hook's file-scope default (Forge-X) — so this gate
     # and the launcher's own splash decision agree.
     EARLY_SPLASH_PID=""
+    # A launcher's exit sweep stops processes tagged with its PID. A tag
+    # inherited from whoever ran this script (helix-screen restarting itself)
+    # names the launcher being replaced, which would stop this splash.
+    unset HELIX_LAUNCHER_PID
     if [ -x "$SPLASH" ] && [ "${HELIX_NO_SPLASH:-0}" != "1" ]; then
         echo "Starting splash screen..."
         "$SPLASH" >/dev/null 2>&1 &
