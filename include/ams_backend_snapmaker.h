@@ -427,8 +427,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// FILAMENT_SUBTYPE is the spool's product line when it names one, else
     /// "Basic". Empty when the slot names no material or one
     /// IMoonrakerAPI::is_safe_material_param() refuses; values with a space are
-    /// quoted by IMoonrakerAPI::gcode_param_value(). @p force appends FORCE=1
-    /// to every line, which a head the firmware calls official requires.
+    /// quoted by IMoonrakerAPI::gcode_param_value(). A soft material adds
+    /// SOFT=1 to the identity line. @p force appends FORCE=1 to every line,
+    /// which a head the firmware calls official requires.
     [[nodiscard]] static std::string
     build_filament_config_gcode(int head, const SlotInfo& slot, bool force = false,
                                 RecordLines lines = RecordLines::Both);
@@ -553,10 +554,15 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
 
     /// The saved unload-at-end list (SettingsManager's end-of-print unload
     /// tools) as one SET_PRINT_PREFERENCES line, sized to the toolheads the
-    /// firmware reports; empty until it has reported them. The firmware clears
-    /// its list when every print ends, so build_preprint_gcode() carries it on
-    /// every start.
+    /// firmware reports, with every soft_heads() head 0; empty until it has
+    /// reported them. The firmware clears its list when every print ends, so
+    /// build_preprint_gcode() carries it on every start.
     [[nodiscard]] std::string end_unload_gcode() const;
+
+    /// Per head, whether it holds soft filament: the firmware's filament_soft
+    /// flag, or a soft material on the slot. Never the flag alone: the
+    /// firmware sets it only for types its own table names.
+    [[nodiscard]] std::vector<bool> soft_heads() const;
 
     /// The command one action produces, or empty when the id is not ours.
     /// Separated from execute_device_action so the mapping is testable without

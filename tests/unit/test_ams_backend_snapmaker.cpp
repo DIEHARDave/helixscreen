@@ -5024,8 +5024,29 @@ TEST_CASE("Snapmaker filament config gcode maps vendor and subtype to firmware v
         s.color_rgb = 0x00000A;
         CHECK(AmsBackendSnapmaker::build_filament_config_gcode(3, s) ==
               "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=3 VENDOR=Snapmaker FILAMENT_TYPE=TPU "
-              "FILAMENT_SUBTYPE=\"95A HF\"\n"
+              "FILAMENT_SUBTYPE=\"95A HF\" SOFT=1\n"
               "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=3 FILAMENT_COLOR_RGBA=00000AFF");
+    }
+    SECTION("a soft material the firmware's table cannot name is written SOFT=1") {
+        // The firmware looks soft up by the exact FILAMENT_TYPE; TPU-85A has no
+        // row there, so without SOFT=1 it would store the head as rigid.
+        SlotInfo s;
+        s.material = "TPU-85A";
+        s.color_rgb = 0x1A1A1A;
+        CHECK(AmsBackendSnapmaker::build_filament_config_gcode(1, s, true) ==
+              "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=1 VENDOR=Generic FILAMENT_TYPE=TPU-85A "
+              "FILAMENT_SUBTYPE=Basic SOFT=1 FORCE=1\n"
+              "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=1 FILAMENT_COLOR_RGBA=1A1A1AFF FORCE=1");
+        for (const char* soft : {"TPE", "PEBA", "PVA", "tpu 95a"}) {
+            s.material = soft;
+            CHECK(AmsBackendSnapmaker::build_filament_config_gcode(1, s).find(" SOFT=1") !=
+                  std::string::npos);
+        }
+        for (const char* rigid : {"PLA", "PETG", "PA-CF", "TPUX"}) {
+            s.material = rigid;
+            CHECK(AmsBackendSnapmaker::build_filament_config_gcode(1, s).find("SOFT") ==
+                  std::string::npos);
+        }
     }
     SECTION("a material with a space is quoted; one the allowlist refuses writes nothing") {
         SlotInfo s;
