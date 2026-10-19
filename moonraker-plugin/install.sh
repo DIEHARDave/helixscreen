@@ -310,25 +310,32 @@ ensure_visible_symlink_dir() {
         '{ print } !done && /^\[helix_print\]/ { print "symlink_dir: helix_print"; done = 1 }'
 }
 
+# Copy config file @1 to @1.bak.<timestamp>, keeping only that newest of the
+# backups this script makes of it, and print the backup's path. Returns 1 when
+# the copy failed; older backups are then left alone.
+backup_config() {
+    _bk_new="$1.bak.$(date +%Y%m%d_%H%M%S)"
+    cp "$1" "$_bk_new" || return 1
+    for _bk_old in "$1".bak.[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]; do
+        if [ -f "$_bk_old" ] && [ "$_bk_old" != "$_bk_new" ]; then
+            rm -f "$_bk_old"
+        fi
+    done
+    printf '%s' "$_bk_new"
+}
+
 # Remove the [helix_print] section from one config file, with a backup.
 # Returns 1 when the file had the section and could not be edited.
 remove_helix_section() {
     file="$1"
     [ -f "$file" ] && grep -q '^\[helix_print\]' "$file" || return 0
-    backup_file="${file}.bak.$(date +%Y%m%d_%H%M%S)"
-    if ! cp "$file" "$backup_file"; then
+    if ! backup_file=$(backup_config "$file"); then
         warn "Could not back up $(basename "$file") - leaving the [helix_print] section in place"
         return 1
     fi
     info "Created backup: $backup_file"
     info "Removing [helix_print] section from $(basename "$file")"
-    # Use awk for cross-platform config section removal
-    # This correctly handles helix_print as the last section in the file
-    if ! rewrite_with_awk "$file" '
-        /^\[helix_print\]/ { skip = 1; next }
-        /^\[/ { skip = 0 }
-        !skip { print }
-    '; then
+    if ! rewrite_with_awk "$file" "$HELIX_PRINT_STRIP_AWK"; then
         warn "Could not remove [helix_print] from $(basename "$file") - see $backup_file"
         return 1
     fi
@@ -689,12 +696,16 @@ auto_install() {
         else
             # Create backup before modifying config
             if [ -f "$section_file" ]; then
-                backup_file="${section_file}.bak.$(date +%Y%m%d_%H%M%S)"
-                cp "$section_file" "$backup_file"
+                backup_file=$(backup_config "$section_file")
                 info "Created backup: $backup_file"
             fi
 
             info "Adding [helix_print] section to $section_file"
+            # End an unterminated last line first. The blank line after it is
+            # the one HELIX_PRINT_STRIP_AWK takes back out on uninstall.
+            if [ -s "$section_file" ] && [ -n "$(tail -c 1 "$section_file")" ]; then
+                printf '\n' >> "$section_file"
+            fi
             printf '\n' >> "$section_file"
             printf '%s\n' "[helix_print]" >> "$section_file"
             printf '%s\n' "# HelixScreen plugin - auto-configured" >> "$section_file"

@@ -950,3 +950,91 @@ exec $real \"\$@\""
     refute_grep '^\[helix_print\]' "$home/real/moonraker.conf"
     grep -q '^\[octoprint_compat\]' "$home/real/moonraker.conf"
 }
+
+@test "install and uninstall cycles restore moonraker.conf byte for byte" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[authorization]\ntrusted_clients:\n    127.0.0.1\n' \
+        > "$c/moonraker.conf"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+
+    local cycle
+    for cycle in 1 2; do
+        run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+        [ "$status" -eq 0 ] || fail "install $cycle failed: $output"
+        run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+        [ "$status" -eq 0 ] || fail "uninstall $cycle failed: $output"
+    done
+
+    cmp "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" \
+        || fail "moonraker.conf drifted: $(diff "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf")"
+}
+
+@test "an install and uninstall cycle restores Forge-X's user conf byte for byte" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local conf
+    conf=$(user_conf_of "$root")
+    cp "$conf" "$BATS_TEST_TMPDIR/conf.before"
+
+    forgex_install "$root"
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$root/data/.mod/.forge-x$FORGEX_PLUGIN/install.sh" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    cmp "$BATS_TEST_TMPDIR/conf.before" "$conf" \
+        || fail "user conf drifted: $(diff "$BATS_TEST_TMPDIR/conf.before" "$conf")"
+}
+
+# Pins behaviour that already holds: removing a section between two others
+# keeps the blank line that separates them.
+@test "removing a [helix_print] between two sections keeps them apart" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[helix_print]\nenabled: True\n\n[octoprint_compat]\n' \
+        > "$c/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    [ "$(cat "$c/moonraker.conf")" = "$(printf '[server]\nhost: 0.0.0.0\n\n[octoprint_compat]')" ] \
+        || fail "unexpected result: $(cat "$c/moonraker.conf")"
+}
+
+@test "an install with no trailing newline uninstalls to the same lines" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0' > "$c/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    # The last line comes back terminated; nothing else changes.
+    [ "$(cat "$c/moonraker.conf")" = "$(printf '[server]\nhost: 0.0.0.0')" ] \
+        || fail "unexpected result: $(cat "$c/moonraker.conf")"
+}
+
+@test "install and uninstall keep only the newest backup of each config file" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf 'old\n' > "$c/moonraker.conf.bak.20200101_000000"
+    printf 'old\n' > "$c/moonraker.conf.bak.20200101_000001"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    local backups
+    backups=$(find "$c" -name 'moonraker.conf.bak.*' | wc -l | tr -d ' ')
+    [ "$backups" -eq 1 ] || fail "want 1 backup, have: $(ls "$c")"
+    [ ! -e "$c/moonraker.conf.bak.20200101_000000" ]
+    # The survivor is the uninstall's: the file with the section in it.
+    grep -q '^\[helix_print\]' "$c"/moonraker.conf.bak.* || fail "kept the wrong backup"
+}

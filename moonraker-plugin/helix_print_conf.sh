@@ -62,3 +62,23 @@ helix_print_section_files() {
     done
     return 0
 }
+
+# awk program printing a config file without its [helix_print] section(s).
+# A section that runs to the end of the file also takes the one blank line
+# before it, which is what the install writes ahead of the section it appends,
+# so an install and uninstall leave the file as it was. A section between two
+# others keeps that line: it separates the neighbours.
+# shellcheck disable=SC2016,SC2034  # awk's own $ fields; read by the scripts that source this file
+HELIX_PRINT_STRIP_AWK='
+    { line[NR] = $0 }
+    END {
+        skip = 0
+        for (i = 1; i <= NR; i++) {
+            if (line[i] ~ /^\[helix_print\]/) { skip = 1; start = i }
+            else if (line[i] ~ /^\[/) { skip = 0 }
+            drop[i] = skip
+        }
+        if (skip && start > 1 && line[start - 1] ~ /^[ \t\r]*$/) { drop[start - 1] = 1 }
+        for (i = 1; i <= NR; i++) { if (!drop[i]) print line[i] }
+    }
+'
