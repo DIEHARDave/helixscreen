@@ -592,7 +592,8 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                     status_obj[name] = status;
                 }
             }
-            for (const auto& [name, status] : self->layer_pause_status().items()) {
+            const json layer_pause_status = self->layer_pause_status();
+            for (const auto& [name, status] : layer_pause_status.items()) {
                 if (objects.contains(name)) {
                     status_obj[name] = status;
                 }
@@ -979,7 +980,8 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                     status_obj[name] = status;
                 }
             }
-            for (const auto& [name, status] : self->layer_pause_status().items()) {
+            const json layer_pause_status = self->layer_pause_status();
+            for (const auto& [name, status] : layer_pause_status.items()) {
                 if (objects.contains(name)) {
                     status_obj[name] = status;
                 }
