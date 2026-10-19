@@ -845,6 +845,30 @@ helix_ui_running() {
     return 1
 }
 
+# Is unsigned decimal $1 >= $2? 0 = yes, 1 = no, 2 = either is not a plain
+# number. Compared as text, longest first, then in 9-digit chunks, so a
+# value past 2^31 (a start time after ~248 days of uptime) still compares
+# right in a 32-bit shell's test.
+helix_uint_ge() {
+    case "$1" in ''|*[!0-9]*) return 2 ;; esac
+    case "$2" in ''|*[!0-9]*) return 2 ;; esac
+    if [ "${#1}" -ne "${#2}" ]; then
+        [ "${#1}" -gt "${#2}" ]
+        return
+    fi
+    _hug_a=$1 _hug_b=$2
+    while [ "${#_hug_a}" -gt 9 ]; do
+        _hug_ra=${_hug_a#?????????} _hug_rb=${_hug_b#?????????}
+        _hug_ha=${_hug_a%"$_hug_ra"} _hug_hb=${_hug_b%"$_hug_rb"}
+        if [ "$_hug_ha" != "$_hug_hb" ]; then
+            [ "$_hug_ha" -gt "$_hug_hb" ]
+            return
+        fi
+        _hug_a=$_hug_ra _hug_b=$_hug_rb
+    done
+    [ "$_hug_a" -ge "$_hug_b" ]
+}
+
 # Sets _hlp_pids to the other launchers that started before this one. Not
 # counted: this shell and its own subshells, its ancestors (a launcher that
 # runs a hook which asks this question), and the --print-env and
@@ -874,9 +898,12 @@ helix_launcher_predecessors() {
         esac
         helix_proc_stat "$_hlp_pid" || continue
         [ "$_hps_ppid" != "$$" ] || continue
-        if [ -n "$_hlp_self_start" ] && [ -n "$_hps_start" ] &&
-            [ "$_hps_start" -ge "$_hlp_self_start" ] 2>/dev/null; then
-            continue
+        # Only a start time that reads as earlier than ours counts; one that
+        # cannot be compared is not evidence of a predecessor.
+        if [ -n "$_hlp_self_start" ]; then
+            _hlp_cmp=0
+            helix_uint_ge "$_hps_start" "$_hlp_self_start" || _hlp_cmp=$?
+            [ "$_hlp_cmp" -eq 1 ] || continue
         fi
         _hlp_pids="${_hlp_pids:+$_hlp_pids }$_hlp_pid"
     done
@@ -890,6 +917,8 @@ helix_launcher_predecessors() {
 # HELIX_LAUNCHER_PREDECESSOR_WAIT (seconds, default 10, 0 = never wait) is an
 # environment override for tests and diagnosis, not a helixscreen.env key.
 helix_wait_for_predecessor() {
+    # $1 = "query": the UI coming back (a predecessor's respawn) also ends it.
+    _hwp_query=${1:-}
     _hwp_bound=${HELIX_LAUNCHER_PREDECESSOR_WAIT:-10}
     case "$_hwp_bound" in
         ''|*[!0-9]*) _hwp_bound=10 ;;
@@ -906,6 +935,10 @@ helix_wait_for_predecessor() {
         fi
         sleep 1
         _hwp_waited=$((_hwp_waited + 1))
+        if [ "$_hwp_query" = "query" ] && helix_ui_running; then
+            log "UI came back after ${_hwp_waited}s; launcher (PID ${_hlp_pids}) is not exiting"
+            return 0
+        fi
         helix_launcher_predecessors
     done
     log "Previous launcher exited after ${_hwp_waited}s"
@@ -963,13 +996,19 @@ fi
 # neither, any older launcher is exiting, so wait for it (bounded). Z-Mod's own
 # S80helixscreen reads a live launcher PID as "already running" and returns, so
 # without this wait a restart lands while the old launcher exits and leaves no
-# UI at all.
+# UI at all. A caller that asked exports HELIX_PREDECESSOR_WAITED=1, so the
+# launcher it then starts does not wait the whole bound a second time.
 if [ "${1:-}" = "--wait-for-predecessor" ]; then
-    helix_ui_running || helix_wait_for_predecessor
+    helix_ui_running || helix_wait_for_predecessor query
     exit 0
 fi
 
-helix_wait_for_predecessor
+# Unset either way: a value inherited by a later, unrelated start must not
+# skip that start's wait.
+if [ "${HELIX_PREDECESSOR_WAITED:-0}" != "1" ]; then
+    helix_wait_for_predecessor
+fi
+unset HELIX_PREDECESSOR_WAITED
 
 # Stop firmware display-management services that conflict with HelixScreen.
 # Creality SonicPad/Nebula Pad ships display-sleep.sh which polls X11 DPMS via

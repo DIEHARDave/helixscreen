@@ -64,7 +64,14 @@ i=0
 while [ "$i" -lt "$1" ]; do sleep 0.1; i=$((i + 1)); done
 EOF
     sh "$BATS_TEST_TMPDIR/old/bin/helix-launcher.sh" "$1" >/dev/null 2>&1 3>&- &
-    echo $!
+    local pid=$! i=0
+    # Until the fork execs, its argv is still this shell's.
+    while [ "$i" -lt 50 ]; do
+        tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q 'helix-launcher.sh' && break
+        sleep 0.05
+        i=$((i + 1))
+    done
+    echo "$pid"
 }
 
 # Expose one real PID in the fake proc root.
@@ -214,6 +221,7 @@ run_hook_pre_start() {
         touch() { :; }
         LAUNCHER="$2"
         platform_pre_start
+        echo "waited=${HELIX_PREDECESSOR_WAITED:-}"
     ' sh "$1" "$MI/bin/helix-launcher.sh"
 }
 
@@ -252,7 +260,126 @@ run_hook_pre_start() {
             run_hook_pre_start "$HOOKS_DIR/$hook"
         [ "$status" -eq 0 ]
         contains "Waiting up to 10s for exiting launcher (PID $old)" "$output"
+        contains "waited=1" "$output"
         kill -0 "$old" 2>/dev/null && fail "$hook returned while launcher $old was alive"
         rm -f "$FAKE_PROC/$old"
     done
+}
+
+@test "the query stops waiting when the UI comes back" {
+    : > "$MI/bin/helix-screen"
+    chmod +x "$MI/bin/helix-screen"
+    old=$(start_fake_launcher 600)
+    OWNED_PIDS="$OWNED_PIDS $old"
+    expose "$old"
+    install_resident "$BATS_TEST_TMPDIR/helix-watchdog" "$BATS_TEST_TMPDIR/watchdogs"
+    # The predecessor's watchdog respawns a second into the wait.
+    ( sleep 1; sh "$BATS_TEST_TMPDIR/helix-watchdog" >/dev/null 2>&1 & echo $! > "$BATS_TEST_TMPDIR/wd.pid"
+      sleep 0.2; ln -s "/proc/$(cat "$BATS_TEST_TMPDIR/wd.pid")" "$FAKE_PROC/$(cat "$BATS_TEST_TMPDIR/wd.pid")" ) 3>&- &
+
+    start=$(date +%s)
+    HELIX_PROC_ROOT="$FAKE_PROC" HELIX_LAUNCHER_PREDECESSOR_WAIT=8 \
+        run sh "$MI/bin/helix-launcher.sh" --wait-for-predecessor
+    elapsed=$(( $(date +%s) - start ))
+    OWNED_PIDS="$OWNED_PIDS $(cat "$BATS_TEST_TMPDIR/wd.pid")"
+
+    contains "UI came back after" "$output"
+    [ "$elapsed" -lt 6 ] || fail "query waited ${elapsed}s after the UI came back"
+}
+
+@test "a launcher started after a completed query does not wait again, and does not pass it on" {
+    cat > "$MI/bin/helix-screen" <<EOF
+#!/bin/sh
+echo "waited=\${HELIX_PREDECESSOR_WAITED:-}" > "$BATS_TEST_TMPDIR/child_env"
+EOF
+    chmod +x "$MI/bin/helix-screen"
+    old=$(start_fake_launcher 600)
+    OWNED_PIDS="$OWNED_PIDS $old"
+    expose "$old"
+
+    start=$(date +%s)
+    HELIX_PREDECESSOR_WAITED=1 HELIX_PROC_ROOT="$FAKE_PROC" HELIX_LAUNCHER_PREDECESSOR_WAIT=5 \
+        run sh "$MI/bin/helix-launcher.sh"
+    elapsed=$(( $(date +%s) - start ))
+
+    [[ "$output" != *"Waiting"* ]] || fail "launcher waited again: $output"
+    [ "$elapsed" -lt 3 ]
+    [ "$(cat "$BATS_TEST_TMPDIR/child_env")" = "waited=" ]
+}
+
+# Fake one launcher-shaped process under $FAKE_PROC with start time $2.
+fake_launcher_proc() {
+    mkdir -p "$FAKE_PROC/$1"
+    echo sh > "$FAKE_PROC/$1/comm"
+    printf 'sh\0/x/bin/helix-launcher.sh\0' > "$FAKE_PROC/$1/cmdline"
+    printf '%s (sh) S 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 %s 0 0\n' "$1" "$2" > "$FAKE_PROC/$1/stat"
+}
+
+@test "a start time that overflows or does not parse is not a predecessor" {
+    : > "$MI/bin/helix-screen"
+    chmod +x "$MI/bin/helix-screen"
+    fake_launcher_proc 999999990 99999999999999999999
+    fake_launcher_proc 999999991 garbage
+    # Control: an older start time is a predecessor, which proves the
+    # launcher read its own start time.
+    fake_launcher_proc 999999992 1
+    # exec keeps the PID, so the launcher finds itself in the proc root.
+    cat > "$BATS_TEST_TMPDIR/wrap.sh" <<EOF
+ln -s "/proc/\$\$" "$FAKE_PROC/\$\$"
+exec sh "$MI/bin/helix-launcher.sh"
+EOF
+
+    HELIX_PROC_ROOT="$FAKE_PROC" HELIX_LAUNCHER_PREDECESSOR_WAIT=1 \
+        run sh "$BATS_TEST_TMPDIR/wrap.sh"
+
+    contains "for exiting launcher (PID 999999992)" "$output"
+}
+
+@test "start-time comparison is exact past 2^31 and refuses non-numbers" {
+    awk '/^helix_uint_ge\(\) \{/ {f = 1} f {print} f && /^}/ {exit}' "$LAUNCHER" > "$BATS_TEST_TMPDIR/fn.sh"
+    run sh -c '
+        . "$1"
+        r() { rc=0; helix_uint_ge "$2" "$3" || rc=$?; [ "$rc" -eq "$1" ] || echo "BAD $2 $3 -> $rc"; }
+        r 0 3000000000 2999999999
+        r 1 2999999999 3000000000
+        r 0 3000000000 3000000000
+        r 0 99999999999999999999 10000000000000000000
+        r 1 10000000000000000000 99999999999999999999
+        r 0 100000000000000000001 99999999999999999999
+        r 1 5 12
+        r 2 garbage 1
+        r 2 1 ""
+        echo end
+    ' sh "$BATS_TEST_TMPDIR/fn.sh"
+    [ "$output" = "end" ] || fail "$output"
+}
+
+@test "init start drops an inherited launcher tag and marks the wait as done" {
+    local init="$WORKTREE_ROOT/config/helixscreen.init"
+    T="$BATS_TEST_TMPDIR/init"
+    mkdir -p "$T/bin"
+    awk '/^start\(\) \{/ {f = 1} f {print} f && /^}/ {exit}' "$init" \
+        | sed "s|/var/run|$T|g" > "$T/start.sh"
+    printf '#!/bin/sh\necho "marker=${HELIX_LAUNCHER_PID:-}" > "%s/splash_env"\n' "$T" > "$T/bin/helix-splash"
+    printf '#!/bin/sh\necho "$* waited=${HELIX_PREDECESSOR_WAITED:-}" >> "%s/launcher_calls"\n[ "$1" = --wait-for-predecessor ] || sleep 2\n' "$T" > "$T/bin/helix-launcher.sh"
+    : > "$T/bin/helix-screen"
+    chmod +x "$T/bin/"*
+
+    run env HELIX_LAUNCHER_PID=4242 T="$T" sh -c '
+        LOGFILE="$T/log" DESC=x NAME=helixscreen DAEMON_DIR="$T" PIDFILE="$T/pid"
+        DAEMON="$T/bin/helix-screen" SPLASH="$T/bin/helix-splash" LAUNCHER="$T/bin/helix-launcher.sh"
+        for f in platform_pre_start platform_stop_competing_uis platform_enable_backlight \
+            platform_wait_for_services platform_wait_for_boot_complete stop_splash; do
+            eval "$f() { :; }"
+        done
+        pidof() { return 1; }
+        . "$T/start.sh"
+        start
+    '
+    OWNED_PIDS="$OWNED_PIDS $(cat "$T/pid" 2>/dev/null)"
+    wait_lines "$T/launcher_calls" 2
+
+    [ "$(cat "$T/splash_env")" = "marker=" ]
+    [ "$(sed -n 1p "$T/launcher_calls")" = "--wait-for-predecessor waited=" ]
+    [ "$(sed -n 2p "$T/launcher_calls")" = " waited=1" ]
 }

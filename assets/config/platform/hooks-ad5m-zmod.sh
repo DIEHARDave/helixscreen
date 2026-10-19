@@ -108,6 +108,7 @@ platform_pre_start() {
     # the init script that sources this file; inside the launcher it is unset.
     if [ -n "${LAUNCHER:-}" ] && [ -x "$LAUNCHER" ]; then
         "$LAUNCHER" --wait-for-predecessor || true
+        export HELIX_PREDECESSOR_WAITED="${HELIX_PREDECESSOR_WAITED:-1}"
     fi
 }
 
