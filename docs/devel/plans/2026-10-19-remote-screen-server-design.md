@@ -60,11 +60,11 @@ Excluding a firmware server is a platform-hook decision, not a printer-name chec
 
 ### Capture: `ScreenServerSink : RemoteScreenSink`
 
-- **Shadow frame.** One heap frame in the flush's own pixel format, sized to the **physical** resolution. With software rotation LVGL rotates into a scratch buffer before `flush_cb`, so the rect and `px_map` the hook sees are physical while `RemoteScreenFrame::disp_w/h` are logical (`lv_display_get_horizontal_resolution`). The frame struct gains `phys_w/phys_h` and the shadow uses them.
+- **Shadow frame.** One heap frame in the flush's own pixel format, sized to the **logical** resolution (`RemoteScreenFrame::disp_w/h`). The hook wraps the backend's `flush_cb`, and the fbdev driver rotates inside that callback (`lv_linux_fbdev.c#flush_cb`), so the rect and `px_map` the hook sees are logical. The served image is upright as the user sees the panel.
 - **One blit.** `Fb0MailboxSink::on_frame`'s copy loop becomes a pure function, `blit_remote_frame(const RemoteScreenFrame&, uint8_t* dst, size_t dst_len, uint32_t dst_stride, int dst_w, int dst_h, int dst_bpp)`, used by both sinks. The fb0 sink then differs only in where `dst` comes from (mmap vs heap).
 - **No viewer, no work.** `wants_frames()` is true only within `kViewerIdleMs` (10 s) of the last request. The shadow is allocated on the first request and freed when the viewer goes idle. Because only dirty rects arrive, the first request after idle queues a full-screen invalidate on the UI thread (`ui_queue_update`) and waits up to 500 ms for the frame generation to advance; on timeout it serves the stale frame rather than failing.
 - **Locking.** A mutex guards the shadow and a generation counter. The flush hook holds it for the memcpy of one rect. The HTTP thread holds it only while converting the shadow to an RGB888 encode buffer, then encodes outside the lock.
-- **Encode on request, rate-capped.** The last JPEG is cached with its generation. A request inside the rate window, or with an unchanged generation, gets the cache, so a static screen costs one encode total. Caps: 5 fps idle; while printing, 2 fps on multi-core hosts and 1 fps on the single-core / 128 MB class (`ad5m`, `cc1`, `mips`), since host work during motion is what trips TTC on these boards (`FLASHFORGE_AD5X_SUPPORT.md` § "Host work during toolhead motion"). Quality 70.
+- **Encode on request, rate-capped.** The last JPEG is cached with its generation. A request inside the rate window, or with an unchanged generation, gets the cache, so a static screen costs one encode total. Caps: 5 fps idle; while printing, 2 fps on multi-core hosts and 1 fps on a constrained host (`MemoryInfo::is_constrained_device()` or a single core: the AD5M, CC1 and K1 class), since host work during motion is what trips TTC on these boards (`FLASHFORGE_AD5X_SUPPORT.md` § "Host work during toolhead motion"). Quality 70.
 - **Memory while a viewer is active** (zero otherwise): shadow `W*H*bpp` + RGB888 buffer `W*H*3` + cached JPEG (~50-120 KB). 800x480 at 32 bpp: about 2.8 MB. 480x272 (CC1): about 0.9 MB. 1280x800 Pi: about 7.2 MB.
 - **Sleep.** A sleeping display stops flushing; the server serves the last frame with the screensaver state as it was drawn. A remote tap wakes the display exactly as a physical one does, through the same path ctl uses.
 
@@ -89,7 +89,7 @@ libhv `hv::HttpServer`, one worker thread, its own port. Routes, all relative to
 ### Control
 
 - `touch` POSTs are handed to the UI thread and drive `RemotePointer` with the same "wait two indev reads" rule as ctl, so a fast down/up pair is never coalesced away.
-- **Coordinates.** The served image is physical-orientation pixels, which is also what a hardware touch reports; LVGL applies `lv_display_rotate_point` to every pointer indev. So image coordinates go to `RemotePointer` unchanged and rotate correctly at 0/90/180/270. One pure function owns the image-to-indev mapping (`remote_image_to_indev_point`); the ctl pointer is checked against it in the same change, since it currently feeds logical coordinates into a rotated pipeline. Unlike `fb-http`, there is no `/dev/input` round trip and no double rotation (`SNAPMAKER_U1_SUPPORT.md` § "Rotation caveat").
+- **Coordinates.** The served image is logical-orientation pixels, but LVGL applies `lv_display_rotate_point` (physical to logical) to every pointer indev. So an image point goes to `RemotePointer` through the inverse of that rotation, and lands correctly at 0/90/180/270. One pure function owns the mapping (`remote_image_to_indev_point`); the ctl pointer uses it too, since it otherwise feeds logical coordinates into a rotated pipeline. Unlike `fb-http`, there is no `/dev/input` round trip and no double rotation (`SNAPMAKER_U1_SUPPORT.md` § "Rotation caveat").
 - **The page** is one static HTML file, `assets/remote_screen/index.html`, served by us: an `<img>` refreshed from `snapshot.jpg`, pointer events mapped to image pixels, POSTed to `touch` as JSON. Our own file, written against fb-http's event model, not a copy of fb-http's page.
 - Control off: `touch` returns 403 and the page shows view-only.
 
@@ -98,7 +98,7 @@ libhv `hv::HttpServer`, one worker thread, its own port. Routes, all relative to
 1. **Off until the user turns it on** in Settings, on the device.
 2. **Where nginx fronts Moonraker** (K1, K2, Pi, x86, likely QIDI and stock U1): the server binds `127.0.0.1` only. The installer adds a tagged `location /helixscreen/screen/` block in each server block that proxies Moonraker, with `auth_request` to Moonraker's `/access/user`. Whoever Moonraker would let send G-code (trusted client, valid API key or JWT, or authorization disabled) may view and control; nobody else can reach the port. `access_log off` and `proxy_buffering off` as on the K2 `/webcam/` block, for the tmpfs reasons `camera.sh` records. If `nginx -V` lacks `auth_request`, or `nginx -t` rejects the edit, the installer reverts and falls through to rule 3.
    Consequence: a Mainsail user with Moonraker login on and an untrusted IP sees no screen feed, because an `<img>` request carries no JWT. That matches Moonraker's own policy.
-3. **Where nothing fronts Moonraker** (AD5M, CC1): the server binds the LAN on port 7130. View needs only the setting. Control additionally needs a pairing token: a random 128-bit value generated when control is enabled, shown on the device as a QR code and text in the settings row, required as `?k=` on the page URL and as a header on every `touch`. Regenerating it revokes every browser. Physical access to the screen is the credential.
+3. **Where nothing fronts Moonraker** (AD5M, CC1): the server binds the LAN on port 7130. View needs only the setting. Control additionally needs pairing: the settings row shows a 6-digit code, the control page asks for it once, and a correct code earns the browser a random 128-bit token in a cookie (`HttpOnly; SameSite=Strict`, one year). Up to 8 browsers stay paired, least recently used evicted. Wrong codes are limited to 5 per minute, and 50 cumulative failures rotate the code. "Forget paired browsers" clears every token and rotates the code. Physical access to the screen is the credential.
 4. **CSRF**, both modes: `touch` accepts only `Content-Type: application/json` with an `X-Helix-Touch: 1` header and sends no CORS headers, so a cross-origin page cannot trigger a preflight-free POST. Requests whose `Origin` does not match `Host` are rejected.
 5. While a browser has control, the status bar shows a small remote-control icon (phase 3), so the person at the printer knows.
 
@@ -110,7 +110,8 @@ libhv `hv::HttpServer`, one worker thread, its own port. Routes, all relative to
 |---|---|---|
 | `/remote_screen/enabled` | false | view |
 | `/remote_screen/control` | false | settable only when enabled |
-| `/remote_screen/token` | "" | generated on first control enable |
+| `/remote_screen/pair_code` | "" | 6 digits, generated on first control enable (LAN mode) |
+| `/remote_screen/paired` | [] | paired browser tokens, at most 8 |
 | `/remote_screen/port` | 7130 | not in the UI |
 
 Toggling starts and stops the server live, no restart. The **app** registers and removes its webcam through Moonraker (`server.webcams.post_item` / `delete_item`, new calls on the webcams sub-API next to discovery's `server.webcams.list`), on toggle and on each Moonraker connect, so the entry tracks the setting and the host's current IP. With an nginx route it registers relative URLs (`/helixscreen/screen/snapshot.jpg`); without one, `http://<lan-ip>:7130/...`. The app learns which mode it is in from `config/.remote_screen_route`, which the installer writes (the mount path) only after `nginx -t` passes.
@@ -122,7 +123,7 @@ Installer: a `remote_screen.sh` module beside `camera.sh`, reusing its nginx fin
 | Unit | How |
 |---|---|
 | `blit_remote_frame` | Table test over src {RGB565, BGRA} x dst bpp x partial/direct origin x an OOB rect, with `px_map_len` bounds. Existing `Fb0MailboxSink` tests must pass unchanged on the extracted function |
-| Physical-size shadow under rotation | Frame with logical != physical dims lands at the physical coords |
+| Shadow resize | A frame whose `disp_w/h` differ from the shadow's reallocates it before the blit |
 | Viewer gating | Injected clock: `wants_frames()` false before any request, true after, false after 10 s, buffers freed |
 | Rate cap and cache | Injected clock and generation: second request inside the window encodes nothing; unchanged generation encodes nothing; print-state cap selects the lower rate |
 | Encoder | Encode a known pattern, decode with `stb_image`, check dims and per-block mean color within tolerance |
@@ -134,7 +135,7 @@ Installer: a `remote_screen.sh` module beside `camera.sh`, reusing its nginx fin
 ## Phasing
 
 1. **View.** `blit_remote_frame` extraction, `ScreenServerSink`, encoder, `ScreenHttpServer` with `snapshot.jpg`/`info`, the enable setting, app-side webcam registration (`mjpegstreamer-adaptive`), installer nginx module. Ships nothing user-visible until Settings shows the row.
-2. **Control.** `RemotePointer` move, `touch` endpoint, control page, CSRF rules, pairing token and QR for LAN mode, control setting. Lands with or right after 1, same release.
+2. **Control.** `RemotePointer` move, `touch` endpoint, control page, CSRF rules, pairing code for LAN mode, control setting. Lands with or right after 1, same release.
 3. **Polish.** `stream.mjpg` (enables `mjpegstreamer`), remote-active indicator.
 
 To verify on hardware before phase 1 lands, not decisions: the K1 Helper Script nginx path; `auth_request` in the K1/K2 nginx builds; whether Moonraker trusts `X-Real-IP` from nginx for `trusted_clients` (else every request appears to come from 127.0.0.1 and passes); ZMOD's screen server on the AD5M; fb-http's exact `touch` body, read from the U1's `index.html`.
