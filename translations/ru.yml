@@ -495,6 +495,7 @@ translations:
   Bowden: Боуден
   Bowden Length: 'Длина боудена'
   Bowden tube length from hub to toolhead: 'Длина боуден-трубки от хаба до печатающей головки'
+  Bowden tube length to this tool: "Длина боуден-трубки до этого инструмента"
   Box: Бокс
   Brand: Бренд
   Brand and material come from Spoolman: Бренд и материал берутся из Spoolman
@@ -531,6 +532,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : Активен байпас, но эта печать использует слоты AMS. Принтер может отказаться загружать слот, пока филамент байпаса находится в печатающей головке. Извлеките филамент и выключите байпас перед печатью. Всё равно начать?
   Bypass mode is not currently active: 'Режим обхода сейчас не активен'
+  Bypass off macro: 'Макрос выключения обхода'
+  Bypass on macro: 'Макрос включения обхода'
   Bypass toggle failed: Не удалось переключить байпас
   C: К
   CALIBRATION: КАЛИБРОВКА
@@ -593,6 +596,7 @@ translations:
   Calibration failed: Калибровка не удалась
   Calibration failed - touch targets more precisely.: Калибровка не удалась – нажимайте
     на цели точнее.
+  Calibration in progress: "Идёт калибровка"
   Calibration kept timing out. Your previous settings were kept.: Калибровка постоянно завершалась по тайм-ауту. Прежние настройки сохранены.
   Calibration may still be running — printer connection was interrupted: 'Калибровка может ещё выполняться — соединение с принтером прервано'
   Calibration may still be running — response timed out: 'Калибровка может ещё выполняться — время ожидания истекло'
@@ -1176,6 +1180,7 @@ translations:
   Effects: Эффекты
   Eject: Извлечь
   Eject Distance: Расстояние извлечения
+  Eject Speed: "Скорость извлечения"
   Eject Velocity: Скорость извлечения
   Eject failed: Ошибка извлечения
   Eject needs [force_move] enabled in printer config: Для извлечения нужно включить
@@ -1228,6 +1233,7 @@ translations:
   Ended: Завершено
   Endless Spool: 'Бесконечная катушка'
   Endless Spool backups cleared: Резервы бесконечной катушки очищены
+  Endless Spool change failed: 'Не удалось изменить бесконечную катушку'
   Endless Spool is configured in its package, not from here: Бесконечная катушка настраивается в своём плагине, не здесь
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: Бесконечная катушка включена, но нет двух слотов с совпадающим филаментом, поэтому переключение при обрыве не сработает
   Endless Spool is turned off on this MMU: 'Бесконечная катушка отключена на этом MMU'
@@ -1280,6 +1286,7 @@ translations:
   Events appear here after sessions and prints: События появятся здесь после сессий
     и печатей
   Every extruder's temperature at once: Температура всех экструдеров
+  Every unit keeps its filament gripped: "Каждый блок держит свой филамент зажатым"
   Everything else was saved. Change them in Spoolman.: Всё остальное сохранено. Измените их в Spoolman.
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: 'Всё остальное сохранено. Переименуйте материал, используя буквы, цифры, пробелы и + - _ . ( ) /'
   Every object is set to skip, so there is nothing to print: 'Все объекты отмечены для пропуска, печатать нечего'
@@ -1467,6 +1474,7 @@ translations:
   Feature not available: Функция недоступна
   'Features: ': 'Функции: '
   Feed Assist: 'Помощь подачи'
+  Feed assist and bypass macros: 'Помощь подачи и макросы обхода'
   Feed assist and debug tools: Помощь подачи и инструменты отладки
   Feed failed: Не удалась подача
   Feed filament: Подать филамент
@@ -1481,6 +1489,7 @@ translations:
   Filament Control: Управление филаментом
   Filament Detected: Филамент обнаружен
   Filament Dryer: Сушилка филамента
+  Filament Feeder: "Подача филамента"
   Filament Grade Mismatch: Несоответствие марки филамента
   Filament Humidity: Влажность филамента
   Filament In The Toolhead: Филамент в печатающей головке
@@ -1560,6 +1569,7 @@ translations:
   Fine Outer: Точно (внешний)
   Finish: Завершить
   Finish or cancel the print before loading, unloading, or changing filament: Завершите или отмените печать перед загрузкой, выгрузкой или сменой филамента
+  Finish or cancel the print first: Сначала завершите или отмените печать
   Finishing clean...: Завершение очистки...
   Finishing up...: Завершение...
   Fireflies: Светлячки
@@ -1785,8 +1795,11 @@ translations:
   Hotend Fan: Вентилятор хотенда
   Hotend Heater: Нагреватель хотенда
   How Z-axis movement is displayed: Как отображается движение по оси Z
+  How far and how fast a lane ejects: "Насколько далеко и быстро извлекает канал"
+  How far filament is pushed back into the box on eject: "Насколько далеко филамент задвигается обратно в бокс при извлечении"
   How far filament is pushed back into the box on eject (mm): Насколько глубоко филамент
     задвигается обратно в коробку при извлечении (мм)
+  How fast filament is pushed back on eject: "Как быстро филамент задвигается обратно при извлечении"
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : 'Сколько удерживать, чтобы нажатие считалось долгим, в мс (увеличьте, если режим редактирования срабатывает случайно)'
   How many labels to print: Сколько этикеток напечатать
@@ -2080,6 +2093,7 @@ translations:
   Loading Error: Ошибка загрузки
   Loading Filament...: Загрузка филамента...
   Loading G-code...: Загрузка G-code...
+  Loading configuration...: "Загрузка конфигурации..."
   Loading devices...: Загрузка устройств...
   Loading filament...: Загрузка филамента...
   Loading filaments...: Загрузка филаментов...
@@ -2412,6 +2426,7 @@ translations:
   No prints this week: Нет печатей за неделю
   No prints yet: Нет печатей
   No profiles available: Профили недоступны
+  No sensor fitted for this distance: "Для этого расстояния нет датчика"
   No sensors detected: Датчики не обнаружены
   No shared peaks: "Нет общих пиков"
   No slot currently matches.: 'Сейчас нет подходящего слота.'
@@ -2425,6 +2440,10 @@ translations:
   No temperature sensors detected: 'Датчики температуры не обнаружены'
   No timelapse videos found: Таймлапс-видео не найдены
   No tools to calibrate: Нет инструментов для калибровки
+  No unit has a filament buffer: "Ни у одного блока нет буфера филамента"
+  No unit has a moving selector: "Ни у одного блока нет подвижного селектора"
+  No unit has a servo: "Ни у одного блока нет сервопривода"
+  No unit has an encoder: "Ни у одного блока нет энкодера"
   'No unload macro found: unload by hand, then start again': 'Макрос выгрузки не найден: выгрузите вручную и начните заново'
 
   No vendors found: Производители не найдены
@@ -2740,6 +2759,7 @@ translations:
   Priming...: Грунтование...
   Print: Печать
   Print Anyway: Всё равно печатать
+  Print Behavior: "Поведение при печати"
   'Print Behaviour': 'Поведение печати'
   Print Cancelled: Печать отменена
   Print Complete!: Печать завершена!
@@ -2894,6 +2914,7 @@ translations:
   Provide a numeric {}: 'Укажите числовое значение для {}'
   Provide a speed multiplier value: 'Укажите множитель скорости'
   Provide a {}: 'Укажите {}'
+  Provide an on/off value: 'Укажите значение вкл/выкл'
   Provide {}: 'Укажите {}'
   Pulling filament back: Откат филамента
   Purge: Продуть
@@ -2944,6 +2965,7 @@ translations:
   RFID reader malfunction (left): Неисправность RFID-считывателя (левый)
   RFID reader malfunction (right): Неисправность RFID-считывателя (правый)
   RFID, Auto-Refill, nozzle and link care: RFID, автопополнение, уход за соплом и связью
+  RFID, nozzle and link care: 'RFID, уход за соплом и связью'
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3500,6 +3522,7 @@ translations:
   Spoolman needs a material for this filament.: Spoolman требует материал для этого филамента.
   Spoolman removed.: Spoolman удалён.
   Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolman сохранил цену, расположение, партию и заметки, но не остальное. Больше на этом принтере ничего не изменилось.'
+  Spoolman support is off in Happy Hare: "Поддержка Spoolman отключена в Happy Hare"
   Spoolman unavailable — filament weights may be stale: Spoolman недоступен — вес
     филамента может быть устаревшим
   Spoolman was not configured.: Spoolman не был настроен.
@@ -3609,6 +3632,7 @@ translations:
   Switch the active tool or extruder: Смена активного инструмента
   Switch to a backup slot on runout: Переключаться на резервный слот при окончании филамента
   Switch to a matching slot on runout: Переключаться на подходящий слот при окончании филамента
+  Switch to a matching spool when one runs out: 'Переключаться на подходящую катушку, когда одна закончится'
   Switch to v%s: 'Перейти на v%s'
   Switch to {}?: 'Переключиться на {}?'
   Switched to {}: 'Переключено на {}'
@@ -3983,6 +4007,7 @@ translations:
   Toggle Auto-Refill: 'Переключить автопополнение'
   Toggle Quiet Mode: 'Переключить тихий режим'
   Toggle external spool bypass: Переключить байпас внешней катушки
+  Toggle this tool's toolhead LED: "Переключить LED печатающей головки этого инструмента"
   Toggle toolhead LED for an extruder: 'Переключить LED печатающей головки для экструдера'
   'Toggle:': 'Переключить:'
   Too humid: Слишком влажно
@@ -4041,9 +4066,12 @@ translations:
   Turn Endless Spool on, then set the Backup Gate: 'Включите бесконечную катушку, затем задайте резервный шлюз'
   'Turn LED off when the print ends': 'Выключать светодиод по окончании печати'
   Turn Off: Выключить
+  Turn Off LEDs: "Выключить LED"
+  Turn Off Toolhead LED: "Выключить LED печатающей головки"
   Turn Off WiFi?: Выключить WiFi?
   Turn On: Включить
   Turn On LEDs: 'Включить LED'
+  Turn On Toolhead LED: "Включить LED печатающей головки"
   Turn off bed check: 'Отключить проверку стола'
   Turn off detection: Отключить обнаружение
   Turn on the lights your light buttons control: Включает свет, которым управляют кнопки света
@@ -4100,6 +4128,7 @@ translations:
   Unload from toolhead first: 'Сначала выгрузите из печатающей головки'
   Unload macro not configured: Макрос выгрузки не настроен
   Unload the CFS filament before enabling bypass: 'Выгрузите филамент CFS перед включением обхода'
+  Unload the toolhead when a print ends: 'Выгружать печатающую головку по окончании печати'
   Unload this unit first: 'Сначала выгрузите этот узел'
   Unload which tool?: 'Из какого инструмента выгрузить?'
   Unload...: Выгрузить...
@@ -4223,11 +4252,14 @@ translations:
     Изменения также синхронизируются при начале, паузе или завершении печати.
   Welcome to HelixScreen: Добро пожаловать в HelixScreen
   What We Collect: Что мы собираем
+  What happens when a print ends: 'Что происходит по окончании печати'
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: Когда
     включено, запускается только макрос. Когда выключено, сначала задаются температуры,
     затем запускается макрос.
   Where UI sounds play: Где воспроизводятся звуки интерфейса
   Whether filament is loaded: Загружен ли филамент
+  Which macro switches the ACE path back on: 'Какой макрос снова включает тракт ACE'
+  Which macro switches the ACE path off for bypass: 'Какой макрос выключает тракт ACE для обхода'
   Which macro the Close feeder button sends: Какой макрос отправляет кнопка «Закрыть фидер»
   Which macro the Open feeder button sends: Какой макрос отправляет кнопка «Открыть фидер»
   White: Белый
@@ -4439,6 +4471,7 @@ translations:
   you have: у вас
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Гц · примерно {} мин'
   '{} ({})': '{} ({})'
+  '{} - {}': "{} - {}"
   '{} Extruders': 'Экструдеров: {}'
   '{} Hardware Issues': 'Проблем с оборудованием: {}'
   '{} Issues Detected': 'Обнаружено проблем: {}'

@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include "ams_types.h"
-
 #include <array>
 #include <cstdint>
 #include <functional>
@@ -80,17 +78,9 @@ struct Step {
 /// True when the firmware ships the macros the sequence runs, for all kHeads heads.
 [[nodiscard]] bool supported(const helix::PrinterDiscovery& discovery);
 
-inline constexpr const char* kSectionId = "snapmaker_calibration";
-inline constexpr const char* kActionId = "snapmaker_nozzle_offset_cal";
-/// The guided flow (ui_guided_device_flow.h) the action starts.
+/// The guided flow (ui_guided_device_flow.h) that runs the calibration. The
+/// Calibration panel's Tool Offsets entry starts it (helix::tool_offset_calibration).
 inline constexpr const char* kGuidedFlowId = "snapmaker_nozzle_offset";
-
-/// The device-settings section the calibration button sits in.
-[[nodiscard]] helix::printer::DeviceSection device_section();
-
-/// The button that starts the guided flow. A print in progress or paused owns
-/// the heads, so it greys out then.
-[[nodiscard]] helix::printer::DeviceAction device_action(bool print_holds_heads);
 
 /// The full command plan, in the stock screen's order.
 [[nodiscard]] std::vector<Step> build_sequence();

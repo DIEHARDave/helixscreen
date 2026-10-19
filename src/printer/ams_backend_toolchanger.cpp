@@ -5,6 +5,7 @@
 
 #include "ui_toast_manager.h"
 
+#include "ams_device_sections.h"
 #include "ams_error.h"
 #include "ams_fault_event.h"
 #include "ams_state.h"
@@ -2377,9 +2378,9 @@ std::vector<helix::printer::DeviceSection> AmsBackendToolChanger::get_device_sec
     if (!feeder_.present) {
         return {};
     }
-    using DS = helix::printer::DeviceSection;
     return {
-        DS{"feeder", "Filament feeder", 0, "Release or grip the filament by hand"},
+        helix::printer::device_section("feeder", 0,
+                                       TR_NOOP("Release or grip the filament by hand")),
     };
 }
 
@@ -2437,8 +2438,8 @@ bool AmsBackendToolChanger::feeder_open() const {
     return feeder_open_;
 }
 
-AmsError AmsBackendToolChanger::execute_device_action(const std::string& action_id,
-                                                      const std::any& value) {
+AmsError AmsBackendToolChanger::do_execute_device_action(const std::string& action_id,
+                                                         const std::any& value) {
     (void)value;
     if (feeder_.present && (action_id == "open_feeder" || action_id == "close_feeder")) {
         return set_feeder_open(action_id == "open_feeder");
@@ -2450,13 +2451,11 @@ AmsError AmsBackendToolChanger::execute_device_action(const std::string& action_
             return AmsErrorHelper::invalid_parameter("No macro selected");
         }
         const bool is_open = (action_id == "feeder_open_macro");
-        // "auto" is a sentinel, not a macro: it restores whatever the add-on
-        // detected for this machine, so a user who migrates later picks up the
-        // new native command without touching this again.
-        const std::string resolved =
-            (*chosen == helix::toolchanger_addon::kAutoMacro)
-                ? (is_open ? feeder_.detected_open : feeder_.detected_close)
-                : *chosen;
+        // "auto" restores whatever the add-on detected for this machine, so a
+        // user who migrates later picks up the new native command without
+        // touching this again.
+        const std::string resolved = helix::resolve_macro_choice(
+            *chosen, is_open ? feeder_.detected_open : feeder_.detected_close);
         {
             std::lock_guard<std::mutex> lock(mutex_);
             (is_open ? feeder_.open_gcode : feeder_.close_gcode) = resolved;

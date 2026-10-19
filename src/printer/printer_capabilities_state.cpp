@@ -64,6 +64,7 @@ constexpr CapabilityDef kCapabilityDefs[] = {
     {Capability::HasExcludeObject, "printer_has_exclude_object", 0},
     {Capability::HasLayerPause, "printer_has_layer_pause", 0},
     {Capability::HasToolOffsetCal, "printer_has_tool_offset_cal", 0},
+    {Capability::ToolOffsetCalIsBeta, "printer_tool_offset_cal_is_beta", 0},
     {Capability::HideManualZCalibration, "hide_manual_z_calibration", 0},
     {Capability::HasPaCal, "printer_has_pa_cal", 0},
     {Capability::HasWebcam, "printer_has_webcam", 0},
@@ -248,6 +249,8 @@ void PrinterCapabilitiesState::set_hardware(const PrinterDiscovery& hardware,
     // Automatic tool offset calibration: the module owns what "can" means.
     set_capability(Capability::HasToolOffsetCal,
                    helix::tool_offset_calibration::supported(hardware) ? 1 : 0);
+    set_capability(Capability::ToolOffsetCalIsBeta,
+                   helix::tool_offset_calibration::is_beta(hardware) ? 1 : 0);
 
     // Automatic pressure advance calibration. Which firmwares can measure it,
     // and how, belongs to helix::pacal - this only asks whether one matched.

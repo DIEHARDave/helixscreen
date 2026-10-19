@@ -437,6 +437,7 @@ translations:
   Bowden: Bowden
   Bowden Length: Bowden Length
   Bowden tube length from hub to toolhead: Bowden tube length from hub to toolhead
+  Bowden tube length to this tool: Bowden tube length to this tool
   Box: Box
   Brand: Brand
   Brand and material come from Spoolman: Brand and material come from Spoolman
@@ -474,6 +475,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   Bypass mode is not currently active: Bypass mode is not currently active
+  Bypass off macro: Bypass off macro
+  Bypass on macro: Bypass on macro
   Bypass toggle failed: Bypass toggle failed
   C: C
   CALIBRATION: CALIBRATION
@@ -536,6 +539,7 @@ translations:
   Calibration failed: Calibration failed
   Calibration failed - touch targets more precisely.: Calibration failed - touch targets
     more precisely.
+  Calibration in progress: Calibration in progress
   Calibration kept timing out. Your previous settings were kept.: Calibration kept timing out. Your previous settings were kept.
   Calibration may still be running — printer connection was interrupted: Calibration may still be running — printer connection was interrupted
   Calibration may still be running — response timed out: Calibration may still be running — response timed out
@@ -1096,6 +1100,7 @@ translations:
   Effects: Effects
   Eject: Eject
   Eject Distance: Eject Distance
+  Eject Speed: Eject Speed
   Eject Velocity: Eject Velocity
   Eject failed: Eject failed
   Eject needs [force_move] enabled in printer config: Eject needs [force_move] enabled
@@ -1146,6 +1151,7 @@ translations:
   Ended: Ended
   Endless Spool: Endless Spool
   Endless Spool backups cleared: Endless Spool backups cleared
+  Endless Spool change failed: Endless Spool change failed
   Endless Spool is configured in its package, not from here: Endless Spool is configured in its package, not from here
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout
   Endless Spool is turned off on this MMU: Endless Spool is turned off on this MMU
@@ -1198,6 +1204,7 @@ translations:
   Events appear here after sessions and prints: Events appear here after sessions
     and prints
   Every extruder's temperature at once: Every extruder's temperature at once
+  Every unit keeps its filament gripped: Every unit keeps its filament gripped
   Everything else was saved. Change them in Spoolman.: Everything else was saved. Change them in Spoolman.
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /
   Every object is set to skip, so there is nothing to print: Every object is set to skip, so there is nothing to print
@@ -1383,6 +1390,7 @@ translations:
   Feature not available: Feature not available
   'Features: ': 'Features: '
   Feed Assist: Feed Assist
+  Feed assist and bypass macros: Feed assist and bypass macros
   Feed assist and debug tools: Feed assist and debug tools
   Feed failed: Feed failed
   Feed filament: Feed filament
@@ -1397,6 +1405,7 @@ translations:
   Filament Control: Filament Control
   Filament Detected: Filament Detected
   Filament Dryer: Filament Dryer
+  Filament Feeder: Filament Feeder
   Filament Grade Mismatch: Filament Grade Mismatch
   Filament Humidity: Filament Humidity
   Filament In The Toolhead: Filament In The Toolhead
@@ -1476,6 +1485,7 @@ translations:
   Fine Outer: Fine Outer
   Finish: Finish
   Finish or cancel the print before loading, unloading, or changing filament: Finish or cancel the print before loading, unloading, or changing filament
+  Finish or cancel the print first: Finish or cancel the print first
   'Finishing clean...': 'Finishing clean...'
   Finishing up...: Finishing up...
   Fireflies: Fireflies
@@ -1695,8 +1705,11 @@ translations:
   Hotend Fan: Hotend Fan
   Hotend Heater: Hotend Heater
   How Z-axis movement is displayed: How Z-axis movement is displayed
+  How far and how fast a lane ejects: How far and how fast a lane ejects
+  How far filament is pushed back into the box on eject: How far filament is pushed back into the box on eject
   How far filament is pushed back into the box on eject (mm): How far filament is
     pushed back into the box on eject (mm)
+  How fast filament is pushed back on eject: How fast filament is pushed back on eject
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   How many labels to print: How many labels to print
@@ -1982,6 +1995,7 @@ translations:
   Loading Error: Loading Error
   Loading Filament...: Loading Filament...
   Loading G-code...: Loading G-code...
+  Loading configuration...: Loading configuration...
   Loading devices...: Loading devices...
   Loading filament...: Loading filament...
   Loading filaments...: Loading filaments...
@@ -2313,6 +2327,7 @@ translations:
   No prints this week: No prints this week
   No prints yet: No prints yet
   No profiles available: No profiles available
+  No sensor fitted for this distance: No sensor fitted for this distance
   No sensors detected: No sensors detected
   No shared peaks: No shared peaks
   No slot currently matches.: No slot currently matches.
@@ -2325,6 +2340,10 @@ translations:
   No temperature sensors detected: No temperature sensors detected
   No timelapse videos found: No timelapse videos found
   No tools to calibrate: No tools to calibrate
+  No unit has a filament buffer: No unit has a filament buffer
+  No unit has a moving selector: No unit has a moving selector
+  No unit has a servo: No unit has a servo
+  No unit has an encoder: No unit has an encoder
   'No unload macro found: unload by hand, then start again': 'No unload macro found: unload by hand, then start again'
   No vendors found: No vendors found
   No verified bypass command for this CFS firmware: No verified bypass command for this CFS firmware
@@ -2635,6 +2654,7 @@ translations:
   Priming...: Priming...
   Print: Print
   Print Anyway: Print Anyway
+  Print Behavior: Print Behavior
   'Print Behaviour': 'Print Behaviour'
   Print Cancelled: Print Cancelled
   Print Complete!: Print Complete!
@@ -2778,6 +2798,7 @@ translations:
   Provide a numeric {}: Provide a numeric {}
   Provide a speed multiplier value: Provide a speed multiplier value
   Provide a {}: Provide a {}
+  Provide an on/off value: Provide an on/off value
   Provide {}: Provide {}
   Pulling filament back: Pulling filament back
   Purge: Purge
@@ -2827,6 +2848,7 @@ translations:
   RFID reader malfunction (left): RFID reader malfunction (left)
   RFID reader malfunction (right): RFID reader malfunction (right)
   RFID, Auto-Refill, nozzle and link care: RFID, Auto-Refill, nozzle and link care
+  RFID, nozzle and link care: RFID, nozzle and link care
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3377,6 +3399,7 @@ translations:
   Spoolman needs a material for this filament.: Spoolman needs a material for this filament.
   Spoolman removed.: Spoolman removed.
   Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.
+  Spoolman support is off in Happy Hare: Spoolman support is off in Happy Hare
   Spoolman unavailable — filament weights may be stale: Spoolman unavailable — filament
     weights may be stale
   Spoolman was not configured.: Spoolman was not configured.
@@ -3473,6 +3496,7 @@ translations:
   Switch the active tool or extruder: Switch the active tool or extruder
   Switch to a backup slot on runout: Switch to a backup slot on runout
   Switch to a matching slot on runout: Switch to a matching slot on runout
+  Switch to a matching spool when one runs out: Switch to a matching spool when one runs out
   Switch to v%s: Switch to v%s
   Switch to {}?: Switch to {}?
   Switched to {}: Switched to {}
@@ -3843,6 +3867,7 @@ translations:
   Toggle Auto-Refill: Toggle Auto-Refill
   Toggle Quiet Mode: Toggle Quiet Mode
   Toggle external spool bypass: Toggle external spool bypass
+  Toggle this tool's toolhead LED: Toggle this tool's toolhead LED
   Toggle toolhead LED for an extruder: Toggle toolhead LED for an extruder
   'Toggle:': 'Toggle:'
   Too humid: Too humid
@@ -3901,9 +3926,12 @@ translations:
   Turn Endless Spool on, then set the Backup Gate: Turn Endless Spool on, then set the Backup Gate
   'Turn LED off when the print ends': 'Turn LED off when the print ends'
   Turn Off: Turn Off
+  Turn Off LEDs: Turn Off LEDs
+  Turn Off Toolhead LED: Turn Off Toolhead LED
   Turn Off WiFi?: Turn Off WiFi?
   Turn On: Turn On
   Turn On LEDs: Turn On LEDs
+  Turn On Toolhead LED: Turn On Toolhead LED
   Turn off bed check: Turn off bed check
   Turn off detection: Turn off detection
   Turn on the lights your light buttons control: Turn on the lights your light buttons control
@@ -3960,6 +3988,7 @@ translations:
   Unload from toolhead first: Unload from toolhead first
   Unload macro not configured: Unload macro not configured
   Unload the CFS filament before enabling bypass: Unload the CFS filament before enabling bypass
+  Unload the toolhead when a print ends: Unload the toolhead when a print ends
   Unload this unit first: Unload this unit first
   Unload which tool?: Unload which tool?
   Unload...: Unload...
@@ -4087,11 +4116,14 @@ translations:
     also synced when prints start, pause, or complete.
   Welcome to HelixScreen: Welcome to HelixScreen
   What We Collect: What We Collect
+  What happens when a print ends: What happens when a print ends
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: When
     enabled, only the macro runs. When disabled, temperatures are set first, then
     the macro runs.
   Where UI sounds play: Where UI sounds play
   Whether filament is loaded: Whether filament is loaded
+  Which macro switches the ACE path back on: Which macro switches the ACE path back on
+  Which macro switches the ACE path off for bypass: Which macro switches the ACE path off for bypass
   Which macro the Close feeder button sends: Which macro the Close feeder button sends
   Which macro the Open feeder button sends: Which macro the Open feeder button sends
   White: White
@@ -4293,6 +4325,7 @@ translations:
   you have: you have
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · about {} min'
   '{} ({})': '{} ({})'
+  '{} - {}': '{} - {}'
   '{} Extruders': '{} Extruders'
   '{} Hardware Issues': '{} Hardware Issues'
   '{} Issues Detected': '{} Issues Detected'

@@ -455,6 +455,7 @@
   <translation tag="Bowden" ru="Боуден"/>
   <translation tag="Bowden Length" ru="Длина боудена"/>
   <translation tag="Bowden tube length from hub to toolhead" ru="Длина боуден-трубки от хаба до печатающей головки"/>
+  <translation tag="Bowden tube length to this tool" ru="Длина боуден-трубки до этого инструмента"/>
   <translation tag="Box" ru="Бокс"/>
   <translation tag="Brand" ru="Бренд"/>
   <translation tag="Brand and material come from Spoolman" ru="Бренд и материал берутся из Spoolman"/>
@@ -489,6 +490,8 @@
   <translation tag="Bypass failed" ru="Ошибка байпаса"/>
   <translation tag="Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?" ru="Активен байпас, но эта печать использует слоты AMS. Принтер может отказаться загружать слот, пока филамент байпаса находится в печатающей головке. Извлеките филамент и выключите байпас перед печатью. Всё равно начать?"/>
   <translation tag="Bypass mode is not currently active" ru="Режим обхода сейчас не активен"/>
+  <translation tag="Bypass off macro" ru="Макрос выключения обхода"/>
+  <translation tag="Bypass on macro" ru="Макрос включения обхода"/>
   <translation tag="Bypass toggle failed" ru="Не удалось переключить байпас"/>
   <translation tag="C" ru="К"/>
   <translation tag="CALIBRATION" ru="КАЛИБРОВКА"/>
@@ -545,6 +548,7 @@
   <translation tag="Calibration complete! Press &apos;Next&apos; to continue." ru="Калибровка завершена! Нажмите «Далее» для продолжения."/>
   <translation tag="Calibration failed" ru="Калибровка не удалась"/>
   <translation tag="Calibration failed - touch targets more precisely." ru="Калибровка не удалась – нажимайте на цели точнее."/>
+  <translation tag="Calibration in progress" ru="Идёт калибровка"/>
   <translation tag="Calibration kept timing out. Your previous settings were kept." ru="Калибровка постоянно завершалась по тайм-ауту. Прежние настройки сохранены."/>
   <translation tag="Calibration may still be running — printer connection was interrupted" ru="Калибровка может ещё выполняться — соединение с принтером прервано"/>
   <translation tag="Calibration may still be running — response timed out" ru="Калибровка может ещё выполняться — время ожидания истекло"/>
@@ -1064,6 +1068,7 @@
   <translation tag="Effects" ru="Эффекты"/>
   <translation tag="Eject" ru="Извлечь"/>
   <translation tag="Eject Distance" ru="Расстояние извлечения"/>
+  <translation tag="Eject Speed" ru="Скорость извлечения"/>
   <translation tag="Eject Velocity" ru="Скорость извлечения"/>
   <translation tag="Eject failed" ru="Ошибка извлечения"/>
   <translation tag="Eject needs [force_move] enabled in printer config" ru="Для извлечения нужно включить [force_move] в конфигурации принтера"/>
@@ -1112,6 +1117,7 @@
   <translation tag="Ended" ru="Завершено"/>
   <translation tag="Endless Spool" ru="Бесконечная катушка"/>
   <translation tag="Endless Spool backups cleared" ru="Резервы бесконечной катушки очищены"/>
+  <translation tag="Endless Spool change failed" ru="Не удалось изменить бесконечную катушку"/>
   <translation tag="Endless Spool is configured in its package, not from here" ru="Бесконечная катушка настраивается в своём плагине, не здесь"/>
   <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" ru="Бесконечная катушка включена, но нет двух слотов с совпадающим филаментом, поэтому переключение при обрыве не сработает"/>
   <translation tag="Endless Spool is turned off on this MMU" ru="Бесконечная катушка отключена на этом MMU"/>
@@ -1163,6 +1169,7 @@
   <translation tag="Every extruder&apos;s temperature at once" ru="Температура всех экструдеров"/>
   <translation tag="Every object is set to skip, so there is nothing to print" ru="Все объекты отмечены для пропуска, печатать нечего"/>
   <translation tag="Every tool&apos;s offsets are measured again and replace the current ones. Save afterwards to keep the result." ru="Смещения всех инструментов измеряются заново и заменяют текущие. После этого сохраните, чтобы оставить результат."/>
+  <translation tag="Every unit keeps its filament gripped" ru="Каждый блок держит свой филамент зажатым"/>
   <translation tag="Everything else was saved. Change them in Spoolman." ru="Всё остальное сохранено. Измените их в Spoolman."/>
   <translation tag="Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /" ru="Всё остальное сохранено. Переименуйте материал, используя буквы, цифры, пробелы и + - _ . ( ) /"/>
   <translation tag="Excellent Accuracy" ru="Отличная точность"/>
@@ -1337,6 +1344,7 @@
   <translation tag="Feature not available" ru="Функция недоступна"/>
   <translation tag="Features: " ru="Функции: "/>
   <translation tag="Feed Assist" ru="Помощь подачи"/>
+  <translation tag="Feed assist and bypass macros" ru="Помощь подачи и макросы обхода"/>
   <translation tag="Feed assist and debug tools" ru="Помощь подачи и инструменты отладки"/>
   <translation tag="Feed failed" ru="Не удалась подача"/>
   <translation tag="Feed filament" ru="Подать филамент"/>
@@ -1351,6 +1359,7 @@
   <translation tag="Filament Control" ru="Управление филаментом"/>
   <translation tag="Filament Detected" ru="Филамент обнаружен"/>
   <translation tag="Filament Dryer" ru="Сушилка филамента"/>
+  <translation tag="Filament Feeder" ru="Подача филамента"/>
   <translation tag="Filament Grade Mismatch" ru="Несоответствие марки филамента"/>
   <translation tag="Filament Humidity" ru="Влажность филамента"/>
   <translation tag="Filament In The Toolhead" ru="Филамент в печатающей головке"/>
@@ -1424,6 +1433,7 @@
   <translation tag="Fine Outer" ru="Точно (внешний)"/>
   <translation tag="Finish" ru="Завершить"/>
   <translation tag="Finish or cancel the print before loading, unloading, or changing filament" ru="Завершите или отмените печать перед загрузкой, выгрузкой или сменой филамента"/>
+  <translation tag="Finish or cancel the print first" ru="Сначала завершите или отмените печать"/>
   <translation tag="Finishing clean..." ru="Завершение очистки..."/>
   <translation tag="Finishing up..." ru="Завершение..."/>
   <translation tag="Fireflies" ru="Светлячки"/>
@@ -1633,7 +1643,10 @@
   <translation tag="Hotend Fan" ru="Вентилятор хотенда"/>
   <translation tag="Hotend Heater" ru="Нагреватель хотенда"/>
   <translation tag="How Z-axis movement is displayed" ru="Как отображается движение по оси Z"/>
+  <translation tag="How far and how fast a lane ejects" ru="Насколько далеко и быстро извлекает канал"/>
+  <translation tag="How far filament is pushed back into the box on eject" ru="Насколько далеко филамент задвигается обратно в бокс при извлечении"/>
   <translation tag="How far filament is pushed back into the box on eject (mm)" ru="Насколько глубоко филамент задвигается обратно в коробку при извлечении (мм)"/>
+  <translation tag="How fast filament is pushed back on eject" ru="Как быстро филамент задвигается обратно при извлечении"/>
   <translation tag="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)" ru="Сколько удерживать, чтобы нажатие считалось долгим, в мс (увеличьте, если режим редактирования срабатывает случайно)"/>
   <translation tag="How many labels to print" ru="Сколько этикеток напечатать"/>
   <translation tag="How the Jog tab arranges its buttons" ru="Как вкладка «Джог» располагает кнопки"/>
@@ -1887,6 +1900,7 @@
   <translation tag="Loading Error" ru="Ошибка загрузки"/>
   <translation tag="Loading Filament..." ru="Загрузка филамента..."/>
   <translation tag="Loading G-code..." ru="Загрузка G-code..."/>
+  <translation tag="Loading configuration..." ru="Загрузка конфигурации..."/>
   <translation tag="Loading devices..." ru="Загрузка устройств..."/>
   <translation tag="Loading filament..." ru="Загрузка филамента..."/>
   <translation tag="Loading filaments..." ru="Загрузка филаментов..."/>
@@ -2200,6 +2214,7 @@
   <translation tag="No prints this week" ru="Нет печатей за неделю"/>
   <translation tag="No prints yet" ru="Нет печатей"/>
   <translation tag="No profiles available" ru="Профили недоступны"/>
+  <translation tag="No sensor fitted for this distance" ru="Для этого расстояния нет датчика"/>
   <translation tag="No sensors detected" ru="Датчики не обнаружены"/>
   <translation tag="No shared peaks" ru="Нет общих пиков"/>
   <translation tag="No slot currently matches." ru="Сейчас нет подходящего слота."/>
@@ -2212,6 +2227,10 @@
   <translation tag="No temperature sensors detected" ru="Датчики температуры не обнаружены"/>
   <translation tag="No timelapse videos found" ru="Таймлапс-видео не найдены"/>
   <translation tag="No tools to calibrate" ru="Нет инструментов для калибровки"/>
+  <translation tag="No unit has a filament buffer" ru="Ни у одного блока нет буфера филамента"/>
+  <translation tag="No unit has a moving selector" ru="Ни у одного блока нет подвижного селектора"/>
+  <translation tag="No unit has a servo" ru="Ни у одного блока нет сервопривода"/>
+  <translation tag="No unit has an encoder" ru="Ни у одного блока нет энкодера"/>
   <translation tag="No unload macro found: unload by hand, then start again" ru="Макрос выгрузки не найден: выгрузите вручную и начните заново"/>
   <translation tag="No vendors found" ru="Производители не найдены"/>
   <translation tag="No verified bypass command for this CFS firmware" ru="Нет проверенной команды обхода для этой прошивки CFS"/>
@@ -2506,6 +2525,7 @@
   <translation tag="Priming..." ru="Грунтование..."/>
   <translation tag="Print" ru="Печать"/>
   <translation tag="Print Anyway" ru="Всё равно печатать"/>
+  <translation tag="Print Behavior" ru="Поведение при печати"/>
   <translation tag="Print Behaviour" ru="Поведение печати"/>
   <translation tag="Print Cancelled" ru="Печать отменена"/>
   <translation tag="Print Complete!" ru="Печать завершена!"/>
@@ -2650,6 +2670,7 @@
   <translation tag="Provide a numeric {}" ru="Укажите числовое значение для {}"/>
   <translation tag="Provide a speed multiplier value" ru="Укажите множитель скорости"/>
   <translation tag="Provide a {}" ru="Укажите {}"/>
+  <translation tag="Provide an on/off value" ru="Укажите значение вкл/выкл"/>
   <translation tag="Provide {}" ru="Укажите {}"/>
   <translation tag="Pulling filament back" ru="Откат филамента"/>
   <translation tag="Purge" ru="Продуть"/>
@@ -2696,6 +2717,7 @@
   <translation tag="RFID reader malfunction (left)" ru="Неисправность RFID-считывателя (левый)"/>
   <translation tag="RFID reader malfunction (right)" ru="Неисправность RFID-считывателя (правый)"/>
   <translation tag="RFID, Auto-Refill, nozzle and link care" ru="RFID, автопополнение, уход за соплом и связью"/>
+  <translation tag="RFID, nozzle and link care" ru="RFID, уход за соплом и связью"/>
   <translation tag="RH" ru="RH"/>
   <translation tag="RSS" ru="RSS"/>
   <translation tag="RSS:" ru="RSS:"/>
@@ -3199,6 +3221,7 @@
   <translation tag="Spoolman needs a material for this filament." ru="Spoolman требует материал для этого филамента."/>
   <translation tag="Spoolman removed." ru="Spoolman удалён."/>
   <translation tag="Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer." ru="Spoolman сохранил цену, расположение, партию и заметки, но не остальное. Больше на этом принтере ничего не изменилось."/>
+  <translation tag="Spoolman support is off in Happy Hare" ru="Поддержка Spoolman отключена в Happy Hare"/>
   <translation tag="Spoolman unavailable — filament weights may be stale" ru="Spoolman недоступен — вес филамента может быть устаревшим"/>
   <translation tag="Spoolman was not configured." ru="Spoolman не был настроен."/>
   <translation tag="Spoolman: %zu Spool" ru="Spoolman: %zu катушка"/>
@@ -3295,6 +3318,7 @@
   <translation tag="Switch the active tool or extruder" ru="Смена активного инструмента"/>
   <translation tag="Switch to a backup slot on runout" ru="Переключаться на резервный слот при окончании филамента"/>
   <translation tag="Switch to a matching slot on runout" ru="Переключаться на подходящий слот при окончании филамента"/>
+  <translation tag="Switch to a matching spool when one runs out" ru="Переключаться на подходящую катушку, когда одна закончится"/>
   <translation tag="Switch to v%s" ru="Перейти на v%s"/>
   <translation tag="Switch to {}?" ru="Переключиться на {}?"/>
   <translation tag="Switched to {}" ru="Переключено на {}"/>
@@ -3599,6 +3623,7 @@
   <translation tag="Toggle Auto-Refill" ru="Переключить автопополнение"/>
   <translation tag="Toggle Quiet Mode" ru="Переключить тихий режим"/>
   <translation tag="Toggle external spool bypass" ru="Переключить байпас внешней катушки"/>
+  <translation tag="Toggle this tool&apos;s toolhead LED" ru="Переключить LED печатающей головки этого инструмента"/>
   <translation tag="Toggle toolhead LED for an extruder" ru="Переключить LED печатающей головки для экструдера"/>
   <translation tag="Toggle:" ru="Переключить:"/>
   <translation tag="Too humid" ru="Слишком влажно"/>
@@ -3655,9 +3680,12 @@
   <translation tag="Turn Endless Spool on, then set the Backup Gate" ru="Включите бесконечную катушку, затем задайте резервный шлюз"/>
   <translation tag="Turn LED off when the print ends" ru="Выключать светодиод по окончании печати"/>
   <translation tag="Turn Off" ru="Выключить"/>
+  <translation tag="Turn Off LEDs" ru="Выключить LED"/>
+  <translation tag="Turn Off Toolhead LED" ru="Выключить LED печатающей головки"/>
   <translation tag="Turn Off WiFi?" ru="Выключить WiFi?"/>
   <translation tag="Turn On" ru="Включить"/>
   <translation tag="Turn On LEDs" ru="Включить LED"/>
+  <translation tag="Turn On Toolhead LED" ru="Включить LED печатающей головки"/>
   <translation tag="Turn off bed check" ru="Отключить проверку стола"/>
   <translation tag="Turn off detection" ru="Отключить обнаружение"/>
   <translation tag="Turn on the lights your light buttons control" ru="Включает свет, которым управляют кнопки света"/>
@@ -3712,6 +3740,7 @@
   <translation tag="Unload macro not configured" ru="Макрос выгрузки не настроен"/>
   <translation tag="Unload stopped" ru="Выгрузка остановлена"/>
   <translation tag="Unload the CFS filament before enabling bypass" ru="Выгрузите филамент CFS перед включением обхода"/>
+  <translation tag="Unload the toolhead when a print ends" ru="Выгружать печатающую головку по окончании печати"/>
   <translation tag="Unload this unit first" ru="Сначала выгрузите этот узел"/>
   <translation tag="Unload which tool?" ru="Из какого инструмента выгрузить?"/>
   <translation tag="Unload..." ru="Выгрузить..."/>
@@ -3833,10 +3862,13 @@
   <translation tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." ru="Данные о весе синхронизируются из Spoolman для отображения оставшегося филамента. Изменения также синхронизируются при начале, паузе или завершении печати."/>
   <translation tag="Welcome to HelixScreen" ru="Добро пожаловать в HelixScreen"/>
   <translation tag="What We Collect" ru="Что мы собираем"/>
+  <translation tag="What happens when a print ends" ru="Что происходит по окончании печати"/>
   <translation tag="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs." ru="Когда включено, запускается только макрос. Когда выключено, сначала задаются температуры, затем запускается макрос."/>
   <translation tag="Where UI sounds play" ru="Где воспроизводятся звуки интерфейса"/>
   <translation tag="Whether filament is loaded" ru="Загружен ли филамент"/>
   <translation tag="Which lane is in the toolhead?" ru="Какая дорожка в печатающей головке?"/>
+  <translation tag="Which macro switches the ACE path back on" ru="Какой макрос снова включает тракт ACE"/>
+  <translation tag="Which macro switches the ACE path off for bypass" ru="Какой макрос выключает тракт ACE для обхода"/>
   <translation tag="Which macro the Close feeder button sends" ru="Какой макрос отправляет кнопка «Закрыть фидер»"/>
   <translation tag="Which macro the Open feeder button sends" ru="Какой макрос отправляет кнопка «Открыть фидер»"/>
   <translation tag="White" ru="Белый"/>
@@ -4033,6 +4065,7 @@
   <translation tag="you have" ru="у вас"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" ru="{:.0f}-{:.0f} Гц · примерно {} мин"/>
   <translation tag="{} ({})" ru="{} ({})"/>
+  <translation tag="{} - {}" ru="{} - {}"/>
   <translation tag="{} Extruders" ru="Экструдеров: {}"/>
   <translation tag="{} Hardware Issues" ru="Проблем с оборудованием: {}"/>
   <translation tag="{} Issues Detected" ru="Обнаружено проблем: {}"/>

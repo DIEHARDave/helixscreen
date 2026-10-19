@@ -448,6 +448,7 @@ translations:
   Bowden: Bowden
   Bowden Length: 'Comprimento do bowden'
   Bowden tube length from hub to toolhead: 'Comprimento do tubo bowden do hub ao cabeçote'
+  Bowden tube length to this tool: "Comprimento do tubo Bowden até esta ferramenta"
   Box: Caixa
   Brand: Marca
   Brand and material come from Spoolman: Marca e material vêm do Spoolman
@@ -484,6 +485,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : O bypass está ativo, mas esta impressão usa slots AMS. A impressora pode não conseguir carregar um slot enquanto houver filamento de bypass no cabeçote. Remova o filamento e desative o bypass antes de imprimir. Iniciar mesmo assim?
   Bypass mode is not currently active: 'O modo bypass não está ativo no momento'
+  Bypass off macro: 'Macro de desligar bypass'
+  Bypass on macro: 'Macro de ligar bypass'
   Bypass toggle failed: Falha ao alternar bypass
   C: C
   CALIBRATION: CALIBRAÇÃO
@@ -546,6 +549,7 @@ translations:
   Calibration failed: Calibração falhou
   Calibration failed - touch targets more precisely.: Calibração falhou – toque nos
     alvos com mais precisão.
+  Calibration in progress: "Calibração em andamento"
   Calibration kept timing out. Your previous settings were kept.: A calibração expirou repetidamente. Suas configurações anteriores foram mantidas.
   Calibration may still be running — printer connection was interrupted: 'A calibração pode ainda estar em execução — a conexão com a impressora foi interrompida'
   Calibration may still be running — response timed out: 'A calibração pode ainda estar em execução — tempo esgotado'
@@ -1132,6 +1136,7 @@ translations:
   Effects: Efeitos
   Eject: Ejetar
   Eject Distance: Distância de Ejeção
+  Eject Speed: "Velocidade de Ejeção"
   Eject Velocity: Velocidade de Ejeção
   Eject failed: Falha ao ejetar
   Eject needs [force_move] enabled in printer config: A ejeção precisa de [force_move]
@@ -1184,6 +1189,7 @@ translations:
   Ended: Finalizado
   Endless Spool: 'Carretel infinito'
   Endless Spool backups cleared: Reservas do carretel infinito limpas
+  Endless Spool change failed: 'Falha ao alterar o carretel infinito'
   Endless Spool is configured in its package, not from here: O carretel infinito é configurado no seu plugin, não aqui
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: O carretel infinito está ligado, mas nenhum par de slots tem filamento compatível, então nada trocará ao acabar o filamento
   Endless Spool is turned off on this MMU: 'O carretel infinito está desativado neste MMU'
@@ -1238,6 +1244,7 @@ translations:
   Events appear here after sessions and prints: Eventos aparecem aqui após sessões
     e impressões
   Every extruder's temperature at once: A temperatura de todos os extrusores
+  Every unit keeps its filament gripped: "Cada unidade mantém o filamento preso"
   Everything else was saved. Change them in Spoolman.: Todo o resto foi salvo. Altere-os no Spoolman.
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: 'Todo o resto foi salvo. Renomeie o material usando letras, dígitos, espaços e + - _ . ( ) /'
   Every object is set to skip, so there is nothing to print: 'Todos os objetos estão marcados para pular, não há nada para imprimir'
@@ -1425,6 +1432,7 @@ translations:
   Feature not available: Recurso não disponível
   'Features: ': 'Recursos: '
   Feed Assist: 'Assistência de alimentação'
+  Feed assist and bypass macros: 'Assistência de alimentação e macros de bypass'
   Feed assist and debug tools: Assistência de alimentação e ferramentas de depuração
   Feed failed: Falha na alimentação
   Feed filament: Alimentar filamento
@@ -1439,6 +1447,7 @@ translations:
   Filament Control: Controle de Filamento
   Filament Detected: Filamento Detectado
   Filament Dryer: Secador de filamento
+  Filament Feeder: "Alimentador de Filamento"
   Filament Grade Mismatch: Grau de Filamento Incompatível
   Filament Humidity: Umidade do Filamento
   Filament In The Toolhead: Filamento no cabeçote
@@ -1519,6 +1528,7 @@ translations:
   Fine Outer: Fino Externo
   Finish: Finalizar
   Finish or cancel the print before loading, unloading, or changing filament: Termine ou cancele a impressão antes de carregar, descarregar ou trocar o filamento
+  Finish or cancel the print first: Termine ou cancele a impressão primeiro
   Finishing clean...: Finalizando limpeza...
   Finishing up...: Finalizando...
   Fireflies: Vaga-lumes
@@ -1746,8 +1756,11 @@ translations:
   Hotend Fan: Ventoinha do Hotend
   Hotend Heater: Aquecedor do Hotend
   How Z-axis movement is displayed: Como o movimento do eixo Z é exibido
+  How far and how fast a lane ejects: "Quanto e com que rapidez uma via ejeta"
+  How far filament is pushed back into the box on eject: "Quanto o filamento é empurrado de volta para a caixa ao ejetar"
   How far filament is pushed back into the box on eject (mm): Quão longe o filamento
     é empurrado de volta para a caixa na ejeção (mm)
+  How fast filament is pushed back on eject: "Com que rapidez o filamento é empurrado de volta ao ejetar"
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : 'Quanto tempo segurar para contar como pressão longa, em ms (aumente se o modo de edição ou outras ações dispararem por acidente)'
   How many labels to print: Quantas etiquetas imprimir
@@ -2041,6 +2054,7 @@ translations:
   Loading Error: Erro de Carregamento
   Loading Filament...: Carregando Filamento...
   Loading G-code...: Carregando G-code...
+  Loading configuration...: "Carregando configuração..."
   Loading devices...: Carregando dispositivos...
   Loading filament...: Carregando filamento...
   Loading filaments...: Carregando filamentos...
@@ -2375,6 +2389,7 @@ translations:
   No prints this week: Sem impressões esta semana
   No prints yet: Sem impressões ainda
   No profiles available: Nenhum perfil disponível
+  No sensor fitted for this distance: "Nenhum sensor instalado para esta distância"
   No sensors detected: Nenhum sensor detectado
   No shared peaks: "Nenhum pico em comum"
   No slot currently matches.: 'Nenhum slot corresponde no momento.'
@@ -2388,6 +2403,10 @@ translations:
   No temperature sensors detected: 'Nenhum sensor de temperatura detectado'
   No timelapse videos found: Nenhum vídeo timelapse encontrado
   No tools to calibrate: Nenhuma ferramenta para calibrar
+  No unit has a filament buffer: "Nenhuma unidade tem buffer de filamento"
+  No unit has a moving selector: "Nenhuma unidade tem seletor móvel"
+  No unit has a servo: "Nenhuma unidade tem servo"
+  No unit has an encoder: "Nenhuma unidade tem encoder"
   'No unload macro found: unload by hand, then start again': 'Nenhuma macro de descarga encontrada: descarregue à mão e comece de novo'
 
   No vendors found: Nenhum fornecedor encontrado
@@ -2701,6 +2720,7 @@ translations:
   Priming...: Preparando...
   Print: Imprimir
   Print Anyway: Imprimir Mesmo Assim
+  Print Behavior: "Comportamento de Impressão"
   'Print Behaviour': 'Comportamento de impressão'
   Print Cancelled: Impressão Cancelada
   Print Complete!: Impressão Concluída!
@@ -2848,6 +2868,7 @@ translations:
   Provide a numeric {}: 'Forneça um valor numérico para {}'
   Provide a speed multiplier value: 'Forneça um multiplicador de velocidade'
   Provide a {}: 'Forneça {}'
+  Provide an on/off value: 'Forneça um valor ligado/desligado'
   Provide {}: 'Forneça {}'
   Pulling filament back: Retraindo filamento
   Purge: Purgar
@@ -2898,6 +2919,7 @@ translations:
   RFID reader malfunction (left): Falha do leitor RFID (esquerdo)
   RFID reader malfunction (right): Falha do leitor RFID (direito)
   RFID, Auto-Refill, nozzle and link care: RFID, reabastecimento automático, cuidados com bico e enlace
+  RFID, nozzle and link care: 'RFID, cuidados com bico e enlace'
   RH: UR
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3462,6 +3484,7 @@ translations:
   Spoolman needs a material for this filament.: O Spoolman precisa de um material para este filamento.
   Spoolman removed.: Spoolman removido.
   Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'O Spoolman salvou o preço, a localização, o lote e as notas, mas não o resto. Nada mais mudou nesta impressora.'
+  Spoolman support is off in Happy Hare: "O suporte ao Spoolman está desligado no Happy Hare"
   Spoolman unavailable — filament weights may be stale: Spoolman indisponível — os
     pesos do filamento podem estar desatualizados
   Spoolman was not configured.: Spoolman não estava configurado.
@@ -3565,6 +3588,7 @@ translations:
   Switch the active tool or extruder: Trocar a ferramenta ou extrusor ativo
   Switch to a backup slot on runout: Trocar para um slot de reserva ao acabar o filamento
   Switch to a matching slot on runout: Trocar para um slot compatível ao acabar o filamento
+  Switch to a matching spool when one runs out: 'Trocar para um carretel compatível quando um acabar'
   Switch to v%s: 'Mudar para a v%s'
   Switch to {}?: 'Trocar para {}?'
   Switched to {}: 'Alterado para {}'
@@ -3947,6 +3971,7 @@ translations:
   Toggle Auto-Refill: 'Alternar o reabastecimento automático'
   Toggle Quiet Mode: 'Alternar o modo silencioso'
   Toggle external spool bypass: Alternar bypass do carretel externo
+  Toggle this tool's toolhead LED: "Alternar o LED do cabeçote desta ferramenta"
   Toggle toolhead LED for an extruder: 'Alternar o LED do cabeçote para um extrusor'
   'Toggle:': 'Alternar:'
   Too humid: Muito úmido
@@ -4005,9 +4030,12 @@ translations:
   Turn Endless Spool on, then set the Backup Gate: 'Ative o carretel infinito e depois defina o Gate de reserva'
   'Turn LED off when the print ends': 'Desligar o LED ao terminar a impressão'
   Turn Off: Desligar
+  Turn Off LEDs: "Desligar os LEDs"
+  Turn Off Toolhead LED: "Desligar o LED do cabeçote"
   Turn Off WiFi?: Desligar WiFi?
   Turn On: Ligar
   Turn On LEDs: 'Ligar os LEDs'
+  Turn On Toolhead LED: "Ligar o LED do cabeçote"
   Turn off bed check: 'Desligar verificação da mesa'
   Turn off detection: Desligar detecção
   Turn on the lights your light buttons control: Liga as luzes que os botões de luz controlam
@@ -4064,6 +4092,7 @@ translations:
   Unload from toolhead first: 'Descarregue primeiro do cabeçote'
   Unload macro not configured: Macro de descarga não configurado
   Unload the CFS filament before enabling bypass: 'Descarregue o filamento do CFS antes de ativar o bypass'
+  Unload the toolhead when a print ends: 'Descarregar o cabeçote ao terminar uma impressão'
   Unload this unit first: 'Descarregue primeiro esta unidade'
   Unload which tool?: 'Descarregar qual ferramenta?'
   Unload...: Descarregar...
@@ -4189,11 +4218,14 @@ translations:
     também são sincronizadas quando impressões iniciam, pausam ou terminam.
   Welcome to HelixScreen: Bem-vindo ao HelixScreen
   What We Collect: O Que Coletamos
+  What happens when a print ends: 'O que acontece ao terminar uma impressão'
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: Quando
     habilitado, apenas a macro é executada. Quando desabilitado, as temperaturas são
     definidas primeiro, depois a macro é executada.
   Where UI sounds play: Onde os sons da interface são reproduzidos
   Whether filament is loaded: Se há filamento carregado
+  Which macro switches the ACE path back on: 'Qual macro religa o caminho do ACE'
+  Which macro switches the ACE path off for bypass: 'Qual macro desliga o caminho do ACE para o bypass'
   Which macro the Close feeder button sends: Qual macro o botão Fechar alimentador envia
   Which macro the Open feeder button sends: Qual macro o botão Abrir alimentador envia
   White: Branco
@@ -4402,6 +4434,7 @@ translations:
   you have: você tem
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · cerca de {} min'
   '{} ({})': '{} ({})'
+  '{} - {}': "{} - {}"
   '{} Extruders': '{} extrusoras'
   '{} Hardware Issues': '{} problemas de hardware'
   '{} Issues Detected': '{} problemas detectados'

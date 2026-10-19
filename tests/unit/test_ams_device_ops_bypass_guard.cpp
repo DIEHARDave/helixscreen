@@ -198,7 +198,9 @@ class DeviceOpsBypassFixture : public LVGLUITestFixture {
         settle();
         lv_obj_t* root = overlay.get_root();
         REQUIRE(root != nullptr);
-        lv_obj_t* toggle = lv_obj_find_by_name(root, "bypass_toggle");
+        lv_obj_t* row = lv_obj_find_by_name(root, "bypass_virtual_row");
+        REQUIRE(row != nullptr);
+        lv_obj_t* toggle = lv_obj_find_by_name(row, "toggle");
         REQUIRE(toggle != nullptr);
         return toggle;
     }

@@ -53,10 +53,6 @@ void AmsDeviceOperationsOverlay::init_subjects() {
         UI_MANAGED_SUBJECT_STRING(system_info_subject_, system_info_buf_, "",
                                   "ams_device_ops_system_info", subjects_);
 
-        // Status text
-        UI_MANAGED_SUBJECT_STRING(status_subject_, status_buf_, lv_tr("Idle"),
-                                  "ams_device_ops_status", subjects_);
-
         // Capability subjects
         UI_MANAGED_SUBJECT_INT(supports_bypass_subject_, 0, "ams_device_ops_supports_bypass",
                                subjects_);
@@ -67,8 +63,6 @@ void AmsDeviceOperationsOverlay::init_subjects() {
         UI_MANAGED_SUBJECT_INT(supports_auto_heat_subject_, 0, "ams_device_ops_supports_auto_heat",
                                subjects_);
         UI_MANAGED_SUBJECT_INT(has_backend_subject_, 0, "ams_device_ops_has_backend", subjects_);
-        UI_MANAGED_SUBJECT_INT(unload_after_print_configurable_subject_, 0,
-                               "ams_device_ops_unload_after_print_configurable", subjects_);
         UI_MANAGED_SUBJECT_INT(bypass_is_virtual_subject_, 0, "ams_device_ops_bypass_is_virtual",
                                subjects_);
 
@@ -82,14 +76,6 @@ void AmsDeviceOperationsOverlay::init_subjects() {
         // update_from_backend().
         UI_MANAGED_SUBJECT_INT(printer_retains_spool_info_subject_, 0,
                                "ams_device_ops_printer_retains_spool_info", subjects_);
-
-        // QIDI Box gating + eject distance/velocity value displays
-        UI_MANAGED_SUBJECT_INT(has_eject_params_subject_, 0, "ams_device_ops_has_eject_params",
-                               subjects_);
-        UI_MANAGED_SUBJECT_STRING(qidi_eject_distance_display_subject_, qidi_eject_distance_buf_,
-                                  "", "ams_device_ops_qidi_eject_distance_display", subjects_);
-        UI_MANAGED_SUBJECT_STRING(qidi_eject_velocity_display_subject_, qidi_eject_velocity_buf_,
-                                  "", "ams_device_ops_qidi_eject_velocity_display", subjects_);
 
         // "Reset Endless Spool" row visibility. Gates on
         // EndlessSpoolCapabilities::editable() in update_from_backend().
@@ -170,9 +156,20 @@ void AmsDeviceOperationsOverlay::register_callbacks() {
              AmsState::instance().sync_from_backend();
              lv_subject_notify(AmsState::instance().get_bypass_active_subject());
          }},
-        {"on_ams_afc_unload_after_print_toggled",
+        {"on_ams_endless_spool_toggled",
          [](lv_event_t* e) {
-             SettingsManager::instance().set_afc_unload_after_print(event_checked(e));
+             const bool enable = event_checked(e);
+             AmsBackend* backend = AmsState::instance().get_backend();
+             AmsError result = backend ? backend->set_endless_spool_enabled(enable)
+                                       : AmsErrorHelper::not_supported("Endless Spool");
+             if (result.success()) {
+                 return; // The backend's next report moves ams_endless_spool_on.
+             }
+             helix::ui::notify_ams_error(result, lv_tr("Endless Spool change failed"));
+             // The switch flipped itself and the refusal left ams_endless_spool_on
+             // where it was; an unchanged set does not notify, so the binding is
+             // re-applied by hand.
+             lv_subject_notify(AmsState::instance().get_endless_spool_on_subject());
          }},
         {"on_ams_always_show_bypass_spool_toggled",
          [](lv_event_t* e) {
@@ -191,26 +188,6 @@ void AmsDeviceOperationsOverlay::register_callbacks() {
              // drives its own section.
              AmsState::instance().sync_from_backend();
              get_ams_device_operations_overlay().update_from_backend();
-         }},
-        {"on_ams_qidi_eject_distance_changed",
-         [](lv_event_t* e) {
-             auto& self = get_ams_device_operations_overlay();
-             SettingsManager::instance().set_qidi_eject_distance(
-                 lv_slider_get_value(lv_event_get_current_target_obj(e)));
-             snprintf(self.qidi_eject_distance_buf_, sizeof(self.qidi_eject_distance_buf_), "%d mm",
-                      SettingsManager::instance().get_qidi_eject_distance());
-             lv_subject_copy_string(&self.qidi_eject_distance_display_subject_,
-                                    self.qidi_eject_distance_buf_);
-         }},
-        {"on_ams_qidi_eject_velocity_changed",
-         [](lv_event_t* e) {
-             auto& self = get_ams_device_operations_overlay();
-             SettingsManager::instance().set_qidi_eject_velocity(
-                 lv_slider_get_value(lv_event_get_current_target_obj(e)));
-             snprintf(self.qidi_eject_velocity_buf_, sizeof(self.qidi_eject_velocity_buf_),
-                      "%d mm/s", SettingsManager::instance().get_qidi_eject_velocity());
-             lv_subject_copy_string(&self.qidi_eject_velocity_display_subject_,
-                                    self.qidi_eject_velocity_buf_);
          }},
         {"on_ams_reset_endless_spool_clicked",
          [](lv_event_t*) {
@@ -344,11 +321,9 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
         lv_subject_set_int(&fw_supports_bypass_subject_, 0);
         lv_subject_set_int(&hw_bypass_sensor_subject_, 0);
         lv_subject_set_int(&supports_auto_heat_subject_, 0);
-        lv_subject_set_int(&unload_after_print_configurable_subject_, 0);
         lv_subject_set_int(&bypass_is_virtual_subject_, 0);
         lv_subject_set_int(&reports_spool_ids_subject_, 0);
         lv_subject_set_int(&printer_retains_spool_info_subject_, 0);
-        lv_subject_set_int(&has_eject_params_subject_, 0);
         lv_subject_set_int(&can_reset_endless_spool_subject_, 0);
         lv_subject_set_int(&can_abort_subject_, 0);
         details_buf_[0] = '\0';
@@ -356,9 +331,6 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
         lv_subject_set_int(&has_details_subject_, 0);
         system_info_buf_[0] = '\0';
         lv_subject_copy_string(&system_info_subject_, system_info_buf_);
-        snprintf(status_buf_, sizeof(status_buf_), "%s",
-                 lv_tr("No Multi-Filament System connected"));
-        lv_subject_copy_string(&status_subject_, status_buf_);
 
         if (section_list_container_) {
             helix::ui::safe_clean_children(section_list_container_); // [L081]
@@ -412,10 +384,6 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
 
     lv_subject_set_int(&supports_auto_heat_subject_, backend->supports_auto_heat_on_load() ? 1 : 0);
 
-    // The unload-after-print row is offered only where the behavior is the
-    // user's setting rather than fixed by firmware.
-    lv_subject_set_int(&unload_after_print_configurable_subject_,
-                       backend->supports_configurable_unload_after_print() ? 1 : 0);
     // The always-show-bypass row is only meaningful where the bypass node
     // hides when disengaged, i.e. where the reported bypass is virtual.
     lv_subject_set_int(&bypass_is_virtual_subject_, backend->bypass_is_virtual() ? 1 : 0);
@@ -432,33 +400,6 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
     lv_subject_set_int(&printer_retains_spool_info_subject_,
                        backend->printer_retains_spool_info() ? 1 : 0);
 
-    // The eject distance/velocity rows apply only to backends with configurable
-    // eject params (QIDI Box). Sync the sliders + value displays from settings.
-    bool show_eject_params = backend->supports_configurable_eject_params();
-    lv_subject_set_int(&has_eject_params_subject_, show_eject_params ? 1 : 0);
-    if (show_eject_params && overlay_) {
-        int eject_distance = SettingsManager::instance().get_qidi_eject_distance();
-        int eject_velocity = SettingsManager::instance().get_qidi_eject_velocity();
-
-        auto* dist_slider =
-            helix::ui::find_required(overlay_, "qidi_eject_distance_slider", get_name());
-        if (dist_slider) {
-            lv_slider_set_value(dist_slider, eject_distance, LV_ANIM_OFF);
-        }
-        snprintf(qidi_eject_distance_buf_, sizeof(qidi_eject_distance_buf_), "%d mm",
-                 eject_distance);
-        lv_subject_copy_string(&qidi_eject_distance_display_subject_, qidi_eject_distance_buf_);
-
-        auto* vel_slider =
-            helix::ui::find_required(overlay_, "qidi_eject_velocity_slider", get_name());
-        if (vel_slider) {
-            lv_slider_set_value(vel_slider, eject_velocity, LV_ANIM_OFF);
-        }
-        snprintf(qidi_eject_velocity_buf_, sizeof(qidi_eject_velocity_buf_), "%d mm/s",
-                 eject_velocity);
-        lv_subject_copy_string(&qidi_eject_velocity_display_subject_, qidi_eject_velocity_buf_);
-    }
-
     // "Reset Endless Spool" lights up for any backend whose endless-spool
     // mapping the UI may write (editable() = available + not ReadOnly): AFC's
     // per-slot edges, single-unit Happy Hare's groups, and the mock. CFS and
@@ -467,12 +408,6 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
     // stale button that won the race just reports the refusal.
     lv_subject_set_int(&can_reset_endless_spool_subject_,
                        backend->get_endless_spool_capabilities().editable() ? 1 : 0);
-
-    // Update status
-    AmsAction action = backend->get_current_action();
-    const char* status_str = action_to_string(static_cast<int>(action));
-    snprintf(status_buf_, sizeof(status_buf_), "%s", status_str);
-    lv_subject_copy_string(&status_subject_, status_buf_);
 
     // Populate section rows
     populate_section_list();
@@ -515,39 +450,15 @@ void AmsDeviceOperationsOverlay::populate_section_list() {
     spdlog::debug("[{}] Populated {} section rows", get_name(), cached_sections_.size());
 }
 
-/// Map section ID to icon name (UI concern — backends don't specify icons)
-static const char* section_icon_for_id(const std::string& id) {
-    // Ordered by expected frequency
-    if (id == "setup")
-        return "cog";
-    if (id == "speed")
-        return "speed_up";
-    if (id == "maintenance")
-        return "wrench";
-    if (id == "hub")
-        return "source_branch";
-    if (id == "tip_forming")
-        return "thermometer";
-    if (id == "purge")
-        return "water";
-    if (id == "toolhead")
-        return "filament";
-    if (id == "config")
-        return "cog";
-    return "cog"; // fallback for unknown sections
-}
-
 void AmsDeviceOperationsOverlay::create_section_row(lv_obj_t* parent,
                                                     const helix::printer::DeviceSection& section) {
-    const char* icon = section_icon_for_id(section.id);
-
     // Reuse the standard setting_action_row XML component
     const char* attrs[] = {"label",
                            lv_tr(section.label.c_str()),
                            "label_tag",
                            section.label.c_str(),
                            "icon",
-                           icon,
+                           section.icon.c_str(),
                            "description",
                            lv_tr(section.description.c_str()),
                            "description_tag",
@@ -575,39 +486,6 @@ void AmsDeviceOperationsOverlay::create_section_row(lv_obj_t* parent,
         }
     }
     lv_obj_set_user_data(row, reinterpret_cast<void*>(section_index));
-}
-
-// ============================================================================
-// ACTION TO STRING
-// ============================================================================
-
-const char* AmsDeviceOperationsOverlay::action_to_string(int action) {
-    switch (static_cast<AmsAction>(action)) {
-    case AmsAction::IDLE:
-        return lv_tr("Idle");
-    case AmsAction::LOADING:
-        return lv_tr("Loading filament...");
-    case AmsAction::UNLOADING:
-        return lv_tr("Unloading filament...");
-    case AmsAction::SELECTING:
-        return lv_tr("Selecting slot...");
-    case AmsAction::RESETTING:
-        return lv_tr("Resetting...");
-    case AmsAction::FORMING_TIP:
-        return lv_tr("Forming tip...");
-    case AmsAction::CUTTING:
-        return lv_tr("Cutting filament...");
-    case AmsAction::HEATING:
-        return lv_tr("Heating...");
-    case AmsAction::CHECKING:
-        return lv_tr("Checking slots...");
-    case AmsAction::PAUSED:
-        return lv_tr("Paused (attention needed)");
-    case AmsAction::ERROR:
-        return lv_tr("Error state");
-    default:
-        return lv_tr("Unknown");
-    }
 }
 
 } // namespace helix::ui

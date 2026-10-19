@@ -4,6 +4,7 @@
 #include "action_prompt_modal.h"
 
 #include "ui_afc_fault_path.h"
+#include "ui_breakpoint.h"
 #include "ui_error_reporting.h"
 #include "ui_swatch.h"
 
@@ -84,6 +85,13 @@ struct SwatchGridFit {
     int32_t swatch_h = 0;
     bool scroll = false; ///< the rows need more height than the card has left
 };
+
+/// A prompt's button height. A 480x320 screen takes the compact one, so a color
+/// prompt shows its whole swatch grid beside its text buttons and footer.
+int32_t prompt_button_height() {
+    const bool tiny = breakpoint_for(responsive_vertical_dimension(nullptr)) == UiBreakpoint::Tiny;
+    return theme_manager_get_spacing(tiny ? "button_height_sm" : "button_height");
+}
 
 /**
  * @brief Size the card and the swatch tiles to the room the screen has.
@@ -395,6 +403,7 @@ void ActionPromptModal::create_buttons() {
 
     // Show/hide footer based on whether there are footer buttons
     if (footer_container) {
+        lv_obj_set_height(footer_container, prompt_button_height());
         if (has_footer_buttons) {
             lv_obj_remove_flag(footer_container, LV_OBJ_FLAG_HIDDEN);
         } else {
@@ -461,7 +470,7 @@ void ActionPromptModal::fit_rows(const RowFit& rows) {
         g.col_gap = lv_obj_get_style_pad_column(rows.swatch_rows.front(), LV_PART_MAIN);
         g.rows = static_cast<int32_t>(rows.swatch_rows.size());
         g.touch_min = theme_manager_get_spacing("touch_target_min");
-        g.button_h = theme_manager_get_spacing("button_height");
+        g.button_h = prompt_button_height();
 
         const SwatchGridFit fit = fit_swatch_grid(g);
         if (fit.card_w != g.card_w) {
@@ -536,7 +545,7 @@ void ActionPromptModal::fit_rows(const RowFit& rows) {
     if (scroll_h > room) {
         // The room can be negative when the header and footer alone fill the
         // card; one button height stays visible so the area can still scroll.
-        const int32_t floor_h = theme_manager_get_spacing("button_height");
+        const int32_t floor_h = prompt_button_height();
         lv_obj_set_style_max_height(scroll, std::max(room, floor_h), LV_PART_MAIN);
         spdlog::debug("[ActionPromptModal] Content {}px scrolls in {}px", scroll_h,
                       std::max(room, floor_h));
@@ -557,7 +566,7 @@ void ActionPromptModal::create_button(const PromptButton& btn, lv_obj_t* contain
         // grow=1 with width 0 shares the non-wrapping line (#1043); a Grid cell
         // gets its fixed width from fit_rows() and row_wrap lines them up.
         lv_obj_set_width(button, 0);
-        lv_obj_set_height(button, theme_manager_get_spacing("button_height"));
+        lv_obj_set_height(button, prompt_button_height());
         if (kind == ButtonRowKind::EqualRow) {
             lv_obj_set_flex_grow(button, 1);
         }
@@ -567,7 +576,7 @@ void ActionPromptModal::create_button(const PromptButton& btn, lv_obj_t* contain
     } else {
         // Content-sized with padding, which row_wrap spreads over as many
         // lines as the labels need.
-        lv_obj_set_size(button, LV_SIZE_CONTENT, theme_manager_get_spacing("button_height"));
+        lv_obj_set_size(button, LV_SIZE_CONTENT, prompt_button_height());
         lv_obj_set_style_pad_left(button, theme_manager_get_spacing("space_lg"), LV_PART_MAIN);
         lv_obj_set_style_pad_right(button, theme_manager_get_spacing("space_lg"), LV_PART_MAIN);
         lv_obj_set_style_radius(button, 8, LV_PART_MAIN);
@@ -586,7 +595,7 @@ void ActionPromptModal::create_button(const PromptButton& btn, lv_obj_t* contain
         lv_obj_set_style_bg_opa(button, LV_OPA_TRANSP, LV_PART_MAIN);
         lv_obj_set_style_pad_all(button, 0, LV_PART_MAIN);
         // A button's height until size_swatch_discs() measures the tile.
-        const std::string side = std::to_string(theme_manager_get_spacing("button_height"));
+        const std::string side = std::to_string(prompt_button_height());
         const char* disc_attrs[] = {"name",  "color_swatch_disc", "align",  "center",
                                     "width", side.c_str(),        "height", side.c_str(),
                                     nullptr};

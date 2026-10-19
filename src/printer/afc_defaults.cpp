@@ -3,19 +3,22 @@
 
 #include "afc_defaults.h"
 
+#include "ams_device_sections.h"
+
 #include <algorithm>
 
 namespace helix::printer {
 
 std::vector<DeviceSection> afc_default_sections() {
     return {
-        {"setup", "Setup", 0, "Calibration, LED, and system configuration"},
-        {"speed", "Speed Settings", 1, "Move speed multipliers"},
-        {"toolhead", "Toolhead", 2, "Extruder distances and sensor configuration"},
-        {"maintenance", "Maintenance", 3, "Lane tests and motor resets"},
-        {"hub", "Hub & Cutter", 4, "Blade change and parking"},
-        {"tip_forming", "Tip Forming", 5, "Tip shaping configuration"},
-        {"purge", "Purge & Wipe", 6, "Purge tower and brush settings"},
+        device_section("setup", 0, TR_NOOP("Calibration, LED, and system configuration")),
+        device_section("speed", 1, TR_NOOP("Move speed multipliers")),
+        device_section("toolhead", 2, TR_NOOP("Extruder distances and sensor configuration")),
+        device_section("maintenance", 3, TR_NOOP("Lane tests and motor resets")),
+        device_section("hub", 4, TR_NOOP("Blade change and parking")),
+        device_section("tip_forming", 5, TR_NOOP("Tip shaping configuration")),
+        device_section("purge", 6, TR_NOOP("Purge tower and brush settings")),
+        device_section("print_prefs", 7, TR_NOOP("What happens when a print ends")),
     };
 }
 
@@ -24,15 +27,18 @@ std::vector<DeviceAction> afc_default_actions() {
     return {
         // Setup section (calibration + LED)
         DA::button("calibration_wizard", "Run Calibration Wizard", "setup", "play",
-                   "Interactive calibration for all lanes"),
+                   "Interactive calibration for all lanes")
+            .with_machine_motion(),
         DA::slider("bowden_length", "Bowden Length", "setup", 450.0f, 100, 2000, "mm", "ruler",
                    "Distance from hub to toolhead"),
 
         // Speed section
-        DA::slider("speed_fwd", "Forward Multiplier", "speed", 1.0f, 0.5f, 2.0f, "x",
-                   "fast-forward", "Speed multiplier for forward moves"),
-        DA::slider("speed_rev", "Reverse Multiplier", "speed", 1.0f, 0.5f, 2.0f, "x", "rewind",
-                   "Speed multiplier for reverse moves"),
+        DA::slider("speed_fwd", "Forward Multiplier", "speed", 1.0f, 0.5f, 2.0f, "x", "speed_up",
+                   "Speed multiplier for forward moves")
+            .with_step(0.05f),
+        DA::slider("speed_rev", "Reverse Multiplier", "speed", 1.0f, 0.5f, 2.0f, "x", "speed_down",
+                   "Speed multiplier for reverse moves")
+            .with_step(0.05f),
 
         // Toolhead section (extruder distances)
         DA::slider("tool_stn", "Sensor to Nozzle", "toolhead", 72.0f, 0.0f, 200.0f, "mm", "ruler",
@@ -43,49 +49,57 @@ std::vector<DeviceAction> afc_default_actions() {
                    100.0f, "mm", "ruler", "Extra distance to move once sensors clear"),
 
         // Maintenance section
-        DA::button("test_lanes", "Test All Lanes", "maintenance", "test-tube",
-                   "Run test sequence on all lanes"),
-        DA::button("change_blade", "Change Blade", "maintenance", "box-cutter",
-                   "Initiate blade change procedure"),
-        DA::button("park", "Park", "maintenance", "parking", "Park the AFC system"),
-        DA::button("brush", "Clean Brush", "maintenance", "broom", "Run brush cleaning sequence"),
-        DA::button("reset_motor", "Reset Motor Timer", "maintenance", "timer-refresh",
+        DA::button("test_lanes", "Test All Lanes", "maintenance", "play_circle",
+                   "Run test sequence on all lanes")
+            .with_machine_motion(),
+        DA::button("change_blade", "Change Blade", "maintenance", "wrench",
+                   "Initiate blade change procedure")
+            .with_machine_motion(),
+        DA::button("park", "Park", "maintenance", "home_import", "Park the AFC system")
+            .with_machine_motion(),
+        DA::button("brush", "Clean Brush", "maintenance", "sync", "Run brush cleaning sequence")
+            .with_machine_motion(),
+        DA::button("reset_motor", "Reset Motor Timer", "maintenance", "progress_clock",
                    "Reset motor run-time counter"),
 
         // Setup section (LED & Modes)
-        DA::button("led_toggle", "Turn On LEDs", "setup", "lightbulb-on", "Toggle AFC LED strip"),
-        DA::button("led_extruder", "Toolhead LED", "setup", "lightbulb-on",
+        DA::button("led_toggle", "Turn On LEDs", "setup", "lightbulb_on", "Toggle AFC LED strip"),
+        DA::button("led_extruder", "Toolhead LED", "setup", "lightbulb_on",
                    "Toggle toolhead LED for an extruder"),
-        DA::button("quiet_mode", "Toggle Quiet Mode", "setup", "volume-off",
+        DA::button("quiet_mode", "Toggle Quiet Mode", "setup", "volume_off",
                    "Enable/disable quiet operation mode"),
 
         // Hub & Cutter section
-        DA::toggle("hub_cut_enabled", "Cutter Enabled", "hub", false, "content-cut",
+        DA::toggle("hub_cut_enabled", "Cutter Enabled", "hub", false, "tune",
                    "Enable or disable the hub cutter"),
         DA::slider("hub_cut_dist", "Cut Distance", "hub", 50.0f, 0.0f, 100.0f, "mm", "ruler",
                    "Distance for hub cutter operation"),
         DA::slider("hub_bowden_length", "Hub Bowden Length", "hub", 450.0f, 100.0f, 2000.0f, "mm",
                    "ruler", "Bowden tube length from hub to toolhead"),
-        DA::toggle("assisted_retract", "Assisted Retract", "hub", false, "arrow-u-left-top",
+        DA::toggle("assisted_retract", "Assisted Retract", "hub", false, "undo",
                    "Enable assisted retraction at hub"),
 
         // Tip Forming section
         DA::slider("ramming_volume", "Ramming Volume", "tip_forming", 0.0f, 0.0f, 100.0f, "mm³",
-                   "hydraulic-oil-level", "Volume of filament used during ramming"),
+                   "water", "Volume of filament used during ramming"),
         DA::slider("unloading_speed_start", "Unloading Start Speed", "tip_forming", 80.0f, 0.0f,
-                   200.0f, "mm/s", "speedometer", "Initial speed for filament unloading"),
+                   200.0f, "mm/s", "speed", "Initial speed for filament unloading"),
         DA::slider("cooling_tube_length", "Cooling Tube Length", "tip_forming", 15.0f, 0.0f, 100.0f,
-                   "mm", "thermometer-minus", "Length of the cooling tube section"),
+                   "mm", "thermometer_minus", "Length of the cooling tube section"),
         DA::slider("cooling_tube_retraction", "Cooling Tube Retraction", "tip_forming", 0.0f, 0.0f,
-                   100.0f, "mm", "thermometer-minus", "Retraction distance in the cooling tube"),
+                   100.0f, "mm", "thermometer_minus", "Retraction distance in the cooling tube"),
 
         // Purge & Wipe section
         DA::toggle("purge_enabled", "Enable Purge", "purge", false, "water",
                    "Enable purging during tool changes"),
         DA::slider("purge_length", "Purge Length", "purge", 50.0f, 0.0f, 200.0f, "mm", "ruler",
                    "Length of filament to purge"),
-        DA::toggle("brush_enabled", "Enable Brush Wipe", "purge", false, "broom",
+        DA::toggle("brush_enabled", "Enable Brush Wipe", "purge", false, "sync",
                    "Enable brush wipe after purging"),
+
+        // Print Behavior section
+        DA::toggle("unload_at_end", "Unload at end", "print_prefs", false, "filament",
+                   "Unload the toolhead when a print ends"),
     };
 }
 
@@ -96,7 +110,8 @@ void afc_add_toolhead_calibration_action(std::vector<DeviceAction>& actions) {
                    DeviceAction::button("toolhead_calibration", "Calibrate Toolhead", "toolhead",
                                         "play",
                                         "Guided sensor-to-nozzle, unload and cutter retract "
-                                        "calibration"));
+                                        "calibration")
+                       .with_machine_motion());
 }
 
 AfcCapabilities afc_default_capabilities() {

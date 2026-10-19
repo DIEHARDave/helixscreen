@@ -396,7 +396,8 @@
           <calib_tile icon="axis_arrow"
                       label="Tool Offsets" callback="on_calibration_tool_offsets" button_name="btn_tool_offsets"
                       icon_name="btn_tool_offsets_icon" moves_machine="true" hidden="true">
-            <bind_flag_if cond="printer_has_tool_offset_cal eq 0 or show_beta_features eq 0" flag="hidden"/>
+            <bind_flag_if cond="printer_has_tool_offset_cal eq 0 or (printer_tool_offset_cal_is_beta eq 1 and show_beta_features eq 0)"
+                          flag="hidden"/>
           </calib_tile>
           <calib_tile icon="spirit_level"
                       label="QGL" callback="on_controls_qgl" button_name="btn_qgl" icon_name="btn_qgl_icon"

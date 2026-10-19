@@ -422,6 +422,7 @@ translations:
   Bowden: ボーデン
   Bowden Length: 'ボーデン長'
   Bowden tube length from hub to toolhead: 'ハブからツールヘッドまでのボーデンチューブ長'
+  Bowden tube length to this tool: "このツールまでのボーデンチューブ長"
   Box: ボックス
   Brand: ブランド
   Brand and material come from Spoolman: ブランドと素材は Spoolman から取得されます
@@ -457,6 +458,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : バイパスが有効ですが、この印刷はAMSスロットを使用します。バイパスのフィラメントがツールヘッドにある間は、プリンターがスロットの装填を拒否する場合があります。印刷前にフィラメントを取り除き、バイパスをオフにしてください。それでも印刷を開始しますか？
   Bypass mode is not currently active: 'バイパスモードは現在アクティブではありません'
+  Bypass off macro: 'バイパスオフのマクロ'
+  Bypass on macro: 'バイパスオンのマクロ'
   Bypass toggle failed: バイパス切替に失敗しました
   C: C
   CALIBRATION: キャリブレーション
@@ -515,6 +518,7 @@ translations:
   Calibration complete! Press 'Next' to continue.: '"キャリブレーション完了！「次へ」を押して続行してください。"'
   Calibration failed: キャリブレーション失敗
   Calibration failed - touch targets more precisely.: キャリブレーション失敗 – ターゲットをより正確にタッチしてください。
+  Calibration in progress: "キャリブレーション中"
   Calibration kept timing out. Your previous settings were kept.: キャリブレーションが繰り返しタイムアウトしました。以前の設定を維持しました。
   Calibration may still be running — printer connection was interrupted: 'キャリブレーションがまだ実行中の可能性があります — プリンター接続が中断されました'
   Calibration may still be running — response timed out: 'キャリブレーションがまだ実行中の可能性があります — 応答タイムアウト'
@@ -1063,6 +1067,7 @@ translations:
   Effects: エフェクト
   Eject: 取り出し
   Eject Distance: 取り出し距離
+  Eject Speed: "取り出し速度"
   Eject Velocity: 取り出し速度
   Eject failed: イジェクトに失敗しました
   Eject needs [force_move] enabled in printer config: 取り出しにはプリンター設定で [force_move]
@@ -1114,6 +1119,7 @@ translations:
   Ended: 終了
   Endless Spool: 'エンドレススプール'
   Endless Spool backups cleared: エンドレススプールの予備を消去しました
+  Endless Spool change failed: 'エンドレススプールの変更に失敗しました'
   Endless Spool is configured in its package, not from here: エンドレススプールはプラグイン側で設定します
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: エンドレススプールはオンですが、フィラメントが一致するスロットが2つないため、フィラメント切れになっても何も切り替わりません
   Endless Spool is turned off on this MMU: 'この MMU ではエンドレススプールが無効です'
@@ -1163,6 +1169,7 @@ translations:
   Ethernet: イーサネット
   Events appear here after sessions and prints: セッションと印刷の後にイベントがここに表示されます
   Every extruder's temperature at once: 全エクストルーダーの温度を一覧表示
+  Every unit keeps its filament gripped: "すべてのユニットがフィラメントを保持したままです"
   Everything else was saved. Change them in Spoolman.: その他はすべて保存されました。変更は Spoolman で行ってください。
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: 'その他はすべて保存されました。材料名は英字・数字・スペース・+ - _ . ( ) / で構成される名前に変更してください'
   Every object is set to skip, so there is nothing to print: 'すべてのオブジェクトがスキップ対象のため、印刷するものがありません'
@@ -1343,6 +1350,7 @@ translations:
   Feature not available: この機能は利用できません
   'Features: ': '機能: '
   Feed Assist: '送りアシスト'
+  Feed assist and bypass macros: '送りアシストとバイパスマクロ'
   Feed assist and debug tools: 送りアシストとデバッグツール
   Feed failed: 送り出しに失敗しました
   Feed filament: フィラメントを送る
@@ -1357,6 +1365,7 @@ translations:
   Filament Control: フィラメント制御
   Filament Detected: フィラメント検出
   Filament Dryer: フィラメントドライヤー
+  Filament Feeder: "フィラメントフィーダー"
   Filament Grade Mismatch: フィラメントグレード不一致
   Filament Humidity: フィラメント湿度
   Filament In The Toolhead: ツールヘッドにフィラメントがあります
@@ -1434,6 +1443,7 @@ translations:
   Fine Outer: 微動・外側
   Finish: 完了
   Finish or cancel the print before loading, unloading, or changing filament: フィラメントの装填・排出・交換の前に、印刷を完了またはキャンセルしてください
+  Finish or cancel the print first: 先に印刷を完了またはキャンセルしてください
   Finishing clean...: 清掃の仕上げ中...
   Finishing up...: 完了中...
   Fireflies: ホタル
@@ -1648,8 +1658,11 @@ translations:
   Hotend Fan: ホットエンドファン
   Hotend Heater: ホットエンドヒーター
   How Z-axis movement is displayed: Z軸の移動表示方法
+  How far and how fast a lane ejects: "レーンの取り出し距離と速度"
+  How far filament is pushed back into the box on eject: "取り出し時にフィラメントをボックスへ押し戻す距離"
   How far filament is pushed back into the box on eject (mm): 取り出し時にフィラメントをボックスへ押し戻す距離
     (mm)
+  How fast filament is pushed back on eject: "取り出し時にフィラメントを押し戻す速度"
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : '長押しと判定されるまでの保持時間（ミリ秒）。編集モードなどが誤動作する場合は大きくしてください'
   How many labels to print: 印刷するラベル枚数
@@ -1920,6 +1933,7 @@ translations:
   Loading Error: 装填エラー
   Loading Filament...: フィラメントを装填中...
   Loading G-code...: G-codeを読み込み中...
+  Loading configuration...: "設定を読み込み中..."
   Loading devices...: デバイスを読み込み中...
   Loading filament...: フィラメントを装填中...
   Loading filaments...: フィラメントを読み込み中...
@@ -2239,6 +2253,7 @@ translations:
   No prints this week: 今週の印刷なし
   No prints yet: 印刷履歴なし
   No profiles available: 利用可能なプロファイルがありません
+  No sensor fitted for this distance: "この距離用のセンサーが取り付けられていません"
   No sensors detected: センサーが検出されませんでした
   No shared peaks: "共通のピークなし"
   No slot currently matches.: '現在、一致するスロットはありません。'
@@ -2252,6 +2267,10 @@ translations:
   No temperature sensors detected: '温度センサーが検出されません'
   No timelapse videos found: タイムラプス動画が見つかりません
   No tools to calibrate: キャリブレートするツールがありません
+  No unit has a filament buffer: "フィラメントバッファを持つユニットがありません"
+  No unit has a moving selector: "可動セレクターを持つユニットがありません"
+  No unit has a servo: "サーボを持つユニットがありません"
+  No unit has an encoder: "エンコーダーを持つユニットがありません"
   'No unload macro found: unload by hand, then start again': '排出マクロが見つかりません: 手で排出してから、もう一度始めてください'
 
   No vendors found: ベンダーが見つかりません
@@ -2558,6 +2577,7 @@ translations:
   Priming...: プライミング中...
   Print: 印刷
   Print Anyway: それでも印刷
+  Print Behavior: "印刷時の動作"
   'Print Behaviour': '印刷の動作'
   Print Cancelled: 印刷キャンセル
   Print Complete!: 印刷完了！
@@ -2696,6 +2716,7 @@ translations:
   Provide a numeric {}: '{} を数値で入力してください'
   Provide a speed multiplier value: '速度の倍率を入力してください'
   Provide a {}: '{} を入力してください'
+  Provide an on/off value: 'オン/オフの値を入力してください'
   Provide {}: '{} を入力してください'
   Pulling filament back: フィラメントを引き戻し中
   Purge: パージ
@@ -2744,6 +2765,7 @@ translations:
   RFID reader malfunction (left): RFID リーダーの異常（左）
   RFID reader malfunction (right): RFID リーダーの異常（右）
   RFID, Auto-Refill, nozzle and link care: RFID、自動補充、ノズルと接続のメンテナンス
+  RFID, nozzle and link care: 'RFID、ノズルと接続のメンテナンス'
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3262,6 +3284,7 @@ translations:
   Spoolman needs a material for this filament.: Spoolman にはこのフィラメントの素材が必要です。
   Spoolman removed.: Spoolman を削除しました。
   Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolmanに価格、場所、ロット、メモは保存されましたが、それ以外は保存されませんでした。このプリンターではほかに何も変更されていません。'
+  Spoolman support is off in Happy Hare: "Happy Hare の Spoolman サポートはオフです"
   Spoolman unavailable — filament weights may be stale: Spoolmanが利用できません — フィラメント重量が古い可能性があります
   Spoolman was not configured.: Spoolman は設定されていませんでした。
   'Spoolman: %zu Spool': 'Spoolman: %zu 個のスプール'
@@ -3358,6 +3381,7 @@ translations:
   Switch the active tool or extruder: アクティブなツールやエクストルーダーを切り替え
   Switch to a backup slot on runout: フィラメント切れ時に予備スロットへ切り替え
   Switch to a matching slot on runout: フィラメント切れ時に一致するスロットへ切り替え
+  Switch to a matching spool when one runs out: 'スプールが切れたら一致するスプールに切り替え'
   Switch to v%s: 'v%s に切り替え'
   Switch to {}?: '{} に切り替えますか?'
   Switched to {}: '{} に切替えました'
@@ -3705,6 +3729,7 @@ translations:
   Toggle Auto-Refill: '自動補充を切り替え'
   Toggle Quiet Mode: '静音モードを切り替え'
   Toggle external spool bypass: 外部スプールバイパスを切り替え
+  Toggle this tool's toolhead LED: "このツールのツールヘッドLEDを切り替え"
   Toggle toolhead LED for an extruder: 'エクストルーダーのツールヘッドLEDを切り替え'
   'Toggle:': '切り替え:'
   Too humid: 湿度が高すぎます
@@ -3762,9 +3787,12 @@ translations:
   Turn Endless Spool on, then set the Backup Gate: 'エンドレススプールを有効にしてから、バックアップゲートを設定してください'
   'Turn LED off when the print ends': '印刷終了時に LED を消灯'
   Turn Off: オフにする
+  Turn Off LEDs: "LEDを消灯"
+  Turn Off Toolhead LED: "ツールヘッドLEDを消灯"
   Turn Off WiFi?: WiFiをオフにしますか？
   Turn On: オンにする
   Turn On LEDs: 'LEDを点灯'
+  Turn On Toolhead LED: "ツールヘッドLEDを点灯"
   Turn off bed check: 'ベッドチェックをオフにする'
   Turn off detection: 検出をオフにする
   Turn on the lights your light buttons control: ライトボタンが操作するライトを点灯します
@@ -3818,6 +3846,7 @@ translations:
   Unload from toolhead first: '先にツールヘッドから取り出してください'
   Unload macro not configured: アンロードマクロが未設定です
   Unload the CFS filament before enabling bypass: 'バイパスを有効にする前に CFS のフィラメントを取り出してください'
+  Unload the toolhead when a print ends: '印刷終了時にツールヘッドからアンロード'
   Unload this unit first: '先にこのユニットを排出してください'
   Unload which tool?: 'どのツールをアンロードしますか？'
   Unload...: 排出...
@@ -3938,9 +3967,12 @@ translations:
   : 残りのフィラメントを表示するために、重量データが Spoolman から同期されます。印刷の開始、一時停止、完了時にも変更が同期されます。
   Welcome to HelixScreen: HelixScreen へようこそ
   What We Collect: 収集する情報
+  What happens when a print ends: '印刷終了時の動作'
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: 有効時はマクロのみ実行されます。無効時は先に温度を設定してからマクロが実行されます。
   Where UI sounds play: UIサウンドの再生先
   Whether filament is loaded: フィラメントの装填状態
+  Which macro switches the ACE path back on: 'ACE経路を再びオンにするマクロ'
+  Which macro switches the ACE path off for bypass: 'バイパスのためにACE経路をオフにするマクロ'
   Which macro the Close feeder button sends: 「フィーダーを閉じる」ボタンが送信するマクロ
   Which macro the Open feeder button sends: 「フィーダーを開く」ボタンが送信するマクロ
   White: ホワイト
@@ -4143,6 +4175,7 @@ translations:
   you have: 現在は
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 約{}分'
   '{} ({})': '{}（{}）'
+  '{} - {}': "{} - {}"
   '{} Extruders': '{} エクストルーダー'
   '{} Hardware Issues': 'ハードウェアの問題 {} 件'
   '{} Issues Detected': '問題を {} 件検出'

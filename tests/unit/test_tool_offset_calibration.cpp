@@ -10,6 +10,7 @@
  */
 
 #include "printer_discovery.h"
+#include "snapmaker_nozzle_offset.h"
 #include "tool_offset_calibration.h"
 
 #include "../catch_amalgamated.hpp"
@@ -35,6 +36,23 @@ PrinterDiscovery printer_with(std::initializer_list<const char*> extra) {
 PrinterDiscovery calibrating_toolchanger() {
     return printer_with({"toolchanger", "tool T0", "tool T1", "tool T2",
                          "gcode_macro CALIBRATE_TOOL_OFFSETS", "tools_calibrate"});
+}
+
+/// A Snapmaker U1, whose firmware ships the per-head offset calibration macros.
+PrinterDiscovery snapmaker_u1() {
+    json objects = json::array({"gcode_move", "toolhead", "extruder",
+                                "gcode_macro _EXTRUDER_OFFSET_ACTION_PRESTART",
+                                "gcode_macro _EXTRUDER_OFFSET_ACTION_EXIT"});
+    for (int t = 0; t < 4; ++t) {
+        for (const char* step :
+             {"HEAT", "AUTO_CLEAN", "MANUAL_CLEAN", "WAIT_COOL", "PROBE_CALIBRATE"}) {
+            objects.push_back(std::string("gcode_macro _EXTRUDER_OFFSET_ACTION_") + step + "_T" +
+                              std::to_string(t));
+        }
+    }
+    PrinterDiscovery hw;
+    hw.parse_objects(objects);
+    return hw;
 }
 
 } // namespace
@@ -65,4 +83,18 @@ TEST_CASE("tool offset calibration: the macro name is case-insensitive on detect
 TEST_CASE("tool offset calibration: the gcode is the bare macro, or nothing", "[tool_offset_cal]") {
     CHECK(cal::calibrate_all_gcode(calibrating_toolchanger()) == "CALIBRATE_TOOL_OFFSETS");
     CHECK(cal::calibrate_all_gcode(printer_with({"toolchanger", "tool T0"})).empty());
+}
+
+TEST_CASE("tool offset calibration: a U1 calibrates through its own guided flow",
+          "[tool_offset_cal]") {
+    const PrinterDiscovery u1 = snapmaker_u1();
+    CHECK(cal::supported(u1));
+    CHECK(cal::guided_flow(u1) == helix::snapmaker::nozzle_offset::kGuidedFlowId);
+    CHECK_FALSE(cal::is_beta(u1));
+    CHECK(cal::calibrate_all_gcode(u1).empty());
+
+    // The macro path is unchanged and stays a beta feature.
+    CHECK(cal::guided_flow(calibrating_toolchanger()).empty());
+    CHECK(cal::is_beta(calibrating_toolchanger()));
+    CHECK_FALSE(cal::is_beta(printer_with({})));
 }

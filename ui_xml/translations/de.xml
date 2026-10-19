@@ -416,6 +416,7 @@
   <translation tag="Bowden" de="Bowden"/>
   <translation tag="Bowden Length" de="Bowden-Länge"/>
   <translation tag="Bowden tube length from hub to toolhead" de="Länge des Bowdenschlauchs vom Hub zum Werkzeugkopf"/>
+  <translation tag="Bowden tube length to this tool" de="Bowden-Länge bis zu diesem Werkzeug"/>
   <translation tag="Box" de="Box"/>
   <translation tag="Brand" de="Marke"/>
   <translation tag="Brand and material come from Spoolman" de="Marke und Material stammen aus Spoolman"/>
@@ -450,6 +451,8 @@
   <translation tag="Bypass failed" de="Bypass fehlgeschlagen"/>
   <translation tag="Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?" de="Bypass ist aktiv, aber dieser Druck verwendet AMS-Slots. Der Drucker verweigert möglicherweise das Laden eines Slots, solange Bypass-Filament im Werkzeugkopf ist. Entfernen Sie das Filament und deaktivieren Sie Bypass, bevor Sie drucken. Trotzdem starten?"/>
   <translation tag="Bypass mode is not currently active" de="Der Bypass-Modus ist derzeit nicht aktiv"/>
+  <translation tag="Bypass off macro" de="Bypass-aus-Makro"/>
+  <translation tag="Bypass on macro" de="Bypass-ein-Makro"/>
   <translation tag="Bypass toggle failed" de="Bypass-Umschaltung fehlgeschlagen"/>
   <translation tag="C" de="K"/>
   <translation tag="CALIBRATION" de="KALIBRIERUNG"/>
@@ -506,6 +509,7 @@
   <translation tag="Calibration complete! Press &apos;Next&apos; to continue." de="Kalibrierung abgeschlossen! Drücken Sie &apos;Weiter&apos; um fortzufahren."/>
   <translation tag="Calibration failed" de="Kalibrierung fehlgeschlagen"/>
   <translation tag="Calibration failed - touch targets more precisely." de="Kalibrierung fehlgeschlagen – Ziele präziser berühren."/>
+  <translation tag="Calibration in progress" de="Kalibrierung läuft"/>
   <translation tag="Calibration kept timing out. Your previous settings were kept." de="Bei der Kalibrierung kam es wiederholt zu einer Zeitüberschreitung. Ihre vorherigen Einstellungen wurden beibehalten."/>
   <translation tag="Calibration may still be running — printer connection was interrupted" de="Kalibrierung läuft möglicherweise noch — Druckerverbindung wurde unterbrochen"/>
   <translation tag="Calibration may still be running — response timed out" de="Kalibrierung läuft möglicherweise noch — Zeitüberschreitung der Antwort"/>
@@ -1022,6 +1026,7 @@
   <translation tag="Effects" de="Effekte"/>
   <translation tag="Eject" de="Auswerfen"/>
   <translation tag="Eject Distance" de="Auswurfstrecke"/>
+  <translation tag="Eject Speed" de="Auswurfgeschwindigkeit"/>
   <translation tag="Eject Velocity" de="Auswurfgeschwindigkeit"/>
   <translation tag="Eject failed" de="Auswerfen fehlgeschlagen"/>
   <translation tag="Eject needs [force_move] enabled in printer config" de="Auswerfen erfordert [force_move] aktiviert in der Druckerkonfiguration"/>
@@ -1070,6 +1075,7 @@
   <translation tag="Ended" de="Beendet"/>
   <translation tag="Endless Spool" de="Endlosspule"/>
   <translation tag="Endless Spool backups cleared" de="Endlosspulen-Reserven gelöscht"/>
+  <translation tag="Endless Spool change failed" de="Ändern der Endlosspule fehlgeschlagen"/>
   <translation tag="Endless Spool is configured in its package, not from here" de="Die Endlosspule wird im zugehörigen Plugin konfiguriert, nicht hier"/>
   <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" de="Die Endlosspule ist an, aber es gibt keine zwei Slots mit passendem Filament, daher wird bei Filamentende nichts gewechselt"/>
   <translation tag="Endless Spool is turned off on this MMU" de="Die Endlosspule ist auf diesem MMU deaktiviert"/>
@@ -1121,6 +1127,7 @@
   <translation tag="Every extruder&apos;s temperature at once" de="Alle Extrudertemperaturen auf einmal"/>
   <translation tag="Every object is set to skip, so there is nothing to print" de="Jedes Objekt ist zum Überspringen markiert, es gibt nichts zu drucken"/>
   <translation tag="Every tool&apos;s offsets are measured again and replace the current ones. Save afterwards to keep the result." de="Die Offsets aller Werkzeuge werden neu gemessen und ersetzen die aktuellen. Danach speichern, um das Ergebnis zu behalten."/>
+  <translation tag="Every unit keeps its filament gripped" de="Jede Einheit hält ihr Filament fest"/>
   <translation tag="Everything else was saved. Change them in Spoolman." de="Alles Übrige wurde gespeichert. Ändern Sie diese in Spoolman."/>
   <translation tag="Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /" de="Alles Übrige wurde gespeichert. Benennen Sie das Material mit Buchstaben, Ziffern, Leerzeichen sowie + - _ . ( ) / um"/>
   <translation tag="Excellent Accuracy" de="Ausgezeichnete Genauigkeit"/>
@@ -1295,6 +1302,7 @@
   <translation tag="Feature not available" de="Funktion nicht verfügbar"/>
   <translation tag="Features: " de="Funktionen: "/>
   <translation tag="Feed Assist" de="Vorschubunterstützung"/>
+  <translation tag="Feed assist and bypass macros" de="Vorschubunterstützung und Bypass-Makros"/>
   <translation tag="Feed assist and debug tools" de="Vorschubunterstützung und Debug-Werkzeuge"/>
   <translation tag="Feed failed" de="Zuführen fehlgeschlagen"/>
   <translation tag="Feed filament" de="Filament zuführen"/>
@@ -1309,6 +1317,7 @@
   <translation tag="Filament Control" de="Filamentsteuerung"/>
   <translation tag="Filament Detected" de="Filament erkannt"/>
   <translation tag="Filament Dryer" de="Filamenttrockner"/>
+  <translation tag="Filament Feeder" de="Filamentzuführung"/>
   <translation tag="Filament Grade Mismatch" de="Filamentklassenabweichung"/>
   <translation tag="Filament Humidity" de="Filamentfeuchtigkeit"/>
   <translation tag="Filament In The Toolhead" de="Filament im Werkzeugkopf"/>
@@ -1382,6 +1391,7 @@
   <translation tag="Fine Outer" de="Fein Außen"/>
   <translation tag="Finish" de="Fertig"/>
   <translation tag="Finish or cancel the print before loading, unloading, or changing filament" de="Beenden oder brechen Sie den Druck ab, bevor Sie Filament laden, entladen oder wechseln"/>
+  <translation tag="Finish or cancel the print first" de="Beenden oder brechen Sie den Druck zuerst ab"/>
   <translation tag="Finishing clean..." de="Reinigung abschließen..."/>
   <translation tag="Finishing up..." de="Wird abgeschlossen..."/>
   <translation tag="Fireflies" de="Glühwürmchen"/>
@@ -1588,7 +1598,10 @@
   <translation tag="Hotend Fan" de="Hotend-Lüfter"/>
   <translation tag="Hotend Heater" de="Hotend-Heizung"/>
   <translation tag="How Z-axis movement is displayed" de="Wie Z-Achsen-Bewegung angezeigt wird"/>
+  <translation tag="How far and how fast a lane ejects" de="Wie weit und wie schnell eine Spur auswirft"/>
+  <translation tag="How far filament is pushed back into the box on eject" de="Wie weit das Filament beim Auswerfen in die Box zurückgeschoben wird"/>
   <translation tag="How far filament is pushed back into the box on eject (mm)" de="Wie weit das Filament beim Auswerfen in die Box zurückgeschoben wird (mm)"/>
+  <translation tag="How fast filament is pushed back on eject" de="Wie schnell das Filament beim Auswerfen zurückgeschoben wird"/>
   <translation tag="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)" de="Wie lange gedrückt werden muss, damit es als langes Drücken zählt, in ms (erhöhen, wenn der Bearbeitungsmodus oder andere Aktionen versehentlich auslösen)"/>
   <translation tag="How many labels to print" de="Wie viele Etiketten drucken"/>
   <translation tag="How the Jog tab arranges its buttons" de="Wie der Verfahren-Tab seine Tasten anordnet"/>
@@ -1842,6 +1855,7 @@
   <translation tag="Loading Error" de="Ladefehler"/>
   <translation tag="Loading Filament..." de="Lade Filament..."/>
   <translation tag="Loading G-code..." de="G-Code wird geladen..."/>
+  <translation tag="Loading configuration..." de="Konfiguration wird geladen..."/>
   <translation tag="Loading devices..." de="Geräte werden geladen..."/>
   <translation tag="Loading filament..." de="Filament wird geladen..."/>
   <translation tag="Loading filaments..." de="Filamente werden geladen..."/>
@@ -2155,6 +2169,7 @@
   <translation tag="No prints this week" de="Keine Drucke diese Woche"/>
   <translation tag="No prints yet" de="Noch keine Drucke"/>
   <translation tag="No profiles available" de="Keine Profile verfügbar"/>
+  <translation tag="No sensor fitted for this distance" de="Für diese Strecke ist kein Sensor verbaut"/>
   <translation tag="No sensors detected" de="Keine Sensoren erkannt"/>
   <translation tag="No shared peaks" de="Keine gemeinsamen Spitzen"/>
   <translation tag="No slot currently matches." de="Derzeit passt kein Slot."/>
@@ -2167,6 +2182,10 @@
   <translation tag="No temperature sensors detected" de="Keine Temperatursensoren erkannt"/>
   <translation tag="No timelapse videos found" de="Keine Zeitraffer-Videos gefunden"/>
   <translation tag="No tools to calibrate" de="Keine Werkzeuge zum Kalibrieren"/>
+  <translation tag="No unit has a filament buffer" de="Keine Einheit hat einen Filamentpuffer"/>
+  <translation tag="No unit has a moving selector" de="Keine Einheit hat einen beweglichen Selektor"/>
+  <translation tag="No unit has a servo" de="Keine Einheit hat ein Servo"/>
+  <translation tag="No unit has an encoder" de="Keine Einheit hat einen Encoder"/>
   <translation tag="No unload macro found: unload by hand, then start again" de="Kein Entlade-Makro gefunden: Entlade von Hand und starte dann erneut"/>
   <translation tag="No vendors found" de="Keine Hersteller gefunden"/>
   <translation tag="No verified bypass command for this CFS firmware" de="Kein verifizierter Bypass-Befehl für diese CFS-Firmware"/>
@@ -2458,6 +2477,7 @@
   <translation tag="Priming..." de="Primen..."/>
   <translation tag="Print" de="Drucken"/>
   <translation tag="Print Anyway" de="Trotzdem drucken"/>
+  <translation tag="Print Behavior" de="Druckverhalten"/>
   <translation tag="Print Behaviour" de="Druckverhalten"/>
   <translation tag="Print Cancelled" de="Druck abgebrochen"/>
   <translation tag="Print Complete!" de="Druck abgeschlossen!"/>
@@ -2596,6 +2616,7 @@
   <translation tag="Provide a numeric {}" de="Geben Sie einen numerischen Wert für {} an"/>
   <translation tag="Provide a speed multiplier value" de="Geben Sie einen Geschwindigkeitsmultiplikator an"/>
   <translation tag="Provide a {}" de="Geben Sie {} an"/>
+  <translation tag="Provide an on/off value" de="Geben Sie einen Ein/Aus-Wert an"/>
   <translation tag="Provide {}" de="Geben Sie {} an"/>
   <translation tag="Pulling filament back" de="Filament wird zurückgezogen"/>
   <translation tag="Purge" de="Entlüften"/>
@@ -2642,6 +2663,7 @@
   <translation tag="RFID reader malfunction (left)" de="Fehlfunktion des RFID-Lesers (links)"/>
   <translation tag="RFID reader malfunction (right)" de="Fehlfunktion des RFID-Lesers (rechts)"/>
   <translation tag="RFID, Auto-Refill, nozzle and link care" de="RFID, automatisches Nachfüllen, Düsen- und Verbindungspflege"/>
+  <translation tag="RFID, nozzle and link care" de="RFID, Düsen- und Verbindungspflege"/>
   <translation tag="RH" de="rF"/>
   <translation tag="RSS" de="RSS"/>
   <translation tag="RSS:" de="RSS:"/>
@@ -3145,6 +3167,7 @@
   <translation tag="Spoolman needs a material for this filament." de="Spoolman benötigt ein Material für dieses Filament."/>
   <translation tag="Spoolman removed." de="Spoolman entfernt."/>
   <translation tag="Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer." de="Spoolman hat Preis, Standort, Los und Notizen gespeichert, aber nicht den Rest. Sonst hat sich an diesem Drucker nichts geändert."/>
+  <translation tag="Spoolman support is off in Happy Hare" de="Spoolman-Unterstützung ist in Happy Hare deaktiviert"/>
   <translation tag="Spoolman unavailable — filament weights may be stale" de="Spoolman nicht verfügbar — Filamentgewichte können veraltet sein"/>
   <translation tag="Spoolman was not configured." de="Spoolman war nicht konfiguriert."/>
   <translation tag="Spoolman: %zu Spool" de="Spoolman: %zu Spule"/>
@@ -3235,6 +3258,7 @@
   <translation tag="Switch the active tool or extruder" de="Aktives Werkzeug oder Extruder wechseln"/>
   <translation tag="Switch to a backup slot on runout" de="Bei Filamentende zu einem Ersatz-Slot wechseln"/>
   <translation tag="Switch to a matching slot on runout" de="Bei Filamentende zu einem passenden Slot wechseln"/>
+  <translation tag="Switch to a matching spool when one runs out" de="Bei Filamentende zu einer passenden Spule wechseln"/>
   <translation tag="Switch to v%s" de="Zu v%s wechseln"/>
   <translation tag="Switch to {}?" de="Zu {} wechseln?"/>
   <translation tag="Switched to {}" de="Gewechselt zu {}"/>
@@ -3539,6 +3563,7 @@
   <translation tag="Toggle Auto-Refill" de="Automatisches Nachfüllen umschalten"/>
   <translation tag="Toggle Quiet Mode" de="Leisen Modus umschalten"/>
   <translation tag="Toggle external spool bypass" de="Bypass der externen Spule umschalten"/>
+  <translation tag="Toggle this tool&apos;s toolhead LED" de="Werkzeugkopf-LED dieses Werkzeugs umschalten"/>
   <translation tag="Toggle toolhead LED for an extruder" de="Werkzeugkopf-LED für einen Extruder umschalten"/>
   <translation tag="Toggle:" de="Umschalten:"/>
   <translation tag="Too humid" de="Zu feucht"/>
@@ -3595,9 +3620,12 @@
   <translation tag="Turn Endless Spool on, then set the Backup Gate" de="Aktivieren Sie die Endlosspule und legen Sie dann das Backup-Gate fest"/>
   <translation tag="Turn LED off when the print ends" de="LED am Druckende ausschalten"/>
   <translation tag="Turn Off" de="Ausschalten"/>
+  <translation tag="Turn Off LEDs" de="LEDs ausschalten"/>
+  <translation tag="Turn Off Toolhead LED" de="Werkzeugkopf-LED ausschalten"/>
   <translation tag="Turn Off WiFi?" de="WiFi ausschalten?"/>
   <translation tag="Turn On" de="Einschalten"/>
   <translation tag="Turn On LEDs" de="LEDs einschalten"/>
+  <translation tag="Turn On Toolhead LED" de="Werkzeugkopf-LED einschalten"/>
   <translation tag="Turn off bed check" de="Bettprüfung ausschalten"/>
   <translation tag="Turn off detection" de="Erkennung ausschalten"/>
   <translation tag="Turn on the lights your light buttons control" de="Schaltet die Lichter ein, die Ihre Lichttasten steuern"/>
@@ -3652,6 +3680,7 @@
   <translation tag="Unload macro not configured" de="Entlade-Makro nicht konfiguriert"/>
   <translation tag="Unload stopped" de="Entladen gestoppt"/>
   <translation tag="Unload the CFS filament before enabling bypass" de="Entladen Sie das CFS-Filament, bevor Sie den Bypass aktivieren"/>
+  <translation tag="Unload the toolhead when a print ends" de="Den Werkzeugkopf am Druckende entladen"/>
   <translation tag="Unload this unit first" de="Entladen Sie zuerst diese Einheit"/>
   <translation tag="Unload which tool?" de="Welches Werkzeug entladen?"/>
   <translation tag="Unload..." de="Entladen..."/>
@@ -3773,10 +3802,13 @@
   <translation tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." de="Gewichtsdaten werden von Spoolman synchronisiert, um verbleibendes Filament anzuzeigen. Änderungen werden auch synchronisiert, wenn Drucke starten, pausieren oder abgeschlossen werden."/>
   <translation tag="Welcome to HelixScreen" de="Willkommen bei HelixScreen"/>
   <translation tag="What We Collect" de="Was wir erfassen"/>
+  <translation tag="What happens when a print ends" de="Was am Druckende passiert"/>
   <translation tag="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs." de="Wenn aktiviert, wird nur das Makro ausgeführt. Wenn deaktiviert, werden zuerst die Temperaturen gesetzt, dann das Makro."/>
   <translation tag="Where UI sounds play" de="Wo UI-Töne abgespielt werden"/>
   <translation tag="Whether filament is loaded" de="Ob Filament geladen ist"/>
   <translation tag="Which lane is in the toolhead?" de="Welche Spur steckt im Druckkopf?"/>
+  <translation tag="Which macro switches the ACE path back on" de="Welches Makro den ACE-Pfad wieder einschaltet"/>
+  <translation tag="Which macro switches the ACE path off for bypass" de="Welches Makro den ACE-Pfad für den Bypass ausschaltet"/>
   <translation tag="Which macro the Close feeder button sends" de="Welches Makro die Schaltfläche zum Schließen der Zuführung sendet"/>
   <translation tag="Which macro the Open feeder button sends" de="Welches Makro die Schaltfläche zum Öffnen der Zuführung sendet"/>
   <translation tag="White" de="Weiß"/>
@@ -3970,6 +4002,7 @@
   <translation tag="you have" de="Sie haben"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" de="{:.0f}-{:.0f} Hz · ca. {} Min."/>
   <translation tag="{} ({})" de="{} ({})"/>
+  <translation tag="{} - {}" de="{} - {}"/>
   <translation tag="{} Extruders" de="{} Extruder"/>
   <translation tag="{} Hardware Issues" de="{} Hardware-Probleme"/>
   <translation tag="{} Issues Detected" de="{} Probleme erkannt"/>

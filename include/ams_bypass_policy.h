@@ -4,6 +4,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace helix {
 
@@ -16,6 +17,20 @@ struct BypassMacros {
     std::string on;  ///< Engages bypass (disables the managed filament path)
     std::string off; ///< Releases it again
 };
+
+/// The conventional bypass wrapper macros this printer defines; a name is
+/// empty when discovery did not see it.
+[[nodiscard]] BypassMacros detect_bypass_macros(const PrinterDiscovery& hw);
+
+/// Choices for a bypass macro picker: kAutoMacro followed by every macro whose
+/// name mentions BYPASS, sorted. Empty when the printer has none.
+[[nodiscard]] std::vector<std::string> bypass_macro_options(const PrinterDiscovery& hw);
+
+/// resolve_bypass_macros() over an already-detected pair, for a caller that
+/// keeps detection and re-resolves when the user picks another macro.
+[[nodiscard]] BypassMacros resolve_bypass_macros(const BypassMacros& detected,
+                                                 const std::string& on_choice,
+                                                 const std::string& off_choice);
 
 /// Resolve the bypass macros for this printer, from discovery and the user's
 /// stored overrides.

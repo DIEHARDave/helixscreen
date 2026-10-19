@@ -133,9 +133,6 @@ class AmsDeviceOperationsOverlay : public OverlayBase {
     /// Create a single section row (icon + label + chevron)
     void create_section_row(lv_obj_t* parent, const helix::printer::DeviceSection& section);
 
-    /// Convert AmsAction enum to human-readable string
-    static const char* action_to_string(int action);
-
     //
     // === State ===
     //
@@ -160,12 +157,6 @@ class AmsDeviceOperationsOverlay : public OverlayBase {
     /// Buffer for system info text
     char system_info_buf_[128] = {};
 
-    /// Subject for status text display
-    lv_subject_t status_subject_{};
-
-    /// Buffer for status text
-    char status_buf_[128] = {};
-
     /// Subject for bypass support (0=not supported, 1=supported).
     /// Folds in the force-bypass override, so this is what gates the controls.
     lv_subject_t supports_bypass_subject_{};
@@ -185,9 +176,6 @@ class AmsDeviceOperationsOverlay : public OverlayBase {
     /// Subject for backend presence (0=no backend, 1=has backend)
     lv_subject_t has_backend_subject_{};
 
-    /// 1 when the backend lets the user choose whether it unloads after a
-    /// print; gates the unload-after-print toggle.
-    lv_subject_t unload_after_print_configurable_subject_{};
     /// 1 when the bypass lane is virtual (no physical bypass sensor); gates
     /// the always-show-bypass row.
     lv_subject_t bypass_is_virtual_subject_{};
@@ -204,17 +192,6 @@ class AmsDeviceOperationsOverlay : public OverlayBase {
     /// remember_spool true everywhere, the toggle has no observable effect,
     /// so it is shown disabled with a note instead of silently lying.
     lv_subject_t printer_retains_spool_info_subject_{};
-
-    /// 1 when the backend has configurable eject distance/velocity; gates those rows.
-    lv_subject_t has_eject_params_subject_{};
-
-    /// Display string subject for the QIDI eject distance value (e.g. "878 mm")
-    lv_subject_t qidi_eject_distance_display_subject_{};
-    char qidi_eject_distance_buf_[32] = {};
-
-    /// Display string subject for the QIDI eject velocity value (e.g. "100 mm/s")
-    lv_subject_t qidi_eject_velocity_display_subject_{};
-    char qidi_eject_velocity_buf_[32] = {};
 
     /// Subject gating the "Reset Endless Spool" row (0=hidden, 1=shown).
     /// Set from EndlessSpoolCapabilities::editable(), so the row lights up for

@@ -600,7 +600,7 @@ later drops to `NONE` is written back from it while the spool stays in the lane.
 
 ### Toolhead Offset Calibration
 
-The stock firmware's multi-toolhead offset calibration is a device action (`snapmaker_nozzle_offset_cal`, section `snapmaker_calibration`) that starts the `snapmaker_nozzle_offset` guided flow. The backend offers it only when `snapmaker::nozzle_offset::supported()` finds `_EXTRUDER_OFFSET_ACTION_PRESTART`, `_EXTRUDER_OFFSET_ACTION_EXIT` and the five per-head hook macros for T0..T3 in the objects list (`include/snapmaker_nozzle_offset.h`); it greys out while `print_stats.state` is printing or paused.
+The stock firmware's multi-toolhead offset calibration is the `snapmaker_nozzle_offset` guided flow, started from Controls > Calibration > Tool Offsets: `helix::tool_offset_calibration::guided_flow()` names it for a U1, so the generic entry opens it instead of the macro panel, with no beta gate. It is offered only when `snapmaker::nozzle_offset::supported()` finds `_EXTRUDER_OFFSET_ACTION_PRESTART`, `_EXTRUDER_OFFSET_ACTION_EXIT` and the five per-head hook macros for T0..T3 in the objects list (`include/snapmaker_nozzle_offset.h`); the Calibration tile is `moves_machine`, so it greys out while a print, running or paused, holds the printer.
 
 The commands are registered in Python by `ExtruderOffsetCalibration` in `<klipper>/klippy/extras/probe_inductance_coil.py` (status object `extruder_offset_calibration`), with no `desc=`, so they never appear in `printer.gcode.help`. Each `EXTRUDER_OFFSET_ACTION_<STEP>` is one blocking step that runs the matching `_EXTRUDER_OFFSET_ACTION_<STEP>[_Tn]` macro from `xyz_offset_calibration.cfg`. Every step but PRESTART refuses with coded fault `0003-0530-0000-0009` unless `machine_state_manager.main_state` is `XYZ_OFFSET_CALIBRATE`, which PRESTART enters and EXIT leaves. The stock screen (`/usr/bin/gui`, view source cali_extruders_offset.c) sequences them; its step table and its Next-button handler fix this order:
 
@@ -848,11 +848,11 @@ END_LED_TURN_OFF=<0/1>  END_UNLOAD_FILAMENT=<python-list-literal>  FORCE=<0/1>
 - `END_UNLOAD_FILAMENT` is parsed with `ast.literal_eval` and must be a Python list (e.g. `[1,0,1,0]`).
 
 HelixScreen surfaces the filament-side subset of these prefs as device actions in the printer's
-settings: `get_device_sections()` publishes one "Print Behaviour" section and
+settings: `get_device_sections()` publishes one "Print Behavior" section (`print_prefs`) and
 `get_device_actions()` one row per pref the firmware has actually reported
 (`src/printer/ams_backend_snapmaker.cpp#get_device_actions`) - auto-replenish, replenish-ignores-colour,
 tangle detect, tangle sensitivity (dropdown low/medium/high), end-of-print LED, and one
-"Unload at end" toggle per toolhead ("Unload at end - Toolhead 1 (T0)"). A pref with no reported value
+"Unload at end" toggle per toolhead, carrying its `tool_index` so the UI names it ("Unload at end - Toolhead 1 (T0)"). A pref with no reported value
 renders no row at all: a toggle whose state is unknown would render off and invite "changing" it
 to its own value. Toggles are written back through `build_preference_gcode()`, which emits
 `SET_PRINT_PREFERENCES` with only the changed parameter (omitted parameters keep their firmware

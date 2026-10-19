@@ -89,8 +89,6 @@ struct BackendTraits {
     bool supports_gate_check = false;
     bool should_suppress_idle_runout_modal = false;
     bool bypass_is_virtual = false;
-    bool supports_configurable_unload_after_print = false;
-    bool supports_configurable_eject_params = false;
     bool allows_implicit_chaining = true;
     bool has_physical_tray = true;
     bool slot_status_tracks_filament = true;
@@ -2614,6 +2612,18 @@ class AmsBackend {
     AmsError set_endless_spool_backup(int slot_index, int backup_slot);
 
     /**
+     * @brief Switch Endless Spool on or off.
+     *
+     * **Deliberately NOT virtual**, like set_endless_spool_backup(): the
+     * refusals live here, and backends supply the command through
+     * apply_endless_spool_enabled(). Rejects when the feature is unavailable or
+     * not EndlessSpoolCapabilities::switchable.
+     *
+     * @note Holds no lock.
+     */
+    AmsError set_endless_spool_enabled(bool enabled);
+
+    /**
      * @brief May @p backup_slot stand in for @p slot_index?
      *
      * Backends own the eligibility rule. The base default asks two questions in
@@ -2672,6 +2682,19 @@ class AmsBackend {
         (void)slot_index;
         (void)backup_slot;
         return AmsErrorHelper::not_supported("Endless spool");
+    }
+
+    /**
+     * @brief Command-only hook behind set_endless_spool_enabled().
+     *
+     * Reached only after the base accepted the request, for a backend that
+     * reports EndlessSpoolCapabilities::switchable.
+     *
+     * @note Called with NO backend lock held.
+     */
+    virtual AmsError apply_endless_spool_enabled(bool enabled) {
+        (void)enabled;
+        return AmsErrorHelper::not_supported("Endless Spool");
     }
 
     /**
@@ -3039,35 +3062,6 @@ class AmsBackend {
      */
     [[nodiscard]] bool bypass_is_virtual() const {
         return traits().bypass_is_virtual;
-    }
-
-    /**
-     * @brief Whether the user decides, from this screen, whether the toolhead
-     *        unloads after a print.
-     *
-     * Drives the unload-after-print toggle row in the device-operations
-     * overlay. Backends whose firmware fixes the behavior one way (always
-     * unloads, or never does) have nothing for the toggle to decide, so the
-     * row stays hidden there; the setting the toggle writes is what the
-     * backend's end-of-print macros consult.
-     *
-     * @return true if the post-print toolhead unload is a user setting here
-     */
-    [[nodiscard]] bool supports_configurable_unload_after_print() const {
-        return traits().supports_configurable_unload_after_print;
-    }
-
-    /**
-     * @brief Whether the backend exposes user-configurable eject parameters
-     *        (distance + velocity) that the UI should surface as sliders.
-     *
-     * QIDI Box lets the user tune the per-lane eject distance and velocity; the
-     * device-operations overlay renders the slider rows only for such backends.
-     *
-     * @return true if eject distance/velocity are configurable for this backend
-     */
-    [[nodiscard]] bool supports_configurable_eject_params() const {
-        return traits().supports_configurable_eject_params;
     }
 
     /**

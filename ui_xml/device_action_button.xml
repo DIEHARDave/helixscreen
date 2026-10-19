@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- One AMS device-action button, half of a device_action_button_row.
+     AmsDeviceSectionDetailOverlay creates one per BUTTON action and names it
+     after the action's id, which on_device_action_clicked reads back. -->
+<component>
+  <api>
+    <prop name="text" type="string" default=""/>
+    <prop name="icon" type="string" default=""/>
+    <prop name="disabled" type="string" default="false"/>
+    <prop name="moves_machine" type="string" default="false"/>
+  </api>
+  <view extends="ui_button" text="$text" icon="$icon" flex_grow="1" disabled="$disabled" moves_machine="$moves_machine">
+    <event_cb trigger="clicked" callback="on_device_action_clicked"/>
+  </view>
+</component>

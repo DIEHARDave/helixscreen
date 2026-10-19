@@ -542,18 +542,15 @@ Feeder resolve_feeder(const PrinterDiscovery& hw, const std::string& open_overri
     if (!p || !p->open_gcode) {
         return {};
     }
-    auto pick = [](const std::string& override_value, const std::string& detected) {
-        return (override_value.empty() || override_value == kAutoMacro) ? detected : override_value;
-    };
     Feeder f;
     f.present = true;
     f.provider_name = p->name;
     f.detected_open = p->open_gcode(hw);
     f.detected_close = p->close_gcode(hw);
-    f.open_gcode = pick(open_override, f.detected_open);
-    f.close_gcode = pick(close_override, f.detected_close);
-    f.open_choice = open_override.empty() ? kAutoMacro : open_override;
-    f.close_choice = close_override.empty() ? kAutoMacro : close_override;
+    f.open_gcode = resolve_macro_choice(open_override, f.detected_open);
+    f.close_gcode = resolve_macro_choice(close_override, f.detected_close);
+    f.open_choice = macro_choice_or_auto(open_override);
+    f.close_choice = macro_choice_or_auto(close_override);
 
     auto candidates = feeder_macro_candidates(hw);
     if (!candidates.empty()) {

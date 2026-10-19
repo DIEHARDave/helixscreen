@@ -80,6 +80,10 @@ multi-unit (EMU) rig. `get_endless_spool_config()` returns the gate group as one
 `EndlessSpoolGroup` per group id; flattening it to per-slot arrows is the renderer's job
 (see [Endless Spool](FILAMENT_MANAGEMENT.md#endless-spool-shared-model)).
 
+The device-operations Endless Spool switch sends `MMU_ENDLESS_SPOOL ENABLE=0|1 QUIET=1`
+(`apply_endless_spool_enabled()`); it is `switchable` under the same single-unit rule as the
+groups, since the command has no `UNIT=` either.
+
 **`ENABLE=` on edit vs on reset.** An edit sends **no** `ENABLE=`, and
 `apply_endless_spool_backup()` refuses with `WRONG_STATE` when
 `mmu.endless_spool_enabled` is false: `cmd_MMU_ENDLESS_SPOOL` ignores `GROUPS` while the

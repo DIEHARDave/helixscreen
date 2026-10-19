@@ -359,8 +359,7 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     // Device Management
     [[nodiscard]] std::vector<helix::printer::DeviceSection> get_device_sections() const override;
     [[nodiscard]] std::vector<helix::printer::DeviceAction> get_device_actions() const override;
-    AmsError execute_device_action(const std::string& action_id,
-                                   const std::any& value = {}) override;
+    AmsError do_execute_device_action(const std::string& action_id, const std::any& value) override;
 
   protected:
     /**
@@ -380,6 +379,10 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
      * @note Takes `mutex_` to build the CSV, releases it before the G-code send.
      */
     AmsError apply_endless_spool_backup(int slot_index, int backup_slot) override;
+
+    /// MMU_ENDLESS_SPOOL ENABLE=0|1 QUIET=1, on a single unit only (see
+    /// get_endless_spool_capabilities()).
+    AmsError apply_endless_spool_enabled(bool enabled) override;
 
     // Allow test helper access to private members
     /// Pre-gate sensor record for @p slot_index, or nullptr when the index is

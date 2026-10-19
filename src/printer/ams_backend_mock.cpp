@@ -7,7 +7,6 @@
 #include "helix_thread.h"
 #if HELIX_HAS_SNAPMAKER
 #include "ams_backend_snapmaker.h"
-#include "snapmaker_nozzle_offset.h"
 #endif
 #if HELIX_HAS_IFS
 #include "ams_backend_ad5x_ifs.h"
@@ -3225,11 +3224,6 @@ void AmsBackendMock::set_snapmaker_mode(bool enabled) {
     system_info_.current_tool = 0;
     system_info_.current_slot = 0;
     system_info_.filament_loaded = true;
-
-    // The U1 persona ships the toolhead offset calibration macros; the flow
-    // drives the mock client's EXTRUDER_OFFSET_ACTION_* simulation.
-    mock_device_sections_ = {helix::snapmaker::nozzle_offset::device_section()};
-    mock_device_actions_ = {helix::snapmaker::nozzle_offset::device_action(false)};
 }
 
 void AmsBackendMock::apply_remap_overrides(const std::string& csv) {

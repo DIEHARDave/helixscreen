@@ -561,7 +561,7 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         return print_preferences_;
     }
 
-    /// The Print Behaviour section shown on the AMS device-operations
+    /// The Print Behavior section shown on the AMS device-operations
     /// overlay. Absent until the firmware has reported a preference, so the
     /// overlay never offers a setting whose state it does not know.
     [[nodiscard]] std::vector<helix::printer::DeviceSection> get_device_sections() const override;
@@ -572,8 +572,7 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
 
     /// Sends the SET_PRINT_PREFERENCES line build_preference_gcode() maps the
     /// action id to. Unknown ids are reported as not supported.
-    AmsError execute_device_action(const std::string& action_id,
-                                   const std::any& value = {}) override;
+    AmsError do_execute_device_action(const std::string& action_id, const std::any& value) override;
 
     /// The saved unload-at-end list (SettingsManager's end-of-print unload
     /// tools) as one SET_PRINT_PREFERENCES line, sized to the toolheads the
@@ -597,7 +596,16 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// not left holding the calibration state with heaters on.
     void before_disconnect() override;
 
+    /// Endless Spool is the firmware's auto-replenish: available once it has
+    /// reported the flag, switchable, and firmware-managed (the firmware
+    /// chooses the backup head).
+    [[nodiscard]] helix::printer::EndlessSpoolCapabilities
+    get_endless_spool_capabilities() const override;
+
   protected:
+    /// SET_PRINT_PREFERENCES AUTO_REPLENISH_FILAMENT=0|1.
+    AmsError apply_endless_spool_enabled(bool enabled) override;
+
     // Extension points for hardware hung off the U1's heads. Each default is
     // the stock U1's answer, and each is called with mutex_ held.
 

@@ -557,6 +557,16 @@ class AmsErrorHelper {
     }
 
     /**
+     * @brief A device action that moves the printer, refused while a print holds it
+     * @return AmsError configured for UI display
+     */
+    static AmsError busy_with_print() {
+        return AmsError(AmsResult::WRONG_STATE, "Machine motion refused: a print holds the printer",
+                        lv_tr("Printer is busy with a print"),
+                        lv_tr("Finish or cancel the print first"));
+    }
+
+    /**
      * @brief Create an invalid parameter error
      * @param detail Description of the invalid parameter
      * @return AmsError configured for UI display
