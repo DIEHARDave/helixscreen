@@ -32,6 +32,7 @@
 #include "snapmaker_channel_state.h"
 #include "snapmaker_nozzle_offset.h"
 #include "snapmaker_resume.h"
+#include "snapmaker_screws_tilt.h"
 #include "snapmaker_status_parse.h"
 #include "text_io.h"
 
@@ -347,6 +348,7 @@ void AmsBackendSnapmaker::on_started() {
         tag_has_card_.fill(std::nullopt);
         card_seen_.fill(false);
         print_state_.reset();
+        main_state_.reset();
         // The overrides reload below; a held save belongs to the session that
         // made it.
         pending_record_writes_.fill(std::nullopt);
@@ -2560,6 +2562,9 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
                 print_state_ = state->get<std::string>();
             }
         }
+        if (const auto main_state = snapmaker::screws_tilt::main_state_from_status(status)) {
+            main_state_ = *main_state;
+        }
 
         apply_extension_locked(status, fx.changed);
 
@@ -2937,7 +2942,10 @@ std::optional<bool> AmsBackendSnapmaker::record_write_needs_force_locked(int hea
 
 bool AmsBackendSnapmaker::record_writes_held_locked() const {
     // Every record write runs FLOW_RESET_K on its head, which must not land
-    // under a running print.
+    // under a running print or between the offset calibration's steps.
+    if (calibration_holds_heads_locked()) {
+        return true;
+    }
     if (print_state_) {
         return *print_state_ == "printing";
     }
@@ -3037,7 +3045,14 @@ void AmsBackendSnapmaker::drop_pending_record_write_locked(int head) {
     }
 }
 
+bool AmsBackendSnapmaker::calibration_holds_heads_locked() const {
+    return main_state_ && *main_state_ == snapmaker::nozzle_offset::kMainStateXyzOffsetCalibrate;
+}
+
 bool AmsBackendSnapmaker::heads_free_locked() const {
+    if (calibration_holds_heads_locked()) {
+        return false;
+    }
     return print_state_ && *print_state_ != "printing" && *print_state_ != "paused";
 }
 
@@ -3102,7 +3117,10 @@ std::vector<std::pair<int, std::string>> AmsBackendSnapmaker::record_restores_lo
             record_restore_sent_[idx] = false;
             continue;
         }
-        if (record_restore_sent_[idx] || insert_since_declaration_[idx]) {
+        // A read still pending may yet name a different spool than the
+        // declaration.
+        if (record_restore_sent_[idx] || insert_since_declaration_[idx] ||
+            pending_insert_passes_[idx] > 0) {
             continue;
         }
         // The firmware's clear does not say the spool left: unload-at-end

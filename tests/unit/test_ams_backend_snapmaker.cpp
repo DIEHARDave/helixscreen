@@ -6058,6 +6058,52 @@ TEST_CASE_METHOD(SnapmakerFixture,
 }
 
 TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker holds a dropped record's write-back while the offset calibration "
+                 "holds the heads",
+                 "[ams][snapmaker][filament_record][record_drift]") {
+    lv_init_safe();
+    FilamentRecordHarness h("drift_restore_calibrating");
+    declare_head0_asa(h);
+
+    h.frame(json{{"machine_state_manager", {{"main_state", 2}}}});
+    h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+    CHECK(h.config_writes().empty());
+
+    SECTION("the calibration ends: it is written back") {
+        h.frame(json{{"machine_state_manager", {{"main_state", 0}}}});
+        CHECK(h.config_writes().size() == 2);
+    }
+    SECTION("a user edit waits too") {
+        helix::test::edit_slot_as_user(h.backend, 0, polymaker_asa());
+        FilamentRecordHarness::drain();
+        CHECK(h.config_writes().empty());
+        h.frame(json{{"machine_state_manager", {{"main_state", 0}}}});
+        CHECK_FALSE(h.config_writes().empty());
+    }
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker writes no dropped record back while a tag read is pending",
+                 "[ams][snapmaker][filament_record][record_drift]") {
+    lv_init_safe();
+    FilamentRecordHarness h("drift_restore_read_pending");
+    declare_head0_asa(h);
+
+    // A spool goes in and is declared before the reader answers for it.
+    h.frame(make_feed_status(0, "wait_insert", /*filament_detected=*/false));
+    h.frame(make_feed_status(0, "wait_insert", /*filament_detected=*/true));
+    REQUIRE(h.backend.slot_insert_identity(0) == InsertIdentity::Pending);
+    helix::test::edit_slot_as_user(h.backend, 0, polymaker_asa());
+    FilamentRecordHarness::drain();
+    h.frame(make_head_record(0, "ASA", "FF9800FF"));
+    h.printer.client.clear_gcode_script_history();
+
+    REQUIRE(h.backend.slot_insert_identity(0) == InsertIdentity::Pending);
+    h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+    CHECK(h.config_writes().empty());
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
                  "Snapmaker writes nothing back for a head with no declared material",
                  "[ams][snapmaker][filament_record][record_drift]") {
     lv_init_safe();

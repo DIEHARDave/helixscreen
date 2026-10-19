@@ -919,6 +919,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// frame carries it. Under mutex_.
     std::optional<std::string> print_state_;
 
+    /// machine_state_manager.main_state from this backend's own status frames;
+    /// unset until a frame carries it. Under mutex_.
+    std::optional<int> main_state_;
+
     /// Per head, the latest held record write; dropped with the head's
     /// override and at on_started(). Under mutex_.
     std::array<std::optional<PendingRecordWrite>, kNumTools> pending_record_writes_{};
@@ -962,10 +966,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// thread.
     void write_task_filament_record(int head, const SlotInfo& info, bool material_declared);
 
-    /// Whether a user edit's record write must wait: this backend's own
-    /// print_stats.state reads printing, or, before its frames have named one,
-    /// the app's print job state reads PRINTING or is not initialized. Caller
-    /// holds mutex_.
+    /// Whether a user edit's record write must wait: the offset calibration
+    /// holds the heads, this backend's own print_stats.state reads printing,
+    /// or, before its frames have named one, the app's print job state reads
+    /// PRINTING or is not initialized. Caller holds mutex_.
     [[nodiscard]] bool record_writes_held_locked() const;
 
     /// FORCE=1 rewrites for heads whose record is flagged official while the
@@ -981,8 +985,13 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// Forget @p head's held record write, if it has one. Caller holds mutex_.
     void drop_pending_record_write_locked(int head);
 
+    /// Whether the toolhead offset calibration holds the machine state: it
+    /// parks, heats and probes the heads between its steps. Caller holds mutex_.
+    [[nodiscard]] bool calibration_holds_heads_locked() const;
+
     /// Whether this backend's own print_stats.state is known and holds no head:
-    /// neither printing nor paused. Caller holds mutex_.
+    /// neither printing nor paused, and no offset calibration holds the
+    /// machine state. Caller holds mutex_.
     [[nodiscard]] bool heads_free_locked() const;
 
     /// The firmware forgets a head's record whenever filament leaves its
@@ -990,7 +999,8 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// sits in the feeder. One SET_PRINT_FILAMENT_CONFIG script per head whose
     /// record names no type while its lane declares a material, a spool is in
     /// the port or at the nozzle, no spool has gone in since the declaration,
-    /// no feed is moving the head, and the heads are free. Marks each head
+    /// no tag read is pending on it, no feed is moving the head, and the heads
+    /// are free. Marks each head
     /// returned sent until its record next names a type. Caller holds mutex_.
     [[nodiscard]] std::vector<std::pair<int, std::string>> record_restores_locked();
 
