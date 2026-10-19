@@ -577,6 +577,7 @@ translations:
   Cancelling turns the chamber target off so the wait ends, then stops the print.: 'Cancelar desliga o alvo da câmara para que a espera termine e depois para a impressão.'
   'Cannot add to queue: internal error': 'Não foi possível adicionar à fila: erro interno'
   Cannot be changed from here on a multi-unit MMU: Não pode ser alterado aqui em um MMU de várias unidades
+  Cannot change the HelixPrint plugin while printing: Não é possível alterar o plugin HelixPrint durante a impressão
   'Cannot control timelapse: printer not connected': 'Não é possível controlar timelapse:
     impressora não conectada'
   'Cannot delete file: printer not connected': 'Não é possível excluir arquivo: impressora

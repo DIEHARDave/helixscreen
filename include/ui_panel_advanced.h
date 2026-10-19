@@ -124,7 +124,11 @@ class AdvancedPanel : public PanelBase {
 
     /// job_holds_machine subject as a bool: PRINTING, PAUSED, or a
     /// host-side Preparing block — everything a Klipper restart would kill.
-    bool macro_job_holds_machine() const;
+    bool job_holds_machine_now() const;
+
+    /// The plugin rows restart Moonraker, so they refuse, with a warning
+    /// toast, while a job holds the machine. Returns true when refused.
+    bool refuse_plugin_change_during_job() const;
 
     /// The confirmed half of the uninstall row: runs the uninstaller and
     /// reports the outcome. Blocks this thread while the script runs.

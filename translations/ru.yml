@@ -623,6 +623,7 @@ translations:
   Cancelling turns the chamber target off so the wait ends, then stops the print.: 'Отмена выключит целевую температуру камеры, чтобы ожидание закончилось, затем остановит печать.'
   'Cannot add to queue: internal error': 'Не удалось добавить в очередь: внутренняя ошибка'
   Cannot be changed from here on a multi-unit MMU: Нельзя изменить здесь на MMU с несколькими блоками
+  Cannot change the HelixPrint plugin while printing: Нельзя изменить плагин HelixPrint во время печати
   'Cannot control timelapse: printer not connected': 'Невозможно управлять таймлапсом:
     принтер не подключён'
   'Cannot delete file: printer not connected': 'Невозможно удалить файл: принтер не

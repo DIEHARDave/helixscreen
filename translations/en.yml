@@ -564,6 +564,7 @@ translations:
   Cancelling turns the chamber target off so the wait ends, then stops the print.: Cancelling turns the chamber target off so the wait ends, then stops the print.
   'Cannot add to queue: internal error': 'Cannot add to queue: internal error'
   Cannot be changed from here on a multi-unit MMU: Cannot be changed from here on a multi-unit MMU
+  Cannot change the HelixPrint plugin while printing: Cannot change the HelixPrint plugin while printing
   'Cannot control timelapse: printer not connected': 'Cannot control timelapse: printer
     not connected'
   'Cannot delete file: printer not connected': 'Cannot delete file: printer not connected'

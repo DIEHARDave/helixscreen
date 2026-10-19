@@ -4,6 +4,7 @@
 #include "ui_panel_advanced.h"
 
 #include "ui_callback_helpers.h"
+#include "ui_error_reporting.h"
 #include "ui_modal.h"
 #if !defined(HELIX_PLATFORM_ESP32)
 #include "ui_overlay_pa_tuning.h"
@@ -252,7 +253,7 @@ void AdvancedPanel::handle_timelapse_setup_clicked() {
 // HELIX HELPER MACRO HANDLERS (helix_macros.cfg)
 // ============================================================================
 
-bool AdvancedPanel::macro_job_holds_machine() const {
+bool AdvancedPanel::job_holds_machine_now() const {
     // job_holds_machine, not print_active: a host-side Preparing job has
     // print_active == 0 while the toolhead moves, and restarting Klipper
     // through it kills a job the app has already committed to.
@@ -296,7 +297,7 @@ void AdvancedPanel::handle_helix_macros_install_clicked() {
     opts.owner_token = object_lifetime_.token();
     helix::ui::modal_confirm(
         lv_tr("Install Helper Macros?"),
-        macro_job_holds_machine()
+        job_holds_machine_now()
             ? lv_tr("This installs the HelixScreen helper macros on the printer and adds them "
                     "to printer.cfg. A print is running, so Klipper restarts after it finishes.")
             : lv_tr("This installs the HelixScreen helper macros on the printer, adds them to "
@@ -333,7 +334,7 @@ void AdvancedPanel::handle_helix_macros_update_clicked() {
     opts.owner_token = object_lifetime_.token();
     helix::ui::modal_confirm(
         lv_tr("Update Helper Macros?"),
-        macro_job_holds_machine()
+        job_holds_machine_now()
             ? lv_tr("This replaces the printer's helper macros with the current version. A print "
                     "is running, so Klipper restarts after it finishes.")
             : lv_tr("This replaces the printer's helper macros with the current version and "
@@ -382,7 +383,7 @@ void AdvancedPanel::run_helix_macros_stage(bool update) {
 
 bool AdvancedPanel::restart_helix_macros_when_idle() {
     // Never restart during an active print; hard-refuse, the caller queues.
-    if (macro_job_holds_machine() || !macro_manager_) {
+    if (job_holds_machine_now() || !macro_manager_) {
         return false;
     }
 
@@ -509,8 +510,20 @@ void AdvancedPanel::on_klippy_state_for_skips(int state) {
 // HELIXPRINT PLUGIN HANDLERS
 // ============================================================================
 
+bool AdvancedPanel::refuse_plugin_change_during_job() const {
+    if (!job_holds_machine_now()) {
+        return false;
+    }
+    NOTIFY_WARNING(lv_tr("Cannot change the HelixPrint plugin while printing"));
+    return true;
+}
+
 void AdvancedPanel::handle_helix_plugin_install_clicked() {
     spdlog::debug("[{}] HelixPrint Plugin Install clicked", get_name());
+
+    if (refuse_plugin_change_during_job()) {
+        return;
+    }
 
     // Double-check plugin isn't already installed (defensive)
     if (printer_state_.plugin_status_state().service_has_helix_plugin()) {
@@ -542,6 +555,10 @@ bool AdvancedPanel::restart_moonraker_for_plugin() {
 void AdvancedPanel::handle_helix_plugin_uninstall_clicked() {
     spdlog::debug("[{}] HelixPrint Plugin Uninstall clicked", get_name());
 
+    if (refuse_plugin_change_during_job()) {
+        return;
+    }
+
     helix::ui::ConfirmOptions opts;
     opts.owner_token = object_lifetime_.token();
     helix::ui::modal_confirm(
@@ -554,6 +571,11 @@ void AdvancedPanel::handle_helix_plugin_uninstall_clicked() {
 
 void AdvancedPanel::run_helix_plugin_uninstall() {
     using UninstallOutcome = helix::UninstallOutcome;
+
+    // A job can start while the confirmation is open.
+    if (refuse_plugin_change_during_job()) {
+        return;
+    }
 
     // Update installer's websocket URL for local/remote detection
     if (api_) {
