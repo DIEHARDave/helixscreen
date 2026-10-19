@@ -57,6 +57,8 @@ static void apply_axis_pads(lv_obj_t* chart_obj, bool y_labels_visible) {
 // CSVs from Kalico carry up to 11 columns; too few slots here silently drops
 // the last-added series (chips without curves, no "was" overlay).
 static constexpr int kMaxSeries = 13;
+/// Horizontal grid divisions; the Y-axis labels sit on their lines.
+static constexpr int kHDivisions = 4;
 
 // Maximum series name length
 static constexpr size_t kMaxNameLen = 32;
@@ -128,6 +130,15 @@ struct ui_frequency_response_chart_t {
     float freq_max = 200.0f;
     float amp_min = 0.0f;
     float amp_max = 1e9f;
+
+    // Y-axis label text for the (amp_min, amp_max, y_labels_percent) it was
+    // built from, rebuilt only when one of them changes. Per chart because
+    // LVGL may draw a label after the draw callback returns.
+    char y_label_text[kHDivisions + 1][12] = {};
+    bool y_labels_built = false;
+    float y_labels_min = 0.0f;
+    float y_labels_max = 0.0f;
+    bool y_labels_built_percent = false;
 
     FrequencySeriesData series[kMaxSeries];
     int next_series_id = 0;
@@ -1024,7 +1035,6 @@ static void draw_freq_grid_lines_cb(lv_event_t* e) {
     line_dsc.opa = static_cast<lv_opa_t>(38); // ~15% opacity
 
     // Horizontal grid lines: 4 divisions (amplitude)
-    constexpr int kHDivisions = 4;
     for (int i = 1; i < kHDivisions; i++) {
         int32_t y = content_y1 + (content_height * i) / kHDivisions;
         line_dsc.p1.x = content_x1;
@@ -1705,19 +1715,26 @@ static void draw_y_axis_labels_cb(lv_event_t* e) {
         return;
     }
 
+    if (!chart->y_labels_built || chart->y_labels_min != chart->amp_min ||
+        chart->y_labels_max != chart->amp_max ||
+        chart->y_labels_built_percent != chart->y_labels_percent) {
+        const auto labels = fr_chart_amplitude_labels(chart->amp_min, chart->amp_max, kHDivisions,
+                                                      chart->y_labels_percent);
+        for (int i = 0; i <= kHDivisions; i++) {
+            snprintf(chart->y_label_text[i], sizeof(chart->y_label_text[i]), "%s",
+                     labels[static_cast<size_t>(i)].c_str());
+        }
+        chart->y_labels_built = true;
+        chart->y_labels_min = chart->amp_min;
+        chart->y_labels_max = chart->amp_max;
+        chart->y_labels_built_percent = chart->y_labels_percent;
+    }
+
     // Draw labels at each horizontal division (matching grid lines)
-    constexpr int kHDivisions = 4;
-
-    // Persistent label buffers: LVGL may draw a label after this returns.
-    static char amp_labels[kHDivisions + 1][12];
-    const auto labels = fr_chart_amplitude_labels(chart->amp_min, chart->amp_max, kHDivisions,
-                                                  chart->y_labels_percent);
-
     for (int i = 0; i <= kHDivisions; i++) {
         int32_t y = content_y1 + (content_height * i) / kHDivisions;
 
-        char* buf = amp_labels[i];
-        snprintf(buf, sizeof(amp_labels[i]), "%s", labels[static_cast<size_t>(i)].c_str());
+        char* buf = chart->y_label_text[i];
 
         // Position label centered vertically on the grid line
         lv_area_t label_area;

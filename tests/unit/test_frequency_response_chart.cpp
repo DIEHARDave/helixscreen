@@ -34,9 +34,11 @@
 #include "lvgl/lvgl.h"
 #include "lvgl/src/misc/lv_text_private.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <string>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -1170,6 +1172,76 @@ TEST_CASE_METHOD(XMLTestFixture, "a configured chart pads its gutter for the the
     }
 
     ui_frequency_response_chart_destroy(chart);
+}
+
+namespace {
+
+/// Renders @p chart and returns the text of every label it drew.
+std::vector<std::string> drawn_label_texts(ui_frequency_response_chart_t* chart) {
+    lv_obj_t* plot = lv_obj_get_child(ui_frequency_response_chart_get_obj(chart), 0);
+    REQUIRE(plot != nullptr);
+    std::vector<std::string> texts;
+    const auto capture = [](lv_event_t* e) {
+        auto* out = static_cast<std::vector<std::string>*>(lv_event_get_user_data(e));
+        const auto* dsc = lv_draw_task_get_label_dsc(lv_event_get_draw_task(e));
+        if (dsc != nullptr && dsc->text != nullptr) {
+            out->emplace_back(dsc->text);
+        }
+    };
+    lv_obj_add_flag(plot, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+    lv_obj_add_event_cb(plot, capture, LV_EVENT_DRAW_TASK_ADDED, &texts);
+    if (lv_draw_buf_t* snap = lv_snapshot_take(plot, LV_COLOR_FORMAT_ARGB8888)) {
+        lv_draw_buf_destroy(snap);
+    }
+    lv_obj_remove_event_cb_with_user_data(plot, capture, &texts);
+    lv_obj_remove_flag(plot, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+    return texts;
+}
+
+bool drew(const std::vector<std::string>& texts, const char* text) {
+    return std::find(texts.begin(), texts.end(), text) != texts.end();
+}
+
+} // namespace
+
+TEST_CASE_METHOD(XMLTestFixture, "amplitude labels follow each chart's own range",
+                 "[frequency_response_chart][axis]") {
+    ui_frequency_response_chart_t* a = ui_frequency_response_chart_create(test_screen());
+    ui_frequency_response_chart_t* b = ui_frequency_response_chart_create(test_screen());
+    REQUIRE(a != nullptr);
+    REQUIRE(b != nullptr);
+    for (auto* chart : {a, b}) {
+        ui_frequency_response_chart_configure_for_platform(chart, PlatformTier::STANDARD);
+        ui_frequency_response_chart_set_y_labels_visible(chart, true);
+        lv_obj_set_size(ui_frequency_response_chart_get_obj(chart), 400, 240);
+    }
+    lv_obj_update_layout(test_screen());
+
+    ui_frequency_response_chart_set_amplitude_range(a, 0.0f, 400.0f);
+    ui_frequency_response_chart_set_amplitude_range(b, 0.0f, 8000.0f);
+    auto texts = drawn_label_texts(a);
+    CHECK(drew(texts, "400"));
+    CHECK(drew(texts, "200"));
+    texts = drawn_label_texts(b);
+    CHECK(drew(texts, "8k"));
+    CHECK_FALSE(drew(texts, "400"));
+    // Drawing b leaves a's labels as they were.
+    texts = drawn_label_texts(a);
+    CHECK(drew(texts, "400"));
+    CHECK_FALSE(drew(texts, "8k"));
+
+    ui_frequency_response_chart_set_amplitude_range(a, 0.0f, 100.0f);
+    texts = drawn_label_texts(a);
+    CHECK(drew(texts, "100"));
+    CHECK_FALSE(drew(texts, "400"));
+
+    ui_frequency_response_chart_set_y_labels_percent(a, true);
+    texts = drawn_label_texts(a);
+    CHECK(drew(texts, "100%"));
+    CHECK(drew(texts, "50%"));
+
+    ui_frequency_response_chart_destroy(b);
+    ui_frequency_response_chart_destroy(a);
 }
 
 TEST_CASE("frequency labels stay inside the chart's box", "[frequency_response_chart][axis]") {
