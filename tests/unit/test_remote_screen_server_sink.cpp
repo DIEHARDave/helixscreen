@@ -81,17 +81,22 @@ TEST_CASE("store: release_if_idle frees buffers only after idle", "[remote_scree
     CHECK_FALSE(store.snapshot(false, kCap).has_value());
 }
 
-TEST_CASE("store: first request after a release asks for FullRedraw; the next asks Ready",
+TEST_CASE("store: requests ask for FullRedraw until a frame lands, then Ready",
           "[remote_screen][server_sink]") {
     FakeClock clock;
     ScreenFrameStore store(clock.fn());
     CHECK(store.note_request() == ScreenFrameStore::Need::FullRedraw);
+    // Still nothing captured (a repaint that never came): ask again.
+    CHECK(store.note_request() == ScreenFrameStore::Need::FullRedraw);
     SolidFrame frame(8, 8, 1);
     store.on_frame(frame.f);
     CHECK(store.note_request() == ScreenFrameStore::Need::Ready);
+    CHECK(store.frame_size() == std::pair<int, int>{8, 8});
 
     store.release();
+    CHECK(store.frame_size() == std::pair<int, int>{0, 0});
     CHECK(store.note_request() == ScreenFrameStore::Need::FullRedraw);
+    store.on_frame(frame.f);
     CHECK(store.note_request() == ScreenFrameStore::Need::Ready);
 }
 

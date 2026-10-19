@@ -110,6 +110,7 @@ src/application/remote_screen_fb0_sink.cpp  # not in the v1 Core+AMS cut
 src/application/remote_screen_manager.cpp  # not in the v1 Core+AMS cut
 src/application/remote_screen_blit.cpp  # no screen server on the K-Touch: nothing to mirror into
 src/application/remote_screen_server_sink.cpp  # no screen server on the K-Touch
+src/application/remote_screen_http_server.cpp  # no screen server on the K-Touch
 src/application/splash_screen_manager.cpp  # not in the v1 Core+AMS cut
 src/application/xml_hot_reloader.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_capture.cpp  # not in the v1 Core+AMS cut
@@ -367,3 +368,4 @@ src/plugin/plugin_presenter.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_surfaces.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_consts.cpp  # not in the v1 Core+AMS cut
 src/system/jpeg_encode.cpp  # no screen server on the K-Touch: nothing to encode
+src/system/http_listen_socket.cpp  # only the screen server and the mock file server listen

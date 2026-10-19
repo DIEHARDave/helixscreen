@@ -80,7 +80,7 @@ void ScreenFrameStore::on_frame(const RemoteScreenFrame& f) {
 ScreenFrameStore::Need ScreenFrameStore::note_request() {
     last_request_.store(now().time_since_epoch().count(), std::memory_order_release);
     std::lock_guard<std::mutex> lock(mutex_);
-    if (full_redraw_needed_) {
+    if (!has_frame_ || full_redraw_needed_) {
         full_redraw_needed_ = false;
         return Need::FullRedraw;
     }
@@ -100,6 +100,11 @@ void ScreenFrameStore::abort_waits() {
         ++abort_epoch_;
     }
     cv_.notify_all();
+}
+
+std::pair<int, int> ScreenFrameStore::frame_size() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return has_frame_ ? std::pair<int, int>{shadow_w_, shadow_h_} : std::pair<int, int>{0, 0};
 }
 
 uint64_t ScreenFrameStore::generation() const {

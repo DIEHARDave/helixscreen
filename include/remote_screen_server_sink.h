@@ -14,6 +14,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace helix {
@@ -70,8 +71,8 @@ class ScreenFrameStore {
 
     enum class Need { Ready, FullRedraw };
     /// Mark a viewer as present. FullRedraw means the shadow cannot be trusted to
-    /// hold the whole screen (nothing captured yet, or a resize), and the caller
-    /// should invalidate the display; it is answered once per such state.
+    /// hold the whole screen, and the caller should invalidate the display: always
+    /// while nothing has been captured, and once after a resize.
     Need note_request();
 
     /// Wait until the generation passes @p gen. False on timeout or abort_waits().
@@ -80,6 +81,9 @@ class ScreenFrameStore {
     void abort_waits();
 
     uint64_t generation() const;
+
+    /// The captured screen's size, {0, 0} when nothing is captured.
+    std::pair<int, int> frame_size() const;
 
     /// The current screen as a JPEG, or nullopt when nothing has been captured. Reuses
     /// the cached JPEG when the generation is unchanged or the last encode is newer
