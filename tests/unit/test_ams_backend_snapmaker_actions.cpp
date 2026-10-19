@@ -198,11 +198,12 @@ TEST_CASE_METHOD(
     // The saved choice stays for when the head holds a hard filament again.
     REQUIRE(SettingsManager::instance().get_end_of_print_unload_tools() == 0b0011);
 
-    // The saved list goes out as saved; the firmware skips the soft head itself.
+    // The soft head goes out as 0 whatever is saved: the firmware's end macro
+    // reads its own soft flag, which can disagree with the loaded material.
     REQUIRE(backend.build_preprint_gcode({}, {}) ==
-            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,1,0,0]");
+            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,0,0]");
     REQUIRE(backend.build_preference_gcode("snapmaker_end_unload_t2", std::any(true)) ==
-            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,1,1,0]");
+            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,1,0]");
 
     // Rigid filament back in the head: the saved choice reads on again.
     SnapmakerTestAccess::handle_status(backend,
@@ -211,6 +212,39 @@ TEST_CASE_METHOD(
     REQUIRE(find_action(after, "snapmaker_end_unload_t1")->enabled);
     REQUIRE(std::any_cast<bool>(find_action(after, "snapmaker_end_unload_t1")->current_value) ==
             true);
+}
+
+TEST_CASE_METHOD(EndUnloadFixture,
+                 "a soft material is soft even when the firmware's soft flag says otherwise",
+                 "[ams][snapmaker][actions][end_unload]") {
+    // The firmware derives filament_soft from its own table keyed by the exact
+    // FILAMENT_TYPE, so a type it has no row for (TPU-85A) reads rigid.
+    SettingsManager::instance().set_end_of_print_unload_tools(0b1111);
+    AmsBackendSnapmaker backend(nullptr, nullptr);
+    SnapmakerTestAccess::handle_status(backend,
+                                       frame({{"end_unload_filament", {false, false, false, false}},
+                                              {"filament_type", {"PLA", "TPU-85A", "PEBA", "ASA"}},
+                                              {"filament_soft", {false, false, false, false}}}));
+
+    const auto actions = backend.get_device_actions();
+    for (const char* id : {"snapmaker_end_unload_t1", "snapmaker_end_unload_t2"}) {
+        const DeviceAction* soft = find_action(actions, id);
+        REQUIRE(soft != nullptr);
+        CHECK_FALSE(soft->enabled);
+        CHECK_FALSE(soft->disable_reason.empty());
+        CHECK(std::any_cast<bool>(soft->current_value) == false);
+    }
+    for (const char* id : {"snapmaker_end_unload_t0", "snapmaker_end_unload_t3"}) {
+        const DeviceAction* rigid = find_action(actions, id);
+        REQUIRE(rigid != nullptr);
+        CHECK(rigid->enabled);
+        CHECK(std::any_cast<bool>(rigid->current_value) == true);
+    }
+
+    REQUIRE(backend.build_preprint_gcode({}, {}) ==
+            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,0,1]");
+    REQUIRE(backend.build_preference_gcode("snapmaker_end_unload_t1", std::any(true)).empty());
+    REQUIRE(SettingsManager::instance().get_end_of_print_unload_tools() == 0b1111);
 }
 
 TEST_CASE("executing a toggle emits only that field", "[ams][snapmaker][actions]") {
