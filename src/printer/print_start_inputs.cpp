@@ -95,6 +95,20 @@ std::vector<GcodeToolInfo> used_tool_info_for(const FileStartFacts& facts) {
 
 } // namespace
 
+std::set<int> file_tools_used(const FileStartFacts& facts) {
+    if (!facts.tools_used.empty() || !facts.metadata) {
+        return facts.tools_used;
+    }
+    std::set<int> tools;
+    const auto& weights = facts.metadata->filament_weights;
+    for (size_t i = 0; i < weights.size(); ++i) {
+        if (weights[i] > 0.0) {
+            tools.insert(static_cast<int>(i));
+        }
+    }
+    return tools;
+}
+
 void fill_file_context(PrintStartContext& ctx, const FileStartFacts& facts) {
     auto card = card_mapping_for(facts);
     ctx.has_file_facts = true;
@@ -105,7 +119,7 @@ void fill_file_context(PrintStartContext& ctx, const FileStartFacts& facts) {
     ctx.tool_info = std::move(card.tool_info);
     ctx.available_slots = std::move(card.slots);
     ctx.filament_materials = facts.palette.materials;
-    ctx.tools_used = facts.tools_used;
+    ctx.tools_used = file_tools_used(facts);
     ctx.tool_grams = facts.tool_grams;
 }
 

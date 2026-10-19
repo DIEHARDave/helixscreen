@@ -16,18 +16,22 @@
 #include "ui_callback_helpers.h"
 #include "ui_filament_mapping_card.h"
 #include "ui_print_select_detail_view.h"
+#include "ui_print_start_controller.h"
 #include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/planted_gcode.h"
 #include "../test_helpers/scoped_cache_dir.h"
 #include "../test_helpers/scoped_mock_ams.h"
+#include "../test_helpers/snapmaker_test_access.h"
+#include "ams_backend_snapmaker.h"
 #include "app_globals.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "print_start_checks.h"
 #include "print_start_inputs.h"
 #include "printer_state.h"
+#include "test_helpers/registered_backend.h"
 #include "tools_used_cache.h"
 
 #include <filesystem>
@@ -332,4 +336,61 @@ TEST_CASE_METHOD(LoaderFixture, "a later load supersedes an unanswered one",
     drain();
 
     CHECK(answered == std::vector<std::string>{second.name()});
+}
+
+// ============================================================================
+// The file's tools, as the pre-print step and the slicer-start check read them
+// ============================================================================
+
+TEST_CASE("file_tools_used reads scanned tools, then per-tool weights",
+          "[print_start_inputs][reprint]") {
+    FileStartFacts facts;
+    CHECK(helix::file_tools_used(facts).empty());
+    facts.metadata = FileMetadata{};
+    facts.metadata->filament_weights = {1.5, 0.0, 2.25};
+    facts.metadata->filament_colors = {"#FF0000", "#00FF00", "#0000FF"};
+    CHECK(helix::file_tools_used(facts) == std::set<int>{0, 2});
+    facts.tools_used = {1};
+    CHECK(helix::file_tools_used(facts) == std::set<int>{1});
+}
+
+namespace {
+constexpr const char* kT0T2Footer = "; filament_type = PLA;PLA;PETG\n"
+                                    "; filament_colour = #FF0000;#00FF00;#0000FF\n"
+                                    "G28\n"
+                                    "T0\n"
+                                    "T2\n"
+                                    "; filament used [g] = 1.50, 0.00, 2.25\n";
+} // namespace
+
+TEST_CASE_METHOD(LoaderFixture,
+                 "a reprint with no tools in hand reads them from the file for the pre-print step",
+                 "[print_start_inputs][reprint]") {
+    get_printer_state().update_from_status(nlohmann::json{{"webhooks", {{"state", "ready"}}}});
+    helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> backend_reg(api.get(), nullptr);
+    // The last print ran configured (T0, T2 at their own heads), so a reprint
+    // has its routing; only the tools are missing.
+    helix::SnapmakerTestAccess::handle_status(
+        *backend_reg, nlohmann::json{{"print_task_config",
+                                      {{"extruders_used", {true, false, true, false}},
+                                       {"extruder_map_table", {0, 1, 2, 3, 0, 0, 0, 0}}}}});
+    helix::PlantedGcode file("reprint_t0t2.gcode", "", kT0T2Footer);
+    helix::ui::PrintStartController controller(get_printer_state(), api.get());
+    client.clear_gcode_script_history();
+
+    bool started = false;
+    controller.initiate_reprint(
+        file.name(), "", /*tools_used=*/{}, [&started]() { started = true; }, []() {});
+    drain();
+
+    const auto history = client.gcode_script_history();
+    bool used_heads = false;
+    for (const auto& script : history) {
+        if (script.find("SET_PRINT_USED_EXTRUDERS EXTRUDERS=0,2") != std::string::npos) {
+            used_heads = true;
+        }
+    }
+    INFO("gcode sent: " << history.size() << " script(s)");
+    CHECK(used_heads);
+    CHECK(started);
 }

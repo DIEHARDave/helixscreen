@@ -217,6 +217,9 @@ class PrintStartController {
     }
 
   private:
+    /// Reads a reprinted file's tools when its caller has none; created on that use.
+    std::unique_ptr<helix::FileStartFactsLoader> reprint_facts_;
+
     // Test-only access to the gate-pipeline runner (toy-gate injection and
     // dialog introspection).
     friend class ::PrintStartControllerTestAccess;

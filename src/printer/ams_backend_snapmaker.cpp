@@ -1352,16 +1352,14 @@ void AmsBackendSnapmaker::note_print_start_from_here() {
 }
 
 bool AmsBackendSnapmaker::file_uses_later_tool(const FileStartFacts& facts) {
-    if (!facts.tools_used.empty()) {
-        return std::any_of(facts.tools_used.begin(), facts.tools_used.end(),
-                           [](int tool) { return tool > 0; });
+    if (const std::set<int> tools = file_tools_used(facts); !tools.empty()) {
+        return std::any_of(tools.begin(), tools.end(), [](int tool) { return tool > 0; });
     }
     if (!facts.metadata) {
         return true;
     }
-    const auto& weights = facts.metadata->filament_weights;
-    if (!weights.empty()) {
-        return std::any_of(weights.begin() + 1, weights.end(), [](double g) { return g > 0.0; });
+    if (!facts.metadata->filament_weights.empty()) {
+        return false; // weights given, none past zero
     }
     return facts.metadata->filament_colors.size() > 1;
 }

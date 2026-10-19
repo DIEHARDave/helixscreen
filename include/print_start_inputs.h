@@ -75,6 +75,11 @@ effective_file_mappings(std::vector<ToolMapping> card_mappings,
 /// Sets ctx.has_file_facts.
 void fill_file_context(PrintStartContext& ctx, const FileStartFacts& facts);
 
+/// The tools @p facts shows the file using: its scanned tools, else the tools
+/// its metadata gives filament weight to. Empty when neither answers; a palette
+/// alone lists the slicer's filaments, not the tools that print.
+[[nodiscard]] std::set<int> file_tools_used(const FileStartFacts& facts);
+
 /// The empty-slot pre-flight for @p facts, computed with the same inputs.
 [[nodiscard]] PreflightResult preflight_for(const FileStartFacts& facts);
 
