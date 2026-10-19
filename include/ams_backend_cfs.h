@@ -337,8 +337,11 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     }
 
     /// `BOX_PRINT_MAP MAP=<tool>:<slot>,...` for the next print, or "" when
-    /// the firmware has no BOX_PRINT_MAP or check_preprint_remap() refuses.
-    /// See print_map_gcode().
+    /// the firmware has no BOX_PRINT_MAP. A start with nothing to map, or one
+    /// check_preprint_remap() refuses, gets kClearPrintMapGcode so a map a
+    /// start that never loaded left pending cannot apply to it. A full map
+    /// needs no clear in front: it replaces the pending one. See
+    /// print_map_gcode().
     [[nodiscard]] std::string build_preprint_gcode(const std::set<int>& tools_used,
                                                    const std::map<int, int>& remap) const override;
 
@@ -356,10 +359,10 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// With @p tools_used known the map names exactly those tools, a tool
     /// @p remap leaves out at its own slot (box.py's default T<n> = slot n),
     /// and it goes out even when nothing is remapped. The firmware keeps a map
-    /// for the next print loaded within 10 minutes and has no clearing form,
-    /// so only a full map overwrites one a start that never loaded left
-    /// pending. Remap entries for tools the file does not use are dropped: the
-    /// firmware refuses a start whose map disagrees with the file's tools.
+    /// for the next print loaded within 10 minutes, and a full map overwrites
+    /// one a start that never loaded left pending. Remap entries for tools the
+    /// file does not use are dropped: the firmware refuses a start whose map
+    /// disagrees with the file's tools.
     ///
     /// With @p tools_used empty (the file's tools are unknown) the map is the
     /// remap's entries alone, and "" when none moves a tool off its own slot.
@@ -370,10 +373,17 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// tools are unknown, else only the ones it uses.
     [[nodiscard]] static bool print_map_names_tool(const std::set<int>& tools_used, int tool);
 
-    /// The firmware registers BOX_PRINT_MAP: revision 3 and later. The command
-    /// is registered in Python, so no gcode_macro lookup can see it, and the
-    /// revision is the only positive evidence the app has.
+    /// The firmware registers BOX_PRINT_MAP with its empty-MAP= clearing form:
+    /// kForkPrintMapRevision and later. The command is registered in Python, so
+    /// no gcode_macro lookup can see it, and the revision is the only positive
+    /// evidence the app has.
     [[nodiscard]] static bool fork_has_print_map(const nlohmann::json& box_json);
+
+    /// Revision 3 has BOX_PRINT_MAP without the clear, so mapping is off there.
+    static constexpr int kForkPrintMapRevision = 4;
+
+    /// Drops whatever map is pending for the next print.
+    static constexpr const char* kClearPrintMapGcode = "BOX_PRINT_MAP MAP=";
 
     /// The CFS owns its own tool->slot table and get_tool_mapping() returns it.
     [[nodiscard]] bool owns_tool_mapping_table() const override {

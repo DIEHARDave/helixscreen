@@ -6402,8 +6402,8 @@ TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
     backend.mark_running();
     json box = make_gapped_fork_box();
 
-    SECTION("revision 3 sends the map") {
-        box["api_revision"] = 3;
+    SECTION("revision 4 sends the map") {
+        box["api_revision"] = 4;
         CfsTestAccess::handle_status(backend, make_cfs_notification(box));
 
         CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::PrePrintSend);
@@ -6426,7 +6426,7 @@ TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
     }
 
     SECTION("no remap still sends the identity map for the file's tools") {
-        box["api_revision"] = 3;
+        box["api_revision"] = 4;
         CfsTestAccess::handle_status(backend, make_cfs_notification(box));
         CHECK(AmsBackendCfs::print_map_gcode({0, 1}, {}) == "BOX_PRINT_MAP MAP=0:0,1:1");
         CHECK(backend.build_preprint_gcode({0, 1}, {}) == "BOX_PRINT_MAP MAP=0:0,1:1");
@@ -6434,15 +6434,16 @@ TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
               "BOX_PRINT_MAP MAP=0:0,1:1");
     }
 
-    SECTION("with the file's tools unknown, no remap sends nothing") {
-        box["api_revision"] = 3;
+    SECTION("a start with nothing to map clears any pending map") {
+        box["api_revision"] = 4;
         CfsTestAccess::handle_status(backend, make_cfs_notification(box));
-        CHECK(backend.build_preprint_gcode({}, {}).empty());
-        CHECK(backend.build_preprint_gcode({}, {{2, 2}}).empty());
+        CHECK(AmsBackendCfs::print_map_gcode({}, {}).empty());
+        CHECK(backend.build_preprint_gcode({}, {}) == "BOX_PRINT_MAP MAP=");
+        CHECK(backend.build_preprint_gcode({}, {{2, 2}}) == "BOX_PRINT_MAP MAP=");
     }
 
     SECTION("the map names only the file's tools") {
-        box["api_revision"] = 3;
+        box["api_revision"] = 4;
         CfsTestAccess::handle_status(backend, make_cfs_notification(box));
         CHECK(AmsBackendCfs::print_map_gcode({0}, {{0, 2}, {3, 1}}) == "BOX_PRINT_MAP MAP=0:2");
         // A tool the file does not use cannot refuse the print either: slot 1
@@ -6452,15 +6453,15 @@ TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
     }
 
     SECTION("an unremapped start after a remapped one overwrites the pending map") {
-        box["api_revision"] = 3;
+        box["api_revision"] = 4;
         CfsTestAccess::handle_status(backend, make_cfs_notification(box));
         REQUIRE(backend.build_preprint_gcode({0, 1}, {{0, 9}, {1, 10}}) ==
                 "BOX_PRINT_MAP MAP=0:9,1:10");
         CHECK(backend.build_preprint_gcode({0, 1}, {}) == "BOX_PRINT_MAP MAP=0:0,1:1");
     }
 
-    SECTION("a remap to a slot that cannot feed sends nothing and says why") {
-        box["api_revision"] = 3;
+    SECTION("a remap to a slot that cannot feed sends only the clear and says why") {
+        box["api_revision"] = 4;
         box["boxes"] = json::array(
             {json{{"address", 2}, {"online", false}}, json{{"address", 3}, {"online", true}}});
         CfsTestAccess::handle_status(backend, make_cfs_notification(box));
@@ -6470,16 +6471,16 @@ TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
         CHECK(err.result == AmsResult::WRONG_STATE);
         CHECK(err.slot_index == 5);
         CHECK(err.user_msg.find("Disconnected") != std::string::npos);
-        CHECK(backend.build_preprint_gcode({0}, {{0, 5}}).empty());
+        CHECK(backend.build_preprint_gcode({0}, {{0, 5}}) == "BOX_PRINT_MAP MAP=");
 
         // Box 1 (slots 0-3) is not on the bus at all.
         err = backend.check_preprint_remap({0}, {{0, 1}});
         CHECK(err.result == AmsResult::INVALID_SLOT);
         CHECK(err.slot_index == 1);
-        CHECK(backend.build_preprint_gcode({0}, {{0, 1}}).empty());
+        CHECK(backend.build_preprint_gcode({0}, {{0, 1}}) == "BOX_PRINT_MAP MAP=");
 
         // One bad target refuses the whole map, not just its own entry.
-        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 9}, {1, 5}}).empty());
+        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 9}, {1, 5}}) == "BOX_PRINT_MAP MAP=");
 
         // Box 3 answers.
         CHECK(backend.check_preprint_remap({0}, {{0, 9}}).success());
@@ -6487,11 +6488,20 @@ TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
     }
 
     SECTION("the pre-print send is not a BOX_MODIFY_TN table write") {
-        box["api_revision"] = 3;
+        box["api_revision"] = 4;
         CfsTestAccess::handle_status(backend, make_cfs_notification(box));
         CHECK(backend.can_set_tool_mapping(0, 5).result == AmsResult::NOT_SUPPORTED);
         CHECK(backend.set_tool_mapping(0, 5).result == AmsResult::NOT_SUPPORTED);
         CHECK(backend.captured.empty());
+    }
+
+    SECTION("revision 3 is not trusted with BOX_PRINT_MAP") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::None);
+        CHECK_FALSE(backend.requires_preprint_send());
+        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 5}, {1, 6}}).empty());
+        CHECK(backend.build_preprint_gcode({}, {}).empty());
     }
 
     SECTION("revision 2 has no BOX_PRINT_MAP: no remap, no pre-print send") {
@@ -6501,6 +6511,7 @@ TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
         CHECK_FALSE(backend.requires_preprint_send());
         CHECK(backend.build_preprint_gcode({0, 1}, {{0, 5}, {1, 2}}).empty());
         CHECK(backend.build_preprint_gcode({0, 1}, {}).empty());
+        CHECK(backend.build_preprint_gcode({}, {}).empty());
     }
 
     SECTION("revision 1 has none either") {
@@ -6510,7 +6521,7 @@ TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
     }
 
     SECTION("a box that turns stock drops it") {
-        box["api_revision"] = 3;
+        box["api_revision"] = 4;
         CfsTestAccess::handle_status(backend, make_cfs_notification(box));
         REQUIRE(backend.requires_preprint_send());
         CfsTestAccess::handle_status(backend, make_cfs_notification(make_cfs_status_json()["box"]));
