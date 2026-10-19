@@ -108,7 +108,7 @@ The tree has **74 classes with a `static X& instance()` (or pointer) declaration
 | `AmsState` | [`ams_state.h`](../../../include/ams_state.h) | Multi-backend filament-system state (ch. 07) |
 | `TimelapseState` | [`timelapse_state.h`](../../../include/timelapse_state.h) | Timelapse recording + render progress |
 | `PrintControlButtons` | [`print_control_buttons.h`](../../../include/print_control_buttons.h) | Shared pause/resume/stop subjects + callbacks |
-| `PowerDeviceState` | [`power_device_state.h`](../../../include/power_device_state.h) | Moonraker power-device state |
+| `PowerDeviceState` | [`power_device_state.h`](../../../include/power_device_state.h) | Moonraker power-device state. Rediscovery (every Klipper restart) keeps a still-present device's subject and lifetime and updates it in place, so tiles observing it keep working |
 | `PerformanceState` | [`performance_state.h`](../../../include/performance_state.h) | Per-metric ring buffers (~60 s history) |
 | `SensorState` | [`sensor_state.h`](../../../include/sensor_state.h) | Discovered Moonraker sensor metadata |
 | `AbortManager` | [`abort_manager.h`](../../../include/abort_manager.h) | Print cancellation with progressive escalation |
