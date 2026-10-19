@@ -6,6 +6,7 @@
 #include "connection_state.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "lua_bindings.h"
+#include "printer_state.h"
 
 namespace helix::plugin {
 
@@ -72,6 +73,9 @@ int push_field(lua_State* L, const FieldValue& v) {
     case PrinterValueKind::DeciDegrees:
         lua_pushnumber(L, v.i / 10.0);
         break;
+    case PrinterValueKind::KlippyState:
+        lua_pushstring(L, helix::klippy_state_name(static_cast<helix::KlippyState>(v.i)));
+        break;
     }
     return 1;
 }
@@ -126,6 +130,7 @@ int printer_watch(lua_State* L) {
 const std::vector<PrinterField>& printer_fields() {
     static const std::vector<PrinterField> kFields{
         {"connected", "printer_connection_state", PrinterValueKind::Bool},
+        {"klippy_state", "klippy_state", PrinterValueKind::KlippyState},
         {"print_state", "print_state", PrinterValueKind::String},
         {"progress", "print_progress", PrinterValueKind::Int},
         {"filename", "print_filename", PrinterValueKind::String},

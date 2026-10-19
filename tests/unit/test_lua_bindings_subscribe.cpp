@@ -40,21 +40,24 @@ TEST_CASE_METHOD(LVGLTestFixture, "the first callback carries queried values",
         temp = "none"
         target = "unset"
         calls = 0
-        helix.moonraker.subscribe({ extruder = { "temperature" } }, function(s)
+        snap = "unset"
+        helix.moonraker.subscribe({ extruder = { "temperature" } }, function(s, snapshot)
             calls = calls + 1
             temp = s.extruder and s.extruder.temperature
             target = s.extruder and s.extruder.target
+            snap = snapshot
         end)
     )"));
     REQUIRE(b.fake.requests.size() == 1);
     CHECK(b.fake.requests[0].a == "printer.objects.query");
     CHECK(b.fake.requests[0].params == json{{"objects", {{"extruder", {"temperature"}}}}});
     b.fake.requests[0].reply(RpcResult{
-        true, json{{"status", {{"extruder", {{"temperature", 210.5}, {"target", 215}}}}}}, {}});
+        true, query_reply({{"extruder", {{"temperature", 210.5}, {"target", 215}}}}), {}});
     drain();
     CHECK(b.t.global("calls") == "1");
     CHECK(b.t.global("temp") == "210.5");
     CHECK(b.t.global("target") == "nil");
+    CHECK(b.t.global("snap") == "true");
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "deltas reach only the matching subscription",
@@ -62,24 +65,25 @@ TEST_CASE_METHOD(LVGLTestFixture, "deltas reach only the matching subscription",
     BoundRuntime b({&install_moonraker_bindings});
     REQUIRE(b.t.run(R"(
         got = {}
-        helix.moonraker.subscribe({ extruder = true }, function(s)
+        helix.moonraker.subscribe({ extruder = true }, function(s, snapshot)
             got[#got + 1] = "ext:" .. tostring(s.extruder and s.extruder.temperature)
         end)
-        helix.moonraker.subscribe({ heater_bed = { "temperature" } }, function(s)
-            got[#got + 1] = "bed:" .. tostring(s.heater_bed and s.heater_bed.temperature)
+        helix.moonraker.subscribe({ heater_bed = { "temperature" } }, function(s, snapshot)
+            got[#got + 1] = "bed:" .. tostring(s.heater_bed and s.heater_bed.temperature) ..
+                            ":" .. tostring(snapshot)
         end)
     )"));
-    REQUIRE(b.fake.notify.size() == 1);
-    CHECK(b.fake.notify[0].first == "notify_status_update");
+    REQUIRE(b.fake.status.size() == 1);
+    CHECK(b.fake.notify.empty());
     for (auto& r : b.fake.requests)
-        r.reply(RpcResult{true, json{{"status", json::object()}}, {}});
+        r.reply(RpcResult{true, query_reply(json::object()), {}});
     drain();
     REQUIRE(b.t.run("got = {}"));
 
-    b.fake.notify[0].second(json{{"params", {{{"heater_bed", {{"temperature", 60.0}}}}, 12.3}}});
+    b.fake.status[0](delta_frame({{"heater_bed", {{"temperature", 60.0}}}}));
     drain();
     REQUIRE(b.t.run("r = table.concat(got, ',')"));
-    CHECK(b.t.global("r") == "bed:60.0");
+    CHECK(b.t.global("r") == "bed:60.0:false");
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "a true subscription sees whole objects",
@@ -92,11 +96,89 @@ TEST_CASE_METHOD(LVGLTestFixture, "a true subscription sees whole objects",
                                      tostring(s.extruder.power))
         end)
     )"));
-    REQUIRE(b.fake.notify.size() == 1);
-    b.fake.notify[0].second(
-        json{{"params", {{{"extruder", {{"temperature", 30.0}, {"power", 0.4}}}}, 1.0}}});
+    REQUIRE(b.fake.status.size() == 1);
+    b.fake.status[0](delta_frame({{"extruder", {{"temperature", 30.0}, {"power", 0.4}}}}));
     drain();
     CHECK(b.t.global("fields") == "30.0/0.4");
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "a whole-object frame re-delivers every subscription a snapshot",
+                 "[plugin][lua][subscribe]") {
+    BoundRuntime b({&install_moonraker_bindings});
+    REQUIRE(b.t.run(R"(
+        got = {}
+        helix.moonraker.subscribe({ extruder = { "temperature" } }, function(s, snapshot)
+            got[#got + 1] = "ext:" .. tostring(s.extruder and s.extruder.temperature) .. "/" ..
+                            tostring(s.extruder and s.extruder.target) .. "/" ..
+                            tostring(s.toolhead) .. ":" .. tostring(snapshot)
+        end)
+        helix.moonraker.subscribe({ anl_simulator = true }, function(s, snapshot)
+            local a = s.anl_simulator
+            got[#got + 1] = "sim:" .. tostring(a and a.mode) .. "/" .. tostring(a and a.rate) ..
+                            ":" .. tostring(snapshot)
+        end)
+    )"));
+    REQUIRE(b.fake.requests.size() == 2);
+    for (auto& r : b.fake.requests)
+        r.reply(RpcResult{true, query_reply(json::object()), {}});
+    drain();
+    REQUIRE(b.t.run("got = {}"));
+
+    // Discovery after a Klipper restart replays a snapshot it captured earlier; the
+    // plugin gets fresh values from its own query instead.
+    b.fake.status[0](whole_objects_frame(
+        {{"extruder", {{"temperature", 20.0}}}, {"anl_simulator", {{"mode", "stale"}}}}, true));
+    drain();
+    REQUIRE(b.fake.requests.size() == 3);
+    CHECK(b.fake.requests[2].a == "printer.objects.query");
+    CHECK(b.fake.requests[2].params ==
+          json{{"objects", {{"extruder", {"temperature"}}, {"anl_simulator", nullptr}}}});
+    REQUIRE(b.t.run("r = table.concat(got, ',')"));
+    CHECK(b.t.global("r") == "");
+
+    b.fake.requests[2].reply(
+        RpcResult{true,
+                  query_reply({{"extruder", {{"temperature", 215.0}, {"target", 215.0}}},
+                               {"anl_simulator", {{"mode", "run"}, {"rate", 3}}},
+                               {"toolhead", {{"position", {0, 0, 0, 0}}}}}),
+                  {}});
+    drain();
+    REQUIRE(b.t.run("r = table.concat(got, ',')"));
+    CHECK(b.t.global("r") == "ext:215.0/nil/nil:true,sim:run/3:true");
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "whole-object frames coalesce into one query at a time",
+                 "[plugin][lua][subscribe]") {
+    BoundRuntime b({&install_moonraker_bindings});
+    REQUIRE(b.t.run(R"(
+        n = 0
+        helix.moonraker.subscribe({ extruder = true }, function(s, snapshot) n = n + 1 end)
+    )"));
+    REQUIRE(b.fake.requests.size() == 1); // the first delivery's query
+    const json frame = whole_objects_frame({{"extruder", {{"temperature", 1.0}}}}, false);
+
+    b.fake.status[0](frame);
+    b.fake.status[0](frame);
+    drain();
+    REQUIRE(b.fake.requests.size() == 2);
+
+    // Frames while that query is out fold into exactly one more, sent once it settles.
+    b.fake.status[0](frame);
+    drain();
+    b.fake.status[0](frame);
+    drain();
+    CHECK(b.fake.requests.size() == 2);
+    b.fake.requests[1].reply(
+        RpcResult{true, query_reply({{"extruder", {{"temperature", 2.0}}}}), {}});
+    drain();
+    REQUIRE(b.fake.requests.size() == 3);
+
+    // A failed query settles too.
+    b.fake.requests[2].reply(RpcResult{false, {}, "Klippy Host not connected"});
+    drain();
+    b.fake.status[0](frame);
+    drain();
+    CHECK(b.fake.requests.size() == 4);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "cancel shrinks the set; closing the runtime clears it",
@@ -113,7 +195,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "cancel shrinks the set; closing the runtime c
     b.t.rt.reset();
     REQUIRE(b.fake.object_sets.back() ==
             std::make_pair(std::string("test-plugin"), json::object()));
-    CHECK(b.fake.notify_unregistered == 1);
+    CHECK(b.fake.status_unregistered == 1);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "a cancelled subscription stops delivering",
@@ -125,12 +207,15 @@ TEST_CASE_METHOD(LVGLTestFixture, "a cancelled subscription stops delivering",
         h:cancel()
         h:cancel()
     )"));
-    REQUIRE(b.fake.notify.size() == 1);
-    b.fake.notify[0].second(json{{"params", {{{"extruder", {{"temperature", 30.0}}}}, 1.0}}});
+    REQUIRE(b.fake.status.size() == 1);
+    b.fake.status[0](delta_frame({{"extruder", {{"temperature", 30.0}}}}));
     drain();
     for (auto& r : b.fake.requests)
-        r.reply(RpcResult{true, json{{"status", {{"extruder", {{"temperature", 30.0}}}}}}, {}});
+        r.reply(RpcResult{true, query_reply({{"extruder", {{"temperature", 30.0}}}}), {}});
     drain();
+    b.fake.status[0](whole_objects_frame({{"extruder", {{"temperature", 30.0}}}}, false));
+    drain();
+    CHECK(b.fake.requests.size() == 1); // nothing left to re-snapshot
     CHECK(b.t.global("n") == "0");
 }
 

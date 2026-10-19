@@ -92,7 +92,8 @@ int push_rpc_value(lua_State* co, const RpcResult&);
 int push_rpc_capped_body(lua_State* co, const json& value, size_t body_bytes);
 
 /// How one row of the stable printer table converts its subject into a Lua value.
-enum class PrinterValueKind { Bool, String, Int, DeciDegrees };
+/// KlippyState is the klippy_state subject's int as Klipper's own state name.
+enum class PrinterValueKind { Bool, String, Int, DeciDegrees, KlippyState };
 
 /// One Lua-facing printer name and the XML subject backing it.
 struct PrinterField {
