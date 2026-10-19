@@ -43,10 +43,23 @@ WHAT IS SKIPPED (reported in the plan, never renamed)
   data         the name is used as data: it is a whole string literal in C++,
                or appears in an XML/JSON/Lua/YAML/config file, or is passed to a
                stringifying (#arg) macro defined in this repo
-  collision    the new name already exists as an identifier, or two old names
-               convert to the same new name
+  collision    two old names convert to the same new name, the new name is a
+               lib/ or vendored identifier, or a translation unit sees both
+               the old and the new name (below)
   generated    declared or referenced in a generated file (first lines say
                "do not edit"); its generator would put the old name back
+
+A new name that already exists in our own code is no collision when no
+translation unit can see both names: no file holds both, and no file reaches
+one through its quoted or bracketed #include closure (forced -include headers
+from the build files count as included everywhere) while reaching the other.
+Two such names live in different scopes, so the rename cannot change what
+either one refers to.
+
+Every skipped name is listed with its reason and declaration sites on stdout
+after --plan and after --apply. With --git-range, each declaration of a skipped
+name that the commit gate (scripts/check_constant_naming.py) will flag in the
+range is listed again and the run exits 1; --allow-skips accepts them.
 
 REWRITING
 
@@ -301,6 +314,8 @@ def classify(rel):
 # ---------------------------------------------------------------------------
 
 BUILD_DEFINE_RE = re.compile(r"(?<![\w-])-D\s*([A-Za-z_]\w*)")
+FORCED_INCLUDE_RE = re.compile(r"(?<![\w-])-include\s+(?:\$\([A-Z_]+\)/)?([\w./-]+\.h\w*)")
+INCLUDE_RE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*[<"]([^>"\n]+)[>"]', re.M)
 KCONFIG_RE = re.compile(r"^\s*(?:menu)?config\s+([A-Za-z_]\w*)", re.M)
 STRINGIFY_MACRO_RE = re.compile(
     r"^[ \t]*#[ \t]*define[ \t]+([A-Za-z_]\w*)\(([^)]*)\)((?:[^\n\\]|\\.)*)", re.M | re.S
@@ -365,6 +380,8 @@ def scan(tree):
     whole_string_names = set()
     stringifiers = set()
     cxx_files = []
+    forced = set()
+    ids_by_file = {}
 
     for rel in tree.files:
         kind = classify(rel)
@@ -381,6 +398,7 @@ def scan(tree):
         name = Path(rel).name
         if name == "Makefile" or path_ext in (".mk", ".cmake") or name == "CMakeLists.txt":
             macros.update(BUILD_DEFINE_RE.findall(tree.text(rel)))
+            forced.update(FORCED_INCLUDE_RE.findall(tree.text(rel)))
         elif name.startswith("Kconfig"):
             macros.update("CONFIG_" + n for n in KCONFIG_RE.findall(tree.text(rel)))
         elif name.startswith("sdkconfig"):
@@ -396,14 +414,18 @@ def scan(tree):
         text = tree.text(rel)
         macros.update(DEFINE_RE.findall(text))
         stringifiers.update(stringifying_macros(text))
+        ids = ids_by_file.setdefault(rel, set())
         for kind, s, e in lex(text):
             if kind == "id":
-                our_ids.add(text[s:e])
+                ids.add(text[s:e])
             elif kind == "string":
                 lit = text[s:e]
                 inner = re.sub(r'^(?:u8|[uUL])?R?"(?:[^(]*\()?|(?:\)[^)"]*)?"$', "", lit)
                 if UPPER_SNAKE_RE.match(inner):
                     whole_string_names.add(inner)
+
+    for ids in ids_by_file.values():
+        our_ids |= ids
 
     for rel in cxx_files:
         text = tree.text(rel)
@@ -435,7 +457,55 @@ def scan(tree):
         "our_ids": our_ids,
         "data": (data_words | whole_string_names | stringified),
         "stringifiers": sorted(stringifiers),
+        "ids_by_file": ids_by_file,
+        "includes": IncludeGraph(tree, cxx_files, forced),
     }
+
+
+class IncludeGraph:
+    """Which of our C++ files can see which: the #include edges between them.
+
+    An include resolves to every scanned file whose path ends with it, so an
+    ambiguous one over-connects, which only ever keeps a name from renaming.
+    """
+
+    def __init__(self, tree, cxx_files, forced):
+        by_name = {}
+        for rel in cxx_files:
+            by_name.setdefault(Path(rel).name, []).append(rel)
+
+        def resolve(inc):
+            return [rel for rel in by_name.get(Path(inc).name, ())
+                    if rel == inc or rel.endswith("/" + inc)]
+
+        self.includes, self.includers = {}, {}
+        for rel in cxx_files:
+            for inc in INCLUDE_RE.findall(tree.text(rel)):
+                for target in resolve(inc.strip()):
+                    if target != rel:
+                        self.includes.setdefault(rel, set()).add(target)
+                        self.includers.setdefault(target, set()).add(rel)
+        # A forced -include, and everything it includes, is in every unit.
+        self.forced = self._closure([t for inc in forced for t in resolve(inc)], self.includes)
+
+    @staticmethod
+    def _closure(roots, edges):
+        seen, todo = set(roots), list(roots)
+        while todo:
+            for other in edges.get(todo.pop(), ()):
+                if other not in seen:
+                    seen.add(other)
+                    todo.append(other)
+        return seen
+
+    def share_a_unit(self, files_a, files_b):
+        """True if some translation unit can see a file of each set."""
+        if not files_a or not files_b:
+            return False
+        if self.forced & (set(files_a) | set(files_b)):
+            return True
+        return bool(self._closure(files_a, self.includers)
+                    & self._closure(files_b, self.includers))
 
 
 # ---------------------------------------------------------------------------
@@ -448,7 +518,7 @@ def build_plan(tree):
     entries = {}
     for old, sites in s["decls"].items():
         new = to_k_camel(old)
-        reason = ""
+        reason = detail = ""
         if old in s["macros"]:
             reason = "macro"
         elif old in s["enumerators"]:
@@ -459,9 +529,19 @@ def build_plan(tree):
             reason = "generated"
         elif old in s["data"]:
             reason = "data"
-        elif new in s["our_ids"] or new in s["third_party"]:
+        elif new in s["third_party"]:
             reason = "collision"
-        entries[old] = {"new": new, "reason": reason, "sites": sorted(set(sites))}
+            detail = f"{new} is a third-party identifier"
+        elif new in s["our_ids"]:
+            olds = [f for f, ids in s["ids_by_file"].items() if old in ids]
+            news = [f for f, ids in s["ids_by_file"].items() if new in ids]
+            if s["includes"].share_a_unit(olds, news):
+                reason = "collision"
+                detail = f"{new} is visible beside it: {' '.join(sorted(news)[:3])}"
+                if len(news) > 3:
+                    detail += f" (+{len(news) - 3} more)"
+        entries[old] = {"new": new, "reason": reason, "sites": sorted(set(sites)),
+                        "detail": detail if reason == "collision" else ""}
 
     by_new = {}
     for old, e in entries.items():
@@ -471,9 +551,30 @@ def build_plan(tree):
         if len(olds) > 1:
             for old in olds:
                 entries[old]["reason"] = "collision"
+                entries[old]["detail"] = f"{' and '.join(sorted(olds))} both convert to {new}"
 
     upper_enumerators = sum(n for name, n in s["enumerators"].items() if is_upper_snake(name))
-    return entries, upper_enumerators, s["stringifiers"]
+    return entries, upper_enumerators, s["stringifiers"], s["ids_by_file"]
+
+
+def skip_lines(entries, names=None):
+    """One line per skipped name (of names, when given): reason, old -> new,
+    declaration sites, and what it collides with."""
+    lines = []
+    for old in sorted(entries):
+        e = entries[old]
+        if not e["reason"] or (names is not None and old not in names):
+            continue
+        detail = f"  [{e['detail']}]" if e.get("detail") else ""
+        lines.append(f"  {e['reason']:<11} {old} -> {e['new']}  {' '.join(e['sites'])}{detail}")
+    return lines
+
+
+def print_skips(entries):
+    lines = skip_lines(entries)
+    if lines:
+        print(f"skipped {len(lines)} name(s), left UPPER_SNAKE:")
+        print("\n".join(lines))
 
 
 def write_plan(path, entries, upper_enumerators, stringifiers):
@@ -659,17 +760,21 @@ def main(argv=None):
                     help="also apply the renames of an earlier plan")
     ap.add_argument("--files", nargs="+", metavar="PATH", help="rewrite only these files")
     ap.add_argument("--git-range", metavar="A..B", help="rewrite only files this range changes")
+    ap.add_argument("--allow-skips", action="store_true",
+                    help="with --git-range, exit 0 even when the range declares skipped names")
     ap.add_argument("--root", default=str(ROOT), help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
     if not args.plan and not args.apply:
         ap.error("give --plan FILE, --apply, or both")
 
     tree = Tree(args.root)
-    entries, upper_enums, stringifiers = build_plan(tree)
+    entries, upper_enums, stringifiers, ids_by_file = build_plan(tree)
     if args.plan:
         counts = write_plan(args.plan, entries, upper_enums, stringifiers)
         summary = ", ".join(f"{k} {v}" for k, v in sorted(counts.items()))
         print(f"plan: {summary}; enumerators left {upper_enums} -> {args.plan}")
+        if not args.apply:
+            print_skips(entries)
 
     if not args.apply:
         return 0
@@ -688,7 +793,44 @@ def main(argv=None):
                and rewrite_file(tree, rel, mapping)]
     formatted = format_files(tree.root, changed)
     print(f"apply: {len(mapping)} names, {len(changed)} files changed ({formatted} formatted)")
-    return 0
+    print_skips(entries)
+
+    if not args.git_range:
+        return 0
+    flagged = range_skips(tree.root, args.git_range, targets, entries)
+    if not flagged:
+        return 0
+    print(f"\n*** {len(flagged)} declaration(s) in {args.git_range} keep a skipped "
+          "UPPER_SNAKE name, and the commit gate (check_constant_naming.py) flags each:")
+    for path, lineno, name in flagged:
+        e = entries[name]
+        detail = f"  [{e['detail']}]" if e.get("detail") else ""
+        print(f"  {path}:{lineno}: {name} -> {e['new']}  ({e['reason']}){detail}")
+    if args.allow_skips:
+        return 0
+    print("*** rename them by hand, or mark each `// CONST_NAME_OK: <reason>`; "
+          "--allow-skips accepts them as they are")
+    return 1
+
+
+def range_skips(root, rng, targets, entries):
+    """[(path, lineno, name)] for each skipped name the range declares on a line
+    the commit gate reads as new: the range's files as they are on disk now,
+    against the merge base of its ends."""
+    from check_constant_naming import findings  # it imports this module
+
+    a, _, b = rng.partition("...") if "..." in rng else rng.partition("..")
+    base = subprocess.run(["git", "merge-base", a or "HEAD", b or "HEAD"], cwd=root,
+                          stdout=subprocess.PIPE, check=True).stdout.decode().strip()
+    code = [rel for rel in targets if classify(rel) == "cxx"]
+    if not code:
+        return []
+    diff = subprocess.run(["git", "diff", "-U0", "--no-ext-diff", "--diff-filter=AM", base, "--",
+                           *code], cwd=root, stdout=subprocess.PIPE,
+                          check=True).stdout.decode("utf-8", "replace")
+    skipped = {old for old, e in entries.items() if e["reason"]}
+    return [(path, lineno, name) for path, lineno, name, _ in
+            findings(diff, lambda p: read(Path(root) / p)) if name in skipped]
 
 
 if __name__ == "__main__":

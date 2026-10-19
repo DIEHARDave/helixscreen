@@ -117,6 +117,89 @@ def test_plan_is_deterministic(tmp_path):
     assert plan(root)[1] == plan(root)[1]
 
 
+# --- plan: collisions across scopes -----------------------------------------
+
+def test_a_new_name_in_an_unrelated_file_is_no_collision(tmp_path):
+    rows, _ = plan(make_repo(tmp_path, {
+        "src/a.cpp": "constexpr int GAP = 1;\nint f() { return GAP; }\n",
+        "src/b.cpp": "constexpr int kGap = 2;\n",
+    }))
+    assert rows["GAP"] == ("rename", "kGap")
+
+
+def test_a_new_name_one_include_away_is_a_collision(tmp_path, capsys):
+    rows, _ = plan(make_repo(tmp_path, {
+        "include/b.h": "namespace ui { constexpr int kGap = 2; }\n",
+        "include/c.h": "#include \"b.h\"\n",
+        "src/a.cpp": "#include \"c.h\"\nconstexpr int GAP = 1;\n",
+    }))
+    assert rows["GAP"][0] == "collision"
+    assert "kGap is visible beside it: include/b.h" in capsys.readouterr().out
+
+
+def test_an_old_name_in_a_header_collides_with_a_new_name_in_its_includer(tmp_path):
+    rows, _ = plan(make_repo(tmp_path, {
+        "include/h.h": "constexpr int GAP = 1;\n",
+        "tests/t.cpp": "#include <h.h>\nconstexpr int kGap = 2;\n",
+    }))
+    assert rows["GAP"][0] == "collision"
+
+
+def test_a_forced_include_is_seen_by_every_unit(tmp_path):
+    rows, _ = plan(make_repo(tmp_path, {
+        "Makefile": "FORCED_INCLUDE := -include $(INC_DIR)/pch.h\n",
+        "include/pch.h": "#include \"style.h\"\n",
+        "include/style.h": "constexpr int kGap = 2;\n",
+        "src/a.cpp": "constexpr int GAP = 1;\n",
+    }))
+    assert rows["GAP"][0] == "collision"
+
+
+# --- skip reporting ---------------------------------------------------------
+
+def test_plan_and_apply_list_every_skip_with_reason_and_sites(tmp_path, capsys):
+    root = make_repo(tmp_path, BASE)
+    rc.main(["--plan", str(tmp_path / "p.tsv"), "--root", str(root)])
+    out = capsys.readouterr().out
+    assert "skipped 6 name(s), left UPPER_SNAKE:" in out
+    assert "  macro       MACRO_CLASH -> kMacroClash  src/a.cpp:2" in out
+    assert "  data        DATA_USE -> kDataUse  src/a.cpp:3" in out
+    assert "MAX3D and MAX_3D both convert to kMax3d" in out
+    assert "RENAME_ME" not in out
+
+    rc.main(["--apply", "--root", str(root)])
+    out = capsys.readouterr().out
+    assert "  enumerator  ENUM_CLASH -> kEnumClash  src/a.cpp:4" in out
+
+
+def branch_adding(root, rel, text):
+    (root / rel).write_text(text)
+    subprocess.run(["git", "add", rel], cwd=root, check=True)
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "b"],
+                   cwd=root, check=True)
+
+
+def test_git_range_fails_on_a_skipped_declaration_the_gate_will_flag(tmp_path, capsys):
+    root = make_repo(tmp_path, BASE)
+    branch_adding(root, "src/c.cpp", "constexpr int NEW_ONE = 1;\nconstexpr int MACRO_CLASH2 = 2;\n"
+                                     "#define MACRO_CLASH2 3\n")
+    assert rc.main(["--apply", "--git-range", "HEAD~1..HEAD", "--root", str(root)]) == 1
+    out = capsys.readouterr().out
+    assert "src/c.cpp:2: MACRO_CLASH2 -> kMacroClash2  (macro)" in out
+    assert "src/c.cpp:1" not in out
+    assert "constexpr int kNewOne = 1;" in (root / "src/c.cpp").read_text()
+
+    assert rc.main(["--apply", "--git-range", "HEAD~1..HEAD", "--allow-skips",
+                    "--root", str(root)]) == 0
+
+
+def test_git_range_passes_when_the_range_declares_no_skipped_name(tmp_path):
+    root = make_repo(tmp_path, BASE)
+    # The range uses a skipped name but declares none: the gate has nothing to flag.
+    branch_adding(root, "src/c.cpp", "constexpr int NEW_ONE = MACRO_CLASH;\n")
+    assert rc.main(["--apply", "--git-range", "HEAD~1..HEAD", "--root", str(root)]) == 0
+
+
 # --- apply ------------------------------------------------------------------
 
 def test_apply_renames_code_and_comments_but_never_strings(tmp_path):
