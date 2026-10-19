@@ -471,6 +471,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/panel_widget_temperature.xml",
     "ui_xml/components/panel_widget_thermistor.xml",
     "ui_xml/components/panel_widget_tips.xml",
+    "ui_xml/components/plugin_menu_column_row.xml",
     "ui_xml/components/plugin_menu_row.xml",
     "ui_xml/components/speed_flow_part.xml",
     "ui_xml/components/picker_chip.xml",

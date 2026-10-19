@@ -2,6 +2,7 @@
 
 #include "ui_plugin_menu_rows.h"
 
+#include "ui_button.h"
 #include "ui_callback_helpers.h"
 #include "ui_event_safety.h"
 #include "ui_row_text.h"
@@ -52,7 +53,7 @@ void register_plugin_menu_row_callbacks() {
 
 int append_plugin_rows(ContextMenu& menu, lv_obj_t* container,
                        std::vector<plugin_menu::Entry> entries, plugin_menu::json context,
-                       bool divider) {
+                       bool divider, PluginRowLayout layout) {
     if (!container || entries.empty())
         return 0;
     register_plugin_menu_row_callbacks();
@@ -63,20 +64,28 @@ int append_plugin_rows(ContextMenu& menu, lv_obj_t* container,
     int added = 0;
     const std::string* group = nullptr;
     for (auto& e : entries) {
+        const bool column = layout == PluginRowLayout::Column;
         if (!group || *group != e.plugin_id) {
-            auto* heading =
-                static_cast<lv_obj_t*>(lv_xml_create(container, "plugin_menu_heading", nullptr));
-            set_row_label_text(heading, "plugin_name", e.plugin_name.c_str());
+            auto* heading = static_cast<lv_obj_t*>(lv_xml_create(
+                container, column ? "context_menu_column_heading" : "plugin_menu_heading",
+                nullptr));
+            set_row_label_text(heading, column ? "heading_text" : "plugin_name",
+                               e.plugin_name.c_str());
             group = &e.plugin_id;
         }
         const char* attrs[] = {"icon",      e.icon.empty() ? "puzzle_outline" : e.icon.c_str(),
                                "disabled",  e.enabled ? "false" : "true",
                                "no_reason", e.reason.empty() ? "true" : "false",
                                nullptr};
-        auto* row = static_cast<lv_obj_t*>(lv_xml_create(container, "plugin_menu_row", attrs));
+        auto* row = static_cast<lv_obj_t*>(
+            lv_xml_create(container, column ? "plugin_menu_column_row" : "plugin_menu_row", attrs));
         if (!row)
             continue;
-        set_row_label_text(row, "item_label", e.label.c_str());
+        if (column) {
+            ui_button_set_text(lv_obj_find_by_name(row, "item_button"), e.label.c_str());
+        } else {
+            set_row_label_text(row, "item_label", e.label.c_str());
+        }
         set_row_label_text(row, "item_reason", e.reason.c_str());
         auto tap = std::make_unique<RowTap>(RowTap{&menu, e, context});
         lv_obj_set_user_data(row, tap.get());

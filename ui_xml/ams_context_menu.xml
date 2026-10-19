@@ -35,14 +35,7 @@
                with no sibling group to tell it apart from, the heading just repeats
                what the card header already said. -->
           <!-- DUPLICATE_NAME_OK: ContextMenu searches per column, lv_obj_find_by_name(col, ...) — the base class iterates arbitrary columns and cannot know per-column names -->
-          <lv_obj name="col_heading"
-                  width="100%" height="content" style_pad_all="0" style_pad_gap="#space_xs" flex_flow="column"
-                  scrollable="false" clickable="false">
-            <text_small name="col_filament_label" text="Filament" style_text_color="#text_muted"/>
-            <lv_obj width="100%"
-                    height="1" style_bg_color="#text_muted" style_bg_opa="38" style_pad_all="0" scrollable="false"
-                    clickable="false"/>
-          </lv_obj>
+          <context_menu_column_heading name="col_heading" text="Filament"/>
           <!-- Bypass toggle (external spool only; hidden for lanes). Text is set
                from C++ because it names the action, not the state. -->
           <ui_button name="btn_bypass_toggle"
@@ -133,14 +126,7 @@
                 style_flex_main_place="start" scrollable="false">
           <!-- Group heading — see col_filament's. -->
           <!-- DUPLICATE_NAME_OK: ContextMenu searches per column, lv_obj_find_by_name(col, ...) — the base class iterates arbitrary columns and cannot know per-column names -->
-          <lv_obj name="col_heading"
-                  width="100%" height="content" style_pad_all="0" style_pad_gap="#space_xs" flex_flow="column"
-                  scrollable="false" clickable="false">
-            <text_small name="col_spool_label" text="Spool" style_text_color="#text_muted"/>
-            <lv_obj width="100%"
-                    height="1" style_bg_color="#text_muted" style_bg_opa="38" style_pad_all="0" scrollable="false"
-                    clickable="false"/>
-          </lv_obj>
+          <context_menu_column_heading name="col_heading" text="Spool"/>
           <!-- Select Spool Button (Spoolman quick-assign, hidden by default) -->
           <ui_button name="btn_spoolman"
                      height="#button_height_sm" icon="spoolman" text="Select Spool" variant="ghost" clickable="true"
@@ -179,7 +165,7 @@
              by C++. ContextMenu hides the column while it holds no tappable row,
              so a menu without plugin items is unchanged. -->
         <lv_obj name="col_plugins"
-                width="#ams_context_plugin_col_w" height="content" style_pad_all="0" style_pad_gap="0"
+                width="#ams_context_plugin_col_w" height="content" style_pad_all="0" style_pad_gap="#space_md"
                 flex_flow="column" style_flex_main_place="start" scrollable="false" hidden="true"/>
       </lv_obj>
     </context_menu_card>

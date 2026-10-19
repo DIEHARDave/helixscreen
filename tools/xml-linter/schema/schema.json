@@ -1555,6 +1555,10 @@
           "type": "enum",
           "enum": "label_long_mode"
         },
+        "label_align": {
+          "type": "enum",
+          "enum": "button_label_align"
+        },
         "label_hidden_if_bp_eq": {
           "type": "int"
         },
@@ -2458,6 +2462,10 @@
     "button_layout": [
       "row",
       "column"
+    ],
+    "button_label_align": [
+      "start",
+      "center"
     ],
     "spinner_size": [
       "xs",

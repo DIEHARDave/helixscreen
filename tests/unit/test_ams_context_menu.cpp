@@ -965,15 +965,17 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: plugin rows get their own c
     REQUIRE(col);
     CHECK(lv_obj_get_parent(col) == lv_obj_find_by_name(test_screen(), "menu_columns"));
     CHECK_FALSE(lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN));
-    lv_obj_t* heading = lv_obj_find_by_name(col, "plugin_name");
+    lv_obj_t* heading = lv_obj_find_by_name(col, "heading_text");
     REQUIRE(heading);
     CHECK(std::string(lv_label_get_text(heading)) == "Slot Plug");
-    lv_obj_t* label = lv_obj_find_by_name(col, "item_label");
+    lv_obj_t* button = lv_obj_find_by_name(col, "item_button");
+    REQUIRE(button);
+    lv_obj_t* label = ui_button_get_label(button);
     REQUIRE(label);
     CHECK(std::string(lv_label_get_text(label)) == "Look up");
 
     const std::string material = backend->get_slot_info(2).material;
-    lv_obj_send_event(lv_obj_get_parent(lv_obj_get_parent(label)), LV_EVENT_CLICKED, nullptr);
+    lv_obj_send_event(lv_obj_get_parent(button), LV_EVENT_CLICKED, nullptr);
     CHECK_FALSE(menu.is_visible());
     CHECK(plugin.seen() == "0|2|Gate 3|" + (material.empty() ? std::string("nil") : material));
     process_lvgl(20);
@@ -1004,7 +1006,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_obj_t* col = lv_obj_find_by_name(test_screen(), "col_plugins");
     REQUIRE(col);
     lv_obj_update_layout(lv_obj_get_screen(col));
-    lv_obj_t* label = lv_obj_find_by_name(col, "item_label");
+    lv_obj_t* label = ui_button_get_label(lv_obj_find_by_name(col, "item_button"));
     REQUIRE(label);
     const int32_t need =
         helix::ui::text_width("Inspect this slot", lv_obj_get_style_text_font(label, LV_PART_MAIN),
@@ -1257,5 +1259,140 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         check_fits(measure_lane_menu(*this, w, h, /*with_plugins=*/true), w, h);
     }
     theme_manager_refresh_layout_constants(lv_display_get_default());
+}
+#endif // HELIX_HAS_PLUGINS
+
+#if HELIX_HAS_PLUGINS
+namespace {
+
+/// One enabled plugin with two filament_slot items, the first long enough to
+/// ellipsize in a narrow column.
+struct SlotDemoPlugin {
+    helix::plugin::test::TempDir tmp;
+    std::unique_ptr<helix::plugin::test::HostRig> rig;
+
+    SlotDemoPlugin() {
+        std::filesystem::create_directories(tmp.path / "slot-demo");
+        std::ofstream(tmp.path / "slot-demo" / "manifest.json")
+            << R"({"id":"slot-demo","name":"Slot Demo","version":"1.0.0","menu_items":[
+                 {"id":"i","menu":"filament_slot","label":"Inspect this slot","icon":"tune",
+                  "handler":"go"},
+                 {"id":"t","menu":"filament_slot","label":"Tag slot","handler":"go"}]})";
+        std::ofstream(tmp.path / "slot-demo" / "main.lua")
+            << R"(helix.ui.on("go", function() end))";
+        rig = std::make_unique<helix::plugin::test::HostRig>(
+            helix::plugin::test::enabled("slot-demo", {}));
+        rig->host->load_from(tmp.path.string());
+    }
+};
+
+int32_t screen_top(lv_obj_t* obj) {
+    REQUIRE(obj != nullptr);
+    lv_area_t a;
+    lv_obj_get_coords(obj, &a);
+    return a.y1;
+}
+
+/// The column's visible children that are not its heading, in order.
+std::vector<lv_obj_t*> column_rows(lv_obj_t* col) {
+    std::vector<lv_obj_t*> rows;
+    for (uint32_t i = 0; i < lv_obj_get_child_count(col); ++i) {
+        lv_obj_t* child = lv_obj_get_child(col, static_cast<int32_t>(i));
+        if (!lv_obj_has_flag(child, LV_OBJ_FLAG_HIDDEN) &&
+            lv_obj_has_flag(child, LV_OBJ_FLAG_CLICKABLE)) {
+            rows.push_back(child);
+        }
+    }
+    return rows;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AmsContextMenu: the plugin column lines up with the action columns",
+                 "[ui][ams][context_menu][slim][plugin]") {
+    lv_display_t* disp = lv_display_get_default();
+    ScopedResolution res(disp, 800, 480);
+    theme_manager_refresh_layout_constants(disp);
+    SlotDemoPlugin plugin;
+    ScopedSpoolman spoolman;
+    auto backend = fullest_lane_backend();
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    AmsContextMenu menu;
+    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+    lv_obj_t* spool = lv_obj_find_by_name(test_screen(), "col_spool");
+    lv_obj_t* plugins = lv_obj_find_by_name(test_screen(), "col_plugins");
+    REQUIRE(spool);
+    REQUIRE(plugins);
+    lv_obj_update_layout(lv_obj_get_screen(plugins));
+    REQUIRE(screen_top(plugins) == screen_top(spool)); // side by side
+
+    // The same heading: its label and its rule at the same heights.
+    lv_obj_t* spool_heading = lv_obj_find_by_name(spool, "col_heading");
+    lv_obj_t* plugin_heading = lv_obj_get_child(plugins, 0);
+    REQUIRE(spool_heading);
+    CHECK(screen_top(lv_obj_find_by_name(plugin_heading, "heading_text")) ==
+          screen_top(lv_obj_find_by_name(spool_heading, "heading_text")));
+    REQUIRE(lv_obj_get_child_count(plugin_heading) == 2);
+    CHECK(screen_top(lv_obj_get_child(plugin_heading, 1)) ==
+          screen_top(lv_obj_get_child(spool_heading, 1)));
+    CHECK(lv_obj_get_height(lv_obj_get_child(plugin_heading, 1)) == 1);
+
+    // Row for row: same tops, same height.
+    const auto spool_rows = column_rows(spool);
+    const auto plugin_rows = column_rows(plugins);
+    REQUIRE(plugin_rows.size() == 2);
+    REQUIRE(spool_rows.size() >= 2);
+    for (size_t i = 0; i < plugin_rows.size(); ++i) {
+        INFO("row " << i);
+        CHECK(screen_top(plugin_rows[i]) == screen_top(spool_rows[i]));
+        CHECK(lv_obj_get_height(plugin_rows[i]) == lv_obj_get_height(spool_rows[i]));
+    }
+    menu.hide();
+    process_lvgl(20);
+    theme_manager_refresh_layout_constants(disp);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AmsContextMenu: a plugin column wrapped below the others takes the card's width",
+                 "[ui][ams][context_menu][slim][plugin]") {
+    lv_display_t* disp = lv_display_get_default();
+    {
+        ScopedResolution res(disp, 320, 480);
+        theme_manager_refresh_layout_constants(disp);
+        SlotDemoPlugin plugin;
+        ScopedSpoolman spoolman;
+        auto backend = fullest_lane_backend();
+        REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") ==
+                LV_RESULT_OK);
+        AmsContextMenu menu;
+        REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
+                                      /*is_loaded=*/false, backend.get()));
+        lv_obj_t* columns = lv_obj_find_by_name(test_screen(), "menu_columns");
+        lv_obj_t* filament = lv_obj_find_by_name(test_screen(), "col_filament");
+        lv_obj_t* plugins = lv_obj_find_by_name(test_screen(), "col_plugins");
+        REQUIRE(columns);
+        REQUIRE(filament);
+        REQUIRE(plugins);
+        lv_obj_update_layout(lv_obj_get_screen(columns));
+        REQUIRE(lv_obj_get_style_flex_flow(columns, LV_PART_MAIN) == LV_FLEX_FLOW_ROW_WRAP);
+        REQUIRE(screen_top(plugins) > screen_top(filament));
+
+        CHECK(lv_obj_get_width(plugins) == lv_obj_get_content_width(columns));
+        lv_obj_t* label = ui_button_get_label(lv_obj_find_by_name(plugins, "item_button"));
+        REQUIRE(label);
+        const int32_t need = helix::ui::text_width(
+            "Inspect this slot", lv_obj_get_style_text_font(label, LV_PART_MAIN),
+            lv_obj_get_style_text_letter_space(label, LV_PART_MAIN));
+        CAPTURE(lv_obj_get_width(plugins), lv_obj_get_width(label), need);
+        CHECK(lv_obj_get_width(label) >= need);
+        // Its text starts beside the icon, as the action rows' do, not centred
+        // in the wider row.
+        CHECK(lv_obj_get_style_text_align(label, LV_PART_MAIN) == LV_TEXT_ALIGN_LEFT);
+        menu.hide();
+        process_lvgl(20);
+    }
+    theme_manager_refresh_layout_constants(disp);
 }
 #endif // HELIX_HAS_PLUGINS

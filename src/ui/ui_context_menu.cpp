@@ -483,6 +483,21 @@ void ContextMenu::fit_card_to_screen(lv_obj_t* menu_card) {
             lv_obj_set_width(columns, inner_w);
             lv_obj_set_flex_flow(columns, LV_FLEX_FLOW_ROW_WRAP);
             lv_obj_update_layout(menu_card);
+            // A group wrapped below the first line has the card's whole width to
+            // itself, so it takes it rather than ellipsize its rows in a column
+            // sized for sitting beside the others.
+            int32_t first_line_y = -1;
+            for (uint32_t i = 0; i < lv_obj_get_child_count(columns); i++) {
+                lv_obj_t* col = lv_obj_get_child(columns, static_cast<int32_t>(i));
+                if (!col || lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN))
+                    continue;
+                if (first_line_y < 0) {
+                    first_line_y = lv_obj_get_y(col);
+                } else if (lv_obj_get_y(col) > first_line_y) {
+                    lv_obj_set_width(col, inner_w);
+                }
+            }
+            lv_obj_update_layout(menu_card);
             spdlog::debug("[ContextMenu] Columns wider than {}px — wrapped ({}x{}px)", available_w,
                           lv_obj_get_width(menu_card), lv_obj_get_height(menu_card));
         }

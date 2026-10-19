@@ -635,6 +635,7 @@ lv_obj_t* create_button_icon(lv_obj_t* btn, const char* icon_name,
  * - icon: Optional icon name (e.g., "settings", "heat_wave")
  * - icon_position: "left" (default), "right", "top" or "bottom". Honoured whether
  *   the icon comes from the static icon= attribute or from a bind_icon subject.
+ * - label_align: "center" (default) or "start"; where a long_mode label puts its text.
  *
  * @param state XML parser state
  * @param attrs XML attributes
@@ -1276,8 +1277,12 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
         apply_label_bound(data,
                           data->icon != nullptr &&
                               lv_obj_get_style_flex_flow(btn, LV_PART_MAIN) == LV_FLEX_FLOW_ROW);
-        // Center text within the expanded label
-        lv_obj_set_style_text_align(data->label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        // The expanded label centres its text unless label_align="start" lines it
+        // up with the start-aligned rows of a list.
+        const char* label_align = lv_xml_get_value_of(attrs, "label_align");
+        const bool start = label_align && strcmp(label_align, "start") == 0;
+        lv_obj_set_style_text_align(data->label, start ? LV_TEXT_ALIGN_LEFT : LV_TEXT_ALIGN_CENTER,
+                                    LV_PART_MAIN);
         spdlog::trace("[ui_button] Set long_mode to '{}'", long_mode);
     }
 
