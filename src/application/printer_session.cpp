@@ -672,6 +672,10 @@ void PrinterSession::teardown_printer_scope(TeardownScope scope, DisplayManager*
         queue_freeze.emplace(helix::ui::UpdateQueue::instance(), "teardown_printer_scope");
     }
 
+    // Backends speak last while the client can still send: an operation left running
+    // (a calibration holding the heaters) is ended on the printer, not abandoned there.
+    AmsState::instance().before_disconnect();
+
     // Disconnect the WebSocket client FIRST to stop background threads (mock simulation,
     // WebSocket I/O). Otherwise a notification delivered mid-teardown can trigger new API
     // requests (history fetch, metascan, webcam detection). The client object stays valid

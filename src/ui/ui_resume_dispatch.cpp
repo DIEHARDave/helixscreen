@@ -74,8 +74,9 @@ void restart_print_from_beginning(IMoonrakerAPI* api, const std::string& filenam
     // run synchronously before "ok" returns, so on_success only fires
     // after CANCEL_PRINT_BASE has dropped the print_stats.state to standby.
     // A filament system whose firmware forgets per-print preferences between
-    // prints gets them again here, once the cancel has left the printer idle;
-    // the restart carries no routing, so nothing else is sent.
+    // prints gets them again here, once the cancel has left the printer idle.
+    // The restart carries no routing, so a firmware that holds a map for the
+    // next print gets only its clear.
     std::string prep = "SDCARD_RESET_FILE\nCANCEL_PRINT_BASE";
     if (AmsBackend* backend = AmsState::instance().get_backend();
         backend && backend->requires_preprint_send()) {

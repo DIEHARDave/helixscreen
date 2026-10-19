@@ -211,6 +211,18 @@ class AmsBackend {
     virtual void release_subscriptions() {}
 
     /**
+     * @brief Last word to the printer before the client disconnects
+     *
+     * Teardown (a printer switch or app exit) calls it on the main thread
+     * while the client is still connected, so a backend can end an operation
+     * that would otherwise leave the printer holding heaters or a machine
+     * state. May block briefly for a reply. Panels and subjects are still
+     * alive, so work it triggers may update subjects (an overlay refreshing
+     * its state); it must not open or close UI: no modals, no navigation.
+     */
+    virtual void before_disconnect() {}
+
+    /**
      * @brief Re-fetch authoritative slot/state from the printer.
      *
      * Called from UI sites where the user expects a fresh view of slot state
@@ -2714,6 +2726,24 @@ class AmsBackend {
      */
     [[nodiscard]] virtual std::vector<int> last_print_tool_mapping() const {
         return {}; // Default: not known
+    }
+
+    /**
+     * @brief Does the firmware route each file tool to its own slot by default?
+     *
+     * When last_print_tool_mapping() is not known, a reprint has no routing to
+     * replay. A backend answering true runs every tool the pre-print send leaves
+     * out at the slot of the same number, so the identity map for the file's
+     * tools states that default rather than guessing one; a reprint sends it to
+     * overwrite any map the printer still holds for its next print. A backend
+     * whose jobs carry their own crossover (Snapmaker U1) answers false: there
+     * an identity map is a confident wrong answer, and an unknown routing sends
+     * no map at all.
+     *
+     * Default false.
+     */
+    [[nodiscard]] virtual bool default_print_routing_is_identity() const {
+        return false;
     }
 
     /**

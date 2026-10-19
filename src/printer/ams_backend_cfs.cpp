@@ -3531,7 +3531,7 @@ int AmsBackendCfs::fork_api_revision(const nlohmann::json& box_json) {
 }
 
 bool AmsBackendCfs::fork_has_print_map(const nlohmann::json& box_json) {
-    return fork_api_revision(box_json) >= 3;
+    return fork_api_revision(box_json) >= kForkPrintMapRevision;
 }
 
 std::string AmsBackendCfs::build_preprint_gcode(const std::set<int>& tools_used,
@@ -3540,10 +3540,12 @@ std::string AmsBackendCfs::build_preprint_gcode(const std::set<int>& tools_used,
         return "";
     }
     if (auto err = check_preprint_remap(tools_used, remap); !err.success()) {
-        spdlog::warn("[AMS CFS] BOX_PRINT_MAP not sent: {}", err.technical_msg);
-        return "";
+        spdlog::warn("[AMS CFS] BOX_PRINT_MAP not sent, clearing any pending map: {}",
+                     err.technical_msg);
+        return kClearPrintMapGcode;
     }
-    return print_map_gcode(tools_used, remap);
+    std::string gcode = print_map_gcode(tools_used, remap);
+    return gcode.empty() ? kClearPrintMapGcode : gcode;
 }
 
 AmsError AmsBackendCfs::check_preprint_remap(const std::set<int>& tools_used,

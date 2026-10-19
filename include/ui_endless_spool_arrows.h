@@ -31,7 +31,7 @@ extern "C" {
  * @endcode
  *
  * XML attributes:
- *   - slot_count: Number of slots (1-16) - default 4
+ *   - slot_count: Number of slots (1 to helix::kAmsMaxSlots) - default 4
  *   - slot_width: Width of each slot cell in pixels - default 80
  */
 
@@ -54,7 +54,7 @@ lv_obj_t* ui_endless_spool_arrows_create(lv_obj_t* parent);
  * @brief Set the number of slots
  *
  * @param obj The endless_spool_arrows widget
- * @param count Number of slots (1-16)
+ * @param count Number of slots, clamped to 1..helix::kAmsMaxSlots
  */
 void ui_endless_spool_arrows_set_slot_count(lv_obj_t* obj, int count);
 
@@ -111,7 +111,7 @@ void ui_endless_spool_arrows_refresh(lv_obj_t* obj);
  * @brief Set the endless-spool relation to draw
  *
  * The widget decides bracket vs arrow from each group's `ordered` flag.
- * Members at or beyond the slot count (or beyond 16 slots) are not drawn.
+ * Members at or beyond the slot count are not drawn.
  *
  * @param obj The endless_spool_arrows widget
  * @param config The backend's group relation

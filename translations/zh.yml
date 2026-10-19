@@ -88,6 +88,7 @@ translations:
   1 print: '1 次打印'
   1 profile: '1 个配置'
   '1 unit': '1 个单元'
+  1. Each nozzle is heated, wiped and parked at the front for you to brush clean: 1. 每个喷嘴依次加热、擦拭，并停在前方供你用刷子清洁
   1. Printer homes all axes (~1 minute): 1. 打印机全部轴归零（约1分钟）
   1. Printer homes and probes the bed: 1. 打印机归位并探测热床
   1. Printer will home and probe each screw: 1. 打印机将归位并探测每个螺丝位置
@@ -105,6 +106,7 @@ translations:
 
   2. Place paper between nozzle and bed: 2. 将纸张放在喷嘴和热床之间
   2. Results show how much to turn each screw: 2. 结果显示每个螺丝需要旋转多少
+  2. Take the PEI sheet off the bed when asked: 2. 提示时从热床上取下 PEI 板
   20 minutes: 20分钟
   24 Hour: 24 小时
   24-hour: 24小时制
@@ -113,6 +115,7 @@ translations:
   2D Heatmap: 2D 热图
   2D Layers: 2D 图层
   3. Adjust screws, then re-probe to verify: 3. 调整螺丝，然后重新探测以验证
+  3. Every toolhead is probed and the offsets are saved: 3. 依次探测每个工具头并保存偏移
   3. Lower nozzle until paper drags slightly: 3. 降低喷嘴直到纸张有轻微阻力
   3. Save the position: 3. 保存位置
 
@@ -157,6 +160,7 @@ translations:
   A spool may be tangled or the drive gear is jammed: 料盘可能缠绕，或驱动齿轮卡住
   ? A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
   : '向工具头供应多种耗材的系统,显示槽位数量。在耗材系统界面管理槽位。'
+  A toolhead offset calibration is in progress, possibly from another screen. End it now?: '工具头偏移校准正在进行，可能来自另一个屏幕。现在结束吗?'
   A · 1,-1: "A · 1,-1"
   ABS: ABS
   ACCELEROMETERS: 加速度计
@@ -489,6 +493,7 @@ translations:
   Calibrate Gear: '校准齿轮'
   Calibrate Purge Chute: 校准排料口
   Calibrate Toolhead: '校准工具头'
+  Calibrate Toolhead Offsets: 校准工具头偏移
   Calibrate X: 校准 X 轴
   Calibrate Y: 校准 Y 轴
   Calibrate All Tools: 校准所有工具
@@ -633,6 +638,7 @@ translations:
   Checking for webcam...: 正在检查摄像头...
   Checking plugin: 正在检查插件
   Checking slots...: 正在检查槽位...
+  Checking the PEI sheet is off...: 正在确认 PEI 板已取下...
   Checking the printer...: "正在检查打印机..."
   Checking timelapse plugin...: 正在检查延时摄影插件...
   Checking webcam: 正在检查摄像头
@@ -656,6 +662,7 @@ translations:
 
   Clean Brush: '清洁刷子'
   Clean Nozzle: 清洁喷嘴
+  Clean {}: 清洁{}
   Cleaning Nozzle...: 正在清洁喷嘴...
   Cleaning nozzle...: 正在清洁喷嘴...
   Clear: 清除
@@ -804,6 +811,7 @@ translations:
   Cooling Tube Length: '冷却管长度'
   Cooling Tube Retraction: '冷却管回抽'
   Cooling for probing...: 正在降温以便探测...
+  Cooling {}...: 正在冷却{}...
   Copied to clipboard!: 已复制到剪贴板！
   Copy: "复制"
   Copy Command: 复制命令
@@ -1100,6 +1108,7 @@ translations:
   Encoder Error: '编码器错误'
   End K: 结束K值
   End Test: 结束测试
+  End calibration: '结束校准'
   End the test print?: 结束测试打印?
   Ended: 已结束
   Endless Spool: '无限料盘'
@@ -1573,6 +1582,7 @@ translations:
   Heating to {}°C before {}...: 正在加热至{}°C，然后{}...
   Heating to {}°C for {}...: 正在加热至{}°C，持续{}...
   Heating to {}°C...: 正在加热至{}°C...
+  Heating {}...: 正在加热{}...
   Heating...: 正在加热...
   'Heating: %d / %d°C': 加热中：%d / %d°C
   Heightmap and flatness of the active bed mesh: '当前热床网格的高度图和平整度'
@@ -1777,6 +1787,7 @@ translations:
   Keep clear of the printer while the toolhead is moving: 工具头移动时请远离打印机
   Keep current: 保留当前
   Keep current ({}): 保持当前值 ({})
+  Keep hands clear except when asked. The printer moves on its own.: 除提示时外请让手远离打印机。打印机会自行移动。
   Keep hands clear. The printer moves on its own.: 请勿将手靠近。打印机会自行移动。
 
   Keep its own data on this screen (up to 256 KB).: '在此屏幕上保存自己的数据（最多256 KB）。'
@@ -1857,6 +1868,7 @@ translations:
   Layout: 布局
   Layout changes are off in safe mode. Restart to edit.: '安全模式下无法更改布局。请重启后再编辑。'
   Learn More: 了解更多
+  Leave it: '保持不变'
   LedSelect: 选择 LED
   Left: '左'
   Length of filament to purge: '要排出的耗材长度'
@@ -2031,6 +2043,7 @@ translations:
   Maximum toolhead speed (mm/s): 打印头最大速度 (mm/s)
   Measure: '测量'
   Measure (~{} min): "测量 (约 {} 分钟)"
+  Measure each toolhead's X, Y and Z offset (about 20 minutes): 测量每个工具头的 X、Y、Z 偏移（约 20 分钟）
   Measure every tool's XYZ offset automatically: 自动测量每个工具的 XYZ 偏移
   Measure pressure advance automatically: '自动测量压力提前'
   Measure this zone first: "请先测量此区间"
@@ -2040,6 +2053,7 @@ translations:
   Measured filament diameter: 测量的耗材直径
   Measured pressure advance: '测得的压力提前'
   Measurement incomplete. Try again.: 测量未完成。请重试。
+  Measures each toolhead's X, Y and Z offset so every head prints in the same place. Takes about 20 minutes.: 测量每个工具头的 X、Y、Z 偏移，使所有工具头打印在同一位置。约需 20 分钟。
   Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen.: '在每个调节螺丝处测量热床,并告诉你该拧多少。在螺丝倾斜界面运行。'
   Measures vibration for input shaping. Run resonance tests on the Input Shaper screen.: '测量振动以进行输入整形。在输入整形器界面运行共振测试。'
   Measuring: '测量中'
@@ -2047,6 +2061,7 @@ translations:
   Measuring accelerometer noise...: '正在测量加速度计噪声...'
   Measuring vibrations... {}%: '正在测量振动... {}%'
   Measuring wheel error: 计量轮错误
+  Measuring {}...: 正在测量{}...
   Memory: 内存
   Memory (MB): 内存 (MB)
   Memory Snapshot: 内存快照
@@ -2101,6 +2116,7 @@ translations:
   Moving lane: 正在移动耗材通道
   Moving the plate...: 正在移动热床...
 
+  Moving {} to the front...: 正在将{}移到前方...
   Multi-Filament: 多耗材
   Multi-Filament Overview: 多耗材概览
   Multi-Filament System: 多耗材系统
@@ -2293,6 +2309,7 @@ translations:
   'Which lane is in the toolhead?': '哪个料道在打印头里？'
   'Choose which lane is in the toolhead to unload it': '请选择打印头里的料道以卸载'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: '没有更改任何内容。温度和材料保持不变，重试只需轻点一下。'
+  Nothing was saved and the heaters are off.: 未保存任何内容，加热器已关闭。
   Notification: 通知
   Notifications: 通知
   Notify when print finishes: 打印完成时通知
@@ -2338,6 +2355,7 @@ translations:
   'Off:': '关:'
   'Off: runs with these values without asking': '关: 不询问,直接以这些值运行'
   Offer to save Z-offset changes to the printer config: '提供将 Z 偏移更改保存到打印机配置的选项'
+  Offsets Saved: 偏移已保存
   Offsets saved: 偏移已保存
   "Old setting on today's data: {} residual - now: {}": 旧设置（今日数据）：残余 {} — 当前：{}
   'On': 开
@@ -2474,6 +2492,7 @@ translations:
     = 滚动越快触发)
   'Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels.': '将图片文件
     (PNG, JPEG, BMP, GIF) 放入 config/custom_images/。最大尺寸: 2048×2048 像素。'
+  Place the PEI sheet back onto the heated bed.: 请将 PEI 板放回加热床。
   Place the spools: 放置料盘
 
   Placed: 已放置
@@ -2525,6 +2544,7 @@ translations:
   Preheat cancelled: 预热已取消
   'Preheat: all {} tools + bed set': '预热: 全部 {} 工具 + 热床已设置'
   'Preheat: {} + bed set': '预热: {} + 热床已设置'
+  Preheating and homing...: 正在预热并归零...
   Preload: '预装载'
   Preload failed: 预装载失败
   Prepared: 已就绪
@@ -2635,6 +2655,7 @@ translations:
   Printer hardware detected: 检测到打印机硬件
   Printer image set to auto-detect: 打印机图片已设为自动检测
   Printer is busy - {} stays in the queue: '打印机忙碌中 – {} 保留在队列中'
+  Printer is busy with a print: 打印机正在打印
   Printer is busy — try again in a moment: 打印机忙 — 请稍后重试
   Printer is not paired — pair it first: 打印机未配对 — 请先进行配对
   Printer is not ready: 打印机未就绪
@@ -2814,6 +2835,7 @@ translations:
   Remove PIN: 移除 PIN
   Remove Spoolman?: 移除 Spoolman？
   Remove plugin from printer: 从打印机移除插件
+  Remove the PEI Sheet: 取下 PEI 板
   'Remove the PEI sheet from the bed, then start again: probing through the sheet gives wrong results': '请先从热床上取下 PEI 板再重新开始：隔着板材探测会导致结果错误'
   Remove the bypass spool from the toolhead first: '请先将旁路料盘从工具头中取出'
   Remove the spools: 取下料盘
@@ -3016,6 +3038,7 @@ translations:
   Saves to Klipper config and restarts firmware.: 保存到 Klipper 配置并重启固件。
   Saving Configuration...: 正在保存配置...
   Saving Z-offset...: 正在保存 Z 偏移...
+  Saving and finishing...: 正在保存并完成...
   Saving config... Klipper will restart.: 正在保存配置... Klipper 将重启。
   Saving offsets...: 正在保存偏移...
   Saving the position and parking the toolhead.: 正在保存位置并驻留工具头。
@@ -3319,6 +3342,7 @@ translations:
   Std Deviation: 标准差
   Step: 步骤
   Step 1 of 3: 第 1 步，共 3 步
+  Step {} of {}: 第 {} 步，共 {} 步
   Still saving this spool…: '此料盘仍在保存中…'
   Still working... taking longer than usual: 仍在处理……耗时比平常更长
   Stop: 停止
@@ -3389,6 +3413,7 @@ translations:
   TOOLS: 工具
   TPU: TPU
   Tag Parts: 标记部件
+  Take the PEI sheet off the heated bed, then tap Next. The toolheads probe the bare bed.: 从热床上取下 PEI 板，然后点击下一步。工具头将直接在热床表面探测。
   Takes 3-5 min. Do not interrupt.: 需要 3-5 分钟。请勿中断。
   Tangle prevention active: 防打结已启用
   Tangle prevention boosted: 防打结已增强
@@ -3470,6 +3495,7 @@ translations:
     skipping bed mesh for quick reprints.
   : HelixPrint 插件可在打印机上直接进行快速 G-code 修改——例如跳过热床网格以快速重新打印。
   The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings.: '已安装 Moonraker 延时摄影插件。在延时摄影设置中设定录制方式。'
+  The PEI sheet is still on the bed. Take it off, then tap Next.: PEI 板仍在热床上。请取下后点击下一步。
   The Spoolman spool currently loaded: 当前装载的 Spoolman 料盘
   ? The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
@@ -3518,6 +3544,8 @@ translations:
   : 当前装载的料盘是 {}，但此文件为 {} 切片。填充耗材需要以更低的流量运行，且需要硬化喷嘴。
   The message your printer's macros show (M117): '打印机宏显示的消息 (M117)'
   The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.: '喷嘴在远离打印区域的角落进行几次短促的测试挤出，并重复直到读数一致。'
+  ? The nozzle is hot. Brush it clean with the wire brush that came with the printer and keep the docking position clean, then tap Next.
+  : 喷嘴很烫。请用随机附带的金属刷清洁，并保持停靠位置干净，然后点击下一步。
   The plate and the spools are still hot. Use gloves.: 热床和料盘仍然很烫。请戴手套。
 
   The plate finishes its current move, but drying will not start.: '热床会完成当前移动,但烘干不会开始。'
@@ -3730,11 +3758,14 @@ translations:
   Tool swap: 工具切换
   Toolchange purge: '换刀排料'
   Toolhead: '工具头'
+  Toolhead Calibration Running: '工具头校准进行中'
   Toolhead LED: '工具头 LED'
+  Toolhead Offset Calibration: 工具头偏移校准
   Toolhead Sensor: 工具头传感器
   Toolhead Style: 工具头样式
   Toolhead Y: 工具头 Y
   Toolhead jam: 工具头堵塞
+  Toolhead offset calibration: 工具头偏移校准
   Toolhead position and homing, with a plate view and Home All: "工具头位置与归位，含热床视图和全部归位"
   Toolhead position unknown: 工具头位置未知
   Toolheads: 工具头
@@ -3986,6 +4017,7 @@ translations:
   Will not switch spools on runout: 耗材用尽时不会切换料盘
   Wipe nozzle on silicone cleaning strip: '在硅胶清洁条上擦拭喷嘴'
   Within {0:.1f} Hz of each other at {1:.0f} Hz: "在 {1:.0f} Hz 处相差 {0:.1f} Hz 以内"
+  Wiping {}...: 正在擦拭{}...
   Wizard Error: 向导错误
   Working...: 处理中...
   Write failed at chunk {}: 区块 {} 写入失败

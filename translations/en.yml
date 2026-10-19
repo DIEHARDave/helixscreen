@@ -88,6 +88,7 @@ translations:
   1 print: 1 print
   1 profile: 1 profile
   1 unit: 1 unit
+  1. Each nozzle is heated, wiped and parked at the front for you to brush clean: 1. Each nozzle is heated, wiped and parked at the front for you to brush clean
   1. Printer homes all axes (~1 minute): 1. Printer homes all axes (~1 minute)
   1. Printer homes and probes the bed: 1. Printer homes and probes the bed
   1. Printer will home and probe each screw: 1. Printer will home and probe each screw
@@ -105,6 +106,7 @@ translations:
   2. Place paper between nozzle and bed: 2. Place paper between nozzle and bed
   2. Results show how much to turn each screw: 2. Results show how much to turn each
     screw
+  2. Take the PEI sheet off the bed when asked: 2. Take the PEI sheet off the bed when asked
   20 minutes: 20 minutes
   24 Hour: 24 Hour
   24-hour: 24-hour
@@ -113,6 +115,7 @@ translations:
   2D Heatmap: 2D Heatmap
   2D Layers: 2D Layers
   3. Adjust screws, then re-probe to verify: 3. Adjust screws, then re-probe to verify
+  3. Every toolhead is probed and the offsets are saved: 3. Every toolhead is probed and the offsets are saved
   3. Lower nozzle until paper drags slightly: 3. Lower nozzle until paper drags slightly
   3. Save the position: 3. Save the position
   30 minutes: 30 minutes
@@ -156,6 +159,7 @@ translations:
   A spool may be tangled or the drive gear is jammed: A spool may be tangled or the drive gear is jammed
   ? A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
   : A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
+  A toolhead offset calibration is in progress, possibly from another screen. End it now?: A toolhead offset calibration is in progress, possibly from another screen. End it now?
   A · 1,-1: A · 1,-1
   ABS: ABS
   ACCELEROMETERS: ACCELEROMETERS
@@ -507,6 +511,7 @@ translations:
   Calibrate Gear: Calibrate Gear
   Calibrate Purge Chute: Calibrate Purge Chute
   Calibrate Toolhead: Calibrate Toolhead
+  Calibrate Toolhead Offsets: Calibrate Toolhead Offsets
   Calibrate X: Calibrate X
   Calibrate Y: Calibrate Y
   Calibrate All Tools: Calibrate All Tools
@@ -665,6 +670,7 @@ translations:
   Checking for webcam...: Checking for webcam...
   Checking plugin: Checking plugin
   Checking slots...: Checking slots...
+  Checking the PEI sheet is off...: Checking the PEI sheet is off...
   Checking the printer...: Checking the printer...
   Checking timelapse plugin...: Checking timelapse plugin...
   Checking webcam: Checking webcam
@@ -691,6 +697,7 @@ translations:
   'Chute position: X {:.1f}, Y {:.1f}': 'Chute position: X {:.1f}, Y {:.1f}'
   Clean Brush: Clean Brush
   Clean Nozzle: Clean Nozzle
+  Clean {}: Clean {}
   Cleaning Nozzle...: Cleaning Nozzle...
   'Cleaning nozzle...': 'Cleaning nozzle...'
   Clear: Clear
@@ -846,6 +853,7 @@ translations:
   Cooling Tube Length: Cooling Tube Length
   Cooling Tube Retraction: Cooling Tube Retraction
   'Cooling for probing...': 'Cooling for probing...'
+  Cooling {}...: Cooling {}...
   Copied to clipboard!: Copied to clipboard!
   Copy: Copy
   Copy Command: Copy Command
@@ -1136,6 +1144,7 @@ translations:
   Encoder Error: Encoder Error
   End K: End K
   End Test: End Test
+  End calibration: End calibration
   End the test print?: End the test print?
   Ended: Ended
   Endless Spool: Endless Spool
@@ -1621,6 +1630,7 @@ translations:
   Heating to {}°C before {}...: Heating to {}°C before {}...
   Heating to {}°C for {}...: Heating to {}°C for {}...
   Heating to {}°C...: Heating to {}°C...
+  Heating {}...: Heating {}...
   Heating...: Heating...
   'Heating: %d / %d°C': 'Heating: %d / %d°C'
   Heightmap and flatness of the active bed mesh: Heightmap and flatness of the active bed mesh
@@ -1840,6 +1850,7 @@ translations:
   Keep clear of the printer while the toolhead is moving: Keep clear of the printer while the toolhead is moving
   Keep current: Keep current
   Keep current ({}): Keep current ({})
+  Keep hands clear except when asked. The printer moves on its own.: Keep hands clear except when asked. The printer moves on its own.
   Keep hands clear. The printer moves on its own.: Keep hands clear. The printer moves on its own.
   Keep its own data on this screen (up to 256 KB).: Keep its own data on this screen (up to 256 KB).
   Keep the bypass spool visible when bypass is off: Keep the bypass spool visible when bypass is off
@@ -1924,6 +1935,7 @@ translations:
   Layout: Layout
   Layout changes are off in safe mode. Restart to edit.: Layout changes are off in safe mode. Restart to edit.
   Learn More: Learn More
+  Leave it: Leave it
   LedSelect: LedSelect
   Left: Left
   Length of filament to purge: Length of filament to purge
@@ -2100,6 +2112,7 @@ translations:
   Maximum toolhead speed (mm/s): Maximum toolhead speed (mm/s)
   Measure: Measure
   Measure (~{} min): Measure (~{} min)
+  Measure each toolhead's X, Y and Z offset (about 20 minutes): Measure each toolhead's X, Y and Z offset (about 20 minutes)
   Measure every tool's XYZ offset automatically: Measure every tool's XYZ offset automatically
   Measure pressure advance automatically: Measure pressure advance automatically
   Measure this zone first: Measure this zone first
@@ -2109,6 +2122,7 @@ translations:
   Measured filament diameter: Measured filament diameter
   Measured pressure advance: Measured pressure advance
   Measurement incomplete. Try again.: Measurement incomplete. Try again.
+  Measures each toolhead's X, Y and Z offset so every head prints in the same place. Takes about 20 minutes.: Measures each toolhead's X, Y and Z offset so every head prints in the same place. Takes about 20 minutes.
   Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen.: Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen.
   Measures vibration for input shaping. Run resonance tests on the Input Shaper screen.: Measures vibration for input shaping. Run resonance tests on the Input Shaper screen.
   Measuring: Measuring
@@ -2116,6 +2130,7 @@ translations:
   Measuring accelerometer noise...: Measuring accelerometer noise...
   Measuring vibrations... {}%: Measuring vibrations... {}%
   Measuring wheel error: Measuring wheel error
+  Measuring {}...: Measuring {}...
   Memory: Memory
   Memory (MB): Memory (MB)
   Memory Snapshot: Memory Snapshot
@@ -2178,6 +2193,7 @@ translations:
     minutes. The printer will make noise — this is normal.
   Moving lane: Moving lane
   Moving the plate...: Moving the plate...
+  Moving {} to the front...: Moving {} to the front...
   Multi-Filament: Multi-Filament
   Multi-Filament Overview: Multi-Filament Overview
   Multi-Filament System: Multi-Filament System
@@ -2372,6 +2388,7 @@ translations:
   'Which lane is in the toolhead?': 'Which lane is in the toolhead?'
   'Choose which lane is in the toolhead to unload it': 'Choose which lane is in the toolhead to unload it'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: Nothing was changed. Temperature and material are kept, so a retry is one tap.
+  Nothing was saved and the heaters are off.: Nothing was saved and the heaters are off.
   Notification: Notification
   Notifications: Notifications
   Notify when print finishes: Notify when print finishes
@@ -2417,6 +2434,7 @@ translations:
   'Off:': 'Off:'
   'Off: runs with these values without asking': 'Off: runs with these values without asking'
   Offer to save Z-offset changes to the printer config: Offer to save Z-offset changes to the printer config
+  Offsets Saved: Offsets Saved
   Offsets saved: Offsets saved
   "Old setting on today's data: {} residual - now: {}": "Old setting on today's data: {} residual - now: {}"
   'On': 'On'
@@ -2556,6 +2574,7 @@ translations:
   'Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels.': 'Place
     image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048
     pixels.'
+  Place the PEI sheet back onto the heated bed.: Place the PEI sheet back onto the heated bed.
   Place the spools: Place the spools
   Placed: Placed
   Plate {}: Plate {}
@@ -2609,6 +2628,7 @@ translations:
   Preheat cancelled: Preheat cancelled
   'Preheat: all {} tools + bed set': 'Preheat: all {} tools + bed set'
   'Preheat: {} + bed set': 'Preheat: {} + bed set'
+  Preheating and homing...: Preheating and homing...
   Preload: Preload
   Preload failed: Preload failed
   'Prepared': 'Prepared'
@@ -2724,6 +2744,7 @@ translations:
   Printer hardware detected: Printer hardware detected
   Printer image set to auto-detect: Printer image set to auto-detect
   Printer is busy - {} stays in the queue: Printer is busy - {} stays in the queue
+  Printer is busy with a print: Printer is busy with a print
   Printer is busy — try again in a moment: Printer is busy — try again in a moment
   Printer is not paired — pair it first: Printer is not paired — pair it first
   Printer is not ready: Printer is not ready
@@ -2912,6 +2933,7 @@ translations:
   Remove PIN: Remove PIN
   Remove Spoolman?: Remove Spoolman?
   Remove plugin from printer: Remove plugin from printer
+  Remove the PEI Sheet: Remove the PEI Sheet
   'Remove the PEI sheet from the bed, then start again: probing through the sheet gives wrong results': 'Remove the PEI sheet from the bed, then start again: probing through the sheet gives wrong results'
   Remove the bypass spool from the toolhead first: Remove the bypass spool from the toolhead first
   Remove the spools: Remove the spools
@@ -3123,6 +3145,7 @@ translations:
     firmware.
   Saving Configuration...: Saving Configuration...
   Saving Z-offset...: Saving Z-offset...
+  Saving and finishing...: Saving and finishing...
   Saving config... Klipper will restart.: Saving config... Klipper will restart.
   Saving offsets...: Saving offsets...
   Saving the position and parking the toolhead.: Saving the position and parking the toolhead.
@@ -3440,6 +3463,7 @@ translations:
   Std Deviation: Std Deviation
   Step: Step
   Step 1 of 3: Step 1 of 3
+  Step {} of {}: Step {} of {}
   Still saving this spool…: Still saving this spool…
   Still working... taking longer than usual: Still working... taking longer than usual
   Stop: Stop
@@ -3514,6 +3538,7 @@ translations:
   TOOLS: TOOLS
   TPU: TPU
   Tag Parts: Tag Parts
+  Take the PEI sheet off the heated bed, then tap Next. The toolheads probe the bare bed.: Take the PEI sheet off the heated bed, then tap Next. The toolheads probe the bare bed.
   Takes 3-5 min. Do not interrupt.: Takes 3-5 min. Do not interrupt.
   Tangle prevention active: Tangle prevention active
   Tangle prevention boosted: Tangle prevention boosted
@@ -3599,6 +3624,7 @@ translations:
   : The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
   The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings.: The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings.
+  The PEI sheet is still on the bed. Take it off, then tap Next.: The PEI sheet is still on the bed. Take it off, then tap Next.
   The Spoolman spool currently loaded: The Spoolman spool currently loaded
   ? The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
@@ -3647,6 +3673,8 @@ translations:
   : The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   The message your printer's macros show (M117): The message your printer's macros show (M117)
   The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.: The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.
+  ? The nozzle is hot. Brush it clean with the wire brush that came with the printer and keep the docking position clean, then tap Next.
+  : The nozzle is hot. Brush it clean with the wire brush that came with the printer and keep the docking position clean, then tap Next.
   The plate and the spools are still hot. Use gloves.: The plate and the spools are still hot. Use gloves.
   The plate finishes its current move, but drying will not start.: The plate finishes its current move, but drying will not start.
   The print ended before any layer was printed. Nothing was changed.: The print ended before any layer was printed. Nothing was changed.
@@ -3877,11 +3905,14 @@ translations:
   Tool swap: Tool swap
   Toolchange purge: Toolchange purge
   Toolhead: Toolhead
+  Toolhead Calibration Running: Toolhead Calibration Running
   Toolhead LED: Toolhead LED
+  Toolhead Offset Calibration: Toolhead Offset Calibration
   Toolhead Sensor: Toolhead Sensor
   Toolhead Style: Toolhead Style
   Toolhead Y: Toolhead Y
   Toolhead jam: Toolhead jam
+  Toolhead offset calibration: Toolhead offset calibration
   Toolhead position and homing, with a plate view and Home All: Toolhead position and homing, with a plate view and Home All
   Toolhead position unknown: Toolhead position unknown
   Toolheads: Toolheads
@@ -4146,6 +4177,7 @@ translations:
   Will not switch spools on runout: Will not switch spools on runout
   Wipe nozzle on silicone cleaning strip: Wipe nozzle on silicone cleaning strip
   Within {0:.1f} Hz of each other at {1:.0f} Hz: Within {0:.1f} Hz of each other at {1:.0f} Hz
+  Wiping {}...: Wiping {}...
   Wizard Error: Wizard Error
   Working...: Working...
   Write failed at chunk {}: Write failed at chunk {}

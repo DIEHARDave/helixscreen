@@ -413,6 +413,13 @@ class AmsState {
     [[nodiscard]] bool any_filament_batch_in_flight() const;
 
     /**
+     * @brief Give every backend its AmsBackend::before_disconnect() turn
+     *
+     * Teardown calls it before the client disconnects. Main thread.
+     */
+    void before_disconnect();
+
+    /**
      * @brief Remove and stop all backends
      */
     void clear_backends();

@@ -43,6 +43,12 @@ void register_print_handlers(std::unordered_map<std::string, MethodHandler>& reg
             return true;
         }
 
+        // The U1's offset calibration steps each block for a heat, a wipe or a
+        // probe pass, and answer only when it ends.
+        if (self->simulate_nozzle_offset_calibration(script, success_cb, error_cb)) {
+            return true;
+        }
+
         // Real Klipper executes a multi-line script line-by-line; the per-command
         // parsers in gcode_script() assume a SINGLE command (e.g. they `find('S')`
         // globally, which a multi-line script would point at the wrong token and

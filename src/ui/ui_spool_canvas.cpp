@@ -590,7 +590,7 @@ static void render_spool_pixels(SpoolCanvasData* data) {
 
     // Fill level determines wound filament radius
     // Max filament is smaller than flange so flanges always show as "taller"
-    float fill = LV_CLAMP(data->fill_level, 0.0f, 1.0f);
+    float fill = LV_CLAMP(0.0f, data->fill_level, 1.0f);
     int32_t max_filament_ry = (int32_t)(flange_ry * 0.85f); // Flanges 15% taller than full filament
     int32_t filament_ry = hub_ry + (int32_t)((max_filament_ry - hub_ry) * fill);
     int32_t filament_rx = (int32_t)(filament_ry * helix::ui::tray::kDepthSkew);
@@ -932,7 +932,7 @@ void ui_spool_canvas_set_fill_level(lv_obj_t* canvas, float fill_level) {
     auto* data = get_data(canvas);
     if (!data)
         return;
-    float clamped = LV_CLAMP(fill_level, 0.0f, 1.0f);
+    float clamped = LV_CLAMP(0.0f, fill_level, 1.0f);
     data->fill_level = clamped;
     // redraw_spool() will dedup on bucket; no need to skip here since the
     // bucket comparison is the only thing that actually matters visually.
@@ -1098,7 +1098,7 @@ static std::vector<uint8_t> silhouette_mask(SpoolCanvasData* spool, int32_t size
     for (int32_t y = 0; y < dim; y++) {
         for (int32_t x = 0; x < dim; x++) {
             const float d = sqrtf((x - c) * (x - c) + (y - c) * (y - c));
-            mask[y * dim + x] = static_cast<uint8_t>(LV_CLAMP(r - d + 0.5f, 0.0f, 1.0f) * 255.0f);
+            mask[y * dim + x] = static_cast<uint8_t>(LV_CLAMP(0.0f, r - d + 0.5f, 1.0f) * 255.0f);
         }
     }
     return mask;

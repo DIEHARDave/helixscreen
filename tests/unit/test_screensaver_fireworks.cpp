@@ -222,6 +222,29 @@ TEST_CASE("each crossette star splits into a cross of four fragments",
     CHECK(sim.sparks_in_use() == 0);
 }
 
+TEST_CASE("burnt-out crossette fragments return to the spark pool",
+          "[screensaver][fireworks_sim]") {
+    std::minstd_rand rng(31);
+    FireworksSim sim;
+    SimFrame frame(PixelFormat::XRGB8888);
+    sim.init(frame.target, rng, 0, busy_pacing());
+    sim.set_kinds(only(FireworksSim::BurstKind::CROSSETTE));
+
+    // Three minutes of shells: far more fragments than the pool holds have lived and died.
+    std::vector<DirtyRect> dirty;
+    for (uint32_t ms = 0; ms < 180000; ms += 16) {
+        sim.step(16, frame.target, rng, dirty);
+    }
+
+    // The shells launched over the next ten seconds still burst.
+    size_t most = 0;
+    for (uint32_t ms = 0; ms < 10000; ms += 16) {
+        sim.step(16, frame.target, rng, dirty);
+        most = std::max(most, sim.sparks_in_use());
+    }
+    CHECK(most >= kFireworksLevels[0].sparks_per_burst / 8);
+}
+
 TEST_CASE("a palm throws a few comets with long tails", "[screensaver][fireworks_sim]") {
     const size_t level = GENERATE(as<size_t>{}, 0, kFireworksLevelCount - 1);
     CAPTURE(level);
@@ -248,6 +271,30 @@ TEST_CASE("a palm throws a few comets with long tails", "[screensaver][fireworks
     // A 2x2 head alone lights at most 4 pixels, so more than 5 per comet is a tail, even at
     // the level that gives other shells none.
     CHECK(lit_pixels(frame) > 5 * comets);
+}
+
+TEST_CASE("palm comets arc over inside the top of a short frame", "[screensaver][fireworks_sim]") {
+    std::minstd_rand rng(23);
+    FireworksSim sim;
+    helix::test::TestFrame frame(480, 320, PixelFormat::XRGB8888);
+    sim.init(frame.target, rng, 0, busy_pacing());
+    sim.set_kinds(only(FireworksSim::BurstKind::PALM));
+
+    // A comet climbing past the top edge lights the top row on its way out and back.
+    const PixelWriter reader(frame.target);
+    std::vector<DirtyRect> dirty;
+    size_t most = 0;
+    size_t top_row_hits = 0;
+    for (uint32_t ms = 0; ms < 60000; ms += 16) {
+        sim.step(16, frame.target, rng, dirty);
+        most = std::max(most, sim.sparks_in_use());
+        for (int32_t x = 0; x < 480; x++) {
+            const Rgb c = reader.get(x, 0);
+            top_row_hits += (c.r > 120 || c.g > 120) ? 1 : 0;
+        }
+    }
+    REQUIRE(most > 0);
+    CHECK(top_row_hits == 0);
 }
 
 TEST_CASE("strobe stars hang and blink white", "[screensaver][fireworks_sim]") {

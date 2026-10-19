@@ -1,6 +1,6 @@
 # Settings: Devices
 
-**Settings > Devices** is where you look after the hardware and services around your printer: its camera, filament system, fans, sensors, lights, power switches and Spoolman. Rows only appear for things HelixScreen finds in your Klipper and Moonraker setup, so your list may be shorter than the one pictured.
+**Settings > Devices** is where you look after the hardware and services around your printer: its camera, fans, sensors, lights, power switches and Spoolman. Rows only appear for things HelixScreen finds in your Klipper and Moonraker setup, so your list may be shorter than the one pictured.
 
 On the Settings screen, the **Devices** row shows a one-line health check: *All healthy*, *Needs attention* (Hardware Health lists something worth a look) or *Problem found* (hardware the printer needs is missing).
 
@@ -39,29 +39,6 @@ Check this page after you add or remove hardware, so HelixScreen's list matches 
 > Only shown when a webcam is set up in Moonraker. Not available on the ESP32 screen.
 
 Opens your printer's camera full screen. See [Camera](../camera.md) for rotation, stream status and the home screen camera widget.
-
----
-
-## Multi-Filament System Management
-
-> Only shown when HelixScreen finds a multi-filament system.
-
-Opens quick actions, calibration and speed settings for your filament system: AFC, Happy Hare, ACE and the other systems HelixScreen supports. Most of what's inside depends on your hardware, but four switches can appear on any system:
-
-| Switch | When it appears | What it does |
-|--------|-----------------|--------------|
-| **Unloads After Print** | AFC only | Pulls the filament back to its lane when a print finishes |
-| **Keep Spool Info on Eject** | Systems that track a spool per lane (AFC, Happy Hare) | Remembers a lane's spool when you eject it, so putting the same spool back after maintenance needs no new selection. On by default. Only applies to spools chosen in HelixScreen: spools assigned elsewhere clear with the lane (for those, use your firmware's own option, such as AFC's `remember_spool`). If your firmware's option already covers every lane, it takes over and this switch is greyed out |
-| **Always Show Bypass Spool** | AFC only | Keeps the external spool on the filament path even while bypass is off. AFC reports a bypass sensor whether or not one is wired, so the spool is hidden until you actually use bypass |
-| **Enable Bypass Controls** | Only when your firmware reports **no** bypass | Shows the bypass controls and external spool anyway, for printers where you feed filament straight to the extruder. Applies to the Anycubic ACE Pro, Snapmaker U1, tool changers, QIDI Box and any Happy Hare setup with `has_bypass: 0` |
-
-What **Enable Bypass Controls** gets you depends on the system:
-
-- **Happy Hare**: `MMU_SELECT_BYPASS` works whether or not `[mmu_machine] has_bypass` is set, so the bypass becomes fully usable. This helps `mmu_vendor: Other` setups, such as a QIDI Box run through Happy Hare, and uncalibrated type-A selectors.
-- **Creality CFS**: bypass always works and is always shown, so the switch never appears.
-- **Snapmaker, tool changers, QIDI Box, and an ACE without a bypass switch**: there's no bypass command, so the Bypass switch says the operation isn't supported. The setting still lets you record the material and color you loaded by hand, which keeps filament tracking and temperature presets right. An ACE Pro with a fifth spool on its bypass switch and bypass macros does get a working Bypass switch.
-
-See [Filament: When Bypass Doesn't Appear](../filament.md#when-bypass-doesnt-appear).
 
 ---
 

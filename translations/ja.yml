@@ -89,6 +89,7 @@ translations:
   1 print: '1 件'
   1 profile: '1 個のプロファイル'
   '1 unit': '1ユニット'
+  1. Each nozzle is heated, wiped and parked at the front for you to brush clean: 1. 各ノズルを加熱・拭き取りし、ブラシで清掃できるよう前方に移動します
   1. Printer homes all axes (~1 minute): 1. プリンターが全軸の原点復帰を行います（約1分）
   1. Printer homes and probes the bed: 1. プリンターがホーミングしてベッドをプローブします
   1. Printer will home and probe each screw: 1. プリンターがホーミングして各ネジをプローブします
@@ -106,6 +107,7 @@ translations:
 
   2. Place paper between nozzle and bed: 2. ノズルとベッドの間に紙を置いてください
   2. Results show how much to turn each screw: 2. 各ネジをどれだけ回すか結果が表示されます
+  2. Take the PEI sheet off the bed when asked: 2. 指示が出たらPEIシートをベッドから取り外します
   20 minutes: 20分
   24 Hour: 24時間
   24-hour: 24時間制
@@ -114,6 +116,7 @@ translations:
   2D Heatmap: 2Dヒートマップ
   2D Layers: 2Dレイヤー
   3. Adjust screws, then re-probe to verify: 3. ネジを調整し、再度プローブして確認してください
+  3. Every toolhead is probed and the offsets are saved: 3. 各ツールヘッドを計測し、オフセットを保存します
   3. Lower nozzle until paper drags slightly: 3. 紙がわずかに引っかかるまでノズルを下げてください
   3. Save the position: 3. 位置を保存します
 
@@ -158,6 +161,7 @@ translations:
   A spool may be tangled or the drive gear is jammed: スプールが絡まっているか、駆動ギアが詰まっている可能性があります
   ? A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
   : '複数のフィラメントをツールヘッドに送るシステムで、スロット数を表示します。スロットはフィラメントシステム画面で管理できます。'
+  A toolhead offset calibration is in progress, possibly from another screen. End it now?: 'ツールヘッドオフセットのキャリブレーションが実行中です（別の画面からの可能性があります）。今すぐ終了しますか?'
   A · 1,-1: "A · 1,-1"
   ABS: ABS
   ACCELEROMETERS: 加速度センサー
@@ -490,6 +494,7 @@ translations:
   Calibrate Gear: 'ギアをキャリブレート'
   Calibrate Purge Chute: パージシュートをキャリブレート
   Calibrate Toolhead: 'ツールヘッドをキャリブレート'
+  Calibrate Toolhead Offsets: ツールヘッドオフセットをキャリブレート
   Calibrate X: X軸をキャリブレート
   Calibrate Y: Y軸をキャリブレート
   Calibrate All Tools: すべてのツールをキャリブレート
@@ -634,6 +639,7 @@ translations:
   Checking for webcam...: ウェブカメラを確認中...
   Checking plugin: プラグインを確認中
   Checking slots...: スロットを確認中...
+  Checking the PEI sheet is off...: PEIシートが外されているか確認中...
   Checking the printer...: "プリンターを確認中..."
   Checking timelapse plugin...: タイムラプスプラグインを確認中...
   Checking webcam: ウェブカメラを確認中
@@ -657,6 +663,7 @@ translations:
 
   Clean Brush: 'ブラシを清掃'
   Clean Nozzle: ノズル清掃
+  Clean {}: '{}を清掃'
   Cleaning Nozzle...: ノズル清掃中...
   Cleaning nozzle...: ノズル清掃中...
   Clear: クリア
@@ -806,6 +813,7 @@ translations:
   Cooling Tube Length: '冷却チューブ長'
   Cooling Tube Retraction: '冷却チューブの引き戻し'
   Cooling for probing...: プローブのため冷却中...
+  Cooling {}...: '{}を冷却中...'
   Copied to clipboard!: クリップボードにコピーしました！
   Copy: "コピー"
   Copy Command: コマンドをコピー
@@ -1104,6 +1112,7 @@ translations:
   Encoder Error: 'エンコーダーエラー'
   End K: 終了K
   End Test: テスト終了
+  End calibration: 'キャリブレーションを終了'
   End the test print?: テスト印刷を終了しますか?
   Ended: 終了
   Endless Spool: 'エンドレススプール'
@@ -1577,6 +1586,7 @@ translations:
   Heating to {}°C before {}...: '{}°Cに加熱中（{}の前）...'
   Heating to {}°C for {}...: '{}°Cに加熱中（{}）...'
   Heating to {}°C...: '{}°Cに加熱中...'
+  Heating {}...: '{}を加熱中...'
   Heating...: 加熱中...
   'Heating: %d / %d°C': '加熱中: %d / %d°C'
   Heightmap and flatness of the active bed mesh: '有効なベッドメッシュの高さマップと平面度'
@@ -1782,6 +1792,7 @@ translations:
   Keep clear of the printer while the toolhead is moving: ツールヘッドが動いている間はプリンターから離れてください
   Keep current: 現状維持
   Keep current ({}): 現在の値を維持 ({})
+  Keep hands clear except when asked. The printer moves on its own.: 指示があるとき以外は手を近づけないでください。プリンターは自動で動きます。
   Keep hands clear. The printer moves on its own.: 手を近づけないでください。プリンターは自動で動きます。
 
   Keep its own data on this screen (up to 256 KB).: 'この画面に独自のデータを保存します（最大256 KB）。'
@@ -1863,6 +1874,7 @@ translations:
   Layout: レイアウト
   Layout changes are off in safe mode. Restart to edit.: 'セーフモードではレイアウトを変更できません。編集するには再起動してください。'
   Learn More: 詳細を見る
+  Leave it: 'そのままにする'
   LedSelect: LEDを選択
   Left: '左'
   Length of filament to purge: 'パージするフィラメントの長さ'
@@ -2037,6 +2049,7 @@ translations:
   Maximum toolhead speed (mm/s): ツールヘッドの最大速度 (mm/s)
   Measure: '測定'
   Measure (~{} min): "測定 (約{}分)"
+  Measure each toolhead's X, Y and Z offset (about 20 minutes): 各ツールヘッドのX・Y・Zオフセットを計測します（約20分）
   Measure every tool's XYZ offset automatically: 各ツールの XYZ オフセットを自動で測定します
   Measure pressure advance automatically: 'Pressure Advance を自動で測定します'
   Measure this zone first: "まずこのゾーンを測定"
@@ -2046,6 +2059,7 @@ translations:
   Measured filament diameter: 測定したフィラメント直径
   Measured pressure advance: '測定された Pressure Advance'
   Measurement incomplete. Try again.: 測定が不完全です。再試行してください。
+  Measures each toolhead's X, Y and Z offset so every head prints in the same place. Takes about 20 minutes.: 各ツールヘッドのX・Y・Zオフセットを計測し、すべてのヘッドが同じ位置に印刷できるようにします。約20分かかります。
   Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen.: '各調整ネジの位置でベッドを測定し、どれだけ回すかを示します。ネジ傾き画面で実行できます。'
   Measures vibration for input shaping. Run resonance tests on the Input Shaper screen.: 'インプットシェーピング用に振動を測定します。共振テストはインプットシェーパー画面で実行できます。'
   Measuring: '測定中'
@@ -2053,6 +2067,7 @@ translations:
   Measuring accelerometer noise...: '加速度センサーのノイズを測定中...'
   Measuring vibrations... {}%: '振動を測定中... {}%'
   Measuring wheel error: 計測ホイールのエラー
+  Measuring {}...: '{}を計測中...'
   Memory: メモリ
   Memory (MB): メモリ (MB)
   Memory Snapshot: メモリースナップショット
@@ -2107,6 +2122,7 @@ translations:
   Moving lane: レーンを移動中
   Moving the plate...: ベッドを移動中...
 
+  Moving {} to the front...: '{}を前方へ移動中...'
   Multi-Filament: マルチフィラメント
   Multi-Filament Overview: マルチフィラメント概要
   Multi-Filament System: マルチフィラメントシステム
@@ -2300,6 +2316,7 @@ translations:
   'Which lane is in the toolhead?': 'ツールヘッドに入っているのはどのレーンですか？'
   'Choose which lane is in the toolhead to unload it': '取り出すには、ツールヘッドに入っているレーンを選んでください'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: '何も変更されていません。温度と材料は保持されるので、再試行はワンタップです。'
+  Nothing was saved and the heaters are off.: 何も保存されず、ヒーターはオフです。
   Notification: 通知
   Notifications: 通知
   Notify when print finishes: 印刷完了時に通知
@@ -2345,6 +2362,7 @@ translations:
   'Off:': 'オフ:'
   'Off: runs with these values without asking': 'オフ: これらの値で確認なしに実行'
   Offer to save Z-offset changes to the printer config: 'Z-Offset の変更をプリンター設定に保存する操作を表示します'
+  Offsets Saved: オフセットを保存しました
   Offsets saved: オフセットを保存しました
   "Old setting on today's data: {} residual - now: {}": '旧設定を今日のデータに適用: 残留 {} - 現在: {}'
   'On': オン
@@ -2481,6 +2499,7 @@ translations:
     (低いほどスクロールが早く開始)
   'Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels.': '画像ファイル
     (PNG, JPEG, BMP, GIF) を config/custom_images/ に配置してください。最大サイズ: 2048×2048 ピクセル。'
+  Place the PEI sheet back onto the heated bed.: PEIシートを加熱ベッドに戻してください。
   Place the spools: スプールを置く
 
   Placed: 配置済み
@@ -2533,6 +2552,7 @@ translations:
   Preheat cancelled: 予熱がキャンセルされました
   'Preheat: all {} tools + bed set': '予熱: 全 {} ツール + ベッド設定済み'
   'Preheat: {} + bed set': '予熱: {} + ベッド設定済み'
+  Preheating and homing...: 予熱とホーミング中...
   Preload: '事前装填'
   Preload failed: 事前装填に失敗しました
   Prepared: 準備済み
@@ -2644,6 +2664,7 @@ translations:
   Printer hardware detected: プリンターのハードウェアを検出
   Printer image set to auto-detect: プリンター画像を自動検出に設定しました
   Printer is busy - {} stays in the queue: 'プリンターは使用中です – {} はキューに残ります'
+  Printer is busy with a print: プリンターは印刷中です
   Printer is busy — try again in a moment: プリンターがビジー状態です — しばらくしてからもう一度お試しください
   Printer is not paired — pair it first: プリンターがペアリングされていません — 先にペアリングしてください
   Printer is not ready: プリンターの準備ができていません
@@ -2823,6 +2844,7 @@ translations:
   Remove PIN: PIN を削除
   Remove Spoolman?: Spoolman を削除しますか？
   Remove plugin from printer: プリンターからプラグインを削除
+  Remove the PEI Sheet: PEIシートを外す
   'Remove the PEI sheet from the bed, then start again: probing through the sheet gives wrong results': 'PEIシートをベッドから取り外してから再開してください：シート越しの計測は誤った結果になります'
   Remove the bypass spool from the toolhead first: '先にバイパススプールをツールヘッドから取り外してください'
   Remove the spools: スプールを取り出す
@@ -3025,6 +3047,7 @@ translations:
   Saves to Klipper config and restarts firmware.: Klipper 設定に保存してファームウェアを再起動します。
   Saving Configuration...: 設定を保存中...
   Saving Z-offset...: Zオフセットを保存中...
+  Saving and finishing...: 保存して終了中...
   Saving config... Klipper will restart.: 設定を保存中... Klipper が再起動します。
   Saving offsets...: オフセットを保存中...
   Saving the position and parking the toolhead.: 位置を保存し、ツールヘッドを退避しています。
@@ -3328,6 +3351,7 @@ translations:
   Std Deviation: 標準偏差
   Step: ステップ
   Step 1 of 3: ステップ 1/3
+  Step {} of {}: ステップ {} / {}
   Still saving this spool…: 'このスプールはまだ保存中です…'
   Still working... taking longer than usual: まだ処理中です... 通常より時間がかかっています
   Stop: 停止
@@ -3397,6 +3421,7 @@ translations:
   TOOLS: ツール
   TPU: TPU
   Tag Parts: 部位をタグ付け
+  Take the PEI sheet off the heated bed, then tap Next. The toolheads probe the bare bed.: PEIシートを加熱ベッドから外し、「次へ」をタップしてください。ツールヘッドはベッド面を直接計測します。
   Takes 3-5 min. Do not interrupt.: 3〜5分かかります。中断しないでください。
   Tangle prevention active: 絡み防止 動作中
   Tangle prevention boosted: 絡み防止 強化中
@@ -3479,6 +3504,7 @@ translations:
     skipping bed mesh for quick reprints.
   : HelixPrint プラグインは、クイック再印刷のためのベッドメッシュスキップなど、プリンター上で直接高速 G-code 修正を可能にします。
   The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings.: 'Moonrakerのタイムラプスプラグインがインストールされています。録画方法はタイムラプス設定で決められます。'
+  The PEI sheet is still on the bed. Take it off, then tap Next.: PEIシートがまだベッド上にあります。外してから「次へ」をタップしてください。
   The Spoolman spool currently loaded: 現在装填中の Spoolman スプール
   ? The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
@@ -3527,6 +3553,8 @@ translations:
   : 装填中のスプールは {} ですが、このファイルは {} 用にスライスされています。充填材入りフィラメントはフローレートが低くなり、硬化ノズルが必要です。
   The message your printer's macros show (M117): 'プリンターのマクロが表示するメッセージ (M117)'
   The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.: 'ノズルは印刷領域から離れた隅で短いテスト移動を数回行い、結果が一致するまで繰り返します。'
+  ? The nozzle is hot. Brush it clean with the wire brush that came with the printer and keep the docking position clean, then tap Next.
+  : ノズルは高温です。付属のワイヤーブラシで清掃し、ドッキング位置もきれいに保ってから「次へ」をタップしてください。
   The plate and the spools are still hot. Use gloves.: ベッドとスプールはまだ熱いです。手袋を使ってください。
 
   The plate finishes its current move, but drying will not start.: 'ベッドは現在の移動を完了しますが、乾燥は開始しません。'
@@ -3739,11 +3767,14 @@ translations:
   Tool swap: ツール交換
   Toolchange purge: 'ツール交換パージ'
   Toolhead: 'ツールヘッド'
+  Toolhead Calibration Running: 'ツールヘッドのキャリブレーション実行中'
   Toolhead LED: 'ツールヘッドLED'
+  Toolhead Offset Calibration: ツールヘッドオフセットのキャリブレーション
   Toolhead Sensor: ツールヘッドセンサー
   Toolhead Style: ツールヘッドスタイル
   Toolhead Y: ツールヘッド Y
   Toolhead jam: ツールヘッドの詰まり
+  Toolhead offset calibration: ツールヘッドオフセットのキャリブレーション
   Toolhead position and homing, with a plate view and Home All: "ツールヘッドの位置とホーミング。プレート表示と全軸ホーミング付き"
   Toolhead position unknown: ツールヘッドの位置が不明です
   Toolheads: ツールヘッド
@@ -3995,6 +4026,7 @@ translations:
   Will not switch spools on runout: フィラメント切れ時にスプールを切り替えません
   Wipe nozzle on silicone cleaning strip: 'シリコン清掃ストリップでノズルを拭く'
   Within {0:.1f} Hz of each other at {1:.0f} Hz: "{1:.0f} Hzで差は{0:.1f} Hz以内"
+  Wiping {}...: '{}を拭き取り中...'
   Wizard Error: ウィザードエラー
   Working...: 処理中...
   Write failed at chunk {}: チャンク {} で書き込みに失敗しました

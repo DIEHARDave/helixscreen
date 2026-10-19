@@ -244,6 +244,7 @@ src/printer/sensor_state.cpp
 src/printer/slot_registry.cpp
 src/printer/snapmaker_channel_state.cpp
 src/printer/snapmaker_exceptions.cpp
+src/printer/snapmaker_nozzle_offset.cpp
 src/printer/snapmaker_print_preferences.cpp
 src/printer/snapmaker_resume.cpp
 src/printer/snapmaker_status_parse.cpp
@@ -460,6 +461,8 @@ src/ui/ui_ams_device_operations_overlay.cpp
 src/ui/ui_ams_device_section_detail_overlay.cpp
 src/ui/ui_cfs_chute_calibration_overlay.cpp
 src/ui/ui_cfs_device_flows.cpp
+src/ui/ui_snapmaker_device_flows.cpp
+src/ui/ui_snapmaker_nozzle_offset_overlay.cpp
 src/ui/ui_guided_device_flow.cpp
 src/ui/ui_ams_edit_overlay.cpp
 src/ui/ui_ams_environment_overlay.cpp

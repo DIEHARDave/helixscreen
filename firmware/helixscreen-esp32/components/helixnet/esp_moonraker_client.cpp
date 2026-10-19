@@ -189,11 +189,8 @@ int EspMoonrakerClient::connect(const char* url, std::function<void()> on_connec
 esp_websocket_client_handle_t EspMoonrakerClient::create_transport(const std::string& url) {
     esp_websocket_client_config_t cfg = {};
     cfg.uri = url.c_str();
-    // 4096 default is too small once nlohmann is on the callback path.
-    // 8192 is measurement-backed: discovery (the deepest json work on this
-    // task) peaks at ~6.5KB, deterministic across 44 forced-reconnect
-    // cycles — see kWsTaskStackBytes and the watermark log in
-    // discovery_subscribe, which reports the live margin every cycle.
+    // 4096 default is too small once nlohmann is on the callback path; see
+    // kWsTaskStackBytes for the measured peak.
     cfg.task_stack = kWsTaskStackBytes;
     // Bounds the per-DATA-event chunk, not the message; we reassemble.
     cfg.buffer_size = 32768;
@@ -1601,18 +1598,10 @@ void EspMoonrakerClient::discovery_subscribe(DiscoveryDone done, DiscoveryFail f
                 done_cb(snap, initial_status);
             }
 
-            // Permanent telemetry, not scaffolding: uxTaskGetStackHighWaterMark
-            // reports the MINIMUM free stack space this (this reconnect
-            // cycle's freshly created — see connect()'s F8 comment) websocket
-            // task has ever had since it started, in bytes. Logged here
-            // because discovery is the heaviest, most deeply-nested json
-            // work this task does per cycle (identify/gate/query_objects/
-            // subscribe, ending here). If this ever reports < 8192 the old
-            // (pre-fix) budget would have overflowed — confirming the
-            // heap-corruption soak hypothesis retroactively; if it stays
-            // comfortably high across churn, that hypothesis is wrong and
-            // this line is the tripwire evidence for whatever the hunt
-            // turns to next.
+            // uxTaskGetStackHighWaterMark reports the least free stack this
+            // connection's websocket task has had since it started, in bytes.
+            // Logged here because discovery is the deepest work this task does
+            // per connection (identify/gate/query_objects/subscribe, ending here).
             spdlog::info("[helixnet] ws task stack watermark: {} bytes free of {}",
                          uxTaskGetStackHighWaterMark(nullptr), kWsTaskStackBytes);
 

@@ -7,9 +7,11 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "lvgl.h"
 #include "lvgl_glue.h"
 #include "mbedtls/base64.h"
 #include "miniz.h"
+#include "src/core/lv_global.h"
 #include "touch_input.h"
 
 #include <stdatomic.h>
@@ -19,6 +21,7 @@
 static const char* TAG = "serial_snapshot";
 static atomic_bool s_requested;
 static atomic_bool s_notes_requested;
+static atomic_bool s_stack_requested;
 static atomic_int s_resend_line = -1;
 
 // Reads the console UART through its driver: without one, nothing delivers
@@ -42,6 +45,8 @@ static void reader_task(void* arg) {
                 atomic_store(&s_requested, true);
             } else if (strcmp(line, "notes") == 0) {
                 atomic_store(&s_notes_requested, true);
+            } else if (strcmp(line, "stack") == 0) {
+                atomic_store(&s_stack_requested, true);
             } else if (sscanf(line, "snapline %d", &seq) == 1) {
                 atomic_store(&s_resend_line, seq);
             } else if (sscanf(line, "tap %d %d", &x, &y) == 2) {
@@ -117,6 +122,23 @@ static size_t line_count(void) {
 }
 
 void serial_snapshot_poll(void) {
+    if (atomic_exchange(&s_stack_requested, false)) {
+        // The high-water mark is the least free stack since boot, so it covers
+        // every screen drawn so far, not just the one showing now.
+        // The internal and PSRAM minimums are likewise the lowest since boot.
+        lv_cache_t* img_cache = LV_GLOBAL_DEFAULT()->img_cache;
+        printf("STACK: ui min_free=%u of %u; internal free=%u largest=%u min_free=%u; "
+               "psram free=%u largest=%u min_free=%u; imgcache=%u of %u\n",
+               (unsigned)uxTaskGetStackHighWaterMark(NULL), (unsigned)lvgl_glue_ui_stack_bytes(),
+               (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+               (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
+               (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL),
+               (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+               (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
+               (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM),
+               img_cache ? (unsigned)lv_cache_get_size(img_cache, NULL) : 0u,
+               img_cache ? (unsigned)lv_cache_get_max_size(img_cache, NULL) : 0u);
+    }
     if (atomic_exchange(&s_notes_requested, false)) {
         app_boot_print_notifications();
     }

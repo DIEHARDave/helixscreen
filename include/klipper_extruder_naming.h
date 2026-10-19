@@ -81,13 +81,23 @@ namespace helix {
  * classifies as an extruder here is guaranteed to yield a number there — the
  * two can never disagree.
  *
- * Rejects `extruder_stepper` (and any other `extruder`-prefixed object that is
- * not a numbered extruder). Callers that deliberately want the looser
- * "anything extruder-ish" match — hardware discovery, sensor enumeration —
- * should keep their own prefix test rather than use this.
+ * Rejects `extruder_stepper` and any other `extruder`-prefixed object that is
+ * not a numbered extruder, such as the Snapmaker U1's
+ * `extruder_offset_calibration`. Callers that deliberately want the looser
+ * "anything extruder-ish" match, such as sensor enumeration, keep their own
+ * prefix test rather than use this.
  */
 [[nodiscard]] inline bool is_extruder_name(std::string_view name) {
     return tool_number_for_extruder(name).has_value();
+}
+
+/**
+ * @brief Whether Klipper object @p name is a heater discovery lists: an
+ *        extruder, `heater_bed`, or a `heater_generic`.
+ */
+[[nodiscard]] inline bool is_heater_object_name(std::string_view name) {
+    return is_extruder_name(name) || name == "heater_bed" ||
+           name.substr(0, 15) == "heater_generic ";
 }
 
 /**

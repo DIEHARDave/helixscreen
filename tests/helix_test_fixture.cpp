@@ -314,16 +314,22 @@ void HelixTestFixture::reset_printer_state() {
     // and a test that drove the global printer into a job leaves the next test
     // reading a print in progress (Clear Spool refused, pause paths armed).
     // Returned to standby through the production path, which notifies only
-    // when a value actually moves.
+    // when a value actually moves. Standby alone keeps the finished job's
+    // progress and layer, as it does on a printer, so the next test's first
+    // layer report would match the stale value and notify nobody; the per-print
+    // reset a new job runs clears them.
     {
         auto& ps = get_printer_state();
+        auto& print = ps.print_state();
         if (ps.are_subjects_initialized() &&
-            (ps.print_state().get_print_lifecycle() != PrintState::Idle ||
-             ps.print_state().is_in_print_start() ||
-             ps.print_state().get_print_job_state() != helix::PrintJobState::STANDBY)) {
-            ps.print_state().reset_print_start_state(); // deferred: drained below
+            (print.get_print_lifecycle() != PrintState::Idle || print.is_in_print_start() ||
+             print.get_print_job_state() != helix::PrintJobState::STANDBY ||
+             lv_subject_get_int(print.get_print_layer_current_subject()) != 0 ||
+             lv_subject_get_int(print.get_print_progress_subject()) != 0)) {
+            print.reset_print_start_state(); // deferred: drained below
             ps.update_from_status(nlohmann::json{{"print_stats", {{"state", "standby"}}}});
             helix::ui::UpdateQueue::instance().drain();
+            print.reset_for_new_print();
         }
     }
 }

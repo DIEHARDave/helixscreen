@@ -88,6 +88,7 @@
   <translation tag="1 print" ja="1 件"/>
   <translation tag="1 profile" ja="1 個のプロファイル"/>
   <translation tag="1 unit" ja="1ユニット"/>
+  <translation tag="1. Each nozzle is heated, wiped and parked at the front for you to brush clean" ja="1. 各ノズルを加熱・拭き取りし、ブラシで清掃できるよう前方に移動します"/>
   <translation tag="1. Printer homes all axes (~1 minute)" ja="1. プリンターが全軸の原点復帰を行います（約1分）"/>
   <translation tag="1. Printer homes and probes the bed" ja="1. プリンターがホーミングしてベッドをプローブします"/>
   <translation tag="1. Printer will home and probe each screw" ja="1. プリンターがホーミングして各ネジをプローブします"/>
@@ -104,6 +105,7 @@
   <translation tag="2. Jog Y until the nozzle is centered over the chute opening" ja="2. Yをジョグして、ノズルがシュートの開口部の中心に来るようにします"/>
   <translation tag="2. Place paper between nozzle and bed" ja="2. ノズルとベッドの間に紙を置いてください"/>
   <translation tag="2. Results show how much to turn each screw" ja="2. 各ネジをどれだけ回すか結果が表示されます"/>
+  <translation tag="2. Take the PEI sheet off the bed when asked" ja="2. 指示が出たらPEIシートをベッドから取り外します"/>
   <translation tag="20 minutes" ja="20分"/>
   <translation tag="24 Hour" ja="24時間"/>
   <translation tag="24-hour" ja="24時間制"/>
@@ -112,6 +114,7 @@
   <translation tag="2D Heatmap" ja="2Dヒートマップ"/>
   <translation tag="2D Layers" ja="2Dレイヤー"/>
   <translation tag="3. Adjust screws, then re-probe to verify" ja="3. ネジを調整し、再度プローブして確認してください"/>
+  <translation tag="3. Every toolhead is probed and the offsets are saved" ja="3. 各ツールヘッドを計測し、オフセットを保存します"/>
   <translation tag="3. Lower nozzle until paper drags slightly" ja="3. 紙がわずかに引っかかるまでノズルを下げてください"/>
   <translation tag="3. Save the position" ja="3. 位置を保存します"/>
   <translation tag="30 minutes" ja="30分"/>
@@ -153,6 +156,7 @@
   <translation tag="A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen." ja="チャンバー内の空気温度を測るセンサー。チャンバー温度画面で確認できます。"/>
   <translation tag="A spool may be tangled or the drive gear is jammed" ja="スプールが絡まっているか、駆動ギアが詰まっている可能性があります"/>
   <translation tag="A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen." ja="複数のフィラメントをツールヘッドに送るシステムで、スロット数を表示します。スロットはフィラメントシステム画面で管理できます。"/>
+  <translation tag="A toolhead offset calibration is in progress, possibly from another screen. End it now?" ja="ツールヘッドオフセットのキャリブレーションが実行中です（別の画面からの可能性があります）。今すぐ終了しますか?"/>
   <translation tag="A · 1,-1" ja="A · 1,-1"/>
   <translation tag="ABS" ja="ABS"/>
   <translation tag="ACCELEROMETERS" ja="加速度センサー"/>
@@ -482,6 +486,7 @@
   <translation tag="Calibrate Gear" ja="ギアをキャリブレート"/>
   <translation tag="Calibrate Purge Chute" ja="パージシュートをキャリブレート"/>
   <translation tag="Calibrate Toolhead" ja="ツールヘッドをキャリブレート"/>
+  <translation tag="Calibrate Toolhead Offsets" ja="ツールヘッドオフセットをキャリブレート"/>
   <translation tag="Calibrate X" ja="X軸をキャリブレート"/>
   <translation tag="Calibrate Y" ja="Y軸をキャリブレート"/>
   <translation tag="Calibrate input shaping to reduce ringing artifacts in prints" ja="入力シェーピングをキャリブレートして印刷のリンギングを軽減します"/>
@@ -623,6 +628,7 @@
   <translation tag="Checking for webcam..." ja="ウェブカメラを確認中..."/>
   <translation tag="Checking plugin" ja="プラグインを確認中"/>
   <translation tag="Checking slots..." ja="スロットを確認中..."/>
+  <translation tag="Checking the PEI sheet is off..." ja="PEIシートが外されているか確認中..."/>
   <translation tag="Checking the printer..." ja="プリンターを確認中..."/>
   <translation tag="Checking timelapse plugin..." ja="タイムラプスプラグインを確認中..."/>
   <translation tag="Checking webcam" ja="ウェブカメラを確認中"/>
@@ -645,6 +651,7 @@
   <translation tag="Chute position: X {:.1f}, Y {:.1f}" ja="パージシュート位置: X {:.1f}, Y {:.1f}"/>
   <translation tag="Clean Brush" ja="ブラシを清掃"/>
   <translation tag="Clean Nozzle" ja="ノズル清掃"/>
+  <translation tag="Clean {}" ja="{}を清掃"/>
   <translation tag="Cleaning Nozzle..." ja="ノズル清掃中..."/>
   <translation tag="Cleaning nozzle..." ja="ノズル清掃中..."/>
   <translation tag="Clear" ja="クリア"/>
@@ -788,6 +795,7 @@
   <translation tag="Cooling Tube Length" ja="冷却チューブ長"/>
   <translation tag="Cooling Tube Retraction" ja="冷却チューブの引き戻し"/>
   <translation tag="Cooling for probing..." ja="プローブのため冷却中..."/>
+  <translation tag="Cooling {}..." ja="{}を冷却中..."/>
   <translation tag="Copied to clipboard!" ja="クリップボードにコピーしました！"/>
   <translation tag="Copy" ja="コピー"/>
   <translation tag="Copy Command" ja="コマンドをコピー"/>
@@ -1061,6 +1069,7 @@
   <translation tag="Encoder Error" ja="エンコーダーエラー"/>
   <translation tag="End K" ja="終了K"/>
   <translation tag="End Test" ja="テスト終了"/>
+  <translation tag="End calibration" ja="キャリブレーションを終了"/>
   <translation tag="End the test print?" ja="テスト印刷を終了しますか?"/>
   <translation tag="Ended" ja="終了"/>
   <translation tag="Endless Spool" ja="エンドレススプール"/>
@@ -1519,6 +1528,7 @@
   <translation tag="Heating to {}°C before {}..." ja="{}°Cに加熱中（{}の前）..."/>
   <translation tag="Heating to {}°C for {}..." ja="{}°Cに加熱中（{}）..."/>
   <translation tag="Heating to {}°C..." ja="{}°Cに加熱中..."/>
+  <translation tag="Heating {}..." ja="{}を加熱中..."/>
   <translation tag="Heating..." ja="加熱中..."/>
   <translation tag="Heating: %d / %d°C" ja="加熱中: %d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" ja="有効なベッドメッシュの高さマップと平面度"/>
@@ -1715,6 +1725,7 @@
   <translation tag="Keep clear of the printer while the toolhead is moving" ja="ツールヘッドが動いている間はプリンターから離れてください"/>
   <translation tag="Keep current" ja="現状維持"/>
   <translation tag="Keep current ({})" ja="現在の値を維持 ({})"/>
+  <translation tag="Keep hands clear except when asked. The printer moves on its own." ja="指示があるとき以外は手を近づけないでください。プリンターは自動で動きます。"/>
   <translation tag="Keep hands clear. The printer moves on its own." ja="手を近づけないでください。プリンターは自動で動きます。"/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." ja="この画面に独自のデータを保存します（最大256 KB）。"/>
   <translation tag="Keep the bypass spool visible when bypass is off" ja="バイパスオフ時もバイパススプールの表示を維持"/>
@@ -1786,6 +1797,7 @@
   <translation tag="Layout" ja="レイアウト"/>
   <translation tag="Layout changes are off in safe mode. Restart to edit." ja="セーフモードではレイアウトを変更できません。編集するには再起動してください。"/>
   <translation tag="Learn More" ja="詳細を見る"/>
+  <translation tag="Leave it" ja="そのままにする"/>
   <translation tag="LedSelect" ja="LEDを選択"/>
   <translation tag="Left" ja="左"/>
   <translation tag="Length of filament to purge" ja="パージするフィラメントの長さ"/>
@@ -1957,6 +1969,7 @@
   <translation tag="Maximum toolhead speed (mm/s)" ja="ツールヘッドの最大速度 (mm/s)"/>
   <translation tag="Measure" ja="測定"/>
   <translation tag="Measure (~{} min)" ja="測定 (約{}分)"/>
+  <translation tag="Measure each toolhead&apos;s X, Y and Z offset (about 20 minutes)" ja="各ツールヘッドのX・Y・Zオフセットを計測します（約20分）"/>
   <translation tag="Measure every tool&apos;s XYZ offset automatically" ja="各ツールの XYZ オフセットを自動で測定します"/>
   <translation tag="Measure pressure advance automatically" ja="Pressure Advance を自動で測定します"/>
   <translation tag="Measure this zone first" ja="まずこのゾーンを測定"/>
@@ -1965,6 +1978,7 @@
   <translation tag="Measured filament diameter" ja="測定したフィラメント直径"/>
   <translation tag="Measured pressure advance" ja="測定された Pressure Advance"/>
   <translation tag="Measurement incomplete. Try again." ja="測定が不完全です。再試行してください。"/>
+  <translation tag="Measures each toolhead&apos;s X, Y and Z offset so every head prints in the same place. Takes about 20 minutes." ja="各ツールヘッドのX・Y・Zオフセットを計測し、すべてのヘッドが同じ位置に印刷できるようにします。約20分かかります。"/>
   <translation tag="Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen." ja="各調整ネジの位置でベッドを測定し、どれだけ回すかを示します。ネジ傾き画面で実行できます。"/>
   <translation tag="Measures vibration for input shaping. Run resonance tests on the Input Shaper screen." ja="インプットシェーピング用に振動を測定します。共振テストはインプットシェーパー画面で実行できます。"/>
   <translation tag="Measuring" ja="測定中"/>
@@ -1972,6 +1986,7 @@
   <translation tag="Measuring accelerometer noise..." ja="加速度センサーのノイズを測定中..."/>
   <translation tag="Measuring vibrations... {}%" ja="振動を測定中... {}%"/>
   <translation tag="Measuring wheel error" ja="計測ホイールのエラー"/>
+  <translation tag="Measuring {}..." ja="{}を計測中..."/>
   <translation tag="Memory" ja="メモリ"/>
   <translation tag="Memory (MB)" ja="メモリ (MB)"/>
   <translation tag="Memory Snapshot" ja="メモリースナップショット"/>
@@ -2025,6 +2040,7 @@
   <translation tag="Moves the print head to measure vibration frequencies on each axis. Takes 2-3 minutes. The printer will make noise — this is normal." ja="プリントヘッドを移動させて各軸の振動周波数を測定します。2〜3分かかります。プリンターから音がしますが、これは正常です。"/>
   <translation tag="Moving lane" ja="レーンを移動中"/>
   <translation tag="Moving the plate..." ja="ベッドを移動中..."/>
+  <translation tag="Moving {} to the front..." ja="{}を前方へ移動中..."/>
   <translation tag="Multi-Filament" ja="マルチフィラメント"/>
   <translation tag="Multi-Filament Overview" ja="マルチフィラメント概要"/>
   <translation tag="Multi-Filament System" ja="マルチフィラメントシステム"/>
@@ -2211,6 +2227,7 @@
   <translation tag="Nothing to tune here" ja="ここで調整するものはありません"/>
   <translation tag="Nothing to unload: no filament at the nozzle" ja="取り出すものがありません: ノズルにフィラメントがありません"/>
   <translation tag="Nothing was changed. Temperature and material are kept, so a retry is one tap." ja="何も変更されていません。温度と材料は保持されるので、再試行はワンタップです。"/>
+  <translation tag="Nothing was saved and the heaters are off." ja="何も保存されず、ヒーターはオフです。"/>
   <translation tag="Notification" ja="通知"/>
   <translation tag="Notifications" ja="通知"/>
   <translation tag="Notify when print finishes" ja="印刷完了時に通知"/>
@@ -2256,6 +2273,7 @@
   <translation tag="Off:" ja="オフ:"/>
   <translation tag="Off: runs with these values without asking" ja="オフ: これらの値で確認なしに実行"/>
   <translation tag="Offer to save Z-offset changes to the printer config" ja="Z-Offset の変更をプリンター設定に保存する操作を表示します"/>
+  <translation tag="Offsets Saved" ja="オフセットを保存しました"/>
   <translation tag="Offsets saved" ja="オフセットを保存しました"/>
   <translation tag="Old setting on today&apos;s data: {} residual - now: {}" ja="旧設定を今日のデータに適用: 残留 {} - 現在: {}"/>
   <translation tag="On" ja="オン"/>
@@ -2383,6 +2401,7 @@
   <translation tag="Pill" ja="ピル"/>
   <translation tag="Pixels before a press becomes a scroll (lower = scrolls engage sooner)" ja="押下がスクロールに変わるまでのピクセル数 (低いほどスクロールが早く開始)"/>
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." ja="画像ファイル (PNG, JPEG, BMP, GIF) を config/custom_images/ に配置してください。最大サイズ: 2048×2048 ピクセル。"/>
+  <translation tag="Place the PEI sheet back onto the heated bed." ja="PEIシートを加熱ベッドに戻してください。"/>
   <translation tag="Place the spools" ja="スプールを置く"/>
   <translation tag="Placed" ja="配置済み"/>
   <translation tag="Plate {}" ja="プレート {}"/>
@@ -2432,6 +2451,7 @@
   <translation tag="Preheat cancelled" ja="予熱がキャンセルされました"/>
   <translation tag="Preheat: all {} tools + bed set" ja="予熱: 全 {} ツール + ベッド設定済み"/>
   <translation tag="Preheat: {} + bed set" ja="予熱: {} + ベッド設定済み"/>
+  <translation tag="Preheating and homing..." ja="予熱とホーミング中..."/>
   <translation tag="Preload" ja="事前装填"/>
   <translation tag="Preload failed" ja="事前装填に失敗しました"/>
   <translation tag="Prepared" ja="準備済み"/>
@@ -2544,6 +2564,7 @@
   <translation tag="Printer hardware detected" ja="プリンターのハードウェアを検出"/>
   <translation tag="Printer image set to auto-detect" ja="プリンター画像を自動検出に設定しました"/>
   <translation tag="Printer is busy - {} stays in the queue" ja="プリンターは使用中です – {} はキューに残ります"/>
+  <translation tag="Printer is busy with a print" ja="プリンターは印刷中です"/>
   <translation tag="Printer is busy — try again in a moment" ja="プリンターがビジー状態です — しばらくしてからもう一度お試しください"/>
   <translation tag="Printer is not paired — pair it first" ja="プリンターがペアリングされていません — 先にペアリングしてください"/>
   <translation tag="Printer is not ready" ja="プリンターの準備ができていません"/>
@@ -2721,6 +2742,7 @@
   <translation tag="Remove PIN" ja="PIN を削除"/>
   <translation tag="Remove Spoolman?" ja="Spoolman を削除しますか？"/>
   <translation tag="Remove plugin from printer" ja="プリンターからプラグインを削除"/>
+  <translation tag="Remove the PEI Sheet" ja="PEIシートを外す"/>
   <translation tag="Remove the PEI sheet from the bed, then start again: probing through the sheet gives wrong results" ja="PEIシートをベッドから取り外してから再開してください：シート越しの計測は誤った結果になります"/>
   <translation tag="Remove the bypass spool from the toolhead first" ja="先にバイパススプールをツールヘッドから取り外してください"/>
   <translation tag="Remove the spools" ja="スプールを取り出す"/>
@@ -2916,6 +2938,7 @@
   <translation tag="Saves to Klipper config and restarts firmware." ja="Klipper 設定に保存してファームウェアを再起動します。"/>
   <translation tag="Saving Configuration..." ja="設定を保存中..."/>
   <translation tag="Saving Z-offset..." ja="Zオフセットを保存中..."/>
+  <translation tag="Saving and finishing..." ja="保存して終了中..."/>
   <translation tag="Saving config... Klipper will restart." ja="設定を保存中... Klipper が再起動します。"/>
   <translation tag="Saving offsets..." ja="オフセットを保存中..."/>
   <translation tag="Saving the position and parking the toolhead." ja="位置を保存し、ツールヘッドを退避しています。"/>
@@ -3206,6 +3229,7 @@
   <translation tag="Std Deviation" ja="標準偏差"/>
   <translation tag="Step" ja="ステップ"/>
   <translation tag="Step 1 of 3" ja="ステップ 1/3"/>
+  <translation tag="Step {} of {}" ja="ステップ {} / {}"/>
   <translation tag="Still saving this spool…" ja="このスプールはまだ保存中です…"/>
   <translation tag="Still working... taking longer than usual" ja="まだ処理中です... 通常より時間がかかっています"/>
   <translation tag="Stop" ja="停止"/>
@@ -3272,6 +3296,7 @@
   <translation tag="TOOLS" ja="ツール"/>
   <translation tag="TPU" ja="TPU"/>
   <translation tag="Tag Parts" ja="部位をタグ付け"/>
+  <translation tag="Take the PEI sheet off the heated bed, then tap Next. The toolheads probe the bare bed." ja="PEIシートを加熱ベッドから外し、「次へ」をタップしてください。ツールヘッドはベッド面を直接計測します。"/>
   <translation tag="Takes 3-5 min. Do not interrupt." ja="3〜5分かかります。中断しないでください。"/>
   <translation tag="Tangle prevention active" ja="絡み防止 動作中"/>
   <translation tag="Tangle prevention boosted" ja="絡み防止 強化中"/>
@@ -3347,6 +3372,7 @@
   <translation tag="The CFS odometer hardware is faulty and needs repair or replacement" ja="CFS の走行距離計ハードウェアが故障しています。修理または交換が必要です"/>
   <translation tag="The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints." ja="HelixPrint プラグインは、クイック再印刷のためのベッドメッシュスキップなど、プリンター上で直接高速 G-code 修正を可能にします。"/>
   <translation tag="The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings." ja="Moonrakerのタイムラプスプラグインがインストールされています。録画方法はタイムラプス設定で決められます。"/>
+  <translation tag="The PEI sheet is still on the bed. Take it off, then tap Next." ja="PEIシートがまだベッド上にあります。外してから「次へ」をタップしてください。"/>
   <translation tag="The Spoolman spool currently loaded" ja="現在装填中の Spoolman スプール"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." ja="アニメーション付きスクリーンセーバーが印刷に干渉しないよう、このデバイスではオフになっています。設定 &gt; ディスプレイで再度有効にできます。"/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." ja="ベッドが冷えました。スプールをベッドから取り出してから確認してください。"/>
@@ -3388,6 +3414,7 @@
   <translation tag="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle." ja="装填中のスプールは {} ですが、このファイルは {} 用にスライスされています。充填材入りフィラメントはフローレートが低くなり、硬化ノズルが必要です。"/>
   <translation tag="The message your printer&apos;s macros show (M117)" ja="プリンターのマクロが表示するメッセージ (M117)"/>
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." ja="ノズルは印刷領域から離れた隅で短いテスト移動を数回行い、結果が一致するまで繰り返します。"/>
+  <translation tag="The nozzle is hot. Brush it clean with the wire brush that came with the printer and keep the docking position clean, then tap Next." ja="ノズルは高温です。付属のワイヤーブラシで清掃し、ドッキング位置もきれいに保ってから「次へ」をタップしてください。"/>
   <translation tag="The plate and the spools are still hot. Use gloves." ja="ベッドとスプールはまだ熱いです。手袋を使ってください。"/>
   <translation tag="The plate finishes its current move, but drying will not start." ja="ベッドは現在の移動を完了しますが、乾燥は開始しません。"/>
   <translation tag="The print ended before any layer was printed. Nothing was changed." ja="レイヤーが印刷される前に印刷が終了しました。何も変更されていません。"/>
@@ -3573,11 +3600,14 @@
   <translation tag="Tool swap" ja="ツール交換"/>
   <translation tag="Toolchange purge" ja="ツール交換パージ"/>
   <translation tag="Toolhead" ja="ツールヘッド"/>
+  <translation tag="Toolhead Calibration Running" ja="ツールヘッドのキャリブレーション実行中"/>
   <translation tag="Toolhead LED" ja="ツールヘッドLED"/>
+  <translation tag="Toolhead Offset Calibration" ja="ツールヘッドオフセットのキャリブレーション"/>
   <translation tag="Toolhead Sensor" ja="ツールヘッドセンサー"/>
   <translation tag="Toolhead Style" ja="ツールヘッドスタイル"/>
   <translation tag="Toolhead Y" ja="ツールヘッド Y"/>
   <translation tag="Toolhead jam" ja="ツールヘッドの詰まり"/>
+  <translation tag="Toolhead offset calibration" ja="ツールヘッドオフセットのキャリブレーション"/>
   <translation tag="Toolhead position and homing, with a plate view and Home All" ja="ツールヘッドの位置とホーミング。プレート表示と全軸ホーミング付き"/>
   <translation tag="Toolhead position unknown" ja="ツールヘッドの位置が不明です"/>
   <translation tag="Toolheads" ja="ツールヘッド"/>
@@ -3829,6 +3859,7 @@
   <translation tag="Wifi" ja="Wi-Fi"/>
   <translation tag="Will not switch spools on runout" ja="フィラメント切れ時にスプールを切り替えません"/>
   <translation tag="Wipe nozzle on silicone cleaning strip" ja="シリコン清掃ストリップでノズルを拭く"/>
+  <translation tag="Wiping {}..." ja="{}を拭き取り中..."/>
   <translation tag="Within {0:.1f} Hz of each other at {1:.0f} Hz" ja="{1:.0f} Hzで差は{0:.1f} Hz以内"/>
   <translation tag="Wizard Error" ja="ウィザードエラー"/>
   <translation tag="Working..." ja="処理中..."/>

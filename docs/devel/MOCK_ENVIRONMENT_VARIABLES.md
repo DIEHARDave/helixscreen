@@ -671,6 +671,17 @@ other macro description.
 `HELIX_MOCK_TOOL_CAL_FAIL=<n>` makes tool `n`'s pass fail with the probe tolerance error, for
 the failure path. `tests/unit/test_mock_tool_offset_calibration.cpp` pins it.
 
+**Snapmaker U1 toolhead offset calibration:** the `snapmaker_u1` persona lists the
+`_EXTRUDER_OFFSET_ACTION_*` hook macros, so AMS Management shows **Calibration > Calibrate
+Toolhead Offsets**. Each `EXTRUDER_OFFSET_ACTION_*` command answers about a second later, every
+step but PRESTART is refused with the firmware's coded fault until PRESTART has run, and a
+head's PROBE_CALIBRATE moves its `extruder_offset`, which `printer.objects.query` reports.
+`HELIX_MOCK_NOZZLE_CAL_PLATE_REFUSE=<n>` makes the first `n` plate checks report the PEI sheet
+still on the bed; `HELIX_MOCK_NOZZLE_CAL_FAIL=<n>` fails head `n`'s probe.
+`HELIX_MOCK_NOZZLE_CAL_HELD=1` starts with the state already held, as another screen's run
+would leave it, so the connect-time "End it now?" prompt shows.
+`tests/unit/test_mock_nozzle_offset_calibration.cpp` pins it.
+
 ### `HELIX_MOCK_AMS_STATE`
 
 Select the mock AMS visual scenario.

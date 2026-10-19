@@ -2,7 +2,7 @@
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Devices Settings Overlay -->
-<!-- Hardware issues, camera, AMS, fans, sensors, LEDs, power devices, spoolman -->
+<!-- Hardware issues, camera, fans, sensors, LEDs, power devices, spoolman -->
 <component>
   <view name="settings_hardware_overlay" extends="overlay_panel" title="Devices" bg_color="#screen_bg">
     <!-- Content Area - no padding, rows handle their own -->
@@ -36,15 +36,6 @@
                  (platform_extras_available==1) renders it exactly as before. -->
             <bind_flag_if_eq subject="platform_extras_available" flag="hidden" ref_value="0"/>
           </setting_action_row>
-        </lv_obj>
-        <!-- ================================================================== -->
-        <!-- MULTI-FILAMENT MANAGEMENT (hidden if no AMS detected) -->
-        <!-- ================================================================== -->
-        <lv_obj name="container_ams_settings" width="100%" style_pad_all="0" scrollable="false">
-          <bind_flag_if_eq subject="ams_slot_count" flag="hidden" ref_value="0"/>
-          <setting_action_row name="row_ams_settings"
-                              label="Multi-Filament System Management" icon="filament"
-                              description="Quick actions, calibration, speed" callback="on_ams_settings_clicked"/>
         </lv_obj>
         <!-- ================================================================== -->
         <!-- FANS (hidden until fans are discovered) -->

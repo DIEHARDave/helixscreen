@@ -44,6 +44,16 @@ class EspMoonrakerClient final : public IMoonrakerClient {
     EspMoonrakerClient(const EspMoonrakerClient&) = delete;
     EspMoonrakerClient& operator=(const EspMoonrakerClient&) = delete;
 
+    // esp_websocket_client's own task stack (create_transport()'s cfg.task_stack),
+    // allocated from INTERNAL DRAM on every connect. Discovery peaks at ~7.1KB on
+    // this task, almost all of it discovery_subscribe's fixed frame (the inlined
+    // subscription builder, ~2.3KB): every frame on that path is static-sized and
+    // json nesting is constant, so the peak does not grow with the printer's object
+    // count. 10KB leaves ~3KB; each KB costs a KB of steady-state internal free, and
+    // nothing at the WiFi-association low point, when no websocket task exists.
+    // The discovery-complete watermark log reports the live margin.
+    static constexpr uint32_t kWsTaskStackBytes = 10 * 1024;
+
     // --- Connection lifecycle ---
     int connect(const char* url, std::function<void()> on_connected,
                 std::function<void()> on_disconnected) override;
@@ -224,15 +234,6 @@ class EspMoonrakerClient final : public IMoonrakerClient {
     static constexpr int64_t kReconnectingToFailedUs = 60LL * 1000 * 1000;
     // Period of the owned esp_timer that drives timeout + FAILED bookkeeping.
     static constexpr uint64_t kHousekeepingPeriodUs = 5LL * 1000 * 1000;
-    // esp_websocket_client's own task stack (connect()'s cfg.task_stack).
-    // Named so the discovery-complete watermark log (discovery_subscribe)
-    // reports headroom against the SAME value connect() actually configures.
-    // Sized from measurement, not guesswork: 44 forced-reconnect cycles
-    // showed a deterministic ~6.5KB peak (watermark 10,060 free of a trial
-    // 16384), so 8192 carries ~1.7KB headroom — and this stack is INTERNAL
-    // DRAM (a 16KB trial cost exactly 8KB of steady-state internal free,
-    // breaking the >=100KB budget). The watermark log guards the margin.
-    static constexpr uint32_t kWsTaskStackBytes = 8192;
     // connect()'s cfg.pingpong_timeout_sec (Defect 1, Task 9 confirm soak).
     // Must stay comfortably below kDefaultRequestTimeoutMs (60s) so a
     // silently-dead connection is caught by ping/pong first, not by the

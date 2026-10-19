@@ -792,6 +792,22 @@ TEST_CASE("A printer switch freezes the UpdateQueue before it disconnects the cl
     CHECK(disconnect < drain);
 }
 
+TEST_CASE("A printer switch tears static subjects down with the switch scope",
+          "[application][shutdown][subjects][regression]") {
+    // A switch rebuilds printer state without re-running boot-time registration, so the
+    // registry must be told which teardown this is or it drops entries nothing restores.
+    // Teardown cannot be driven at runtime (see application_test_access.h), so this is a
+    // source-level contract.
+    const std::string impl = read_file("src/application/printer_session.cpp");
+    const std::string scope = extract_method_body(impl, "PrinterSession", "teardown_printer_scope");
+    REQUIRE_FALSE(scope.empty());
+    const auto call = scope.find("StaticSubjectRegistry::instance().deinit_all(");
+    REQUIRE(call != std::string::npos);
+    const std::string args = scope.substr(call, scope.find(';', call) - call);
+    CHECK(args.find("StaticSubjectRegistry::Scope::PrinterSwitch") != std::string::npos);
+    CHECK(args.find("StaticSubjectRegistry::Scope::ProcessExit") != std::string::npos);
+}
+
 TEST_CASE("should_complete_preprint - completes when the layer-zero sample is never delivered",
           "[application][print_start][regression]") {
     // notify_status_update is coalesced, so the 0 sample is not guaranteed to be

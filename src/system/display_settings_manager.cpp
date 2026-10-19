@@ -152,6 +152,21 @@ static const TimezoneEntry kTimezoneEntries[] = {
 };
 static const int kTimezoneCount = sizeof(kTimezoneEntries) / sizeof(kTimezoneEntries[0]);
 
+// Dropdown row 0 is "System" where the platform has a host zone; the table follows.
+static constexpr int kTimezoneRowOffset = DisplaySettingsManager::kSystemTimezoneAvailable ? 1 : 0;
+static const int kTimezoneRowCount = kTimezoneCount + kTimezoneRowOffset;
+static constexpr const char* kTimezoneKey = "/display/timezone";
+
+// Table index of an offered IANA id, or -1.
+static int find_timezone_entry(const std::string& iana_id) {
+    for (int i = 0; i < kTimezoneCount; ++i) {
+        if (iana_id == kTimezoneEntries[i].iana_id) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 // Helper: Validate a timeout value against allowed options, snapping to nearest valid value
 template <size_t N>
 static int validate_timeout_option(int value, const int (&options)[N], int default_value,
@@ -342,29 +357,12 @@ void DisplaySettingsManager::init_subjects() {
     UI_MANAGED_SUBJECT_INT(rotation_available_subject_, rotation_setting_available() ? 1 : 0,
                            "settings_rotation_available", subjects_);
 
-    // Timezone (default: "UTC")
-    std::string tz = config->get<std::string>("/display/timezone", "UTC");
-    int tz_index = 0; // Default to UTC
-    bool tz_found = false;
-    for (int i = 0; i < kTimezoneCount; ++i) {
-        if (tz == kTimezoneEntries[i].iana_id) {
-            tz_index = i;
-            tz_found = true;
-            break;
-        }
-    }
-    if (!tz_found && tz != "UTC") {
-        spdlog::warn(
-            "[DisplaySettingsManager] Unknown timezone '{}' in config, falling back to UTC", tz);
-    }
-    UI_MANAGED_SUBJECT_INT(timezone_subject_, tz_index, "settings_timezone", subjects_);
-
-    // Apply timezone immediately. On devices without /usr/share/zoneinfo/ (notably
-    // Elegoo Centauri Carbon / OpenCentauri COSMOS), this points TZDIR at the
-    // bundled assets/zoneinfo/ so the zone resolves instead of silently falling
-    // back to UTC.
-    helix::timezone_env::apply(tz.c_str(), kTimezoneEntries[tz_index].posix_tz);
-    spdlog::info("[DisplaySettingsManager] Timezone set to '{}' (index {})", tz, tz_index);
+    // Applied here and before logging starts (Application::init_logging); both
+    // go through apply_configured_timezone(), so they cannot disagree.
+    const int tz_row = apply_configured_timezone();
+    UI_MANAGED_SUBJECT_INT(timezone_subject_, tz_row, "settings_timezone", subjects_);
+    spdlog::info("[DisplaySettingsManager] Timezone set to '{}' (index {})",
+                 get_timezone().empty() ? "system" : get_timezone(), tz_row);
 
 #if HELIX_ENABLE_SCREENSAVER
     // Screensaver: a stored name, or a legacy type number, read leniently
@@ -833,43 +831,66 @@ void DisplaySettingsManager::set_gcode_render_mode(int mode) {
 // TIMEZONE
 // =============================================================================
 
+int DisplaySettingsManager::apply_configured_timezone() {
+    Config* config = Config::get_instance();
+    if (!config->exists(kTimezoneKey) && kSystemTimezoneAvailable) {
+        helix::timezone_env::apply_system();
+        return 0;
+    }
+    // On a device with no host zone, an unpicked zone is UTC (table row 0).
+    const std::string tz = config->get<std::string>(kTimezoneKey, "UTC");
+    int entry = find_timezone_entry(tz);
+    if (entry < 0) {
+        spdlog::warn(
+            "[DisplaySettingsManager] Unknown timezone '{}' in config, falling back to UTC", tz);
+        entry = 0;
+    }
+    // On devices without /usr/share/zoneinfo/ (notably Elegoo Centauri Carbon /
+    // OpenCentauri COSMOS) this points TZDIR at the bundled assets/zoneinfo/ so
+    // the zone resolves instead of silently falling back to UTC.
+    helix::timezone_env::apply(kTimezoneEntries[entry].iana_id, kTimezoneEntries[entry].posix_tz);
+    return entry + kTimezoneRowOffset;
+}
+
 std::string DisplaySettingsManager::get_timezone() const {
-    int index = lv_subject_get_int(const_cast<lv_subject_t*>(&timezone_subject_));
-    index = std::clamp(index, 0, kTimezoneCount - 1);
-    return kTimezoneEntries[index].iana_id;
+    int row = lv_subject_get_int(const_cast<lv_subject_t*>(&timezone_subject_));
+    row = std::clamp(row, 0, kTimezoneRowCount - 1);
+    if (row < kTimezoneRowOffset) {
+        return "";
+    }
+    return kTimezoneEntries[row - kTimezoneRowOffset].iana_id;
 }
 
 void DisplaySettingsManager::set_timezone(const std::string& iana_id) {
-    int index = 0;
-    bool found = false;
-    for (int i = 0; i < kTimezoneCount; ++i) {
-        if (iana_id == kTimezoneEntries[i].iana_id) {
-            index = i;
-            found = true;
-            break;
-        }
+    if (iana_id.empty() && kSystemTimezoneAvailable) {
+        set_timezone_by_index(0);
+        return;
     }
-    if (!found) {
+    int entry = find_timezone_entry(iana_id);
+    if (entry < 0) {
         spdlog::warn("[DisplaySettingsManager] Unknown timezone '{}', falling back to UTC",
                      iana_id);
+        entry = 0;
     }
-    set_timezone_by_index(index);
+    set_timezone_by_index(entry + kTimezoneRowOffset);
 }
 
 void DisplaySettingsManager::set_timezone_by_index(int index) {
-    index = std::clamp(index, 0, kTimezoneCount - 1);
-    const char* iana_id = kTimezoneEntries[index].iana_id;
-
-    spdlog::info("[DisplaySettingsManager] set_timezone({} = '{}')", index, iana_id);
-
+    index = std::clamp(index, 0, kTimezoneRowCount - 1);
     lv_subject_set_int(&timezone_subject_, index);
-
-    // Apply timezone to process (see init_subjects for bundled-zoneinfo note).
-    helix::timezone_env::apply(iana_id, kTimezoneEntries[index].posix_tz);
-
-    // Persist
     Config* config = Config::get_instance();
-    config->set<std::string>("/display/timezone", iana_id);
+
+    if (index < kTimezoneRowOffset) {
+        spdlog::info("[DisplaySettingsManager] set_timezone({} = system)", index);
+        helix::timezone_env::apply_system();
+        // System is the absence of a pick, so a later default change reaches it.
+        config->get_json("/display").erase("timezone");
+    } else {
+        const TimezoneEntry& entry = kTimezoneEntries[index - kTimezoneRowOffset];
+        spdlog::info("[DisplaySettingsManager] set_timezone({} = '{}')", index, entry.iana_id);
+        helix::timezone_env::apply(entry.iana_id, entry.posix_tz);
+        config->set<std::string>(kTimezoneKey, entry.iana_id);
+    }
     config->save();
 }
 
@@ -879,12 +900,48 @@ int DisplaySettingsManager::get_timezone_index() const {
 
 std::string DisplaySettingsManager::get_timezone_options() {
     std::string options;
+    if (kSystemTimezoneAvailable) {
+        options += lv_tr("System");
+    }
     for (int i = 0; i < kTimezoneCount; ++i) {
-        if (i > 0)
+        if (!options.empty())
             options += '\n';
         options += kTimezoneEntries[i].display_name;
     }
     return options;
+}
+
+std::string DisplaySettingsManager::match_timezone(const std::string& iana_id, int jan_minutes_east,
+                                                   int jul_minutes_east) {
+    const int exact = find_timezone_entry(iana_id);
+    if (exact >= 0) {
+        return kTimezoneEntries[exact].iana_id;
+    }
+    for (int i = 0; i < kTimezoneCount; ++i) {
+        int jan = 0;
+        int jul = 0;
+        if (helix::timezone_env::posix_offsets(kTimezoneEntries[i].posix_tz, jan, jul) &&
+            jan == jan_minutes_east && jul == jul_minutes_east) {
+            return kTimezoneEntries[i].iana_id;
+        }
+    }
+    return "";
+}
+
+void DisplaySettingsManager::adopt_timezone_if_unset(const std::string& iana_id,
+                                                     int jan_minutes_east, int jul_minutes_east) {
+    if (Config::get_instance()->exists(kTimezoneKey)) {
+        return;
+    }
+    const std::string match = match_timezone(iana_id, jan_minutes_east, jul_minutes_east);
+    if (match.empty()) {
+        spdlog::info("[DisplaySettingsManager] No offered timezone matches '{}' ({} / {} min)",
+                     iana_id, jan_minutes_east, jul_minutes_east);
+        return;
+    }
+    spdlog::info("[DisplaySettingsManager] Adopting timezone '{}' for reported '{}'", match,
+                 iana_id);
+    set_timezone(match);
 }
 
 // =============================================================================

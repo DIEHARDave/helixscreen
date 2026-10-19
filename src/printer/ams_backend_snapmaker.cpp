@@ -4,6 +4,7 @@
 #include "ams_backend_snapmaker.h"
 
 #include "ui_insert_notice.h"
+#include "ui_snapmaker_nozzle_offset_overlay.h"
 #include "ui_toast_manager.h"
 
 #include "ams_error.h"
@@ -12,6 +13,7 @@
 #include "app_globals.h"
 #include "batch_feed_reconcile.h"
 #include "display_numbering.h"
+#include "filament_database.h"
 #include "filament_slot_override.h"
 #include "filament_slot_override_store.h"
 #include "json_utils.h"
@@ -28,7 +30,9 @@
 #include "printer_discovery.h"
 #include "settings_manager.h"
 #include "snapmaker_channel_state.h"
+#include "snapmaker_nozzle_offset.h"
 #include "snapmaker_resume.h"
+#include "snapmaker_screws_tilt.h"
 #include "snapmaker_status_parse.h"
 #include "text_io.h"
 
@@ -88,6 +92,36 @@ constexpr std::string_view kProductLineVendor = "Snapmaker";
 
 [[nodiscard]] bool is_product_line_vendor(const std::string& brand) {
     return helix::text_io::equals_ignore_case(brand, kProductLineVendor);
+}
+
+// The filament families the firmware's filament table marks soft (TPU, PEBA,
+// PVA), plus TPE, which is softer than any TPU and has no row there, and the
+// generic "Flex" names. The firmware's end-of-print macro skips a soft head,
+// and the stock screen refuses to enable unload-at-end on one.
+constexpr std::array<std::string_view, 6> kSoftFamilies = {"TPU", "TPE",  "PEBA",
+                                                           "PVA", "FLEX", "FLEXIBLE"};
+
+/// The material database's group for flexible filament.
+constexpr std::string_view kSoftCompatGroup = "TPU";
+
+/// Whether @p material is soft filament. The firmware keys its table by the
+/// exact type, so a grade it has no row for ("TPU-85A", "TPU95A") reads rigid
+/// there. This asks the material database first, then judges the family: a
+/// soft family name followed by the end or a non-letter ("PVA+", "TPU95A"),
+/// so a longer word that merely starts with one ("TPUX") stays rigid.
+[[nodiscard]] bool is_soft_material(std::string_view material) {
+    if (const auto info = filament::find_material(material);
+        info && info->compat_group && kSoftCompatGroup == info->compat_group) {
+        return true;
+    }
+    return std::any_of(kSoftFamilies.begin(), kSoftFamilies.end(), [&](std::string_view f) {
+        if (material.size() < f.size() ||
+            !helix::text_io::equals_ignore_case(material.substr(0, f.size()), f)) {
+            return false;
+        }
+        return material.size() == f.size() ||
+               !std::isalpha(static_cast<unsigned char>(material[f.size()]));
+    });
 }
 
 /// True when @p spool_name is a product line that @p brand cannot carry: the
@@ -271,9 +305,37 @@ void AmsBackendSnapmaker::set_discovery(const helix::PrinterDiscovery& discovery
         discovery.macro_config_name(helix::macro_patterns::AUTO_FEEDING_BATCH);
     use_batch_macro_ = !macro.empty();
     batch_macro_object_ = macro.empty() ? std::string{} : "gcode_macro " + macro;
+    nozzle_offset_supported_ = snapmaker::nozzle_offset::supported(discovery);
+}
+
+void AmsBackendSnapmaker::before_disconnect() {
+    bool nozzle_offset = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        nozzle_offset = nozzle_offset_supported_;
+    }
+    if (nozzle_offset) {
+        snapmaker::nozzle_offset::leave_live_run(client_);
+    }
 }
 
 void AmsBackendSnapmaker::on_started() {
+    // A run whose driver died leaves the firmware in its offset calibration
+    // state with heaters on. One this process owned is ended; one it did not
+    // may be another screen's, so the user decides.
+    bool nozzle_offset = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        nozzle_offset = nozzle_offset_supported_;
+    }
+    if (nozzle_offset && client_) {
+        snapmaker::nozzle_offset::reconcile_on_connect(*client_, [] {
+            helix::ui::queue_update("AmsBackendSnapmaker::held_nozzle_offset_cal", [] {
+                helix::ui::get_snapmaker_nozzle_offset_overlay().prompt_end_held_calibration();
+            });
+        });
+    }
+
     // Load persisted per-slot overrides (brand, spool name, spoolman IDs, etc.)
     // from the Moonraker DB lane_data namespace BEFORE any status parse runs.
     // AmsSubscriptionBackend::start() registers the WebSocket subscription
@@ -297,9 +359,12 @@ void AmsBackendSnapmaker::on_started() {
         tag_has_card_.fill(std::nullopt);
         card_seen_.fill(false);
         print_state_.reset();
+        main_state_.reset();
         // The overrides reload below; a held save belongs to the session that
         // made it.
         pending_record_writes_.fill(std::nullopt);
+        record_restore_sent_.fill(false);
+        insert_since_declaration_.fill(false);
     }
     if (!api_)
         return;
@@ -1136,6 +1201,7 @@ AmsError AmsBackendSnapmaker::apply_user_edit(int slot_index, const SlotInfo& in
             return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, kNumTools - 1);
 
         slot->assign_filament_fields(info);
+        insert_since_declaration_[static_cast<size_t>(slot_index)] = false;
 
         // handle_status writes RFID and print_task_config fields
         // unconditionally, so an edit kept only in memory is wiped by the next
@@ -1702,6 +1768,7 @@ void AmsBackendSnapmaker::apply_port_presence_locked(int i, bool detected, Frame
             !firmware_driven && !head_is_upstream_fed_locked(i)) {
             pending_insert_passes_[i] = 1;
             insert_verdict_[i] = InsertIdentity::NotRead;
+            insert_since_declaration_[i] = true;
         } else if (!detected) {
             pending_insert_passes_[i] = 0;
         }
@@ -2506,6 +2573,12 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
                 print_state_ = state->get<std::string>();
             }
         }
+        if (const auto main_state = snapmaker::screws_tilt::main_state_from_status(status)) {
+            main_state_ = *main_state;
+            if (*main_state != snapmaker::nozzle_offset::kMainStateXyzOffsetCalibrate) {
+                snapmaker::nozzle_offset::clear_exit_pending();
+            }
+        }
 
         apply_extension_locked(status, fx.changed);
 
@@ -2526,6 +2599,7 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
         converge_locked(fx);
 
         fx.official_repairs = official_flag_repairs_locked();
+        fx.record_restores = record_restores_locked();
         // A save held across a print waits for the heads to be free: a pause
         // the print raised (a runout, an M600) is no moment to reset a head's
         // flow calibration behind the user's back.
@@ -2574,9 +2648,12 @@ void AmsBackendSnapmaker::dispatch_effects(const FrameEffects& fx) {
         end_firmware_batch();
     }
 
-    if (!fx.official_repairs.empty()) {
-        dispatch_official_flag_repairs(fx.official_repairs);
-    }
+    dispatch_record_scripts(fx.official_repairs,
+                            "is flagged official with no card behind it; rewriting the record "
+                            "HelixScreen wrote to clear the flag");
+    dispatch_record_scripts(fx.record_restores,
+                            "record names no filament while the spool declared for it is still "
+                            "in the feeder; writing the declaration back");
     for (const auto& [head, pending] : fx.record_flushes) {
         write_task_filament_record(head, pending.info, pending.material_declared);
     }
@@ -2838,11 +2915,15 @@ std::string AmsBackendSnapmaker::build_filament_config_gcode(int head, const Slo
     const char* force_arg = force ? " FORCE=1" : "";
     // Colour rides its own line, as the stock screen sends it: the firmware's
     // colour forms are parsed apart from the identity fields.
+    // SOFT=1 makes the firmware store the head as soft when its own table has
+    // no row for the type. Rigid is left to the table: SOFT=0 would override a
+    // row that knows better.
+    const char* soft_arg = is_soft_material(slot.material) ? " SOFT=1" : "";
     const std::string identity =
         fmt::format("SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER={} VENDOR={} FILAMENT_TYPE={} "
-                    "FILAMENT_SUBTYPE={}{}",
+                    "FILAMENT_SUBTYPE={}{}{}",
                     head, vendor, IMoonrakerAPI::gcode_param_value(slot.material),
-                    IMoonrakerAPI::gcode_param_value(subtype), force_arg);
+                    IMoonrakerAPI::gcode_param_value(subtype), soft_arg, force_arg);
     const std::string colour =
         fmt::format("SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER={} FILAMENT_COLOR_RGBA={:06X}FF{}",
                     head, slot.color_rgb & 0xFFFFFFu, force_arg);
@@ -2875,7 +2956,10 @@ std::optional<bool> AmsBackendSnapmaker::record_write_needs_force_locked(int hea
 
 bool AmsBackendSnapmaker::record_writes_held_locked() const {
     // Every record write runs FLOW_RESET_K on its head, which must not land
-    // under a running print.
+    // under a running print or between the offset calibration's steps.
+    if (calibration_holds_heads_locked()) {
+        return true;
+    }
     if (print_state_) {
         return *print_state_ == "printing";
     }
@@ -2951,6 +3035,8 @@ void AmsBackendSnapmaker::write_task_filament_record(int head, const SlotInfo& i
         if (force) {
             lines = RecordLines::Both;
         }
+        // This write is the record's restore until the firmware echoes it.
+        record_restore_sent_[idx] = true;
     }
     const std::string gcode = build_filament_config_gcode(head, info, force, lines);
     if (gcode.empty()) {
@@ -2973,7 +3059,14 @@ void AmsBackendSnapmaker::drop_pending_record_write_locked(int head) {
     }
 }
 
+bool AmsBackendSnapmaker::calibration_holds_heads_locked() const {
+    return main_state_ && *main_state_ == snapmaker::nozzle_offset::kMainStateXyzOffsetCalibrate;
+}
+
 bool AmsBackendSnapmaker::heads_free_locked() const {
+    if (calibration_holds_heads_locked()) {
+        return false;
+    }
     return print_state_ && *print_state_ != "printing" && *print_state_ != "paused";
 }
 
@@ -3023,20 +3116,82 @@ std::vector<std::pair<int, std::string>> AmsBackendSnapmaker::official_flag_repa
     return out;
 }
 
-void AmsBackendSnapmaker::dispatch_official_flag_repairs(
-    const std::vector<std::pair<int, std::string>>& repairs) {
+std::vector<std::pair<int, std::string>> AmsBackendSnapmaker::record_restores_locked() {
+    std::vector<std::pair<int, std::string>> out;
+    // Every write runs FLOW_RESET_K on its head.
+    if (system_info_.units.empty() || !heads_free_locked() || batch_.active) {
+        return out;
+    }
+    for (int head = 0; head < kNumTools; ++head) {
+        const auto idx = static_cast<size_t>(head);
+        if (!task_type_[idx]) {
+            continue;
+        }
+        if (!is_unset_task_field(*task_type_[idx])) {
+            record_restore_sent_[idx] = false;
+            continue;
+        }
+        // A read still pending may yet name a different spool than the
+        // declaration.
+        if (record_restore_sent_[idx] || insert_since_declaration_[idx] ||
+            pending_insert_passes_[idx] > 0) {
+            continue;
+        }
+        // The firmware's clear does not say the spool left: unload-at-end
+        // leaves it in the feeder. An empty port does, and a spool that went
+        // in since is one nobody has named.
+        const bool spool_in_lane =
+            (feed_presence_seen_[idx] && port_sensor_filament_present_[idx]) ||
+            loaded_at_toolhead_[idx];
+        if (!spool_in_lane ||
+            helix::snapmaker::channel_state_in_progress(channel_snapshots_[idx].state)) {
+            continue;
+        }
+        const auto ovr = overrides_.find(head);
+        if (ovr == overrides_.end() ||
+            !helix::ams::declared_on_lane(lane_id(head), &ovr->second).material) {
+            continue;
+        }
+        std::string gcode = unset_record_restore_locked(head);
+        if (gcode.empty()) {
+            continue;
+        }
+        record_restore_sent_[idx] = true;
+        out.emplace_back(head, std::move(gcode));
+    }
+    return out;
+}
+
+std::string AmsBackendSnapmaker::unset_record_restore_locked(int head) const {
+    const auto idx = static_cast<size_t>(head);
+    if (!task_type_[idx].has_value() || !is_unset_task_field(*task_type_[idx])) {
+        return {};
+    }
+    const std::optional<bool> needs_force = record_write_needs_force_locked(head);
+    if (!needs_force) {
+        return {};
+    }
+    const SlotInfo* slot =
+        system_info_.units.empty() ? nullptr : system_info_.units[0].get_slot(head);
+    if (!slot) {
+        return {};
+    }
+    return build_filament_config_gcode(head, *slot, *needs_force);
+}
+
+void AmsBackendSnapmaker::dispatch_record_scripts(
+    const std::vector<std::pair<int, std::string>>& writes, const char* why) {
     if (!api_) {
         return;
     }
     const char* tag = backend_log_tag();
-    for (const auto& [head, gcode] : repairs) {
-        spdlog::info("{} head {} is flagged official with no card behind it; "
-                     "rewriting the record HelixScreen wrote to clear the flag",
-                     tag, head);
+    for (const auto& [head, gcode] : writes) {
+        spdlog::info("{} head {} {}", tag, head, why);
         api_->execute_gcode(
-            gcode, [tag, h = head]() { spdlog::debug("{} head {} official flag cleared", tag, h); },
+            gcode,
+            [tag, h = head]() { spdlog::debug("{} head {} filament record written", tag, h); },
             [tag, h = head](const MoonrakerError& err) {
-                spdlog::warn("{} head {} official flag repair failed: {}", tag, h, err.message);
+                spdlog::warn("{} head {} filament record write failed: {}", tag, h, err.message);
             },
             /*timeout_ms=*/0, /*silent=*/false, /*on_queued=*/nullptr,
             /*caller_surfaces_errors=*/false);
@@ -3062,25 +3217,16 @@ AmsBackendSnapmaker::resume_record_repairs_locked(int active_slot) const {
     std::vector<std::pair<int, std::string>> out;
     for (int head = 0; head < kNumTools; ++head) {
         const auto idx = static_cast<size_t>(head);
-        if (!used[idx] || !task_type_[idx].has_value() || !is_unset_task_field(*task_type_[idx])) {
+        if (!used[idx]) {
             continue;
         }
-        const std::optional<bool> needs_force = record_write_needs_force_locked(head);
-        if (!needs_force) {
-            continue;
-        }
-        const SlotInfo* slot =
-            system_info_.units.empty() ? nullptr : system_info_.units[0].get_slot(head);
-        if (!slot) {
-            continue;
-        }
-        std::string gcode = build_filament_config_gcode(head, *slot, *needs_force);
+        std::string gcode = unset_record_restore_locked(head);
         if (gcode.empty()) {
             continue;
         }
         spdlog::info("{} prepare_for_resume: head {} has no firmware filament type; "
                      "restoring {} before RESUME",
-                     backend_log_tag(), head, slot->material);
+                     backend_log_tag(), head, system_info_.units[0].get_slot(head)->material);
         out.emplace_back(head, std::move(gcode));
     }
     return out;
@@ -3188,20 +3334,21 @@ AmsBackendSnapmaker::classify_error(const std::string& raw_line,
 }
 
 namespace {
-/// Whether @p head holds soft filament, which the firmware's end-of-print
-/// macro never unloads.
-bool head_is_soft(const snapmaker::PrintPreferences& p, size_t head) {
-    return head < p.filament_soft.size() && p.filament_soft[head];
+bool head_is_soft(const std::vector<bool>& soft, size_t head) {
+    return head < soft.size() && soft[head];
 }
 
-/// The saved unload-at-end choice for the toolheads the firmware reports, in
-/// its list order. The firmware clears its own list when every print ends, so
-/// the setting is the record of what the user picked. A soft-filament head
-/// keeps its saved bit: the firmware's end macro skips that head itself.
-std::vector<bool> end_unload_list(const snapmaker::PrintPreferences& p) {
+/// The unload-at-end list for the toolheads the firmware reports, in its list
+/// order. The firmware clears its own list when every print ends, so the
+/// setting is the record of what the user picked. A soft head goes out as 0:
+/// the firmware's end macro trusts its own soft flag, which can call loaded
+/// soft filament rigid. The saved bit itself is kept for a later rigid spool.
+std::vector<bool> end_unload_list(const snapmaker::PrintPreferences& p,
+                                  const std::vector<bool>& soft) {
     std::vector<bool> list(p.end_unload_filament.size());
     for (size_t t = 0; t < list.size(); ++t) {
-        list[t] = SettingsManager::instance().get_end_of_print_unload_tool(static_cast<int>(t));
+        list[t] = SettingsManager::instance().get_end_of_print_unload_tool(static_cast<int>(t)) &&
+                  !head_is_soft(soft, t);
     }
     return list;
 }
@@ -3226,16 +3373,40 @@ std::optional<size_t> end_unload_tool(const std::string& action_id) {
 }
 } // namespace
 
-std::vector<helix::printer::DeviceSection> AmsBackendSnapmaker::get_device_sections() const {
-    if (print_preferences().empty()) {
-        return {}; // nothing reported yet - an empty section is worse than none
+std::vector<bool> AmsBackendSnapmaker::soft_heads() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<bool> soft(kNumTools, false);
+    for (int i = 0; i < kNumTools; ++i) {
+        const auto idx = static_cast<size_t>(i);
+        const SlotInfo* slot =
+            system_info_.units.empty() ? nullptr : system_info_.units[0].get_slot(i);
+        soft[idx] = (idx < print_preferences_.filament_soft.size() &&
+                     print_preferences_.filament_soft[idx]) ||
+                    (slot != nullptr && is_soft_material(slot->material));
     }
+    return soft;
+}
+
+std::vector<helix::printer::DeviceSection> AmsBackendSnapmaker::get_device_sections() const {
     using helix::printer::DeviceSection;
-    DeviceSection s;
-    s.id = "snapmaker_print_prefs";
-    s.label = lv_tr("Print Behaviour");
-    s.display_order = 50;
-    return {s};
+    std::vector<DeviceSection> out;
+    // Nothing reported yet - an empty section is worse than none.
+    if (!print_preferences().empty()) {
+        DeviceSection s;
+        s.id = "snapmaker_print_prefs";
+        s.label = lv_tr("Print Behaviour");
+        s.display_order = 50;
+        out.push_back(std::move(s));
+    }
+    bool nozzle_offset = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        nozzle_offset = nozzle_offset_supported_;
+    }
+    if (nozzle_offset) {
+        out.push_back(snapmaker::nozzle_offset::device_section());
+    }
+    return out;
 }
 
 std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_actions() const {
@@ -3274,12 +3445,12 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
     }
     // The firmware's list says how many heads there are; the values are the
     // saved choice, because the firmware clears its own when a print ends.
-    const auto saved = end_unload_list(p);
+    const auto soft = soft_heads();
+    const auto saved = end_unload_list(p, soft);
     for (size_t t = 0; t < saved.size(); ++t) {
         // Copy out as bool: indexing a const vector<bool> yields a standard-library
         // proxy type on some platforms, not bool, and the UI casts the value back to bool.
-        // A soft-filament head never unloads, so its toggle never reads on.
-        const bool unload = saved[t] && !head_is_soft(p, t);
+        const bool unload = saved[t];
         const int tool = static_cast<int>(t);
         DeviceAction a = DeviceAction::toggle(
             "snapmaker_end_unload_t" + std::to_string(t),
@@ -3288,11 +3459,23 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
                                               helix::ui::ToolLabelForm::Full),
             "snapmaker_print_prefs", unload);
         a.slot_index = static_cast<int>(t);
-        if (head_is_soft(p, t)) {
+        if (head_is_soft(soft, t)) {
             a.enabled = false;
             a.disable_reason = lv_tr("Soft filament is never unloaded");
         }
         out.push_back(std::move(a));
+    }
+
+    bool nozzle_offset = false;
+    bool print_holds_heads = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        nozzle_offset = nozzle_offset_supported_;
+        print_holds_heads =
+            print_state_ && (*print_state_ == "printing" || *print_state_ == "paused");
+    }
+    if (nozzle_offset) {
+        out.push_back(snapmaker::nozzle_offset::device_action(print_holds_heads));
     }
     return out;
 }
@@ -3349,10 +3532,11 @@ std::string AmsBackendSnapmaker::build_preference_gcode(const std::string& actio
         const auto* v = std::any_cast<bool>(&value);
         // The end macro skips a soft-filament head, so turning it on would
         // promise an unload that never happens.
-        if (v == nullptr || (*v && head_is_soft(prefs, *tool))) {
+        const auto soft = soft_heads();
+        if (v == nullptr || (*v && head_is_soft(soft, *tool))) {
             return {};
         }
-        auto list = end_unload_list(prefs);
+        auto list = end_unload_list(prefs, soft);
         list[*tool] = *v;
         changes.end_unload_filament = std::move(list);
     } else {
@@ -3398,7 +3582,7 @@ std::string AmsBackendSnapmaker::end_unload_gcode() const {
         return {};
     }
     snapmaker::PrintPreferences changes;
-    changes.end_unload_filament = end_unload_list(prefs);
+    changes.end_unload_filament = end_unload_list(prefs, soft_heads());
     return snapmaker::write_print_preferences_gcode(changes);
 }
 

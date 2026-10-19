@@ -168,6 +168,8 @@ class StaticSubjectRegistry {
     }
 
   private:
+    friend class ScopedSubjectRegistryIsolation;
+
     StaticSubjectRegistry() = default;
     ~StaticSubjectRegistry();
 

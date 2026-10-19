@@ -1528,6 +1528,56 @@ void AmsBackendAfc::apply_state_string(const std::string& raw, const char* sourc
                   ams_action_to_string(system_info_.action), raw, system_info_.operation_detail);
 }
 
+void AmsBackendAfc::apply_toolchange_hold_locked(AmsAction action_at_frame_start,
+                                                 const std::string& detail_at_frame_start) {
+    if (error_state_) {
+        // The change is over: AFC's CHANGE_TOOL returns on an error, and one
+        // older than v1.2.0 leaves next_lane set behind it.
+        toolchange_in_progress_ = false;
+    }
+
+    const bool afc_reports_idle = ams_action_from_string(last_raw_state_) == AmsAction::IDLE;
+    if (!afc_reports_idle) {
+        // AFC's own busy state drives the action again.
+        toolchange_hold_.reset();
+        return;
+    }
+
+    if (!toolchange_in_progress_) {
+        if (toolchange_hold_.has_value()) {
+            release_toolchange_hold_locked();
+        }
+        return;
+    }
+
+    if (!toolchange_hold_.has_value()) {
+        const AmsAction a = action_at_frame_start;
+        if (a == AmsAction::IDLE || a == AmsAction::ERROR || a == AmsAction::PAUSED) {
+            return;
+        }
+        toolchange_hold_ = a;
+        toolchange_hold_detail_ = detail_at_frame_start;
+        toolchange_hold_since_ = std::chrono::steady_clock::now();
+        spdlog::debug("[AMS AFC] Idle mid toolchange: holding {}", ams_action_to_string(a));
+    }
+
+    system_info_.action = *toolchange_hold_;
+    // A message arriving with the Idle is newer than the held detail; only the
+    // Idle's own label is replaced.
+    if (system_info_.operation_detail == afc_state_detail(last_raw_state_)) {
+        system_info_.operation_detail = toolchange_hold_detail_;
+    }
+}
+
+void AmsBackendAfc::release_toolchange_hold_locked() {
+    spdlog::debug("[AMS AFC] Toolchange hold on {} released",
+                  ams_action_to_string(*toolchange_hold_));
+    toolchange_hold_.reset();
+    toolchange_hold_detail_.clear();
+    system_info_.action = AmsAction::IDLE;
+    system_info_.operation_detail = afc_state_detail(last_raw_state_);
+}
+
 void AmsBackendAfc::apply_action_timeout_latch_locked() {
     if (!timed_out_state_.has_value()) {
         return;
@@ -1558,6 +1608,22 @@ void AmsBackendAfc::check_action_timeout() {
     // means nothing until AFC reports something else. apply_action_timeout_
     // latch_locked() owns the state from here.
     if (timed_out_state_.has_value()) {
+        return;
+    }
+
+    // A held action is not AFC's: it reports Idle, so latching that token as
+    // stuck would force ERROR onto every later Idle frame. The hold has its own
+    // bound and ends on the Idle AFC is actually reporting.
+    if (toolchange_hold_.has_value()) {
+        if (std::chrono::steady_clock::now() - toolchange_hold_since_ >=
+            std::chrono::seconds(kHeatingTimeoutSeconds)) {
+            spdlog::warn("[AMS AFC] Toolchange hold on {} outlived {}s; showing AFC's Idle",
+                         ams_action_to_string(*toolchange_hold_), kHeatingTimeoutSeconds);
+            release_toolchange_hold_locked();
+            // A next_lane left set behind a change that ended must not hold the
+            // next plain load or unload too.
+            toolchange_in_progress_ = false;
+        }
         return;
     }
 
@@ -1748,6 +1814,7 @@ void AmsBackendAfc::parse_afc_state(const nlohmann::json& afc_data,
     // Stuck-action clock: captured here and compared at the very bottom of this
     // function. See the tail block for why the comparison is frame-scoped.
     const AmsAction action_at_frame_start = system_info_.action;
+    const std::string detail_at_frame_start = system_info_.operation_detail;
 
     // Version, when upstream supplies it here. AFC is moving the signal into the
     // status object (AFCProject/AFC-Klipper-Add-On PR #807 adds AFC.version to
@@ -2186,9 +2253,20 @@ void AmsBackendAfc::parse_afc_state(const nlohmann::json& afc_data,
             std::string next = afc_data["next_lane"].get<std::string>();
             int next_idx = next.empty() ? -1 : slots_.index_of(next);
             system_info_.next_slot = next_idx;
-            spdlog::trace("[AMS AFC] Next lane: '{}' (slot {})", next, next_idx);
+            if (next.empty()) {
+                toolchange_in_progress_ = false;
+            } else if (next != next_lane_) {
+                // Before AFC v1.2.0 a CHANGE_TOOL that failed or found its lane
+                // already loaded left next_lane set, so only a lane newly named,
+                // and not the one already in the toolhead, starts a change.
+                toolchange_in_progress_ = next != toolhead_lane_;
+            }
+            next_lane_ = std::move(next);
+            spdlog::trace("[AMS AFC] Next lane: '{}' (slot {})", next_lane_, next_idx);
         } else if (afc_data["next_lane"].is_null()) {
             system_info_.next_slot = -1;
+            toolchange_in_progress_ = false;
+            next_lane_.clear();
         }
     }
 
@@ -2326,6 +2404,10 @@ void AmsBackendAfc::parse_afc_state(const nlohmann::json& afc_data,
             spdlog::trace("[AMS AFC] Bypass mode active");
         }
     }
+
+    // Needs next_lane and error_state, both parsed above, and runs before the
+    // latch so a latched ERROR still outranks a held action.
+    apply_toolchange_hold_locked(action_at_frame_start, detail_at_frame_start);
 
     // --- Stuck-action bookkeeping (see check_action_timeout) ----------------
     //

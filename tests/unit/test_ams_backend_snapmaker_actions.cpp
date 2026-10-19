@@ -6,7 +6,9 @@
 #include "../test_helpers/snapmaker_test_access.h"
 #include "ams_backend_snapmaker.h"
 #include "config.h"
+#include "printer_discovery.h"
 #include "settings_manager.h"
+#include "snapmaker_nozzle_offset.h"
 
 #include <algorithm>
 #include <any>
@@ -198,11 +200,12 @@ TEST_CASE_METHOD(
     // The saved choice stays for when the head holds a hard filament again.
     REQUIRE(SettingsManager::instance().get_end_of_print_unload_tools() == 0b0011);
 
-    // The saved list goes out as saved; the firmware skips the soft head itself.
+    // The soft head goes out as 0 whatever is saved: the firmware's end macro
+    // reads its own soft flag, which can disagree with the loaded material.
     REQUIRE(backend.build_preprint_gcode({}, {}) ==
-            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,1,0,0]");
+            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,0,0]");
     REQUIRE(backend.build_preference_gcode("snapmaker_end_unload_t2", std::any(true)) ==
-            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,1,1,0]");
+            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,1,0]");
 
     // Rigid filament back in the head: the saved choice reads on again.
     SnapmakerTestAccess::handle_status(backend,
@@ -211,6 +214,68 @@ TEST_CASE_METHOD(
     REQUIRE(find_action(after, "snapmaker_end_unload_t1")->enabled);
     REQUIRE(std::any_cast<bool>(find_action(after, "snapmaker_end_unload_t1")->current_value) ==
             true);
+}
+
+TEST_CASE_METHOD(EndUnloadFixture,
+                 "a soft material is soft even when the firmware's soft flag says otherwise",
+                 "[ams][snapmaker][actions][end_unload]") {
+    // The firmware derives filament_soft from its own table keyed by the exact
+    // FILAMENT_TYPE, so a type it has no row for (TPU-85A) reads rigid.
+    SettingsManager::instance().set_end_of_print_unload_tools(0b1111);
+    AmsBackendSnapmaker backend(nullptr, nullptr);
+    SnapmakerTestAccess::handle_status(backend,
+                                       frame({{"end_unload_filament", {false, false, false, false}},
+                                              {"filament_type", {"PLA", "TPU-85A", "PEBA", "ASA"}},
+                                              {"filament_soft", {false, false, false, false}}}));
+
+    const auto actions = backend.get_device_actions();
+    for (const char* id : {"snapmaker_end_unload_t1", "snapmaker_end_unload_t2"}) {
+        const DeviceAction* soft = find_action(actions, id);
+        REQUIRE(soft != nullptr);
+        CHECK_FALSE(soft->enabled);
+        CHECK_FALSE(soft->disable_reason.empty());
+        CHECK(std::any_cast<bool>(soft->current_value) == false);
+    }
+    for (const char* id : {"snapmaker_end_unload_t0", "snapmaker_end_unload_t3"}) {
+        const DeviceAction* rigid = find_action(actions, id);
+        REQUIRE(rigid != nullptr);
+        CHECK(rigid->enabled);
+        CHECK(std::any_cast<bool>(rigid->current_value) == true);
+    }
+
+    REQUIRE(backend.build_preprint_gcode({}, {}) ==
+            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,0,1]");
+    REQUIRE(backend.build_preference_gcode("snapmaker_end_unload_t1", std::any(true)).empty());
+    REQUIRE(SettingsManager::instance().get_end_of_print_unload_tools() == 0b1111);
+}
+
+TEST_CASE_METHOD(EndUnloadFixture,
+                 "soft grades and flexible names read soft; rigid families stay rigid",
+                 "[ams][snapmaker][actions][end_unload]") {
+    SettingsManager::instance().set_end_of_print_unload_tools(0b1111);
+    const auto enabled = [](const std::vector<std::string>& types) {
+        AmsBackendSnapmaker backend(nullptr, nullptr);
+        SnapmakerTestAccess::handle_status(
+            backend, frame({{"end_unload_filament", {false, false, false, false}},
+                            {"filament_type", types},
+                            {"filament_soft", {false, false, false, false}}}));
+        const auto actions = backend.get_device_actions();
+        std::vector<bool> out;
+        for (int t = 0; t < 4; ++t) {
+            const DeviceAction* a =
+                find_action(actions, "snapmaker_end_unload_t" + std::to_string(t));
+            REQUIRE(a != nullptr);
+            out.push_back(a->enabled);
+        }
+        return out;
+    };
+    CHECK(enabled({"TPU95A", "TPU+", "PVA+", "Flex"}) ==
+          std::vector<bool>{false, false, false, false});
+    CHECK(enabled({"flexible", "PLA", "PETG", "PA-CF"}) ==
+          std::vector<bool>{false, true, true, true});
+    // A soft family name only counts as a whole word or a grade of it.
+    CHECK(enabled({"TPUX", "PLA+", "TPE", "TPU-Soft"}) ==
+          std::vector<bool>{true, true, false, false});
 }
 
 TEST_CASE("executing a toggle emits only that field", "[ams][snapmaker][actions]") {
@@ -289,4 +354,69 @@ TEST_CASE("a value whose type does not match the action is refused, not thrown",
     // than let the exception cross the virtual.
     const AmsError err = backend.execute_device_action("snapmaker_end_led_off", std::any(1));
     REQUIRE(err.result == AmsResult::NOT_SUPPORTED);
+}
+
+namespace {
+/// The objects a stock U1 lists for its toolhead offset calibration.
+helix::PrinterDiscovery nozzle_offset_discovery() {
+    nlohmann::json objects = nlohmann::json::array({"gcode_macro _EXTRUDER_OFFSET_ACTION_PRESTART",
+                                                    "gcode_macro _EXTRUDER_OFFSET_ACTION_EXIT"});
+    for (int t = 0; t < 4; ++t) {
+        for (const char* step :
+             {"HEAT", "AUTO_CLEAN", "MANUAL_CLEAN", "WAIT_COOL", "PROBE_CALIBRATE"}) {
+            objects.push_back(std::string("gcode_macro _EXTRUDER_OFFSET_ACTION_") + step + "_T" +
+                              std::to_string(t));
+        }
+    }
+    helix::PrinterDiscovery d;
+    d.parse_objects(objects);
+    return d;
+}
+} // namespace
+
+TEST_CASE("toolhead offset calibration is offered when the firmware has it",
+          "[ams][snapmaker][actions][nozzle_offset]") {
+    HelixTestFixture fixture;
+    AmsBackendSnapmaker backend(nullptr, nullptr);
+
+    SECTION("absent without the macros") {
+        backend.set_discovery(helix::PrinterDiscovery{});
+        REQUIRE(find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId) ==
+                nullptr);
+        REQUIRE(backend.get_device_sections().empty());
+    }
+
+    SECTION("a button that starts the guided flow, in its own section") {
+        backend.set_discovery(nozzle_offset_discovery());
+        const auto actions = backend.get_device_actions();
+        const DeviceAction* cal = find_action(actions, snapmaker::nozzle_offset::kActionId);
+        REQUIRE(cal != nullptr);
+        REQUIRE(cal->type == ActionType::BUTTON);
+        REQUIRE(cal->guided_flow == snapmaker::nozzle_offset::kGuidedFlowId);
+        REQUIRE(cal->section == snapmaker::nozzle_offset::kSectionId);
+        REQUIRE(cal->enabled);
+
+        // The section stands even before the firmware reports its print
+        // preferences, which is what the other section waits for.
+        const auto sections = backend.get_device_sections();
+        REQUIRE(sections.size() == 1);
+        REQUIRE(sections[0].id == snapmaker::nozzle_offset::kSectionId);
+    }
+
+    SECTION("greyed out while a print holds the heads") {
+        backend.set_discovery(nozzle_offset_discovery());
+        for (const char* state : {"printing", "paused"}) {
+            SnapmakerTestAccess::handle_status(backend,
+                                               nlohmann::json{{"print_stats", {{"state", state}}}});
+            const DeviceAction* cal =
+                find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId);
+            REQUIRE(cal != nullptr);
+            REQUIRE_FALSE(cal->enabled);
+            REQUIRE_FALSE(cal->disable_reason.empty());
+        }
+        SnapmakerTestAccess::handle_status(
+            backend, nlohmann::json{{"print_stats", {{"state", "complete"}}}});
+        REQUIRE(find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId)
+                    ->enabled);
+    }
 }

@@ -89,6 +89,7 @@ translations:
   1 print: '1 impresión'
   1 profile: '1 perfil'
   '1 unit': '1 unidad'
+  1. Each nozzle is heated, wiped and parked at the front for you to brush clean: 1. Cada boquilla se calienta, se limpia y se aparca delante para que la cepilles
   1. Printer homes all axes (~1 minute): 1. La impresora referencia todos los ejes (~1 minuto)
   1. Printer homes and probes the bed: 1. La impresora hace origen y sondea la cama
   1. Printer will home and probe each screw: 1. La impresora hará origen y sondeará
@@ -108,6 +109,7 @@ translations:
   2. Place paper between nozzle and bed: 2. Coloque papel entre la boquilla y la cama
   2. Results show how much to turn each screw: 2. Los resultados muestran cuánto girar
     cada tornillo
+  2. Take the PEI sheet off the bed when asked: 2. Retira la lámina PEI de la cama cuando se te pida
   20 minutes: 20 minutos
   24 Hour: 24 horas
   24-hour: 24 horas
@@ -117,6 +119,7 @@ translations:
   2D Layers: Capas 2D
   3. Adjust screws, then re-probe to verify: 3. Ajuste los tornillos, luego vuelva
     a sondear para verificar
+  3. Every toolhead is probed and the offsets are saved: 3. Se mide cada cabezal y se guardan los offsets
   3. Lower nozzle until paper drags slightly: 3. Baje la boquilla hasta que el papel
     roce ligeramente
   3. Save the position: 3. Guarde la posición
@@ -162,6 +165,7 @@ translations:
   A spool may be tangled or the drive gear is jammed: Puede que una bobina esté enredada o que el engranaje de arrastre esté atascado
   ? A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
   : 'Un sistema que alimenta varios filamentos al cabezal, mostrado con su número de ranuras. Gestiona las ranuras en la pantalla del sistema de filamento.'
+  A toolhead offset calibration is in progress, possibly from another screen. End it now?: 'Hay una calibración de offsets de cabezales en curso, quizá desde otra pantalla. ¿Terminarla ahora?'
   A · 1,-1: "A · 1,-1"
   ABS: ABS
   ACCELEROMETERS: ACELERÓMETROS
@@ -518,6 +522,7 @@ translations:
   Calibrate Gear: 'Calibrar el engranaje'
   Calibrate Purge Chute: Calibrar conducto de purga
   Calibrate Toolhead: 'Calibrar cabezal'
+  Calibrate Toolhead Offsets: Calibrar offsets de cabezales
   Calibrate X: Calibrar X
   Calibrate Y: Calibrar Y
   Calibrate All Tools: Calibrar todas las herramientas
@@ -683,6 +688,7 @@ translations:
   Checking for webcam...: Comprobando webcam...
   Checking plugin: Comprobando plugin
   Checking slots...: Verificando ranuras...
+  Checking the PEI sheet is off...: Comprobando que la lámina PEI está retirada...
   Checking the printer...: "Comprobando la impresora..."
   Checking timelapse plugin...: Verificando plugin de timelapse...
   Checking webcam: Comprobando webcam
@@ -710,6 +716,7 @@ translations:
 
   Clean Brush: 'Limpiar cepillo'
   Clean Nozzle: Limpiar Boquilla
+  Clean {}: Limpiar {}
   Cleaning Nozzle...: Limpiando boquilla...
   Cleaning nozzle...: Limpiando boquilla...
   Clear: Borrar
@@ -872,6 +879,7 @@ translations:
   Cooling Tube Length: 'Longitud del tubo de enfriamiento'
   Cooling Tube Retraction: 'Retracción del tubo de enfriamiento'
   Cooling for probing...: Enfriando para el sondeo...
+  Cooling {}...: Enfriando {}...
   Copied to clipboard!: ¡Copiado al portapapeles!
   Copy: "Copiar"
   Copy Command: Copiar Comando
@@ -1175,6 +1183,7 @@ translations:
   Encoder Error: 'Error del encoder'
   End K: K final
   End Test: Terminar prueba
+  End calibration: 'Terminar calibración'
   End the test print?: ¿Terminar la impresión de prueba?
   Ended: Terminado
   Endless Spool: 'Bobina infinita'
@@ -1669,6 +1678,7 @@ translations:
   Heating to {}°C before {}...: Calentando a {}°C antes de {}...
   Heating to {}°C for {}...: Calentando a {}°C durante {}...
   Heating to {}°C...: Calentando a {}°C...
+  Heating {}...: Calentando {}...
   Heating...: Calentando...
   'Heating: %d / %d°C': 'Calentando: %d / %d°C'
   Heightmap and flatness of the active bed mesh: 'Mapa de alturas y planitud de la malla de cama activa'
@@ -1892,6 +1902,7 @@ translations:
   Keep clear of the printer while the toolhead is moving: Manténgase alejado de la impresora mientras se mueve el cabezal
   Keep current: Mantener actual
   Keep current ({}): Mantener actual ({})
+  Keep hands clear except when asked. The printer moves on its own.: Mantén las manos alejadas salvo cuando se te pida. La impresora se mueve sola.
   Keep hands clear. The printer moves on its own.: Mantenga las manos alejadas. La impresora se mueve sola.
 
   Keep its own data on this screen (up to 256 KB).: 'Guarda sus propios datos en esta pantalla (hasta 256 KB).'
@@ -1979,6 +1990,7 @@ translations:
   Layout: Distribución
   Layout changes are off in safe mode. Restart to edit.: 'Los cambios de diseño están desactivados en modo seguro. Reinicie para editar.'
   Learn More: Más información
+  Leave it: 'Dejarla'
   LedSelect: Seleccionar LED
   Left: 'Izquierda'
   Length of filament to purge: 'Longitud de filamento a purgar'
@@ -2161,6 +2173,7 @@ translations:
   Maximum toolhead speed (mm/s): Velocidad máxima del cabezal (mm/s)
   Measure: 'Medir'
   Measure (~{} min): "Medir (~{} min)"
+  Measure each toolhead's X, Y and Z offset (about 20 minutes): Mide el offset X, Y y Z de cada cabezal (unos 20 minutos)
   Measure every tool's XYZ offset automatically: Mide el offset XYZ de cada herramienta automáticamente
   Measure pressure advance automatically: 'Mide el Pressure Advance automáticamente'
   Measure this zone first: "Mide primero esta zona"
@@ -2170,6 +2183,7 @@ translations:
   Measured filament diameter: Diámetro medido del filamento
   Measured pressure advance: 'Pressure Advance medido'
   Measurement incomplete. Try again.: Medición incompleta. Inténtelo de nuevo.
+  Measures each toolhead's X, Y and Z offset so every head prints in the same place. Takes about 20 minutes.: Mide el offset X, Y y Z de cada cabezal para que todos impriman en el mismo lugar. Tarda unos 20 minutos.
   Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen.: 'Mide la cama en cada tornillo de ajuste e indica cuánto girarlo. Ejecútalo en la pantalla Inclinación de Tornillos.'
   Measures vibration for input shaping. Run resonance tests on the Input Shaper screen.: 'Mide la vibración para el input shaping. Ejecuta las pruebas de resonancia en la pantalla Moldeador de Entrada.'
   Measuring: 'Midiendo'
@@ -2177,6 +2191,7 @@ translations:
   Measuring accelerometer noise...: 'Midiendo el ruido del acelerómetro...'
   Measuring vibrations... {}%: 'Midiendo vibraciones... {}%'
   Measuring wheel error: Error de la rueda de medición
+  Measuring {}...: Midiendo {}...
   Memory: Memoria
   Memory (MB): Memoria (MB)
   Memory Snapshot: Instantánea de memoria
@@ -2235,6 +2250,7 @@ translations:
   Moving lane: Moviendo carril
   Moving the plate...: Moviendo la cama...
 
+  Moving {} to the front...: Moviendo {} al frente...
   Multi-Filament: Multi-Filamento
   Multi-Filament Overview: Vista general multi-filamento
   Multi-Filament System: Sistema multi-filamento
@@ -2434,6 +2450,7 @@ translations:
   'Which lane is in the toolhead?': '¿Qué carril está en el cabezal?'
   'Choose which lane is in the toolhead to unload it': 'Elige qué carril está en el cabezal para descargarlo'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: 'No se cambió nada. La temperatura y el material se conservan, reintentar es un toque.'
+  Nothing was saved and the heaters are off.: No se guardó nada y los calentadores están apagados.
   Notification: Notificación
   Notifications: Notificaciones
   Notify when print finishes: Notificar cuando termine la impresión
@@ -2479,6 +2496,7 @@ translations:
   'Off:': 'Apagado:'
   'Off: runs with these values without asking': 'Desactivado: ejecuta con estos valores sin preguntar'
   Offer to save Z-offset changes to the printer config: 'Ofrecer guardar los cambios de Z-Offset en la configuración de la impresora'
+  Offsets Saved: Offsets guardados
   Offsets saved: Offsets guardados
   "Old setting on today's data: {} residual - now: {}": 'Ajuste anterior en los datos de hoy: {} de vibración residual - ahora: {}'
   'On': Encendido
@@ -2620,6 +2638,7 @@ translations:
   'Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels.': 'Coloque
     archivos de imagen (PNG, JPEG, BMP, GIF) en config/custom_images/. Tamaño máx.:
     2048×2048 píxeles.'
+  Place the PEI sheet back onto the heated bed.: Vuelve a colocar la lámina PEI sobre la cama caliente.
   Place the spools: Coloca las bobinas
 
   Placed: En cola
@@ -2675,6 +2694,7 @@ translations:
   'Preheat: all {} tools + bed set': 'Precalentar: todas las {} herramientas + cama
     configurada'
   'Preheat: {} + bed set': 'Precalentar: {} + cama configurada'
+  Preheating and homing...: Precalentando y haciendo homing...
   Preload: 'Precargar'
   Preload failed: Error al precargar
   Prepared: Preparado
@@ -2792,6 +2812,7 @@ translations:
   Printer hardware detected: Hardware de impresora detectado
   Printer image set to auto-detect: Imagen de impresora configurada en auto-detectar
   Printer is busy - {} stays in the queue: 'La impresora está ocupada: {} permanece en la cola'
+  Printer is busy with a print: La impresora está imprimiendo
   Printer is busy — try again in a moment: La impresora está ocupada — inténtalo de nuevo en un momento
   Printer is not paired — pair it first: La impresora no está emparejada — empareja
     primero
@@ -2981,6 +3002,7 @@ translations:
   Remove PIN: Eliminar PIN
   Remove Spoolman?: ¿Eliminar Spoolman?
   Remove plugin from printer: Eliminar plugin de la impresora
+  Remove the PEI Sheet: Retirar la lámina PEI
   'Remove the PEI sheet from the bed, then start again: probing through the sheet gives wrong results': 'Retira la lámina PEI de la cama e inténtalo de nuevo: sondear a través de la lámina da resultados incorrectos'
   Remove the bypass spool from the toolhead first: 'Primero retira la bobina de bypass del cabezal'
   Remove the spools: Retira las bobinas
@@ -3197,6 +3219,7 @@ translations:
     y reinicia el firmware.
   Saving Configuration...: Guardando Configuración...
   Saving Z-offset...: Guardando Z-offset...
+  Saving and finishing...: Guardando y finalizando...
   Saving config... Klipper will restart.: Guardando config... Klipper se reiniciará.
   Saving offsets...: Guardando offsets...
   Saving the position and parking the toolhead.: Guardando la posición y estacionando el cabezal.
@@ -3525,6 +3548,7 @@ translations:
   Std Deviation: Desviación Estándar
   Step: Paso
   Step 1 of 3: Paso 1 de 3
+  Step {} of {}: Paso {} de {}
   Still saving this spool…: 'Todavía se está guardando esta bobina…'
   Still working... taking longer than usual: Aún trabajando... tardando más de lo
     habitual
@@ -3601,6 +3625,7 @@ translations:
   TOOLS: HERRAMIENTAS
   TPU: TPU
   Tag Parts: Marcar Componentes
+  Take the PEI sheet off the heated bed, then tap Next. The toolheads probe the bare bed.: Retira la lámina PEI de la cama caliente y pulsa Siguiente. Los cabezales miden sobre la cama desnuda.
   Takes 3-5 min. Do not interrupt.: Tarda 3-5 min. No interrumpa.
   Tangle prevention active: Prevención de enredos activa
   Tangle prevention boosted: Prevención de enredos reforzada
@@ -3686,6 +3711,7 @@ translations:
   : El plugin HelixPrint permite modificaciones rápidas de G-code directamente en
     su impresora, como omitir la malla de cama para reimpresiones rápidas.
   The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings.: 'El plugin de timelapse de Moonraker está instalado. Define cómo graba en los ajustes de timelapse.'
+  The PEI sheet is still on the bed. Take it off, then tap Next.: La lámina PEI sigue en la cama. Retírala y pulsa Siguiente.
   The Spoolman spool currently loaded: La bobina de Spoolman cargada ahora
   ? The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
@@ -3736,6 +3762,8 @@ translations:
   : La bobina cargada es {}, pero este archivo se laminó para {}. El filamento con relleno funciona con un caudal menor y necesita una boquilla endurecida.
   The message your printer's macros show (M117): 'El mensaje que muestran las macros de tu impresora (M117)'
   The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.: 'La boquilla hace unos movimientos de prueba cortos en una esquina, lejos de la zona de impresión, y repite hasta que los valores coinciden.'
+  ? The nozzle is hot. Brush it clean with the wire brush that came with the printer and keep the docking position clean, then tap Next.
+  : La boquilla está caliente. Límpiala con el cepillo de alambre incluido, mantén limpia la posición de anclaje y pulsa Siguiente.
   The plate and the spools are still hot. Use gloves.: La cama y las bobinas siguen calientes. Usa guantes.
 
   The plate finishes its current move, but drying will not start.: 'La cama termina su movimiento actual, pero el secado no empezará.'
@@ -3977,11 +4005,14 @@ translations:
   Tool swap: Cambio de herramienta
   Toolchange purge: 'Purga de cambio de herramienta'
   Toolhead: 'Cabezal'
+  Toolhead Calibration Running: 'Calibración de cabezales en curso'
   Toolhead LED: 'LED del cabezal'
+  Toolhead Offset Calibration: Calibración de offsets de cabezales
   Toolhead Sensor: Sensor del Cabezal
   Toolhead Style: Estilo de Cabezal
   Toolhead Y: Cabezal Y
   Toolhead jam: Atasco del cabezal
+  Toolhead offset calibration: Calibración de offsets de cabezales
   Toolhead position and homing, with a plate view and Home All: "Posición y posicionamiento del cabezal, con vista de la placa y Posicionar todo"
   Toolhead position unknown: Posición del cabezal desconocida
   Toolheads: Cabezales
@@ -4245,6 +4276,7 @@ translations:
   Will not switch spools on runout: No cambiará de bobina al agotarse
   Wipe nozzle on silicone cleaning strip: 'Limpiar la boquilla en la tira de limpieza de silicona'
   Within {0:.1f} Hz of each other at {1:.0f} Hz: "A {0:.1f} Hz entre sí a {1:.0f} Hz"
+  Wiping {}...: Limpiando {}...
   Wizard Error: Error del asistente
   Working...: Procesando...
   Write failed at chunk {}: Error de escritura en el fragmento {}

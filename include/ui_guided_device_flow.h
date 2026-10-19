@@ -40,4 +40,8 @@ const GuidedDeviceFlow* find_guided_device_flow(const std::string& id);
 /// nothing in a build without CFS support.
 void register_cfs_device_flows();
 
+/// Registers the Snapmaker U1 flows (`snapmaker_nozzle_offset`). Does nothing in a
+/// build without Snapmaker support.
+void register_snapmaker_device_flows();
+
 } // namespace helix::ui

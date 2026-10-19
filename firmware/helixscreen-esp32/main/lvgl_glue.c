@@ -602,6 +602,10 @@ bool helix_on_ui_task(void) {
     return s_ui_task == NULL || xTaskGetCurrentTaskHandle() == s_ui_task;
 }
 
+size_t lvgl_glue_ui_stack_bytes(void) {
+    return UI_THREAD_STACK_BYTES;
+}
+
 const uint8_t* lvgl_glue_frame(uint32_t* w, uint32_t* h, size_t* stride) {
     *w = BOARD_LCD_H_RES;
     *h = BOARD_LCD_V_RES;

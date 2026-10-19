@@ -176,6 +176,8 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
     }
     panda_breath_offline_ = helix::env_flag("HELIX_MOCK_PANDA_BREATH_OFFLINE");
     panda_breath_auto_ = helix::env_flag("HELIX_MOCK_PANDA_BREATH_AUTO");
+    // Another screen's toolhead offset calibration, already holding the state at connect.
+    nozzle_cal_active_ = helix::env_flag("HELIX_MOCK_NOZZLE_CAL_HELD");
 
     // HELIX_MOCK_HOME_LAYOUT=<json file> pre-seeds the database record the
     // printer's own screen publishes its home layout to.
@@ -1233,8 +1235,18 @@ void MoonrakerClientMock::populate_capabilities() {
         for (const char* obj :
              {"tool", "fm175xx_reader", "tmc2240 stepper_x", "purifier", "camera",
               "defect_detection", "gcode_macro FILAMENT_DT_UPDATE", "gcode_macro FILAMENT_DT_QUERY",
-              "gcode_macro EXTRUDER_OFFSET_ACTION_PROBE_CALIBRATE_ALL"}) {
+              "gcode_macro EXTRUDER_OFFSET_ACTION_PROBE_CALIBRATE_ALL",
+              "gcode_macro _EXTRUDER_OFFSET_ACTION_PRESTART",
+              "gcode_macro _EXTRUDER_OFFSET_ACTION_EXIT"}) {
             mock_objects.push_back(obj);
+        }
+        // The per-head hooks the offset calibration steps run.
+        for (int i = 0; i < 4; ++i) {
+            for (const char* step :
+                 {"HEAT", "AUTO_CLEAN", "MANUAL_CLEAN", "WAIT_COOL", "PROBE_CALIBRATE"}) {
+                mock_objects.push_back(
+                    fmt::format("gcode_macro _EXTRUDER_OFFSET_ACTION_{}_T{}", step, i));
+            }
         }
         for (int i = 0; i < 4; ++i) {
             mock_objects.push_back("filament_motion_sensor e" + std::to_string(i) + "_filament");
@@ -5933,6 +5945,102 @@ bool MoonrakerClientMock::simulate_tool_offset_calibration(
         };
     }
     play_console_steps(std::move(steps), 600, std::move(on_done));
+    return true;
+}
+
+std::array<double, 3> MoonrakerClientMock::nozzle_offset(int head) const {
+    std::lock_guard<std::mutex> lock(nozzle_cal_mutex_);
+    if (head < 0 || head >= static_cast<int>(nozzle_offsets_.size())) {
+        return {0.0, 0.0, 0.0};
+    }
+    return nozzle_offsets_[static_cast<size_t>(head)];
+}
+
+bool MoonrakerClientMock::nozzle_calibration_active() const {
+    std::lock_guard<std::mutex> lock(nozzle_cal_mutex_);
+    return nozzle_cal_active_;
+}
+
+bool MoonrakerClientMock::simulate_nozzle_offset_calibration(
+    const std::string& script, std::function<void(const nlohmann::json&)> success_cb,
+    std::function<void(const MoonrakerError&)> error_cb) {
+    constexpr const char* kPrefix = "EXTRUDER_OFFSET_ACTION_";
+    if (printer_type_ != PrinterType::SNAPMAKER_U1 || script.rfind(kPrefix, 0) != 0) {
+        return false;
+    }
+    record_gcode_script(script);
+    const std::string command = script.substr(0, script.find(' '));
+    const std::string step = command.substr(std::string(kPrefix).size());
+    int head = -1;
+    if (const auto at = script.find("TOOL_ID=T"); at != std::string::npos) {
+        head = helix::text_io::parse_leading<int>(script.substr(at + 9)).value_or(-1);
+    }
+
+    std::string error;
+    {
+        std::lock_guard<std::mutex> lock(nozzle_cal_mutex_);
+        if (step == "PRESTART") {
+            nozzle_cal_active_ = true;
+            nozzle_cal_plate_refusals_ = 0;
+            if (const char* env = std::getenv("HELIX_MOCK_NOZZLE_CAL_PLATE_REFUSE")) {
+                nozzle_cal_plate_refusals_ = helix::text_io::parse_leading<int>(env).value_or(0);
+            }
+        } else if (!nozzle_cal_active_) {
+            error = fmt::format(R"({{"coded": "0003-0530-0000-0009", "msg":"Operation '{}' )"
+                                R"(requires XYZ_OFFSET_CALIBRATE main state"}})",
+                                command);
+        } else if (step == "EXIT") {
+            nozzle_cal_active_ = false;
+        } else if (step == "DETECT_PLATE" && nozzle_cal_plate_refusals_ > 0) {
+            --nozzle_cal_plate_refusals_;
+            error = R"({"coded": "0003-0530-0000-0011", "msg":"The plate has not been removed"})";
+        } else if (step == "PROBE_CALIBRATE") {
+            int fail_head = -1;
+            if (const char* env = std::getenv("HELIX_MOCK_NOZZLE_CAL_FAIL")) {
+                fail_head = helix::text_io::parse_leading<int>(env).value_or(-1);
+            }
+            if (head == fail_head) {
+                error = "Probe samples exceed samples_tolerance";
+            } else if (head >= 0 && head < static_cast<int>(nozzle_offsets_.size())) {
+                // A re-measure lands near the old value, not on it.
+                for (double& axis : nozzle_offsets_[static_cast<size_t>(head)]) {
+                    axis += 0.004 * (head + 1);
+                }
+            }
+        }
+    }
+    spdlog::info("[MoonrakerClientMock] {}{}", script,
+                 error.empty() ? "" : fmt::format(" -> refused: {}", error));
+
+    std::vector<std::function<void()>> steps;
+    if (error.empty() && step == "PROBE_CALIBRATE" && head >= 0) {
+        steps.emplace_back([this, head] {
+            const auto o = nozzle_offset(head);
+            dispatch_gcode_response(fmt::format("// extruder{} offset: [{:.6f}, {:.6f}, {:.6f}]",
+                                                head == 0 ? "" : std::to_string(head), o[0], o[1],
+                                                o[2]));
+        });
+    }
+    std::function<void()> on_done;
+    if (error.empty()) {
+        on_done = [success_cb = std::move(success_cb)] {
+            if (success_cb) {
+                success_cb(json{{"result", "ok"}});
+            }
+        };
+    } else {
+        on_done = [this, error, error_cb = std::move(error_cb)] {
+            dispatch_gcode_response("!! " + error);
+            if (error_cb) {
+                MoonrakerError err;
+                err.message = error;
+                error_cb(err);
+            }
+        };
+    }
+    // A step is a heat, a wipe or a probe pass on the real machine; a beat is
+    // enough to see each one on screen.
+    play_console_steps(std::move(steps), 1200, std::move(on_done));
     return true;
 }
 

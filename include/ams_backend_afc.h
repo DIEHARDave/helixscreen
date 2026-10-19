@@ -744,6 +744,42 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
     /// have been applied. Caller holds mutex_.
     void apply_action_timeout_latch_locked();
 
+    // === Toolchange hold ====================================================
+    //
+    // One CHANGE_TOOL reports Idle between its legs: at the end of TOOL_UNLOAD,
+    // through the next extruder's heat wait, and between a toolchanger's dock
+    // and pickup. Published as-is, that Idle ends the operation mid change:
+    // AmsState clears the narration and the step bar restarts for the load.
+    // From AFC v1.2.0 next_lane is set for exactly the CHANGE_TOOL span
+    // (assigned at its top, cleared in its finally block); earlier releases
+    // clear it only after a successful load, so a change that failed or found
+    // its lane already loaded leaves it set. A change therefore begins when
+    // next_lane newly names a lane other than the one in the toolhead, and
+    // ends when next_lane clears, AFC raises an error, or the hold's budget
+    // runs out. While one is in progress an Idle keeps the busy action the
+    // change was already in.
+
+    /// A CHANGE_TOOL this backend saw begin is in progress.
+    bool toolchange_in_progress_{false};
+    /// AFC.next_lane as last reported; empty while unset.
+    std::string next_lane_;
+    /// The busy action held over AFC's mid-change Idle, and the detail shown
+    /// with it. Empty while nothing is held.
+    std::optional<AmsAction> toolchange_hold_;
+    std::string toolchange_hold_detail_;
+    /// When the current hold began; bounds it by kHeatingTimeoutSeconds, since
+    /// the gap it covers is a heater wait or a tool pickup.
+    std::chrono::steady_clock::time_point toolchange_hold_since_{};
+
+    /// Hold, keep or release the toolchange hold once the frame's fields are
+    /// all parsed. Released by the change ending (see above) and by AFC
+    /// reporting a busy state of its own. Caller holds mutex_.
+    void apply_toolchange_hold_locked(AmsAction action_at_frame_start,
+                                      const std::string& detail_at_frame_start);
+
+    /// Drop the hold and show the Idle AFC reported. Caller holds mutex_.
+    void release_toolchange_hold_locked();
+
     // === Optimistic dispatch + macro-ack resolution ========================
     //
     // AFC answers a command it has nothing to do about — "lane3 already

@@ -1040,9 +1040,18 @@ jobs:
           ' CHANGELOG.md)
         fi
 
-        # Truncate to fit Discord embed limit (4096 chars) with room for wrapper
-        if [ ${#CHANGELOG} -gt 3800 ]; then
-          CHANGELOG="${CHANGELOG:0:3800}..."
+        # The embed description holds 4096 chars. A longer entry is cut at the
+        # last whole line that fits and ends with a link to the full notes.
+        FULL_LINK="**[Read the full changelog on GitHub](${RELEASE_URL})**"
+        if [ ${#CHANGELOG} -gt 3900 ]; then
+          CHANGELOG=$(printf '%s' "$CHANGELOG" | python3 -c '
+        import sys
+        text, limit = sys.stdin.read(), int(sys.argv[1])
+        cut = text[:limit]
+        nl = cut.rfind("\n")
+        print((cut[:nl] if nl > 0 else cut).rstrip())
+        ' "$((3900 - ${#FULL_LINK} - 8))")
+          CHANGELOG="${CHANGELOG}"$'\n\n…\n\n'"${FULL_LINK}"
         fi
 
         # Escape for JSON: backslashes, double quotes, newlines
