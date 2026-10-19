@@ -669,14 +669,14 @@
           its scroll area pinned at 10px gives chrome = card - scroll, and the
           cap is (85% cap - chrome) with 8px spare:
             micro   480x272   chrome  70  cap 231
-            tiny    480x320   chrome  85  cap 272
+            tiny    480x320   chrome  97  cap 272
             small   640x400   chrome 114  cap 340
             medium  800x480   chrome 124  cap 408
             large  1024x600   chrome 150  cap 510
             xlarge 1200x900   chrome 174  cap 765
             xxlarge 1280x1024 chrome 220  cap 870 -->
     <px name="dialog_content_recovery_max_micro" value="153"/>
-    <px name="dialog_content_recovery_max_tiny" value="179"/>
+    <px name="dialog_content_recovery_max_tiny" value="167"/>
     <px name="dialog_content_recovery_max_small" value="218"/>
     <px name="dialog_content_recovery_max_medium" value="276"/>
     <px name="dialog_content_recovery_max_large" value="352"/>
@@ -684,7 +684,7 @@
     <px name="dialog_content_recovery_max_xxlarge" value="642"/>
 
     <px name="dialog_content_max_micro" value="140"/>
-    <px name="dialog_content_max_tiny" value="200"/>
+    <px name="dialog_content_max_tiny" value="170"/>
     <px name="dialog_content_max_small" value="260"/>
     <px name="dialog_content_max_medium" value="320"/>
     <px name="dialog_content_max_large" value="440"/>
