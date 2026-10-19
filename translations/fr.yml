@@ -490,6 +490,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : Le bypass est actif, mais cette impression utilise les slots de l'AMS. L'imprimante peut refuser de charger un slot tant que du filament bypass se trouve dans la tête d'outil. Retirez le filament et désactivez le bypass avant d'imprimer. Démarrer quand même ?
   Bypass mode is not currently active: 'Le mode bypass n''est pas actif actuellement'
+  Bypass off macro: 'Macro de désactivation du bypass'
+  Bypass on macro: 'Macro d''activation du bypass'
   Bypass toggle failed: Échec de la bascule du bypass
   C: C
   CALIBRATION: CALIBRATION
@@ -1189,6 +1191,7 @@ translations:
   Ended: Terminé
   Endless Spool: 'Bobine infinie'
   Endless Spool backups cleared: Réserves de la bobine infinie effacées
+  Endless Spool change failed: 'Échec de la modification de la bobine infinie'
   Endless Spool is configured in its package, not from here: La bobine infinie se configure dans son plugin, pas ici
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: 'La bobine infinie est activée, mais aucune paire de slots ne contient le même filament : rien ne changera en fin de filament'
   Endless Spool is turned off on this MMU: 'La bobine infinie est désactivée sur ce MMU'
@@ -1439,6 +1442,7 @@ translations:
   Feature not available: Fonctionnalité non disponible
   'Features: ': 'Fonctionnalités : '
   Feed Assist: 'Assistance d''alimentation'
+  Feed assist and bypass macros: 'Assistance d''alimentation et macros de bypass'
   Feed assist and debug tools: Assistance d'alimentation et outils de débogage
   Feed failed: Échec de l'alimentation
   Feed filament: Alimenter le filament
@@ -2871,6 +2875,7 @@ translations:
   Provide a numeric {}: 'Indiquez une valeur numérique pour {}'
   Provide a speed multiplier value: 'Indiquez un multiplicateur de vitesse'
   Provide a {}: 'Indiquez {}'
+  Provide an on/off value: 'Indiquez une valeur marche/arrêt'
   Provide {}: 'Indiquez {}'
   Pulling filament back: Rétraction du filament
   Purge: Purger
@@ -2921,6 +2926,7 @@ translations:
   RFID reader malfunction (left): Dysfonctionnement du lecteur RFID (gauche)
   RFID reader malfunction (right): Dysfonctionnement du lecteur RFID (droit)
   RFID, Auto-Refill, nozzle and link care: RFID, rechargement automatique, entretien de la buse et de la liaison
+  RFID, nozzle and link care: 'RFID, entretien de la buse et de la liaison'
   RH: HR
   RSS: RSS
   'RSS:': 'RSS :'
@@ -3592,6 +3598,7 @@ translations:
   Switch the active tool or extruder: Changer d'outil ou d'extrudeur actif
   Switch to a backup slot on runout: Passer à un slot de secours en fin de filament
   Switch to a matching slot on runout: Passer à un slot correspondant en fin de filament
+  Switch to a matching spool when one runs out: 'Passer à une bobine correspondante quand l''une est vide'
   Switch to v%s: 'Passer à la v%s'
   Switch to {}?: 'Passer à {} ?'
   Switched to {}: 'Basculé sur {}'
@@ -4101,6 +4108,7 @@ translations:
   Unload from toolhead first: 'Déchargez d''abord depuis la tête d''outil'
   Unload macro not configured: Macro de déchargement non configurée
   Unload the CFS filament before enabling bypass: 'Déchargez le filament du CFS avant d''activer le bypass'
+  Unload the toolhead when a print ends: 'Décharger la tête d''outil à la fin d''une impression'
   Unload this unit first: 'Déchargez d''abord cette unité'
   Unload which tool?: 'Décharger quel outil ?'
   Unload...: Décharger...
@@ -4228,11 +4236,14 @@ translations:
     ou à la fin des impressions.
   Welcome to HelixScreen: Bienvenue sur HelixScreen
   What We Collect: Ce que nous collectons
+  What happens when a print ends: 'Ce qui se passe à la fin d''une impression'
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: Quand
     activé, seule la macro s'exécute. Quand désactivé, les températures sont définies
     d'abord, puis la macro s'exécute.
   Where UI sounds play: Où les sons de l'interface sont diffusés
   Whether filament is loaded: Si du filament est chargé
+  Which macro switches the ACE path back on: 'Macro qui réactive le circuit de l''ACE'
+  Which macro switches the ACE path off for bypass: 'Macro qui coupe le circuit de l''ACE pour le bypass'
   Which macro the Close feeder button sends: Macro envoyée par le bouton Fermer l'alimentateur
   Which macro the Open feeder button sends: Macro envoyée par le bouton Ouvrir l'alimentateur
   White: Blanc

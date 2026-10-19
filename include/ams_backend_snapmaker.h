@@ -573,7 +573,16 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// not left holding the calibration state with heaters on.
     void before_disconnect() override;
 
+    /// Endless Spool is the firmware's auto-replenish: available once it has
+    /// reported the flag, switchable, and firmware-managed (the firmware
+    /// chooses the backup head).
+    [[nodiscard]] helix::printer::EndlessSpoolCapabilities
+    get_endless_spool_capabilities() const override;
+
   protected:
+    /// SET_PRINT_PREFERENCES AUTO_REPLENISH_FILAMENT=0|1.
+    AmsError apply_endless_spool_enabled(bool enabled) override;
+
     // Extension points for hardware hung off the U1's heads. Each default is
     // the stock U1's answer, and each is called with mutex_ held.
 

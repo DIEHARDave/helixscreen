@@ -233,18 +233,19 @@ parsed for two purposes: a material-code-to-name lookup used when resolving a sl
 name, and the per-lane group ordinals (`AmsSystemInfo::endless_spool_group_ids`) behind the
 `OnWithoutBackup` derivation above. Nothing is pushed back to the firmware on its basis.
 
-The user-facing on/off control is the `toggle_auto_refill` device action, which emits
-`BOX_ENABLE_AUTO_REFILL ENABLE=1|0` — a setter, not a toggle: it sends the switch's value
-(or, called with no value, the inverse of the cached `endless_spool_enabled`) as the explicit
-argument, mirroring Creality's own master-server (string tables in both OTA images; a bare
+The user-facing on/off control is the generic Endless Spool switch in the device operations
+(`AmsBackend::set_endless_spool_enabled()`; the capabilities report `switchable`), which reaches
+`AmsBackendCfs::apply_endless_spool_enabled()` and emits
+`BOX_ENABLE_AUTO_REFILL ENABLE=1|0` — a setter, not a toggle: it sends the switch's value as
+the explicit argument, mirroring Creality's own master-server (string tables in both OTA images; a bare
 call leaves the handler's `gcmd.get_int` without its argument, whose behavior is
 unverified). The switch renders the cached state, and has no value until a frame has
 reported one. A send becomes the cached state once Klipper reports the command complete,
 because the box never confirms a value it already held; a send that errors (the flat fork
 registers no `BOX_ENABLE_AUTO_REFILL`, Klipper not ready, a box rejection) leaves the cache
-alone. On the identified fork dialect the same action sends `_BOX_SET_RUNOUT_SWAP ENABLE=1|0`,
-the module's own setter for `runout_swap_enabled`; an unidentified flat module is refused like
-every other control path. `on_started()` forgets the bit, so a restart reads `Unknown` until the box reports it
+alone. On the identified fork dialect the same setter sends `_BOX_SET_RUNOUT_SWAP ENABLE=1|0`,
+the module's own setter for `runout_swap_enabled`; an unidentified flat module is not
+`switchable`, and is refused like every other control path. `on_started()` forgets the bit, so a restart reads `Unknown` until the box reports it
 again. It is not an endless-spool *edit* in the
 `set_endless_spool_backup()` sense, which is why editability stays `ReadOnly`.
 

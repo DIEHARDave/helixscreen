@@ -450,6 +450,8 @@
   <translation tag="Bypass failed" en="Bypass failed"/>
   <translation tag="Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?" en="Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?"/>
   <translation tag="Bypass mode is not currently active" en="Bypass mode is not currently active"/>
+  <translation tag="Bypass off macro" en="Bypass off macro"/>
+  <translation tag="Bypass on macro" en="Bypass on macro"/>
   <translation tag="Bypass toggle failed" en="Bypass toggle failed"/>
   <translation tag="C" en="C"/>
   <translation tag="CALIBRATION" en="CALIBRATION"/>
@@ -1068,6 +1070,7 @@
   <translation tag="Ended" en="Ended"/>
   <translation tag="Endless Spool" en="Endless Spool"/>
   <translation tag="Endless Spool backups cleared" en="Endless Spool backups cleared"/>
+  <translation tag="Endless Spool change failed" en="Endless Spool change failed"/>
   <translation tag="Endless Spool is configured in its package, not from here" en="Endless Spool is configured in its package, not from here"/>
   <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" en="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout"/>
   <translation tag="Endless Spool is turned off on this MMU" en="Endless Spool is turned off on this MMU"/>
@@ -1294,6 +1297,7 @@
   <translation tag="Feature not available" en="Feature not available"/>
   <translation tag="Features: " en="Features: "/>
   <translation tag="Feed Assist" en="Feed Assist"/>
+  <translation tag="Feed assist and bypass macros" en="Feed assist and bypass macros"/>
   <translation tag="Feed assist and debug tools" en="Feed assist and debug tools"/>
   <translation tag="Feed failed" en="Feed failed"/>
   <translation tag="Feed filament" en="Feed filament"/>
@@ -2604,6 +2608,7 @@
   <translation tag="Provide a numeric {}" en="Provide a numeric {}"/>
   <translation tag="Provide a speed multiplier value" en="Provide a speed multiplier value"/>
   <translation tag="Provide a {}" en="Provide a {}"/>
+  <translation tag="Provide an on/off value" en="Provide an on/off value"/>
   <translation tag="Provide {}" en="Provide {}"/>
   <translation tag="Pulling filament back" en="Pulling filament back"/>
   <translation tag="Purge" en="Purge"/>
@@ -2650,6 +2655,7 @@
   <translation tag="RFID reader malfunction (left)" en="RFID reader malfunction (left)"/>
   <translation tag="RFID reader malfunction (right)" en="RFID reader malfunction (right)"/>
   <translation tag="RFID, Auto-Refill, nozzle and link care" en="RFID, Auto-Refill, nozzle and link care"/>
+  <translation tag="RFID, nozzle and link care" en="RFID, nozzle and link care"/>
   <translation tag="RH" en="RH"/>
   <translation tag="RSS" en="RSS"/>
   <translation tag="RSS:" en="RSS:"/>
@@ -3244,6 +3250,7 @@
   <translation tag="Switch the active tool or extruder" en="Switch the active tool or extruder"/>
   <translation tag="Switch to a backup slot on runout" en="Switch to a backup slot on runout"/>
   <translation tag="Switch to a matching slot on runout" en="Switch to a matching slot on runout"/>
+  <translation tag="Switch to a matching spool when one runs out" en="Switch to a matching spool when one runs out"/>
   <translation tag="Switch to v%s" en="Switch to v%s"/>
   <translation tag="Switch to {}?" en="Switch to {}?"/>
   <translation tag="Switched to {}" en="Switched to {}"/>
@@ -3663,6 +3670,7 @@
   <translation tag="Unload macro not configured" en="Unload macro not configured"/>
   <translation tag="Unload stopped" en="Unload stopped"/>
   <translation tag="Unload the CFS filament before enabling bypass" en="Unload the CFS filament before enabling bypass"/>
+  <translation tag="Unload the toolhead when a print ends" en="Unload the toolhead when a print ends"/>
   <translation tag="Unload this unit first" en="Unload this unit first"/>
   <translation tag="Unload which tool?" en="Unload which tool?"/>
   <translation tag="Unload..." en="Unload..."/>
@@ -3784,10 +3792,13 @@
   <translation tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." en="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete."/>
   <translation tag="Welcome to HelixScreen" en="Welcome to HelixScreen"/>
   <translation tag="What We Collect" en="What We Collect"/>
+  <translation tag="What happens when a print ends" en="What happens when a print ends"/>
   <translation tag="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs." en="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs."/>
   <translation tag="Where UI sounds play" en="Where UI sounds play"/>
   <translation tag="Whether filament is loaded" en="Whether filament is loaded"/>
   <translation tag="Which lane is in the toolhead?" en="Which lane is in the toolhead?"/>
+  <translation tag="Which macro switches the ACE path back on" en="Which macro switches the ACE path back on"/>
+  <translation tag="Which macro switches the ACE path off for bypass" en="Which macro switches the ACE path off for bypass"/>
   <translation tag="Which macro the Close feeder button sends" en="Which macro the Close feeder button sends"/>
   <translation tag="Which macro the Open feeder button sends" en="Which macro the Open feeder button sends"/>
   <translation tag="White" en="White"/>

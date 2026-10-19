@@ -2347,6 +2347,11 @@ struct EndlessSpoolCapabilities {
     EndlessSpoolEditability editability = EndlessSpoolEditability::ReadOnly;
     EndlessSpoolRestriction restriction = EndlessSpoolRestriction::None;
 
+    /// The UI may switch the feature on and off (AmsBackend::set_endless_spool_enabled).
+    /// Independent of editability: a box whose firmware picks the backup itself
+    /// can still take an on/off command.
+    bool switchable = false;
+
     /// Proper noun of the package implementing the feature ("lessWaste",
     /// "bambufy"); empty when the backend or firmware implements it natively.
     /// A product name is never translated, which is why this is the one

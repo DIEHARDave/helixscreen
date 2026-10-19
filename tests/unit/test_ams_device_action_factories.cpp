@@ -70,7 +70,7 @@ TEST_CASE("DeviceAction factories set every field the control type uses", "[ams]
 
 TEST_CASE("AFC default actions keep their shipped field values", "[ams][afc][device_actions]") {
     const auto actions = afc_default_actions();
-    CHECK(actions.size() == 26);
+    CHECK(actions.size() == 27);
 
     const auto& bowden = by_id(actions, "bowden_length");
     CHECK(bowden.label == "Bowden Length");
@@ -135,12 +135,11 @@ TEST_CASE("ACE and CFS device actions keep their shipped field values",
     CHECK_FALSE(ace[2].current_value.has_value());
 
     const auto cfs = AmsBackendCfs(nullptr, nullptr).get_device_actions();
-    REQUIRE(cfs.size() == 4);
-    CHECK(cfs[1].id == "toggle_auto_refill");
-    CHECK(cfs[1].type == ActionType::TOGGLE);
+    REQUIRE(cfs.size() == 3);
+    CHECK(cfs[1].id == "nozzle_clean");
     CHECK(cfs[1].section == "maintenance");
-    CHECK(cfs[3].label == "Communication Test");
-    CHECK(cfs[3].enabled);
+    CHECK(cfs[2].label == "Communication Test");
+    CHECK(cfs[2].enabled);
 }
 
 TEST_CASE("every default device action names an icon the font has",

@@ -2038,7 +2038,13 @@ void AmsBackendSnapmaker::apply_print_task_config_locked(const snapmaker::Status
     // Firmware-stored preferences are held as told, never filed as lane
     // observations: they are a write surface like the filament_type/vendor/color
     // fields below.
+    const auto replenish_before = print_preferences_.auto_replenish;
     print_preferences_.merge(ptc.preferences);
+    // Auto-replenish is the Endless Spool switch, which AmsState republishes
+    // only on a change event.
+    if (print_preferences_.auto_replenish != replenish_before) {
+        fx.changed = true;
+    }
 
     apply_task_routing_locked(ptc, fx);
     apply_task_slot_identity_locked(ptc, fx);
@@ -3416,9 +3422,6 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
 
     // Only settings the firmware has reported become actions: a toggle whose
     // state is unknown renders off and invites "changing" it to its own value.
-    if (p.auto_replenish) {
-        add_toggle("snapmaker_auto_replenish", TR_NOOP("Auto-Replenish"), *p.auto_replenish);
-    }
     if (p.replenish_ignore_color) {
         add_toggle("snapmaker_replenish_ignore_color", TR_NOOP("Replenish ignores color"),
                    *p.replenish_ignore_color);
@@ -3466,13 +3469,7 @@ std::string AmsBackendSnapmaker::build_preference_gcode(const std::string& actio
     // pointer-form: a value whose type does not match the action reads as
     // absent and refuses like a malformed id, never as a bad_any_cast out
     // of the callback.
-    if (action_id == "snapmaker_auto_replenish") {
-        if (const auto* v = std::any_cast<bool>(&value)) {
-            changes.auto_replenish = *v;
-        } else {
-            return {};
-        }
-    } else if (action_id == "snapmaker_replenish_ignore_color") {
+    if (action_id == "snapmaker_replenish_ignore_color") {
         const auto [v, err] = printer::device_action_value<bool>(value, "setting");
         if (!err) {
             return {};
@@ -3549,6 +3546,28 @@ AmsError AmsBackendSnapmaker::do_execute_device_action(const std::string& action
         }
     }
     return execute_gcode(gcode);
+}
+
+helix::printer::EndlessSpoolCapabilities
+AmsBackendSnapmaker::get_endless_spool_capabilities() const {
+    using namespace helix::printer;
+    // The firmware's auto-replenish picks the backup head itself; until it has
+    // reported the flag, the feature's state is unknown and nothing is offered.
+    const auto replenish = print_preferences().auto_replenish;
+    if (!replenish) {
+        return {};
+    }
+    return {.availability = EndlessSpoolAvailability::Available,
+            .enabled = *replenish ? EndlessSpoolEnabled::On : EndlessSpoolEnabled::Off,
+            .editability = EndlessSpoolEditability::ReadOnly,
+            .restriction = EndlessSpoolRestriction::FirmwareManaged,
+            .switchable = true};
+}
+
+AmsError AmsBackendSnapmaker::apply_endless_spool_enabled(bool enabled) {
+    snapmaker::PrintPreferences changes;
+    changes.auto_replenish = enabled;
+    return execute_gcode(snapmaker::write_print_preferences_gcode(changes));
 }
 
 std::string AmsBackendSnapmaker::end_unload_gcode() const {

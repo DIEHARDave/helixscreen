@@ -531,6 +531,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : Активен байпас, но эта печать использует слоты AMS. Принтер может отказаться загружать слот, пока филамент байпаса находится в печатающей головке. Извлеките филамент и выключите байпас перед печатью. Всё равно начать?
   Bypass mode is not currently active: 'Режим обхода сейчас не активен'
+  Bypass off macro: 'Макрос выключения обхода'
+  Bypass on macro: 'Макрос включения обхода'
   Bypass toggle failed: Не удалось переключить байпас
   C: К
   CALIBRATION: КАЛИБРОВКА
@@ -1225,6 +1227,7 @@ translations:
   Ended: Завершено
   Endless Spool: 'Бесконечная катушка'
   Endless Spool backups cleared: Резервы бесконечной катушки очищены
+  Endless Spool change failed: 'Не удалось изменить бесконечную катушку'
   Endless Spool is configured in its package, not from here: Бесконечная катушка настраивается в своём плагине, не здесь
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: Бесконечная катушка включена, но нет двух слотов с совпадающим филаментом, поэтому переключение при обрыве не сработает
   Endless Spool is turned off on this MMU: 'Бесконечная катушка отключена на этом MMU'
@@ -1465,6 +1468,7 @@ translations:
   Feature not available: Функция недоступна
   'Features: ': 'Функции: '
   Feed Assist: 'Помощь подачи'
+  Feed assist and bypass macros: 'Помощь подачи и макросы обхода'
   Feed assist and debug tools: Помощь подачи и инструменты отладки
   Feed failed: Не удалась подача
   Feed filament: Подать филамент
@@ -2901,6 +2905,7 @@ translations:
   Provide a numeric {}: 'Укажите числовое значение для {}'
   Provide a speed multiplier value: 'Укажите множитель скорости'
   Provide a {}: 'Укажите {}'
+  Provide an on/off value: 'Укажите значение вкл/выкл'
   Provide {}: 'Укажите {}'
   Pulling filament back: Откат филамента
   Purge: Продуть
@@ -2951,6 +2956,7 @@ translations:
   RFID reader malfunction (left): Неисправность RFID-считывателя (левый)
   RFID reader malfunction (right): Неисправность RFID-считывателя (правый)
   RFID, Auto-Refill, nozzle and link care: RFID, автопополнение, уход за соплом и связью
+  RFID, nozzle and link care: 'RFID, уход за соплом и связью'
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3617,6 +3623,7 @@ translations:
   Switch the active tool or extruder: Смена активного инструмента
   Switch to a backup slot on runout: Переключаться на резервный слот при окончании филамента
   Switch to a matching slot on runout: Переключаться на подходящий слот при окончании филамента
+  Switch to a matching spool when one runs out: 'Переключаться на подходящую катушку, когда одна закончится'
   Switch to v%s: 'Перейти на v%s'
   Switch to {}?: 'Переключиться на {}?'
   Switched to {}: 'Переключено на {}'
@@ -4110,6 +4117,7 @@ translations:
   Unload from toolhead first: 'Сначала выгрузите из печатающей головки'
   Unload macro not configured: Макрос выгрузки не настроен
   Unload the CFS filament before enabling bypass: 'Выгрузите филамент CFS перед включением обхода'
+  Unload the toolhead when a print ends: 'Выгружать печатающую головку по окончании печати'
   Unload this unit first: 'Сначала выгрузите этот узел'
   Unload which tool?: 'Из какого инструмента выгрузить?'
   Unload...: Выгрузить...
@@ -4233,11 +4241,14 @@ translations:
     Изменения также синхронизируются при начале, паузе или завершении печати.
   Welcome to HelixScreen: Добро пожаловать в HelixScreen
   What We Collect: Что мы собираем
+  What happens when a print ends: 'Что происходит по окончании печати'
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: Когда
     включено, запускается только макрос. Когда выключено, сначала задаются температуры,
     затем запускается макрос.
   Where UI sounds play: Где воспроизводятся звуки интерфейса
   Whether filament is loaded: Загружен ли филамент
+  Which macro switches the ACE path back on: 'Какой макрос снова включает тракт ACE'
+  Which macro switches the ACE path off for bypass: 'Какой макрос выключает тракт ACE для обхода'
   Which macro the Close feeder button sends: Какой макрос отправляет кнопка «Закрыть фидер»
   Which macro the Open feeder button sends: Какой макрос отправляет кнопка «Открыть фидер»
   White: Белый

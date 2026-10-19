@@ -30,13 +30,11 @@ namespace {
 /// Every name AmsDeviceOperationsOverlay::init_subjects() publishes.
 const char* const kDeviceOpsSubjects[] = {
     "ams_device_ops_system_info",
-    "ams_device_ops_status",
     "ams_device_ops_supports_bypass",
     "ams_device_ops_fw_supports_bypass",
     "ams_device_ops_hw_bypass_sensor",
     "ams_device_ops_supports_auto_heat",
     "ams_device_ops_has_backend",
-    "ams_device_ops_unload_after_print_configurable",
     "ams_device_ops_bypass_is_virtual",
     "ams_device_ops_reports_spool_ids",
     "ams_device_ops_printer_retains_spool_info",
@@ -88,7 +86,7 @@ TEST_CASE_METHOD(XMLTestFixture,
     REQUIRE(overlay.are_subjects_initialized());
 
     // A second init through show() would re-init the subject and drop this observer.
-    lv_subject_t* status = lv_xml_get_subject(nullptr, "ams_device_ops_status");
+    lv_subject_t* status = lv_xml_get_subject(nullptr, "ams_device_ops_system_info");
     REQUIRE(status != nullptr);
     g_status_notifies = 0;
     lv_observer_t* obs = lv_subject_add_observer(status, count_notify, nullptr);
@@ -101,9 +99,9 @@ TEST_CASE_METHOD(XMLTestFixture,
 
     lv_subject_notify(status);
     CHECK(g_status_notifies >= 1);
-    CHECK(lv_xml_get_subject(nullptr, "ams_device_ops_status") == status);
+    CHECK(lv_xml_get_subject(nullptr, "ams_device_ops_system_info") == status);
     lv_observer_remove(obs);
 
     StaticPanelRegistry::instance().destroy_all();
-    CHECK(lv_xml_get_subject(nullptr, "ams_device_ops_status") == nullptr);
+    CHECK(lv_xml_get_subject(nullptr, "ams_device_ops_system_info") == nullptr);
 }

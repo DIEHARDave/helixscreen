@@ -450,6 +450,8 @@
   <translation tag="Bypass failed" ja="バイパスに失敗しました"/>
   <translation tag="Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?" ja="バイパスが有効ですが、この印刷はAMSスロットを使用します。バイパスのフィラメントがツールヘッドにある間は、プリンターがスロットの装填を拒否する場合があります。印刷前にフィラメントを取り除き、バイパスをオフにしてください。それでも印刷を開始しますか？"/>
   <translation tag="Bypass mode is not currently active" ja="バイパスモードは現在アクティブではありません"/>
+  <translation tag="Bypass off macro" ja="バイパスオフのマクロ"/>
+  <translation tag="Bypass on macro" ja="バイパスオンのマクロ"/>
   <translation tag="Bypass toggle failed" ja="バイパス切替に失敗しました"/>
   <translation tag="C" ja="C"/>
   <translation tag="CALIBRATION" ja="キャリブレーション"/>
@@ -1068,6 +1070,7 @@
   <translation tag="Ended" ja="終了"/>
   <translation tag="Endless Spool" ja="エンドレススプール"/>
   <translation tag="Endless Spool backups cleared" ja="エンドレススプールの予備を消去しました"/>
+  <translation tag="Endless Spool change failed" ja="エンドレススプールの変更に失敗しました"/>
   <translation tag="Endless Spool is configured in its package, not from here" ja="エンドレススプールはプラグイン側で設定します"/>
   <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" ja="エンドレススプールはオンですが、フィラメントが一致するスロットが2つないため、フィラメント切れになっても何も切り替わりません"/>
   <translation tag="Endless Spool is turned off on this MMU" ja="この MMU ではエンドレススプールが無効です"/>
@@ -1294,6 +1297,7 @@
   <translation tag="Feature not available" ja="この機能は利用できません"/>
   <translation tag="Features: " ja="機能: "/>
   <translation tag="Feed Assist" ja="送りアシスト"/>
+  <translation tag="Feed assist and bypass macros" ja="送りアシストとバイパスマクロ"/>
   <translation tag="Feed assist and debug tools" ja="送りアシストとデバッグツール"/>
   <translation tag="Feed failed" ja="送り出しに失敗しました"/>
   <translation tag="Feed filament" ja="フィラメントを送る"/>
@@ -2604,6 +2608,7 @@
   <translation tag="Provide a numeric {}" ja="{} を数値で入力してください"/>
   <translation tag="Provide a speed multiplier value" ja="速度の倍率を入力してください"/>
   <translation tag="Provide a {}" ja="{} を入力してください"/>
+  <translation tag="Provide an on/off value" ja="オン/オフの値を入力してください"/>
   <translation tag="Provide {}" ja="{} を入力してください"/>
   <translation tag="Pulling filament back" ja="フィラメントを引き戻し中"/>
   <translation tag="Purge" ja="パージ"/>
@@ -2650,6 +2655,7 @@
   <translation tag="RFID reader malfunction (left)" ja="RFID リーダーの異常（左）"/>
   <translation tag="RFID reader malfunction (right)" ja="RFID リーダーの異常（右）"/>
   <translation tag="RFID, Auto-Refill, nozzle and link care" ja="RFID、自動補充、ノズルと接続のメンテナンス"/>
+  <translation tag="RFID, nozzle and link care" ja="RFID、ノズルと接続のメンテナンス"/>
   <translation tag="RH" ja="RH"/>
   <translation tag="RSS" ja="RSS"/>
   <translation tag="RSS:" ja="RSS:"/>
@@ -3244,6 +3250,7 @@
   <translation tag="Switch the active tool or extruder" ja="アクティブなツールやエクストルーダーを切り替え"/>
   <translation tag="Switch to a backup slot on runout" ja="フィラメント切れ時に予備スロットへ切り替え"/>
   <translation tag="Switch to a matching slot on runout" ja="フィラメント切れ時に一致するスロットへ切り替え"/>
+  <translation tag="Switch to a matching spool when one runs out" ja="スプールが切れたら一致するスプールに切り替え"/>
   <translation tag="Switch to v%s" ja="v%s に切り替え"/>
   <translation tag="Switch to {}?" ja="{} に切り替えますか?"/>
   <translation tag="Switched to {}" ja="{} に切替えました"/>
@@ -3663,6 +3670,7 @@
   <translation tag="Unload macro not configured" ja="アンロードマクロが未設定です"/>
   <translation tag="Unload stopped" ja="アンロードを停止しました"/>
   <translation tag="Unload the CFS filament before enabling bypass" ja="バイパスを有効にする前に CFS のフィラメントを取り出してください"/>
+  <translation tag="Unload the toolhead when a print ends" ja="印刷終了時にツールヘッドからアンロード"/>
   <translation tag="Unload this unit first" ja="先にこのユニットを排出してください"/>
   <translation tag="Unload which tool?" ja="どのツールをアンロードしますか？"/>
   <translation tag="Unload..." ja="排出..."/>
@@ -3784,10 +3792,13 @@
   <translation tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." ja="残りのフィラメントを表示するために、重量データが Spoolman から同期されます。印刷の開始、一時停止、完了時にも変更が同期されます。"/>
   <translation tag="Welcome to HelixScreen" ja="HelixScreen へようこそ"/>
   <translation tag="What We Collect" ja="収集する情報"/>
+  <translation tag="What happens when a print ends" ja="印刷終了時の動作"/>
   <translation tag="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs." ja="有効時はマクロのみ実行されます。無効時は先に温度を設定してからマクロが実行されます。"/>
   <translation tag="Where UI sounds play" ja="UIサウンドの再生先"/>
   <translation tag="Whether filament is loaded" ja="フィラメントの装填状態"/>
   <translation tag="Which lane is in the toolhead?" ja="ツールヘッドに入っているのはどのレーンですか？"/>
+  <translation tag="Which macro switches the ACE path back on" ja="ACE経路を再びオンにするマクロ"/>
+  <translation tag="Which macro switches the ACE path off for bypass" ja="バイパスのためにACE経路をオフにするマクロ"/>
   <translation tag="Which macro the Close feeder button sends" ja="「フィーダーを閉じる」ボタンが送信するマクロ"/>
   <translation tag="Which macro the Open feeder button sends" ja="「フィーダーを開く」ボタンが送信するマクロ"/>
   <translation tag="White" ja="ホワイト"/>

@@ -456,6 +456,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : 旁路已启用，但此打印使用 AMS 槽位。当旁路耗材仍在工具头中时，打印机可能拒绝装载槽位。请在打印前取出耗材并关闭旁路。仍要开始打印吗？
   Bypass mode is not currently active: '旁通模式当前未启用'
+  Bypass off macro: '关闭旁路宏'
+  Bypass on macro: '开启旁路宏'
   Bypass toggle failed: 旁通切换失败
   C: 腔
   CALIBRATION: 校准
@@ -1107,6 +1109,7 @@ translations:
   Ended: 已结束
   Endless Spool: '无限料盘'
   Endless Spool backups cleared: 已清除无限料盘备用设置
+  Endless Spool change failed: '更改无限料盘失败'
   Endless Spool is configured in its package, not from here: 无限料盘在其插件中配置，而非此处
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: 无限料盘已开启，但没有两个槽位装有相同的耗材，因此耗材用尽时不会切换
   Endless Spool is turned off on this MMU: '此 MMU 上的无限料盘已关闭'
@@ -1337,6 +1340,7 @@ translations:
   Feature not available: 功能不可用
   'Features: ': '特性: '
   Feed Assist: '送料辅助'
+  Feed assist and bypass macros: '送料辅助与旁路宏'
   Feed assist and debug tools: 送料辅助与调试工具
   Feed failed: 送料失败
   Feed filament: 进料
@@ -2694,6 +2698,7 @@ translations:
   Provide a numeric {}: '请为 {} 提供数值'
   Provide a speed multiplier value: '请提供速度倍率值'
   Provide a {}: '请提供 {}'
+  Provide an on/off value: '请提供开/关值'
   Provide {}: '请提供 {}'
   Pulling filament back: 正在回抽耗材
   Purge: 排料
@@ -2742,6 +2747,7 @@ translations:
   RFID reader malfunction (left): RFID 读取器故障（左）
   RFID reader malfunction (right): RFID 读取器故障（右）
   RFID, Auto-Refill, nozzle and link care: RFID、自动续料、喷嘴与链路维护
+  RFID, nozzle and link care: 'RFID、喷嘴与链路维护'
   RH: RH
   RSS: RSS
   'RSS:': RSS：
@@ -3357,6 +3363,7 @@ translations:
   Switch the active tool or extruder: 切换当前工具或挤出机
   Switch to a backup slot on runout: 耗材用尽时切换到备用槽位
   Switch to a matching slot on runout: 耗材用尽时切换到匹配的槽位
+  Switch to a matching spool when one runs out: '料盘用尽时切换到匹配的料盘'
   Switch to v%s: '切换到 v%s'
   Switch to {}?: '切换到 {}?'
   Switched to {}: '已切换到 {}'
@@ -3819,6 +3826,7 @@ translations:
   Unload from toolhead first: '请先从工具头卸载'
   Unload macro not configured: 卸载宏未配置
   Unload the CFS filament before enabling bypass: '启用旁通前请先卸载 CFS 耗材'
+  Unload the toolhead when a print ends: '打印结束时卸载工具头'
   Unload this unit first: '请先卸载此单元'
   Unload which tool?: '卸载哪个工具？'
   Unload...: 卸载...
@@ -3939,9 +3947,12 @@ translations:
   : 重量数据从 Spoolman 同步以显示剩余耗材。打印开始、暂停或完成时也会同步更改。
   Welcome to HelixScreen: 欢迎使用 HelixScreen
   What We Collect: 我们收集的内容
+  What happens when a print ends: '打印结束时的操作'
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: 启用时仅运行宏。禁用时先设置温度，然后运行宏。
   Where UI sounds play: 界面声音的播放位置
   Whether filament is loaded: 耗材是否已装载
+  Which macro switches the ACE path back on: '重新开启ACE通路的宏'
+  Which macro switches the ACE path off for bypass: '为旁路关闭ACE通路的宏'
   Which macro the Close feeder button sends: “关闭送料器”按钮发送的宏
   Which macro the Open feeder button sends: “打开送料器”按钮发送的宏
   White: 白色

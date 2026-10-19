@@ -142,6 +142,18 @@ AmsError AmsBackend::set_endless_spool_backup(int slot_index, int backup_slot) {
     return apply_endless_spool_backup(slot_index, backup_slot);
 }
 
+AmsError AmsBackend::set_endless_spool_enabled(bool enabled) {
+    const auto caps = get_endless_spool_capabilities();
+    if (!caps.available()) {
+        return AmsErrorHelper::not_supported("Endless spool");
+    }
+    if (!caps.switchable) {
+        return endless_spool_read_only_error(caps.restriction);
+    }
+    spdlog::info("[AMS Backend] Switching Endless Spool {}", enabled ? "on" : "off");
+    return apply_endless_spool_enabled(enabled);
+}
+
 AmsError AmsBackend::reset_endless_spool() {
     const auto caps = get_endless_spool_capabilities();
     if (!caps.available()) {
