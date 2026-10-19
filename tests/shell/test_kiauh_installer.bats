@@ -22,6 +22,11 @@ setup() {
     cp "$WORKTREE_ROOT/scripts/kiauh/helixscreen/__init__.py" "$src_dir/"
     cp "$WORKTREE_ROOT/scripts/kiauh/helixscreen/helixscreen_extension.py" "$src_dir/"
     cp "$WORKTREE_ROOT/scripts/kiauh/helixscreen/metadata.json" "$src_dir/"
+
+    # Hermetic homes: no real /home scan, no inherited sudo caller or Klipper user.
+    export KLIPPER_HOMES_ROOT="$BATS_TEST_TMPDIR/homes"
+    mkdir -p "$KLIPPER_HOMES_ROOT"
+    unset SUDO_USER KLIPPER_HOME
 }
 
 # --- detect_kiauh_dir tests ---
@@ -33,17 +38,55 @@ setup() {
     [ "$output" = "$BATS_TEST_TMPDIR/fakehome/kiauh/kiauh/extensions" ]
 }
 
-@test "detect_kiauh_dir finds /home/user/kiauh" {
-    # HOME doesn't have kiauh, but /home/biqu does
-    mkdir -p "$BATS_TEST_TMPDIR/fakehome"
-    mkdir -p "$BATS_TEST_TMPDIR/home/biqu/kiauh/kiauh/extensions"
+@test "detect_kiauh_dir prefers sudo's caller, then HOME, then the Klipper user" {
+    local caller="$BATS_TEST_TMPDIR/homes/caller" me="$BATS_TEST_TMPDIR/fakehome"
+    local klipper="$BATS_TEST_TMPDIR/homes/klipper"
+    for h in "$caller" "$me" "$klipper"; do mkdir -p "$h/kiauh/kiauh/extensions"; done
+    _kiauh_user_home() { [ "$1" = caller ] && echo "$BATS_TEST_TMPDIR/homes/caller"; return 0; }
 
-    # Override /home scan by using a function wrapper
-    # Since we can't create /home/biqu in tests, test the HOME path instead
-    # and trust the glob logic for /home/* (tested structurally)
-    HOME="$BATS_TEST_TMPDIR/fakehome" run detect_kiauh_dir
-    # No KIAUH at HOME, and we can't mock /home — so empty is expected
+    SUDO_USER=caller HOME="$me" KLIPPER_HOME="$klipper" run detect_kiauh_dir
+    [ "$output" = "$caller/kiauh/kiauh/extensions" ]
+
+    HOME="$me" KLIPPER_HOME="$klipper" run detect_kiauh_dir
+    [ "$output" = "$me/kiauh/kiauh/extensions" ]
+
+    HOME="$BATS_TEST_TMPDIR/nope" KLIPPER_HOME="$klipper" run detect_kiauh_dir
+    [ "$output" = "$klipper/kiauh/kiauh/extensions" ]
+}
+
+@test "detect_kiauh_dir takes a scanned KIAUH only when it is the only one" {
+    mkdir -p "$BATS_TEST_TMPDIR/homes/biqu/kiauh/kiauh/extensions"
+    HOME="$BATS_TEST_TMPDIR/nope" run detect_kiauh_dir
+    [ "$output" = "$BATS_TEST_TMPDIR/homes/biqu/kiauh/kiauh/extensions" ]
+
+    mkdir -p "$BATS_TEST_TMPDIR/homes/pi/kiauh/kiauh/extensions"
+    HOME="$BATS_TEST_TMPDIR/nope" run detect_kiauh_dir
     [ "$status" -eq 0 ]
+    [ "$output" = "" ]
+}
+
+@test "detect_kiauh says why it skips when several users have KIAUH" {
+    mkdir -p "$BATS_TEST_TMPDIR/homes/biqu/kiauh/kiauh/extensions"
+    mkdir -p "$BATS_TEST_TMPDIR/homes/pi/kiauh/kiauh/extensions"
+    HOME="$BATS_TEST_TMPDIR/nope"
+    skip_kiauh_registration=false
+    detect_kiauh > "$BATS_TEST_TMPDIR/out" 2>&1
+    [ -z "$KIAUH_DIR" ]
+    run cat "$BATS_TEST_TMPDIR/out"
+    contains "KIAUH is installed for more than one user" "$output"
+}
+
+@test "install_kiauh_extension replaces a symlink at the destination instead of writing through it" {
+    local kiauh_ext="$BATS_TEST_TMPDIR/fakehome/kiauh/kiauh/extensions"
+    mkdir -p "$kiauh_ext/helixscreen"
+    echo precious > "$BATS_TEST_TMPDIR/elsewhere"
+    ln -s "$BATS_TEST_TMPDIR/elsewhere" "$kiauh_ext/helixscreen/__init__.py"
+
+    HOME="$BATS_TEST_TMPDIR/fakehome" run install_kiauh_extension ""
+    [ "$status" -eq 0 ]
+    [ "$(cat "$BATS_TEST_TMPDIR/elsewhere")" = precious ]
+    [ ! -L "$kiauh_ext/helixscreen/__init__.py" ]
+    cmp -s "$INSTALL_DIR/scripts/kiauh/helixscreen/__init__.py" "$kiauh_ext/helixscreen/__init__.py"
 }
 
 @test "detect_kiauh_dir returns empty when no kiauh" {
@@ -209,6 +252,7 @@ teardown() {
     mkdir -p "$RO_EXT/helixscreen"
     echo old > "$RO_EXT/helixscreen/__init__.py"
     chmod 0444 "$RO_EXT/helixscreen/__init__.py"
+    chmod 0555 "$RO_EXT/helixscreen"
     FAKE_SUDO_LOG="$BATS_TEST_TMPDIR/sudo.log"
     SUDO="$BATS_TEST_TMPDIR/failing-sudo"
     printf '#!/bin/sh\necho "$*" >> %s\nexec "$@"\n' "$FAKE_SUDO_LOG" > "$SUDO"
@@ -221,7 +265,7 @@ teardown() {
     contains "could not copy __init__.py" "$output"
     ! contains "KIAUH extension updated at" "$output"
     [ -z "${KIAUH_EXT_ADDED:-}" ]
-    grep -q '^cp ' "$FAKE_SUDO_LOG"
+    grep -q '^rm -f ' "$FAKE_SUDO_LOG"
 }
 
 @test "install_kiauh_extension writes through sudo and hands the files to KIAUH's owner" {
@@ -238,7 +282,7 @@ teardown() {
     run cat "$BATS_TEST_TMPDIR/out"
     for f in __init__.py helixscreen_extension.py metadata.json; do
         [ -f "$RO_EXT/helixscreen/$f" ]
-        grep -q "^cp .*/$f $RO_EXT/helixscreen/\$" "$FAKE_SUDO_LOG"
+        grep -q "^cp .*/$f $RO_EXT/helixscreen/$f\$" "$FAKE_SUDO_LOG"
     done
     grep -qx "chown -R kiauhowner:kiauhgroup $RO_EXT/helixscreen" "$FAKE_SUDO_LOG"
     contains "KIAUH extension installed at" "$output"

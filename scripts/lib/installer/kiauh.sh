@@ -10,26 +10,51 @@
 [ -n "${_HELIX_KIAUH_SOURCED:-}" ] && return 0
 _HELIX_KIAUH_SOURCED=1
 
+# Home directory of user $1, or nothing for a name that is not a plain user
+# name. Overridable in tests.
+_kiauh_user_home() { # user
+    case "$1" in
+        "" | *[!A-Za-z0-9._-]*) return 0 ;;
+    esac
+    eval echo "~$1"
+}
+
+# The extensions dir under home $1, when KIAUH is there.
+_kiauh_ext_under() { # home
+    [ -n "$1" ] && [ -d "$1/kiauh/kiauh/extensions" ] && echo "$1/kiauh/kiauh/extensions"
+    return 0
+}
+
+# Every KIAUH extensions dir under the homes root, one per line.
+# KLIPPER_HOMES_ROOT is the test seam for /home.
+_kiauh_scan() {
+    local _d
+    for _d in "${KLIPPER_HOMES_ROOT:-/home}"/*/kiauh/kiauh/extensions; do
+        [ -d "$_d" ] && echo "$_d"
+    done
+    return 0
+}
+
 # Detect KIAUH extensions directory
-# Returns the path to the extensions dir, or empty string if not found
+# Returns the path to the extensions dir, or empty string if not found. KIAUH
+# belongs to a person, so the homes that name one come first: the user who ran
+# the installer (sudo's caller before $HOME, which sudo may have reset to
+# root's), then the user Klipper runs as. A scan of every home is trusted only
+# when it finds exactly one; with several, none is guessed at.
 detect_kiauh_dir() {
-    # Check current user's home first (most common)
-    if [ -d "$HOME/kiauh/kiauh/extensions" ]; then
-        echo "$HOME/kiauh/kiauh/extensions"
+    local _home _found
+    for _home in "$(_kiauh_user_home "${SUDO_USER:-}")" "${HOME:-}" "${KLIPPER_HOME:-}"; do
+        _found=$(_kiauh_ext_under "$_home")
+        if [ -n "$_found" ]; then
+            echo "$_found"
+            return 0
+        fi
+    done
+    _found=$(_kiauh_scan)
+    if [ -n "$_found" ] && [ "$(printf '%s\n' "$_found" | grep -c .)" -eq 1 ]; then
+        echo "$_found"
         return 0
     fi
-
-    # Scan /home/*/kiauh/kiauh/extensions/ for other users
-    if [ -d "/home" ]; then
-        for user_home in /home/*/kiauh/kiauh/extensions; do
-            if [ -d "$user_home" ]; then
-                echo "$user_home"
-                return 0
-            fi
-        done
-    fi
-
-    # Not found
     echo ""
     return 0
 }
@@ -80,7 +105,14 @@ detect_kiauh() {
     # KIAUH manages printer-host services, which a desktop install is not.
     [ "${platform:-}" = "x86-desktop" ] && return 0
     KIAUH_DIR=$(detect_kiauh_dir)
-    [ -n "$KIAUH_DIR" ] || return 0
+    if [ -z "$KIAUH_DIR" ]; then
+        _dk_found=$(_kiauh_scan)
+        if [ "$(printf '%s\n' "$_dk_found" | grep -c .)" -gt 1 ]; then
+            log_warn "KIAUH is installed for more than one user; not adding the HelixScreen extension to any of them"
+            log_warn "  Re-run the installer as the user whose KIAUH should list HelixScreen"
+        fi
+        return 0
+    fi
     if [ -d "$KIAUH_DIR/helixscreen" ]; then
         KIAUH_DIR=""
     elif ! _dk_prefix=$(_kiauh_write_prefix "$KIAUH_DIR/helixscreen"); then
@@ -160,8 +192,10 @@ install_kiauh_extension() {
         log_warn "KIAUH extension not installed: could not create $target_dir"
         return 0
     fi
+    # Remove before copying: cp writes through a symlink at the destination,
+    # and with sudo that would land wherever the link points.
     for _f in $KIAUH_EXT_FILES; do
-        if ! $prefix cp "$src_dir/$_f" "$target_dir/" 2>/dev/null; then
+        if ! { $prefix rm -f "$target_dir/$_f" && $prefix cp "$src_dir/$_f" "$target_dir/$_f"; } 2>/dev/null; then
             log_warn "KIAUH extension not installed: could not copy $_f into $target_dir"
             return 0
         fi
