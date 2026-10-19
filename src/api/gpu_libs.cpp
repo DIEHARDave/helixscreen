@@ -86,3 +86,43 @@ void* gles2_proc(const char* name) {
 }
 
 } // namespace helix::gpu_libs
+
+namespace {
+
+// Stands in for every function of a library that does not load. Returns 0,
+// which reads as NULL, EGL_FALSE or EGL_NO_* to the caller; extra arguments
+// are ignored under every ABI we build for (caller-cleaned, args in registers).
+extern "C" long helix_gpu_lib_missing_function() {
+    return 0;
+}
+
+} // namespace
+
+// Implib.so's loader and resolver for the trampolines (mk/implib.mk passes
+// these as --dlopen-callback and --dlsym-callback). Upstream aborts when a
+// library or symbol is missing; these answer instead, so a call that reached a
+// missing library past include/gpu_libs.h logs it and gets 0 back.
+
+extern "C" void*
+helix_gpu_lib_open(const char* soname) { // NAMESPACE_OK: Implib.so calls it by its C name
+    // A fresh reference each time: the trampoline module dlclose()s its handle
+    // at exit.
+    if (void* lib = dlopen(soname, RTLD_LAZY | RTLD_GLOBAL)) {
+        return lib;
+    }
+    spdlog::error("[GpuLibs] Called into {} which does not load; its functions return 0", soname);
+    // Any non-null handle: helix_gpu_lib_symbol() serves the stand-in for it.
+    return dlopen(nullptr, RTLD_LAZY);
+}
+
+extern "C" void*
+helix_gpu_lib_symbol(void* lib,
+                     const char* name) { // NAMESPACE_OK: Implib.so calls it by its C name
+    if (lib != nullptr) {
+        if (void* fn = dlsym(lib, name)) {
+            return fn;
+        }
+    }
+    spdlog::error("[GpuLibs] {} is unavailable; the call returns 0", name);
+    return reinterpret_cast<void*>(&helix_gpu_lib_missing_function);
+}

@@ -9,8 +9,10 @@ namespace helix::gpu_libs {
 
 /// The display and GPU libraries a DRM build can use. Where the build carries
 /// them as lazy-loading trampolines (HELIX_DLOPEN_GPU_LIBS, tools/implib), the
-/// binary starts without them, and the first call into a missing one aborts the
-/// process. Every path into them therefore asks available() first.
+/// binary starts without them, and every path into them asks available() first.
+/// A call that gets past that into a missing library logs an error and returns
+/// 0 (NULL, EGL_FALSE, EGL_NO_*), which is a failure for the call that opens
+/// each sequence but reads as success for some int-returning libdrm calls.
 enum class Lib { Drm, Gbm, Egl, Gles2, Input };
 
 /// The soname a library is loaded by.
@@ -33,3 +35,16 @@ void* handle(Lib lib);
 void* gles2_proc(const char* name);
 
 } // namespace helix::gpu_libs
+
+extern "C" {
+/// Implib.so's --dlopen-callback for the trampolines (mk/implib.mk): a handle
+/// for @p soname, or a stand-in handle when the library does not load. Never
+/// null, so the trampoline's loader never aborts.
+void* helix_gpu_lib_open(const char* soname); // NAMESPACE_OK: Implib.so calls it by its C name
+
+/// Implib.so's --dlsym-callback: the function @p name from @p lib, or a
+/// stand-in that returns 0 when the library or the symbol is missing. Never
+/// null, so the trampoline's resolver never aborts.
+void* helix_gpu_lib_symbol(void* lib,
+                           const char* name); // NAMESPACE_OK: Implib.so calls it by its C name
+}

@@ -106,9 +106,9 @@ else
     EGL_RUNG_GOALS :=
 endif
 ifdef PI_DUAL_LINK
-all: apply-patches generate-fonts $(TRANS_XML) splash watchdog $(TARGET) $(FBDEV_TARGET) verify-fbdev strip-both $(EGL_RUNG_GOALS) bluetooth-plugin
+all: apply-patches generate-fonts $(TRANS_XML) splash watchdog $(TARGET) $(FBDEV_TARGET) verify-fbdev strip-both $(EGL_RUNG_GOALS) $(IMPLIB_GOALS) bluetooth-plugin
 else
-all: apply-patches generate-fonts $(TRANS_XML) splash watchdog $(TARGET) strip $(EGL_RUNG_GOALS) bluetooth-plugin
+all: apply-patches generate-fonts $(TRANS_XML) splash watchdog $(TARGET) strip $(EGL_RUNG_GOALS) $(IMPLIB_GOALS) bluetooth-plugin
 endif
 	$(ECHO) "$(GREEN)$(BOLD)✓ Build complete!$(RESET)"
 	$(ECHO) "$(CYAN)Run with: $(YELLOW)./$(TARGET)$(RESET)"
