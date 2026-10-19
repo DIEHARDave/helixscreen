@@ -162,6 +162,7 @@ void NetworkSettingsOverlay::init_subjects() {
     UI_MANAGED_SUBJECT_INT(wifi_scanning_, 0, "wifi_scanning", subjects_);
     UI_MANAGED_SUBJECT_INT(wifi_can_forget_, 0, "wifi_can_forget", subjects_);
     UI_MANAGED_SUBJECT_INT(wifi_can_toggle_radio_, 0, "wifi_can_toggle_radio", subjects_);
+    UI_MANAGED_SUBJECT_INT(wifi_toggle_locked_, 0, "wifi_toggle_locked", subjects_);
     UI_MANAGED_SUBJECT_INT(wifi_can_set_country_, 0, "wifi_can_set_country", subjects_);
     UI_MANAGED_SUBJECT_INT(wifi_country_index_, 0, "wifi_country_index", subjects_);
     UI_MANAGED_SUBJECT_INT(wifi_unresponsive_, 0, "wifi_unresponsive", subjects_);
@@ -277,6 +278,7 @@ lv_obj_t* NetworkSettingsOverlay::create(lv_obj_t* parent_screen) {
         // Check WiFi hardware availability and update subject
         bool hw_available = wifi_manager_->has_hardware();
         lv_subject_set_int(&wifi_hardware_available_, hw_available ? 1 : 0);
+        lv_subject_set_int(&wifi_toggle_locked_, hw_available ? 0 : 1);
         if (!hw_available) {
             spdlog::info(
                 "[NetworkSettingsOverlay] WiFi hardware not available - controls disabled");
@@ -397,7 +399,12 @@ void NetworkSettingsOverlay::cleanup() {
     OverlayBase::cleanup();
     ++status_generation_;
 
+    // The lifetime token drops the radio's answer from here on, so nothing else
+    // would unlock the switch for the next instance of this overlay.
     cancel_wlan_toggle_backstop();
+    if (subjects_initialized_) {
+        set_wlan_toggle_in_flight(false);
+    }
 
     if (wifi_manager_) {
         wifi_manager_->stop_scan();
@@ -947,6 +954,7 @@ void NetworkSettingsOverlay::apply_wlan_toggle(bool enabled) {
     // in by finish_wlan_toggle().
     wlan_toggle_requested_ = enabled;
     lv_subject_set_int(&wifi_enabled_, enabled ? 1 : 0);
+    set_wlan_toggle_in_flight(true);
 
     if (enabled) {
         // Spinner runs from the tap until the radio is actually up and the
@@ -972,6 +980,7 @@ void NetworkSettingsOverlay::apply_wlan_toggle(bool enabled) {
 }
 
 void NetworkSettingsOverlay::finish_wlan_toggle(bool requested, bool success, bool actual) {
+    set_wlan_toggle_in_flight(false);
     auto outcome = helix::wifi::reconcile_radio_toggle(requested, success, actual);
 
     if (outcome.reverted) {
@@ -1034,6 +1043,11 @@ void NetworkSettingsOverlay::finish_wlan_toggle(bool requested, bool success, bo
 
     // Update combined network status
     update_any_network_connected();
+}
+
+void NetworkSettingsOverlay::set_wlan_toggle_in_flight(bool in_flight) {
+    const bool hw_available = lv_subject_get_int(&wifi_hardware_available_) != 0;
+    lv_subject_set_int(&wifi_toggle_locked_, (!hw_available || in_flight) ? 1 : 0);
 }
 
 void NetworkSettingsOverlay::arm_wlan_toggle_backstop() {

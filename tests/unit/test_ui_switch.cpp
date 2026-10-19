@@ -316,3 +316,40 @@ TEST_CASE("API contracts and guarantees", "[ui_switch][api][contract]") {
         REQUIRE(parse_size_preset("xl", &preset) == false);
     }
 }
+
+// ============================================================================
+// Touch Target Tests
+// ============================================================================
+
+TEST_CASE("A tap anywhere on the drawn switch reaches it", "[ui_switch][touch]") {
+    SwitchTest fixture;
+
+    lv_obj_t* screen = lv_obj_create(nullptr);
+    lv_obj_set_size(screen, 800, 480);
+    lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_t* sw = ui_switch_create_themed(screen, "small");
+    REQUIRE(sw != nullptr);
+    lv_obj_center(sw);
+    lv_obj_update_layout(screen);
+
+    lv_area_t a;
+    lv_obj_get_coords(sw, &a);
+    const int32_t cx = (a.x1 + a.x2) / 2;
+    const int32_t cy = (a.y1 + a.y2) / 2;
+    const int32_t margin = SIZE_SMALL.vert_margin;
+    REQUIRE(margin > 0);
+
+    // Inside the margin the knob paints into: above, below and past the end.
+    const lv_point_t above{cx, a.y1 - margin + 1};
+    const lv_point_t below{cx, a.y2 + margin - 1};
+    const lv_point_t past_end{a.x2 + SIZE_SMALL.horiz_margin - 1, cy};
+    CHECK(lv_indev_search_obj(screen, const_cast<lv_point_t*>(&above)) == sw);
+    CHECK(lv_indev_search_obj(screen, const_cast<lv_point_t*>(&below)) == sw);
+    CHECK(lv_indev_search_obj(screen, const_cast<lv_point_t*>(&past_end)) == sw);
+
+    // Beyond the reserved margin the tap belongs to whatever is there.
+    const lv_point_t outside{cx, a.y1 - margin - 2};
+    CHECK(lv_indev_search_obj(screen, const_cast<lv_point_t*>(&outside)) != sw);
+
+    lv_obj_delete(screen);
+}
