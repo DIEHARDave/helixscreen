@@ -2717,6 +2717,58 @@ TEST_CASE_METHOD(LVGLUITestFixture, "picking Browse catalog opens the catalog sh
     }
 }
 
+TEST_CASE_METHOD(OverlayConsumerCommitFixture, "a Material dropdown pick reaches the saved slot",
+                 "[ams_edit_overlay][dropdown][callback][commit]") {
+    SlotInfo start = untracked_slot();
+    start.material = "TPU-85A";
+    REQUIRE(backend->sync_external_identity(0, start).success());
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    bool fired = false;
+    AmsEditOverlay::EditResult captured;
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, start, nullptr,
+                                  [&](const AmsEditOverlay::EditResult& r) {
+                                      fired = true;
+                                      captured = r;
+                                      commit_like_consumer(r);
+                                  }));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    REQUIRE(access.pick_dropdown("dropdown_material", "HIPS"));
+    process_lvgl(5);
+    SECTION("Brand left as it opened") {}
+    SECTION("Brand re-picked as Generic") {
+        REQUIRE(access.pick_dropdown("dropdown_brand", "Generic"));
+        process_lvgl(5);
+    }
+    CHECK(access.dropdown_selected("dropdown_brand") == "Generic");
+
+    // A colour change rides the same save, so Save is open whatever the
+    // dropdowns staged.
+    access.call_open_color_view();
+    access.call_apply_color(0x1E88E5);
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    // Header Save, through its XML-registered callback.
+    lv_obj_t* save = access.widget("action_button");
+    REQUIRE(save != nullptr);
+    REQUIRE(access.save_disabled() == 0);
+    lv_obj_send_event(save, LV_EVENT_CLICKED, nullptr);
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    REQUIRE(fired);
+    CHECK(captured.saved);
+    CHECK(captured.slot_info.material == "HIPS");
+    CHECK(captured.slot_info.brand == "Generic");
+    CHECK(backend->get_slot_info(0).material == "HIPS");
+    CHECK(backend->get_slot_info(0).brand == "Generic");
+    CHECK(backend->get_slot_info(0).color_rgb == 0x1E88E5);
+}
+
 TEST_CASE_METHOD(LVGLUITestFixture, "a variant the catalog lacks shows as the selected entry",
                  "[ams_edit_overlay][dropdown]") {
     auto& overlay = get_ams_edit_overlay();
