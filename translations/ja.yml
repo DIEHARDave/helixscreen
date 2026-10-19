@@ -2205,6 +2205,8 @@ translations:
   No USB printers found: USBプリンターが見つかりません
   No actions right now: '現在利用できる操作はありません'
   No active Spoolman spool.: Spoolmanで使用中のスプールがありません。
+  "No answer: check the IP address and that this device is on the printer's Wi-Fi, not mobile data.": "応答がありません: IPアドレスと、このデバイスがモバイルデータではなくプリンターのWi-Fiに接続されているか確認してください。"
+  "No answer: check the IP address and that this device is on the printer's network.": "応答がありません: IPアドレスと、このデバイスがプリンターと同じネットワークにあるか確認してください。"
   No buffer data available: バッファーデータがありません
   No camera — use USB barcode scanner: カメラなし — USB バーコードスキャナーを使用してください
   No chamber temperature sensor detected: 'チャンバー温度センサーが検出されません'
@@ -3599,6 +3601,7 @@ translations:
   The printer lost power during a print. The resumed layer may not line up exactly.: 印刷中にプリンターの電源が失われました。再開したレイヤーがわずかにずれる可能性があります。
   The printer lost power while printing {}. Resume where it left off?: '{} の印刷中にプリンターの電源が失われました。中断した箇所から再開しますか？'
   The printer lost power while printing {}. The resumed layer may not line up exactly.: '{} の印刷中にプリンターの電源が失われました。再開したレイヤーがわずかにずれる可能性があります。'
+  'The printer refused that port: check the port (Moonraker is usually 7125).': "プリンターがそのポートを拒否しました: ポートを確認してください(Moonrakerは通常7125)。"
   The printer rejected the filament configuration. The print was not started.: プリンターがフィラメント設定を拒否しました。印刷は開始されませんでした。
   The printer reports measured fan speeds. HelixScreen shows them on the Fans screen.: 'プリンターはファンの実測回転数を報告します。HelixScreenはファン画面に表示します。'
   The printer swaps between several toolheads. Manage the tools on the filament system screen.: 'プリンターは複数のツールヘッドを切り替えます。ツールはフィラメントシステム画面で管理できます。'

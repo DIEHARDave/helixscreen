@@ -2336,6 +2336,8 @@ translations:
   No USB printers found: Nenhuma impressora USB encontrada
   No actions right now: 'Nenhuma ação no momento'
   No active Spoolman spool.: Nenhum carretel ativo no Spoolman.
+  "No answer: check the IP address and that this device is on the printer's Wi-Fi, not mobile data.": "Sem resposta: verifique o endereço IP e se este dispositivo está no Wi-Fi da impressora, não nos dados móveis."
+  "No answer: check the IP address and that this device is on the printer's network.": "Sem resposta: verifique o endereço IP e se este dispositivo está na rede da impressora."
   No buffer data available: Nenhum dado de buffer disponível
   No camera — use USB barcode scanner: Sem câmera — use leitor de código de barras
     USB
@@ -3817,6 +3819,7 @@ translations:
   The printer lost power while printing {}. Resume where it left off?: A impressora perdeu
     energia ao imprimir {}. Retomar de onde parou?
   The printer lost power while printing {}. The resumed layer may not line up exactly.: A impressora perdeu energia ao imprimir {}. A camada retomada pode não se alinhar exatamente.
+  'The printer refused that port: check the port (Moonraker is usually 7125).': "A impressora recusou essa porta: verifique a porta (o Moonraker costuma usar a 7125)."
   The printer rejected the filament configuration. The print was not started.: A impressora
     rejeitou a configuração do filamento. A impressão não foi iniciada.
   The printer reports measured fan speeds. HelixScreen shows them on the Fans screen.: 'A impressora informa as velocidades medidas das ventoinhas. O HelixScreen as mostra na tela Ventoinhas.'

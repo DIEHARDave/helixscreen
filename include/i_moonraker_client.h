@@ -120,6 +120,15 @@ class IMoonrakerClient {
     /// re-installs its own reconnect settings, regardless of this flag.
     virtual void set_auto_reconnect(bool enabled) = 0;
 
+    /// @brief Why the last connect() attempt failed before it ever opened
+    ///
+    /// Valid once on_disconnected has fired for an attempt that never connected;
+    /// connect() resets it. A transport that cannot read the socket's cause
+    /// reports Unknown, which is why this one has a body.
+    virtual ConnectFailureKind last_connect_failure() const {
+        return ConnectFailureKind::Unknown;
+    }
+
     // ========================================================================
     // JSON-RPC Protocol
     // ========================================================================

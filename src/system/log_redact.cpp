@@ -223,50 +223,50 @@ bool parse_ipv6(std::string_view s, uint8_t out[16]) {
     return true;
 }
 
-IpScope scope_v4(const uint8_t b[4]) {
+IpClass class_v4(const uint8_t b[4]) {
     if (b[0] == 0) // 0.0.0.0/8 "this network"
-        return IpScope::Local;
+        return IpClass::Unspecified;
     if (b[0] == 10) // RFC1918
-        return IpScope::Local;
-    if (b[0] == 127) // loopback
-        return IpScope::Local;
+        return IpClass::Private;
+    if (b[0] == 127)
+        return IpClass::Loopback;
     if (b[0] == 172 && (b[1] & 0xF0) == 16) // 172.16/12
-        return IpScope::Local;
+        return IpClass::Private;
     if (b[0] == 192 && b[1] == 168) // RFC1918
-        return IpScope::Local;
-    if (b[0] == 169 && b[1] == 254) // link-local
-        return IpScope::Local;
-    if (b[0] == 100 && (b[1] & 0xC0) == 64) // CGNAT 100.64/10
-        return IpScope::Local;
+        return IpClass::Private;
+    if (b[0] == 169 && b[1] == 254)
+        return IpClass::LinkLocal;
+    if (b[0] == 100 && (b[1] & 0xC0) == 64) // 100.64/10
+        return IpClass::SharedCgnat;
     if (b[0] >= 224) // multicast, reserved, broadcast
-        return IpScope::Local;
-    return IpScope::Global;
+        return IpClass::Multicast;
+    return IpClass::Global;
 }
 
-IpScope scope_v6(const uint8_t b[16]) {
+IpClass class_v6(const uint8_t b[16]) {
     bool zero_prefix = true;
     for (int i = 0; i < 10; ++i) {
         if (b[i] != 0)
             zero_prefix = false;
     }
     if (zero_prefix) {
-        // ::ffff:a.b.c.d (mapped) and ::a.b.c.d (compatible) are exactly as
-        // sensitive as the IPv4 they carry; :: and ::1 are local.
+        // ::ffff:a.b.c.d (mapped) and ::a.b.c.d (compatible) are whatever the
+        // IPv4 they carry is.
         if (b[10] == 0xFF && b[11] == 0xFF)
-            return scope_v4(b + 12);
+            return class_v4(b + 12);
         if (b[10] == 0 && b[11] == 0) {
             if (b[12] == 0 && b[13] == 0 && b[14] == 0)
-                return IpScope::Local; // :: and ::1
-            return scope_v4(b + 12);
+                return b[15] == 1 ? IpClass::Loopback : IpClass::Unspecified;
+            return class_v4(b + 12);
         }
     }
-    if ((b[0] & 0xFE) == 0xFC) // fc00::/7 unique local
-        return IpScope::Local;
-    if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80) // fe80::/10 link-local
-        return IpScope::Local;
-    if (b[0] == 0xFF) // ff00::/8 multicast
-        return IpScope::Local;
-    return IpScope::Global;
+    if ((b[0] & 0xFE) == 0xFC) // fc00::/7
+        return IpClass::UniqueLocal;
+    if (b[0] == 0xFE && (b[1] & 0xC0) == 0x80) // fe80::/10
+        return IpClass::LinkLocal;
+    if (b[0] == 0xFF) // ff00::/8
+        return IpClass::Multicast;
+    return IpClass::Global;
 }
 
 // Candidate character classes for the free-text scanners. IPv6 candidates are
@@ -303,7 +303,7 @@ std::string redact_v6(std::string_view text, uint64_t salt, std::string_view fix
             run.remove_suffix(1);
         uint8_t bytes[16];
         if (left_ok && run.find(':') != std::string_view::npos && parse_ipv6(run, bytes) &&
-            (!fixed.empty() || scope_v6(bytes) == IpScope::Global)) {
+            (!fixed.empty() || class_v6(bytes) == IpClass::Global)) {
             if (fixed.empty())
                 out += token(run, "ip#", kIpDomain, salt);
             else
@@ -341,7 +341,7 @@ std::string redact_v4(std::string_view text, uint64_t salt, std::string_view fix
             run.remove_suffix(1);
         uint8_t quad[4];
         if (left_ok && right_ok && parse_ipv4(run, quad) &&
-            (!fixed.empty() || scope_v4(quad) == IpScope::Global)) {
+            (!fixed.empty() || class_v4(quad) == IpClass::Global)) {
             if (fixed.empty())
                 out += token(run, "ip#", kIpDomain, salt);
             else
@@ -657,19 +657,30 @@ std::string mac_with_salt(std::string_view mac, uint64_t salt) {
     return token(mac, "mac#", kMacDomain, salt);
 }
 
-IpScope ip_scope(std::string_view addr) {
+IpClass ip_class(std::string_view addr) {
     if (addr.empty())
-        return IpScope::NotAnIp;
+        return IpClass::NotAnIp;
     if (addr.find(':') != std::string_view::npos) {
         uint8_t bytes[16];
         if (!parse_ipv6(addr, bytes))
-            return IpScope::NotAnIp;
-        return scope_v6(bytes);
+            return IpClass::NotAnIp;
+        return class_v6(bytes);
     }
     uint8_t quad[4];
     if (!parse_ipv4(addr, quad))
+        return IpClass::NotAnIp;
+    return class_v4(quad);
+}
+
+IpScope ip_scope(std::string_view addr) {
+    switch (ip_class(addr)) {
+    case IpClass::NotAnIp:
         return IpScope::NotAnIp;
-    return scope_v4(quad);
+    case IpClass::Global:
+        return IpScope::Global;
+    default:
+        return IpScope::Local;
+    }
 }
 
 std::string ip(std::string_view addr) {

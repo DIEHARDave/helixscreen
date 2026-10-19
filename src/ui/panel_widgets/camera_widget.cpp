@@ -39,12 +39,16 @@
 static lv_subject_t s_camera_status_subject;
 static char s_camera_status_buffer[64];
 static helix::WidgetSubjects s_subjects{"CameraWidgetSubjects"};
+static const char* const kDefaultCameraStatusKey = TR_NOOP("No Camera");
 // The translation key the status text was produced from, so a language switch
 // can render it again; nullptr while it shows text that is not a key.
-static const char* s_camera_status_key = TR_NOOP("No Camera");
+static const char* s_camera_status_key = kDefaultCameraStatusKey;
 
 static void camera_widget_init_subjects() {
     s_subjects.ensure_init([] {
+        // The key belongs to the subject's lifetime: a printer switch re-inits
+        // the subjects after a frame or stream status has left it nullptr.
+        s_camera_status_key = kDefaultCameraStatusKey;
         lv_subject_init_string(&s_camera_status_subject, s_camera_status_buffer, nullptr,
                                sizeof(s_camera_status_buffer), lv_tr(s_camera_status_key));
         s_subjects.publish("camera_status_text", &s_camera_status_subject);
@@ -162,7 +166,7 @@ void CameraWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
                     // open — the stream must keep running for the fullscreen view.
                     if (!self->active_ && !self->fullscreen_overlay_) {
                         self->stop_stream();
-                        self->set_status_key(TR_NOOP("No Camera"));
+                        self->set_status_key(kDefaultCameraStatusKey);
                     }
                 }
             },
@@ -503,7 +507,7 @@ void CameraWidget::resync_source() {
     bool keep_running = fullscreen_overlay_ || (active_ && !compact_);
     stop_stream();
     if (!feed) {
-        set_status_key(TR_NOOP("No Camera"));
+        set_status_key(kDefaultCameraStatusKey);
         return;
     }
     if (keep_running) {

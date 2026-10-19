@@ -2374,6 +2374,8 @@ translations:
   No USB printers found: USB-принтеры не найдены
   No actions right now: 'Сейчас нет действий'
   No active Spoolman spool.: Нет активной катушки Spoolman.
+  "No answer: check the IP address and that this device is on the printer's Wi-Fi, not mobile data.": "Нет ответа: проверьте IP-адрес и что это устройство в Wi-Fi принтера, а не в мобильной сети."
+  "No answer: check the IP address and that this device is on the printer's network.": "Нет ответа: проверьте IP-адрес и что это устройство в сети принтера."
   No buffer data available: Данные буфера недоступны
   No camera — use USB barcode scanner: Нет камеры — используйте USB сканер штрих-кодов
   No chamber temperature sensor detected: 'Датчик температуры камеры не обнаружен'
@@ -3858,6 +3860,7 @@ translations:
   The printer lost power during a print. The resumed layer may not line up exactly.: Принтер потерял питание во время печати. Возобновлённый слой может не совпасть точно.
   The printer lost power while printing {}. Resume where it left off?: Принтер потерял питание при печати {}. Продолжить с места остановки?
   The printer lost power while printing {}. The resumed layer may not line up exactly.: Принтер потерял питание при печати {}. Возобновлённый слой может не совпасть точно.
+  'The printer refused that port: check the port (Moonraker is usually 7125).': "Принтер отклонил этот порт: проверьте порт (Moonraker обычно использует 7125)."
   The printer rejected the filament configuration. The print was not started.: Принтер
     отклонил конфигурацию филамента. Печать не была запущена.
   The printer reports measured fan speeds. HelixScreen shows them on the Fans screen.: 'Принтер сообщает измеренные скорости вентиляторов. HelixScreen показывает их на экране «Вентиляторы».'

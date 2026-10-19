@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "connection_state.h"
+
 #include <string>
 
 /**
@@ -53,3 +55,28 @@ std::string sanitize_port(const std::string& str);
  * @return stored_host if it is non-blank, else "127.0.0.1" (non-Android) or "" (Android)
  */
 std::string resolve_moonraker_host_default(const std::string& stored_host, bool is_android);
+
+namespace helix {
+
+/**
+ * @brief Classify why a connection attempt that never opened failed
+ *
+ * A non-blocking connect that fails surfaces from getpeername() as ENOTCONN;
+ * the socket's pending SO_ERROR then holds the real cause, so it is consulted
+ * in that case only.
+ *
+ * @param io_error     The transport's error for the closed socket (errno value, 0 if none)
+ * @param socket_error The socket's pending SO_ERROR (0 if none or unread)
+ */
+ConnectFailureKind classify_connect_failure(int io_error, int socket_error);
+
+/**
+ * @brief The setup wizard's one-sentence hint for a failed connection test
+ *
+ * Returns an untranslated literal marked for extraction; callers pass it to lv_tr().
+ * Only the Android timeout hint mentions mobile data: a phone off the printer's
+ * Wi-Fi is the usual reason nothing answers there.
+ */
+const char* connect_failure_hint(ConnectFailureKind kind, bool is_android);
+
+} // namespace helix

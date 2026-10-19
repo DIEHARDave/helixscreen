@@ -199,7 +199,9 @@ target_compile_definitions(lv_markdown PUBLIC LV_CONF_INCLUDE_SIMPLE)
 # ============================================================================
 # HelixScreen main library
 # ============================================================================
-file(GLOB_RECURSE HELIX_SOURCES "${PROJECT_ROOT}/src/*.cpp")
+# CONFIGURE_DEPENDS re-globs on every build, so an incremental build picks up a
+# new source file instead of linking without it.
+file(GLOB_RECURSE HELIX_SOURCES CONFIGURE_DEPENDS "${PROJECT_ROOT}/src/*.cpp")
 
 # Exclude files not needed on Android
 list(FILTER HELIX_SOURCES EXCLUDE REGEX ".*/test_.*\\.cpp$")

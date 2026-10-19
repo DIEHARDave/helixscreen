@@ -28,6 +28,10 @@
 #include "printer_state.h"
 #include "system/telemetry_manager.h"
 #include "translation_loader.h"
+#include "utils/network_validation.h"
+
+#include <cerrno>
+#include <sys/socket.h>
 
 using namespace helix;
 
@@ -479,6 +483,7 @@ int MoonrakerClient::connect(const char* url, std::function<void()> on_connected
     // measure. A fresh connect() (new host, wizard, force_reconnect) re-arms it.
     connect_started_at_.store(steady_ticks_now(), std::memory_order_relaxed);
     initial_failure_notified_.store(false, std::memory_order_relaxed);
+    last_connect_failure_.store(ConnectFailureKind::Unknown, std::memory_order_relaxed);
 
     // Install the inherited libhv callbacks exactly ONCE. Reassigning onopen/onmessage/
     // onclose per connect() races the libhv event-loop thread, which may be mid-invoke on
@@ -928,7 +933,24 @@ void MoonrakerClient::on_ws_close() {
                 }
             }
         } else {
-            spdlog::debug("[Moonraker Client] WebSocket connection failed (printer not available)");
+            // This runs inside the closing socket's close callback, before libhv
+            // closes its fd, so the socket's pending error is still readable.
+            int io_error = 0;
+            int socket_error = 0;
+            if (auto ch = channel_ref()) {
+                io_error = ch->error();
+                if (io_error == ENOTCONN && ch->fd() >= 0) {
+                    socklen_t len = sizeof(socket_error);
+                    if (getsockopt(ch->fd(), SOL_SOCKET, SO_ERROR, &socket_error, &len) != 0) {
+                        socket_error = 0;
+                    }
+                }
+            }
+            const ConnectFailureKind failure = classify_connect_failure(io_error, socket_error);
+            last_connect_failure_.store(failure, std::memory_order_relaxed);
+            spdlog::debug("[Moonraker Client] WebSocket connection failed (printer not available, "
+                          "io_error={}, so_error={}, kind={})",
+                          io_error, socket_error, static_cast<int>(failure));
 
             // Initial connection failed. NOT suppressed — we want failed-new-host
             // notifications to surface (this is the initial-connection branch, not a

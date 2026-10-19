@@ -3603,6 +3603,62 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
 }
 
 // ============================================================================
+// Creality Nebula Pad host
+// ============================================================================
+
+namespace {
+bool names_flashforge(const std::string& type_name) {
+    return type_name.rfind("FlashForge", 0) == 0;
+}
+} // namespace
+
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: Nebula Pad retrofit lands on the Ender family, never an AD5X",
+                 "[printer][detector][nebula][cpu_arch_match][creality]") {
+    // A MIPS Ingenic host is shared by FlashForge and the Creality Nebula Pad;
+    // the pad's own evidence must outvote the bare-cartesian field without
+    // naming which Ender it drives, since it ships on several.
+    const PrinterHardwareData hardware = printer_capture("creality_ender3_pro_nebula_pad");
+    auto result = PrinterDetector::detect(hardware);
+    CAPTURE(result.type_name, result.confidence, result.uncapped_confidence,
+            result.runner_up_type_name, result.runner_up_confidence, result.margin(),
+            result.tied_count, result.contenders);
+
+    REQUIRE(result.detected());
+    REQUIRE_FALSE(names_flashforge(result.type_name));
+    REQUIRE_FALSE(names_flashforge(result.runner_up_type_name));
+    REQUIRE(result.type_name.rfind("Creality Ender", 0) == 0);
+    REQUIRE(result.runner_up_type_name.rfind("Creality Ender", 0) == 0);
+    REQUIRE_FALSE(PrinterDetector::meets_autosave_threshold(result));
+}
+
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: a CoreXY Pi named nebula keeps Creality out of contention",
+                 "[printer][detector][nebula][hostname_match]") {
+    PrinterHardwareData hardware{
+        .heaters = {"extruder", "heater_bed"},
+        .sensors = {"temperature_sensor chamber"},
+        .fans = {"fan", "heater_fan hotend_fan"},
+        .leds = {},
+        .hostname = "nebula",
+        .printer_objects = {"z_tilt", "bed_mesh"},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1", "stepper_z2"},
+        .kinematics = "corexy",
+        .mcu = "stm32f446xx",
+        .cpu_arch = "aarch64",
+        .build_volume = {.x_min = 0, .x_max = 255, .y_min = 0, .y_max = 255, .z_max = 260}};
+    auto result = PrinterDetector::detect(hardware);
+    CAPTURE(result.type_name, result.confidence, result.runner_up_type_name,
+            result.runner_up_confidence, result.margin());
+
+    // The hostname alone is family-level evidence: a CoreXY machine with its own
+    // fingerprint must not even have a Creality entry as its nearest rival.
+    REQUIRE(result.detected());
+    REQUIRE(result.type_name.find("Creality") == std::string::npos);
+    REQUIRE(result.runner_up_type_name.find("Creality") == std::string::npos);
+}
+
+// ============================================================================
 // ForgeX vs Stock Detection Tests
 // ============================================================================
 

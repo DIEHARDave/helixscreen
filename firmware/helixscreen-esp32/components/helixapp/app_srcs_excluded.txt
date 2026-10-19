@@ -373,3 +373,5 @@ src/plugin/plugin_dialog.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_presenter.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_surfaces.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_consts.cpp  # not in the v1 Core+AMS cut
+src/system/android_lan_route.cpp  # Android only
+src/utils/lan_host.cpp  # only the Android LAN routing uses it
