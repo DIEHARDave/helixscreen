@@ -26,25 +26,25 @@ namespace mock_internal {
 // ============================================================================
 
 // Bed origin (mm). The far edge is the persona's descriptor().axis_max.
-constexpr double MOCK_BED_X_MIN = 0.0;
-constexpr double MOCK_BED_Y_MIN = 0.0;
+constexpr double kMockBedXMin = 0.0;
+constexpr double kMockBedYMin = 0.0;
 
 // Probe margins - typical probes can't reach bed edges
-constexpr double MOCK_PROBE_MARGIN = 15.0;
+constexpr double kMockProbeMargin = 15.0;
 
 // Bed screw thread advertised in configfile.settings.screws_tilt_adjust.
 // MockScrewsTiltState derives its adjustment strings from this same value, so
 // the mock's SCREWS_TILT_CALCULATE output agrees with the config it reports.
-constexpr const char* MOCK_SCREW_THREAD = "CW-M3";
+constexpr const char* kMockScrewThread = "CW-M3";
 
 // The K2 chamber thermostat's configured resting target (its configfile
 // target_temp, captured live in docs/devel/CHAMBER_HEATER.md's verification
 // log). The fan reports this target whenever no M141 set is live, and the
 // configfile answer names it so the discovery-side resting read resolves the
 // same value the frames carry.
-constexpr double MOCK_K2_CHAMBER_FAN_RESTING_C = 35.0;
+constexpr double kMockK2ChamberFanRestingC = 35.0;
 
-/// Area a probe can reach: the persona's bed inset by MOCK_PROBE_MARGIN.
+/// Area a probe can reach: the persona's bed inset by kMockProbeMargin.
 struct MeshBounds {
     double x_min;
     double x_max;
@@ -54,8 +54,8 @@ struct MeshBounds {
 
 [[nodiscard]] inline MeshBounds mesh_bounds(helix::mock::PrinterType type) {
     const auto max = helix::mock::descriptor(type).axis_max;
-    return {MOCK_BED_X_MIN + MOCK_PROBE_MARGIN, max.x - MOCK_PROBE_MARGIN,
-            MOCK_BED_Y_MIN + MOCK_PROBE_MARGIN, max.y - MOCK_PROBE_MARGIN};
+    return {kMockBedXMin + kMockProbeMargin, max.x - kMockProbeMargin,
+            kMockBedYMin + kMockProbeMargin, max.y - kMockProbeMargin};
 }
 
 /**

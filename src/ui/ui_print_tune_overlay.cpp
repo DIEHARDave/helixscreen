@@ -313,7 +313,7 @@ void PrintTuneOverlay::update_display() {
     int live_velocity = 0;
     int max_velocity = 0;
     int vel_centimm = 0;
-    float diameter_mm = filament::DEFAULT_DIAMETER_MM;
+    float diameter_mm = filament::kDefaultDiameterMm;
     if (printer_state_) {
         diameter_mm = printer_state_->get_discovery().filament_diameter_mm();
         live_velocity =

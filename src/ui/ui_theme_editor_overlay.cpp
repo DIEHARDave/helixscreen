@@ -786,9 +786,9 @@ std::string ThemeEditorOverlay::sanitize_filename(const std::string& name) {
     }
 
     // Limit length
-    constexpr size_t MAX_FILENAME_LEN = 32;
-    if (result.size() > MAX_FILENAME_LEN) {
-        result.resize(MAX_FILENAME_LEN);
+    constexpr size_t kMaxFilenameLen = 32;
+    if (result.size() > kMaxFilenameLen) {
+        result.resize(kMaxFilenameLen);
         // Trim trailing underscore from truncation
         while (!result.empty() && result.back() == '_') {
             result.pop_back();

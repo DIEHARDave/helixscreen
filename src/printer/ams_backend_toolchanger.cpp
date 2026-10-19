@@ -1248,7 +1248,7 @@ void AmsBackendToolChanger::initialize_tools() {
         slot.slot_index = i;
         slot.global_index = i;
         slot.status = SlotStatus::AVAILABLE; // Tools start as available (docked)
-        slot.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+        slot.color_rgb = kAmsDefaultSlotColor;
         slot.spool_name = tool_names_[i]; // Use tool name as placeholder
 
         unit.slots.push_back(slot);
@@ -1476,7 +1476,7 @@ helix::mount_feed::Request AmsBackendToolChanger::build_feed_request(const std::
             }
             hr.temp_c = helix::ui::resolve_load_preheat_material(head, &slot, nullptr)
                             .value_or(helix::ui::PreheatTarget{
-                                app_constants::ams::DEFAULT_LOAD_PREHEAT_TEMP, ""})
+                                app_constants::ams::kDefaultLoadPreheatTemp, ""})
                             .temp_c;
             const auto target = targets.find(mf::heater_name(head));
             hr.heater_target_c = target != targets.end() ? static_cast<int>(target->second) : 0;
@@ -1610,7 +1610,7 @@ void AmsBackendToolChanger::send_feed_stage() {
                             on_feed_stage_failed(generation, message);
                         });
         },
-        IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS, /*skip_homing=*/false, /*silent=*/true,
+        IMoonrakerAPI::kAmsOperationTimeoutMs, /*skip_homing=*/false, /*silent=*/true,
         /*caller_surfaces_errors=*/false);
     if (!sent.success()) {
         on_feed_stage_failed(generation, sent.technical_msg);
@@ -1929,7 +1929,7 @@ AmsError AmsBackendToolChanger::do_filament_batch(const std::vector<int>& slots,
         std::string cmd = all_macro;
         if (std::any_of(all.params.begin(), all.params.end(),
                         [](const MacroParam& p) { return p.name == "TEMP"; })) {
-            cmd += fmt::format(" TEMP={}", app_constants::ams::DEFAULT_LOAD_PREHEAT_TEMP);
+            cmd += fmt::format(" TEMP={}", app_constants::ams::kDefaultLoadPreheatTemp);
         }
         spdlog::info("[AMS ToolChanger] Batch {} through the printer's {}",
                      load ? "load" : "unload", cmd);
@@ -2152,7 +2152,7 @@ AmsError AmsBackendToolChanger::apply_user_edit(int slot_index, const SlotInfo& 
 
     // Emit OUTSIDE the lock to avoid deadlock with callbacks, and ahead of the
     // remap's return so an edit that also moves a tool number is announced too.
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
 
     if (firmware_edit) {
         // The colour is snapped to the firmware's own palette; the type was
@@ -2191,13 +2191,13 @@ void AmsBackendToolChanger::clear_slot_override(int slot_index) {
         std::lock_guard<std::mutex> lock(mutex_);
         clear_override_locked(slot_index, system_info_.get_slot_global(slot_index));
     }
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
 }
 
 void AmsBackendToolChanger::clear_override_fields(SlotInfo& slot) const {
     AmsSubscriptionBackend::clear_override_fields(slot);
     slot.material.clear();
-    slot.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    slot.color_rgb = kAmsDefaultSlotColor;
     slot.multi_color_hexes.clear();
 }
 
@@ -2219,7 +2219,7 @@ AmsError AmsBackendToolChanger::sync_external_identity(int slot_index, const Slo
     }
 
     // Emit OUTSIDE the lock to avoid deadlock with callbacks
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     return AmsErrorHelper::success();
 }
 

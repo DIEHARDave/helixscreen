@@ -27,7 +27,7 @@ namespace {
 // The panel a two-core board drives, so coverage is a fraction of the real canvas.
 constexpr uint32_t PANEL_W = 800;
 constexpr uint32_t PANEL_H = 480;
-constexpr int64_t PANEL_PX = static_cast<int64_t>(PANEL_W) * PANEL_H;
+constexpr int64_t kPanelPx = static_cast<int64_t>(PANEL_W) * PANEL_H;
 
 /// Flies `stars` for `frames` and averages what each frame asked to have redrawn.
 SaverLoad measure(int stars, int frames) {
@@ -69,14 +69,13 @@ TEST_CASE("a starfield frame redraws a sliver of the canvas at every rung",
         // One box per star that moved, and never more boxes than LVGL will hold: past that
         // it drops every pending area and invalidates the screen, which costs a full redraw.
         CHECK(load.areas <= static_cast<double>(stars));
-        CHECK(load.areas <= static_cast<double>(helix::ui::SAVER_MAX_DIRTY_AREAS));
+        CHECK(load.areas <= static_cast<double>(helix::ui::kSaverMaxDirtyAreas));
 
         // Coverage well under the whole-canvas promotion, so a frame stays partial.
-        const double coverage = 100.0 * load.pixels / static_cast<double>(PANEL_PX);
+        const double coverage = 100.0 * load.pixels / static_cast<double>(kPanelPx);
         CAPTURE(coverage);
         CHECK(coverage < 5.0);
-        CHECK(coverage * 100.0 <
-              static_cast<double>(helix::ui::SAVER_WHOLE_CANVAS_PERCENT) * 100.0);
+        CHECK(coverage * 100.0 < static_cast<double>(helix::ui::kSaverWholeCanvasPercent) * 100.0);
     }
 }
 

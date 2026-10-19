@@ -32,6 +32,7 @@
 #include "ui_panel_home.h"
 #include "ui_panel_settings.h"
 #include "ui_pin_entry_modal.h"
+#include "ui_plugin_menu_rows.h"
 #include "ui_printer_switch_menu.h"
 #include "ui_progress_bar.h"
 #include "ui_spinner.h"
@@ -419,7 +420,8 @@ void register_xml_components() {
     s_noop_subject_initialized = true;
 
     // Self-register cleanup — ensures deinit runs before lv_deinit()
-    StaticSubjectRegistry::instance().register_deinit("XmlSubjects", helix::deinit_xml_subjects);
+    StaticSubjectRegistry::instance().register_deinit("XmlSubjects", helix::deinit_xml_subjects,
+                                                      StaticSubjectRegistry::Lifetime::Process);
 
     // Register custom widgets (BEFORE components that use them)
     ui_gcode_viewer_register();
@@ -455,6 +457,7 @@ void register_xml_components() {
 
     // Panel widget components (dynamic instantiation from PanelWidgetConfig)
     helix::ui::PrinterSwitchMenu::register_callbacks();
+    helix::ui::register_plugin_menu_row_callbacks();
 
     register_fan_dial_callbacks(); // Register FanDial event callbacks
 

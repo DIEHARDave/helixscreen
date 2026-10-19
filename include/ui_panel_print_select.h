@@ -113,16 +113,16 @@ struct CardDimensions {
 
 // Card width bounds, and the width a card wants to be. CARD_TARGET_WIDTH mirrors
 // card_base_width in print_file_card.xml — the size the component was drawn around.
-inline constexpr int CARD_WIDTH_MIN = 130;
-inline constexpr int CARD_WIDTH_MAX = 230;
-inline constexpr int CARD_WIDTH_TARGET = 170;
+inline constexpr int kCardWidthMin = 130;
+inline constexpr int kCardWidthMax = 230;
+inline constexpr int kCardWidthTarget = 170;
 
 /**
  * @brief Choose how many card columns fit across a container.
  *
  * Considers every column count whose resulting card width is within
- * [CARD_WIDTH_MIN, CARD_WIDTH_MAX] and keeps the one landing nearest
- * CARD_WIDTH_TARGET. Ties keep the wider card (the lower column count wins).
+ * [kCardWidthMin, kCardWidthMax] and keeps the one landing nearest
+ * kCardWidthTarget. Ties keep the wider card (the lower column count wins).
  *
  * The previous rule walked column counts downward and took the first that fit,
  * which always maximized columns and therefore always produced the narrowest
@@ -147,11 +147,11 @@ inline int choose_card_columns(int container_width, int card_gap) {
         int total_gaps = (cols - 1) * card_gap;
         int card_width = (container_width - total_gaps) / cols;
 
-        if (card_width < CARD_WIDTH_MIN || card_width > CARD_WIDTH_MAX) {
+        if (card_width < kCardWidthMin || card_width > kCardWidthMax) {
             continue;
         }
 
-        int distance = std::abs(card_width - CARD_WIDTH_TARGET);
+        int distance = std::abs(card_width - kCardWidthTarget);
         if (best_cols == 0 || distance < best_distance) {
             best_cols = cols;
             best_distance = distance;
@@ -589,6 +589,8 @@ class PrintSelectPanel : public PanelBase {
     /// icon, whose XML event_cb routes here so the icon keeps working while the
     /// card itself is disabled.
     void show_remap_help();
+    /// The detail view's more button: plugin actions for the file shown.
+    void show_plugin_actions();
 
     /**
      * @brief Set reference to print status panel
@@ -726,11 +728,11 @@ class PrintSelectPanel : public PanelBase {
     // Card layout constants (used by calculate_card_dimensions).
     // Width bounds live at namespace scope as CARD_WIDTH_* so choose_card_columns()
     // can share them; these aliases keep the existing call sites reading the same.
-    static constexpr int CARD_MIN_WIDTH = CARD_WIDTH_MIN;
-    static constexpr int CARD_MAX_WIDTH = CARD_WIDTH_MAX;
-    static constexpr int CARD_DEFAULT_HEIGHT = 245;
-    static constexpr int ROW_COUNT_3_MIN_HEIGHT = 520;
-    static constexpr const char* FOLDER_UP_ICON = "A:assets/images/folder-up.png";
+    static constexpr int kCardMinWidth = kCardWidthMin;
+    static constexpr int kCardMaxWidth = kCardWidthMax;
+    static constexpr int kCardDefaultHeight = 245;
+    static constexpr int kRowCount3MinHeight = 520;
+    static constexpr const char* kFolderUpIcon = "A:assets/images/folder-up.png";
 
     //
     // === Widget References ===
@@ -898,11 +900,11 @@ class PrintSelectPanel : public PanelBase {
 
     // Debounce timer for view refresh (prevents rebuilding views for each metadata callback)
     lv_timer_t* refresh_timer_ = nullptr;
-    static constexpr uint32_t REFRESH_DEBOUNCE_MS = 50; ///< Debounce delay for view refresh
+    static constexpr uint32_t kRefreshDebounceMs = 50; ///< Debounce delay for view refresh
 
     // Periodic polling timer for file list (fallback when WebSocket notifications are missed)
     lv_timer_t* file_poll_timer_ = nullptr;
-    static constexpr uint32_t FILE_POLL_INTERVAL_MS = 5000; ///< 5s polling fallback
+    static constexpr uint32_t kFilePollIntervalMs = 5000; ///< 5s polling fallback
     /// Single-flight guard for overlapping get_directory RPCs, with a 30s
     /// self-heal: if a response is silently lost the flag would otherwise wedge
     /// forever and the panel would stop refreshing. The threshold sits between
@@ -979,7 +981,7 @@ class PrintSelectPanel : public PanelBase {
     bool esp_lane_refused_ = false;
     /// Clears a refusal when no fetch of ours is in flight to free a lane slot.
     helix::ui::LvglTimerGuard esp_lane_retry_timer_;
-    static constexpr uint32_t ESP_LANE_RETRY_MS = 500;
+    static constexpr uint32_t kEspLaneRetryMs = 500;
 
     /// The card window [first, end) the last sync saw.
     size_t esp_window_first_ = 0;
@@ -987,7 +989,7 @@ class PrintSelectPanel : public PanelBase {
     /// Counts syncs; a file in the window records it as when it was last shown.
     uint32_t esp_show_tick_ = 0;
     /// Applies plan_card_thumbnails() to the card window [first, end): fetches
-    /// within CARD_THUMBNAIL_BUDGET, and keeps thumbnails outside it, most
+    /// within kCardThumbnailBudget, and keeps thumbnails outside it, most
     /// recently shown first, in what the budget leaves.
     /// With @p keep_off_screen false, thumbnails outside the window are dropped
     /// and their slots freed.
@@ -1074,7 +1076,7 @@ class PrintSelectPanel : public PanelBase {
      * @brief Schedule a debounced view refresh
      *
      * Instead of rebuilding views immediately, this schedules a single refresh
-     * after REFRESH_DEBOUNCE_MS. Multiple calls within the debounce window
+     * after kRefreshDebounceMs. Multiple calls within the debounce window
      * only trigger one actual refresh. This prevents O(n²) widget rebuilds
      * when metadata arrives for each file.
      */

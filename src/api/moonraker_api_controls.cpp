@@ -482,8 +482,8 @@ void MoonrakerAPI::exclude_object(const std::string& object_name, SuccessCallbac
     // the object. Pass silent=true so any late timeout does not emit a user-facing event;
     // truth comes from the `exclude_object.excluded_objects` status subscription. A 15-minute
     // ceiling still catches genuinely stuck requests without aborting legitimate pre-prints.
-    constexpr uint32_t EXCLUDE_OBJECT_TIMEOUT_MS = 15 * 60 * 1000;
-    execute_gcode(gcode, on_success, on_error, EXCLUDE_OBJECT_TIMEOUT_MS, /*silent=*/true);
+    constexpr uint32_t kExcludeObjectTimeoutMs = 15 * 60 * 1000;
+    execute_gcode(gcode, on_success, on_error, kExcludeObjectTimeoutMs, /*silent=*/true);
 }
 
 void MoonrakerAPI::emergency_stop(SuccessCallback on_success, ErrorCallback on_error) {

@@ -33,11 +33,11 @@ namespace fs = std::filesystem;
 namespace {
 
 constexpr const char* TIMELAPSE = "notify_timelapse_event";
-constexpr const char* TIMELAPSE_HANDLER = "timelapse_state";
-constexpr const char* HISTORY = "notify_history_changed";
-constexpr const char* HISTORY_HANDLER = "AboutOverlay_print_hours";
-constexpr const char* UPDATE = "notify_update_response";
-constexpr const char* UPDATE_HANDLER = "external_update_restart";
+constexpr const char* kTimelapseHandler = "timelapse_state";
+constexpr const char* kHistory = "notify_history_changed";
+constexpr const char* kHistoryHandler = "AboutOverlay_print_hours";
+constexpr const char* kUpdate = "notify_update_response";
+constexpr const char* kUpdateHandler = "external_update_restart";
 
 void attach_connection_features(FakeMoonrakerClient& client) {
     helix::TimelapseState::instance().attach(client);
@@ -78,9 +78,9 @@ TEST_CASE("connection features subscribe, and a second attach does not double up
     FakeMoonrakerClient client;
 
     attach_connection_features(client);
-    CHECK(client.handler_count(TIMELAPSE, TIMELAPSE_HANDLER) == 1);
-    CHECK(client.handler_count(HISTORY, HISTORY_HANDLER) == 1);
-    CHECK(client.handler_count(UPDATE, UPDATE_HANDLER) == 1);
+    CHECK(client.handler_count(TIMELAPSE, kTimelapseHandler) == 1);
+    CHECK(client.handler_count(kHistory, kHistoryHandler) == 1);
+    CHECK(client.handler_count(kUpdate, kUpdateHandler) == 1);
     const auto once = client.live_handlers();
 
     attach_connection_features(client);

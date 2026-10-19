@@ -482,7 +482,7 @@ class Ad5xIfsTestAccess {
         return b.write_adventurer_json_local(slot_index, hex, material);
     }
     // tool_map snapshot: copy out for comparison without holding mutex_.
-    static std::array<int, AmsBackendAd5xIfs::TOOL_MAP_SIZE> tool_map(const AmsBackendAd5xIfs& b) {
+    static std::array<int, AmsBackendAd5xIfs::kToolMapSize> tool_map(const AmsBackendAd5xIfs& b) {
         std::lock_guard<std::mutex> lock(b.mutex_);
         return b.tool_map_;
     }

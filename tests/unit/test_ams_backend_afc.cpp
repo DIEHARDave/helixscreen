@@ -259,7 +259,7 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
             slot.global_index = i;
             slot.status = SlotStatus::AVAILABLE;
             slot.mapped_tool = i;
-            slot.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+            slot.color_rgb = kAmsDefaultSlotColor;
             unit.slots.push_back(slot);
         }
 
@@ -410,7 +410,7 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
             std::count(captured_gcodes.begin(), captured_gcodes.end(), expected));
     }
 
-    static constexpr int MESSAGE_DRAIN_MAX_CLEARS = AfcTestAccess::message_drain_max_clears();
+    static constexpr int kMessageDrainMaxClears = AfcTestAccess::message_drain_max_clears();
 
     void test_maybe_drain_message_queue() {
         AfcTestAccess::maybe_drain_message_queue(*this);
@@ -2223,7 +2223,7 @@ TEST_CASE("AFC message sets operation detail", "[ams][afc][message][phase1]") {
 }
 
 TEST_CASE("AFC error message emits EVENT_ERROR", "[ams][afc][message][phase1]") {
-    // When message.type == "error", we should emit EVENT_ERROR with the message text
+    // When message.type == "error", we should emit kEventError with the message text
     AmsBackendAfcTestHelper helper;
     helper.initialize_test_lanes_with_slots(4);
     helper.install_event_tracker();
@@ -2232,10 +2232,10 @@ TEST_CASE("AFC error message emits EVENT_ERROR", "[ams][afc][message][phase1]") 
         {"message", {{"message", "AFC Error: lane1 failed to load"}, {"type", "error"}}}};
     helper.feed_afc_state(afc_data);
 
-    // error type messages should emit EVENT_ERROR
-    REQUIRE(helper.has_event(AmsBackend::EVENT_ERROR));
+    // error type messages should emit kEventError
+    REQUIRE(helper.has_event(AmsBackend::kEventError));
     // Error data should contain the message text
-    std::string error_data = helper.get_event_data(AmsBackend::EVENT_ERROR);
+    std::string error_data = helper.get_event_data(AmsBackend::kEventError);
     REQUIRE(error_data.find("lane1 failed to load") != std::string::npos);
 }
 
@@ -2485,6 +2485,67 @@ TEST_CASE("AFC device action test_lanes dispatches gcode", "[ams][afc][device_ac
 
     REQUIRE(result.success());
     REQUIRE(helper.has_gcode("AFC_TEST_LANES"));
+}
+
+namespace {
+bool has_action(const std::vector<helix::printer::DeviceAction>& actions, const std::string& id) {
+    for (const auto& a : actions) {
+        if (a.id == id)
+            return true;
+    }
+    return false;
+}
+} // namespace
+
+// AFC_TOOLHEAD_CALIBRATION is a Python-registered command, so it never appears in
+// the objects list; printer.gcode.help is the only place a client can see it.
+TEST_CASE("AFC toolhead calibration action follows printer.gcode.help",
+          "[ams][afc][device_actions]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+
+    SECTION("hidden before the help reply arrives") {
+        CHECK_FALSE(has_action(helper.get_device_actions(), "toolhead_calibration"));
+    }
+
+    SECTION("shown in the toolhead section when AFC lists the command") {
+        nlohmann::json reply = {
+            {"jsonrpc", "2.0"},
+            {"result",
+             {{"AFC_CALIBRATION", "open the calibration menu"},
+              {"AFC_TOOLHEAD_CALIBRATION", "Open the toolhead variable calibration menu"}}}};
+        REQUIRE(AfcTestAccess::apply_gcode_help_response(helper, reply));
+
+        const auto actions = helper.get_device_actions();
+        const auto it = std::find_if(actions.begin(), actions.end(),
+                                     [](const auto& a) { return a.id == "toolhead_calibration"; });
+        REQUIRE(it != actions.end());
+        CHECK(it->section == "toolhead");
+        CHECK(it->enabled);
+    }
+
+    SECTION("hidden when AFC predates the command") {
+        nlohmann::json reply = {{"jsonrpc", "2.0"},
+                                {"result", {{"AFC_CALIBRATION", "open the calibration menu"}}}};
+        REQUIRE(AfcTestAccess::apply_gcode_help_response(helper, reply));
+        CHECK_FALSE(has_action(helper.get_device_actions(), "toolhead_calibration"));
+    }
+
+    SECTION("a malformed reply changes nothing") {
+        CHECK_FALSE(AfcTestAccess::apply_gcode_help_response(
+            helper, nlohmann::json{{"result", "AFC_TOOLHEAD_CALIBRATION"}}));
+        CHECK_FALSE(has_action(helper.get_device_actions(), "toolhead_calibration"));
+    }
+}
+
+TEST_CASE("AFC device action toolhead_calibration dispatches gcode", "[ams][afc][device_actions]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+
+    auto result = helper.execute_device_action("toolhead_calibration");
+
+    REQUIRE(result.success());
+    REQUIRE(helper.has_gcode("AFC_TOOLHEAD_CALIBRATION"));
 }
 
 TEST_CASE("AFC device action change_blade dispatches gcode", "[ams][afc][device_actions][phase3]") {
@@ -3134,8 +3195,8 @@ TEST_CASE("AFC error message surfaces in EVENT_ERROR data", "[ams][afc][recovery
         {"message", {{"message", "Lane 1 failed: filament jam detected"}, {"type", "error"}}}};
     helper.feed_afc_state(afc_data);
 
-    REQUIRE(helper.has_event(AmsBackend::EVENT_ERROR));
-    std::string error_data = helper.get_event_data(AmsBackend::EVENT_ERROR);
+    REQUIRE(helper.has_event(AmsBackend::kEventError));
+    std::string error_data = helper.get_event_data(AmsBackend::kEventError);
     REQUIRE(error_data.find("filament jam detected") != std::string::npos);
 }
 
@@ -3233,7 +3294,7 @@ TEST_CASE("AFC drains a session's worth of accumulated messages", "[ams][afc][re
 
 TEST_CASE("AFC message drain is bounded", "[ams][afc][recovery]") {
     // A fault that re-enqueues as fast as we pop must not spin forever.
-    // MESSAGE_DRAIN_MAX_CLEARS is the runaway guard, not the expected exit — the
+    // kMessageDrainMaxClears is the runaway guard, not the expected exit — the
     // preceding test covers the normal drain-until-empty path.
     AmsBackendAfcTestHelper helper;
     helper.initialize_test_lanes_with_slots(4);
@@ -3247,7 +3308,7 @@ TEST_CASE("AFC message drain is bounded", "[ams][afc][recovery]") {
     }
 
     REQUIRE(helper.gcode_count("AFC_CLEAR_MESSAGE") ==
-            AmsBackendAfcTestHelper::MESSAGE_DRAIN_MAX_CLEARS);
+            AmsBackendAfcTestHelper::kMessageDrainMaxClears);
 }
 
 TEST_CASE("AFC clear_fault discards queued lane ejects", "[ams][afc][recovery]") {
@@ -6081,7 +6142,7 @@ TEST_CASE("AFC tool changer reconciliation derives current_slot from active tool
 }
 
 // ---- L1: classify_error ----
-static const char* JAM_LINE =
+static const char* kJamLine =
     "!! Toolhead runout detected by tool_end sensor, but upstream sensors still "
     "detect filament. Possible filament break or jam at the toolhead. Please clear "
     "the jam and reload filament manually, then resume the print.";
@@ -6093,7 +6154,7 @@ TEST_CASE("AFC jam with toolhead loaded offers Unload not Eject", "[ams][afc][cl
 
     helix::ClassifyContext ctx;
     ctx.is_paused = true;
-    auto e = helper.classify_error(JAM_LINE, ctx);
+    auto e = helper.classify_error(kJamLine, ctx);
 
     REQUIRE(e.has_value());
     REQUIRE(e->severity == helix::ErrorSeverity::CRITICAL);
@@ -6117,7 +6178,7 @@ TEST_CASE("AFC jam with empty toolhead offers Eject not Unload", "[ams][afc][cla
 
     helix::ClassifyContext ctx;
     ctx.is_paused = true;
-    auto e = helper.classify_error(JAM_LINE, ctx);
+    auto e = helper.classify_error(kJamLine, ctx);
 
     REQUIRE(e.has_value());
     auto has = [&](const std::string& label) {
@@ -6152,7 +6213,7 @@ TEST_CASE("AFC recovery actions flag only the ones that move filament through th
                                  {{"tool_start_status", true}, {"lane_loaded", "lane2"}});
         helix::ClassifyContext ctx;
         ctx.is_paused = true;
-        auto e = helper.classify_error(JAM_LINE, ctx);
+        auto e = helper.classify_error(kJamLine, ctx);
         REQUIRE(e.has_value());
 
         CHECK(flag_of(e, "Resume") == 1);  // resuming the print extrudes
@@ -6167,7 +6228,7 @@ TEST_CASE("AFC recovery actions flag only the ones that move filament through th
                                  {{"tool_start_status", false}, {"lane_loaded", "lane2"}});
         helix::ClassifyContext ctx;
         ctx.is_paused = true;
-        auto e = helper.classify_error(JAM_LINE, ctx);
+        auto e = helper.classify_error(kJamLine, ctx);
         REQUIRE(e.has_value());
 
         CHECK(flag_of(e, "Eject") == 0);
@@ -6474,7 +6535,7 @@ TEST_CASE("AFC parse: empty colour clears rather than sticking", "[ams][afc][sta
     REQUIRE(helper.get_system_info().get_slot_global(0)->color_rgb == 0xE53935);
 
     helper.feed_afc_stepper("lane1", {{"color", ""}});
-    REQUIRE(helper.get_system_info().get_slot_global(0)->color_rgb == AMS_DEFAULT_SLOT_COLOR);
+    REQUIRE(helper.get_system_info().get_slot_global(0)->color_rgb == kAmsDefaultSlotColor);
 }
 
 TEST_CASE("AFC parse: bare '#' colour clears (AFC SET_COLOR with empty value)",
@@ -6488,7 +6549,7 @@ TEST_CASE("AFC parse: bare '#' colour clears (AFC SET_COLOR with empty value)",
 
     // SET_COLOR LANE=x COLOR=  ->  cur_lane.color = '#'
     helper.feed_afc_stepper("lane1", {{"color", "#"}});
-    REQUIRE(helper.get_system_info().get_slot_global(0)->color_rgb == AMS_DEFAULT_SLOT_COLOR);
+    REQUIRE(helper.get_system_info().get_slot_global(0)->color_rgb == kAmsDefaultSlotColor);
 }
 
 TEST_CASE("AFC parse: a malformed colour still keeps the previous value", "[ams][afc][status]") {
@@ -6755,7 +6816,7 @@ TEST_CASE("AFC persist_override does not record the no-color sentinel", "[ams][a
 
     SlotInfo info;
     info.material = "PLA";
-    info.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    info.color_rgb = kAmsDefaultSlotColor;
     helix::test::apply_edit(helper, 0, info);
 
     const auto& ovr = AfcTestAccess::overrides(helper).at(0);

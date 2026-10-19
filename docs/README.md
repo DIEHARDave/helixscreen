@@ -173,7 +173,7 @@ docs/
 │   ├── printer-research/     # Reverse-engineering notes + printer status matrix
 │   └── ...                   # 70+ more dev docs (index: devel/CLAUDE.md)
 │
-├── specs/                    # PUBLIC, VENDOR-NEUTRAL CONVENTION SPECS
+├── specs/                    # PUBLIC, VENDOR-NEUTRAL CONVENTION kSpecs
 │   ├── CLAUDE.md             # Specs subtree routing
 │   └── filament_slots.md     # lane_data Moonraker DB convention
 │

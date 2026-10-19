@@ -129,16 +129,20 @@ void ensure_swatch_grid_subjects() {
     fill_palette(s_theme_colors, swatch_palette(ColorPicker::Palette::Theme));
     s_swatch_subjects_ready = true;
 
-    // Torn down before lv_deinit(), like the palette subject.
-    StaticSubjectRegistry::instance().register_deinit("SwatchGridSubjects", []() {
-        if (s_swatch_subjects_ready) {
-            lv_xml_unregister_subject(nullptr, "color_picker_selected_swatch");
-            lv_subject_deinit(&s_selected_swatch_subject);
-            s_general_colors.reclaim();
-            s_theme_colors.reclaim();
-            s_swatch_subjects_ready = false;
-        }
-    });
+    // Torn down before lv_deinit(), like the palette subject. Registered at boot, so it
+    // outlives a printer switch.
+    StaticSubjectRegistry::instance().register_deinit(
+        "SwatchGridSubjects",
+        []() {
+            if (s_swatch_subjects_ready) {
+                lv_xml_unregister_subject(nullptr, "color_picker_selected_swatch");
+                lv_subject_deinit(&s_selected_swatch_subject);
+                s_general_colors.reclaim();
+                s_theme_colors.reclaim();
+                s_swatch_subjects_ready = false;
+            }
+        },
+        StaticSubjectRegistry::Lifetime::Process);
 }
 
 // ============================================================================

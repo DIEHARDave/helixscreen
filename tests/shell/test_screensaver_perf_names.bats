@@ -120,17 +120,17 @@ lib_sh() {
     [[ "${lines[1]}" == "armA run=2 gate RESULT arm=armA saver=off "*"helix_cpu=-1%"* ]]
 }
 
-# Every stable name in the SCREENSAVERS table, read independently of perf_env.sh: inside the
+# Every stable name in the kScreensavers table, read independently of perf_env.sh: inside the
 # table the only all-lowercase string literals are the names (labels are capitalised).
 registry_names() {
-    awk '/SCREENSAVERS\[\] = \{/ {inside = 1; next} inside && /^\};/ {exit} inside' \
+    awk '/kScreensavers\[\] = \{/ {inside = 1; next} inside && /^\};/ {exit} inside' \
         "${1:-$ROOT/include/screensaver_registry.h}" | grep -oE '"[a-z0-9_]+"' | tr -d '"'
 }
 
 @test "perf_saver_name accepts every name the registry defines, and nothing else" {
     perf_env
     names=$(registry_names)
-    rows=$(awk '/SCREENSAVERS\[\] = \{/ {inside = 1; next} inside && /^\};/ {exit} inside' \
+    rows=$(awk '/kScreensavers\[\] = \{/ {inside = 1; next} inside && /^\};/ {exit} inside' \
         "$ROOT/include/screensaver_registry.h" | grep -c 'ScreensaverType::')
     [ "$(echo "$names" | wc -l)" -eq "$rows" ] || fail "registry_names found $(echo "$names" | wc -l) of $rows rows"
     contains fireflies "$names" || return 1

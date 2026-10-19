@@ -97,17 +97,17 @@ struct GcodeFooterSummary {
 
 /// Smallest suffix range worth asking for — a request this small costs the
 /// same round-trip as a larger one, so never undercut it.
-inline constexpr size_t GCODE_TAIL_WINDOW_MIN = 16u * 1024u;
+inline constexpr size_t kGcodeTailWindowMin = 16u * 1024u;
 
 /// Window used when the footer offset is unknown. The footer of a real
 /// Orca-family file measured 24.5 KB, so a 20 KB guess misses it; 64 KB
 /// clears every sample we have while staying trivial to transfer.
-inline constexpr size_t GCODE_TAIL_WINDOW_DEFAULT = 64u * 1024u;
+inline constexpr size_t kGcodeTailWindowDefault = 64u * 1024u;
 
 /// Hard ceiling. A footer larger than this is not a footer — some slicer
 /// wrote its whole config twice — and the full-file scan is the better answer
 /// than an ever-growing range request.
-inline constexpr size_t GCODE_TAIL_WINDOW_MAX = 512u * 1024u;
+inline constexpr size_t kGcodeTailWindowMax = 512u * 1024u;
 
 /**
  * @brief Choose how many trailing bytes to request for a footer read.
@@ -115,12 +115,12 @@ inline constexpr size_t GCODE_TAIL_WINDOW_MAX = 512u * 1024u;
  * Moonraker's metadata reports `gcode_end_byte`, the offset of the last move
  * (`; EXECUTABLE_BLOCK_END` sits exactly there on Orca-family output), so
  * `size - gcode_end_byte` is the footer's exact length. Clamped to
- * [GCODE_TAIL_WINDOW_MIN, GCODE_TAIL_WINDOW_MAX] and never larger than the
+ * [kGcodeTailWindowMin, kGcodeTailWindowMax] and never larger than the
  * file itself.
  *
  * @param file_size Total file size in bytes; 0 when unknown.
  * @param gcode_end_byte Offset where the G-code body ends; 0 when unknown or
- *        not reported (then GCODE_TAIL_WINDOW_DEFAULT is used).
+ *        not reported (then kGcodeTailWindowDefault is used).
  * @return Byte count to request. Always nonzero — a zero-length suffix range
  *         is not expressible and download_file_tail() rejects it.
  */

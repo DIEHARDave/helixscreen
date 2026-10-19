@@ -21,11 +21,11 @@ using namespace helix::plugin::test;
 
 namespace {
 
-constexpr const char* APP_MODAL = "print_cancel_confirm_modal";
+constexpr const char* kAppModal = "print_cancel_confirm_modal";
 
 class SurfacesFx : public LVGLUITestFixture {
   public:
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     HostRig rig{enabled("widget-demo", {})};
     LuaRuntime* rt = nullptr;
 
@@ -78,7 +78,7 @@ const char* kOpenDialog = R"(h = helix.ui.dialog("widget-demo__ask", {
 
 TEST_CASE_METHOD(SurfacesFx, "dialog: queued under an app modal, on_open after it closes",
                  "[plugin][bindings][ui]") {
-    lv_obj_t* app = Modal::show(APP_MODAL);
+    lv_obj_t* app = Modal::show(kAppModal);
     REQUIRE(app != nullptr);
     REQUIRE(lua(kOpenDialog));
     settle();
@@ -93,7 +93,7 @@ TEST_CASE_METHOD(SurfacesFx, "dialog: queued under an app modal, on_open after i
 
 TEST_CASE_METHOD(SurfacesFx, "dialog: close while queued -> cancelled, no on_open",
                  "[plugin][bindings][ui]") {
-    lv_obj_t* app = Modal::show(APP_MODAL);
+    lv_obj_t* app = Modal::show(kAppModal);
     REQUIRE(lua(kOpenDialog));
     REQUIRE(lua("h.close()"));
     Modal::hide(app);
@@ -157,7 +157,7 @@ TEST_CASE_METHOD(SurfacesFx, "overlay: navigation back reports user", "[plugin][
 
 TEST_CASE_METHOD(SurfacesFx, "overlay: re-request while queued returns the same handle",
                  "[plugin][bindings][ui]") {
-    lv_obj_t* app = Modal::show(APP_MODAL);
+    lv_obj_t* app = Modal::show(kAppModal);
     REQUIRE(lua(R"(a = helix.ui.overlay("widget-demo__panel", {on_open = function() rec("a") end})
         b = helix.ui.overlay("widget-demo__panel", {on_open = function() rec("b") end}))"));
     Modal::hide(app);
@@ -166,7 +166,7 @@ TEST_CASE_METHOD(SurfacesFx, "overlay: re-request while queued returns the same 
 }
 
 TEST_CASE_METHOD(SurfacesFx, "confirm: waits behind an app modal", "[plugin][bindings][ui]") {
-    lv_obj_t* app = Modal::show(APP_MODAL);
+    lv_obj_t* app = Modal::show(kAppModal);
     REQUIRE(lua(R"(helix.ui.confirm("Sure?", "Really"))"));
     settle();
     CHECK(ModalStack::instance().top_dialog() == app);

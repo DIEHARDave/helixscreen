@@ -29,7 +29,7 @@ using namespace helix;
 using namespace helix::printer;
 
 // Sample AFC.cfg content for tests — includes [AFC] poop/wipe and [AFC_poop] purge_length
-static const char* SAMPLE_AFC_CFG = R"(
+static const char* kSampleAfcCfg = R"(
 [AFC]
 tool_start: direct
 poop: True
@@ -46,7 +46,7 @@ assisted_retract: False
 )";
 
 // Sample AFC_Macro_Vars.cfg content for tests
-static const char* SAMPLE_MACRO_VARS_CFG = R"(
+static const char* kSampleMacroVarsCfg = R"(
 [gcode_macro AFC_MacroVars]
 variable_ramming_volume: 20
 variable_unloading_speed_start: 80
@@ -80,8 +80,8 @@ class AmsBackendAfcConfigHelper {
 
     static void load_test_configs(AmsBackendAfc& backend) {
         create_configs(backend);
-        AfcTestAccess::afc_config(backend)->load_from_string(SAMPLE_AFC_CFG, "AFC/AFC.cfg");
-        AfcTestAccess::macro_vars_config(backend)->load_from_string(SAMPLE_MACRO_VARS_CFG,
+        AfcTestAccess::afc_config(backend)->load_from_string(kSampleAfcCfg, "AFC/AFC.cfg");
+        AfcTestAccess::macro_vars_config(backend)->load_from_string(kSampleMacroVarsCfg,
                                                                     "AFC/AFC_Macro_Vars.cfg");
         AfcTestAccess::configs_loaded(backend) = true;
     }

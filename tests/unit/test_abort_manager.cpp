@@ -851,12 +851,12 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
 
 TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: Timeout constants are correct",
                  "[abort][timeout][constants]") {
-    REQUIRE(AbortManager::HEATER_INTERRUPT_TIMEOUT_MS == 1000);
-    REQUIRE(AbortManager::PROBE_TIMEOUT_MS == 2000);
-    REQUIRE(AbortManager::CANCEL_TIMEOUT_MS == 300000);
-    REQUIRE(AbortManager::CANCEL_NUDGE_MS == 15000);
-    REQUIRE(AbortManager::CANCEL_NUDGE_MS < AbortManager::CANCEL_TIMEOUT_MS);
-    REQUIRE(AbortManager::RECONNECT_TIMEOUT_MS == 30000);
+    REQUIRE(AbortManager::kHeaterInterruptTimeoutMs == 1000);
+    REQUIRE(AbortManager::kProbeTimeoutMs == 2000);
+    REQUIRE(AbortManager::kCancelTimeoutMs == 300000);
+    REQUIRE(AbortManager::kCancelNudgeMs == 15000);
+    REQUIRE(AbortManager::kCancelNudgeMs < AbortManager::kCancelTimeoutMs);
+    REQUIRE(AbortManager::kReconnectTimeoutMs == 30000);
 }
 
 // ============================================================================

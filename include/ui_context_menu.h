@@ -42,7 +42,7 @@ class ContextMenu {
     using ActionCallback = std::function<void(int action, int item_index)>;
 
     /** @brief Action id dispatched when the menu is dismissed without a choice */
-    static constexpr int ACTION_CANCELLED = -1;
+    static constexpr int kActionCancelled = -1;
 
     /**
      * @brief Where the card is placed, and what it is placed relative to
@@ -274,10 +274,11 @@ class ContextMenu {
      * @brief How wide @p row must be to show @p text in @p label without dots
      *
      * A dotted label reports its clipped width, and its own text may already
-     * carry the dots, so the text is measured from the caller's copy. Every other
+     * carry the dots, so the text is measured from the caller's copy. The label
+     * may be the row's child or nested in one (a text column); every other
      * visible child counts at its laid-out width, plus the row's padding, the
-     * label's padding and the flex gaps between children. The caller lays the
-     * row out first (once, for a whole set of rows).
+     * padding from the label out to the row and the flex gaps between children.
+     * The caller lays the row out first (once, for a whole set of rows).
      */
     [[nodiscard]] static int32_t row_width_for_text(lv_obj_t* row, lv_obj_t* label,
                                                     const char* text);
@@ -286,7 +287,7 @@ class ContextMenu {
      * @brief Called when the backdrop is clicked (before hide)
      *
      * This is where a menu states what a tap outside it means. The default is
-     * cancel — dispatch `ACTION_CANCELLED` and take no action — which is right
+     * cancel — dispatch `kActionCancelled` and take no action — which is right
      * for a menu whose whole job is choosing one item.
      *
      * A *configure* menu whose controls already apply live has nothing to cancel,
@@ -377,13 +378,13 @@ class ContextMenu {
      * container with this name, one child per group. Cards without it are simply
      * never reflowed.
      */
-    static constexpr const char* COLUMNS_NAME = "menu_columns";
+    static constexpr const char* kColumnsName = "menu_columns";
 
     /** @brief Name of a column group's heading block (label + rule), if it has one */
-    static constexpr const char* COLUMN_HEADING_NAME = "col_heading";
+    static constexpr const char* kColumnHeadingName = "col_heading";
 
     /** @brief Shortest a row can be and still plausibly be a tap target, in px */
-    static constexpr int32_t MIN_TAPPABLE_H = 8;
+    static constexpr int32_t kMinTappableH = 8;
 
     /**
      * @brief Widen every tappable row to the width of the container holding it

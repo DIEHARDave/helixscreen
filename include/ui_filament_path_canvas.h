@@ -48,7 +48,7 @@ extern "C" {
  *
  * XML attributes:
  *   - topology: "linear" (Happy Hare) or "hub" (AFC) - default "hub"
- *   - slot_count: Number of slots (1-16) - default 4
+ *   - slot_count: Number of slots (1 to helix::kAmsMaxSlots) - default 4
  *   - active_slot: Currently active slot (-1 = none) - default -1
  *   - filament_segment: Current position (0-7, PathSegment enum)
  *   - error_segment: Error location (0-7, PathSegment enum, 0=none)
@@ -97,7 +97,7 @@ void ui_filament_path_canvas_set_hub_on_toolhead(lv_obj_t* obj, bool on_toolhead
  * @brief Set the number of slots
  *
  * @param obj The filament_path_canvas widget
- * @param count Number of slots (1-16)
+ * @param count Number of slots (1 to helix::kAmsMaxSlots)
  */
 void ui_filament_path_canvas_set_slot_count(lv_obj_t* obj, int count);
 
@@ -228,7 +228,7 @@ void ui_filament_path_canvas_stop_animations(lv_obj_t* obj);
  * that have filament installed, even when not the active slot.
  *
  * @param obj The filament_path_canvas widget
- * @param slot_index Slot index (0-15)
+ * @param slot_index Slot index (0 to helix::kAmsMaxSlots - 1)
  * @param segment PathSegment enum value indicating how far filament extends
  * @param color RGB color (0xRRGGBB) of the filament
  */
@@ -244,7 +244,7 @@ void ui_filament_path_canvas_set_slot_filament(lv_obj_t* obj, int slot_index, in
  * PathSegment::NONE.
  *
  * @param obj The filament_path_canvas widget
- * @param slot_index Slot index (0-15)
+ * @param slot_index Slot index (0 to helix::kAmsMaxSlots - 1)
  * @return PathSegment enum value (as int) for the slot
  */
 int ui_filament_path_canvas_get_slot_filament(lv_obj_t* obj, int slot_index);
@@ -257,7 +257,7 @@ int ui_filament_path_canvas_get_slot_filament(lv_obj_t* obj, int slot_index);
  * callers set per-slot based on actual pre-gate sensor presence.
  *
  * @param obj The filament_path_canvas widget
- * @param slot Slot index (0-15)
+ * @param slot Slot index (0 to helix::kAmsMaxSlots - 1)
  * @param has_sensor true if this slot has a prep/pre-gate sensor
  */
 void ui_filament_path_canvas_set_slot_prep_sensor(lv_obj_t* obj, int slot, bool has_sensor);
@@ -497,7 +497,7 @@ bool ui_filament_path_canvas_get_bypass_merge_pos(lv_obj_t* obj, int32_t* cx_out
  * Used to show correct T-labels (e.g., T0,T2,T1,T3) in parallel/mixed topologies.
  *
  * @param obj The filament_path_canvas widget
- * @param slot Slot index (0-15)
+ * @param slot Slot index (0 to helix::kAmsMaxSlots - 1)
  * @param tool Mapped tool number, or -1 to fall back to slot index
  */
 void ui_filament_path_canvas_set_slot_mapped_tool(lv_obj_t* obj, int slot, int tool);
@@ -510,7 +510,7 @@ void ui_filament_path_canvas_set_slot_mapped_tool(lv_obj_t* obj, int slot, int t
  * empty string clears it; the text is copied. PARALLEL topology draws it.
  *
  * @param obj The filament_path_canvas widget
- * @param slot Slot index (0-15)
+ * @param slot Slot index (0 to helix::kAmsMaxSlots - 1)
  * @param caption Caption text, or NULL for none
  */
 void ui_filament_path_canvas_set_slot_upstream(lv_obj_t* obj, int slot, const char* caption);
@@ -519,7 +519,7 @@ void ui_filament_path_canvas_set_slot_upstream(lv_obj_t* obj, int slot, const ch
  * @brief Read back a slot's upstream caption ("" when it has none)
  *
  * @param obj The filament_path_canvas widget
- * @param slot Slot index (0-15)
+ * @param slot Slot index (0 to helix::kAmsMaxSlots - 1)
  * @param out Buffer receiving the caption
  * @param out_size Size of @p out
  */
@@ -551,7 +551,7 @@ void ui_filament_path_canvas_set_extruder_tools(lv_obj_t* obj, const int* tools,
  * the draw_mixed_topology() rendering decision per lane.
  *
  * @param obj The filament_path_canvas widget
- * @param slot Slot index (0-15)
+ * @param slot Slot index (0 to helix::kAmsMaxSlots - 1)
  * @param is_hub true if lane routes through hub, false for direct-to-extruder
  */
 void ui_filament_path_canvas_set_slot_hub_routed(lv_obj_t* obj, int slot, bool is_hub);

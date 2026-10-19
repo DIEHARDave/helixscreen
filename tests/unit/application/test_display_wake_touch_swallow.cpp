@@ -43,14 +43,14 @@
 
 namespace {
 
-constexpr int READ_STEP_MS = 10;
+constexpr int kReadStepMs = 10;
 
 // The button the wake touch lands on, well inside the 800x480 fixture display.
-constexpr lv_point_t ON_BUTTON{120, 120};
+constexpr lv_point_t kOnButton{120, 120};
 
 // A scrollable list to the right of the button, and a drag down its middle.
-constexpr lv_point_t LIST_TOP{500, 120};
-constexpr lv_point_t LIST_DRAGGED{500, 300};
+constexpr lv_point_t kListTop{500, 120};
+constexpr lv_point_t kListDragged{500, 300};
 
 lv_indev_data_t g_raw{};
 
@@ -238,7 +238,7 @@ class WakeChain {
     void step(lv_indev_state_t state, lv_point_t point) {
         g_raw.state = state;
         g_raw.point = point;
-        lv_tick_inc(READ_STEP_MS);
+        lv_tick_inc(kReadStepMs);
         lv_indev_read(pointer_);
         mgr.check_display_sleep();
         helix::ui::UpdateQueue::instance().drain();
@@ -246,7 +246,7 @@ class WakeChain {
     }
 
     void hold(lv_indev_state_t state, lv_point_t point, int ms) {
-        for (int elapsed = 0; elapsed < ms; elapsed += READ_STEP_MS) {
+        for (int elapsed = 0; elapsed < ms; elapsed += kReadStepMs) {
             step(state, point);
         }
     }
@@ -318,8 +318,8 @@ std::vector<Idle> idle_modes() {
 
 namespace {
 using S = helix::WakeTouchLatch::Sample;
-constexpr uint32_t WAKE_AT = 1000;
-constexpr uint32_t WINDOW_END = WAKE_AT + helix::WakeTouchLatch::REARM_MS;
+constexpr uint32_t kWakeAt = 1000;
+constexpr uint32_t kWindowEnd = kWakeAt + helix::WakeTouchLatch::kRearmMs;
 } // namespace
 
 TEST_CASE("the wake latch swallows the waking touch until it lifts", "[display][wake_swallow]") {
@@ -332,30 +332,30 @@ TEST_CASE("the wake latch swallows the waking touch until it lifts", "[display][
     };
 
     // The finger rests at (5,6), then lands at (100,100) and drags while the display sleeps.
-    CHECK_FALSE(latch.filter(S{false, 5, 6}, WAKE_AT - 30, wakes).pressed);
-    S out = latch.filter(S{true, 100, 100}, WAKE_AT, wakes);
+    CHECK_FALSE(latch.filter(S{false, 5, 6}, kWakeAt - 30, wakes).pressed);
+    S out = latch.filter(S{true, 100, 100}, kWakeAt, wakes);
     CHECK_FALSE(out.pressed);
     CHECK(out.x == 5);
     CHECK(out.y == 6);
     CHECK(latch.swallowing());
 
     waking = false; // the display is awake from here on
-    out = latch.filter(S{true, 140, 300}, WAKE_AT + 100, wakes);
+    out = latch.filter(S{true, 140, 300}, kWakeAt + 100, wakes);
     CHECK_FALSE(out.pressed);
     CHECK(out.x == 5); // a swallowed drag does not move the pointer either
     CHECK(out.y == 6);
     // Still held past the window: still swallowed.
-    CHECK_FALSE(latch.filter(S{true, 140, 300}, WINDOW_END + 50, wakes).pressed);
+    CHECK_FALSE(latch.filter(S{true, 140, 300}, kWindowEnd + 50, wakes).pressed);
     CHECK(asked == 1); // one wake decision per touch
 
     // A lift past the window ends it and is reported where it happened.
-    out = latch.filter(S{false, 140, 300}, WINDOW_END + 80, wakes);
+    out = latch.filter(S{false, 140, 300}, kWindowEnd + 80, wakes);
     CHECK_FALSE(out.pressed);
     CHECK(out.x == 140);
     CHECK_FALSE(latch.swallowing());
 
     // The next press passes unchanged.
-    out = latch.filter(S{true, 20, 30}, WINDOW_END + 120, wakes);
+    out = latch.filter(S{true, 20, 30}, kWindowEnd + 120, wakes);
     CHECK(out.pressed);
     CHECK(out.x == 20);
     CHECK(out.y == 30);
@@ -368,24 +368,24 @@ TEST_CASE("the wake latch swallows contact chatter inside the re-arm window",
     bool waking = true;
     auto wakes = [&](int32_t, int32_t) { return waking; };
 
-    latch.filter(S{false, 5, 6}, WAKE_AT - 30, wakes);
-    CHECK_FALSE(latch.filter(S{true, 100, 100}, WAKE_AT, wakes).pressed);
+    latch.filter(S{false, 5, 6}, kWakeAt - 30, wakes);
+    CHECK_FALSE(latch.filter(S{true, 100, 100}, kWakeAt, wakes).pressed);
     waking = false;
 
     // Press, release, press, release, all inside the window: nothing gets through.
-    CHECK_FALSE(latch.filter(S{false, 100, 100}, WAKE_AT + 30, wakes).pressed);
-    CHECK_FALSE(latch.filter(S{true, 100, 100}, WAKE_AT + 60, wakes).pressed);
-    CHECK_FALSE(latch.filter(S{false, 100, 100}, WAKE_AT + 90, wakes).pressed);
-    CHECK_FALSE(latch.filter(S{true, 100, 100}, WAKE_AT + 120, wakes).pressed);
+    CHECK_FALSE(latch.filter(S{false, 100, 100}, kWakeAt + 30, wakes).pressed);
+    CHECK_FALSE(latch.filter(S{true, 100, 100}, kWakeAt + 60, wakes).pressed);
+    CHECK_FALSE(latch.filter(S{false, 100, 100}, kWakeAt + 90, wakes).pressed);
+    CHECK_FALSE(latch.filter(S{true, 100, 100}, kWakeAt + 120, wakes).pressed);
     CHECK(latch.swallowing());
 
     // A chatter press still down at the end of the window stays swallowed until it lifts.
-    CHECK_FALSE(latch.filter(S{true, 100, 100}, WINDOW_END + 10, wakes).pressed);
-    CHECK_FALSE(latch.filter(S{false, 100, 100}, WINDOW_END + 40, wakes).pressed);
+    CHECK_FALSE(latch.filter(S{true, 100, 100}, kWindowEnd + 10, wakes).pressed);
+    CHECK_FALSE(latch.filter(S{false, 100, 100}, kWindowEnd + 40, wakes).pressed);
     CHECK_FALSE(latch.swallowing());
 
     // A deliberate tap after the window is an ordinary press.
-    CHECK(latch.filter(S{true, 100, 100}, WINDOW_END + 300, wakes).pressed);
+    CHECK(latch.filter(S{true, 100, 100}, kWindowEnd + 300, wakes).pressed);
 }
 
 TEST_CASE("a release inside the window, then quiet, ends the latch at the next press",
@@ -396,12 +396,12 @@ TEST_CASE("a release inside the window, then quiet, ends the latch at the next p
     bool waking = true;
     auto wakes = [&](int32_t, int32_t) { return waking; };
 
-    CHECK_FALSE(latch.filter(S{true, 100, 100}, WAKE_AT, wakes).pressed);
+    CHECK_FALSE(latch.filter(S{true, 100, 100}, kWakeAt, wakes).pressed);
     waking = false;
-    CHECK_FALSE(latch.filter(S{false, 100, 100}, WAKE_AT + 50, wakes).pressed);
+    CHECK_FALSE(latch.filter(S{false, 100, 100}, kWakeAt + 50, wakes).pressed);
     REQUIRE(latch.swallowing());
 
-    CHECK(latch.filter(S{true, 300, 200}, WINDOW_END + 500, wakes).pressed);
+    CHECK(latch.filter(S{true, 300, 200}, kWindowEnd + 500, wakes).pressed);
     CHECK_FALSE(latch.swallowing());
 }
 
@@ -430,11 +430,11 @@ TEST_CASE_METHOD(LVGLTestFixture,
     chain.build_targets(test_screen());
     chain.go_idle(idle);
 
-    chain.hold(LV_INDEV_STATE_PRESSED, ON_BUTTON, 30);
+    chain.hold(LV_INDEV_STATE_PRESSED, kOnButton, 30);
     CHECK_FALSE(chain.asleep_or_dimmed()); // woken by the press, not the release
 
-    chain.hold(LV_INDEV_STATE_PRESSED, ON_BUTTON, 470);
-    chain.hold(LV_INDEV_STATE_RELEASED, ON_BUTTON, 50);
+    chain.hold(LV_INDEV_STATE_PRESSED, kOnButton, 470);
+    chain.hold(LV_INDEV_STATE_RELEASED, kOnButton, 50);
 
     CHECK(g_counts.clicked == 0);
     CHECK(g_counts.long_pressed == 0);
@@ -454,7 +454,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "a quick wake tap clicks nothing",
     chain.build_targets(test_screen());
     chain.go_idle(idle);
 
-    chain.tap(ON_BUTTON, 50);
+    chain.tap(kOnButton, 50);
 
     CHECK(g_counts.clicked == 0);
     CHECK_FALSE(chain.asleep_or_dimmed());
@@ -470,10 +470,10 @@ TEST_CASE_METHOD(LVGLTestFixture, "the touch after the wake touch clicks normall
     chain.build_targets(test_screen());
     chain.go_idle(idle);
 
-    chain.tap(ON_BUTTON, 300);
+    chain.tap(kOnButton, 300);
     REQUIRE(g_counts.clicked == 0);
 
-    chain.tap(ON_BUTTON, 50);
+    chain.tap(kOnButton, 50);
     CHECK(g_counts.clicked == 1);
 }
 
@@ -488,13 +488,13 @@ TEST_CASE_METHOD(LVGLTestFixture, "a drag that wakes the display scrolls nothing
     chain.go_idle(idle);
 
     // Down at the top of the list, then drag 180 px down it over 300 ms and lift.
-    chain.hold(LV_INDEV_STATE_PRESSED, LIST_TOP, 100);
+    chain.hold(LV_INDEV_STATE_PRESSED, kListTop, 100);
     for (int i = 1; i <= 30; ++i) {
         chain.step(LV_INDEV_STATE_PRESSED,
-                   {LIST_TOP.x, LIST_TOP.y + (LIST_DRAGGED.y - LIST_TOP.y) * i / 30});
+                   {kListTop.x, kListTop.y + (kListDragged.y - kListTop.y) * i / 30});
     }
-    chain.hold(LV_INDEV_STATE_PRESSED, LIST_DRAGGED, 100);
-    chain.hold(LV_INDEV_STATE_RELEASED, LIST_DRAGGED, 50);
+    chain.hold(LV_INDEV_STATE_PRESSED, kListDragged, 100);
+    chain.hold(LV_INDEV_STATE_RELEASED, kListDragged, 50);
 
     CHECK(g_counts.scroll_begin == 0);
     CHECK(lv_obj_get_scroll_y(chain.list) == 0);
@@ -502,12 +502,12 @@ TEST_CASE_METHOD(LVGLTestFixture, "a drag that wakes the display scrolls nothing
 
     // Control: the same drag on an awake display does scroll, so the case above is not
     // vacuous. Dragging up reveals the content below.
-    chain.hold(LV_INDEV_STATE_PRESSED, LIST_DRAGGED, 50);
+    chain.hold(LV_INDEV_STATE_PRESSED, kListDragged, 50);
     for (int i = 1; i <= 30; ++i) {
         chain.step(LV_INDEV_STATE_PRESSED,
-                   {LIST_TOP.x, LIST_DRAGGED.y - (LIST_DRAGGED.y - LIST_TOP.y) * i / 30});
+                   {kListTop.x, kListDragged.y - (kListDragged.y - kListTop.y) * i / 30});
     }
-    chain.hold(LV_INDEV_STATE_RELEASED, LIST_TOP, 50);
+    chain.hold(LV_INDEV_STATE_RELEASED, kListTop, 50);
     CHECK(g_counts.scroll_begin >= 1);
 }
 
@@ -522,15 +522,15 @@ TEST_CASE_METHOD(LVGLTestFixture, "contact chatter on the wake touch clicks noth
     chain.go_idle(idle);
 
     // Press, release, press, release, 30 ms each: all inside the re-arm window.
-    chain.hold(LV_INDEV_STATE_PRESSED, ON_BUTTON, 30);
-    chain.hold(LV_INDEV_STATE_RELEASED, ON_BUTTON, 30);
-    chain.hold(LV_INDEV_STATE_PRESSED, ON_BUTTON, 30);
-    chain.hold(LV_INDEV_STATE_RELEASED, ON_BUTTON, 300);
+    chain.hold(LV_INDEV_STATE_PRESSED, kOnButton, 30);
+    chain.hold(LV_INDEV_STATE_RELEASED, kOnButton, 30);
+    chain.hold(LV_INDEV_STATE_PRESSED, kOnButton, 30);
+    chain.hold(LV_INDEV_STATE_RELEASED, kOnButton, 300);
     CHECK(g_counts.pressed == 0);
     CHECK(g_counts.clicked == 0);
     CHECK_FALSE(chain.asleep_or_dimmed());
 
     // A deliberate tap after the window clicks once.
-    chain.tap(ON_BUTTON, 50);
+    chain.tap(kOnButton, 50);
     CHECK(g_counts.clicked == 1);
 }

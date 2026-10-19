@@ -39,7 +39,7 @@ using namespace helix;
 // entries in the same order, so a style the DB auto-detects (K1/K2) or
 // pins (Default) is also selectable by hand.
 // Map dropdown index → ToolheadStyle enum value (production dropdown)
-static constexpr helix::ToolheadStyle DROPDOWN_TO_STYLE[] = {
+static constexpr helix::ToolheadStyle kDropdownToStyle[] = {
     helix::ToolheadStyle::AUTO,          // 0: Auto
     helix::ToolheadStyle::DEFAULT,       // 1: Default (Bambu-like)
     helix::ToolheadStyle::A4T,           // 2: A4T
@@ -49,11 +49,11 @@ static constexpr helix::ToolheadStyle DROPDOWN_TO_STYLE[] = {
     helix::ToolheadStyle::CREALITY_K1,   // 6: Creality K1
     helix::ToolheadStyle::CREALITY_K2,   // 7: Creality K2
 };
-static constexpr int DROPDOWN_COUNT =
-    static_cast<int>(sizeof(DROPDOWN_TO_STYLE) / sizeof(DROPDOWN_TO_STYLE[0]));
+static constexpr int kDropdownCount =
+    static_cast<int>(sizeof(kDropdownToStyle) / sizeof(kDropdownToStyle[0]));
 
 // Debug dropdown: indices map directly to enum values (0=Auto, 1=Default, ...)
-static constexpr helix::ToolheadStyle DROPDOWN_TO_STYLE_DEBUG[] = {
+static constexpr helix::ToolheadStyle kDropdownToStyleDebug[] = {
     helix::ToolheadStyle::AUTO,          // 0
     helix::ToolheadStyle::DEFAULT,       // 1
     helix::ToolheadStyle::A4T,           // 2
@@ -63,15 +63,15 @@ static constexpr helix::ToolheadStyle DROPDOWN_TO_STYLE_DEBUG[] = {
     helix::ToolheadStyle::CREALITY_K1,   // 6
     helix::ToolheadStyle::CREALITY_K2,   // 7
 };
-static constexpr int DROPDOWN_DEBUG_COUNT =
-    static_cast<int>(sizeof(DROPDOWN_TO_STYLE_DEBUG) / sizeof(DROPDOWN_TO_STYLE_DEBUG[0]));
+static constexpr int kDropdownDebugCount =
+    static_cast<int>(sizeof(kDropdownToStyleDebug) / sizeof(kDropdownToStyleDebug[0]));
 
 // Convert ToolheadStyle enum to dropdown index
 static int style_to_dropdown_index(helix::ToolheadStyle style) {
     auto* rc = get_runtime_config();
     bool debug = rc && rc->test_mode;
-    int count = debug ? DROPDOWN_DEBUG_COUNT : DROPDOWN_COUNT;
-    const auto* table = debug ? DROPDOWN_TO_STYLE_DEBUG : DROPDOWN_TO_STYLE;
+    int count = debug ? kDropdownDebugCount : kDropdownCount;
+    const auto* table = debug ? kDropdownToStyleDebug : kDropdownToStyle;
     for (int i = 0; i < count; i++) {
         if (table[i] == style)
             return i;
@@ -132,10 +132,10 @@ static constexpr settings::PersistedSetting SETTINGS[] = {
      0, 0, 1, "show_actual_position"},
     // Bed tab: mm below which a move lifts Z before travelling
     {"settings_bed_map_clearance", "motion/bed_map_clearance", Scope::PerPrinter, false, 5,
-     BED_MAP_CLEARANCE_MIN_MM, BED_MAP_CLEARANCE_MAX_MM, "bed_map_clearance"},
+     kBedMapClearanceMinMm, kBedMapClearanceMaxMm, "bed_map_clearance"},
     // MotionLayout: 0=Pad, 1=Arrows, 2=ArrowsHome, 3=AxisRows
     {"settings_motion_layout", "motion/layout", Scope::PerPrinter, false, 0, 0,
-     MOTION_LAYOUT_COUNT - 1, "motion_layout"},
+     kMotionLayoutCount - 1, "motion_layout"},
     // QIDI Box eject distance magnitude in mm, negated when assembled into FORCE_MOVE
     {"settings_qidi_eject_distance", "ams/qidi_eject_distance", Scope::PerPrinter, false, 878, 100,
      2000, "qidi_eject_distance"},
@@ -247,9 +247,9 @@ void SettingsManager::init_subjects() {
 
     // ACE bypass macro overrides (default: "auto" = detected default).
     ace_bypass_on_macro_ =
-        config->get<std::string>(config->df() + wizard::ACE_BYPASS_ON_MACRO, "auto");
+        config->get<std::string>(config->df() + wizard::kAceBypassOnMacro, "auto");
     ace_bypass_off_macro_ =
-        config->get<std::string>(config->df() + wizard::ACE_BYPASS_OFF_MACRO, "auto");
+        config->get<std::string>(config->df() + wizard::kAceBypassOffMacro, "auto");
 
     // Load scanner device selection. Global: the scanner is plugged into the
     // host running HelixScreen, not into any one printer.
@@ -287,9 +287,9 @@ void SettingsManager::load_jog_distances() {
     // Jog step distances (Fine/Coarse/Turbo x inner/outer, mm). Read on every
     // jog rather than bound to a widget, so a cache is enough; the settings
     // overlay re-reads on open.
-    static_assert(JOG_MODE_COUNT == 3, "jog_distances_ cache is sized for three modes");
+    static_assert(kJogModeCount == 3, "jog_distances_ cache is sized for three modes");
     Config* config = Config::get_instance();
-    for (int m = 0; m < JOG_MODE_COUNT; ++m) {
+    for (int m = 0; m < kJogModeCount; ++m) {
         const JogMode mode = static_cast<JogMode>(m);
         for (int outer = 0; outer < 2; ++outer) {
             float mm = config->get<float>(config->df() + jog_distance_key(mode, outer),
@@ -474,8 +474,8 @@ int SettingsManager::toolhead_style_to_dropdown_index(ToolheadStyle style) {
 ToolheadStyle SettingsManager::dropdown_index_to_toolhead_style(int index) {
     auto* rc = get_runtime_config();
     bool debug = rc && rc->test_mode;
-    int count = debug ? DROPDOWN_DEBUG_COUNT : DROPDOWN_COUNT;
-    const auto* table = debug ? DROPDOWN_TO_STYLE_DEBUG : DROPDOWN_TO_STYLE;
+    int count = debug ? kDropdownDebugCount : kDropdownCount;
+    const auto* table = debug ? kDropdownToStyleDebug : kDropdownToStyle;
     if (index < 0 || index >= count)
         return ToolheadStyle::AUTO;
     return table[index];
@@ -513,7 +513,7 @@ void SettingsManager::set_jog_distance(JogMode mode, bool outer, float mm) {
 }
 
 void SettingsManager::reset_jog_distances() {
-    for (int m = 0; m < JOG_MODE_COUNT; ++m) {
+    for (int m = 0; m < kJogModeCount; ++m) {
         const JogMode mode = static_cast<JogMode>(m);
         for (int outer = 0; outer < 2; ++outer)
             set_jog_distance(mode, outer, jog_distance_default(mode, outer));
@@ -571,37 +571,37 @@ void write_console_filter_layer(const char* leaf, ConsoleFilterScope scope,
     config->save();
 }
 
-constexpr const char* FILTER_USER_ADD_LEAF = "filter_user_add";
-constexpr const char* FILTER_USER_REMOVE_LEAF = "filter_user_remove";
+constexpr const char* kFilterUserAddLeaf = "filter_user_add";
+constexpr const char* kFilterUserRemoveLeaf = "filter_user_remove";
 
 } // namespace
 
 std::vector<std::string> SettingsManager::get_console_filter_user_add() const {
-    return merged_console_filter(FILTER_USER_ADD_LEAF);
+    return merged_console_filter(kFilterUserAddLeaf);
 }
 
 std::vector<std::string> SettingsManager::get_console_filter_user_remove() const {
-    return merged_console_filter(FILTER_USER_REMOVE_LEAF);
+    return merged_console_filter(kFilterUserRemoveLeaf);
 }
 
 std::vector<std::string>
 SettingsManager::get_console_filter_user_add(ConsoleFilterScope scope) const {
-    return read_console_filter_layer(FILTER_USER_ADD_LEAF, scope);
+    return read_console_filter_layer(kFilterUserAddLeaf, scope);
 }
 
 std::vector<std::string>
 SettingsManager::get_console_filter_user_remove(ConsoleFilterScope scope) const {
-    return read_console_filter_layer(FILTER_USER_REMOVE_LEAF, scope);
+    return read_console_filter_layer(kFilterUserRemoveLeaf, scope);
 }
 
 void SettingsManager::set_console_filter_user_add(const std::vector<std::string>& patterns,
                                                   ConsoleFilterScope scope) {
-    write_console_filter_layer(FILTER_USER_ADD_LEAF, scope, patterns);
+    write_console_filter_layer(kFilterUserAddLeaf, scope, patterns);
 }
 
 void SettingsManager::set_console_filter_user_remove(const std::vector<std::string>& patterns,
                                                      ConsoleFilterScope scope) {
-    write_console_filter_layer(FILTER_USER_REMOVE_LEAF, scope, patterns);
+    write_console_filter_layer(kFilterUserRemoveLeaf, scope, patterns);
 }
 
 // ============================================================================
@@ -663,7 +663,7 @@ std::optional<SlotInfo> SettingsManager::get_external_spool_info() const {
     info.global_index = -2;
     info.color_rgb =
         static_cast<uint32_t>(config->get<int>(config->df() + "filament/external_spool/color_rgb",
-                                               static_cast<int>(AMS_DEFAULT_SLOT_COLOR)));
+                                               static_cast<int>(kAmsDefaultSlotColor)));
     info.material = config->get<std::string>(config->df() + "filament/external_spool/material", "");
     info.brand = config->get<std::string>(config->df() + "filament/external_spool/brand", "");
     // The external spool has no lane_data record, so this get/set pair is its
@@ -741,7 +741,7 @@ void SettingsManager::set_ace_bypass_on_macro(const std::string& value) {
     ace_bypass_on_macro_ = value;
     spdlog::info("[SettingsManager] set_ace_bypass_on_macro({})", value);
     Config* config = Config::get_instance();
-    config->set<std::string>(config->df() + wizard::ACE_BYPASS_ON_MACRO, value);
+    config->set<std::string>(config->df() + wizard::kAceBypassOnMacro, value);
     config->save();
 }
 
@@ -753,7 +753,7 @@ void SettingsManager::set_ace_bypass_off_macro(const std::string& value) {
     ace_bypass_off_macro_ = value;
     spdlog::info("[SettingsManager] set_ace_bypass_off_macro({})", value);
     Config* config = Config::get_instance();
-    config->set<std::string>(config->df() + wizard::ACE_BYPASS_OFF_MACRO, value);
+    config->set<std::string>(config->df() + wizard::kAceBypassOffMacro, value);
     config->save();
 }
 

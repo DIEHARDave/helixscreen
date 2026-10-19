@@ -21,7 +21,7 @@ namespace {
 json migrate(const json& stored) {
     json config{{"config_version", 27}, {"display", {{"screensaver_type", stored}}}};
     helix::config_detail::run_versioned_migrations(config, "");
-    REQUIRE(config["config_version"] == helix::CURRENT_CONFIG_VERSION);
+    REQUIRE(config["config_version"] == helix::kCurrentConfigVersion);
     return config["display"]["screensaver_type"];
 }
 
@@ -40,9 +40,9 @@ TEST_CASE("v28 writes the frozen table's name for every legacy number",
           "[config][migration][screensaver_setting]") {
     // The migration reads the frozen table alone; the live registry can lose or reorder a saver
     // without changing what an old number migrates to.
-    for (size_t i = 0; i < std::size(helix::ui::LEGACY_SCREENSAVER_TYPE_NAMES); i++) {
+    for (size_t i = 0; i < std::size(helix::ui::kLegacyScreensaverTypeNames); i++) {
         CAPTURE(i);
-        CHECK(migrate(static_cast<int>(i)) == helix::ui::LEGACY_SCREENSAVER_TYPE_NAMES[i]);
+        CHECK(migrate(static_cast<int>(i)) == helix::ui::kLegacyScreensaverTypeNames[i]);
     }
 }
 

@@ -1052,7 +1052,7 @@ struct StateRowInfo {
     const char* icon;
 };
 
-static constexpr StateRowInfo STATE_ROWS[] = {
+static constexpr StateRowInfo kStateRows[] = {
     {"idle", "Idle", "sleep"},
     {"heating", "Heating", "fire"},
     {"printing", "Printing", "printer_3d"},
@@ -1061,11 +1061,11 @@ static constexpr StateRowInfo STATE_ROWS[] = {
     {"complete", "Complete", "check_circle"},
 };
 
-static constexpr size_t STATE_ROW_COUNT = sizeof(STATE_ROWS) / sizeof(STATE_ROWS[0]);
+static constexpr size_t kStateRowCount = sizeof(kStateRows) / sizeof(kStateRows[0]);
 
 static std::optional<size_t> state_row_index(const std::string& key) {
-    for (size_t i = 0; i < STATE_ROW_COUNT; ++i) {
-        if (key == STATE_ROWS[i].key) {
+    for (size_t i = 0; i < kStateRowCount; ++i) {
+        if (key == kStateRows[i].key) {
             return i;
         }
     }
@@ -1085,7 +1085,7 @@ void LedSettingsOverlay::publish_auto_color_presets() {
     for (size_t i = 0; i < presets.size(); ++i) {
         auto_preset_color_pool_.set_color(i, presets[i]);
     }
-    auto_color_selected_pool_.ensure_size(STATE_ROW_COUNT);
+    auto_color_selected_pool_.ensure_size(kStateRowCount);
     lv_subject_set_int(&auto_preset_count_, static_cast<int>(presets.size()));
 }
 
@@ -1166,7 +1166,7 @@ void LedSettingsOverlay::populate_auto_state_rows() {
             options_str += lv_tr("Macro");
     }
 
-    for (const auto& state : STATE_ROWS) {
+    for (const auto& state : kStateRows) {
         std::string key = state.key;
 
         // Get current action for this state
@@ -1241,7 +1241,7 @@ void LedSettingsOverlay::populate_auto_state_rows() {
         rebuild_contextual_controls(key, ctx_container);
     }
 
-    spdlog::debug("[{}] Auto-state rows populated ({} states)", get_name(), STATE_ROW_COUNT);
+    spdlog::debug("[{}] Auto-state rows populated ({} states)", get_name(), kStateRowCount);
 }
 
 void LedSettingsOverlay::rebuild_contextual_controls(const std::string& state_key,

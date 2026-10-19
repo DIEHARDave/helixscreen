@@ -98,7 +98,7 @@ TrackRect seat_grown_span(const TrackRect& saved, int grown_colspan, int grown_r
 /// The array is terminated by LV_GRID_TEMPLATE_LAST. LVGL's own counter is
 /// file-local, so callers reading a descriptor back off a container need this.
 /// Returns 0 for a null array, for an empty one, and for an array with no
-/// terminator within GRID_TRACK_SCAN_MAX — a missing terminator means the
+/// terminator within kGridTrackScanMax — a missing terminator means the
 /// pointer is stale or not a descriptor, and walking further reads off the end.
 int grid_count_tracks(const int32_t* dsc);
 
@@ -119,7 +119,7 @@ class GridLayout {
     /// Number of defined breakpoints. One per UiBreakpoint tier, XXLarge
     /// included — a short table here does not fail to compile, it silently
     /// clamps the top tier onto the one below and the grid stops growing.
-    static constexpr int NUM_BREAKPOINTS = 7;
+    static constexpr int kNumBreakpoints = 7;
 
     /// Number of grid tracks that make up one authored cell.
     ///
@@ -138,7 +138,7 @@ class GridLayout {
     ///
     /// The XXLarge rung carries its own entry, equal to XLarge's 72px edge, so
     /// 1920x1080 yields a 12x7-cell (24x14-track) grid.
-    static constexpr int GRID_CELL[NUM_BREAKPOINTS] = {34, 40, 40, 60, 60, 72, 72};
+    static constexpr int GRID_CELL[kNumBreakpoints] = {34, 40, 40, 60, 60, 72, 72};
     static_assert(std::size(GRID_CELL) == static_cast<size_t>(to_int(UiBreakpoint::XXLarge)) + 1,
                   "GRID_CELL must carry one track edge per UiBreakpoint tier");
 
@@ -147,7 +147,7 @@ class GridLayout {
     /// box is 264px against a 68px cell, which gives 8 tracks.
     ///
     /// A whole number of cells, so clamping cannot produce an odd track count.
-    static constexpr int MIN_TRACKS = 4;
+    static constexpr int kMinTracks = 4;
 
     /// Ceiling on track count. High enough that no plausible content box
     /// reaches it — a lower cap would stretch the track and break the
@@ -156,7 +156,7 @@ class GridLayout {
     /// (cols+1 plus rows+1) in the LVGL grid descriptor.
     ///
     /// A whole number of cells, so clamping cannot produce an odd track count.
-    static constexpr int MAX_TRACKS = 64;
+    static constexpr int kMaxTracks = 64;
 
     /// Track counts for a content rectangle at a given breakpoint.
     ///
@@ -173,7 +173,7 @@ class GridLayout {
     /// cell of GRID_CELL on both axes, which is what keeps the cell square.
     /// The result is a whole number of cells, so the track count is always even.
     ///
-    /// A zero or negative extent yields the MIN_TRACKS floor, deliberately and
+    /// A zero or negative extent yields the kMinTracks floor, deliberately and
     /// identically on both axes, rather than a plausible-looking grid derived
     /// from nothing.
     static GridDimensions get_dimensions(UiBreakpoint bp, int content_w, int content_h);

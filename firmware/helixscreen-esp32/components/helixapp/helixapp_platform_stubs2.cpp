@@ -161,10 +161,9 @@ SpoolmanOverlay& get_spoolman_overlay() {
 // error rather than a null-vtable fault). SpoolmanSlotSaver is constructed by
 // value in ui_ams_edit_overlay.cpp, so it needs a real ctor.
 //
-// SpoolmanPanel CANNOT be raw storage: two kept call sites
-// (ui_panel_advanced.cpp handle_spoolman_clicked, the pm_chip_spoolman_clicked
-// entry in ui_printer_manager_overlay.cpp PrinterManagerOverlay::register_callbacks)
-// hand it to lazy_create_and_push_overlay, which dispatches init_subjects(),
+// SpoolmanPanel CANNOT be raw storage: the kept call site
+// (ui_panel_advanced.cpp handle_spoolman_clicked) hands it to
+// lazy_create_and_push_overlay, which dispatches init_subjects(),
 // register_callbacks() and create() on it.
 // Those are virtual, so raw storage would fault (LoadProhibited) the moment
 // the capability gate that hides both rows is lifted. So the accessor

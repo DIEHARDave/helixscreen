@@ -17,14 +17,14 @@
 namespace helix::ui {
 
 /// How long a finished print stays on the readout before the clock returns.
-inline constexpr uint32_t CLOCK_DONE_HOLD_MS = 60000;
+inline constexpr uint32_t kClockDoneHoldMs = 60000;
 /// A remaining-time estimate this far from the running countdown resets it; nearer ones are
 /// ignored, so estimator jitter never runs the seconds backwards.
-inline constexpr int32_t CLOCK_COUNTDOWN_RESYNC_S = 10;
+inline constexpr int32_t kClockCountdownResyncS = 10;
 /// Longest countdown a readout shows: 999:59:59.
-inline constexpr int32_t CLOCK_MAX_COUNTDOWN_S = 999 * 3600 + 59 * 60 + 59;
+inline constexpr int32_t kClockMaxCountdownS = 999 * 3600 + 59 * 60 + 59;
 /// How often a clock drifts to a new position, so no pixel stays lit in one place.
-inline constexpr uint32_t CLOCK_DRIFT_STEP_MS = 60000;
+inline constexpr uint32_t kClockDriftStepMs = 60000;
 
 /// What the print is doing, as far as a clock cares.
 enum class ClockPrintPhase : uint8_t { NONE, PREPARING, PRINTING, PAUSED, COMPLETE };
@@ -91,7 +91,7 @@ struct ClockReading {
  *
  * Idle, preparing without an estimate, cancelled and failed prints read the time of day. A
  * print with an estimate counts down at wall-clock rate, frozen while paused. A print seen
- * finishing reads DONE for CLOCK_DONE_HOLD_MS, then the time of day again.
+ * finishing reads DONE for kClockDoneHoldMs, then the time of day again.
  */
 class ClockState {
   public:
@@ -127,7 +127,7 @@ bool clock_face_same(const ClockReading& a, const ClockReading& b, bool shows_pr
 void clock_drift_range(const DirtyRect& bounds, int32_t w, int32_t h, int32_t& max_dx,
                        int32_t& max_dy);
 
-/// Drift offset `elapsed_ms` into a run, stepping every CLOCK_DRIFT_STEP_MS within
+/// Drift offset `elapsed_ms` into a run, stepping every kClockDriftStepMs within
 /// +-`max_dx`, +-`max_dy`.
 void clock_drift_at(uint32_t elapsed_ms, int32_t max_dx, int32_t max_dy, int32_t& dx, int32_t& dy);
 

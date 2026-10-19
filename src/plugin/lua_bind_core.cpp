@@ -106,6 +106,7 @@ void on_timer(lv_timer_t* timer) {
 }
 
 int start_timer(lua_State* L, bool repeat) {
+    forbid_in_check(L, "helix.timer");
     auto& rt = LuaRuntime::from(L);
     lua_Integer ms = luaL_checkinteger(L, 1);
     luaL_argcheck(L, ms >= 1 && ms <= 24 * 3600 * 1000, 1, "interval must be 1 ms to 24 h");
@@ -142,6 +143,7 @@ int timer_every(lua_State* L) {
 }
 
 int timer_cancel(lua_State* L) {
+    forbid_in_check(L, "timer:cancel");
     uint64_t id = *static_cast<uint64_t*>(luaL_checkudata(L, 1, kTimerMeta));
     auto& reg = timers_of(L);
     if (auto it = reg.timers.find(id); it != reg.timers.end())
@@ -372,6 +374,7 @@ int i18n_locale(lua_State* L) {
 }
 
 int i18n_on_change(lua_State* L) {
+    forbid_in_check(L, "helix.i18n.on_change");
     auto& ctx = context(L);
     luaL_checktype(L, 1, LUA_TFUNCTION);
     I18nState& st = i18n_state(L);
@@ -391,6 +394,17 @@ int i18n_on_change(lua_State* L) {
     }
     st.on_change.push_back(ctx.rt.ref_value(L, 1));
     return 0;
+}
+
+void new_locked_metatable(lua_State* L, const char* name) {
+    luaL_newmetatable(L, name);
+    lua_pushliteral(L, "locked");
+    lua_setfield(L, -2, "__metatable");
+}
+
+void forbid_in_check(lua_State* L, const char* call) {
+    if (LuaRuntime::from(L).in_check())
+        luaL_error(L, "%s is not allowed in a menu check", call);
 }
 
 PluginContext& context(lua_State* L) {
@@ -423,7 +437,7 @@ void install_core_bindings(PluginContext& ctx) {
         delete i18n;
     });
 
-    luaL_newmetatable(L, kTimerMeta);
+    new_locked_metatable(L, kTimerMeta);
     lua_newtable(L);
     lua_pushcfunction(L, &timer_cancel);
     lua_setfield(L, -2, "cancel");

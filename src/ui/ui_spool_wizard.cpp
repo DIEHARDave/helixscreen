@@ -41,8 +41,8 @@
 namespace {
 
 /// Maximum input lengths for sanity checking
-constexpr size_t MAX_VENDOR_NAME_LEN = 256;
-constexpr size_t MAX_VENDOR_URL_LEN = 2048;
+constexpr size_t kMaxVendorNameLen = 256;
+constexpr size_t kMaxVendorUrlLen = 2048;
 
 /// Spoolman stores one integer temperature per filament. A catalog range
 /// becomes its midpoint; a range with one end set becomes that end.
@@ -967,8 +967,8 @@ void SpoolWizardOverlay::publish_vendor_selection() {
 }
 
 void SpoolWizardOverlay::set_new_vendor(const std::string& name, const std::string& url) {
-    new_vendor_name_ = name.substr(0, MAX_VENDOR_NAME_LEN);
-    new_vendor_url_ = url.substr(0, MAX_VENDOR_URL_LEN);
+    new_vendor_name_ = name.substr(0, kMaxVendorNameLen);
+    new_vendor_url_ = url.substr(0, kMaxVendorUrlLen);
 
     bool valid = !helix::text_io::trim(new_vendor_name_).empty();
 

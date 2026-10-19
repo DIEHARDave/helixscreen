@@ -37,18 +37,18 @@ namespace {
 
 /// Poll cadence while waiting for the nozzle. Fast enough that the recovery
 /// fires within a frame of reaching temperature, slow enough to cost nothing.
-constexpr uint32_t PREHEAT_POLL_MS = 250;
+constexpr uint32_t kPreheatPollMs = 250;
 
 /// How long to wait for the nozzle before giving up. Same 300s budget the AFC
-/// and AD5X backends give their own heating phases (HEATING_TIMEOUT_SECONDS),
+/// and AD5X backends give their own heating phases (kHeatingTimeoutSeconds),
 /// so a recovery preheat abandons a dead heater on the same schedule the
-/// backends do. IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS is numerically identical
+/// backends do. IMoonrakerAPI::kAmsOperationTimeoutMs is numerically identical
 /// but means "how long may an RPC take"; this is a physical heating budget.
-constexpr uint32_t PREHEAT_TIMEOUT_MS = 300000;
+constexpr uint32_t kPreheatTimeoutMs = 300000;
 
 /// Treat "within 5°C of target" as arrived — the same slack FilamentPanel and
 /// AmsOperationSidebar use, so all three preheats release at the same point.
-constexpr int TEMP_THRESHOLD_C = 5;
+constexpr int kTempThresholdC = 5;
 
 int nozzle_current_c() {
     auto* subj = get_printer_state().temperature_state().get_active_extruder_temp_subject();
@@ -60,7 +60,7 @@ int nozzle_current_c() {
 namespace helix::ui {
 
 RecoveryModalPresenter::RecoveryModalPresenter(IMoonrakerAPI* api)
-    : api_(api), preheat_budget_ms_(PREHEAT_TIMEOUT_MS) {}
+    : api_(api), preheat_budget_ms_(kPreheatTimeoutMs) {}
 
 RecoveryModalPresenter::~RecoveryModalPresenter() {
     // The poll timer outlives the modal that started it, so nothing else can
@@ -279,7 +279,7 @@ void RecoveryModalPresenter::dispatch_recovery(const std::string& gcode, const s
                 });
             });
         },
-        IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS);
+        IMoonrakerAPI::kAmsOperationTimeoutMs);
 }
 
 bool RecoveryModalPresenter::nozzle_ready_for_extrusion() const {
@@ -312,7 +312,7 @@ int RecoveryModalPresenter::resolve_preheat_target() const {
     // 3. Still nothing known: the shared load-preheat default rather than a new
     //    number invented here.
     if (target <= 0) {
-        target = app_constants::ams::DEFAULT_LOAD_PREHEAT_TEMP;
+        target = app_constants::ams::kDefaultLoadPreheatTemp;
     }
 
     // A latch or material temp below min_extrude_temp would heat to a nozzle
@@ -334,14 +334,14 @@ void RecoveryModalPresenter::begin_preheat(const std::string& gcode, const std::
     pending_label_ = label;
     pending_target_c_ = target;
     polls_remaining_ =
-        std::max<int32_t>(1, static_cast<int32_t>(preheat_budget_ms_ / PREHEAT_POLL_MS));
+        std::max<int32_t>(1, static_cast<int32_t>(preheat_budget_ms_ / kPreheatPollMs));
 
     if (auto* c = get_temperature_controller()) {
         c->set_target(helix::HeaterType::Nozzle, static_cast<double>(target),
                       {.toast = false, .keep_previous_hot = true});
     }
 
-    preheat_timer_ = lv_timer_create(preheat_timer_cb, PREHEAT_POLL_MS, this);
+    preheat_timer_ = lv_timer_create(preheat_timer_cb, kPreheatPollMs, this);
     // The wait is bounded by counting polls rather than by wall clock, so the
     // budget cannot be stretched by a stalled main loop. One repeat MORE than
     // polls_remaining_ so poll_preheat() always ends the wait itself — were LVGL
@@ -357,7 +357,7 @@ void RecoveryModalPresenter::begin_preheat(const std::string& gcode, const std::
 }
 
 void RecoveryModalPresenter::poll_preheat() {
-    if (nozzle_current_c() >= (pending_target_c_ - TEMP_THRESHOLD_C)) {
+    if (nozzle_current_c() >= (pending_target_c_ - kTempThresholdC)) {
         const std::string gcode = pending_gcode_;
         const std::string tag = pending_tag_;
         const int reached = nozzle_current_c();

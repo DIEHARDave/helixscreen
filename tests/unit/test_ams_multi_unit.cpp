@@ -39,7 +39,7 @@ static helix::AmsSystemInfo make_multi_unit_info(const std::vector<int>& slots_p
             slot.global_index = global_offset + s;
             slot.status = helix::SlotStatus::AVAILABLE;
             slot.mapped_tool = global_offset + s;
-            slot.color_rgb = helix::AMS_DEFAULT_SLOT_COLOR;
+            slot.color_rgb = helix::kAmsDefaultSlotColor;
             unit.slots.push_back(slot);
         }
 

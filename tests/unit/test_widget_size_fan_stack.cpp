@@ -238,7 +238,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "fan_stack icons line up one under the other
 
     // Real fans so all three rows stay visible and the roles resolve. The
     // bare `fan` object maps to "Part Cooling Fan" (device_display_name.cpp
-    // DIRECT_MAPPINGS) — same trio as the fit-the-cell case below.
+    // kDirectMappings) — same trio as the fit-the-cell case below.
     state().fan_state().init_fans(
         {"fan", "heater_fan hotend_fan", "fan_generic chamber_circulation"});
     state().fan_state().update_fan_speed("fan", 0.35);
@@ -406,7 +406,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "fan_stack rows fit the cell they were grant
     // Real discovered fans, so the "bigger" branch draws the resolved display
     // names it draws on a printer rather than the short hardcoded fallbacks.
     // The bare Klipper `fan` object maps to "Part Cooling Fan"
-    // (device_display_name.cpp DIRECT_MAPPINGS) — the exact string the defect
+    // (device_display_name.cpp kDirectMappings) — the exact string the defect
     // report showed clipped.
     state().fan_state().init_fans(
         {"fan", "heater_fan hotend_fan", "fan_generic chamber_circulation"});

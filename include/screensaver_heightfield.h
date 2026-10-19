@@ -112,7 +112,7 @@ float bilinear_sample(const float* grid, int32_t w, int32_t h, float u, float v,
 class HeightfieldRenderer {
   public:
     /// No slice reached half coverage at this pixel.
-    static constexpr uint16_t NO_DEPTH = 0xFFFF;
+    static constexpr uint16_t kNoDepth = 0xFFFF;
 
     /// Sizes every buffer for `view` and builds its slices.
     void init(const HeightfieldView& view);
@@ -132,7 +132,7 @@ class HeightfieldRenderer {
     /// Premultiplied colour and coverage at internal (x, y).
     Rgb color_at(int32_t x, int32_t y) const;
     uint8_t coverage_at(int32_t x, int32_t y) const;
-    /// Slice index where coverage at (x, y) first reached 128, or NO_DEPTH.
+    /// Slice index where coverage at (x, y) first reached 128, or kNoDepth.
     uint16_t depth_slice_at(int32_t x, int32_t y) const;
     /// depth_slice_at() for every pixel, column-major: (x, y) is at x * h + y.
     const uint16_t* depth_data() const {

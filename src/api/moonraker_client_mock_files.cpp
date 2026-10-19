@@ -21,7 +21,7 @@
 #include <sys/stat.h>
 
 // Directory path for thumbnail cache (test G-code dir comes from RuntimeConfig::TEST_GCODE_DIR)
-static constexpr const char* THUMBNAIL_CACHE_DIR = "build/thumbnail_cache";
+static constexpr const char* kThumbnailCacheDir = "build/thumbnail_cache";
 
 // Alias for cleaner code - use shared constant from RuntimeConfig
 #define TEST_GCODE_DIR RuntimeConfig::TEST_GCODE_DIR
@@ -281,7 +281,7 @@ static json build_mock_file_metadata_response(const std::string& filename) {
     auto header_meta = helix::gcode::extract_header_metadata(full_path);
 
     // Get cached thumbnail path (creates cache if needed)
-    std::string thumbnail_path = helix::gcode::get_cached_thumbnail(full_path, THUMBNAIL_CACHE_DIR);
+    std::string thumbnail_path = helix::gcode::get_cached_thumbnail(full_path, kThumbnailCacheDir);
 
     // HELIX_MOCK_REMOTE_THUMBS=1 — advertise a Moonraker-relative path instead
     // of the local cache file. PrintSelectPanel branches on whether the

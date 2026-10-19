@@ -12,8 +12,8 @@
 
 namespace helix::pwg {
 
-static constexpr size_t PWG_HEADER_SIZE = 1796;
-static constexpr uint8_t SYNC_WORD[4] = {0x52, 0x61, 0x53, 0x32}; // "RaS2"
+static constexpr size_t kPwgHeaderSize = 1796;
+static constexpr uint8_t kSyncWord[4] = {0x52, 0x61, 0x53, 0x32}; // "RaS2"
 
 // Write a big-endian uint32 at the given byte offset
 static void put_be32(uint8_t* buf, size_t offset, uint32_t value) {
@@ -24,7 +24,7 @@ static void put_be32(uint8_t* buf, size_t offset, uint32_t value) {
 }
 
 std::vector<uint8_t> build_page_header(const PageParams& params) {
-    std::vector<uint8_t> hdr(PWG_HEADER_SIZE, 0x00);
+    std::vector<uint8_t> hdr(kPwgHeaderSize, 0x00);
 
     // MediaType at offset 128 (64-byte field, zero-padded)
     size_t mt_len = std::min(params.media_type.size(), size_t{63});
@@ -223,12 +223,12 @@ std::vector<uint8_t> generate(const LabelBitmap& page_bitmap, const PageParams& 
     // Pre-allocate: sync + header + estimated compressed data
     // PackBits worst case is input_size + input_size/128 + 1 per line,
     // plus 1 byte repeat count per unique line. Estimate 50% compression.
-    size_t estimated = 4 + PWG_HEADER_SIZE + uncompressed_estimate / 2;
+    size_t estimated = 4 + kPwgHeaderSize + uncompressed_estimate / 2;
     std::vector<uint8_t> out;
     out.reserve(estimated);
 
     // Sync word
-    out.insert(out.end(), SYNC_WORD, SYNC_WORD + 4);
+    out.insert(out.end(), kSyncWord, kSyncWord + 4);
 
     // Page header
     auto hdr = build_page_header(p);
@@ -254,8 +254,8 @@ std::vector<uint8_t> generate_multi(const std::vector<const LabelBitmap*>& pages
 
     // Sync word (once, at start of document)
     std::vector<uint8_t> out;
-    out.reserve(4 + pages.size() * (PWG_HEADER_SIZE + 64 * 1024));
-    out.insert(out.end(), SYNC_WORD, SYNC_WORD + 4);
+    out.reserve(4 + pages.size() * (kPwgHeaderSize + 64 * 1024));
+    out.insert(out.end(), kSyncWord, kSyncWord + 4);
 
     for (size_t i = 0; i < pages.size(); i++) {
         if (!pages[i]) {

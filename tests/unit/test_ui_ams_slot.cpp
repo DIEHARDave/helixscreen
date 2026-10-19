@@ -812,7 +812,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AMS slot ghosts empty slot with brand-only 
     REQUIRE_FALSE(st.any_spool_hidden);
     lv_obj_t* label = UITest::find_by_name(slot, "material_label");
     REQUIRE(label != nullptr);
-    REQUIRE(lv_obj_get_style_text_opa(label, LV_PART_MAIN) == ams_draw::GHOST_OPA);
+    REQUIRE(lv_obj_get_style_text_opa(label, LV_PART_MAIN) == ams_draw::kGhostOpa);
 
     AmsState::instance().clear_backends();
 }

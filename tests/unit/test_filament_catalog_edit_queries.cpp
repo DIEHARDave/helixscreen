@@ -50,15 +50,16 @@ TEST_CASE("variant_label strips the family", "[catalog][edit-spool]") {
     CHECK(filament::variant_label("Glow PLA", "PLA") == "Glow");
     CHECK(filament::variant_label("PLA-HS", "PLA") == "HS");
     CHECK(filament::variant_label("TPU-85A", "TPU") == "85A");
-    // A family the reducer does not collapse (rPLA is a known material of its
-    // own) labels as Basic within itself.
-    CHECK(filament::variant_label("rPLA", "rPLA") == "Basic");
+    // A recycled grade is a variant of its polymer.
+    CHECK(filament::variant_label("rPLA", "PLA") == "Recycled");
     CHECK(filament::variant_label("") == "Basic");
 }
 
 TEST_CASE("variant_label derives the family when not given", "[catalog][edit-spool]") {
     CHECK(filament::variant_label("PLA-CF") == "CF");
     CHECK(filament::variant_label("ASA") == "Basic");
+    CHECK(filament::display_family("rPLA") == "PLA");
+    CHECK(filament::variant_label("rPLA") == "Recycled");
 }
 
 TEST_CASE("compose_family_type mirrors catalog spellings", "[catalog][edit-spool]") {
@@ -72,7 +73,7 @@ TEST_CASE("compose_family_type mirrors catalog spellings", "[catalog][edit-spool
 
 TEST_CASE("compose inverts variant_label for the catalog spellings", "[catalog][edit-spool]") {
     const char* types[] = {"PLA-CF",   "PLA-GF", "Silk PLA", "Matte PLA",
-                           "Wood PLA", "PLA+",   "PLA-HS"};
+                           "Wood PLA", "PLA+",   "PLA-HS",   "rPLA"};
     for (const char* type : types) {
         const std::string family = filament::display_family(type);
         const std::string label = filament::variant_label(type, family);
@@ -84,28 +85,28 @@ TEST_CASE("compose inverts variant_label for the catalog spellings", "[catalog][
 TEST_CASE_METHOD(HelixTestFixture, "all_families groups decorated types", "[catalog][edit-spool]") {
     auto cat = load_edit_fixture();
     const auto families = cat.all_families();
-    // The reducer's own model: the decorated PLA spellings collapse to PLA,
-    // while rPLA and PETG+HF are known materials of their own.
-    REQUIRE(families.size() == 5);
+    // The decorated PLA spellings and recycled rPLA collapse to PLA, while
+    // PETG+HF is a known material of its own.
+    REQUIRE(families.size() == 4);
     CHECK(families[0] == "PETG");
     CHECK(families[1] == "PETG+HF");
     CHECK(families[2] == "PLA");
-    CHECK(families[3] == "rPLA");
-    CHECK(families[4] == "SnapSpeed");
+    CHECK(families[3] == "SnapSpeed");
 }
 
 TEST_CASE_METHOD(HelixTestFixture, "variants_in_family dedupes and orders",
                  "[catalog][edit-spool]") {
     auto cat = load_edit_fixture();
     const auto vs = cat.variants_in_family("PLA");
-    // Basic first, then alphabetical: +, CF, HS, Silk.
+    // Basic first, then alphabetical: +, CF, HS, Recycled, Silk.
     const auto ls = labels_of(vs);
-    REQUIRE(ls.size() == 5);
+    REQUIRE(ls.size() == 6);
     CHECK(ls[0] == "Basic");
     CHECK(ls[1] == "+");
     CHECK(ls[2] == "CF");
     CHECK(ls[3] == "HS");
-    CHECK(ls[4] == "Silk");
+    CHECK(ls[4] == "Recycled");
+    CHECK(ls[5] == "Silk");
     // Every sample type round-trips: its own family reduces it, and the label
     // re-composes to the sample spelling (rPLA via the Recycled spelling).
     for (const auto& v : vs) {
@@ -118,7 +119,7 @@ TEST_CASE_METHOD(HelixTestFixture, "variants_in_family dedupes and orders",
 TEST_CASE_METHOD(HelixTestFixture, "variants_in_family is case-insensitive",
                  "[catalog][edit-spool]") {
     auto cat = load_edit_fixture();
-    CHECK(labels_of(cat.variants_in_family("pla")).size() == 5);
+    CHECK(labels_of(cat.variants_in_family("pla")).size() == 6);
 }
 
 TEST_CASE_METHOD(HelixTestFixture, "variants_in_family unknown family yields Basic self",
@@ -150,15 +151,15 @@ TEST_CASE_METHOD(HelixTestFixture, "products_in_family scopes to brand and mater
                  "[catalog][edit-spool]") {
     auto cat = load_edit_fixture();
     const auto generic_pla = cat.products_in_family("Generic", "PLA");
-    // Generic's PLA family products: PLA, PLA-CF, PLA+, Silk PLA (rPLA is its
-    // own family).
-    REQUIRE(generic_pla.size() == 4);
+    // Generic's PLA family products: PLA, PLA-CF, PLA+, Silk PLA and the
+    // recycled rPLA.
+    REQUIRE(generic_pla.size() == 5);
     for (const auto* p : generic_pla) {
         CHECK(p->brand == "Generic");
         CHECK(filament::display_family(p->type) == "PLA");
     }
     // Case-insensitive on both arguments.
-    CHECK(cat.products_in_family("generic", "pla").size() == 4);
+    CHECK(cat.products_in_family("generic", "pla").size() == 5);
     CHECK(cat.products_in_family("eSUN", "PLA").empty());
     CHECK(cat.products_in_family("eSUN", "PETG+HF").size() == 1);
 }
@@ -190,11 +191,12 @@ TEST_CASE("recent_brands keeps first-seen order", "[catalog][edit-spool]") {
 
 TEST_CASE("editor swatch touch targets meet the 44px floor at every class",
           "[catalog][edit-spool]") {
-    // The touch box is disc + 2*hit (color_swatch's ext_click_area), and the
-    // grid gap must be >= 2*hit so adjacent targets tile at their pitch
-    // without overlapping. Read the ladders straight out of the XML so a
-    // regression in the consts fails here, not on a device.
-    std::ifstream in("ui_xml/ams_edit_overlay.xml");
+    // The editor's grids size from the shared swatch_grid ladders. The touch box
+    // is disc + 2*hit, with hit = gap_half (color_swatch's ext_click_area), and the
+    // gap must be >= 2*hit so adjacent targets tile at their pitch without
+    // overlapping. Read the ladders straight out of globals.xml so a regression in
+    // the consts fails here, not on a device.
+    std::ifstream in("ui_xml/globals.xml");
     REQUIRE(in.is_open());
     std::string xml((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     auto read_px = [&](const std::string& name) -> int {
@@ -203,36 +205,12 @@ TEST_CASE("editor swatch touch targets meet the 44px floor at every class",
         REQUIRE(at != std::string::npos);
         return std::atoi(xml.c_str() + at + needle.size());
     };
-    // The disc ladders are literals in the editor's consts; read them so a
-    // change to either side of the 44px math fails here.
-    const int disc_micro = read_px("ams_edit_grid_swatch_micro");
-    // medium+ discs resolve through #swatch_grid_size; read the shared
-    // literal from globals.xml.
-    std::ifstream globals_in("ui_xml/globals.xml");
-    REQUIRE(globals_in.is_open());
-    std::string globals_xml((std::istreambuf_iterator<char>(globals_in)),
-                            std::istreambuf_iterator<char>());
-    auto read_global_px = [&](const std::string& name) -> int {
-        const std::string needle = "name=\"" + name + "\" value=\"";
-        auto at = globals_xml.find(needle);
-        REQUIRE(at != std::string::npos);
-        return std::atoi(globals_xml.c_str() + at + needle.size());
-    };
-    const int disc_medium = read_global_px("swatch_grid_size_medium");
-    for (const char* cls : {"micro", "tiny", "small"}) {
-        const std::string p = std::string("ams_edit_grid_");
-        const int disc = read_px(p + "swatch_" + cls);
-        const int hit = read_px(p + "hit_" + cls);
-        const int gap = read_px(p + "gap_" + cls);
+    for (const char* cls : {"micro", "tiny", "small", "medium", "large"}) {
+        INFO("class " << cls);
+        const int disc = read_px(std::string("swatch_grid_size_") + cls);
+        const int gap = read_px(std::string("swatch_grid_gap_") + cls);
+        const int hit = read_px(std::string("swatch_grid_gap_half_") + cls);
         CHECK(disc + 2 * hit >= 44);
         CHECK(gap >= 2 * hit);
     }
-    for (const char* cls : {"medium", "large", "xlarge", "xxlarge"}) {
-        const std::string p = std::string("ams_edit_grid_");
-        const int hit = read_px(p + "hit_" + cls);
-        const int gap = read_px(p + "gap_" + cls);
-        CHECK(disc_medium + 2 * hit >= 44);
-        CHECK(gap >= 2 * hit);
-    }
-    (void)disc_micro;
 }

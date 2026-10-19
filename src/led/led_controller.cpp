@@ -51,7 +51,7 @@ uint32_t parse_json_color(const nlohmann::json& j, uint32_t default_val) {
 helix::led::LedStripInfo macro_device_info(const helix::led::LedMacroInfo& macro) {
     helix::led::LedStripInfo info;
     info.name = macro.display_name;
-    info.id = helix::led::MACRO_STRIP_PREFIX + macro.display_name;
+    info.id = helix::led::kMacroStripPrefix + macro.display_name;
     info.backend = helix::led::LedBackendType::MACRO;
     info.supports_color = false;
     info.supports_white = false;
@@ -346,7 +346,7 @@ void LedController::migrate_legacy_selection() {
     if (legacy_selection_.empty()) {
         return;
     }
-    const nlohmann::json* existing = cfg->try_get_json(cfg->df() + AUTO_STATE_STRIPS_PATH);
+    const nlohmann::json* existing = cfg->try_get_json(cfg->df() + kAutoStateStripsPath);
     if (existing != nullptr && existing->is_array()) {
         return;
     }
@@ -381,7 +381,7 @@ void LedController::discover_wled_strips() {
                 [self = data->self, gen = data->gen]() { self->settle_wled_discovery(gen); });
             delete data;
         },
-        WLED_DISCOVERY_TIMEOUT_MS,
+        kWledDiscoveryTimeoutMs,
         new Timeout{lifetime_.token(), this, gen}); // TIMER_DTOR_OK: LifetimeToken-guarded one-shot
     lv_timer_set_repeat_count(timer, 1);
 
@@ -1485,7 +1485,7 @@ void LedController::load_config() {
     // match them: an unprefixed macro name gains "macro:", a deleted macro drops.
     for (auto& s : legacy_selection_) {
         if (!is_macro_strip_id(s) && find_macro(configured_macros_, s) != nullptr) {
-            s = MACRO_STRIP_PREFIX + s;
+            s = kMacroStripPrefix + s;
         }
     }
     legacy_selection_.erase(std::remove_if(legacy_selection_.begin(), legacy_selection_.end(),
@@ -1950,7 +1950,7 @@ std::string LedController::first_available_strip() const {
     // "macro:" ID that backend_for_strip resolves to nothing)
     for (const auto& macro : configured_macros_) {
         if (macro.type != MacroLedType::PRESET && !macro.display_name.empty()) {
-            return MACRO_STRIP_PREFIX + macro.display_name;
+            return kMacroStripPrefix + macro.display_name;
         }
     }
 
@@ -2185,16 +2185,16 @@ void LedController::seed_auto_paired_macros() {
         used_names.insert(m.display_name);
     }
 
-    static constexpr const char* ON_SUFFIX = "_ON";
-    static constexpr size_t ON_SUFFIX_LEN = 3;
+    static constexpr const char* kOnSuffix = "_ON";
+    static constexpr size_t kOnSuffixLen = 3;
 
     bool added = false;
     for (const auto& on_macro : discovered_led_macros_) {
-        if (on_macro.size() <= ON_SUFFIX_LEN ||
-            on_macro.compare(on_macro.size() - ON_SUFFIX_LEN, ON_SUFFIX_LEN, ON_SUFFIX) != 0) {
+        if (on_macro.size() <= kOnSuffixLen ||
+            on_macro.compare(on_macro.size() - kOnSuffixLen, kOnSuffixLen, kOnSuffix) != 0) {
             continue;
         }
-        const std::string base = on_macro.substr(0, on_macro.size() - ON_SUFFIX_LEN);
+        const std::string base = on_macro.substr(0, on_macro.size() - kOnSuffixLen);
         const std::string off_macro = base + "_OFF";
         if (available.count(off_macro) == 0 || seeded.count(base) != 0 ||
             claimed.count(on_macro) != 0 || claimed.count(off_macro) != 0) {

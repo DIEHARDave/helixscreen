@@ -144,10 +144,10 @@ void PrinterSwitchFlow::await_connection(const std::string& title, bool connecti
             // One-shot: LVGL deletes the timer after this run.
             self->m_connect_timeout.release();
             spdlog::warn("[PrinterSwitchFlow] No connection after {} ms; dropping the switch card",
-                         CONNECT_WAIT_MS);
+                         kConnectWaitMs);
             self->dismiss_interstitial();
         },
-        CONNECT_WAIT_MS, this);
+        kConnectWaitMs, this);
     lv_timer_set_repeat_count(timeout, 1);
     m_connect_timeout.reset(timeout);
 }
@@ -393,21 +393,21 @@ bool PrinterSwitchFlow::add_printer(const std::string& host, int port) {
 
 PrinterSwitchFlow::BootCrashRecord PrinterSwitchFlow::record_switch_away(const std::string& from_id,
                                                                          const std::string& to_id) {
-    BootCrashRecord was{m_config->get<bool>(BOOT_CONNECT_HOLD_KEY, false),
-                        m_config->get<std::string>(SWITCH_PREVIOUS_PRINTER_KEY, ""),
-                        m_config->get<int>(BOOT_CRASH_STREAK_KEY, 0)};
-    m_config->set<bool>(BOOT_CONNECT_HOLD_KEY, false);
+    BootCrashRecord was{m_config->get<bool>(kBootConnectHoldKey, false),
+                        m_config->get<std::string>(kSwitchPreviousPrinterKey, ""),
+                        m_config->get<int>(kBootCrashStreakKey, 0)};
+    m_config->set<bool>(kBootConnectHoldKey, false);
     if (from_id != to_id) {
-        m_config->set<std::string>(SWITCH_PREVIOUS_PRINTER_KEY, from_id);
-        m_config->set<int>(BOOT_CRASH_STREAK_KEY, 0);
+        m_config->set<std::string>(kSwitchPreviousPrinterKey, from_id);
+        m_config->set<int>(kBootCrashStreakKey, 0);
     }
     return was;
 }
 
 void PrinterSwitchFlow::restore_boot_crash_record(const BootCrashRecord& record) {
-    m_config->set<bool>(BOOT_CONNECT_HOLD_KEY, record.connect_held);
-    m_config->set<std::string>(SWITCH_PREVIOUS_PRINTER_KEY, record.previous_printer_id);
-    m_config->set<int>(BOOT_CRASH_STREAK_KEY, record.crash_streak);
+    m_config->set<bool>(kBootConnectHoldKey, record.connect_held);
+    m_config->set<std::string>(kSwitchPreviousPrinterKey, record.previous_printer_id);
+    m_config->set<int>(kBootCrashStreakKey, record.crash_streak);
 }
 
 bool PrinterSwitchFlow::save_or_report() {

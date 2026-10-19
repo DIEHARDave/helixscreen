@@ -359,7 +359,7 @@ def check_printer_image_sizes(manifest, f):
                         continue
                     line = raw.split("//", 1)[0]
                     near = "\n".join(lines[max(0, i - 2):i + 3])
-                    if "assets/images/printers" not in near and "PRERENDERED_BASE_PATH" not in near:
+                    if "assets/images/printers" not in near and "kPrerenderedBasePath" not in near:
                         continue
                     for m in re.finditer(r"(?<![\w.])(\d+)(?![\w.])", line):
                         value = m.group(1)

@@ -189,7 +189,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "The restart guard suppresses a shutdown insid
 
     CHECK(EmergencyStopOverlayTestAccess::recovery_reason(estop) == RecoveryReason::NONE);
     // Well inside the window it is still in flight, so the dialog stays away.
-    lv_tick_inc(recovery_suppression::RESTART_FLAG_TIMEOUT / 2);
+    lv_tick_inc(recovery_suppression::kRestartFlagTimeout / 2);
     CHECK(estop.is_expected_restart());
 
     estop.show_recovery_for(RecoveryReason::SHUTDOWN);
@@ -210,7 +210,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     // No klippy READY is ever delivered here, so nothing in production clears
     // the window - the backstop is the only thing that can end it.
-    lv_tick_inc(recovery_suppression::RESTART_FLAG_TIMEOUT + 1000);
+    lv_tick_inc(recovery_suppression::kRestartFlagTimeout + 1000);
     CHECK_FALSE(estop.is_expected_restart());
 
     // And the printer is still down, which the user now has to be told.

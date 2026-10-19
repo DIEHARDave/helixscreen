@@ -163,7 +163,7 @@ std::vector<std::string> LedWidget::targets() const {
 }
 
 std::string LedWidget::overlay_device() const {
-    if (led_key_ == led::LIGHT_BUTTON_ALL) {
+    if (led_key_ == led::kLightButtonAll) {
         return led::LedController::instance().chamber_light();
     }
     const auto t = targets();
@@ -246,7 +246,7 @@ void LedWidget::bind_led() {
 
     auto& led_ctrl = led::LedController::instance();
     std::string name;
-    if (led_key_ == led::LIGHT_BUTTON_ALL) {
+    if (led_key_ == led::kLightButtonAll) {
         name = lv_tr("All lights");
     } else {
         const auto t = targets();
@@ -286,7 +286,7 @@ LightIconLook LedWidget::icon_look() const {
         states.push_back(led_ctrl.device_state(id));
     }
     LightIconLook look = light_icon_look(states);
-    if (led_key_ == led::LIGHT_BUTTON_ALL) {
+    if (led_key_ == led::kLightButtonAll) {
         look.has_rgb = false;
     }
     return look;
@@ -398,7 +398,7 @@ void LedWidget::show_led_picker() {
     for (size_t i = 0; i < devices.size(); ++i) {
         picker_.row_ids.push_back(devices[i].id);
         subs.names.set_string(i, led::device_display_name(devices[i]));
-        if (led_key_ != led::LIGHT_BUTTON_ALL && !t.empty() && devices[i].id == t.front()) {
+        if (led_key_ != led::kLightButtonAll && !t.empty() && devices[i].id == t.front()) {
             selected = static_cast<int>(i);
         }
     }
@@ -443,7 +443,7 @@ void LedWidget::led_picker_row_cb(lv_event_t* e) {
         return;
     }
     const int index = helix::text_io::parse_leading<int>(ud).value_or(-1);
-    std::string key = led::LIGHT_BUTTON_ALL;
+    std::string key = led::kLightButtonAll;
     if (index >= 0 && static_cast<size_t>(index) < picker->row_ids.size()) {
         key = picker->row_ids[static_cast<size_t>(index)];
     }

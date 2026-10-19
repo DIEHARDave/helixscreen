@@ -57,7 +57,7 @@ class ConfiguredPrinterFixture : public HelixTestFixture {
     }
 };
 
-constexpr const char* CW_LINE = "// Right Near : x=202.0, y=12.5, z=-4.59750 : adjust CW 01:24";
+constexpr const char* kCwLine = "// Right Near : x=202.0, y=12.5, z=-4.59750 : adjust CW 01:24";
 
 } // namespace
 
@@ -72,7 +72,7 @@ TEST_CASE_METHOD(ConfiguredPrinterFixture,
                  "[calibration][screws_tilt]") {
     select("FlashForge Adventurer 5X");
 
-    const ScrewTiltResult r = parse(CW_LINE);
+    const ScrewTiltResult r = parse(kCwLine);
     REQUIRE(r.adjustment == "CCW 01:24");
     REQUIRE(r.friendly_adjustment(false) == "Loosen 1 turn");
     REQUIRE(r.signed_adjustment_minutes().value() == -84);
@@ -98,17 +98,17 @@ TEST_CASE_METHOD(ConfiguredPrinterFixture, "A printer without the key is left al
     SECTION("a printer that declares nothing") {
         select("Voron 2.4");
         REQUIRE(PrinterDetector::screws_tilt_direction_override().empty());
-        REQUIRE(parse(CW_LINE).adjustment == "CW 01:24");
+        REQUIRE(parse(kCwLine).adjustment == "CW 01:24");
     }
 
     SECTION("no printer selected at all") {
         REQUIRE(PrinterDetector::screws_tilt_direction_override().empty());
-        REQUIRE(parse(CW_LINE).adjustment == "CW 01:24");
+        REQUIRE(parse(kCwLine).adjustment == "CW 01:24");
     }
 
     SECTION("an unknown printer name") {
         select("Not A Real Printer");
         REQUIRE(PrinterDetector::screws_tilt_direction_override().empty());
-        REQUIRE(parse(CW_LINE).adjustment == "CW 01:24");
+        REQUIRE(parse(kCwLine).adjustment == "CW 01:24");
     }
 }

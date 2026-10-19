@@ -132,7 +132,7 @@ TEST_CASE("ensure_homed_then's continuation is not refused as someone else's bus
     // settle in real time.
     lv_subject_set_int(state.calibration_state().get_idle_timeout_printing_subject(), 1);
     state.calibration_state().idle_timeout_busy().set_printing(true);
-    std::this_thread::sleep_for(helix::IdleTimeoutBusy::SETTLE + std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(helix::IdleTimeoutBusy::kSettle + std::chrono::milliseconds(100));
     REQUIRE(state.is_blocking_operation_active());
     helix::ui::UpdateQueue::instance().drain();
 
@@ -162,7 +162,7 @@ TEST_CASE("ensure_homed_then's G28 ack adopts no episode that begins after it",
     bool ran = false;
     helix::ensure_homed_then(&api, guard, [&] { ran = true; }, nullptr);
     // A homing pass longer than the grace window, then the ack.
-    std::this_thread::sleep_for(helix::BusyEpisodeOwner::GRACE_WINDOW +
+    std::this_thread::sleep_for(helix::BusyEpisodeOwner::kGraceWindow +
                                 std::chrono::milliseconds(100));
     helix::ui::UpdateQueue::instance().drain();
     REQUIRE(ran);

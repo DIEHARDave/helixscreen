@@ -80,7 +80,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "mock jog rejection surfaces exactly one reada
     mock.connect("ws://mock/websocket", []() {}, []() {});
     MoonrakerAPI api(mock, state);
 
-    // Park near the X_MAX edge (250 on the Voron 2.4 persona) so a
+    // Park near the kXMax edge (250 on the Voron 2.4 persona) so a
     // normal-sized jog overshoots — the exact real-world shape of this bug.
     mock.gcode_script("G28");
     mock.gcode_script("G0 X240");

@@ -114,8 +114,8 @@ TEST_CASE_METHOD(MoonrakerRobustnessFixture,
                  "[.][connection][edge][concurrent][priority1]") {
     SECTION("concurrent requests across threads (no race conditions)") {
         constexpr int NUM_THREADS = 4;
-        constexpr int REQUESTS_PER_THREAD = 25;
-        constexpr int TOTAL_REQUESTS = NUM_THREADS * REQUESTS_PER_THREAD;
+        constexpr int kRequestsPerThread = 25;
+        constexpr int kTotalRequests = NUM_THREADS * kRequestsPerThread;
 
         std::atomic<int> success_count{0};
         std::atomic<int> error_count{0};
@@ -133,7 +133,7 @@ TEST_CASE_METHOD(MoonrakerRobustnessFixture,
         REQUIRE(connected);
 
         auto send_requests = [&](int thread_id) {
-            for (int i = 0; i < REQUESTS_PER_THREAD; i++) {
+            for (int i = 0; i < kRequestsPerThread; i++) {
                 client_->send_jsonrpc(
                     "printer.info", json(), [&success_count](json) { success_count++; },
                     [&error_count](const MoonrakerError&) { error_count++; });
@@ -152,20 +152,20 @@ TEST_CASE_METHOD(MoonrakerRobustnessFixture,
         }
 
         // Wait for all responses to arrive
-        for (int i = 0; i < 200 && (success_count + error_count) < TOTAL_REQUESTS; i++) {
+        for (int i = 0; i < 200 && (success_count + error_count) < kTotalRequests; i++) {
             std::this_thread::sleep_for(milliseconds(100));
         }
 
         INFO("Success: " << success_count.load() << ", Error: " << error_count.load());
 
         // Most requests should succeed with the mock server
-        REQUIRE(success_count >= TOTAL_REQUESTS * 3 / 4); // At least 75% success
+        REQUIRE(success_count >= kTotalRequests * 3 / 4); // At least 75% success
     }
 
     SECTION("Concurrent send_jsonrpc with different methods") {
-        constexpr int NUM_SENDERS = 5;
-        constexpr int SENDS_PER_SENDER = 50;
-        constexpr int MIXED_TOTAL = NUM_SENDERS * SENDS_PER_SENDER;
+        constexpr int kNumSenders = 5;
+        constexpr int kSendsPerSender = 50;
+        constexpr int kMixedTotal = kNumSenders * kSendsPerSender;
 
         std::atomic<int> completed{0};
         std::atomic<bool> connected{false};
@@ -185,7 +185,7 @@ TEST_CASE_METHOD(MoonrakerRobustnessFixture,
         REQUIRE(connected);
 
         auto send_mixed = [&]() {
-            for (int i = 0; i < SENDS_PER_SENDER; i++) {
+            for (int i = 0; i < kSendsPerSender; i++) {
                 const auto& method = methods[i % methods.size()];
                 client_->send_jsonrpc(
                     method, json(), [&completed](json) { completed++; },
@@ -194,7 +194,7 @@ TEST_CASE_METHOD(MoonrakerRobustnessFixture,
         };
 
         std::vector<std::thread> threads;
-        for (int i = 0; i < NUM_SENDERS; i++) {
+        for (int i = 0; i < kNumSenders; i++) {
             threads.emplace_back(send_mixed);
         }
 
@@ -205,18 +205,18 @@ TEST_CASE_METHOD(MoonrakerRobustnessFixture,
         // Wait for responses, then flush anything the server never answered so the
         // count is final either way: process_timeouts() fires the error callback for
         // every request past its deadline.
-        for (int i = 0; i < 100 && completed < MIXED_TOTAL; i++) {
+        for (int i = 0; i < 100 && completed < kMixedTotal; i++) {
             std::this_thread::sleep_for(milliseconds(50));
         }
         client_->process_timeouts();
 
-        INFO("completed: " << completed.load() << " of " << MIXED_TOTAL);
+        INFO("completed: " << completed.load() << " of " << kMixedTotal);
 
         // Every request resolves exactly once - success or error, never dropped and
         // never fired twice. Under contention that is what the request tracker's
         // locking exists to guarantee, and it is checkable in a plain build rather
         // than only under ThreadSanitizer.
-        REQUIRE(completed == MIXED_TOTAL);
+        REQUIRE(completed == kMixedTotal);
     }
 }
 
@@ -518,12 +518,12 @@ TEST_CASE_METHOD(MoonrakerRobustnessFixture,
                  "[connection][edge][timeout][priority3][eventloop][slow]") {
     SECTION("10 requests all timeout and get cleaned up") {
         std::atomic<int> error_callbacks{0};
-        constexpr int NUM_REQUESTS = 10;
-        constexpr uint32_t TIMEOUT_MS = 100;
+        constexpr int kNumRequests = 10;
+        constexpr uint32_t kTimeoutMs = 100;
 
-        client_->set_default_request_timeout(TIMEOUT_MS);
+        client_->set_default_request_timeout(kTimeoutMs);
 
-        for (int i = 0; i < NUM_REQUESTS; i++) {
+        for (int i = 0; i < kNumRequests; i++) {
             client_->send_jsonrpc(
                 "printer.info", json(), [](json) { FAIL("Should fail"); },
                 [&error_callbacks](const MoonrakerError& err) {
@@ -535,7 +535,7 @@ TEST_CASE_METHOD(MoonrakerRobustnessFixture,
         }
 
         // Wait for timeouts (if sends succeeded)
-        std::this_thread::sleep_for(milliseconds(TIMEOUT_MS + 100));
+        std::this_thread::sleep_for(milliseconds(kTimeoutMs + 100));
 
         // Process timeouts (if any pending)
         client_->process_timeouts();
@@ -543,7 +543,7 @@ TEST_CASE_METHOD(MoonrakerRobustnessFixture,
         // Wait for callbacks
         std::this_thread::sleep_for(milliseconds(100));
 
-        REQUIRE(error_callbacks == NUM_REQUESTS);
+        REQUIRE(error_callbacks == kNumRequests);
     }
 
     SECTION("process_timeouts() is idempotent") {
@@ -575,7 +575,7 @@ TEST_CASE_METHOD(MoonrakerRobustnessFixture,
 
 // The former "Cannot send requests while disconnected" section lived entirely inside
 // an `#if 0` and expected send_jsonrpc() to return 0 while disconnected — the opposite
-// of shipped behavior, which refuses at the send gate and returns INVALID_REQUEST_ID.
+// of shipped behavior, which refuses at the send gate and returns kInvalidRequestId.
 // The real contract is pinned by test_moonraker_client_send_gate.cpp.
 TEST_CASE_METHOD(MoonrakerRobustnessFixture, "MoonrakerClient state machine transitions correctly",
                  "[connection][edge][state][priority4][eventloop][slow]") {
@@ -620,9 +620,9 @@ TEST_CASE_METHOD(MoonrakerRobustnessFixture, "MoonrakerClient disconnect clears 
                  "[connection][edge][state][priority4][eventloop][slow]") {
     SECTION("Disconnect invokes error callbacks for pending requests") {
         std::atomic<int> error_callbacks{0};
-        constexpr int NUM_REQUESTS = 5;
+        constexpr int kNumRequests = 5;
 
-        for (int i = 0; i < NUM_REQUESTS; i++) {
+        for (int i = 0; i < kNumRequests; i++) {
             client_->send_jsonrpc(
                 "printer.info", json(), [](json) { FAIL("Should not succeed"); },
                 [&error_callbacks](const MoonrakerError& err) {
@@ -635,7 +635,7 @@ TEST_CASE_METHOD(MoonrakerRobustnessFixture, "MoonrakerClient disconnect clears 
         client_->disconnect();
 
         // Error callbacks should have been invoked
-        REQUIRE(error_callbacks == NUM_REQUESTS);
+        REQUIRE(error_callbacks == kNumRequests);
     }
 
     SECTION("Disconnect is safe with no pending requests") {
@@ -823,9 +823,9 @@ TEST_CASE("MoonrakerClient stress test - sustained load",
         client->setReconnect(nullptr);
 
         std::atomic<int> completed{0};
-        constexpr int NUM_REQUESTS = 1000;
+        constexpr int kNumRequests = 1000;
 
-        for (int i = 0; i < NUM_REQUESTS; i++) {
+        for (int i = 0; i < kNumRequests; i++) {
             client->send_jsonrpc(
                 "printer.info", json(), [&completed](json) { completed++; },
                 [&completed](const MoonrakerError&) { completed++; });
@@ -833,15 +833,15 @@ TEST_CASE("MoonrakerClient stress test - sustained load",
 
         // Wait for timeouts/completions
         int wait_iterations = 0;
-        while (completed < NUM_REQUESTS && wait_iterations < 100) {
+        while (completed < kNumRequests && wait_iterations < 100) {
             std::this_thread::sleep_for(milliseconds(100));
             client->process_timeouts();
             wait_iterations++;
         }
 
         // All requests should complete or timeout
-        INFO("Completed: " << completed.load() << "/" << NUM_REQUESTS);
-        CHECK(completed >= NUM_REQUESTS * 0.95); // At least 95% complete
+        INFO("Completed: " << completed.load() << "/" << kNumRequests);
+        CHECK(completed >= kNumRequests * 0.95); // At least 95% complete
 
         client->disconnect();
         // Join BEFORE destroying the client — external loop means is_loop_owner is

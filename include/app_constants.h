@@ -33,16 +33,16 @@ namespace helix::app_constants {
  */
 namespace temperature {
 /// Minimum safe temperature for extrusion operations (Klipper default)
-constexpr int MIN_EXTRUSION_TEMP = 170;
+constexpr int kMinExtrusionTemp = 170;
 
 /// Default maximum temperature for nozzle/hotend
-constexpr int DEFAULT_NOZZLE_MAX = 500;
+constexpr int kDefaultNozzleMax = 500;
 
 /// Default maximum temperature for heated bed
-constexpr int DEFAULT_BED_MAX = 150;
+constexpr int kDefaultBedMax = 150;
 
 /// Default minimum temperature (ambient)
-constexpr int DEFAULT_MIN_TEMP = 0;
+constexpr int kDefaultMinTemp = 0;
 } // namespace temperature
 
 /**
@@ -53,13 +53,13 @@ constexpr int DEFAULT_MIN_TEMP = 0;
  */
 namespace responsive {
 /// Tiny screens: <= 479px height
-constexpr lv_coord_t BREAKPOINT_TINY_MAX = 479;
+constexpr lv_coord_t kBreakpointTinyMax = 479;
 
 /// Small screens: 480-599px height
-constexpr lv_coord_t BREAKPOINT_SMALL_MAX = 599;
+constexpr lv_coord_t kBreakpointSmallMax = 599;
 
 /// Medium screens: 600-1023px height
-constexpr lv_coord_t BREAKPOINT_MEDIUM_MAX = 1023;
+constexpr lv_coord_t kBreakpointMediumMax = 1023;
 
 /// Large screens: >= 1024px height
 // (No max defined - anything above MEDIUM is large)
@@ -70,7 +70,7 @@ constexpr lv_coord_t BREAKPOINT_MEDIUM_MAX = 1023;
  */
 namespace ams {
 /// Default preheat temperature when no material-specific temp is known (°C)
-constexpr int DEFAULT_LOAD_PREHEAT_TEMP = 220;
+constexpr int kDefaultLoadPreheatTemp = 220;
 } // namespace ams
 
 /**
@@ -81,15 +81,15 @@ constexpr int DEFAULT_LOAD_PREHEAT_TEMP = 220;
 namespace startup {
 /// Grace period for filament sensor state stabilization after Moonraker connects
 /// Allows time for initial sensor state to arrive after discovery
-constexpr std::chrono::seconds SENSOR_STABILIZATION_PERIOD{5};
+constexpr std::chrono::seconds kSensorStabilizationPeriod{5};
 
 /// Grace period before allowing user-initiated print starts after app launch.
 /// Prevents ghost touch events during startup from accidentally starting prints.
-constexpr std::chrono::seconds PRINT_START_GRACE_PERIOD{1};
+constexpr std::chrono::seconds kPrintStartGracePeriod{1};
 
 /// Process start timestamp for grace period calculations.
 /// Initialized at static init time (before main), shared across all TUs.
-inline const auto PROCESS_START_TIME = std::chrono::steady_clock::now();
+inline const auto kProcessStartTime = std::chrono::steady_clock::now();
 } // namespace startup
 
 namespace transfer {
@@ -106,18 +106,18 @@ constexpr uint32_t STALL_MS = 30000;
  */
 namespace animation {
 /// Default animation duration for value changes (ms)
-constexpr uint32_t DEFAULT_DURATION_MS = 300;
+constexpr uint32_t kDefaultDurationMs = 300;
 
 /// Temperature animation duration - must be SHORTER than update interval (~100-200ms)
 /// to complete between updates. Using 80ms for smooth but achievable transitions.
-constexpr uint32_t TEMPERATURE_DURATION_MS = 80;
+constexpr uint32_t kTemperatureDurationMs = 80;
 
 /// Threshold in decidegrees to skip animation (avoids jitter on tiny fluctuations)
 /// 5 decidegrees = 0.5°C
-constexpr int TEMPERATURE_THRESHOLD_DECI = 5;
+constexpr int kTemperatureThresholdDeci = 5;
 
 /// Fast animation for quick feedback (button presses, toggles)
-constexpr uint32_t FAST_DURATION_MS = 150;
+constexpr uint32_t kFastDurationMs = 150;
 } // namespace animation
 
 /**
@@ -130,13 +130,13 @@ namespace input {
 /// Hold duration before a press registers as a long-press (ms).
 /// Overrides LVGL's 400ms default; matches Android's launcher widget-edit
 /// gesture (500ms) so mode-switching holds feel deliberate, not twitchy.
-constexpr uint32_t LONG_PRESS_MS = 500;
+constexpr uint32_t kLongPressMs = 500;
 
 /// Finger travel (in DPI-scaled px) that cancels home-grid edit-mode entry.
 /// LVGL fires LONG_PRESSED on hold duration alone, regardless of movement, so
 /// a press that drifts past this is treated as an accidental rest-then-linger
 /// rather than a deliberate hold, and does not enter edit mode.
-constexpr int EDIT_MODE_MOVE_CANCEL_DPX = 12;
+constexpr int kEditModeMoveCancelDpx = 12;
 } // namespace input
 
 /**
@@ -155,7 +155,7 @@ constexpr int EDIT_MODE_MOVE_CANCEL_DPX = 12;
 namespace update {
 
 /// Default primary backup directory — systemd StateDirectory (/var/lib/helixscreen/)
-constexpr const char* STATE_DIR_DEFAULT = "/var/lib/helixscreen";
+constexpr const char* kStateDirDefault = "/var/lib/helixscreen";
 
 /// Validate that a HOME path looks sane (absolute, >1 char, no control chars).
 /// Returns "/tmp" if HOME is corrupted (heap damage to environ block).
@@ -187,7 +187,7 @@ inline std::string& backup_fallback_dir_ref() {
 /// otherwise the real /var/lib/helixscreen/settings.json.backup wins the
 /// priority order and the test's own fixture backup is never consulted.
 inline std::string& state_dir_ref() {
-    static std::string dir = STATE_DIR_DEFAULT;
+    static std::string dir = kStateDirDefault;
     return dir;
 }
 } // namespace detail
@@ -231,20 +231,20 @@ inline std::string env_backup_fallback() {
 /// the installer, and its rmtree() takes the marker with it, so an absent
 /// marker identifies the clobber. Config::init() consumes the marker on the
 /// first boot that reads it.
-constexpr const char* FRESH_INSTALL_MARKER = ".helix-fresh-install";
+constexpr const char* kFreshInstallMarker = ".helix-fresh-install";
 
 /// Marker file written before _exit(0) after a successful update.
 /// Watchdog checks for this to skip crash dialog on post-update restarts.
-constexpr const char* UPDATE_RESTART_MARKER_PRIMARY = "/var/lib/helixscreen/update_restart";
+constexpr const char* kUpdateRestartMarkerPrimary = "/var/lib/helixscreen/update_restart";
 
 inline std::string update_restart_marker_path() {
     // Try primary (systemd StateDirectory) first
     // A plain stat, not helix::fs: this header is included too widely to bring
     // that namespace into files that alias std::filesystem as `fs`.
-    const std::string primary(UPDATE_RESTART_MARKER_PRIMARY);
+    const std::string primary(kUpdateRestartMarkerPrimary);
     struct stat st {};
     if (::stat(primary.substr(0, primary.rfind('/')).c_str(), &st) == 0) {
-        return UPDATE_RESTART_MARKER_PRIMARY;
+        return kUpdateRestartMarkerPrimary;
     }
     // Fallback to $HOME/.helixscreen/
     return backup_fallback_dir() + "/update_restart";

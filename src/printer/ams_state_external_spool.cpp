@@ -46,7 +46,7 @@ std::optional<SlotInfo> AmsState::get_external_spool_info() const {
     // user's own edits. A Spoolman record standing from an earlier binding
     // names a spool the raw record does not, so it is dropped from the copy
     // rather than resolved - the same ranking a lane's declared id gets.
-    helix::ams::LaneSources sources = helix::ams::lane_sources(helix::ams::BYPASS_LANE_ID);
+    helix::ams::LaneSources sources = helix::ams::lane_sources(helix::ams::kBypassLaneId);
     if (sources.spoolman.has_value() &&
         sources.spoolman->spoolman_id.value_or(0) != out->spoolman_id) {
         sources.drop(helix::ams::ObservationSource::Spoolman);
@@ -79,8 +79,8 @@ void AmsState::store_external_spool_info(const SlotInfo& info) {
     // rather than at each caller.
     const int previous_id = raw_external_spool_info().value_or(SlotInfo{}).spoolman_id;
     if (previous_id != info.spoolman_id) {
-        helix::ams::drop_previous_spool_declarations(helix::ams::BYPASS_LANE_ID);
-        helix::ams::drop_lane_source(helix::ams::BYPASS_LANE_ID,
+        helix::ams::drop_previous_spool_declarations(helix::ams::kBypassLaneId);
+        helix::ams::drop_lane_source(helix::ams::kBypassLaneId,
                                      helix::ams::ObservationSource::Metered);
     }
     in_memory_external_spool_.reset(); // Persistent write wins; let SettingsManager be the source.
@@ -108,7 +108,7 @@ void AmsState::clear_external_spool_info() {
     helix::SettingsManager::instance().clear_external_spool_info();
     // The raw record's absence has to reach the sources that described it, or
     // resolve() keeps returning the identity the clear just removed.
-    helix::ams::reset_lane_to_machine_readings(helix::ams::BYPASS_LANE_ID);
+    helix::ams::reset_lane_to_machine_readings(helix::ams::kBypassLaneId);
     // Force notification even when color was already 0 (e.g. previous spool was
     // black, RGB=0x000000) — observers read full spool info, not just the color.
     if (lv_subject_get_int(&external_spool_color_) == 0) {
@@ -127,7 +127,7 @@ void AmsState::apply_external_spool_store(const SlotInfo& info) {
         // lane: store_external_spool_info() has already taken the previous
         // spool's records with any binding move, and the user's own values
         // now stand as LocalUser.
-        helix::ams::commit_slot_edit(helix::ams::BYPASS_LANE_ID,
+        helix::ams::commit_slot_edit(helix::ams::kBypassLaneId,
                                      helix::ams::user_edit_observation(original, info));
         // Observers re-read the resolved record, where the lane's previous
         // LocalUser weight outranks the raw one, so they hear of the edit only

@@ -381,6 +381,44 @@ sudo nmcli device wifi connect "HiddenSSID" password "Password" hidden yes
 
 > **Note:** Older guides may reference `wpa_supplicant` directly, but MainsailOS and most modern systems use NetworkManager. Use `nmcli` commands instead.
 
+### "WiFi isn't responding"
+
+**Symptoms:**
+- A **WiFi isn't responding** message pops up after you tap a network, **Disconnect**, **Forget** or the WiFi switch
+- **Settings > Connection > Network Settings** shows **WiFi isn't responding** under the WiFi details
+- The list of networks stops updating, even when you tap **Refresh**
+
+**What it means:** The printer's own WiFi service (NetworkManager or wpa_supplicant) has stopped answering. This usually means the WiFi driver or adapter has hung. HelixScreen itself is fine: the screen keeps working and your printer stays usable.
+
+**What HelixScreen does meanwhile:**
+- Shows the last WiFi details and network list it got, instead of blanking them
+- Stops scanning for networks, so it doesn't pile more requests onto the stuck service
+- Checks the service again after about 15 seconds, then less often, up to every 2 minutes
+- As soon as the service answers, the message goes away and scanning starts again on its own. You don't need to do anything.
+
+Before HelixScreen notices the service is stuck, an action can take up to about 45 seconds to show the message. After that, tapping a network, **Disconnect**, **Forget** or the WiFi switch shows **WiFi isn't responding** right away. Nothing is sent to the WiFi service, so nothing changes.
+
+**What to try:**
+
+1. **Wait a minute, then try again.** A service that was only busy recovers by itself, and the message clears.
+2. **Check the WiFi service from a computer** (over SSH):
+   ```bash
+   # For NetworkManager systems:
+   sudo systemctl status NetworkManager
+   nmcli device wifi list
+
+   # For wpa_supplicant systems:
+   sudo wpa_cli status
+   ```
+   If these commands also hang or report errors, the problem is in the WiFi service or driver, not in HelixScreen.
+3. **Restart the WiFi service** (NetworkManager systems):
+   ```bash
+   sudo systemctl restart NetworkManager
+   ```
+   This drops the WiFi connection for a moment. If you are connected over WiFi, your SSH session will close.
+4. **Reboot the printer.** If a reboot doesn't help, turn it off at the power switch, wait ten seconds, and turn it back on. A hung WiFi adapter sometimes needs a full power cycle.
+5. **If it keeps coming back,** send a debug bundle from **Settings > Help & About > Upload Debug Bundle** and mention "WiFi isn't responding" in your report.
+
 ### WiFi permission denied
 
 **Symptoms:**
@@ -506,6 +544,8 @@ If Klipper shuts down, hits an error, or loses contact with the printer's contro
 | **Dismiss** | Closes the dialog without doing anything. The printer stays exactly as it was — still shut down, errored, or disconnected. | When you want to read logs, check wiring, or fix a config file first, and you'll restart afterward. Dismiss does **not** fix anything on its own. |
 
 > **Note:** When the printer is fully disconnected, HelixScreen can't send restart commands to it, so only **Dismiss** is available. Once the connection comes back, the restart buttons return.
+
+**If Klipper fails to start again.** Whenever Klipper goes away, after a restart or for any other reason, HelixScreen keeps checking for up to two minutes until Klipper reports ready. If Klipper stops at a startup error instead (a mistake in `printer.cfg`, say, or a control board it can't reach), the dialog changes to **Printer Error** and shows Klipper's own message, so you can see what to fix without opening the log. On printers where HelixScreen installed a recovery script for the platform (such as the Creality K2 and the Snapmaker U1), it runs that script once when a restart alone doesn't bring Klipper back.
 
 **Common causes:**
 
@@ -1432,7 +1472,7 @@ The U1 will not resume while a toolhead the print uses has no material recorded 
 
 **Solution:**
 1. Open the filament system screen and tap the slot the message names
-2. Tap **Spool Info** and set the material (and colour, if you like), then save
+2. Tap **Edit Spool** and set the material (and colour, if you like), then save
 3. Tap **Resume** again
 
 If the printer refuses the resume for some other reason, HelixScreen shows the printer's own message as "Failed to resume: ..." instead.
@@ -1574,7 +1614,7 @@ Once updated, the community format is fully supported — display, loading, unlo
    curl -s http://<printer-ip>:7125/access/api_key
    ```
 2. **OrcaSlicer older than 2.3.2.** Older releases don't read slot info from the printer at all. Upgrade.
-3. **The slot has no spool info yet.** OrcaSlicer only gets what HelixScreen has. Set the material and color under the slot's **Spool Info** first.
+3. **The slot has no spool info yet.** OrcaSlicer only gets what HelixScreen has. Set the material and color under the slot's **Edit Spool** first.
 
 A material OrcaSlicer has no preset for comes across with its color and temperatures but no preset selected. That's expected; see [Syncing with OrcaSlicer](guide/filament.md#syncing-with-orcaslicer-232-and-later).
 
@@ -1928,6 +1968,25 @@ Auto-detection only commits to a model when it is confident enough. Below that b
 **After setup:** if the wrong model got saved, correct it from Printer Manager — tap the printer image on the Home Panel, then the **printer model** row underneath the printer name, and pick the right model. It applies immediately, with nothing wiped. On the next connect, HelixScreen may also flag the mismatch itself and offer **Choose Model** — see [Wrong printer model identified](#wrong-printer-model-identified) above for that flow.
 
 ---
+
+### A feature is missing for hardware my printer has
+
+**Symptoms:**
+- A screen or button you expect (Bed Mesh, Input Shaper, LED controls, filament sensors, a probe calibration) never appears
+- A feature shows the wrong hardware, such as the wrong probe type
+
+**Check what HelixScreen detected:**
+
+1. Tap the **printer image** on the Home Panel to open the Printer Manager
+2. Scroll to **Capabilities**. It lists everything HelixScreen found, with details such as the probe type, kinematics and number of tools
+
+If the item is missing there, HelixScreen did not detect it, and the screens that depend on it stay hidden. Common causes:
+
+- The Klipper section is missing or commented out in `printer.cfg`, or Klipper failed to load it. Check that Klipper is running without errors in Mainsail or Fluidd
+- The hardware is set up under a section name HelixScreen does not recognize yet. Please [report it](#getting-help) with your config section so it can be added
+- A few capabilities (bed mesh, QGL, Z-tilt, nozzle clean, heat soak, speaker) can be turned on or off by hand with a [capability override](CONFIGURATION.md#capability-overrides). An override set to `disable` hides the feature even when the hardware is present
+
+If the detail is wrong (for example **Probe · BLTouch** on a Beacon), include a screenshot of the Capabilities section in your report.
 
 ### Reset HelixScreen or re-run the setup wizard
 

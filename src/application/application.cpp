@@ -726,7 +726,7 @@ int Application::run(int argc, char** argv) {
     // overlay construction, and the first synchronous render. Any std::exception
     // escaping here unwinds out of run() into main()'s catch and exits 134,
     // which the watchdog interprets as a deterministic crash and (after
-    // CRASH_LOOP_MAX_CRASHES) shows the recovery dialog. main_loop()'s own
+    // kCrashLoopMaxCrashes) shows the recovery dialog. main_loop()'s own
     // crash guard wraps its iterations but does not cover this pre-loop
     // window — a follow_overlay regression can hit exactly here, in
     // HomePanel::finalize_setup() → set_config(null) (json::type_error::306).
@@ -924,7 +924,7 @@ int Application::run(int argc, char** argv) {
         // lives behind one guarded call site below so turning it on later is a
         // single change rather than a refactor.
         {
-            uint32_t hang_ms = helix::MainLoopHangDetector::DEFAULT_THRESHOLD_MS;
+            uint32_t hang_ms = helix::MainLoopHangDetector::kDefaultThresholdMs;
             if (const char* env = std::getenv("HELIX_HANG_THRESHOLD_SEC")) {
                 char* end = nullptr;
                 const long secs = std::strtol(env, &end, 10);
@@ -1156,8 +1156,8 @@ bool Application::init_config() {
     m_config = Config::get_instance();
 
     // Use separate config file for test mode to avoid conflicts with real printer settings
-    const char* config_path = get_runtime_config()->test_mode ? RuntimeConfig::TEST_CONFIG_PATH
-                                                              : RuntimeConfig::PROD_CONFIG_PATH;
+    const char* config_path = get_runtime_config()->test_mode ? RuntimeConfig::kTestConfigPath
+                                                              : RuntimeConfig::kProdConfigPath;
     spdlog::info("[Application] Using config: {}", config_path);
     m_config->init(config_path);
 
@@ -1302,7 +1302,7 @@ bool Application::init_display() {
 
     // Get scroll config from settings.json
     config.scroll_throw =
-        m_config->get<int>("/input/scroll_throw", InputSettingsManager::DEFAULT_SCROLL_THROW);
+        m_config->get<int>("/input/scroll_throw", InputSettingsManager::kDefaultScrollThrow);
     config.scroll_limit = m_config->get<int>("/input/scroll_limit", 10);
 
     // Allow headless/VNC operation without a touchscreen
@@ -2015,27 +2015,27 @@ int Application::main_loop() {
     bool needs_fb_self_heal =
         m_display->backend() && m_display->backend()->type() == DisplayBackendType::FBDEV;
     uint32_t last_fb_selfheal_tick = start_time;
-    static constexpr uint32_t FB_SELFHEAL_INTERVAL_MS = 10000; // 10 seconds
+    static constexpr uint32_t kFbSelfhealIntervalMs = 10000; // 10 seconds
 
     // Liveness breadcrumb: emits every ~30 s so a crashed session's last moments
     // always show recent activity, even if the user was idle on one panel.
     uint32_t last_tick_crumb = start_time;
-    static constexpr uint32_t TICK_CRUMB_INTERVAL_MS = 30000;
+    static constexpr uint32_t kTickCrumbIntervalMs = 30000;
     uint64_t frame_counter = 0;
 
     // Heap snapshot refresh cadence — cheap, called from the main thread so the
     // crash signal handler can read the cached values without touching
     // non-async-signal-safe APIs (mallinfo, open, lv_mem_monitor).
     uint32_t last_heap_refresh = start_time;
-    static constexpr uint32_t HEAP_REFRESH_INTERVAL_MS = 10000;
+    static constexpr uint32_t kHeapRefreshIntervalMs = 10000;
     crash_handler::refresh_heap_snapshot();
 
     // Failsafe: track invalidation suppression with a hard deadline.
     // If splash handoff doesn't complete within this time, force rendering back on
     // to avoid a permanently black screen.
     uint32_t suppression_start_tick = DisplayManager::get_ticks();
-    static constexpr uint32_t INVALIDATION_FAILSAFE_MS =
-        11000; // Must exceed DISCOVERY_TIMEOUT_MS (8s)
+    static constexpr uint32_t kInvalidationFailsafeMs =
+        11000; // Must exceed kDiscoveryTimeoutMs (8s)
 
     // Configure main loop handler
     helix::application::MainLoopHandler::Config loop_config;
@@ -2058,7 +2058,7 @@ int Application::main_loop() {
     // inside lv_timer_handler() (observers, queued UpdateQueue items, LVGL
     // animations, async calls) unwinds the entire stack out of main_loop into
     // main()'s catch and exits 134 — the watchdog interprets this as a crash
-    // and after CRASH_LOOP_MAX_CRASHES same-signature events triggers the
+    // and after kCrashLoopMaxCrashes same-signature events triggers the
     // "HelixScreen Keeps Crashing" recovery dialog (#931). A separate safety
     // net wraps the initial-subscription dispatch path, but queued/observer/
     // timer callbacks inside lv_timer_handler are not yet guarded. Catch +
@@ -2068,8 +2068,8 @@ int Application::main_loop() {
     // catch itself is in a tight retry loop.
     int exception_streak = 0;
     uint32_t streak_window_start = 0;
-    static constexpr int RUNAWAY_THRESHOLD = 5;
-    static constexpr uint32_t RUNAWAY_WINDOW_MS = 30000;
+    static constexpr int kRunawayThreshold = 5;
+    static constexpr uint32_t kRunawayWindowMs = 30000;
 
     // Re-install SIGUSR1 handler right before the main loop. SDL_Init or other
     // mid-startup library init (libdrm-ish, evdev) can reset signal handlers
@@ -2149,7 +2149,7 @@ int Application::main_loop() {
 
             // Periodic full-screen invalidation on fbdev (self-heal kernel console bleed-through)
             if (needs_fb_self_heal &&
-                (current_tick - last_fb_selfheal_tick) >= FB_SELFHEAL_INTERVAL_MS) {
+                (current_tick - last_fb_selfheal_tick) >= kFbSelfhealIntervalMs) {
                 lv_obj_invalidate(lv_screen_active());
                 last_fb_selfheal_tick = current_tick;
             }
@@ -2157,14 +2157,14 @@ int Application::main_loop() {
             // Periodic liveness breadcrumb (counts frames so crash bundles know
             // whether the loop was spinning normally or stalled).
             ++frame_counter;
-            if ((current_tick - last_tick_crumb) >= TICK_CRUMB_INTERVAL_MS) {
+            if ((current_tick - last_tick_crumb) >= kTickCrumbIntervalMs) {
                 crash_handler::breadcrumb::note("tick", "", static_cast<long>(frame_counter));
                 last_tick_crumb = current_tick;
             }
 
             // Refresh cached heap snapshot so any crash within the next window
             // reports recent memory state.
-            if ((current_tick - last_heap_refresh) >= HEAP_REFRESH_INTERVAL_MS) {
+            if ((current_tick - last_heap_refresh) >= kHeapRefreshIntervalMs) {
                 crash_handler::refresh_heap_snapshot();
                 last_heap_refresh = current_tick;
             }
@@ -2230,11 +2230,11 @@ int Application::main_loop() {
             // Failsafe: if invalidation is still suppressed after hard deadline, force it back on.
             // Prevents permanent black screen if splash handoff fails for any reason.
             if (m_splash_invalidation_suppression.active() &&
-                (current_tick - suppression_start_tick) >= INVALIDATION_FAILSAFE_MS) {
+                (current_tick - suppression_start_tick) >= kInvalidationFailsafeMs) {
                 m_splash_invalidation_suppression.end();
                 restore_flush_callback();
                 spdlog::warn("[Application] Invalidation failsafe triggered after {}ms",
-                             INVALIDATION_FAILSAFE_MS);
+                             kInvalidationFailsafeMs);
                 lv_obj_invalidate(lv_screen_active());
             }
 
@@ -2266,8 +2266,8 @@ int Application::main_loop() {
             // closer to the source. Pre-#931, this unwound through main()
             // and exited 134, triggering a watchdog crash loop. Now: log
             // type+what, dump the recent breadcrumb ring, record telemetry,
-            // and continue. If catches pile up faster than RUNAWAY_THRESHOLD
-            // / RUNAWAY_WINDOW_MS, exit cleanly so the watchdog sees a
+            // and continue. If catches pile up faster than kRunawayThreshold
+            // / kRunawayWindowMs, exit cleanly so the watchdog sees a
             // graceful shutdown instead of an infinite throw-catch tight loop.
             const std::string type_name = crash_handler::current_exception_type_name();
             spdlog::error("[Application] Caught exception in main loop: {} ({})", e.what(),
@@ -2284,16 +2284,16 @@ int Application::main_loop() {
             }
 
             uint32_t now_tick = DisplayManager::get_ticks();
-            if (exception_streak == 0 || (now_tick - streak_window_start) > RUNAWAY_WINDOW_MS) {
+            if (exception_streak == 0 || (now_tick - streak_window_start) > kRunawayWindowMs) {
                 streak_window_start = now_tick;
                 exception_streak = 1;
             } else {
                 ++exception_streak;
             }
-            if (exception_streak >= RUNAWAY_THRESHOLD) {
+            if (exception_streak >= kRunawayThreshold) {
                 spdlog::critical("[Application] Runaway exception streak ({} in {}ms) — "
                                  "exiting main loop cleanly to break the throw-catch tight loop",
-                                 exception_streak, RUNAWAY_WINDOW_MS);
+                                 exception_streak, kRunawayWindowMs);
                 break;
             }
 

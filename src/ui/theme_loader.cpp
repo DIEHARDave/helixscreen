@@ -127,7 +127,7 @@ ThemeModeSupport ThemeData::get_mode_support() const {
 ThemeData get_builtin_fallback_theme() {
     ThemeData theme;
     theme.name = "HelixScreen";
-    theme.filename = DEFAULT_THEME;
+    theme.filename = kDefaultTheme;
 
     // Mirrors assets/config/themes/defaults/helixscreen.json. Kept in sync by
     // hand: this copy is what runs when that file cannot be read at all.
@@ -473,7 +473,7 @@ namespace {
 
 // SHA-256 of every config/themes/nord.json a release put into the user layer.
 // Those bytes are nobody's edit; the file only shadows the shipped default.
-constexpr std::array<std::string_view, 10> SHIPPED_NORD_OVERRIDES = {
+constexpr std::array<std::string_view, 10> kShippedNordOverrides = {
     "225cbd74a58793f15b8dc01b8ce7aa239c1dbf03a61f411249c2559f71670124",
     "42474ef18f9c606e77a7622ca4bec346da0bb54c3d48db76e76226dfd7a3692b",
     "535124b7c2fe3e9bd727a0de79c0686a1a50f7a14f830248ed1cf2a4c9f6c1c7",
@@ -495,8 +495,8 @@ bool remove_shipped_theme_override(const std::string& themes_dir) {
         return false;
     }
     const std::string digest = compute_file_sha256(path);
-    if (std::find(SHIPPED_NORD_OVERRIDES.begin(), SHIPPED_NORD_OVERRIDES.end(), digest) ==
-        SHIPPED_NORD_OVERRIDES.end()) {
+    if (std::find(kShippedNordOverrides.begin(), kShippedNordOverrides.end(), digest) ==
+        kShippedNordOverrides.end()) {
         return false;
     }
     if (std::remove(path.c_str()) != 0) {

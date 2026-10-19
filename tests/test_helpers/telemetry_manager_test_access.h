@@ -64,7 +64,7 @@ class TelemetryManagerTestAccess {
 
     /// Events discarded by enqueue_event() since the last batch was accepted.
     /// The queue size alone cannot distinguish a window that fit from one that
-    /// overflowed, because both leave it at MAX_QUEUE_SIZE.
+    /// overflowed, because both leave it at kMaxQueueSize.
     static size_t events_dropped_since_send(const TelemetryManager& t) {
         std::lock_guard<std::mutex> lock(t.mutex_);
         return t.events_dropped_since_send_;

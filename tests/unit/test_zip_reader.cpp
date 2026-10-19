@@ -321,7 +321,7 @@ TEST_CASE("a sink that stops ends the inflate with an I/O error", "[zip]") {
 TEST_CASE("inflate_entry_to_string reads a small entry and refuses an oversized one", "[zip]") {
     const auto zip = archive("single_plate.gcode.3mf");
     const auto entries = entries_of(zip);
-    const ZipEntry& info = entry_named(entries, helix::three_mf::SLICE_INFO_ENTRY);
+    const ZipEntry& info = entry_named(entries, helix::three_mf::kSliceInfoEntry);
     ZipError err = ZipError::Inflate;
     const auto bytes =
         entry_bytes(zip.data() + info.lh_offset, zip.size() - info.lh_offset, info, err);
@@ -395,7 +395,7 @@ TEST_CASE("parse_slice_info reads the asked-for plate's block", "[three_mf]") {
 TEST_CASE("parse_slice_info tells a multi-plate archive's plates apart", "[three_mf]") {
     const auto zip = archive("multi_plate.gcode.3mf");
     const auto entries = entries_of(zip);
-    const ZipEntry& e = entry_named(entries, helix::three_mf::SLICE_INFO_ENTRY);
+    const ZipEntry& e = entry_named(entries, helix::three_mf::kSliceInfoEntry);
     ZipError err = ZipError::None;
     const auto bytes = entry_bytes(zip.data() + e.lh_offset, zip.size() - e.lh_offset, e, err);
     std::string xml;
@@ -468,7 +468,7 @@ TEST_CASE("an entry larger than the caller holds is refused before it is read", 
 TEST_CASE("inflate_entry_to_string fails cleanly when it cannot reserve the output", "[zip]") {
     const auto zip = archive("single_plate.gcode.3mf");
     const auto entries = entries_of(zip);
-    const ZipEntry& info = entry_named(entries, helix::three_mf::SLICE_INFO_ENTRY);
+    const ZipEntry& info = entry_named(entries, helix::three_mf::kSliceInfoEntry);
     ZipError err = ZipError::None;
     const auto bytes =
         entry_bytes(zip.data() + info.lh_offset, zip.size() - info.lh_offset, info, err);

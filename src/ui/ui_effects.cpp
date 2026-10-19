@@ -94,12 +94,12 @@ void create_touch_marker(lv_obj_t* parent, lv_coord_t x, lv_coord_t y) {
         return;
     }
 
-    // Marker geometry + timing. The dot holds fully visible for HOLD_MS, then
-    // fades over FADE_MS — long enough to read (unlike the quick ripple), short
+    // Marker geometry + timing. The dot holds fully visible for kHoldMs, then
+    // fades over kFadeMs — long enough to read (unlike the quick ripple), short
     // enough that successive presses each get their own clear dot (#1082).
-    constexpr int DOT_SIZE = 18;
-    constexpr int32_t HOLD_MS = 1500;
-    constexpr int32_t FADE_MS = 600;
+    constexpr int kDotSize = 18;
+    constexpr int32_t kHoldMs = 1500;
+    constexpr int32_t kFadeMs = 600;
 
     // Expanding ripple — identical feedback to a normal touch, centered on (x, y).
     create_ripple(parent, x, y);
@@ -107,7 +107,7 @@ void create_touch_marker(lv_obj_t* parent, lv_coord_t x, lv_coord_t y) {
     // Lingering center dot at the exact same point.
     lv_obj_t* dot = lv_obj_create(parent);
     lv_obj_remove_style_all(dot);
-    lv_obj_set_size(dot, DOT_SIZE, DOT_SIZE);
+    lv_obj_set_size(dot, kDotSize, kDotSize);
     lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_color(dot, theme_manager_get_color("danger"), 0);
     lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
@@ -116,15 +116,15 @@ void create_touch_marker(lv_obj_t* parent, lv_coord_t x, lv_coord_t y) {
     lv_obj_set_style_border_color(dot, lv_color_white(), 0);
     lv_obj_add_flag(dot, LV_OBJ_FLAG_FLOATING);
     lv_obj_remove_flag(dot, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_pos(dot, x - DOT_SIZE / 2, y - DOT_SIZE / 2);
+    lv_obj_set_pos(dot, x - kDotSize / 2, y - kDotSize / 2);
 
     // Hold (anim delay), then fade out and self-delete.
     lv_anim_t fade;
     lv_anim_init(&fade);
     lv_anim_set_var(&fade, dot);
     lv_anim_set_values(&fade, LV_OPA_COVER, LV_OPA_TRANSP);
-    lv_anim_set_delay(&fade, HOLD_MS);
-    lv_anim_set_duration(&fade, FADE_MS);
+    lv_anim_set_delay(&fade, kHoldMs);
+    lv_anim_set_duration(&fade, kFadeMs);
     lv_anim_set_path_cb(&fade, lv_anim_path_ease_in);
     lv_anim_set_exec_cb(&fade, [](void* var, int32_t opa) {
         // Fade the fill AND the white ring together so the whole dot disappears.

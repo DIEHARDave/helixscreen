@@ -34,7 +34,7 @@ using namespace helix;
 // MODAL STYLE CONSTANTS
 // ============================================================================
 // Default backdrop opacity if globals.xml constant not found
-static constexpr uint8_t DEFAULT_MODAL_BACKDROP_OPACITY = 100;
+static constexpr uint8_t kDefaultModalBackdropOpacity = 100;
 
 // Helper to get backdrop opacity from globals.xml
 static uint8_t get_modal_backdrop_opacity() {
@@ -45,20 +45,20 @@ static uint8_t get_modal_backdrop_opacity() {
             return static_cast<uint8_t>(val);
         }
     }
-    return DEFAULT_MODAL_BACKDROP_OPACITY;
+    return kDefaultModalBackdropOpacity;
 }
 
 // ============================================================================
 // ANIMATION CONSTANTS
 // ============================================================================
 // Duration values match globals.xml tokens for consistency
-static constexpr int32_t MODAL_ENTRANCE_DURATION_MS = 250; // anim_normal
-static constexpr int32_t MODAL_EXIT_DURATION_MS = 150;     // anim_fast
+static constexpr int32_t kModalEntranceDurationMs = 250; // anim_normal
+static constexpr int32_t kModalExitDurationMs = 150;     // anim_fast
 
 // Scale animation uses percentage values (0-256 in LVGL)
 // We animate from 85% (218) to 100% (256), with slight overshoot for bounce
-static constexpr int32_t MODAL_SCALE_START = 218; // ~85% scale
-static constexpr int32_t MODAL_SCALE_END = 256;   // 100% scale
+static constexpr int32_t kModalScaleStart = 218; // ~85% scale
+static constexpr int32_t kModalScaleEnd = 256;   // 100% scale
 
 namespace {
 bool g_callbacks_registered = false;
@@ -422,7 +422,7 @@ void ModalStack::animate_entrance(lv_obj_t* dialog) {
     if (!DisplaySettingsManager::instance().get_animations_enabled() ||
         !helix::ui::full_style_effects_active()) {
         lv_obj_set_style_opa(backdrop, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_style_transform_scale(dialog, MODAL_SCALE_END, LV_PART_MAIN);
+        lv_obj_set_style_transform_scale(dialog, kModalScaleEnd, LV_PART_MAIN);
         lv_obj_set_style_opa(dialog, LV_OPA_COVER, LV_PART_MAIN);
         spdlog::debug("[ModalStack] Animations disabled - showing modal instantly");
         return;
@@ -432,7 +432,7 @@ void ModalStack::animate_entrance(lv_obj_t* dialog) {
     lv_obj_set_style_opa(backdrop, LV_OPA_TRANSP, LV_PART_MAIN);
 
     // Start dialog scaled down and transparent
-    lv_obj_set_style_transform_scale(dialog, MODAL_SCALE_START, LV_PART_MAIN);
+    lv_obj_set_style_transform_scale(dialog, kModalScaleStart, LV_PART_MAIN);
     lv_obj_set_style_opa(dialog, LV_OPA_TRANSP, LV_PART_MAIN);
 
     // Fade in backdrop
@@ -440,7 +440,7 @@ void ModalStack::animate_entrance(lv_obj_t* dialog) {
     lv_anim_init(&backdrop_anim);
     lv_anim_set_var(&backdrop_anim, backdrop);
     lv_anim_set_values(&backdrop_anim, LV_OPA_TRANSP, LV_OPA_COVER);
-    lv_anim_set_duration(&backdrop_anim, MODAL_ENTRANCE_DURATION_MS);
+    lv_anim_set_duration(&backdrop_anim, kModalEntranceDurationMs);
     lv_anim_set_path_cb(&backdrop_anim, lv_anim_path_ease_out);
     lv_anim_set_exec_cb(&backdrop_anim, [](void* obj, int32_t value) {
         // No lv_obj_is_valid() guard: LVGL's lv_obj_destructor cancels an object's
@@ -456,8 +456,8 @@ void ModalStack::animate_entrance(lv_obj_t* dialog) {
     lv_anim_t scale_anim;
     lv_anim_init(&scale_anim);
     lv_anim_set_var(&scale_anim, dialog);
-    lv_anim_set_values(&scale_anim, MODAL_SCALE_START, MODAL_SCALE_END);
-    lv_anim_set_duration(&scale_anim, MODAL_ENTRANCE_DURATION_MS);
+    lv_anim_set_values(&scale_anim, kModalScaleStart, kModalScaleEnd);
+    lv_anim_set_duration(&scale_anim, kModalEntranceDurationMs);
     lv_anim_set_path_cb(&scale_anim, lv_anim_path_overshoot);
     lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
         // No lv_obj_is_valid() guard — see the opacity cbs above ([L076]).
@@ -471,7 +471,7 @@ void ModalStack::animate_entrance(lv_obj_t* dialog) {
     lv_anim_init(&fade_anim);
     lv_anim_set_var(&fade_anim, dialog);
     lv_anim_set_values(&fade_anim, LV_OPA_TRANSP, LV_OPA_COVER);
-    lv_anim_set_duration(&fade_anim, MODAL_ENTRANCE_DURATION_MS);
+    lv_anim_set_duration(&fade_anim, kModalEntranceDurationMs);
     lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_out);
     lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
         // No lv_obj_is_valid() guard: LVGL's lv_obj_destructor cancels an object's
@@ -560,7 +560,7 @@ void ModalStack::animate_exit(lv_obj_t* backdrop, lv_obj_t* dialog) {
     // Same rule as animate_entrance: no animation, or too costly on this tier
     if (!DisplaySettingsManager::instance().get_animations_enabled() ||
         !helix::ui::full_style_effects_active()) {
-        lv_obj_set_style_transform_scale(dialog, MODAL_SCALE_END, LV_PART_MAIN);
+        lv_obj_set_style_transform_scale(dialog, kModalScaleEnd, LV_PART_MAIN);
         lv_obj_set_style_opa(dialog, LV_OPA_COVER, LV_PART_MAIN);
         spdlog::debug("[ModalStack] Exit without animation - hiding, finishing next tick");
         // finish_exit frees an owned instance before it queues the tree's delete;
@@ -576,7 +576,7 @@ void ModalStack::animate_exit(lv_obj_t* backdrop, lv_obj_t* dialog) {
     lv_anim_init(&backdrop_anim);
     lv_anim_set_var(&backdrop_anim, backdrop);
     lv_anim_set_values(&backdrop_anim, LV_OPA_COVER, LV_OPA_TRANSP);
-    lv_anim_set_duration(&backdrop_anim, MODAL_EXIT_DURATION_MS);
+    lv_anim_set_duration(&backdrop_anim, kModalExitDurationMs);
     lv_anim_set_path_cb(&backdrop_anim, lv_anim_path_ease_in);
     lv_anim_set_exec_cb(&backdrop_anim, [](void* obj, int32_t value) {
         // No lv_obj_is_valid() guard: LVGL's lv_obj_destructor cancels an object's
@@ -593,8 +593,8 @@ void ModalStack::animate_exit(lv_obj_t* backdrop, lv_obj_t* dialog) {
     lv_anim_t scale_anim;
     lv_anim_init(&scale_anim);
     lv_anim_set_var(&scale_anim, dialog);
-    lv_anim_set_values(&scale_anim, MODAL_SCALE_END, MODAL_SCALE_START);
-    lv_anim_set_duration(&scale_anim, MODAL_EXIT_DURATION_MS);
+    lv_anim_set_values(&scale_anim, kModalScaleEnd, kModalScaleStart);
+    lv_anim_set_duration(&scale_anim, kModalExitDurationMs);
     lv_anim_set_path_cb(&scale_anim, lv_anim_path_ease_in);
     lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
         // No lv_obj_is_valid() guard — see the opacity cbs above ([L076]).
@@ -608,7 +608,7 @@ void ModalStack::animate_exit(lv_obj_t* backdrop, lv_obj_t* dialog) {
     lv_anim_init(&fade_anim);
     lv_anim_set_var(&fade_anim, dialog);
     lv_anim_set_values(&fade_anim, LV_OPA_COVER, LV_OPA_TRANSP);
-    lv_anim_set_duration(&fade_anim, MODAL_EXIT_DURATION_MS);
+    lv_anim_set_duration(&fade_anim, kModalExitDurationMs);
     lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_in);
     lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
         // No lv_obj_is_valid() guard: LVGL's lv_obj_destructor cancels an object's
@@ -688,7 +688,7 @@ Modal::~Modal() {
 void Modal::disarm_tree(lv_obj_t* backdrop, lv_obj_t* dialog, Modal* owner) {
     if (dialog) {
         // Order matters only in that all three must happen before the widgets
-        // start animating out; the dialog stays alive for MODAL_EXIT_DURATION_MS
+        // start animating out; the dialog stays alive for kModalExitDurationMs
         // after a hide, and every callback on it is still wired.
         clear_user_data_in_tree(dialog);
         disable_clicks_in_tree(dialog);
@@ -717,7 +717,7 @@ void Modal::disarm_tree(lv_obj_t* backdrop, lv_obj_t* dialog, Modal* owner) {
     }
 
     // A stack-owned instance is freed when its entry goes, while these widgets
-    // live out MODAL_EXIT_DURATION_MS first. Any callback still carrying it -
+    // live out kModalExitDurationMs first. Any callback still carrying it -
     // wire_button()'s hooks, or one a subclass added - would then dispatch on
     // freed memory. disable_clicks_in_tree() stops a finger from reaching
     // them, but not lv_obj_send_event (which `ctl click` and tests use, and
@@ -1613,7 +1613,7 @@ lv_obj_t* helix::ui::show_resonance_memory_refusal(size_t headroom_mb,
         msg = fmt::format(lv_tr("Only {} MB of memory is free, and Klipper's analysis needs "
                                 "about {} MB. Running the test would leave the printer stuck "
                                 "until it is power-cycled."),
-                          headroom_mb, helix::RESONANCE_MIN_HEADROOM_MB);
+                          headroom_mb, helix::kResonanceMinHeadroomMb);
     });
     AlertOptions all = options;
     if (on_close && !all.on_dismiss) {

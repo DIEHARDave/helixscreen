@@ -43,7 +43,7 @@ using namespace helix;
 using helix::ui::find_required;
 
 // MDI chevron-down symbol for dropdown arrows (replaces FontAwesome LV_SYMBOL_DOWN)
-static const char* MDI_CHEVRON_DOWN = "\xF3\xB0\x85\x80"; // F0140
+static const char* kMdiChevronDown = "\xF3\xB0\x85\x80"; // F0140
 
 // ============================================================================
 // Constructor
@@ -163,11 +163,11 @@ lv_obj_t* HistoryListPanel::create(lv_obj_t* parent) {
         icon_font_name ? lv_xml_get_font(nullptr, icon_font_name) : &mdi_icons_24;
 
     if (filter_status_) {
-        lv_dropdown_set_symbol(filter_status_, MDI_CHEVRON_DOWN);
+        lv_dropdown_set_symbol(filter_status_, kMdiChevronDown);
         lv_obj_set_style_text_font(filter_status_, icon_font, LV_PART_INDICATOR);
     }
     if (sort_dropdown_) {
-        lv_dropdown_set_symbol(sort_dropdown_, MDI_CHEVRON_DOWN);
+        lv_dropdown_set_symbol(sort_dropdown_, kMdiChevronDown);
         lv_obj_set_style_text_font(sort_dropdown_, icon_font, LV_PART_INDICATOR);
     }
 
@@ -345,13 +345,13 @@ void HistoryListPanel::refresh_from_api() {
     has_more_data_ = true;
     load_more_guard_.release();
 
-    spdlog::debug("[{}] Fetching first page of history (limit={})", get_name(), JOBS_PER_PAGE);
+    spdlog::debug("[{}] Fetching first page of history (limit={})", get_name(), kJobsPerPage);
 
     api->history().get_history_list(
-        JOBS_PER_PAGE, // limit - use page size
-        0,             // start - first page
-        0.0,           // since (no filter)
-        0.0,           // before (no filter)
+        kJobsPerPage, // limit - use page size
+        0,            // start - first page
+        0.0,          // since (no filter)
+        0.0,          // before (no filter)
         lifetime_.bg_cb("HistoryListPanel::fetch_history",
                         [this](const std::vector<PrintHistoryJob>& jobs, uint64_t total) {
                             spdlog::info("[{}] Received {} jobs (total: {})", get_name(),
@@ -359,7 +359,7 @@ void HistoryListPanel::refresh_from_api() {
                             jobs_ = jobs;
                             // Moonraker's `count` is this page's size, not the
                             // total: only a short page says there is no more.
-                            has_more_data_ = (jobs.size() == static_cast<size_t>(JOBS_PER_PAGE));
+                            has_more_data_ = (jobs.size() == static_cast<size_t>(kJobsPerPage));
 
                             // Associates timelapse files with jobs, then applies filters.
                             fetch_timelapse_files();
@@ -401,13 +401,13 @@ void HistoryListPanel::load_more() {
     int start_offset = static_cast<int>(jobs_.size());
 
     spdlog::debug("[{}] Loading more jobs (start={}, limit={})", get_name(), start_offset,
-                  JOBS_PER_PAGE);
+                  kJobsPerPage);
 
     api->history().get_history_list(
-        JOBS_PER_PAGE, // limit
-        start_offset,  // start - continue from where we left off
-        0.0,           // since (no filter)
-        0.0,           // before (no filter)
+        kJobsPerPage, // limit
+        start_offset, // start - continue from where we left off
+        0.0,          // since (no filter)
+        0.0,          // before (no filter)
         lifetime_.bg_cb("HistoryListPanel::load_more",
                         [this](const std::vector<PrintHistoryJob>& new_jobs, uint64_t total) {
                             load_more_guard_.release();
@@ -426,8 +426,7 @@ void HistoryListPanel::load_more() {
                             jobs_.insert(jobs_.end(), new_jobs.begin(), new_jobs.end());
 
                             // Only a short page says there is no more.
-                            has_more_data_ =
-                                (new_jobs.size() == static_cast<size_t>(JOBS_PER_PAGE));
+                            has_more_data_ = (new_jobs.size() == static_cast<size_t>(kJobsPerPage));
 
                             // Re-apply filters to the full job list
                             apply_filters_and_sort();
@@ -1293,9 +1292,9 @@ void HistoryListPanel::check_scroll_position() {
     int32_t content_height = lv_obj_get_scroll_bottom(list_content_);
 
     // Load more when within 100px of the bottom
-    constexpr int32_t LOAD_MORE_THRESHOLD = 100;
+    constexpr int32_t kLoadMoreThreshold = 100;
 
-    if (content_height <= LOAD_MORE_THRESHOLD) {
+    if (content_height <= kLoadMoreThreshold) {
         spdlog::debug("[{}] Near bottom (scroll_y={}, remaining={}), loading more...", get_name(),
                       scroll_y, content_height);
         load_more();

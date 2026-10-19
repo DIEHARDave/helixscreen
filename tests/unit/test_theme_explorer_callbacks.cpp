@@ -115,7 +115,7 @@ class ThemeExplorerFixture : public LVGLUITestFixture {
         settle();
     }
 
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels_{};
+    std::array<lv_obj_t*, kUiPanelCount> panels_{};
     lv_obj_t* dropdown_ = nullptr;
 };
 

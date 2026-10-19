@@ -49,7 +49,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "reopening motion after a printer switch reb
                  "[motion][teardown][uaf][1707]") {
     // Seed NavigationManager the way the app does: the active root panel sits
     // at panel_stack_[0], which push_overlay() reads beneath each overlay.
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& p : panels)
         p = lv_obj_create(lv_screen_active());
     NavigationManager::instance().set_panels(panels.data());
@@ -102,7 +102,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "reopening motion after a printer switch reb
 TEST_CASE_METHOD(LVGLUITestFixture,
                  "two cached callers converge on one live overlay after a switch",
                  "[motion][teardown][uaf][1707]") {
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& p : panels)
         p = lv_obj_create(lv_screen_active());
     NavigationManager::instance().set_panels(panels.data());

@@ -31,7 +31,7 @@ using ::json; // Make global json alias visible in this namespace
 using SubscriptionId = uint64_t;
 
 /** @brief Invalid subscription ID constant */
-inline constexpr SubscriptionId INVALID_SUBSCRIPTION_ID = 0;
+inline constexpr SubscriptionId kInvalidSubscriptionId = 0;
 
 /**
  * @brief Marker key stamped onto a synthetic notify_status_update built from a
@@ -45,7 +45,7 @@ inline constexpr SubscriptionId INVALID_SUBSCRIPTION_ID = 0;
  * else ignores it. Absent on live frames and on the mock's own synthetic
  * dispatches, which ARE the current truth for their session.
  */
-inline constexpr const char* CACHED_SNAPSHOT_MARKER = "_helix_cached_snapshot";
+inline constexpr const char* kCachedSnapshotMarker = "_helix_cached_snapshot";
 
 /**
  * @brief Marker key stamped onto a synthetic notify_status_update whose payload
@@ -58,7 +58,7 @@ inline constexpr const char* CACHED_SNAPSHOT_MARKER = "_helix_cached_snapshot";
  * discovery subscription replay (also a cached snapshot) and by a subscription
  * refresh (current, so not a cached snapshot).
  */
-inline constexpr const char* WHOLE_OBJECTS_MARKER = "_helix_whole_objects";
+inline constexpr const char* kWholeObjectsMarker = "_helix_whole_objects";
 
 /**
  * @brief Wrap a raw status object as the notify_status_update a client dispatches
@@ -72,10 +72,10 @@ inline json make_status_notification(const json& status, bool from_cached_snapsh
     json notification = {{"method", "notify_status_update"},
                          {"params", json::array({status, 0.0})}}; // [status, eventtime]
     if (from_cached_snapshot) {
-        notification[CACHED_SNAPSHOT_MARKER] = true;
+        notification[kCachedSnapshotMarker] = true;
     }
     if (whole_objects) {
-        notification[WHOLE_OBJECTS_MARKER] = true;
+        notification[kWholeObjectsMarker] = true;
     }
     return notification;
 }
@@ -215,13 +215,13 @@ class IMoonrakerClient {
     /// @param status Raw status object to fan out
     /// @param from_cached_snapshot true when `status` was captured earlier and is
     ///        being replayed (the discovery subscription response). Stamps
-    ///        CACHED_SNAPSHOT_MARKER on the synthetic notification so liveness-
+    ///        kCachedSnapshotMarker on the synthetic notification so liveness-
     ///        sensitive consumers can refuse to regress on it. Defaults to false:
     ///        a dispatch that reflects the caller's current view — including every
     ///        mock-driven state change — is live.
     /// @param whole_objects true when `status` is a subscription response, carrying
     ///        every field of each object instead of only the changed ones. Stamps
-    ///        WHOLE_OBJECTS_MARKER.
+    ///        kWholeObjectsMarker.
     virtual void dispatch_status_update(const json& status, bool from_cached_snapshot = false,
                                         bool whole_objects = false) = 0;
 

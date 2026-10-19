@@ -139,9 +139,10 @@ English and the render sites translate it through the plugin's `i18n/` pack
 | `helix_version` | string | empty | a HelixScreen version constraint; a plugin whose constraint fails the running version shows as *incompatible* |
 | `permissions` | array | `[]` | zero or more of `gcode`, `moonraker_write`, `http`, `storage` (§9) |
 | `memory_mb` | integer | `2` | 1 to 64; the plugin's share of the plugin memory budget |
-| `widgets` | array | `[]` | up to 8 home tiles |
+| `widgets` | array | `[]` | up to 32 home tiles |
 | `settings` | array | `[]` | the settings schema (§6) |
 | `settings_overlay` | string | empty | one of the plugin's own components, opened instead of the generated settings screen |
+| `menu_items` | array | `[]` | actions the plugin adds to app menus (§8, Menu items) |
 
 Each `widgets` entry:
 
@@ -391,6 +392,131 @@ finishes, watch `print_state` and open a dialog when it reads `"complete"`; it a
 once the user has dealt with the print-complete dialog (`examples/plugins/calibration-bridge`).
 | `helix.ui.text_width(str[, font])` | integer px | width `str` draws at in the live theme font, measured the way `c:text` draws it (no letter spacing, one line); `font` is a base token without the `font_` prefix (default `"body"`), and a size-suffixed or unknown token is an error, as for canvas text; `str` is at most 1024 bytes. Call it where the layout is decided (a widget hook, a canvas redraw), since the theme font changes with the display tier |
 
+### Menu items
+
+A plugin can add actions to four app menus. Each item names one of the plugin's
+`helix.ui.on` handlers; tapping it closes the menu and calls that handler with a table
+describing what the menu was opened on.
+
+| `menu` | Where it appears | Opened on |
+|---|---|---|
+| `print_file` | the dots button (`dots_vertical`) on the print details screen (Print select, a file opened) | the file shown |
+| `filament_slot` | the long-press menu of a filament slot, any filament system, in a column of its own beside Filament and Spool | the slot |
+| `spool` | the Spoolman spool menu, after the app's items | the spool |
+| `tile` | the configure (gear) button of the plugin's own home tile, in home edit mode | the tile |
+
+The external spool's menu takes no plugin items, and neither does the print file list's
+long-press (Delete). No other app menu takes them. A plugin item can only add a row: it
+cannot hide, reorder or relabel the app's own items, and tapping it only calls the
+plugin's own handler with plain data.
+
+Declared in `manifest.json`:
+
+```json
+"menu_items": [
+  {"id": "calibrate", "menu": "print_file", "label": "Calibrate with this file",
+   "icon": "tune", "handler": "calibrate", "check": "can_calibrate"}
+]
+```
+
+| Field | Rules |
+|---|---|
+| `id` | unique within the plugin |
+| `menu` | `print_file`, `filament_slot`, `spool` or `tile`; a `tile` item needs at least one declared widget |
+| `label` | English source, translated through the plugin's `i18n/` pack |
+| `icon` | an icon name from `include/ui_icon_codepoints.h`, optional (`puzzle_outline` when omitted); a name not in that table rejects the manifest, since the icon widget would draw a broken-image glyph for it |
+| `handler` | a `helix.ui.on` handler name, required |
+| `check` | a `helix.ui.on` handler name, optional (below) |
+
+`handler` and `check` are local names, the same 1-48 chars of `[a-z0-9_-]` that
+`helix.ui.on` takes. A malformed item rejects the manifest with the field named. Per-menu limits (items per
+plugin, and plugin rows per menu so a menu never scrolls) are in §10.
+
+**The handler** receives one table:
+
+| `menu` | Fields |
+|---|---|
+| `print_file` | `source` (`"printer"` or `"usb"`), `path` (relative to the gcodes root; `nil` for a USB file), `local_path` (USB files only), `name`, `estimated_time_s`, `filament` (a list, one per tool: `tool`, `material`, `color`, `grams`), `layer_height`, `object_height`, `tools_used` |
+| `filament_slot` | `unit`, `slot` (both 0-based), `label` (the slot's name as the menu shows it), `tool` (the mapped tool or `nil`), and what is loaded when known: `material`, `color` (`"#RRGGBB"`; `nil` when the slot reports the app's default grey `#808080`, which stands for an unknown colour, so a grey spool reads as unknown), `brand`, `spool_id` (Spoolman). An empty slot carries none of these four |
+| `spool` | `spool_id`, `material`, `color` (`"#RRGGBB"`), `brand`, `remaining_g` (`nil` when Spoolman reports no remaining weight or 0 g: the two cannot be told apart) |
+| `tile` | `widget` (the widget's name: its declared id without the `<id>__` prefix) |
+
+A field the printer does not report, or that has not loaded yet, is `nil`: the print
+details screen fetches some file metadata after it opens. The handler is an ordinary
+plugin entry, with the same time budget, fault rules and permissions as any
+`helix.ui.on` handler; it may open a dialog or overlay, or call Moonraker within the
+plugin's permissions.
+
+```lua
+helix.ui.on("calibrate", function(file)
+  helix.ui.dialog("my-plugin__start", {path = file.path or file.local_path})
+end)
+```
+
+**The check.** An item without `check` always shows, enabled. With `check`, the named
+handler is called with the same table when the menu opens and returns `true` (shown),
+`false` (hidden), or `{visible = true, enabled = false, reason = "Only for .gcode files"}`
+(shown greyed, with the reason). In the table, an absent `visible` or `enabled` means
+`true` and `reason` is optional; the reason shows under the label whenever it is set. The
+result is read raw: its fields must be plain booleans and a string, and a table carrying
+a metatable is not a valid result (`src/plugin/plugin_host.cpp#read_check_value`).
+
+A check runs in check mode (`src/plugin/lua_runtime.cpp#call_sync`): anything with
+a side effect or a wait raises "`<call>` is not allowed in a menu check" before acting.
+That covers every async call (`helix.gcode`, `helix.moonraker`, `helix.http`,
+`helix.sleep`), `helix.storage.set`, `helix.settings.set`, `subject:set`, opening a
+dialog, overlay, confirm or toast, closing a surface, `helix.canvas` and every canvas
+method (a check never draws), creating a subject, `helix.widget`, starting or cancelling
+a timer, registering a handler, observer, watch or subscription, and `require` (a module's
+top level is ordinary entry work, and a refusal inside it would cache a half-loaded
+module). Reading subjects, printer fields, settings, storage and the plugin's own Lua
+state is fine. The check's coroutine is closed inside check mode and its budget, so a
+pending `<close>` handler runs under the same rules. A check has its own short time
+budget, separate from the entry budget. A check that raises, overruns, yields, returns
+nothing or returns anything else hides only that item for this opening and counts toward
+the plugin's error limit (§10), never as a fault by itself; the menu always opens.
+
+```lua
+helix.ui.on("can_calibrate", function(file)
+  if file.source == "usb" then
+    return {visible = true, enabled = false, reason = "Copy the file to the printer first"}
+  end
+  return true
+end)
+```
+
+**What the user sees.**
+- On print details, the bottom row becomes three icon buttons (Delete, the dots button,
+  Print) once any enabled plugin declares a `print_file` item; for a USB file, where
+  Delete is hidden, it is the dots button and Print. Whether the button shows is decided
+  from the declarations alone, because the file's time, height and layer metadata arrive
+  after the screen opens; the checks run when it is tapped, against the context as it
+  stands then. When every item is hidden for that file the menu says "No plugin actions
+  for this file". Without such a plugin the row is unchanged, with Print's full label.
+- In the filament slot menu, plugin items get their own column (`col_plugins` in
+  `ui_xml/ams_context_menu.xml`) beside Filament and Spool, each plugin's items headed
+  with its name; the column is hidden when no item shows, so the menu is then unchanged.
+  The card already scrolls at 480x272 without plugin rows, so the column adds width, never
+  height: it is a fixed width per screen size (110 px at micro, 120 at tiny, 160 at small,
+  200 at medium, 220 at large; the `ams_context_plugin_col_w` tokens) and a longer label
+  ellipsizes. The row cap of 5 (§10) is the most that keeps the column no taller than the
+  Filament column at 480x272. The Tool and Endless Spool dropdowns stay below the columns.
+- In the spool menu plugin items sit under a divider after the app's items, headed the
+  same way. In every menu plugins are in load order and items in manifest order; a plugin
+  cannot choose its position among other plugins.
+- A tile with `tile` items gets the gear in home edit mode (decided from the declaration,
+  no check runs to show it); its items open in a menu below the tile, and only that
+  plugin's items appear there. When every one is hidden the menu says "No actions right
+  now".
+- Settings > Plugins lists "Adds to: ..." (Print details, Filament slot menu, Spool menu,
+  Its home tile) for a plugin with menu items, in the enable prompt after the permission
+  lines and on the plugin's row. The line is informational: menu items need no permission
+  of their own, since a handler can do only what the plugin's granted permissions allow,
+  so adding or changing them in an update does not ask again.
+
+Disabling, faulting or unloading a plugin removes its items at once; a tap that lands
+after that does nothing.
+
 ### helix.widget (`src/plugin/lua_bind_widget.cpp`)
 
 `helix.widget(id, hooks)` registers hooks for one declared widget; `id` is the short name
@@ -411,7 +537,8 @@ after `<id>__` (like a subject name) and must match a `plugin_canvas` element's 
 the plugin's XML (§7). One canvas name is one drawing: every live `plugin_canvas` with
 that name shows the same committed list, so give a tile canvas and an overlay canvas
 different names. Calling `helix.canvas("x")` again returns a handle onto the same canvas.
-A plugin holds at most 8 canvases; an empty name is an error.
+There is no fixed number of canvases: each one, its name and its lists count against the
+plugin's `memory_mb` together with its Lua heap. An empty name is an error.
 
 Drawing is staged, then published:
 
@@ -428,10 +555,11 @@ Drawing is staged, then published:
 - Every options table accepts only the keys listed for its call; an unknown key is an
   error. Omitted options use the defaults in the table.
 - Each staged primitive charges the plugin's memory cap for the exact bytes it adds
-  (`include/plugin_canvas.h#DisplayList/bytes`). A call that would cross the cap raises
-  "list would exceed the plugin memory cap" and adds nothing. `commit()` moves the charge
-  onto the published list and releases the bytes of the list it replaces; `clear()`
-  releases the pending charge.
+  (`include/plugin_canvas.h#DisplayList/bytes`), and a new canvas charges its entry and
+  name. A call that would cross the cap raises "helix.canvas: plugin memory budget
+  exceeded" and adds nothing; the plugin stays loaded. `commit()` moves the charge onto
+  the published list and releases the bytes of the list it replaces (an empty commit
+  releases it all); `clear()` releases the pending charge; unload releases everything.
 
 | Call | Options | Defaults |
 |---|---|---|
@@ -592,6 +720,12 @@ and `string.dump` are nil; `collectgarbage` accepts only `count`, `collect` and 
 rejects `..` and absolute paths, and caches the result
 (`src/plugin/lua_runtime.cpp#lua_require`).
 
+`setmetatable` refuses a metatable carrying `__gc`: finalizers run with the time-budget
+hook off, so a looping one would hang the UI thread, and one armed in a menu check would
+act later, outside check mode. The metatables the app owns are locked: `getmetatable`
+on a string, or on a subject, timer, subscription or canvas handle, returns `"locked"`,
+so plugin code cannot change how strings or bindings behave.
+
 Define a global `on_unload` function to run once before the plugin closes, on reload,
 disable, removal and shutdown. A faulted plugin's `on_unload` does not run, so never keep
 state there that a fault would lose. It may not open overlays or confirm dialogs.
@@ -633,8 +767,9 @@ approval* instead of loading; enabling it again approves only the new lines.
 | Memory per plugin | the manifest's `memory_mb` (1-64, default 2) | `src/plugin/plugin_host.cpp#load` |
 | Memory, all plugins | min(RAM / 16, 64 MB); a plugin that does not fit stays *over memory budget* | `src/plugin/plugin_host.cpp#plugin_memory_budget` |
 | Errors | the third within 60 s faults the plugin | `src/plugin/lua_runtime.cpp#report_error` |
+| Finalizers | `__gc` is not available to plugins: `setmetatable` raises on a metatable carrying it, since a finalizer runs outside every time budget | `src/plugin/lua_runtime.cpp#install_sandbox` |
 | Async results | a body that would cross the memory cap arrives as an error, not a fault | `include/lua_bindings.h#push_rpc_capped_body` |
-| Canvases per plugin | 8 | `src/plugin/lua_bind_canvas.cpp` |
+| Canvases per plugin | no fixed number: each canvas's entry, name and lists count against `memory_mb` with the Lua heap | `src/plugin/lua_bind_canvas.cpp#charge` |
 | Canvas list units | 4096 per list; a polyline counts each point, its area fill none | `include/plugin_canvas.h#kMaxCanvasUnits` |
 | Canvas tokens | 32 distinct color and font tokens per list | `include/plugin_canvas.h#kMaxCanvasTokens` |
 | Canvas coordinates | finite, within +-16384; stroke and border widths 0 to 64 | `include/plugin_canvas.h#kMaxCanvasCoord` |
@@ -643,7 +778,11 @@ approval* instead of loading; enabling it again approves only the new lines.
 | Measured text | at most 1024 bytes per `helix.ui.text_width` string | `src/plugin/lua_bind_ui.cpp` |
 | Dialogs | one `helix.ui.dialog` shown or waiting per plugin | `src/plugin/lua_bind_ui.cpp#kMaxDialogs` |
 | Confirms | one `helix.ui.confirm` shown or waiting per plugin | `src/plugin/lua_bind_ui.cpp#kMaxOpenConfirms` |
-| Canvas list bytes | charged against the plugin memory cap as staged | `include/plugin_canvas.h#DisplayList/bytes` |
+| Canvas list bytes | charged against the plugin memory cap as staged; a call that would cross it raises, never faults | `include/plugin_canvas.h#DisplayList/bytes` |
+| Home tiles | at most 32 `widgets` per plugin | `include/plugin_manifest.h#kMaxWidgetsPerPlugin` |
+| Menu items | at most 4 per menu per plugin, 16 per manifest; a label is one line of at most 48 bytes | `include/plugin_manifest.h#kMaxMenuItemsPerMenu` |
+| Plugin rows per menu | across every plugin, per opening: print details 8, filament slot 5, spool 6, a tile 4; rows past it are left out in load order | `src/plugin/plugin_menu.cpp#row_cap` |
+| Menu checks | 10 ms of CPU or 100 ms in all, separate from the entry budget; an overrun is an error (it counts toward the error limit), never a fault by itself | `include/lua_runtime.h#LuaRuntime/CheckLimits` |
 
 A fault (time budget, memory, error count, or `main.lua` failing to load) unloads the
 plugin, marks it *faulted* with the reason in Settings > Plugins, and shows a "Plugin

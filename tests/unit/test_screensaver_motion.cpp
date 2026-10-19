@@ -42,10 +42,10 @@ TEST_CASE("MotionClock measures across the tick wrap", "[screensaver_motion]") {
 TEST_CASE("MotionClock clamps one long gap", "[screensaver_motion]") {
     MotionClock clock;
     clock.reset(0);
-    CHECK(clock.advance(MotionClock::MAX_GAP_MS) == MotionClock::MAX_GAP_MS);
-    CHECK(clock.advance(MotionClock::MAX_GAP_MS + 60000) == MotionClock::MAX_GAP_MS);
+    CHECK(clock.advance(MotionClock::kMaxGapMs) == MotionClock::kMaxGapMs);
+    CHECK(clock.advance(MotionClock::kMaxGapMs + 60000) == MotionClock::kMaxGapMs);
     // The clamp spends the whole gap: the next call measures from the late call.
-    CHECK(clock.advance(MotionClock::MAX_GAP_MS + 60010) == 10);
+    CHECK(clock.advance(MotionClock::kMaxGapMs + 60010) == 10);
 }
 
 TEST_CASE("MotionClock reset restarts the measurement", "[screensaver_motion]") {
@@ -577,8 +577,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "the pipes saver declares the pipes ladder",
     REQUIRE(ss.level_count() == 3);
     CHECK(ss.level_period_ms(1) == 33);
     CHECK(ss.level_period_ms(2) == 100);
-    for (size_t i = 0; i < helix::ui::PIPES_LEVEL_COUNT; i++) {
-        CHECK(helix::ui::PIPES_LEVELS[i].scale == (i == 2 ? 2 : 1));
+    for (size_t i = 0; i < helix::ui::kPipesLevelCount; i++) {
+        CHECK(helix::ui::kPipesLevels[i].scale == (i == 2 ? 2 : 1));
     }
 }
 

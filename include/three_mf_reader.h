@@ -56,10 +56,10 @@ FileMetadata archive_file_metadata(const ArchiveSummary& summary, const PlateSum
 const PlateSummary* find_plate(const ArchiveSummary& summary, int index);
 
 /// Largest central directory read_summary() fetches when the tail read missed part of it.
-inline constexpr size_t MAX_CENTRAL_DIRECTORY_BYTES = 1024 * 1024;
+inline constexpr size_t kMaxCentralDirectoryBytes = 1024 * 1024;
 
 /// Largest entry read_entry() inflates into memory.
-inline constexpr size_t MAX_ENTRY_BYTES = 2 * 1024 * 1024;
+inline constexpr size_t kMaxEntryBytes = 2 * 1024 * 1024;
 
 /**
  * @brief An entry's bytes, out of a read of the archive from its local header on.

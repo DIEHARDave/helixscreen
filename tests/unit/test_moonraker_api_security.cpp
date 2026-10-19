@@ -1042,7 +1042,7 @@ TEST_CASE("MoonrakerClient destructor clears callbacks",
 
         // Send request on a client that never connected. ready_to_send() is
         // false, so send_jsonrpc() invokes the error callback SYNCHRONOUSLY and
-        // returns INVALID_REQUEST_ID (#909) - the request is never handed to the
+        // returns kInvalidRequestId (#909) - the request is never handed to the
         // tracker. That, not destruction, is what sets the flag below; the
         // destructor deliberately drops pending requests WITHOUT invoking their
         // error callbacks, because the callback targets may already be gone.

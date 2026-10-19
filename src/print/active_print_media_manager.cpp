@@ -275,12 +275,12 @@ void ActivePrintMediaManager::self_serve_from_gcode(const std::string& filename,
     const std::function<void(const std::string&)> on_error = lifetime_.bg_cb(
         "ActivePrintMediaManager::on_extract_error", [this, filename](const std::string& error) {
             // Only the PERMANENT verdict (header read, nothing embedded —
-            // GCODE_THUMBNAIL_NONE_EMBEDDED) may stop future attempts;
+            // kGcodeThumbnailNoneEmbedded) may stop future attempts;
             // transient failures stay retryable.
             if (self_serve_pending_for_ == filename) {
                 self_serve_pending_for_.clear();
             }
-            if (error.rfind(helix::GCODE_THUMBNAIL_NONE_EMBEDDED, 0) == 0) {
+            if (error.rfind(helix::kGcodeThumbnailNoneEmbedded, 0) == 0) {
                 self_serve_failed_for_ = filename;
             }
             spdlog::debug("[ActivePrintMediaManager] Gcode header thumbnail extraction "
@@ -300,26 +300,25 @@ void ActivePrintMediaManager::self_serve_from_gcode(const std::string& filename,
                 gcode_path, 0, 0.0,
                 // On the main thread, and only while this manager lives: the
                 // API it fetches through is read there, never carried along.
-                lifetime_.bg_cb("ActivePrintMediaManager::archive_summary",
-                                [this, gcode_path, plate, target, ctx, on_success,
-                                 on_error](const three_mf::ArchiveSummary& summary) {
-                                    const auto* shown = three_mf::find_plate(summary, plate);
-                                    const zip::ZipEntry* entry =
-                                        shown ? three_mf::plate_thumbnail(*shown) : nullptr;
-                                    if (!entry || !api_) {
-                                        on_error(std::string(helix::GCODE_THUMBNAIL_NONE_EMBEDDED) +
-                                                 gcode_path);
-                                        return;
-                                    }
-                                    helix::fetch_thumbnail_from_archive(gcode_path, *entry, 0, api_,
-                                                                        target, ctx, on_success,
-                                                                        on_error);
-                                }),
+                lifetime_.bg_cb(
+                    "ActivePrintMediaManager::archive_summary",
+                    [this, gcode_path, plate, target, ctx, on_success,
+                     on_error](const three_mf::ArchiveSummary& summary) {
+                        const auto* shown = three_mf::find_plate(summary, plate);
+                        const zip::ZipEntry* entry =
+                            shown ? three_mf::plate_thumbnail(*shown) : nullptr;
+                        if (!entry || !api_) {
+                            on_error(std::string(helix::kGcodeThumbnailNoneEmbedded) + gcode_path);
+                            return;
+                        }
+                        helix::fetch_thumbnail_from_archive(gcode_path, *entry, 0, api_, target,
+                                                            ctx, on_success, on_error);
+                    }),
                 on_error);
         return;
     }
 
-    helix::fetch_thumbnail_from_gcode(gcode_path, helix::GCODE_THUMBNAIL_HEADER_BYTES, api_, target,
+    helix::fetch_thumbnail_from_gcode(gcode_path, helix::kGcodeThumbnailHeaderBytes, api_, target,
                                       ctx, std::move(on_success), on_error);
 #endif
 }
@@ -578,10 +577,10 @@ void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filenam
                 // (contain) at 800x480 and the home print card in 119x84, so
                 // one image fitted to that box serves both; LVGL scales it
                 // down for the card. Worst case 377x260 RGB565A8 = 294KB.
-                constexpr int ESP32_THUMBNAIL_BOX_W = 377;
-                constexpr int ESP32_THUMBNAIL_BOX_H = 260;
-                const int box_w = ESP32_THUMBNAIL_BOX_W;
-                const int box_h = ESP32_THUMBNAIL_BOX_H;
+                constexpr int kEsp32ThumbnailBoxW = 377;
+                constexpr int kEsp32ThumbnailBoxH = 260;
+                const int box_w = kEsp32ThumbnailBoxW;
+                const int box_h = kEsp32ThumbnailBoxH;
 #else
                 // Detail-sized (200-400px): serves both the card and the
                 // status panel, since LVGL scales down efficiently.
@@ -596,7 +595,7 @@ void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filenam
                     // Metadata record exists but has no thumbnails. Briefly this
                     // can mean Moonraker is still mid-scan, but the common cause
                     // is a file sliced WITHOUT thumbnails — a permanent
-                    // condition. Retry only MAX_EMPTY_THUMBNAIL_RETRIES times and
+                    // condition. Retry only kMaxEmptyThumbnailRetries times and
                     // warn once; filelist_changed/klippy_ready re-triggers cover
                     // the late-scan case beyond that.
                     spdlog::log(thumbnail_retry_count_ == 0 ? spdlog::level::warn
@@ -605,14 +604,14 @@ void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filenam
                                 "(attempt {}/{}) - file may lack thumbnails or scan is "
                                 "incomplete",
                                 metadata_filename, thumbnail_retry_count_ + 1,
-                                MAX_EMPTY_THUMBNAIL_RETRIES + 1);
+                                kMaxEmptyThumbnailRetries + 1);
                     // The gcode itself usually still carries embedded
                     // thumbnails (slicers write them into the comment header
                     // even when the metadata path drops them). Self-serve
                     // from there; success publishes through the normal
                     // channel and disarms the retry scheduled below.
                     self_serve_from_gcode(filename, metadata_filename, ctx);
-                    schedule_thumbnail_retry(filename, MAX_EMPTY_THUMBNAIL_RETRIES);
+                    schedule_thumbnail_retry(filename, kMaxEmptyThumbnailRetries);
                     return;
                 }
 
@@ -628,7 +627,7 @@ void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filenam
                 // shared no_thumbnail_placeholder() (benchy) on this platform; the
                 // real image arrives via print_psram_thumb_gen, whose observer
                 // replaces the placeholder src with the PSRAM descriptor.
-                constexpr size_t ESP32_THUMBNAIL_MAX_BYTES = 512 * 1024;
+                constexpr size_t kEsp32ThumbnailMaxBytes = 512 * 1024;
 
                 // MANDATORY threading: EspHttpLane invokes on_success/on_error
                 // directly on its own worker thread with no marshaling. Both
@@ -637,7 +636,7 @@ void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filenam
                 // captured only to pass into the deferred body, never
                 // dereferenced on the worker.
                 api_->transfers().download_file_partial(
-                    "gcodes", resolved_thumb_path, ESP32_THUMBNAIL_MAX_BYTES,
+                    "gcodes", resolved_thumb_path, kEsp32ThumbnailMaxBytes,
                     [this, tok = lifetime_.token(), ctx, filename,
                      resolved_thumb_path](const std::string& png_bytes) {
                         // lane worker: decode + PSRAM copy only, no widgets, no
@@ -648,7 +647,7 @@ void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filenam
                         // thread it would add ~100ms+ to an already stalled boot.
                         helix::ThumbnailDecodeFailure failure{};
                         auto thumb = helix::ui::EspPsramThumbnail::create_decoded(
-                            png_bytes, ESP32_THUMBNAIL_BOX_W, ESP32_THUMBNAIL_BOX_H, failure);
+                            png_bytes, kEsp32ThumbnailBoxW, kEsp32ThumbnailBoxH, failure);
                         if (!thumb) {
                             // A PSRAM shortage while the UI builds is transient and
                             // worth a later attempt; a corrupt, unsupported or
@@ -672,7 +671,7 @@ void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filenam
                                                        "{}KB)",
                                                        resolved_thumb_path,
                                                        helix::get_system_memory_info().free_kb);
-                                          schedule_thumbnail_retry(filename, MAX_DECODE_RETRIES);
+                                          schedule_thumbnail_retry(filename, kMaxDecodeRetries);
                                       });
                             return;
                         }
@@ -719,7 +718,7 @@ void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filenam
                                       spdlog::warn("[ActivePrintMediaManager] PSRAM thumbnail "
                                                    "download failed for '{}' (attempt {}/{}): {}",
                                                    filename, thumbnail_retry_count_ + 1,
-                                                   MAX_THUMBNAIL_ATTEMPTS, message);
+                                                   kMaxThumbnailAttempts, message);
                                       schedule_thumbnail_retry(filename);
                                   });
                     });
@@ -753,7 +752,7 @@ void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filenam
                                       spdlog::warn("[ActivePrintMediaManager] Thumbnail download "
                                                    "failed for '{}' (attempt {}/{}): {}",
                                                    filename, thumbnail_retry_count_ + 1,
-                                                   MAX_THUMBNAIL_ATTEMPTS, message);
+                                                   kMaxThumbnailAttempts, message);
                                       schedule_thumbnail_retry(filename);
                                   });
                     });
@@ -775,7 +774,7 @@ void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filenam
                           spdlog::warn("[ActivePrintMediaManager] Thumbnail metadata fetch failed "
                                        "for '{}' (attempt {}/{}): {}",
                                        metadata_filename, thumbnail_retry_count_ + 1,
-                                       MAX_THUMBNAIL_ATTEMPTS, message);
+                                       kMaxThumbnailAttempts, message);
                           // A metadata endpoint that errors outright (a
                           // customized fork can 404 it for every file) never
                           // gets better within the ladder's lifetime, so
@@ -910,7 +909,7 @@ void ActivePrintMediaManager::on_retry_timer_fired() {
         return; // a fetch completed in the meantime
     }
     spdlog::info("[ActivePrintMediaManager] Retrying thumbnail load for '{}' (attempt {}/{})",
-                 retry_filename_, thumbnail_retry_count_ + 1, MAX_THUMBNAIL_ATTEMPTS);
+                 retry_filename_, thumbnail_retry_count_ + 1, kMaxThumbnailAttempts);
     load_thumbnail_for_file(retry_filename_);
 }
 

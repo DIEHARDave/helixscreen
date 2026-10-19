@@ -218,10 +218,10 @@ TEST_CASE("print_modified outlives a print-start macro that heats synchronously"
 
     REQUIRE(client.print_modified_calls == 1);
     CHECK(client.print_modified_timeout_ms >
-          helix::MoonrakerRequestTracker::DEFAULT_REQUEST_TIMEOUT_MS);
+          helix::MoonrakerRequestTracker::kDefaultRequestTimeoutMs);
     // It ends in the same ack as printer.print.start after strictly more work,
     // so it can never deserve the shorter ceiling of the two.
-    CHECK(client.print_modified_timeout_ms >= MoonrakerJobAPI::PRINT_START_TIMEOUT_MS);
+    CHECK(client.print_modified_timeout_ms >= MoonrakerJobAPI::kPrintStartTimeoutMs);
 }
 
 TEST_CASE("a print_modified that never answered does not start a second print",

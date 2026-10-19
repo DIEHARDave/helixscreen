@@ -39,7 +39,7 @@ CalibrationCommand calibration_command(ZOffsetCalibrationStrategy strategy,
                                        sensors::ProbeSensorType probe_type);
 
 /// Approach height: Klipper's minimum clearance for starting a calibration.
-inline constexpr double APPROACH_Z_MM = 5.0;
+inline constexpr double kApproachZMm = 5.0;
 
 struct ApproachInputs {
     bool all_homed = false;

@@ -27,12 +27,12 @@
 using namespace helix;
 
 namespace {
-const char* CFG_WITH_AUTO_HOME = R"(
+const char* kCfgWithAutoHome = R"(
 [AFC]
 auto_home: True
 )";
 
-const char* CFG_WITHOUT_AUTO_HOME = R"(
+const char* kCfgWithoutAutoHome = R"(
 [AFC]
 tool_start: direct
 )";
@@ -61,10 +61,10 @@ TEST_CASE_METHOD(LVGLTestFixture, "AFC delegates_homing_to_printer reads [AFC] a
     // conservatively false — our G28 still goes out.
     CHECK_FALSE(afc.delegates_homing_to_printer());
 
-    afc.load_config(CFG_WITHOUT_AUTO_HOME);
+    afc.load_config(kCfgWithoutAutoHome);
     CHECK_FALSE(afc.delegates_homing_to_printer());
 
-    afc.load_config(CFG_WITH_AUTO_HOME);
+    afc.load_config(kCfgWithAutoHome);
     CHECK(afc.delegates_homing_to_printer());
 }
 
@@ -124,7 +124,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
                  "ensure_homed_then sends no G28 when delegating, and homes first when not (#1265)",
                  "[afc][homing][1265]") {
     AfcDispatchHelper afc;
-    afc.load_config(CFG_WITH_AUTO_HOME);
+    afc.load_config(kCfgWithAutoHome);
 
     bool dispatched = false;
     afc.ensure_homed_then("AFF_LOAD LANE=lane1", [&dispatched]() { dispatched = true; });
@@ -133,7 +133,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     REQUIRE(afc.captured.size() == 1);
     CHECK(afc.captured[0] == "AFF_LOAD LANE=lane1");
 
-    afc.load_config(CFG_WITHOUT_AUTO_HOME);
+    afc.load_config(kCfgWithoutAutoHome);
     afc.captured.clear();
 
     bool dispatched2 = false;

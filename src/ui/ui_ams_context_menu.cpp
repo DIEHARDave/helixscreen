@@ -10,6 +10,7 @@
 #include "ui_callback_helpers.h"
 #include "ui_error_reporting.h"
 #include "ui_overlay_qr_scanner.h"
+#include "ui_plugin_menu_rows.h"
 #include "ui_toast_manager.h"
 
 #include "ams_backend.h"
@@ -25,6 +26,7 @@
 #include "filament_variants.h"
 #include "helix_psram_attr.h"
 #include "i_moonraker_api.h"
+#include "plugin_menu_context.h"
 #include "printer_state.h"
 #include "spoolman_types.h"
 #include "ui/ui_widget_helpers.h"
@@ -60,6 +62,7 @@ HELIX_PSRAM_BSS char AmsContextMenu::slot_load_hint_buf_[192];
 HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_mount_subject_;
 HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_park_subject_;
 HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_backup_label_subject_;
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_tool_row_visible_subject_;
 HELIX_PSRAM_BSS char AmsContextMenu::slot_backup_label_buf_[64];
 
 // ============================================================================
@@ -91,6 +94,7 @@ void AmsContextMenu::init_subjects() {
     lv_subject_init_int(&slot_park_subject_, 0);
     lv_subject_init_string(&slot_backup_label_subject_, slot_backup_label_buf_, nullptr,
                            sizeof(slot_backup_label_buf_), "");
+    lv_subject_init_int(&slot_tool_row_visible_subject_, 0);
 
     lv_xml_register_subject(nullptr, "ams_slot_is_loaded", &slot_is_loaded_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_can_load", &slot_can_load_subject_);
@@ -112,6 +116,7 @@ void AmsContextMenu::init_subjects() {
     lv_xml_register_subject(nullptr, "ams_slot_mount", &slot_mount_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_park", &slot_park_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_backup_label", &slot_backup_label_subject_);
+    lv_xml_register_subject(nullptr, "ams_slot_tool_row_visible", &slot_tool_row_visible_subject_);
 
     subjects_initialized_ = true;
 }
@@ -239,7 +244,7 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
     lv_subject_set_int(&slot_preload_subject_, 0);
 
     // External spool mode: the lane dropdowns do not apply, but Load and Unload
-    // do — EXTERNAL_SPOOL_SLOT is a target plan_load()/plan_unload() both
+    // do — kExternalSpoolSlot is a target plan_load()/plan_unload() both
     // resolve, and this menu is where a user looking at the bypass spool goes
     // for them (prestonbrown/helixscreen#1486).
     if (external_spool_mode_) {
@@ -253,7 +258,7 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
             ext_sys = backend->get_system_info();
         }
         const bool bypass_loaded =
-            helix::ui::read_unload_target_loaded(backend, ext_sys, helix::ui::EXTERNAL_SPOOL_SLOT);
+            helix::ui::read_unload_target_loaded(backend, ext_sys, helix::ui::kExternalSpoolSlot);
 
         const helix::ui::OpButtonState ext_state = helix::ui::build_external_spool_gating_state(
             bypass_loaded, backend && ext_sys.is_busy(),
@@ -311,7 +316,7 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
         }
 
         // Show Clear Spool button when external spool has an assignment.
-        // btn_edit ("Spool Info") is always shown so users can reopen the edit modal.
+        // btn_edit ("Edit Spool") is always shown so users can reopen the editor.
         auto ext_info = AmsState::instance().get_external_spool_info();
         bool has_assignment =
             ext_info.has_value() && (ext_info->spoolman_id > 0 || !ext_info->material.empty());
@@ -541,6 +546,21 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
 
     // Configure dropdowns based on backend capabilities
     configure_dropdowns();
+
+    append_slot_plugin_rows(menu_obj, slot_index);
+}
+
+void AmsContextMenu::append_slot_plugin_rows(lv_obj_t* menu_obj, int slot_index) {
+    if (!backend_ || !plugin_menu::any_declared(plugin_menu::MenuKind::FilamentSlot))
+        return;
+    const AmsSystemInfo info = backend_->get_system_info();
+    const plugin_menu::json context = plugin_menu::slot_context(
+        backend_->get_slot_info(slot_index), slot_index, info.unit_for_slot(slot_index),
+        helix::ui::lane_label(menu_lane_noun(), slot_index));
+    helix::ui::append_plugin_rows(
+        *this, lv_obj_find_by_name(menu_obj, "col_plugins"),
+        plugin_menu::resolve(plugin_menu::MenuKind::FilamentSlot, context), context,
+        /*divider=*/false);
 }
 
 // ============================================================================
@@ -1044,7 +1064,6 @@ void AmsContextMenu::configure_dropdowns() {
     backup_dropdown_ = helix::ui::find_required(menu(), "backup_dropdown", "AmsContextMenu");
 
     // Find row containers and divider
-    lv_obj_t* tool_row = helix::ui::find_required(menu(), "tool_dropdown_row", "AmsContextMenu");
     lv_obj_t* backup_row =
         helix::ui::find_required(menu(), "backup_dropdown_row", "AmsContextMenu");
     lv_obj_t* divider = helix::ui::find_required(menu(), "dropdown_divider", "AmsContextMenu");
@@ -1056,11 +1075,10 @@ void AmsContextMenu::configure_dropdowns() {
     // can_write_mapping_table() gate the print-start apply path uses (the U1
     // honours remaps through its pre-print send while refusing the table
     // write, and an unusable dropdown is worse than none).
-    if (backend_ && helix::printer::can_write_mapping_table(*backend_)) {
+    const bool tool_row = backend_ && helix::printer::can_write_mapping_table(*backend_);
+    lv_subject_set_int(&slot_tool_row_visible_subject_, tool_row ? 1 : 0);
+    if (tool_row) {
         populate_tool_dropdown();
-        if (tool_row) {
-            lv_obj_remove_flag(tool_row, LV_OBJ_FLAG_HIDDEN);
-        }
         show_any_dropdown = true;
         spdlog::debug("[AmsContextMenu] Assigned Tool row shown");
     }

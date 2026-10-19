@@ -21,7 +21,7 @@
  * helix::ui::StarfieldSim draws each frame with direct pixel writes, erasing only where
  * stars were, and moves the stars by the time since the previous frame; each frame
  * invalidates one small box per star it moved, so a scattered sky stays a partial
- * invalidation. The rungs past full rate thin the star population (STARFIELD_LEVELS).
+ * invalidation. The rungs past full rate thin the star population (kStarfieldLevels).
  */
 class StarfieldScreensaver : public helix::ui::SimSaver<helix::ui::StarfieldSim> {
   public:
@@ -31,7 +31,7 @@ class StarfieldScreensaver : public helix::ui::SimSaver<helix::ui::StarfieldSim>
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return helix::ui::SAVER_BUILD_CANVAS_FORMAT;
+        return helix::ui::kSaverBuildCanvasFormat;
     }
 
   private:

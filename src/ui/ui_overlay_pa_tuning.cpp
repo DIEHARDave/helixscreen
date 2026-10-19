@@ -46,7 +46,7 @@ float ramp_step(helix::pa::ExtruderKind kind) {
 
 /// Outer clearance the tower needs on each side of its centre: the wall, the
 /// brim, and a margin from the bed edge.
-constexpr float BED_MARGIN_MM = 10.0f;
+constexpr float kBedMarginMm = 10.0f;
 
 std::string utc_now_iso() {
     const std::time_t now = std::time(nullptr);
@@ -107,13 +107,13 @@ void PaTuningOverlay::init_subjects() {
         UI_MANAGED_SUBJECT_INT(stage_subject_, SETUP, "pa_tune_stage", subjects_);
         UI_MANAGED_SUBJECT_INT(multi_tool_, 0, "pa_tune_multi_tool", subjects_);
         UI_MANAGED_SUBJECT_INT(tool_count_, 1, "pa_tune_tool_count", subjects_);
-        for (int i = 0; i < MAX_HEADS; ++i) {
+        for (int i = 0; i < kMaxHeads; ++i) {
             UI_MANAGED_SUBJECT_INT(tool_selected_[i], i == 0 ? 1 : 0,
                                    fmt::format("pa_tune_tool_selected_{}", i).c_str(), subjects_);
             UI_MANAGED_SUBJECT_STRING(tool_label_[i], tool_label_buf_[i], "",
                                       fmt::format("pa_tune_tool_label_{}", i).c_str(), subjects_);
         }
-        for (int i = 0; i < PRESET_SLOTS; ++i) {
+        for (int i = 0; i < kPresetSlots; ++i) {
             UI_MANAGED_SUBJECT_INT(preset_selected_[i], i == 0 ? 1 : 0,
                                    fmt::format("pa_tune_preset_selected_{}", i).c_str(), subjects_);
             UI_MANAGED_SUBJECT_STRING(preset_temp_[i], preset_temp_buf_[i], "",
@@ -133,7 +133,7 @@ void PaTuningOverlay::init_subjects() {
         UI_MANAGED_SUBJECT_INT(step_idx_subject_, step_idx_, "pa_tune_step_idx", subjects_);
 
         UI_MANAGED_SUBJECT_INT(band_count_, 0, "pa_tune_band_count", subjects_);
-        for (int i = 0; i < MAX_BANDS; ++i) {
+        for (int i = 0; i < kMaxBands; ++i) {
             UI_MANAGED_SUBJECT_STRING(band_range_[i], band_range_buf_[i], "",
                                       fmt::format("pa_tune_band_range_{}", i).c_str(), subjects_);
             UI_MANAGED_SUBJECT_STRING(band_k_[i], band_k_buf_[i], "",
@@ -166,7 +166,7 @@ void PaTuningOverlay::register_callbacks() {
          [](lv_event_t* e) {
              auto& self = get_global_pa_tuning_overlay();
              if (self.stage_ == SETUP) {
-                 self.selected_head_ = std::clamp(user_int(e), 0, MAX_HEADS - 1);
+                 self.selected_head_ = std::clamp(user_int(e), 0, kMaxHeads - 1);
                  self.refresh_tools();
              }
          }},
@@ -210,7 +210,7 @@ void PaTuningOverlay::register_callbacks() {
         {"on_pa_tune_band",
          [](lv_event_t* e) { get_global_pa_tuning_overlay().select_band(user_int(e)); }},
         {"on_pa_tune_keep",
-         [](lv_event_t*) { get_global_pa_tuning_overlay().select_band(MAX_BANDS); }},
+         [](lv_event_t*) { get_global_pa_tuning_overlay().select_band(kMaxBands); }},
         {"on_pa_tune_apply", [](lv_event_t*) { get_global_pa_tuning_overlay().apply_pick(); }},
         {"on_pa_tune_save_spool",
          [](lv_event_t*) { get_global_pa_tuning_overlay().save_to_spool(); }},
@@ -303,13 +303,13 @@ PaTuningOverlay::ChosenHead PaTuningOverlay::chosen_head() const {
 void PaTuningOverlay::refresh_tools() {
     auto& tools = helix::ToolState::instance();
     const auto heads = tools.heated_heads();
-    const int count = std::clamp(static_cast<int>(heads.size()), 1, MAX_HEADS);
+    const int count = std::clamp(static_cast<int>(heads.size()), 1, kMaxHeads);
     lv_subject_set_int(&multi_tool_, tools.has_multiple_extruders() ? 1 : 0);
     if (selected_head_ >= count) {
         selected_head_ = 0;
     }
     const int active = tools.active_tool_index();
-    for (int i = 0; i < MAX_HEADS; ++i) {
+    for (int i = 0; i < kMaxHeads; ++i) {
         lv_subject_set_int(&tool_selected_[i], i == selected_head_ ? 1 : 0);
         std::string label;
         if (i < static_cast<int>(heads.size())) {
@@ -322,7 +322,7 @@ void PaTuningOverlay::refresh_tools() {
 }
 
 void PaTuningOverlay::refresh_presets() {
-    for (int i = 0; i < PRESET_SLOTS; ++i) {
+    for (int i = 0; i < kPresetSlots; ++i) {
         const auto temps = helix::presets::slot_temps(i);
         lv_subject_copy_string(&preset_temp_[i],
                                temps ? fmt::format("{}° / {}°", temps->nozzle, temps->bed).c_str()
@@ -379,10 +379,10 @@ helix::pa::TestPrintParams PaTuningOverlay::build_params() const {
 
 helix::pa::MachineMacros PaTuningOverlay::machine_macros() {
     const auto& cache = MacroParamCache::instance();
-    const std::vector<std::string> starts(std::begin(PrintStartAnalyzer::MACRO_NAMES),
-                                          std::end(PrintStartAnalyzer::MACRO_NAMES));
-    const std::vector<std::string> ends(std::begin(PrintStartAnalyzer::END_MACRO_NAMES),
-                                        std::end(PrintStartAnalyzer::END_MACRO_NAMES));
+    const std::vector<std::string> starts(std::begin(PrintStartAnalyzer::kMacroNames),
+                                          std::end(PrintStartAnalyzer::kMacroNames));
+    const std::vector<std::string> ends(std::begin(PrintStartAnalyzer::kEndMacroNames),
+                                        std::end(PrintStartAnalyzer::kEndMacroNames));
     return helix::pa::pick_machine_macros(
         starts, ends, [&cache](const std::string& name) -> std::optional<std::vector<std::string>> {
             if (!cache.has_macro(name)) {
@@ -489,7 +489,7 @@ void PaTuningOverlay::begin_upload() {
         return;
     }
     const auto params = build_params();
-    const float size_needed = params.geometry.size_mm + 2.0f * BED_MARGIN_MM;
+    const float size_needed = params.geometry.size_mm + 2.0f * kBedMarginMm;
     if (params.bed_x_max - params.bed_x_min < size_needed ||
         params.bed_y_max - params.bed_y_min < size_needed) {
         fail_start(lv_tr("The bed is too small for the test tower, or its size is unknown."));
@@ -614,7 +614,7 @@ void PaTuningOverlay::on_print_state(PrintJobState state) {
         // Print Status opens itself on every print start; the tuner is what
         // this print is for, so it goes back on top once that push has run.
         if (raise_on_start_) {
-            object_lifetime_.defer("PaTuningOverlay::raise", [this]() { raise(RAISE_ATTEMPTS); });
+            object_lifetime_.defer("PaTuningOverlay::raise", [this]() { raise(kRaiseAttempts); });
         }
         return;
     }
@@ -745,12 +745,12 @@ void PaTuningOverlay::refresh_running() {
 // ============================================================================
 
 void PaTuningOverlay::refresh_bands(bool newest_first) {
-    auto bands = session_.bands(MAX_BANDS);
+    auto bands = session_.bands(kMaxBands);
     if (newest_first) {
         std::reverse(bands.begin(), bands.end());
     }
-    const int n = std::min(static_cast<int>(bands.size()), MAX_BANDS);
-    for (int i = 0; i < MAX_BANDS; ++i) {
+    const int n = std::min(static_cast<int>(bands.size()), kMaxBands);
+    for (int i = 0; i < kMaxBands; ++i) {
         if (i < n) {
             const auto& b = bands[static_cast<size_t>(i)];
             lv_subject_copy_string(&band_range_[i],
@@ -760,7 +760,7 @@ void PaTuningOverlay::refresh_bands(bool newest_first) {
         lv_subject_set_int(&band_selected_[i], i == picked_ ? 1 : 0);
     }
     lv_subject_set_int(&band_count_, n);
-    lv_subject_set_int(&keep_selected_, picked_ == MAX_BANDS ? 1 : 0);
+    lv_subject_set_int(&keep_selected_, picked_ == kMaxBands ? 1 : 0);
     lv_subject_copy_string(&keep_text_, fmt::format(fmt::runtime(lv_tr("Keep current ({})")),
                                                     helix::pa::format_k(session_.current_k()))
                                             .c_str());
@@ -772,14 +772,14 @@ void PaTuningOverlay::select_band(int index) {
         return;
     }
     const int n = lv_subject_get_int(&band_count_);
-    if (index != MAX_BANDS && (index < 0 || index >= n)) {
+    if (index != kMaxBands && (index < 0 || index >= n)) {
         return;
     }
     picked_ = index;
-    for (int i = 0; i < MAX_BANDS; ++i) {
+    for (int i = 0; i < kMaxBands; ++i) {
         lv_subject_set_int(&band_selected_[i], i == picked_ ? 1 : 0);
     }
-    lv_subject_set_int(&keep_selected_, picked_ == MAX_BANDS ? 1 : 0);
+    lv_subject_set_int(&keep_selected_, picked_ == kMaxBands ? 1 : 0);
     lv_subject_set_int(&has_pick_, 1);
 }
 
@@ -791,9 +791,9 @@ void PaTuningOverlay::apply_pick() {
         NOTIFY_WARNING(lv_tr("A print is running. Apply the result after it ends."));
         return;
     }
-    if (picked_ == MAX_BANDS) {
+    if (picked_ == kMaxBands) {
         session_.keep_current();
-    } else if (!session_.pick_band(picked_, MAX_BANDS)) {
+    } else if (!session_.pick_band(picked_, kMaxBands)) {
         return;
     }
     show_result();
@@ -889,7 +889,7 @@ void PaTuningOverlay::save_to_spool() {
     const int filament_id = active_spool_->filament_id;
     const std::string name = active_spool_->display_name();
     api_->spoolman().set_spoolman_filament_extra_number(
-        filament_id, SPOOLMAN_PA_EXTRA_KEY, lv_tr("Pressure advance"), *k,
+        filament_id, kSpoolmanPaExtraKey, lv_tr("Pressure advance"), *k,
         object_lifetime_.bg_cb(
             "PaTuningOverlay::spool_saved",
             [this, name]() {

@@ -85,7 +85,7 @@ class LedWidget : public TiledPanelWidget {
         return const_cast<const char**>(attrs_.data());
     }
 
-    /// Point this button at @p key (a device id or LIGHT_BUTTON_ALL) and save it.
+    /// Point this button at @p key (a device id or kLightButtonAll) and save it.
     void select_light(const std::string& key);
 
     /// The device ids a tap switches.

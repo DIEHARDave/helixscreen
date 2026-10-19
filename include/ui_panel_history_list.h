@@ -247,7 +247,7 @@ class HistoryListPanel : public OverlayBase {
     helix::HistoryChangedCallback history_observer_;
 
     // Pagination state for infinite scroll
-    static constexpr int JOBS_PER_PAGE = 50; ///< Jobs per API request
+    static constexpr int kJobsPerPage = 50; ///< Jobs per API request
     /// Single-flight guard for the "load next page" fetch, with a 30s self-heal
     /// so a silently-lost response can't permanently block infinite scroll.
     helix::InFlightGuard load_more_guard_{std::chrono::milliseconds(30000)};
@@ -315,21 +315,21 @@ class HistoryListPanel : public OverlayBase {
     lv_subject_t detail_has_timelapse_{}; ///< 1 if timelapse available, 0 otherwise
 
     // Buffers for string subjects (LVGL 9.4 requires pre-allocated buffers)
-    static constexpr size_t DETAIL_BUF_SIZE = 128;
-    static constexpr size_t SMALL_BUF_SIZE = 32;
+    static constexpr size_t kDetailBufSize = 128;
+    static constexpr size_t kSmallBufSize = 32;
     char detail_filename_buf_[256] = {};
-    char detail_status_buf_[SMALL_BUF_SIZE] = {};
-    char detail_status_icon_buf_[SMALL_BUF_SIZE] = {};
-    char detail_status_variant_buf_[SMALL_BUF_SIZE] = {};
-    char detail_start_time_buf_[SMALL_BUF_SIZE] = {};
-    char detail_end_time_buf_[SMALL_BUF_SIZE] = {};
-    char detail_duration_buf_[SMALL_BUF_SIZE] = {};
-    char detail_layers_buf_[SMALL_BUF_SIZE] = {};
-    char detail_layer_height_buf_[SMALL_BUF_SIZE] = {};
-    char detail_nozzle_temp_buf_[SMALL_BUF_SIZE] = {};
-    char detail_bed_temp_buf_[SMALL_BUF_SIZE] = {};
-    char detail_filament_buf_[SMALL_BUF_SIZE] = {};
-    char detail_filament_type_buf_[SMALL_BUF_SIZE] = {};
+    char detail_status_buf_[kSmallBufSize] = {};
+    char detail_status_icon_buf_[kSmallBufSize] = {};
+    char detail_status_variant_buf_[kSmallBufSize] = {};
+    char detail_start_time_buf_[kSmallBufSize] = {};
+    char detail_end_time_buf_[kSmallBufSize] = {};
+    char detail_duration_buf_[kSmallBufSize] = {};
+    char detail_layers_buf_[kSmallBufSize] = {};
+    char detail_layer_height_buf_[kSmallBufSize] = {};
+    char detail_nozzle_temp_buf_[kSmallBufSize] = {};
+    char detail_bed_temp_buf_[kSmallBufSize] = {};
+    char detail_filament_buf_[kSmallBufSize] = {};
+    char detail_filament_type_buf_[kSmallBufSize] = {};
 
     //
     // === Internal Methods ===

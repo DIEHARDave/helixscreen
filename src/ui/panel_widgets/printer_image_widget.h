@@ -29,10 +29,10 @@ class PrinterImageWidget : public PanelWidget {
     /// Factory-registration key. Exposed so callers scanning a heterogeneous
     /// widget list can match on id() and static_cast, instead of dynamic_cast —
     /// the firmware builds -fno-rtti.
-    static constexpr const char* WIDGET_ID = "printer_image";
+    static constexpr const char* kWidgetId = "printer_image";
 
     const char* id() const override {
-        return WIDGET_ID;
+        return kWidgetId;
     }
 
     /// Called when panel activates — re-check if printer image changed in settings
@@ -102,6 +102,12 @@ class PrinterImageWidget : public PanelWidget {
     /// install, so attach()'s one-shot resolve still shows the generic
     /// silhouette unless a type change re-triggers it.
     ObserverGuard printer_type_observer_;
+
+    /// Re-resolve when the detected filament systems change: a database entry's
+    /// `image_variants` can pick another image once a backend registers, which
+    /// happens after connect.
+    std::vector<ObserverGuard> hardware_observers_;
+    void refresh_if_detected_image_changed();
 
     void schedule_image_refresh();
     void schedule_cache_check();

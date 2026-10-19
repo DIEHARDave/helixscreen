@@ -380,7 +380,7 @@ auto tok = lifetime_.token();
 api->fetch([this, tok]() {
     if (tok.expired()) return;
     tok.defer([this]() { update_ui(); });   // Safe
-    // NOT: lifetime_.defer([this]() {...}); // TOCTOU race from BG thread
+    // NOT: lifetime_.defer([this]() {...}); // TOCTOU race from kBg thread
 });
 ```
 

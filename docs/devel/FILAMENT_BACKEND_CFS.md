@@ -13,9 +13,9 @@ The `box` Klipper object is shared by several firmwares that agree on almost not
 
 | Printer family | Stock firmware path | Macro dialect | Detection signal |
 |----------------|--------------------|---------------|-----------------|
-| K2, K2 Pro, K2 Plus (built-in CFS) | Creality K2 firmware | `CR_BOX_*` primitives + `BOX_SAVE_FAN`/`BOX_MODE_WAIT` envelope | `PrinterDetector::is_creality_k1() == false` |
-| K1, K1C, K1 Max (official CFS upgrade ≥ v2.3.5.33) | Creality K1 CFS upgrade firmware | Plain `BOX_*` primitives, no mode-wait (fan-save **does** exist — see below) | `PrinterDetector::is_creality_k1() == true` |
-| K2 Plus on a community Kalico port | [`Jacob10383/kalico`](https://github.com/Jacob10383/kalico) + a reimplemented box.py | High-level bare `T<n>` / `BOX_UNLOAD` | `api_version == 1` in the box payload |
+| K2, K2 Pro, K2 Plus (built-in CFS) | Creality K2 firmware | `CR_BOX_*` primitives + `BOX_SAVE_FAN`/`BOX_MODE_WAIT` envelope | neither `is_creality_k1()` nor `is_creality_hi()` |
+| K1, K1C, K1 Max (official CFS upgrade ≥ v2.3.5.33) | Creality K1 CFS upgrade firmware | Plain `BOX_*` primitives, no mode-wait (fan-save **does** exist — see below) | `PrinterDetector::is_creality_k1()` or `is_creality_hi()` |
+| K2 Plus on a community Kalico port | [`Jacob10383/kalico`](https://github.com/Jacob10383/kalico) + a reimplemented box.py | High-level `BOX_SELECT_SLOT` (or bare `T<n>`) / `BOX_UNLOAD` | `api_version == 1` in the box payload |
 
 **Axis 2 — box schema** (`CfsSchema`), detected per-payload by `AmsBackendCfs::detect_schema()`:
 
@@ -29,6 +29,51 @@ Both schemas arrive as deltas, so each parser reads a merged copy of the box rat
 Both axes are decided **from the payload, never from `PrinterDetector`** — a community port reports as stock K2 Plus hardware by every model signal, so model detection cannot see the firmware swap. `Stock` is the default for anything ambiguous.
 
 The command dialect is selected by the explicit `api_version == 1` field rather than inferred from the `Flat` status layout, so another firmware can use the same layout without inheriting this one's commands. It also cannot be detected with `has_macro("BOX_LOAD")`: the Fork commands are registered in Python, so they are not gcode_macros and never appear in `printer.objects.list`.
+
+### Fork API revisions
+
+Within `api_version == 1` the payload's `api_revision` (absent means 1) says what the
+firmware adds. The backend re-reads it from the merged flat state on every frame
+(`AmsBackendCfs::fork_api_revision`) and keeps two answers, both dropped when the box
+reports stock again:
+
+| Capability | Present when | What changes |
+|------------|--------------|--------------|
+| Print mapping (`fork_has_print_mapping`) | `api_revision >= 2`, or `print_mapping_version == 1` | Manual load, swap and external-spool load send `BOX_SELECT_SLOT SLOT=<n>` instead of `T<n>` (`fork_slot_gcode`). During a print started with `BOX_PRINT_START MAP=`, `T<n>` is the file's tool `n` and loads its mapped slot; `BOX_SELECT_SLOT` always names the slot |
+| Per-box readings | `api_revision >= 2` and a `boxes[]` array | Each unit's environment comes from its own `boxes[]` entry |
+| `BOX_PRINT_MAP` (`fork_has_print_map`) | `api_revision >= 3` | Tool remap is `RemapStrategy::PrePrintSend` |
+
+`SLOT=` and the slot side of `MAP=` take the firmware's global slot number,
+`(address - 1) * 4 + local`, which is already the bay's global index here, so a bay is
+sent as its own index; the external spool is `external_slot_index_`. Firmware without
+print mapping registers no `BOX_SELECT_SLOT`, and there `T<n>` is slot `n`.
+
+**Environment.** From revision 2 each `boxes[]` entry carries `temp_c` and
+`humidity_pct` for its box, joined on `address` (never array position) into that unit's
+`AmsUnit::environment`, the per-unit path every backend's environment zones read. An
+entry with `online: false` or null readings, or a box `boxes[]` does not list, has no
+reading. An entry with `online: false` also sets that unit's `AmsUnit::connected` to false, so its unit card shows the Disconnected chip until the box answers again. `boxes[]` is a top-level field, so the flat merge keeps the last one across
+frames that omit it. Revision 1 payloads, and revision 2 ones with no `boxes[]`, carry
+one top-level pair, which goes to the box `load_path.box_addr` names, else the lowest
+box. The per-box `fault` object is not read: no per-unit status or error surface exists
+to show its `title` and `message`.
+
+**Tool remap.** `BOX_PRINT_MAP MAP=<tool>:<slot>,...` sets the map for the next print
+only, so a revision 3 box declares `RemapStrategy::PrePrintSend` and
+`requires_preprint_send()`, and `build_preprint_gcode()` emits the line before the print
+starts (`AmsBackendCfs::print_map_gcode`). The firmware keeps the map for the next print
+file loaded within 10 minutes, uses it once, and has no clearing form, so a remapped
+start whose print never loads leaves a map that a later start would pick up. When the
+file's tools are known the map therefore goes out on every start, remapped or not: it
+names every tool the file uses, an unmapped one at its own slot (the firmware's default
+`T<n>` = slot `n`), and nothing else, since the firmware refuses a start whose map lists
+a tool the file does not use. With the file's tools unknown it carries only the remap's
+entries, and nothing goes out when none moves a tool. A remap whose target slot a manual load would refuse (`firmware_slot_locked()`), or that sits in a unit reading disconnected (a `boxes[]` entry with `online: false`, or the chain-wide `driver_ready: false`), is refused by `check_preprint_remap()`: nothing is sent and the print does not start, with the reason in the same "Print setup failed" dialog a printer-side refusal gets. `can_set_tool_mapping()` refuses on this route: `BOX_MODIFY_TN` is a
+stock command. The revision is the only evidence the command exists: it is registered
+in Python, and the app has no registered-command lookup. Below revision 3 Fork has no
+remap route (`RemapStrategy::None`). A reprint sends no map, because the backend does
+not record the last print's routing (`last_print_tool_mapping()` is empty), so the
+controller passes no tool set.
 
 A `Flat` box whose module we cannot identify still has its control paths refused by `reject_if_flat_schema()`. Full field mapping, command signatures and remaining gaps: `printer-research/CREALITY_CFS_K2_INTERNALS.md` § "Community Kalico port".
 
@@ -118,11 +163,12 @@ present on both families and are now emitted on both.
 
 | File | Role |
 |------|------|
-| `include/ams_backend_cfs.h` | `CfsMacroVariant` enum, `AmsBackendCfs` class, static `load_gcode/unload_gcode/swap_gcode(idx, variant)` helpers |
-| `src/printer/ams_backend_cfs.cpp` | `wrap_with_park_k1` / `wrap_with_park_k2` envelopes, K1-vs-K2 body emission |
+| `include/ams_backend_cfs.h` | `CfsMacroVariant` enum, `AmsBackendCfs` class, static `load_gcode/unload_gcode/swap_gcode(idx, variant)` helpers (load and swap take the Fork `BOX_SELECT_SLOT` choice) |
+| `src/printer/ams_backend_cfs.cpp` | `wrap_with_park_k1` / `wrap_with_park_k2` envelopes, K1-vs-K2 body emission, both schema parsers, the Fork revision gates and `BOX_PRINT_MAP` |
+| `include/cfs_status_parse.h` / `src/printer/cfs_status_parse.cpp` | Pure parse of the small status objects around a `box` frame (frame shape, filament sensor) into `std::optional` structs |
 | `include/printer_discovery.h` | `box` object handler — enables CFS for both K1 and K2 (#968 gate flipped) |
 
-`AmsBackendCfs::macro_variant_` is latched in the constructor by querying `PrinterDetector::is_creality_k1()`. All member operations (`load_filament`, `unload_filament`, `change_tool`) thread `macro_variant_` into the gcode helpers. Static call sites without an explicit variant default to `K2` to preserve existing test behavior.
+`AmsBackendCfs::macro_variant_` starts in the constructor from the model, `K1` when `PrinterDetector::is_creality_k1()` or `is_creality_hi()` matches and `K2` otherwise, and that model answer is kept in `model_macro_variant_`. The first flat frame carrying `api_version == 1` switches it to `Fork`; a later stock (`T<n>`) frame hands back the model's variant (`src/printer/ams_backend_cfs.cpp#handle_box_frame`). All member operations (`load_filament`, `unload_filament`, `change_tool`) thread `macro_variant_` into the gcode helpers. Static call sites without an explicit variant default to `K2` to preserve existing test behavior.
 
 **A bay's global index is the firmware's slot number on both schemas,** `(box address - 1) * 4
 + local`, so every per-bay store (lane_data overrides, lane records, RFID baselines, insert
@@ -213,8 +259,9 @@ in the constructor and converges on the first full box frame in `handle_status`:
 `enable_bypass()` / `disable_bypass()` consult `bypass_available_for()` (the
 `force_bypass_controls` override folds in like every other backend):
 
-- **Fork:** `enable` dispatches `T<external_slot_index_>` — the port's own box.py
-  registers that command for the holder and owns the whole attended flow (heat →
+- **Fork:** `enable` selects the external slot, `BOX_SELECT_SLOT SLOT=<external_slot_index_>`
+  with print mapping and `T<external_slot_index_>` without (§ Fork API revisions). The
+  port's own box.py owns the whole attended flow (heat →
   wastebin → wait up to `EXTERNAL_WAIT = 30 s` for insertion → feed → flush). `disable`
   while engaged dispatches `BOX_UNLOAD`, whose external branch ejects and then waits
   for the user to pull the filament clear. Engaged state is firmware-reported:

@@ -64,11 +64,11 @@
 namespace helix {
 
 // Panel name ↔ ID mappings, derived dynamically from the panel registry
-// (PanelFactory::PANEL_NAMES) so new panels are picked up with no edits here.
+// (PanelFactory::kPanelNames) so new panels are picked up with no edits here.
 // The registry stores widget names ("home_panel"); the CLI protocol uses short
 // names ("home", "print-select") — strip a trailing "_panel" and map '_' -> '-'.
 static std::string panel_short_name(int idx) {
-    std::string n = PanelFactory::PANEL_NAMES[idx];
+    std::string n = PanelFactory::kPanelNames[idx];
     static const std::string SUFFIX = "_panel";
     if (n.size() > SUFFIX.size() &&
         n.compare(n.size() - SUFFIX.size(), SUFFIX.size(), SUFFIX) == 0) {
@@ -80,7 +80,7 @@ static std::string panel_short_name(int idx) {
 
 static std::string panel_id_to_name(helix::PanelId id) {
     int idx = static_cast<int>(id);
-    if (idx < 0 || idx >= UI_PANEL_COUNT) {
+    if (idx < 0 || idx >= kUiPanelCount) {
         return "unknown";
     }
     return panel_short_name(idx);
@@ -89,8 +89,8 @@ static std::string panel_id_to_name(helix::PanelId id) {
 static std::optional<helix::PanelId> name_to_panel_id(const std::string& name) {
     std::string norm = name;
     std::replace(norm.begin(), norm.end(), '_', '-');
-    for (int i = 0; i < UI_PANEL_COUNT; ++i) {
-        if (name == PanelFactory::PANEL_NAMES[i] || norm == panel_short_name(i)) {
+    for (int i = 0; i < kUiPanelCount; ++i) {
+        if (name == PanelFactory::kPanelNames[i] || norm == panel_short_name(i)) {
             return static_cast<helix::PanelId>(i);
         }
     }
@@ -471,8 +471,8 @@ nlohmann::json RemoteControlServer::handle_reset(const nlohmann::json& /*params*
         // non-exiting entries, so it flips to true as soon as every modal has
         // been marked -- no need to wait out the exit animation here.
         int modals_cleared = 0;
-        constexpr int MAX_MODAL_DEPTH = 16; // matching MAX_DEPTH's reasoning below
-        while (!ModalStack::instance().empty() && modals_cleared < MAX_MODAL_DEPTH) {
+        constexpr int kMaxModalDepth = 16; // matching MAX_DEPTH's reasoning below
+        while (!ModalStack::instance().empty() && modals_cleared < kMaxModalDepth) {
             lv_obj_t* top = Modal::get_top();
             if (!top) {
                 break;
@@ -483,10 +483,10 @@ nlohmann::json RemoteControlServer::handle_reset(const nlohmann::json& /*params*
             Modal::hide(top, ModalCloseReason::External);
             modals_cleared++;
         }
-        if (modals_cleared == MAX_MODAL_DEPTH && !ModalStack::instance().empty()) {
+        if (modals_cleared == kMaxModalDepth && !ModalStack::instance().empty()) {
             spdlog::warn("[RemoteControlServer] reset: modal stack still non-empty after "
                          "{} dismissals -- hit the safety cap, something isn't draining",
-                         MAX_MODAL_DEPTH);
+                         kMaxModalDepth);
         }
 
         // Toasts: ToastManager::hide() dismisses every visible toast (also via
@@ -582,7 +582,7 @@ nlohmann::json RemoteControlServer::handle_go_back(const nlohmann::json& /*param
 
 nlohmann::json RemoteControlServer::handle_list_panels(const nlohmann::json& /*params*/) {
     nlohmann::json panels = nlohmann::json::array();
-    for (int i = 0; i < UI_PANEL_COUNT; ++i) {
+    for (int i = 0; i < kUiPanelCount; ++i) {
         panels.push_back(panel_short_name(i));
     }
     return {{"panels", panels}};
@@ -707,10 +707,10 @@ nlohmann::json RemoteControlServer::handle_screenshot(const nlohmann::json& para
     int stable_frames = 0;
     if (stable) {
         constexpr int REQUIRED = 3;
-        constexpr int MAX_SAMPLES = 180; // 16 ms sleep plus up to 33 ms drain wait each: ~3-9 s
+        constexpr int kMaxSamples = 180; // 16 ms sleep plus up to 33 ms drain wait each: ~3-9 s
         uint64_t last = 0;
         int run = 0;
-        for (int i = 0; i < MAX_SAMPLES; i++) {
+        for (int i = 0; i < kMaxSamples; i++) {
             uint64_t h = execute_on_ui_thread([resolve_crop]() -> nlohmann::json {
                              lv_obj_t* crop = resolve_crop();
                              helix::CapturedFrame f;

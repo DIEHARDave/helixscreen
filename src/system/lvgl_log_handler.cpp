@@ -45,7 +45,7 @@ static bool s_suppress_translation_warnings = false;
 // silenced the console while still spending the ring on them. One untranslated
 // tag re-resolved on a temperature tick took 76% of a reporter's 20k-line ring
 // and pushed the evidence we had asked him for out of the bundle.
-constexpr size_t LVGL_DEDUPE_MAX = 256;
+constexpr size_t kLvglDedupeMax = 256;
 static std::mutex s_dedupe_mutex;
 static std::unordered_set<std::string> s_seen_messages;
 
@@ -100,7 +100,7 @@ bool is_high_frequency_retry(std::string_view msg) {
 bool seen_before(const std::string& msg) {
     std::string key = strip_lvgl_timestamp(msg);
     std::lock_guard<std::mutex> lock(s_dedupe_mutex);
-    if (s_seen_messages.size() >= LVGL_DEDUPE_MAX) {
+    if (s_seen_messages.size() >= kLvglDedupeMax) {
         // Best-effort cap: clear and start over. 256 unique broken-asset
         // messages in one session would be extraordinary.
         s_seen_messages.clear();
@@ -181,10 +181,10 @@ std::string demangle_symbol(const char* mangled) {
  * Attempts to demangle C++ symbol names for readability.
  */
 void print_stack_trace() {
-    constexpr int MAX_FRAMES = 32;
-    void* callstack[MAX_FRAMES];
+    constexpr int kMaxFrames = 32;
+    void* callstack[kMaxFrames];
 
-    int frames = backtrace(callstack, MAX_FRAMES);
+    int frames = backtrace(callstack, kMaxFrames);
     char** symbols = backtrace_symbols(callstack, frames);
 
     if (symbols == nullptr) {

@@ -36,9 +36,9 @@ using helix::ui::FireworksScreensaver;
 using helix::ui::FlipClockScreensaver;
 using helix::ui::HighFlyScreensaver;
 using helix::ui::HyperspaceScreensaver;
-using helix::ui::LV_DRAW_CANVAS_FORMAT;
+using helix::ui::kLvDrawCanvasFormat;
+using helix::ui::kSaverBuildCanvasFormat;
 using helix::ui::MazeScreensaver;
-using helix::ui::SAVER_BUILD_CANVAS_FORMAT;
 
 namespace {
 
@@ -46,41 +46,41 @@ namespace {
 template <typename Saver> struct CanvasSaverTraits;
 
 template <> struct CanvasSaverTraits<StarfieldScreensaver> {
-    static constexpr lv_color_format_t FORMAT = SAVER_BUILD_CANVAS_FORMAT;
-    static constexpr bool DEFERS_LEVEL = false;
+    static constexpr lv_color_format_t kFormat = kSaverBuildCanvasFormat;
+    static constexpr bool kDefersLevel = false;
 };
 template <> struct CanvasSaverTraits<PipesScreensaver> {
-    static constexpr lv_color_format_t FORMAT = SAVER_BUILD_CANVAS_FORMAT;
-    static constexpr bool DEFERS_LEVEL = false;
+    static constexpr lv_color_format_t kFormat = kSaverBuildCanvasFormat;
+    static constexpr bool kDefersLevel = false;
 };
 template <> struct CanvasSaverTraits<FireworksScreensaver> {
-    static constexpr lv_color_format_t FORMAT = SAVER_BUILD_CANVAS_FORMAT;
-    static constexpr bool DEFERS_LEVEL = true; ///< at the next shell launch
+    static constexpr lv_color_format_t kFormat = kSaverBuildCanvasFormat;
+    static constexpr bool kDefersLevel = true; ///< at the next shell launch
 };
 template <> struct CanvasSaverTraits<MazeScreensaver> {
-    static constexpr lv_color_format_t FORMAT = SAVER_BUILD_CANVAS_FORMAT;
-    static constexpr bool DEFERS_LEVEL = false;
+    static constexpr lv_color_format_t kFormat = kSaverBuildCanvasFormat;
+    static constexpr bool kDefersLevel = false;
 };
 template <> struct CanvasSaverTraits<HyperspaceScreensaver> {
-    static constexpr lv_color_format_t FORMAT = SAVER_BUILD_CANVAS_FORMAT;
-    static constexpr bool DEFERS_LEVEL = false;
+    static constexpr lv_color_format_t kFormat = kSaverBuildCanvasFormat;
+    static constexpr bool kDefersLevel = false;
 };
 template <> struct CanvasSaverTraits<FirefliesScreensaver> {
-    static constexpr lv_color_format_t FORMAT = SAVER_BUILD_CANVAS_FORMAT;
-    static constexpr bool DEFERS_LEVEL = false;
+    static constexpr lv_color_format_t kFormat = kSaverBuildCanvasFormat;
+    static constexpr bool kDefersLevel = false;
 };
 // The clock savers draw text with lv_draw_label, which needs an alpha channel.
 template <> struct CanvasSaverTraits<FlipClockScreensaver> {
-    static constexpr lv_color_format_t FORMAT = LV_DRAW_CANVAS_FORMAT;
-    static constexpr bool DEFERS_LEVEL = false;
+    static constexpr lv_color_format_t kFormat = kLvDrawCanvasFormat;
+    static constexpr bool kDefersLevel = false;
 };
 template <> struct CanvasSaverTraits<AquaScreensaver> {
-    static constexpr lv_color_format_t FORMAT = LV_DRAW_CANVAS_FORMAT;
-    static constexpr bool DEFERS_LEVEL = false;
+    static constexpr lv_color_format_t kFormat = kLvDrawCanvasFormat;
+    static constexpr bool kDefersLevel = false;
 };
 template <> struct CanvasSaverTraits<HighFlyScreensaver> {
-    static constexpr lv_color_format_t FORMAT = LV_DRAW_CANVAS_FORMAT;
-    static constexpr bool DEFERS_LEVEL = false;
+    static constexpr lv_color_format_t kFormat = kLvDrawCanvasFormat;
+    static constexpr bool kDefersLevel = false;
 };
 
 /// The sim a SimSaver runs.
@@ -88,8 +88,8 @@ template <typename Saver> using SimOf = std::decay_t<decltype(std::declval<const
 
 /// A width whose tight pitch differs from LVGL's stride at any alignment above 1 byte:
 /// 630 * 4 = 2520 rounds up to 2528 at a 16-byte align (prestonbrown/helixscreen#1591).
-constexpr int32_t STRAINED_W = 630;
-constexpr int32_t STRAINED_H = 480;
+constexpr int32_t kStrainedW = 630;
+constexpr int32_t kStrainedH = 480;
 
 /// LVGLTestFixture for a TEMPLATE_TEST_CASE_METHOD over saver types.
 template <typename Saver> struct SaverFixture : LVGLTestFixture {};
@@ -118,7 +118,7 @@ TEMPLATE_TEST_CASE_METHOD(SaverFixture,
     const uint32_t configured_ms = GENERATE(as<uint32_t>{}, 0, 20);
     INFO("configured period " << configured_ms << " ms");
     const LevelZeroPeriods periods = level_zero_periods<TestType>(configured_ms);
-    CHECK(periods.timer_ms == (configured_ms != 0 ? configured_ms : helix::ui::SAVER_FAST_PERIOD));
+    CHECK(periods.timer_ms == (configured_ms != 0 ? configured_ms : helix::ui::kSaverFastPeriod));
     CHECK(periods.refresh_ms == periods.timer_ms);
 }
 
@@ -142,17 +142,17 @@ TEMPLATE_TEST_CASE_METHOD(SaverFixture,
 TEMPLATE_TEST_CASE_METHOD(SaverFixture,
                           "a canvas saver draws in its canvas format with its sim's ladder",
                           "[screensaver][screensaver_contract]", HELIX_CANVAS_SAVERS) {
-    const auto& levels = SimOf<TestType>::LEVELS;
+    const auto& levels = SimOf<TestType>::kLevels;
     TestType ss;
     ScreensaverStopOnExit<TestType> stop_on_exit{ss};
     ss.start();
     REQUIRE(ss.is_active());
     const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss));
     REQUIRE(buf != nullptr);
-    CHECK(buf->header.cf == CanvasSaverTraits<TestType>::FORMAT);
+    CHECK(buf->header.cf == CanvasSaverTraits<TestType>::kFormat);
 
     REQUIRE(ss.level_count() == std::size(levels));
-    CHECK(levels[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
+    CHECK(levels[0].period_ms == helix::ui::kSaverFastPeriod);
     for (size_t i = 1; i < std::size(levels); i++) {
         CAPTURE(i);
         CHECK(ss.level_period_ms(i) == levels[i].period_ms);
@@ -165,7 +165,7 @@ TEMPLATE_TEST_CASE_METHOD(SaverFixture,
 
 TEMPLATE_TEST_CASE_METHOD(SaverFixture, "a canvas saver's level request reaches its frame period",
                           "[screensaver][screensaver_contract]", HELIX_CANVAS_SAVERS) {
-    const auto& levels = SimOf<TestType>::LEVELS;
+    const auto& levels = SimOf<TestType>::kLevels;
     TestType ss;
     ScreensaverStopOnExit<TestType> stop_on_exit{ss};
     SaverTestAccess::set_fixed_seed(ss, 4);
@@ -180,7 +180,7 @@ TEMPLATE_TEST_CASE_METHOD(SaverFixture, "a canvas saver's level request reaches 
         frames++;
     }
     REQUIRE(ss.level() == last);
-    if (CanvasSaverTraits<TestType>::DEFERS_LEVEL) {
+    if (CanvasSaverTraits<TestType>::kDefersLevel) {
         CHECK(frames > 0);
     } else {
         CHECK(frames == 0);
@@ -208,7 +208,7 @@ TEMPLATE_TEST_CASE_METHOD(SaverFixture, "a stopped canvas saver holds no sim buf
 TEMPLATE_TEST_CASE_METHOD(SaverFixture,
                           "a canvas saver's allocation covers LVGL's stride-derived extent",
                           "[screensaver][screensaver_contract][1591]", HELIX_CANVAS_SAVERS) {
-    ScopedResolution res(lv_display_get_default(), STRAINED_W, STRAINED_H);
+    ScopedResolution res(lv_display_get_default(), kStrainedW, kStrainedH);
     TestType ss;
     ScreensaverStopOnExit<TestType> stop_on_exit{ss};
     ss.start();
@@ -227,7 +227,7 @@ TEMPLATE_TEST_CASE_METHOD(SaverFixture,
 TEMPLATE_TEST_CASE_METHOD(SaverFixture, "every X byte of an XRGB8888 saver canvas stays 0xFF",
                           "[screensaver][screensaver_contract][screensaver_canvas]",
                           HELIX_CANVAS_SAVERS) {
-    if (CanvasSaverTraits<TestType>::FORMAT != LV_COLOR_FORMAT_XRGB8888) {
+    if (CanvasSaverTraits<TestType>::kFormat != LV_COLOR_FORMAT_XRGB8888) {
         SKIP("this saver's canvas in this build has no X byte");
     }
     TestType ss;

@@ -42,7 +42,7 @@ enum class LegacyLockKeys {
 ///   - a binding change carries the spool's own values, so a commit that
 ///     changes spoolman_id states the binding and nothing else, in both
 ///     directions;
-///   - a cleared field lands on a sentinel (AMS_DEFAULT_SLOT_COLOR, a
+///   - a cleared field lands on a sentinel (kAmsDefaultSlotColor, a
 ///     negative weight) that means "no reading", never a chosen value;
 ///   - catalog_id and product_name arrive from the editor's auto-highlighted
 ///     product, which is why AmsEditOverlay::is_dirty() excludes them too.
@@ -72,7 +72,7 @@ enum class LegacyLockKeys {
 /// so the field comes off whatever it stood over and the machine's own
 /// reading shows through at once (prestonbrown/helixscreen#1661).
 ///
-/// Walks FIELD_ROSTER by kind, so an identity field added there joins by its
+/// Walks kFieldRoster by kind, so an identity field added there joins by its
 /// kind with no line here. Two statements are not field clears and stay: a
 /// colour's name, because a pick with no name must keep displacing a
 /// contradictory name the machine reports; and the spoolman binding, because
@@ -314,14 +314,14 @@ struct ColorReading {
 /// the key empty, and AFC's SET_COLOR with no value stores the bare prefix.
 ///
 /// This answers "what did the producer say", which is not the question
-/// is_declarable_color (declared below) answers. AMS_DEFAULT_SLOT_COLOR
+/// is_declarable_color (declared below) answers. kAmsDefaultSlotColor
 /// written on a wire is a producer stating a grey and reads as Observed here;
 /// the same value sitting in a struct is that struct's "no reading" sentinel
 /// and is refused there.
 [[nodiscard]] ColorReading read_lane_color(const std::string& raw);
 
 /// True when a colour resting in a SlotInfo-shaped struct is a reading rather
-/// than that struct's own "no colour" default. AMS_DEFAULT_SLOT_COLOR is where
+/// than that struct's own "no colour" default. kAmsDefaultSlotColor is where
 /// a cleared slot and a colourless record both land, so filing it would hand
 /// every one of them a declared grey.
 ///

@@ -77,7 +77,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "ThumbnailRequest: fetch delivers when the con
     const helix::ThumbnailTarget target = target_120();
     const std::string key = unique_key("live");
 
-    const auto planted = processor.process_sync(TINY_PNG, key, target);
+    const auto planted = processor.process_sync(kTinyPng, key, target);
     REQUIRE(planted.success);
     REQUIRE(ThumbnailCache::is_lvgl_path(planted.output_path));
 
@@ -110,7 +110,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "ThumbnailRequest: fetch suppresses a supersed
     const helix::ThumbnailTarget target = target_120();
     const std::string key = unique_key("stale");
 
-    const auto planted = processor.process_sync(TINY_PNG, key, target);
+    const auto planted = processor.process_sync(kTinyPng, key, target);
     REQUIRE(planted.success);
 
     ThumbnailRequest req;
@@ -157,7 +157,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
         helix::ThumbnailProcessor::get_target_for_display(helix::ThumbnailSize::Detail);
     const std::string key = unique_key("detail_mtime");
 
-    const auto planted = processor.process_sync(TINY_PNG, key, target);
+    const auto planted = processor.process_sync(kTinyPng, key, target);
     REQUIRE(planted.success);
     REQUIRE(ThumbnailCache::is_lvgl_path(planted.output_path));
 
@@ -233,14 +233,14 @@ TEST_CASE_METHOD(LVGLTestFixture,
     // Entry A: pre-scaled .bin, no cached PNG.
     const std::string bin_key = unique_key("fmt_bin");
     cache.invalidate(bin_key);
-    const auto planted = processor.process_sync(TINY_PNG, bin_key, target);
+    const auto planted = processor.process_sync(kTinyPng, bin_key, target);
     REQUIRE(planted.success);
     REQUIRE(ThumbnailCache::is_lvgl_path(planted.output_path));
 
     // Entry B: full-resolution PNG, no .bin.
     const std::string png_key = unique_key("fmt_png");
     cache.invalidate(png_key);
-    plant_cached_png(cache, png_key, TINY_PNG);
+    plant_cached_png(cache, png_key, kTinyPng);
     const std::string png_path = ThumbnailCache::to_lvgl_path(cache.get_cache_path(png_key));
 
     ThumbnailRequest bin_req;
@@ -279,8 +279,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "ThumbnailRequest: format selects PNG or pre-s
     const std::string png_key = unique_key("fetchfmt_png");
     cache.invalidate(pre_key);
     cache.invalidate(png_key);
-    plant_cached_png(cache, pre_key, TINY_PNG);
-    plant_cached_png(cache, png_key, TINY_PNG);
+    plant_cached_png(cache, pre_key, kTinyPng);
+    plant_cached_png(cache, png_key, kTinyPng);
 
     std::atomic<uint32_t> gen{0};
     helix::AsyncLifetimeGuard guard;
@@ -345,7 +345,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "ThumbnailRequest: format selects PNG or pre-s
     // --- The staleness guard must still apply on the FullPng branch. ---
     const std::string stale_key = unique_key("fetchfmt_stale");
     cache.invalidate(stale_key);
-    plant_cached_png(cache, stale_key, TINY_PNG);
+    plant_cached_png(cache, stale_key, kTinyPng);
 
     ThumbnailRequest stale_req;
     stale_req.key = stale_key;
@@ -377,7 +377,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "ThumbnailCache: a completed pre-scale reports
     const std::string key = unique_key("degraded_false");
     cache.invalidate(key);
 
-    plant_cached_png(cache, key, TINY_PNG);
+    plant_cached_png(cache, key, kTinyPng);
 
     ThumbnailRequest req;
     req.key = key;

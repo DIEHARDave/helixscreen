@@ -44,12 +44,12 @@
 namespace {
 
 // Every name AudioSettingsManager::init_subjects() publishes.
-const std::vector<const char*> AUDIO_SUBJECTS{
+const std::vector<const char*> kAudioSubjects{
     "settings_sounds_enabled",   "settings_ui_sounds_enabled",      "settings_volume",
     "settings_completion_alert", "settings_audio_device_available", "settings_music_available"};
 
 // Every name SafetySettingsManager::init_subjects() publishes.
-const std::vector<const char*> SAFETY_SUBJECTS{"settings_estop_confirm",
+const std::vector<const char*> kSafetySubjects{"settings_estop_confirm",
                                                "settings_cancel_escalation_enabled",
                                                "settings_cancel_escalation_timeout",
                                                "settings_macro_confirm",
@@ -90,13 +90,13 @@ TEST_CASE("Fixture teardown restores settings subject names a test withdrew",
         LVGLTestFixture polluter;
 
         helix::SettingsManager::instance().init_subjects();
-        require_all_resolve(AUDIO_SUBJECTS);
-        require_all_resolve(SAFETY_SUBJECTS);
+        require_all_resolve(kAudioSubjects);
+        require_all_resolve(kSafetySubjects);
 
         helix::AudioSettingsManager::instance().deinit_subjects();
         helix::SafetySettingsManager::instance().deinit_subjects();
-        require_none_resolve(AUDIO_SUBJECTS);
-        require_none_resolve(SAFETY_SUBJECTS);
+        require_none_resolve(kAudioSubjects);
+        require_none_resolve(kSafetySubjects);
 
         // The precondition that makes the fixture the only place this can be
         // repaired: the aggregate init is latched, so calling it — exactly what
@@ -104,8 +104,8 @@ TEST_CASE("Fixture teardown restores settings subject names a test withdrew",
         // cannot bring the names back. If SettingsManager ever learns to clear
         // its flag when a sub-manager is torn down, this is where that shows up.
         helix::SettingsManager::instance().init_subjects();
-        require_none_resolve(AUDIO_SUBJECTS);
-        require_none_resolve(SAFETY_SUBJECTS);
+        require_none_resolve(kAudioSubjects);
+        require_none_resolve(kSafetySubjects);
     } // ~HelixTestFixture -> reset_all() must put the names back
 
     {
@@ -115,8 +115,8 @@ TEST_CASE("Fixture teardown restores settings subject names a test withdrew",
         // fixture, not this call, is what has to have restored the names.
         helix::SettingsManager::instance().init_subjects();
 
-        check_all_resolve(AUDIO_SUBJECTS);
-        check_all_resolve(SAFETY_SUBJECTS);
+        check_all_resolve(kAudioSubjects);
+        check_all_resolve(kSafetySubjects);
     }
 }
 
@@ -125,8 +125,8 @@ TEST_CASE("Fixture construction restores settings subject names withdrawn betwee
     {
         LVGLTestFixture setup;
         helix::SettingsManager::instance().init_subjects();
-        require_all_resolve(AUDIO_SUBJECTS);
-        require_all_resolve(SAFETY_SUBJECTS);
+        require_all_resolve(kAudioSubjects);
+        require_all_resolve(kSafetySubjects);
     }
 
     // No fixture alive. LVGL stays initialized for the whole binary
@@ -135,13 +135,13 @@ TEST_CASE("Fixture construction restores settings subject names withdrawn betwee
     // rather than hitting SubjectManager's !lv_is_initialized() shortcut.
     helix::AudioSettingsManager::instance().deinit_subjects();
     helix::SafetySettingsManager::instance().deinit_subjects();
-    require_none_resolve(AUDIO_SUBJECTS);
-    require_none_resolve(SAFETY_SUBJECTS);
+    require_none_resolve(kAudioSubjects);
+    require_none_resolve(kSafetySubjects);
 
     {
         LVGLTestFixture next_test; // ctor -> reset_all()
-        check_all_resolve(AUDIO_SUBJECTS);
-        check_all_resolve(SAFETY_SUBJECTS);
+        check_all_resolve(kAudioSubjects);
+        check_all_resolve(kSafetySubjects);
     }
 }
 

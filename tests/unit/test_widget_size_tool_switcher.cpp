@@ -321,7 +321,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     ParkingBackend parking(/*tool_changer=*/true);
     const SlotInfo slot0 = parking.backend->get_slot_info(0);
     REQUIRE(slot0.status != SlotStatus::EMPTY);
-    REQUIRE(slot0.color_rgb != AMS_DEFAULT_SLOT_COLOR);
+    REQUIRE(slot0.color_rgb != kAmsDefaultSlotColor);
 
     ToolState& ts = ToolState::instance();
     ts.deinit_subjects();
@@ -357,7 +357,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     parking.backend->force_slot_status(1, SlotStatus::EMPTY);
     AmsState::instance().bump_slots_version();
     process_lvgl(30);
-    REQUIRE(parking.backend->get_slot_info(1).color_rgb != AMS_DEFAULT_SLOT_COLOR);
+    REQUIRE(parking.backend->get_slot_info(1).color_rgb != kAmsDefaultSlotColor);
     CHECK(subject_int(seg(1, "has_color").c_str()) == 0);
 }
 

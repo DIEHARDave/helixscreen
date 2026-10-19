@@ -20,45 +20,45 @@
 
 /// Z travel per full turn (mm) for every thread Klipper's `screw_thread` accepts.
 /// Mirrors the `threads_factor` table in Klipper's screws_tilt_adjust.py.
-constexpr float SCREW_PITCH_M3_MM = 0.5f;
-constexpr float SCREW_PITCH_M4_MM = 0.7f;
-constexpr float SCREW_PITCH_M5_MM = 0.8f;
-constexpr float SCREW_PITCH_M6_MM = 1.0f;
+constexpr float kScrewPitchM3Mm = 0.5f;
+constexpr float kScrewPitchM4Mm = 0.7f;
+constexpr float kScrewPitchM5Mm = 0.8f;
+constexpr float kScrewPitchM6Mm = 1.0f;
 
 /// Pitch assumed when `screw_thread` is unreadable — Klipper's own default (CW-M3).
-constexpr float SCREW_PITCH_DEFAULT_MM = SCREW_PITCH_M3_MM;
+constexpr float kScrewPitchDefaultMm = kScrewPitchM3Mm;
 
 /// Corner-to-corner bed spread at or below which the bed counts as level.
 /// Expressed in mm because a clock-minute is a different physical distance on
 /// every thread pitch (5 min is 0.042 mm on M3 but 0.083 mm on M6).
-constexpr float SCREW_LEVEL_TOLERANCE_MM = 0.05f;
+constexpr float kScrewLevelToleranceMm = 0.05f;
 
 /// Adjustment magnitude above which a screw is drawn as severe rather than warned.
-constexpr float SCREW_SEVERE_ADJUSTMENT_MM = 0.25f;
+constexpr float kScrewSevereAdjustmentMm = 0.25f;
 
 /**
  * @brief Z travel per full turn for a Klipper `screw_thread` value
  *
  * Accepts the full config token ("CW-M4", "CCW-M6") or a bare thread ("M5").
- * Falls back to SCREW_PITCH_DEFAULT_MM when the value is missing or unparseable.
+ * Falls back to kScrewPitchDefaultMm when the value is missing or unparseable.
  */
 [[nodiscard]] inline float screw_thread_pitch_mm(const std::string& screw_thread) {
     size_t m = screw_thread.find_last_of("mM");
     if (m != std::string::npos && m + 1 < screw_thread.length()) {
         switch (screw_thread[m + 1]) {
         case '3':
-            return SCREW_PITCH_M3_MM;
+            return kScrewPitchM3Mm;
         case '4':
-            return SCREW_PITCH_M4_MM;
+            return kScrewPitchM4Mm;
         case '5':
-            return SCREW_PITCH_M5_MM;
+            return kScrewPitchM5Mm;
         case '6':
-            return SCREW_PITCH_M6_MM;
+            return kScrewPitchM6Mm;
         default:
             break;
         }
     }
-    return SCREW_PITCH_DEFAULT_MM;
+    return kScrewPitchDefaultMm;
 }
 
 /**
@@ -71,7 +71,7 @@ constexpr float SCREW_SEVERE_ADJUSTMENT_MM = 0.25f;
  */
 [[nodiscard]] inline int screw_minutes_for_mm(float distance_mm, float pitch_mm) {
     if (!(pitch_mm > 0.0f)) {
-        pitch_mm = SCREW_PITCH_DEFAULT_MM;
+        pitch_mm = kScrewPitchDefaultMm;
     }
     int minutes = static_cast<int>(std::lround(distance_mm / pitch_mm * 60.0f));
     return minutes != 0 ? minutes : (distance_mm < 0.0f ? -1 : 1);
@@ -79,13 +79,13 @@ constexpr float SCREW_SEVERE_ADJUSTMENT_MM = 0.25f;
 
 /// Level tolerance in clock-minutes for a given thread pitch (the single source
 /// of truth — every threshold in the screws-tilt UI derives from this).
-[[nodiscard]] inline int screw_level_tolerance_minutes(float pitch_mm = SCREW_PITCH_DEFAULT_MM) {
-    return screw_minutes_for_mm(SCREW_LEVEL_TOLERANCE_MM, pitch_mm);
+[[nodiscard]] inline int screw_level_tolerance_minutes(float pitch_mm = kScrewPitchDefaultMm) {
+    return screw_minutes_for_mm(kScrewLevelToleranceMm, pitch_mm);
 }
 
 /// Magnitude in clock-minutes above which an adjustment is drawn as severe.
-[[nodiscard]] inline int screw_severe_adjustment_minutes(float pitch_mm = SCREW_PITCH_DEFAULT_MM) {
-    return screw_minutes_for_mm(SCREW_SEVERE_ADJUSTMENT_MM, pitch_mm);
+[[nodiscard]] inline int screw_severe_adjustment_minutes(float pitch_mm = kScrewPitchDefaultMm) {
+    return screw_minutes_for_mm(kScrewSevereAdjustmentMm, pitch_mm);
 }
 
 /**
@@ -319,7 +319,7 @@ struct ScrewLevelReport {
  */
 [[nodiscard]] inline ScrewLevelReport
 evaluate_screw_level(const std::vector<ScrewTiltResult>& results,
-                     float pitch_mm = SCREW_PITCH_DEFAULT_MM) {
+                     float pitch_mm = kScrewPitchDefaultMm) {
     ScrewLevelReport report;
     report.tolerance_minutes = screw_level_tolerance_minutes(pitch_mm);
     report.in_spec.assign(results.size(), false);
@@ -404,7 +404,7 @@ struct ScrewRecenterHint {
 };
 
 /// One full turn in clock-minutes. Pitch-independent: the notation is turns:minutes.
-inline constexpr int SCREW_MINUTES_PER_TURN = 60;
+inline constexpr int kScrewMinutesPerTurn = 60;
 
 /**
  * @brief Suggest moving the reference screw instead of all the others
@@ -460,7 +460,7 @@ suggest_screw_recentering(const std::vector<ScrewTiltResult>& results,
     const int common = (sorted.size() % 2 == 1) ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 
     // Only worth interrupting the user for a turn they would actually notice.
-    if (std::abs(common) <= SCREW_MINUTES_PER_TURN) {
+    if (std::abs(common) <= kScrewMinutesPerTurn) {
         return hint;
     }
 

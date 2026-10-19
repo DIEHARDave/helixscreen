@@ -782,7 +782,7 @@ static int fan_out_to_printers(json& config, const std::string& root_path,
 }
 
 /// The four leaves of a printer's legacy scanner/ node.
-static constexpr const char* SCANNER_LEAVES[] = {"usb_vendor_product", "usb_device_name",
+static constexpr const char* kScannerLeaves[] = {"usb_vendor_product", "usb_device_name",
                                                  "bt_address", "keymap"};
 
 /// Collapse the per-printer scanner/ nodes into one root-level /scanner.
@@ -800,7 +800,7 @@ static void collapse_scanner_to_root(json& config) {
     if (!active.empty()) {
         json* source = find_relative(config, "printers/" + active + "/scanner");
         if (source != nullptr && source->is_object()) {
-            for (const char* leaf : SCANNER_LEAVES) {
+            for (const char* leaf : kScannerLeaves) {
                 const auto it = source->find(leaf);
                 if (it == source->end() || it->is_null()) {
                     continue;
@@ -1155,11 +1155,11 @@ static void migrate_v24_to_v25(json& config, const std::string& /*config_path*/)
     // PrintStartPhase as it was numbered when these documents were written,
     // before SOAKING took slot 4. Frozen — it describes stored data, not the
     // current enum, and must not be regenerated from it.
-    static constexpr const char* LEGACY_PHASE_NAMES[] = {
+    static constexpr const char* kLegacyPhaseNames[] = {
         "IDLE",   "INITIALIZING", "HOMING",   "HEATING_BED", "HEATING_NOZZLE", "QGL",
         "Z_TILT", "BED_MESH",     "CLEANING", "PURGING",     "COMPLETE",
     };
-    constexpr int LEGACY_PHASE_COUNT = static_cast<int>(std::size(LEGACY_PHASE_NAMES));
+    constexpr int kLegacyPhaseCount = static_cast<int>(std::size(kLegacyPhaseNames));
 
     if (!config.contains("print_start_history") ||
         !config["print_start_history"].contains("entries") ||
@@ -1189,11 +1189,11 @@ static void migrate_v24_to_v25(json& config, const std::string& /*config_path*/)
             // At most three digits, so it always parses.
             const int ordinal = tio::parse_int<int>(key).value_or(-1);
             changed = true;
-            if (ordinal < 0 || ordinal >= LEGACY_PHASE_COUNT) {
+            if (ordinal < 0 || ordinal >= kLegacyPhaseCount) {
                 ++dropped;
                 continue;
             }
-            renamed[LEGACY_PHASE_NAMES[ordinal]] = it.value();
+            renamed[kLegacyPhaseNames[ordinal]] = it.value();
         }
 
         if (changed) {
@@ -1241,7 +1241,7 @@ static void migrate_v26_to_v27(json& config, const std::string& /*config_path*/)
         return;
     }
     const int stored = input["scroll_throw"].get<int>();
-    const int migrated = migrated_scroll_throw(stored, helix::input_defaults::SCROLL_THROW);
+    const int migrated = migrated_scroll_throw(stored, helix::input_defaults::kScrollThrow);
     if (migrated != stored) {
         input["scroll_throw"] = migrated;
         spdlog::info("[Config] Migration v27: input.scroll_throw {} -> {}", stored, migrated);
@@ -1264,7 +1264,7 @@ static void migrate_v27_to_v28(json& config, const std::string& /*config_path*/)
     const json& stored = display["screensaver_type"];
     const char* name = helix::ui::legacy_screensaver_name(stored.get<long long>());
     if (name == nullptr) {
-        name = helix::ui::screensaver_name(helix::ui::DEFAULT_SCREENSAVER_TYPE);
+        name = helix::ui::screensaver_name(helix::ui::kDefaultScreensaverType);
     }
     spdlog::info("[Config] Migration v28: display.screensaver_type {} -> \"{}\"", stored.dump(),
                  name);
@@ -1288,14 +1288,14 @@ constexpr struct {
     {28, migrate_v27_to_v28},
 };
 
-static_assert(kMigrations[std::size(kMigrations) - 1].to_version == CURRENT_CONFIG_VERSION,
+static_assert(kMigrations[std::size(kMigrations) - 1].to_version == kCurrentConfigVersion,
               "the last migration must reach CURRENT_CONFIG_VERSION");
 
 } // namespace
 
 namespace helix::config_detail {
 
-/// Run all versioned migrations in sequence from current version to CURRENT_CONFIG_VERSION
+/// Run all versioned migrations in sequence from current version to kCurrentConfigVersion
 void run_versioned_migrations(json& config, const std::string& config_path) {
     int version = 0;
     if (config.contains("config_version")) {
@@ -1331,10 +1331,10 @@ void run_versioned_migrations(json& config, const std::string& config_path) {
     // whole subtree over its path discards what the node held before save()
     // ever sees it, so a subtree owner has to merge into the existing node —
     // PanelWidgetConfig::save() is the one that carries newer keys this way.
-    if (version > CURRENT_CONFIG_VERSION) {
+    if (version > kCurrentConfigVersion) {
         spdlog::warn("[Config] config_version {} was written by a newer build (this build "
                      "understands {}) — leaving the document unmigrated and unstamped",
-                     version, CURRENT_CONFIG_VERSION);
+                     version, kCurrentConfigVersion);
         return;
     }
 
@@ -1347,7 +1347,7 @@ void run_versioned_migrations(json& config, const std::string& config_path) {
         }
     }
 
-    config["config_version"] = CURRENT_CONFIG_VERSION;
+    config["config_version"] = kCurrentConfigVersion;
 }
 
 int migrated_scroll_throw(int stored, int platform_default) {

@@ -757,8 +757,8 @@ WifiBackendNetworkManager::try_nmcli_connect(const std::string& ssid, const std:
 
     close(stderr_pipe[1]);
 
-    constexpr int CONNECT_TIMEOUT_SECONDS = 30;
-    constexpr int POLL_INTERVAL_MS = 100;
+    constexpr int kConnectTimeoutSeconds = 30;
+    constexpr int kPollIntervalMs = 100;
     auto start_time = std::chrono::steady_clock::now();
 
     int status = 0;
@@ -785,7 +785,7 @@ WifiBackendNetworkManager::try_nmcli_connect(const std::string& ssid, const std:
             return result;
         } else {
             auto elapsed = std::chrono::steady_clock::now() - start_time;
-            if (elapsed > std::chrono::seconds(CONNECT_TIMEOUT_SECONDS)) {
+            if (elapsed > std::chrono::seconds(kConnectTimeoutSeconds)) {
                 result.timed_out = true;
                 kill(pid, SIGTERM);
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -793,7 +793,7 @@ WifiBackendNetworkManager::try_nmcli_connect(const std::string& ssid, const std:
                 waitpid(pid, &status, 0);
                 child_done = true;
             } else {
-                std::this_thread::sleep_for(std::chrono::milliseconds(POLL_INTERVAL_MS));
+                std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
             }
         }
     }
@@ -1107,7 +1107,7 @@ bool WifiBackendNetworkManager::supports_5ghz() const {
 void WifiBackendNetworkManager::status_thread_func() {
     spdlog::debug("[WifiBackend] NM: Status polling thread started");
 
-    constexpr auto POLL_INTERVAL = std::chrono::seconds(5);
+    constexpr auto kPollInterval = std::chrono::seconds(5);
 
     while (status_running_) {
         // Poll nmcli for current status. nullopt = the poll itself failed
@@ -1143,7 +1143,7 @@ void WifiBackendNetworkManager::status_thread_func() {
         // (status_running_, status_refresh_requested_) are both atomic.
         {
             std::unique_lock<std::mutex> lock(status_cv_mutex_);
-            status_cv_.wait_for(lock, POLL_INTERVAL, [this] {
+            status_cv_.wait_for(lock, kPollInterval, [this] {
                 return !status_running_.load() || status_refresh_requested_.load();
             });
             status_refresh_requested_ = false;

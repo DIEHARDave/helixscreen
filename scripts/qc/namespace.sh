@@ -29,7 +29,7 @@ echo -n "📛 Checking namespace compliance (declarations outside helix::)..."
 # dominant convention (the inline predicates beside the global AmsAction enum,
 # two more ui_gcode_viewer_* C-style entry points, and a custom XML widget
 # module registered by C-string name). 2304 -> 2305 is the next sync's single
-# site: RecoverySuppression::RESTART_FLAG_TIMEOUT joins an existing global
+# site: RecoverySuppression::kRestartFlagTimeout joins an existing global
 # namespace whose other constants are already counted here. 2305 -> 2325 is
 # the 2026-08-31 sync's twenty: main's netd backends (EthernetBackendNetd,
 # WifiBackendNetd, and ethernet_backend.h's foreign-ns sysfs helpers beside
@@ -81,7 +81,7 @@ echo -n "📛 Checking namespace compliance (declarations outside helix::)..."
 # redeclaration of get_global_motion_panel() leaves (its header defines it
 # inline), and the bed mesh and spoolman accessors are counted as .cpp
 # definitions, kept out of line because the ESP32 build supplies its own.
-# 2101 -> 2102 is MOCK_K2_CHAMBER_FAN_RESTING_C, beside the other mock_internal
+# 2101 -> 2102 is kMockK2ChamberFanRestingC, beside the other mock_internal
 # constants in moonraker_client_mock_internal.h.
 # 2102 -> 2016 is IMoonrakerAPI, the ten sub-API interfaces and their value
 # types moving into helix::, with every forward declaration that named them.

@@ -305,17 +305,17 @@ void AmsDeviceSectionDetailOverlay::create_action_control(
         }
 
         // Store action ID in vector, pass index as user_data on slider only.
-        // Textarea user_data is reserved for TEXT_INPUT_MAGIC + KeyboardHint;
+        // Textarea user_data is reserved for kTextInputMagic + KeyboardHint;
         // on_value_input_ready finds the index via the sibling slider.
         action_ids_.push_back(action.id);
         size_t action_index = action_ids_.size() - 1;
         lv_obj_set_user_data(slider, reinterpret_cast<void*>(action_index));
 
         // Set numeric keyboard hint and register with KeyboardManager
-        static constexpr uintptr_t TEXT_INPUT_MAGIC = 0xBADC0DE0;
+        static constexpr uintptr_t kTextInputMagic = 0xBADC0DE0;
         lv_obj_set_user_data(ta,
                              reinterpret_cast<void*>(
-                                 TEXT_INPUT_MAGIC | static_cast<uintptr_t>(KeyboardHint::NUMERIC)));
+                                 kTextInputMagic | static_cast<uintptr_t>(KeyboardHint::NUMERIC)));
         KeyboardManager::instance().register_textarea(ta);
 
         // Slider callbacks: update text input live during drag, execute on release
@@ -643,7 +643,7 @@ void AmsDeviceSectionDetailOverlay::on_value_input_ready(lv_event_t* e) {
     } else {
         auto& overlay = get_ams_device_section_detail_overlay();
         // Get action index from sibling slider (child index 1 of row).
-        // Textarea user_data is reserved for TEXT_INPUT_MAGIC + KeyboardHint.
+        // Textarea user_data is reserved for kTextInputMagic + KeyboardHint.
         lv_obj_t* row = lv_obj_get_parent(ta);
         lv_obj_t* slider = row ? lv_obj_get_child(row, 1) : nullptr;
         auto index = slider ? reinterpret_cast<size_t>(lv_obj_get_user_data(slider)) : SIZE_MAX;

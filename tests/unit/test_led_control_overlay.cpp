@@ -823,7 +823,7 @@ struct OverlayXmlFixture : public LVGLUITestFixture {
 
         helix::ui::destroy_static_panels();
         drain();
-        std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+        std::array<lv_obj_t*, kUiPanelCount> panels{};
         for (auto& p : panels) {
             p = lv_obj_create(test_screen());
         }
@@ -1215,9 +1215,10 @@ TEST_CASE_METHOD(OverlayXmlFixture,
     const char* attrs[] = {"swatch_callback", "led_swatch_cb", nullptr};
     auto* grid = static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "color_swatch_grid", attrs));
     REQUIRE(grid != nullptr);
-    REQUIRE(lv_obj_get_child_count(grid) == 30);
+    // 30 presets after the grid's hidden custom-colour lead tile.
+    REQUIRE(lv_obj_get_child_count(grid) == 31);
 
-    for (lv_obj_t* swatch : {need("led_swatch_0"), lv_obj_get_child(grid, 0)}) {
+    for (lv_obj_t* swatch : {need("led_swatch_0"), lv_obj_get_child(grid, 1)}) {
         REQUIRE(swatch != nullptr);
         // Built by color_swatch: a transparent ring holder around the named disc.
         lv_obj_t* disc = lv_obj_get_child(swatch, 0);

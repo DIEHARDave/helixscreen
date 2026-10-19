@@ -12,7 +12,7 @@
 namespace helix::ui {
 
 /// 4x4 ordered-dither thresholds, 0 to 15, indexed [y & 3][x & 3].
-inline constexpr uint8_t BAYER_4X4[4][4] = {
+inline constexpr uint8_t kBayer4x4[4][4] = {
     {0, 8, 2, 10},
     {12, 4, 14, 6},
     {3, 11, 1, 9},
@@ -120,7 +120,7 @@ inline void add_light(uint32_t* p, uint32_t r, uint32_t g, uint32_t b) {
 /**
  * @brief Adds light (r, g, b), 8 bits a channel, to the RGB565 pixel at `p`
  *
- * Each channel saturates at its top level. `threshold` (0-15, BAYER_4X4 at the pixel) rounds
+ * Each channel saturates at its top level. `threshold` (0-15, kBayer4x4 at the pixel) rounds
  * the 8-bit amount to the channel's levels, so light fainter than one RGB565 level still shows
  * as a sparse pattern; 0 truncates.
  */
@@ -172,7 +172,7 @@ class PixelWriter {
                c.b;
     }
 
-    /// Like put(), but RGB565 dithers each channel with BAYER_4X4 at (x, y), so a smooth fade
+    /// Like put(), but RGB565 dithers each channel with kBayer4x4 at (x, y), so a smooth fade
     /// shows as a fine pattern instead of bands. XRGB8888 is written exactly.
     void put_dithered(int32_t x, int32_t y, Rgb c) {
         if (frame_.format == PixelFormat::RGB565) {
@@ -187,7 +187,7 @@ class PixelWriter {
     template <PixelFormat F>
     static void put_dithered_in_row(uint8_t* row, int32_t x, int32_t y, Rgb c) {
         if constexpr (F == PixelFormat::RGB565) {
-            const uint8_t t = BAYER_4X4[y & 3][x & 3];
+            const uint8_t t = kBayer4x4[y & 3][x & 3];
             const auto v =
                 static_cast<uint16_t>(dither_channel(c.r, 31, t) << 11 |
                                       dither_channel(c.g, 63, t) << 5 | dither_channel(c.b, 31, t));

@@ -12,7 +12,7 @@
 #include "ui_print_layer_pause.h"
 #include "ui_print_light_timelapse.h"
 #include "ui_print_tune_overlay.h"
-#include "ui_temperature_utils.h" // HEATER_STATUS_BUF_BYTES
+#include "ui_temperature_utils.h" // kHeaterStatusBufBytes
 
 #include "overlay_base.h"
 #include "print_control_buttons.h"
@@ -448,9 +448,9 @@ class PrintStatusPanel : public OverlayBase {
     lv_subject_t print_controls_enabled_subject_{}; ///< 1 when lifecycle.is_active()
 
     // Subject storage buffers
-    char nozzle_status_buf_[helix::ui::temperature::HEATER_STATUS_BUF_BYTES] = "Off";
-    char bed_status_buf_[helix::ui::temperature::HEATER_STATUS_BUF_BYTES] = "Off";
-    char chamber_status_buf_[helix::ui::temperature::HEATER_STATUS_BUF_BYTES] = "";
+    char nozzle_status_buf_[helix::ui::temperature::kHeaterStatusBufBytes] = "Off";
+    char bed_status_buf_[helix::ui::temperature::kHeaterStatusBufBytes] = "Off";
+    char chamber_status_buf_[helix::ui::temperature::kHeaterStatusBufBytes] = "";
     char objects_text_buf_[32] = "";        ///< "X of Y obj" buffer
     char view_toggle_icon_buf_[8] = "";     ///< View toggle icon codepoint (cube/layers)
     char camera_button_label_buf_[16] = ""; ///< Short/long camera label per ui_breakpoint
@@ -498,7 +498,7 @@ class PrintStatusPanel : public OverlayBase {
     void cancel_preparing_show_timer();
 
     /// How long Preparing must persist before the overlay is shown.
-    static constexpr uint32_t PREPARING_SHOW_DELAY_MS = 750;
+    static constexpr uint32_t kPreparingShowDelayMs = 750;
 
     bool complete_view_mode_ = false;
 

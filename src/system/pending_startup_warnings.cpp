@@ -13,7 +13,7 @@ namespace helix {
 // Upper bound on the queue. A runaway pre-init loop (e.g. repeated NOTIFY_*
 // on AD5M's 107 MB budget) would otherwise OOM before ToastManager::init()
 // drains this. Drops past the cap, logging once until the queue has room again.
-static constexpr size_t MAX_PENDING = 64;
+static constexpr size_t kMaxPending = 64;
 
 PendingStartupWarnings& PendingStartupWarnings::instance() {
     static PendingStartupWarnings s_instance;
@@ -22,12 +22,12 @@ PendingStartupWarnings& PendingStartupWarnings::instance() {
 
 void PendingStartupWarnings::enqueue(Severity severity, std::string message, uint32_t duration_ms) {
     std::lock_guard<std::mutex> lock(mu_);
-    if (pending_.size() >= MAX_PENDING) {
+    if (pending_.size() >= kMaxPending) {
         if (!overflow_warned_) {
             overflow_warned_ = true;
             spdlog::warn("[PendingStartupWarnings] queue full ({} entries) — "
                          "dropping subsequent early notifications",
-                         MAX_PENDING);
+                         kMaxPending);
         }
         return;
     }

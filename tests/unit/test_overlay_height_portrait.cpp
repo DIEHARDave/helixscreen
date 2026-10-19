@@ -27,7 +27,7 @@ using namespace helix;
 namespace {
 // Representative values; the exact breakpoint rung does not matter to the
 // formula, only whether nav_height is subtracted at all.
-constexpr int32_t NAV_HEIGHT = 112; // button_height_lg at the xlarge tier
+constexpr int32_t kNavHeight = 112; // button_height_lg at the xlarge tier
 constexpr int32_t GAP = 16;         // space_lg
 } // namespace
 
@@ -47,7 +47,7 @@ TEST_CASE("Landscape overlays span the full height", "[theme][overlay-height][po
     };
     for (const auto& c : cases) {
         INFO(c.label);
-        auto hgt = compute_overlay_heights(c.w, c.h, NAV_HEIGHT, GAP);
+        auto hgt = compute_overlay_heights(c.w, c.h, kNavHeight, GAP);
         CHECK(hgt.destination == c.h);
         CHECK(hgt.transient == c.h);
     }
@@ -67,11 +67,11 @@ TEST_CASE("Portrait overlays reserve the bottom nav strip", "[theme][overlay-hei
     };
     for (const auto& c : cases) {
         INFO(c.label);
-        auto hgt = compute_overlay_heights(c.w, c.h, NAV_HEIGHT, GAP);
-        CHECK(hgt.destination == c.h - NAV_HEIGHT);
+        auto hgt = compute_overlay_heights(c.w, c.h, kNavHeight, GAP);
+        CHECK(hgt.destination == c.h - kNavHeight);
         // The gap signals "you will return from this" (#1178). In portrait it
         // sits between the overlay's bottom edge and the nav bar.
-        CHECK(hgt.transient == c.h - NAV_HEIGHT - GAP);
+        CHECK(hgt.transient == c.h - kNavHeight - GAP);
     }
 }
 
@@ -79,11 +79,11 @@ TEST_CASE("Portrait overlay no longer covers the navigation bar",
           "[theme][overlay-height][portrait]") {
     // State the regression as a delta: on 480x800 the old behaviour was
     // height="100%" = 800, hiding all 112px of the bottom bar.
-    const auto portrait = compute_overlay_heights(480, 800, NAV_HEIGHT, GAP);
+    const auto portrait = compute_overlay_heights(480, 800, kNavHeight, GAP);
     constexpr int32_t old_height = 800;
 
     CHECK(portrait.destination == 688);
-    CHECK(old_height - portrait.destination == NAV_HEIGHT);
+    CHECK(old_height - portrait.destination == kNavHeight);
     CHECK(portrait.transient == 672);
 }
 
@@ -99,17 +99,17 @@ TEST_CASE("Height and width classification agree on orientation",
     for (const auto& c : portrait_cases) {
         INFO("size " << c.w << "x" << c.h);
         const auto wid = compute_overlay_widths(c.w, c.h, 54, GAP);
-        const auto hgt = compute_overlay_heights(c.w, c.h, NAV_HEIGHT, GAP);
+        const auto hgt = compute_overlay_heights(c.w, c.h, kNavHeight, GAP);
         // Portrait: full width reclaimed, vertical extent surrendered.
         CHECK(wid.destination == c.w);
-        CHECK(hgt.destination == c.h - NAV_HEIGHT);
+        CHECK(hgt.destination == c.h - kNavHeight);
     }
 
     const Case landscape_cases[] = {{800, 480}, {1920, 480}, {480, 272}, {480, 320}};
     for (const auto& c : landscape_cases) {
         INFO("size " << c.w << "x" << c.h);
         const auto wid = compute_overlay_widths(c.w, c.h, 54, GAP);
-        const auto hgt = compute_overlay_heights(c.w, c.h, NAV_HEIGHT, GAP);
+        const auto hgt = compute_overlay_heights(c.w, c.h, kNavHeight, GAP);
         // Landscape: horizontal extent surrendered, full height kept.
         CHECK(wid.destination == c.w - 54);
         CHECK(hgt.destination == c.h);

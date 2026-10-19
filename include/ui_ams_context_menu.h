@@ -121,7 +121,7 @@ class AmsContextMenu : public ContextMenu {
      * @brief Show context menu for external spool (bypass/direct feed)
      *
      * Shows the bypass spool's own actions: the bypass toggle, Load, Unload and
-     * Purge against EXTERNAL_SPOOL_SLOT, plus the spool bookkeeping. The lane
+     * Purge against kExternalSpoolSlot, plus the spool bookkeeping. The lane
      * dropdowns and the cold lane ops do not apply and stay hidden.
      *
      * @param parent Parent screen for the menu
@@ -204,6 +204,9 @@ class AmsContextMenu : public ContextMenu {
     /// The Endless Spool row's label in the backend's own noun ("Backup Gate").
     static lv_subject_t slot_backup_label_subject_;
     static char slot_backup_label_buf_[64];
+    /// 1 = the Assigned Tool row shows: the backend accepts a tool->lane
+    /// mapping-table write (can_write_mapping_table()).
+    static lv_subject_t slot_tool_row_visible_subject_;
     /// Preload row: 0 = hidden (backend has no lane preload), 1 = shown but
     /// disabled (busy, filament loaded, or a print blocks filament ops),
     /// 2 = enabled.
@@ -278,6 +281,9 @@ class AmsContextMenu : public ContextMenu {
     /// The word this menu spells a position with. The backend the menu was
     /// shown for owns the answer; with none, the active printer's does.
     LaneNoun menu_lane_noun() const;
+    /// Plugin items for the slot, in their own column beside Filament and Spool. A
+    /// lane menu only: the external spool takes no plugin items.
+    void append_slot_plugin_rows(lv_obj_t* menu_obj, int slot_index);
     int get_current_tool_for_slot() const;
     int get_current_backup_for_slot() const;
 

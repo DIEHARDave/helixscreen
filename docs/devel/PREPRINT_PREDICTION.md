@@ -15,9 +15,11 @@ The preprint prediction system solves this by:
 3. **Predicting** future preparation time using a weighted average that favors recent entries
 4. **Displaying** a live countdown during preparation ("~3:20 left") that accounts for completed and in-progress phases
 
-Predictions improve with each completed print. Before any history exists the countdown is
+Predictions improve with each completed print. Before any history exists the estimate is
 theoretical - the thermal model's heating estimate plus per-printer default phase durations -
 and the print select panel adds no preprint overhead at all until the first entry is recorded.
+The print details screen and the live countdown compute their totals with one function,
+`PreprintPredictor::estimate()` (see "One Model for Both Estimates").
 
 ---
 
@@ -42,6 +44,7 @@ PrintStartCollector (owns lifecycle, phase detection, timing)
 - **PreprintPredictor is a pure-logic class** with zero dependencies on LVGL, Config, or threading. This makes it trivially testable.
 - **PrintStartCollector owns the predictor instance** and manages loading/saving. It also owns the LVGL timer that periodically updates the ETA display.
 - **Static convenience method** `PreprintPredictor::predicted_total_from_config()` allows UI code (print select panel, print status panel) to get predictions without access to the collector.
+- **One estimate function.** `PreprintPredictor::estimate()` turns heating seconds, the predicted phases and a start's phase overrides into the duration map and the absolute total. The collector's countdown and the print details estimate both call it. The countdown passes no overrides, so given the same temperatures, targets and history the two numbers are equal exactly when the details side's overrides change nothing: no toggle turned off, and no toggle left on for a phase `estimate()` adds (before any history, a phase the default map lacks; with history, a phase every entry in the window recorded as skipped).
 
 ---
 
@@ -187,10 +190,10 @@ With an empty history `predicted_phases()` returns `default_phase_durations()`
 (`src/print/preprint_predictor.cpp#default_phase_durations`): the detected printer's
 `print_start_default_phases` map from the printer database when its entry has one,
 otherwise a generic map covering HOMING, BED_MESH, QGL, Z_TILT, CLEANING and PURGING.
-`compute_predicted_weights()` combines that shape with the thermal model's heating
-estimate and uses their sum as the absolute total, so a printer with no recorded prints
-still shows a countdown - a theoretical estimate rather than an empirical one.
-`predicted_total()` falls back to the same map summed.
+`estimate()` combines that shape with the thermal model's heating estimate and uses their
+sum as the absolute total, so a printer with no recorded prints still shows a countdown and
+a details estimate - a theoretical one rather than an empirical one. `predicted_total()`
+falls back to the same map summed.
 
 A database entry lists only the phases that printer's start sequence actually runs (a
 Trident tilts its bed and has no gantry to level, a V0 does neither), because a phase the
@@ -199,7 +202,9 @@ model owns it.
 
 `predicted_total_from_config()` does not use the defaults. It returns 0 when there is no
 history, so the print select panel adds no preprint overhead to a slicer estimate until at
-least one entry has been recorded.
+least one entry has been recorded. It loads the cold-start bucket (plus legacy unbucketed
+entries) with no window filter and takes no file temperatures or option toggles, so the file
+list's overhead is a coarser number than the print details estimate.
 
 ---
 
@@ -312,14 +317,66 @@ whose narration the profile never matches accumulates no history.
 
 ---
 
+## One Model for Both Estimates
+
+`PreprintPredictor::estimate(heating, overrides)` (`src/print/preprint_predictor.cpp#estimate`)
+is the whole model:
+
+1. **Durations.** The two heating phases from `PreprintHeating` (seconds the thermal model
+   priced), every other phase from `predicted_phases()` - the history when the loaded bucket
+   has any, else `default_phase_durations()` - and HOMING at `predicted_homing_seconds()`.
+2. **Overrides.** A phase the start skips is removed from the map. A phase it runs that the
+   map lacks is added at its `generic_phase_durations()` value without history. With history
+   it is added (to the map and the total) only when every entry in the window lists it in
+   `skipped`: no start there ran it, so the wall clock lacks it. Otherwise it adds nothing - a
+   start that did not skip it ran it, and the wall clock holds it even when the matcher never
+   named it - and an entry with no `skipped` field counts as not skipped, so legacy history
+   never adds. A phase with no override stays as the history or the defaults have it, because
+   those already describe what the start macro runs.
+3. **Nozzle placeholder.** While the nozzle target is unknown (a bed-first macro issues its
+   M109 late) and the thermal model priced no nozzle climb, HEATING_NOZZLE holds
+   `kUnknownNozzleHeatSeconds` (60s).
+4. **Total.** With history, `predicted_total()` (the recorded wall clock) less each skipped
+   phase's share of it - the phase's seconds averaged over every loaded entry (the bucket and
+   window) with the same weights as `predicted_total()`, an entry without the phase counting
+   0 - plus each phase step 2 added, floored at 0. Without history, the sum of the durations.
+
+**Heating with history.** The recorded wall clock already contains every heat-up, so with
+history the heating seconds shape the countdown's phase weights but never move the total.
+The file's temperatures, the current temperatures and the thermal model change the details
+number only through the temp bucket (cold or warm bed) that picks the history; within a
+bucket, a hotter file shows the same total as a cooler one.
+
+The two callers differ only in their inputs:
+
+| | Live countdown | Print details |
+|---|---|---|
+| Caller | `PrintStartCollector#compute_predicted_weights` | `PrintPreparationManager#recalculate_estimate` |
+| Heat-up from | the temperatures when the collector armed | the current temperatures |
+| Heat-up to | the printer's targets as they appear | the file's `first_layer_extr_temp` / `first_layer_bed_temp` |
+| History | the collector's bucket and window | the same: cold/warm from the current bed temperature through `PreprintPredictor::temp_bucket_for()`, `HostPreStart` when the start would send a pre-start block (`pre_start_block()` non-empty, built from the file's path and its scanned START_PRINT temps as `start_print()` builds it), else `PrinterEdge` |
+| Overrides | none | the bed_mesh, qgl, z_tilt, nozzle_clean and purge_line options: DISABLED skips the phase, ENABLED runs it, an option the printer does not have leaves the phase alone |
+
+The details estimate needs the file's temperatures, so until its metadata has loaded - and for
+a USB file, which has no Moonraker metadata to fetch - it is 0 and the detail view hides the
+line (`preprint_estimate_visible`, `ui_xml/print_file_detail.xml`, which also hides it at the
+micro and tiny breakpoints). The detail view re-runs it when the file opens (reloading the
+cached history first), when the metadata arrives and on every option toggle. Metadata that
+arrives for a file the view no longer shows is dropped
+(`src/ui/ui_print_select_detail_view.cpp#apply_file_metadata`), so a
+slow fetch never prices the next file with the previous file's temperatures. The label reads
+"~4:30 prep time", "~5 min prep time" or "~50 sec prep time", rounded to 30 seconds above two
+minutes and to 10 seconds at or below. A chamber target is in neither the metadata nor the thermal model; a
+chamber wait reaches the estimate as the SOAKING phase the history or the database defaults
+carry.
+
 ## Real-Time Remaining Calculation
 
-`compute_predicted_weights()` builds the composite duration map the countdown reads:
-`ThermalRateModel` estimates for the two heating phases, `predicted_phases()` for the rest,
-normalized into `predicted_phase_weights_` as fractions summing to 1.0. The absolute total is
-`predictor_.predicted_total()` when history exists and the composite sum when it does not.
+`compute_predicted_weights()` takes `estimate()`'s durations as the composite duration map
+the countdown reads, normalized into `predicted_phase_weights_` as fractions summing to 1.0,
+and its total as `predicted_total_seconds_`.
 Weights are recomputed when a heater target first appears or rises by 15°C or more
-(`TARGET_RISE_RECOMPUTE_DEGREES`) - not merely when time passes - because a
+(`kTargetRiseRecomputeDegrees`) - not merely when time passes - because a
 bed-first macro issues its `M109` long after preparation begins and the nozzle phase carries
 no weight until it does, and a provisional 0°C-targets estimate must not freeze the display
 when the real one arrives a second later.
@@ -403,7 +460,8 @@ Entries are stored in the main config file (`config/settings.json`) at the JSON 
           "PURGING": 20
         },
         "temp_bucket": 1,
-        "window": 2
+        "window": 2,
+        "skipped": ["QGL"]
       }
     ]
   }
@@ -416,14 +474,15 @@ Entries are stored in the main config file (`config/settings.json`) at the JSON 
   recognise is skipped and the rest of the entry still loads, so a document written by a newer
   build stays usable. Configs written before schema version 25 keyed this by enum ordinal;
   `migrate_v24_to_v25` converts them.
-- `temp_bucket`: Optional. 1 = cold start (bed below 40°C at start), 2 = warm start (40°C or above); omitted means unknown. Older versions stored the raw nozzle target temperature here; those values are dropped at load time as a one-shot migration.
+- `temp_bucket`: Optional. 1 = cold start (bed below 40°C at start), 2 = warm start (40°C or above); omitted means unknown. `PreprintPredictor::temp_bucket_for()` is the one rule: the collector's history load, the entry it saves and the print details estimate all call it. Older versions stored the raw nozzle target temperature here; those values are dropped at load time as a one-shot migration.
 - `window`: Optional. `PreprintWindow` enum int - 1 = `PrinterEdge`, 2 = `HostPreStart`; omitted means legacy (read back as `Unknown`, treated as `PrinterEdge` when filtering). See "Measurement windows" above.
+- `skipped`: Optional. `PrintStartPhase` names of the phases this start's option toggles turned off (bed_mesh, qgl, z_tilt, nozzle_clean, purge_line), as `PrintPreparationManager::start_print()` handed them to `PrintStartCollector::note_skipped_phases()`. `[]` means the start skipped nothing; omitted means unknown - a legacy entry, or a start this screen did not send. `estimate()` reads it to tell a phase no start ran from one the matcher missed.
 
 ### Save Flow
 
 1. `PrintStartCollector::save_prediction_entry()` reads each phase's summed time (`phase_seconds_locked()`), returning early on a fallback-timeout completion or when no phase was timed
 2. Adds the entry to the in-memory predictor via `add_entry()` (which enforces the FIFO trim to `MAX_ENTRIES`)
-3. Schedules `PreprintPredictor::append_to_config()` plus `Config::save()` onto the main thread via `queue_update()`. It appends to the entries already on disk and trims only the new entry's own (temp bucket, window) population to `MAX_ENTRIES`, then the whole list to `MAX_STORED_ENTRIES` (15), so a save never drops another bucket's or window's history. The same save flushes the thermal model's learned heating rates (`ThermalRateManager::save_to_config()`), which is where the heating half of an ETA lives
+3. Schedules `PreprintPredictor::append_to_config()` plus `Config::save()` onto the main thread via `queue_update()`. It appends to the entries already on disk and trims only the new entry's own (temp bucket, window) population to `MAX_ENTRIES`, then the whole list to `kMaxStoredEntries` (15), so a save never drops another bucket's or window's history. The same save flushes the thermal model's learned heating rates (`ThermalRateManager::save_to_config()`), which is where the heating half of an ETA lives
 
 ### Load Flow
 
@@ -480,8 +539,10 @@ The print status panel uses `preprint_remaining` and `preprint_elapsed` observer
 The print file browser (`ui_panel_print_select.cpp`) augments the slicer's estimated print time with the predicted preprint overhead:
 
 ```cpp
-int preprint_seconds = helix::PreprintPredictor::predicted_total_from_config();
-int total_minutes = print_time_minutes + (preprint_seconds + 30) / 60;
+static int card_total_minutes(int print_time_minutes) {
+    const int preprint_seconds = helix::PreprintPredictor::predicted_total_from_config();
+    return print_time_minutes + (preprint_seconds + 30) / 60; // round to nearest minute
+}
 ```
 
 This gives users a more realistic wall-clock time estimate that includes heating and preparation, not just the slicer's extrusion time.
@@ -576,7 +637,17 @@ Tests cover:
 - `load_entries` replaces existing data
 - `load_entries` caps at `MAX_ENTRIES`
 - `temp_bucket` filtering, including legacy bucket=0 entries matching any filter
+- `temp_bucket_for()`'s 40°C boundary (39.9°C cold, 40°C warm)
 - Window filtering: host-pre-start rejects printer-edge history and vice versa; legacy entries count as printer-edge, not host-pre-start
+- `estimate()`: heating on top of the default phases without history, the nozzle placeholder, the recorded wall clock with history, a run phase adding nothing with history unless every entry skipped it (one entry that ran it, or one that recorded nothing, adds nothing), a skipped phase taking off its share of the whole window, and added phases priced at the generic defaults
+- `skipped` round-tripping through the stored history: a list, an empty list, and absent
+
+The print details side is `[print_preparation][estimate]` in
+`tests/unit/test_print_preparation_manager.cpp` (no metadata, cold and warm printers,
+database defaults, history, toggles), `Print details estimate and the countdown total
+agree` in `tests/unit/test_print_start_collector.cpp` pins the two callers to one number, and
+`a file's late metadata never lands on the next file shown` in
+`tests/unit/test_print_select_detail_subjects.cpp` pins the dropped stale metadata.
 
 The predictor has no LVGL or Config dependencies, making tests fast and deterministic.
 
@@ -594,6 +665,8 @@ The predictor has no LVGL or Config dependencies, making tests fast and determin
 | `src/printer/printer_print_state.cpp` | Subject initialization and setters |
 | `src/ui/ui_panel_print_status.cpp` | Observer integration for elapsed/remaining display |
 | `src/ui/ui_panel_print_select.cpp` | Augments slicer time estimates with preprint prediction |
+| `src/ui/ui_print_preparation_manager.cpp` | The print details estimate (`recalculate_estimate()`) and the skipped phases a start hands the collector |
+| `src/ui/ui_print_select_detail_view.cpp` | Formats the details estimate line and decides when it is recomputed |
 | `include/thermal_rate_model.h` | Heating-time model - owns the two phases the predictor never records |
 | `assets/config/print_start_profiles/default.json` | Generic profile: the patterns and phase object that decide which phases get detected at all |
 | `tests/unit/test_preprint_predictor.cpp` | Unit tests for prediction logic |

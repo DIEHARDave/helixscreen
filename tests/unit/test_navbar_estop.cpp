@@ -151,7 +151,7 @@ TEST_CASE_METHOD(NavbarFixture, "navbar E-stop survives a panel switch",
     // Switching panels hides every stray screen child as a stale overlay; the
     // E-stop is not one and must stay up.
     auto& nav = NavigationManager::instance();
-    lv_obj_t* panels[UI_PANEL_COUNT] = {nullptr};
+    lv_obj_t* panels[kUiPanelCount] = {nullptr};
     panels[static_cast<int>(PanelId::Home)] = lv_obj_create(test_screen());
     panels[static_cast<int>(PanelId::Controls)] = lv_obj_create(test_screen());
     nav.set_panels(panels);
@@ -370,7 +370,7 @@ TEST_CASE_METHOD(NavbarFixture, "a navbar E-stop built while a modal is open sit
 
 TEST_CASE_METHOD(NavbarFixture, "a keypad over an overlay keeps the navbar E-stop on top",
                  "[estop_navbar][navigation][keypad]") {
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& panel : panels) {
         panel = lv_obj_create(test_screen());
     }

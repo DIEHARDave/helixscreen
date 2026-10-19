@@ -12,7 +12,7 @@ flowchart TD
         KL -->|"status objects"| MR
     end
 
-    subgraph BG["Background thread (libhv event loop)"]
+    subgraph kBg["Background thread (libhv event loop)"]
         WS["MoonrakerClient<br/>WebSocket + JSON-RPC"]
         NQ["m_notification_queue<br/>mutex-protected JSON queue"]
         WS -->|"register_notify_update()<br/>push raw notification"| NQ
@@ -33,7 +33,7 @@ flowchart TD
     end
 
     NQ -->|"dequeue on main thread"| DEQ
-    BG -->|"queue_update() from any<br/>HTTP/Bluetooth worker"| UQ
+    kBg -->|"queue_update() from any<br/>HTTP/Bluetooth worker"| UQ
 
     subgraph REACT["Reactive layer (ch. 01)"]
         SUBJ["subjects: bed_temp, klippy_state,<br/>print_progress, fan_speed, ..."]

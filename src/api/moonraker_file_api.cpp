@@ -287,7 +287,7 @@ void MoonrakerFileAPI::metascan_file(const std::string& filename, FileMetadataCa
         0,     // timeout_ms: use default
         silent // silent: suppress RPC_ERROR events (default true)
     );
-    if (id == helix::INVALID_REQUEST_ID) {
+    if (id == helix::kInvalidRequestId) {
         // The tracker's duplicate-id registration branch returns invalid
         // without invoking any callback; every other invalid return has
         // already delivered a CONNECTION_LOST error (and cleared above).

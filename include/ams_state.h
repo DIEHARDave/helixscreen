@@ -131,20 +131,19 @@ class AmsState {
      * @brief Maximum number of slots supported for per-slot subjects
      *
      * Per-slot subjects (color, status) are allocated statically.
-     * Systems with more slots will only have subjects for the first MAX_SLOTS.
-     * 20 covers a U1 with four ACE Pro units: 4 heads + 4x4 bays.
+     * Systems with more slots will only have subjects for the first kMaxSlots.
      */
-    static constexpr int MAX_SLOTS = 20;
+    static constexpr int kMaxSlots = kAmsMaxSlots;
     /// Bytes held per slot-name subject, NUL included. Names longer than a
     /// card can show are cut on a codepoint boundary; the label ellipsizes.
-    static constexpr size_t SLOT_NAME_BUF_SIZE = 64;
+    static constexpr size_t kSlotNameBufSize = 64;
 
     /**
      * @brief Maximum number of AMS units supported for per-unit subjects
      *
      * Per-unit subjects (temperature, humidity, environment indicator) are
      * allocated statically, one set per unit, and registered under
-     * ams_unit_<i>_* / ams_env_ind_<i>_* names. The cap is AMS_MAX_UNITS, the same
+     * ams_unit_<i>_* / ams_env_ind_<i>_* names. The cap is kAmsMaxUnits, the same
      * constant that bounds the AMS system-path canvas, so every unit the path
      * shows also has a badge to bind.
      *
@@ -152,15 +151,15 @@ class AmsState {
      * always-off placeholders below instead of names nothing registered — see
      * env_indicator_subject_names().
      */
-    static constexpr int MAX_UNITS = AMS_MAX_UNITS;
+    static constexpr int kMaxUnits = kAmsMaxUnits;
 
-    /// Always-0 int subject bound by unit cards past MAX_UNITS. Keeps the
+    /// Always-0 int subject bound by unit cards past kMaxUnits. Keeps the
     /// environment badge hidden rather than naming a subject that does not exist
     /// (which the XML parser reports once per binding, seven times per card).
-    static constexpr const char* ENV_IND_OFF_FLAG_SUBJECT = "ams_env_ind_off_flag";
+    static constexpr const char* kEnvIndOffFlagSubject = "ams_env_ind_off_flag";
 
-    /// Always-empty string subject, same purpose as ENV_IND_OFF_FLAG_SUBJECT.
-    static constexpr const char* ENV_IND_OFF_TEXT_SUBJECT = "ams_env_ind_off_text";
+    /// Always-empty string subject, same purpose as kEnvIndOffFlagSubject.
+    static constexpr const char* kEnvIndOffTextSubject = "ams_env_ind_off_text";
 
     /// Fully-expanded XML subject names for one unit card's environment indicator
     /// (the seven type="subject" props of ams_unit_card / ams_environment_indicator).
@@ -177,7 +176,7 @@ class AmsState {
 
     /**
      * @brief Subject names a unit card binds its environment indicator to
-     * @param unit_index 0-based unit index; may exceed MAX_UNITS
+     * @param unit_index 0-based unit index; may exceed kMaxUnits
      * @return Names guaranteed to be registered once init_subjects() has run
      *
      * Units below the cap get their own ams_env_ind_<i>_* set. Anything at or
@@ -188,21 +187,21 @@ class AmsState {
     [[nodiscard]] static EnvIndicatorSubjectNames env_indicator_subject_names(int unit_index);
 
     /// The int subject a unit card binds to say its unit is absent (1) - an
-    /// address gap held for a box that is not on the bus. Past MAX_UNITS it is
+    /// address gap held for a box that is not on the bus. Past kMaxUnits it is
     /// the always-0 placeholder.
     [[nodiscard]] static std::string unit_absent_subject_name(int unit_index);
     /// Subject holding 1 while the unit's logo is full-color art (0: a tinted mono mark);
-    /// the always-0 placeholder for units past MAX_UNITS.
+    /// the always-0 placeholder for units past kMaxUnits.
     [[nodiscard]] static std::string unit_logo_color_subject_name(int unit_index);
 
     /// The int subject that says a present unit is disconnected (1): on the bus
     /// map but reported offline (AmsUnit::connected false). An absent unit is
-    /// 0 here; it has its own subject. Past MAX_UNITS, the always-0 placeholder.
+    /// 0 here; it has its own subject. Past kMaxUnits, the always-0 placeholder.
     [[nodiscard]] static std::string unit_disconnected_subject_name(int unit_index);
 
     /// Name the unit a per-unit view is showing (-1: none), so
     /// `ams_viewed_unit_disconnected` describes it. Works for any unit index,
-    /// not only those below MAX_UNITS. Main thread only.
+    /// not only those below kMaxUnits. Main thread only.
     void set_viewed_unit(int unit_index);
 
     /// @name Unit paging
@@ -251,12 +250,12 @@ class AmsState {
     /// @{
     static constexpr int DEFAULT_DRYER_TEMP_C = 55;        ///< Default dryer temp (PETG)
     static constexpr int DEFAULT_DRYER_DURATION_MIN = 240; ///< Default duration (4 hours)
-    static constexpr int MIN_DRYER_TEMP_C = 35;            ///< Minimum dryer temperature
-    static constexpr int MAX_DRYER_TEMP_C = 70;            ///< Maximum dryer temperature
-    static constexpr int MIN_DRYER_DURATION_MIN = 30;      ///< Minimum duration (30 min)
-    static constexpr int MAX_DRYER_DURATION_MIN = 720;     ///< Maximum duration (12 hours)
-    static constexpr int DRYER_TEMP_STEP_C = 5;            ///< Temperature adjustment step
-    static constexpr int DRYER_DURATION_STEP_MIN = 30;     ///< Duration adjustment step
+    static constexpr int kMinDryerTempC = 35;              ///< Minimum dryer temperature
+    static constexpr int kMaxDryerTempC = 70;              ///< Maximum dryer temperature
+    static constexpr int kMinDryerDurationMin = 30;        ///< Minimum duration (30 min)
+    static constexpr int kMaxDryerDurationMin = 720;       ///< Maximum duration (12 hours)
+    static constexpr int kDryerTempStepC = 5;              ///< Temperature adjustment step
+    static constexpr int kDryerDurationStepMin = 30;       ///< Duration adjustment step
     /// @}
 
     /**
@@ -1379,7 +1378,7 @@ class AmsState {
      *
      * Holds 0xRRGGBB color value for UI display.
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_slot_color_subject(int slot_index);
@@ -1389,7 +1388,7 @@ class AmsState {
      *
      * Holds SlotStatus enum as int.
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_slot_status_subject(int slot_index);
@@ -1401,7 +1400,7 @@ class AmsState {
      * input for every surface that draws a lane. XML name:
      * ams_slot_<n>_lane_state.
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_slot_lane_state_subject(int slot_index);
@@ -1413,7 +1412,7 @@ class AmsState {
      * derivation the lane-bar consumers compute from SlotInfo. XML name:
      * ams_slot_<n>_has_error.
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_slot_has_error_subject(int slot_index);
@@ -1424,7 +1423,7 @@ class AmsState {
      * Holds SlotError::Severity as int; INFO when the slot carries no error.
      * XML name: ams_slot_<n>_error_severity.
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_slot_error_severity_subject(int slot_index);
@@ -1488,7 +1487,7 @@ class AmsState {
      *
      * Holds formatted remaining amount string ("52m", "432g", or "").
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_slot_remaining_subject(int slot_index);
@@ -1499,7 +1498,7 @@ class AmsState {
      * Holds a helix::printer::ZoneDryingState as int: Idle everywhere except a dryer
      * that drives its gates one by one.
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_slot_drying_subject(int slot_index);
@@ -1513,7 +1512,7 @@ class AmsState {
      * even when the color/status did not change (#1065 — native ZMOD AD5X where
      * a type change keeps the same color and previously left the label stale).
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_slot_material_subject(int slot_index);
@@ -1546,7 +1545,7 @@ class AmsState {
      * wherever the material subject is, and re-derived by refresh_slot_names()
      * when a Spoolman identity arrives.
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_slot_name_subject(int slot_index);
@@ -1582,7 +1581,7 @@ class AmsState {
      * ams_slot widget so the spool fill renders from state on EVERY panel — no
      * panel has to push fill imperatively.
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_slot_fill_subject(int slot_index);
@@ -1625,7 +1624,7 @@ class AmsState {
      * AmsBackend::get_slot_filament_segment(slot). Drives the per-slot path
      * canvas redraw.
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_slot_segment_subject(int slot_index);
@@ -1637,7 +1636,7 @@ class AmsState {
      * Holds 0/1 from AmsBackend::slot_has_filament_at_toolhead(slot) — the live
      * per-slot toolhead/motion sensor. 0 when the backend has no such sensor.
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_slot_toolhead_present_subject(int slot_index);
@@ -1650,7 +1649,7 @@ class AmsState {
      * Holds 0/1 from AmsBackend::slot_is_actively_loaded(slot) — the single
      * source of truth for the active-lane highlight.
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_slot_active_loaded_subject(int slot_index);
@@ -1666,7 +1665,7 @@ class AmsState {
      *
      * Value is in tenths of degrees C (e.g., 270 = 27.0C). 0 = no data.
      *
-     * @param unit_index Unit index (0 to MAX_UNITS-1)
+     * @param unit_index Unit index (0 to kMaxUnits-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_unit_temp_subject(int unit_index);
@@ -1676,7 +1675,7 @@ class AmsState {
      *
      * Value is integer percentage (0-100). 0 = no data.
      *
-     * @param unit_index Unit index (0 to MAX_UNITS-1)
+     * @param unit_index Unit index (0 to kMaxUnits-1)
      * @return Subject pointer or nullptr if out of range
      */
     [[nodiscard]] lv_subject_t* get_unit_humidity_subject(int unit_index);
@@ -1816,7 +1815,7 @@ class AmsState {
      *
      * The stored record is the binding; what the sources say about the bound
      * spool (the Spoolman poll's record, the consumption meter, the user's
-     * edits) is layered on via resolve(BYPASS_LANE_ID) before returning.
+     * edits) is layered on via resolve(kBypassLaneId) before returning.
      * @return SlotInfo or nullopt if not set
      */
     std::optional<SlotInfo> get_external_spool_info() const;
@@ -1951,8 +1950,16 @@ class AmsState {
     ///
     /// Out-of-line because a change of operation also has to drop the narration
     /// high-water mark: phase indices are template-relative, and each
-    /// StepOperationType has its own template.
+    /// StepOperationType has its own template. The last narrated phase id is
+    /// re-resolved against the new template; an index with no id to re-resolve
+    /// is dropped.
     void set_active_step_operation(StepOperationType op);
+
+    /// Publish the narration phase @p id names in the active operation's
+    /// template (MAIN THREAD ONLY). An id the template does not contain is held
+    /// and resolved again when the operation changes, so a phase narrated
+    /// before the step bar knows its operation still reaches it.
+    void apply_narration_phase_id(const std::string& id);
 
     /// Set the current toolchange narration phase index (MAIN THREAD ONLY).
     /// Also mirrors the human label into ams_action_detail for the status line.
@@ -2005,14 +2012,14 @@ class AmsState {
      *
      * Thread-safe; may be called from the WebSocket background thread.
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      */
     void mark_slot_unloaded(int slot_index);
 
     /**
      * @brief Check whether a lane completed an unload within the grace window
      *
-     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @param slot_index Slot index (0 to kMaxSlots-1)
      * @return true if mark_slot_unloaded(slot_index) was called within the last
      *         RunoutGrace::WINDOW
      */
@@ -2127,6 +2134,8 @@ class AmsState {
     /// Reset the slot subjects past @p total_slots.
     /// @return true when a slot subject changed
     bool clear_unused_slot_subjects(int total_slots);
+    /// Warn once per slot count when the backend has more slots than subjects.
+    void warn_if_slots_exceed_subjects(int total_slots);
     /// @}
 
     /**
@@ -2178,11 +2187,11 @@ class AmsState {
         std::vector<lv_subject_t> paints;     // int: SlotInfo::paint_key()
         /// Material strings need storage the subject points into; same size as
         /// slot_materials_buf_ ("PETG-CF" etc. fits comfortably).
-        static constexpr int MATERIAL_BUF_SIZE = 24;
+        static constexpr int kMaterialBufSize = 24;
         std::vector<lv_subject_t> materials; // string: "PLA", "PETG", … or ""
-        std::vector<std::array<char, MATERIAL_BUF_SIZE>> material_bufs;
+        std::vector<std::array<char, kMaterialBufSize>> material_bufs;
         std::vector<lv_subject_t> names; // string: slot card spool name, or ""
-        std::vector<std::array<char, SLOT_NAME_BUF_SIZE>> name_bufs;
+        std::vector<std::array<char, kSlotNameBufSize>> name_bufs;
         int slot_count = 0;
         /// Lifetime token shared by every subject in this struct. These subjects
         /// are DYNAMIC (destroyed in deinit() on backend rediscovery), so any
@@ -2200,7 +2209,7 @@ class AmsState {
     /// slot getter resolves through here.
     lv_subject_t* backend_slot_subject(int backend_index, int slot_index, SubjectLifetime& lifetime,
                                        std::vector<lv_subject_t> BackendSlotSubjects::*member,
-                                       lv_subject_t (&primary)[MAX_SLOTS]);
+                                       lv_subject_t (&primary)[kMaxSlots]);
 
     AmsBackendRegistry registry_;
     std::vector<BackendSlotSubjects> secondary_slot_subjects_;
@@ -2337,6 +2346,19 @@ class AmsState {
 
     std::string last_narration_label_; ///< live toolchange narration phase label; top priority in
                                        ///< recompute_action_detail; cleared on IDLE
+    /// Template id of the last phase apply_narration_phase_id() published or
+    /// held; empty when the index came from set_narration_phase(). Cleared with
+    /// the label.
+    std::string narration_phase_id_;
+
+    /// Write the action subject and its mirror. Reaching IDLE ends the
+    /// operation, which drops the narration latch, label and phase index; every
+    /// writer of the action goes through here so no path skips that.
+    void publish_action(AmsAction action);
+
+    /// The latched write behind set_narration_phase(); false when the latch
+    /// swallowed @p index.
+    bool publish_narration_phase(int index, const std::string& label);
 
     /// Observer that re-runs compute_action_detail() when PrinterState's
     /// print_state_enum subject changes, so the sidebar flips between
@@ -2497,35 +2519,36 @@ class AmsState {
     lv_subject_t current_fill_pct_{};
 
     // Per-slot subjects (color, status, remaining filament)
-    lv_subject_t slot_colors_[MAX_SLOTS]{};
-    lv_subject_t slot_statuses_[MAX_SLOTS]{};
-    lv_subject_t slot_remaining_[MAX_SLOTS]{}; // string: "52m" or "432g" or ""
-    char slot_remaining_buf_[MAX_SLOTS][16];   // buffers for remaining strings
-    lv_subject_t slot_drying_[MAX_SLOTS]{};    // int: helix::printer::ZoneDryingState
-    lv_subject_t slot_materials_[MAX_SLOTS]{}; // string: "PLA", "PETG", … or "" (last synced type)
-    char slot_materials_buf_[MAX_SLOTS][24]; // buffers for material strings (holds "PETG-CF" etc.)
-    lv_subject_t slot_names_[MAX_SLOTS]{};   // string: slot card spool name, or ""
-    char slot_names_buf_[MAX_SLOTS][SLOT_NAME_BUF_SIZE];
-    lv_subject_t slot_fills_[MAX_SLOTS]{};  // int: fill percent 0-100, -1 = unknown/no-data
+    lv_subject_t slot_colors_[kMaxSlots]{};
+    lv_subject_t slot_statuses_[kMaxSlots]{};
+    lv_subject_t slot_remaining_[kMaxSlots]{}; // string: "52m" or "432g" or ""
+    char slot_remaining_buf_[kMaxSlots][16];   // buffers for remaining strings
+    lv_subject_t slot_drying_[kMaxSlots]{};    // int: helix::printer::ZoneDryingState
+    lv_subject_t slot_materials_[kMaxSlots]{}; // string: "PLA", "PETG", … or "" (last synced type)
+    char slot_materials_buf_[kMaxSlots][24]; // buffers for material strings (holds "PETG-CF" etc.)
+    lv_subject_t slot_names_[kMaxSlots]{};   // string: slot card spool name, or ""
+    char slot_names_buf_[kMaxSlots][kSlotNameBufSize];
+    lv_subject_t slot_fills_[kMaxSlots]{};  // int: fill percent 0-100, -1 = unknown/no-data
                                             // (SlotInfo::display_fill_pct encoding)
-    lv_subject_t slot_paints_[MAX_SLOTS]{}; // int: SlotInfo::paint_key()
+    lv_subject_t slot_paints_[kMaxSlots]{}; // int: SlotInfo::paint_key()
 
     // Per-slot LIVE state subjects — the panel observes these to redraw the path
     // and active-lane highlight in real time as Moonraker sensor data arrives.
     // Updated alongside slot_colors_/slot_statuses_ in the status-sync path.
-    lv_subject_t slot_segments_[MAX_SLOTS]{};         // int: PathSegment enum value
-    lv_subject_t slot_toolhead_present_[MAX_SLOTS]{}; // int: 0/1 per-slot toolhead sensor
-    lv_subject_t slot_active_loaded_[MAX_SLOTS]{};    // int: 0/1 firmware seated & loaded
-    lv_subject_t slot_lane_states_[MAX_SLOTS]{};      // int: helix::ui::LaneState (classify_lane)
-    lv_subject_t slot_has_error_[MAX_SLOTS]{};        // int: 0/1 BLOCKED or carries a SlotError
-    lv_subject_t slot_error_severity_[MAX_SLOTS]{};   // int: SlotError::Severity (INFO when none)
+    lv_subject_t slot_segments_[kMaxSlots]{};         // int: PathSegment enum value
+    lv_subject_t slot_toolhead_present_[kMaxSlots]{}; // int: 0/1 per-slot toolhead sensor
+    lv_subject_t slot_active_loaded_[kMaxSlots]{};    // int: 0/1 firmware seated & loaded
+    lv_subject_t slot_lane_states_[kMaxSlots]{};      // int: helix::ui::LaneState (classify_lane)
+    lv_subject_t slot_has_error_[kMaxSlots]{};        // int: 0/1 BLOCKED or carries a SlotError
+    lv_subject_t slot_error_severity_[kMaxSlots]{};   // int: SlotError::Severity (INFO when none)
+    int slot_overflow_warned_total_ = 0;              // slot count the overflow warning last named
 
     // Per-unit environment subjects (CFS temp/humidity)
-    lv_subject_t unit_temp_[MAX_UNITS]{};         // int: tenths of C (270 = 27.0C), 0 = no data
-    lv_subject_t unit_humidity_[MAX_UNITS]{};     // int: percentage, 0 = no data
-    lv_subject_t unit_absent_[MAX_UNITS]{};       // int: 1 = AmsUnit::absent
-    lv_subject_t unit_logo_color_[MAX_UNITS]{};   // int: 1 = the unit's logo is full-color art
-    lv_subject_t unit_disconnected_[MAX_UNITS]{}; // int: 1 = present but !connected
+    lv_subject_t unit_temp_[kMaxUnits]{};         // int: tenths of C (270 = 27.0C), 0 = no data
+    lv_subject_t unit_humidity_[kMaxUnits]{};     // int: percentage, 0 = no data
+    lv_subject_t unit_absent_[kMaxUnits]{};       // int: 1 = AmsUnit::absent
+    lv_subject_t unit_logo_color_[kMaxUnits]{};   // int: 1 = the unit's logo is full-color art
+    lv_subject_t unit_disconnected_[kMaxUnits]{}; // int: 1 = present but !connected
     // int: 1 = the unit set_viewed_unit() names is disconnected
     lv_subject_t viewed_unit_disconnected_{};
     // int: 1 = units exist and every present one is disconnected
@@ -2551,39 +2574,39 @@ class AmsState {
     lv_subject_t ams_units_dryer_version_{};
 
     // Per-unit environment indicator display subjects (formatted text for XML binding)
-    static constexpr int ENV_IND_TEXT_BUF_SIZE = 16;
-    static constexpr int ENV_IND_DRYING_BUF_SIZE = 32;
+    static constexpr int kEnvIndTextBufSize = 16;
+    static constexpr int kEnvIndDryingBufSize = 32;
 
-    lv_subject_t env_ind_temp_text_[MAX_UNITS]{};
-    char env_ind_temp_text_buf_[MAX_UNITS][ENV_IND_TEXT_BUF_SIZE]{};
-    lv_subject_t env_ind_humidity_text_[MAX_UNITS]{};
-    char env_ind_humidity_text_buf_[MAX_UNITS][ENV_IND_TEXT_BUF_SIZE]{};
-    lv_subject_t env_ind_visible_[MAX_UNITS]{};
-    lv_subject_t env_ind_humidity_[MAX_UNITS]{};        // int: tenths of %RH, -1 = no reading
-    lv_subject_t env_ind_humidity_status_[MAX_UNITS]{}; // 0=ok, 1=warn, 2=danger
-    lv_subject_t env_ind_humidity_visible_[MAX_UNITS]{};
-    lv_subject_t env_ind_drying_active_[MAX_UNITS]{};
-    lv_subject_t env_ind_drying_text_[MAX_UNITS]{};
-    char env_ind_drying_text_buf_[MAX_UNITS][ENV_IND_DRYING_BUF_SIZE]{};
+    lv_subject_t env_ind_temp_text_[kMaxUnits]{};
+    char env_ind_temp_text_buf_[kMaxUnits][kEnvIndTextBufSize]{};
+    lv_subject_t env_ind_humidity_text_[kMaxUnits]{};
+    char env_ind_humidity_text_buf_[kMaxUnits][kEnvIndTextBufSize]{};
+    lv_subject_t env_ind_visible_[kMaxUnits]{};
+    lv_subject_t env_ind_humidity_[kMaxUnits]{};        // int: tenths of %RH, -1 = no reading
+    lv_subject_t env_ind_humidity_status_[kMaxUnits]{}; // 0=ok, 1=warn, 2=danger
+    lv_subject_t env_ind_humidity_visible_[kMaxUnits]{};
+    lv_subject_t env_ind_drying_active_[kMaxUnits]{};
+    lv_subject_t env_ind_drying_text_[kMaxUnits]{};
+    char env_ind_drying_text_buf_[kMaxUnits][kEnvIndDryingBufSize]{};
 
-    // Always-off placeholders for units past MAX_UNITS (see
+    // Always-off placeholders for units past kMaxUnits (see
     // env_indicator_subject_names). Written once at init and never again.
     lv_subject_t env_ind_off_flag_{};
     lv_subject_t env_ind_off_text_{};
-    char env_ind_off_text_buf_[ENV_IND_TEXT_BUF_SIZE]{};
+    char env_ind_off_text_buf_[kEnvIndTextBufSize]{};
 
     // Detail-view env indicator mirror subjects (reflect detail_env_unit_)
     lv_subject_t env_ind_detail_temp_text_{};
-    char env_ind_detail_temp_text_buf_[ENV_IND_TEXT_BUF_SIZE]{};
+    char env_ind_detail_temp_text_buf_[kEnvIndTextBufSize]{};
     lv_subject_t env_ind_detail_humidity_text_{};
-    char env_ind_detail_humidity_text_buf_[ENV_IND_TEXT_BUF_SIZE]{};
+    char env_ind_detail_humidity_text_buf_[kEnvIndTextBufSize]{};
     lv_subject_t env_ind_detail_humidity_{};
     lv_subject_t env_ind_detail_humidity_status_{};
     lv_subject_t env_ind_detail_humidity_visible_{};
     lv_subject_t env_ind_detail_visible_{};
     lv_subject_t env_ind_detail_drying_active_{};
     lv_subject_t env_ind_detail_drying_text_{};
-    char env_ind_detail_drying_text_buf_[ENV_IND_DRYING_BUF_SIZE]{};
+    char env_ind_detail_drying_text_buf_[kEnvIndDryingBufSize]{};
     int detail_env_unit_ = 0;
 
     /// One unit's environment indicator, ready to publish.

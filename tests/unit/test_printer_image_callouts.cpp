@@ -752,7 +752,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                  "[printer_image][callouts]") {
     const auto regions = prepare_tagged_widget();
     LightChipRig rig(state());
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& p : panels) {
         p = lv_obj_create(test_screen());
     }
@@ -878,7 +878,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                  "[printer_image][callouts][lock]") {
     const auto regions = prepare_tagged_widget();
     LightChipRig rig(state());
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& p : panels) {
         p = lv_obj_create(test_screen());
     }
@@ -1146,7 +1146,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                  "callouts: a copy generated for the old rect does not land on a moved image",
                  "[printer_image][callouts]") {
     const auto regions = prepare_tagged_widget();
-    const std::string source = printer_images::get_best_printer_image("");
+    const std::string source = printer_images::default_printer_image_path();
 
     PanelWidgetHarness<PrinterImageWidget> h(test_screen());
     h.resize(8, 4, 480, 160);
@@ -1199,7 +1199,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                  "callouts: a one-side image draws the source contain-fit into its rect",
                  "[printer_image][callouts]") {
     const auto regions = prepare_tagged_widget();
-    const std::string source = printer_images::get_best_printer_image("");
+    const std::string source = printer_images::default_printer_image_path();
     PanelWidgetHarness<PrinterImageWidget> h(test_screen());
     h.resize(8, 4, 400, 160);
     lv_obj_t* img = h.child("printer_image");

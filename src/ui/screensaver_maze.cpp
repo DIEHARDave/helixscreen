@@ -45,7 +45,7 @@ std::vector<MazeArtCandidate> history_art_candidates(const std::vector<PrintHist
             thumbs.push_back(&t);
         }
         auto fits = [](const ThumbnailInfo* t) {
-            return std::max(t->width, t->height) <= MAZE_ART_MAX_SOURCE_SIDE;
+            return std::max(t->width, t->height) <= kMazeArtMaxSourceSide;
         };
         std::stable_sort(thumbs.begin(), thumbs.end(),
                          [&fits](const ThumbnailInfo* a, const ThumbnailInfo* b) {
@@ -119,7 +119,7 @@ std::vector<std::string> mix_maze_art(const MazeArtSources& sources, size_t max)
 
 namespace {
 
-constexpr const char* LOGO_PATH = "A:assets/images/helix-icon-128.png";
+constexpr const char* kLogoPath = "A:assets/images/helix-icon-128.png";
 
 /// The pixels of a decoded image as 0xAARRGGBB, for the formats LVGL decodes art into.
 bool to_argb(const lv_draw_buf_t* buf, MazeImage& out) {
@@ -237,7 +237,7 @@ MazeArtSources maze_art_sources_from_app(int screen_w, std::minstd_rand& rng) {
     MazeArtSources sources;
     if (PrintHistoryManager* history = get_print_history_manager()) {
         sources.recent = cached_art_paths(history_art_candidates(history->get_jobs(), 20),
-                                          maze_cached_thumbnail, MAZE_ART_RECENT, 20);
+                                          maze_cached_thumbnail, kMazeArtRecent, 20);
     }
     if (PrintSelectPanel* panel = find_print_select_panel()) {
         std::vector<MazeArtCandidate> candidates;
@@ -245,8 +245,8 @@ MazeArtSources maze_art_sources_from_app(int screen_w, std::minstd_rand& rng) {
             candidates.push_back({std::move(key)});
         }
         screensaver::shuffle_in_place(rng, candidates.begin(), candidates.end());
-        sources.files = cached_art_paths(candidates, maze_cached_thumbnail, MAZE_ART_FILES,
-                                         MAZE_ART_FILE_PROBES, sources.recent);
+        sources.files = cached_art_paths(candidates, maze_cached_thumbnail, kMazeArtFiles,
+                                         kMazeArtFileProbes, sources.recent);
     }
     sources.printer = saver_printer_image_path(screen_w);
     return sources;
@@ -260,20 +260,20 @@ bool MazeScreensaver::on_start() {
                                          .count());
     };
     MazeArt art;
-    load_image(LOGO_PATH, art.logo, "logo", 0, MAZE_ART_PICTURE_SIDE);
+    load_image(kLogoPath, art.logo, "logo", 0, kMazeArtPictureSide);
 
     const MazeArtSources sources =
         art_source_ ? art_source_() : maze_art_sources_from_app(screen_w(), rng());
     // Each decode is reduced before the next starts, so at most one full-size image is held.
-    for (const std::string& path : mix_maze_art(sources, MAZE_MAX_PICTURES)) {
-        if (elapsed_ms() >= MAZE_ART_DECODE_BUDGET_MS) {
+    for (const std::string& path : mix_maze_art(sources, kMazeMaxPictures)) {
+        if (elapsed_ms() >= kMazeArtDecodeBudgetMs) {
             break;
         }
         // The printer picture too: its prerendered variants are 150 or 300 px, and only a raw
         // full-size asset (no variant for that printer) is left out.
         MazeImage picture;
         load_image(path, picture, path == sources.printer ? "printer picture" : "thumbnail",
-                   MAZE_ART_MAX_SOURCE_SIDE, MAZE_ART_PICTURE_SIDE);
+                   kMazeArtMaxSourceSide, kMazeArtPictureSide);
         if (!picture.empty()) {
             art.pictures.push_back(std::move(picture));
         }

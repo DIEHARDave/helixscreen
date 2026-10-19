@@ -75,7 +75,7 @@ The current head of the ladder:
 
 - **v27 -> v28** rewrites an integer `/display/screensaver_type` as the stable saver
   name it stood for (`7` -> `"maze"`), through the frozen
-  `LEGACY_SCREENSAVER_TYPE_NAMES` table in `include/screensaver_registry.h`, so
+  `kLegacyScreensaverTypeNames` table in `include/screensaver_registry.h`, so
   reordering, adding or compiling out a saver never changes a stored choice. An
   out-of-range number becomes the default saver's name; a string is left as it is.
   The reader (`include/screensaver_setting.h#screensaver_from_setting`) stays

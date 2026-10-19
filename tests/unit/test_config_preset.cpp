@@ -675,7 +675,7 @@ TEST_CASE_METHOD(PresetConfigFixture, "Config::apply_preset_file integrates with
 /// TEST-NET-1 (RFC 5737). Guaranteed never assigned to a real interface, so
 /// is_moonraker_on_same_host()'s getifaddrs() scan can't accidentally match it
 /// on whatever machine CI runs on.
-static constexpr const char* REMOTE_TEST_HOST = "192.0.2.10";
+static constexpr const char* kRemoteTestHost = "192.0.2.10";
 
 TEST_CASE_METHOD(PresetConfigFixture,
                  "Config::apply_preset_file skips device display/input for a remote printer",
@@ -684,7 +684,7 @@ TEST_CASE_METHOD(PresetConfigFixture,
 
     // HelixScreen is running somewhere else and talking to this printer over the
     // network — e.g. a Pi with its own touchscreen that detected a Centauri Carbon.
-    printer_data()["moonraker_host"] = REMOTE_TEST_HOST;
+    printer_data()["moonraker_host"] = kRemoteTestHost;
 
     json preset = {
         {"printer", {{"heaters", {{"bed", "heater_bed"}}}}},

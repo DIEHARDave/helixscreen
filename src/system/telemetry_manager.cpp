@@ -88,25 +88,25 @@ std::string strip_instance_suffix(const std::string& id) {
 
 /// Holds the unsent delta accumulator between hourly saves. Deleted on clean
 /// shutdown; present at init() only after an unclean exit.
-constexpr const char* ACCUMULATOR_FILE = "telemetry_snapshot.json";
+constexpr const char* kAccumulatorFile = "telemetry_snapshot.json";
 
 /// Event kinds that carry a window's activity rather than a point in time.
-constexpr const char* DELTA_KINDS[] = {"panel_usage", "connection_stability", "screensaver_usage"};
+constexpr const char* kDeltaKinds[] = {"panel_usage", "connection_stability", "screensaver_usage"};
 
 /// Delta fields that add when two windows merge, and the one that takes the max.
-constexpr const char* DELTA_SUMMED_FIELDS[] = {"session_duration_sec", "overlay_open_count",
-                                               "connect_count",        "disconnect_count",
-                                               "total_connected_sec",  "total_disconnected_sec",
-                                               "klippy_error_count",   "klippy_shutdown_count"};
-constexpr const char* DELTA_SUMMED_MAPS[] = {
+constexpr const char* kDeltaSummedFields[] = {"session_duration_sec", "overlay_open_count",
+                                              "connect_count",        "disconnect_count",
+                                              "total_connected_sec",  "total_disconnected_sec",
+                                              "klippy_error_count",   "klippy_shutdown_count"};
+constexpr const char* kDeltaSummedMaps[] = {
     "panel_time_sec",  "panel_visits",        "widget_interactions", "overlay_visits",
     "saver_shown_sec", "saver_starts",        "saver_woke_by_touch", "saver_stopped_other",
     "saver_too_heavy", "saver_settled_levels"};
-constexpr const char* DELTA_MAX_FIELD = "longest_disconnect_sec";
+constexpr const char* kDeltaMaxField = "longest_disconnect_sec";
 
 bool is_delta_event(const json& event) {
     const std::string kind = helix::json_util::safe_string(event, "event");
-    return std::any_of(std::begin(DELTA_KINDS), std::end(DELTA_KINDS),
+    return std::any_of(std::begin(kDeltaKinds), std::end(kDeltaKinds),
                        [&](const char* k) { return kind == k; });
 }
 
@@ -115,13 +115,13 @@ bool is_delta_event(const json& event) {
 /// row with the older one's activity added.
 void merge_older_delta(json& newer, const json& older) {
     using helix::json_util::as_int64;
-    for (const char* field : DELTA_SUMMED_FIELDS) {
+    for (const char* field : kDeltaSummedFields) {
         auto it = older.find(field);
         if (it != older.end()) {
             newer[field] = as_int64(newer[field]) + as_int64(*it);
         }
     }
-    for (const char* map : DELTA_SUMMED_MAPS) {
+    for (const char* map : kDeltaSummedMaps) {
         auto it = older.find(map);
         if (it == older.end() || !it->is_object()) {
             continue;
@@ -134,9 +134,9 @@ void merge_older_delta(json& newer, const json& older) {
             into[name] = as_int64(into[name]) + as_int64(value);
         }
     }
-    auto it = older.find(DELTA_MAX_FIELD);
+    auto it = older.find(kDeltaMaxField);
     if (it != older.end()) {
-        newer[DELTA_MAX_FIELD] = std::max(as_int64(newer[DELTA_MAX_FIELD]), as_int64(*it));
+        newer[kDeltaMaxField] = std::max(as_int64(newer[kDeltaMaxField]), as_int64(*it));
     }
 }
 
@@ -349,7 +349,7 @@ void TelemetryManager::shutdown() {
 
     // The shutdown deltas above hold everything; nothing is left to recover.
     std::error_code ec;
-    fs::remove(fs::path(config_dir_) / ACCUMULATOR_FILE, ec);
+    fs::remove(fs::path(config_dir_) / kAccumulatorFile, ec);
 
     // Join background send thread if active
     if (send_thread_.joinable()) {
@@ -834,7 +834,7 @@ nlohmann::json TelemetryManager::build_batch() const {
 }
 
 nlohmann::json TelemetryManager::front_batch_locked() const {
-    size_t batch_size = std::min(queue_.size(), MAX_BATCH_SIZE);
+    size_t batch_size = std::min(queue_.size(), kMaxBatchSize);
     return json(std::vector<json>(queue_.begin(), queue_.begin() + static_cast<long>(batch_size)));
 }
 
@@ -951,16 +951,16 @@ void TelemetryManager::do_send(const nlohmann::json& batch) {
         }
 
         // One send window drains the whole queue. Sending a single batch per
-        // window caps throughput at MAX_BATCH_SIZE per SEND_INTERVAL, which is
+        // window caps throughput at kMaxBatchSize per kSendInterval, which is
         // below the rate the periodic producers enqueue at, so the queue sits
         // saturated and enqueue_event() discards the oldest events for good
         // (prestonbrown/helixscreen#1476). The bound stops a producer that
         // outruns the drain from spinning this thread.
         nlohmann::json pending = batch;
 
-        for (size_t attempt = 0; attempt < MAX_BATCHES_PER_SEND; ++attempt) {
+        for (size_t attempt = 0; attempt < kMaxBatchesPerSend; ++attempt) {
             auto [status_code, resp_body] =
-                helix::ingest::post(ENDPOINT_URL, helix::json_util::safe_dump(pending), 30);
+                helix::ingest::post(kEndpointUrl, helix::json_util::safe_dump(pending), 30);
 
             if (shutting_down_.load()) {
                 spdlog::debug("[TelemetryManager] Shutting down, aborting send result processing");
@@ -969,7 +969,7 @@ void TelemetryManager::do_send(const nlohmann::json& batch) {
 
             if (status_code < 200 || status_code >= 300) {
                 // Failure: keep events, increase backoff
-                int new_backoff = std::min(backoff_multiplier_.load() * 2, MAX_BACKOFF_MULTIPLIER);
+                int new_backoff = std::min(backoff_multiplier_.load() * 2, kMaxBackoffMultiplier);
                 spdlog::warn(
                     "[TelemetryManager] Send failed (HTTP {}), will retry with backoff={}x",
                     status_code, new_backoff);
@@ -994,7 +994,7 @@ void TelemetryManager::do_send(const nlohmann::json& batch) {
                       queue_size());
     } catch (const std::exception& e) {
         spdlog::error("[TelemetryManager] Send exception: {}", e.what());
-        backoff_multiplier_.store(std::min(backoff_multiplier_.load() * 2, MAX_BACKOFF_MULTIPLIER));
+        backoff_multiplier_.store(std::min(backoff_multiplier_.load() * 2, kMaxBackoffMultiplier));
     }
 }
 
@@ -1026,17 +1026,17 @@ void TelemetryManager::start_auto_send() {
             // After the initial delay fires, switch to the normal hourly interval
             if (!self->auto_send_initial_fired_) {
                 self->auto_send_initial_fired_ = true;
-                lv_timer_set_period(timer, AUTO_SEND_INTERVAL_MS);
+                lv_timer_set_period(timer, kAutoSendIntervalMs);
             }
 
             if (self->is_enabled()) {
                 self->on_auto_send_tick();
             }
         },
-        INITIAL_SEND_DELAY_MS, this);
+        kInitialSendDelayMs, this);
 
     spdlog::info("[TelemetryManager] Auto-send timer started (initial delay: {}s, interval: {}s)",
-                 INITIAL_SEND_DELAY_MS / 1000, AUTO_SEND_INTERVAL_MS / 1000);
+                 kInitialSendDelayMs / 1000, kAutoSendIntervalMs / 1000);
 
     start_snapshot_timer();
     start_frame_perf_timer();
@@ -1110,7 +1110,7 @@ std::string TelemetryManager::generate_boot_id() {
 }
 
 void TelemetryManager::stamp_envelope(json& event) const {
-    event["schema_version"] = SCHEMA_VERSION;
+    event["schema_version"] = kSchemaVersion;
     event["app_version"] = HELIX_VERSION;
     event["app_platform"] = helix::platform::current_key();
     event["app_board"] = helix::board::current_info().key;
@@ -1192,7 +1192,7 @@ void TelemetryManager::load_queue() {
         }
 
         // Enforce max queue size
-        while (queue_.size() > MAX_QUEUE_SIZE) {
+        while (queue_.size() > kMaxQueueSize) {
             queue_.erase(queue_.begin());
         }
 
@@ -1397,7 +1397,7 @@ bool TelemetryManager::enqueue_crash_event_unconditional() {
 void TelemetryManager::enqueue_event(nlohmann::json event) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    if (queue_.size() >= MAX_QUEUE_SIZE) {
+    if (queue_.size() >= kMaxQueueSize) {
         const size_t first_free = std::min(in_flight_, queue_.size());
         const std::string kind = helix::json_util::safe_string(event, "event");
         const bool delta = is_delta_event(event);
@@ -1416,7 +1416,7 @@ void TelemetryManager::enqueue_event(nlohmann::json event) {
                     merge_older_delta(event, queue_[i]);
                     queue_[i] = std::move(event);
                     spdlog::debug("[TelemetryManager] Queue at capacity ({}), merged {} delta",
-                                  MAX_QUEUE_SIZE, kind);
+                                  kMaxQueueSize, kind);
                     return;
                 }
             }
@@ -1429,16 +1429,16 @@ void TelemetryManager::enqueue_event(nlohmann::json event) {
             if (delta) {
                 spdlog::warn("[TelemetryManager] Queue at capacity ({}) with nothing evictable, "
                              "dropping incoming {} delta: its window is lost",
-                             MAX_QUEUE_SIZE, kind);
+                             kMaxQueueSize, kind);
             } else {
                 spdlog::debug("[TelemetryManager] Queue at capacity ({}) with nothing evictable, "
                               "dropping incoming {} event",
-                              MAX_QUEUE_SIZE, kind);
+                              kMaxQueueSize, kind);
             }
             return;
         }
         spdlog::debug("[TelemetryManager] Queue at capacity ({}), dropping oldest {} event",
-                      MAX_QUEUE_SIZE, helix::json_util::safe_string(*victim, "event"));
+                      kMaxQueueSize, helix::json_util::safe_string(*victim, "event"));
         if (static_cast<size_t>(victim - queue_.begin()) < attempted_) {
             --attempted_;
         }
@@ -2201,7 +2201,7 @@ nlohmann::json TelemetryManager::build_settings_snapshot_event() const {
     event["screensaver_type"] = display.screensaver_enabled()
                                     ? helix::ui::screensaver_name(static_cast<ScreensaverType>(
                                           display.get_screensaver_type()))
-                                    : helix::ui::SCREENSAVER_OFF_NAME;
+                                    : helix::ui::kScreensaverOffName;
     event["locale"] = SystemSettingsManager::instance().get_language();
     event["sound_enabled"] = AudioSettingsManager::instance().get_sounds_enabled();
     event["auto_update_channel"] = SystemSettingsManager::instance().get_update_channel();
@@ -2211,7 +2211,7 @@ nlohmann::json TelemetryManager::build_settings_snapshot_event() const {
 
     // Adoption flags with no overlay or widget visit to derive them from.
     event["spoolman_configured"] = get_printer_state().is_spoolman_available();
-    event["theme_changed"] = active_theme.filename != helix::DEFAULT_THEME;
+    event["theme_changed"] = active_theme.filename != helix::kDefaultTheme;
     auto* cfg = Config::get_instance();
     event["multi_printer"] = cfg && cfg->get_printer_ids().size() > 1;
 
@@ -2295,9 +2295,9 @@ void TelemetryManager::record_error(const std::string& category, const std::stri
 
     // The category keys the rate-limit map and is sent as-is, so it must be a short
     // identifier: [a-z0-9_]{1,32}. Anything else could carry free text.
-    constexpr size_t MAX_CATEGORY_LEN = 32;
+    constexpr size_t kMaxCategoryLen = 32;
     const bool category_ok =
-        !category.empty() && category.size() <= MAX_CATEGORY_LEN &&
+        !category.empty() && category.size() <= kMaxCategoryLen &&
         std::all_of(category.begin(), category.end(), [](char c) {
             return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
         });
@@ -2312,7 +2312,7 @@ void TelemetryManager::record_error(const std::string& category, const std::stri
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = error_rate_limit_.find(category);
-        if (it != error_rate_limit_.end() && now - it->second < ERROR_RATE_LIMIT_INTERVAL) {
+        if (it != error_rate_limit_.end() && now - it->second < kErrorRateLimitInterval) {
             spdlog::trace("[TelemetryManager] Error event rate-limited: category={}", category);
             return;
         }
@@ -2321,7 +2321,7 @@ void TelemetryManager::record_error(const std::string& category, const std::stri
         // Prune expired entries to prevent unbounded growth
         if (error_rate_limit_.size() > 200) {
             for (auto prune_it = error_rate_limit_.begin(); prune_it != error_rate_limit_.end();) {
-                if (now - prune_it->second >= ERROR_RATE_LIMIT_INTERVAL) {
+                if (now - prune_it->second >= kErrorRateLimitInterval) {
                     prune_it = error_rate_limit_.erase(prune_it);
                 } else {
                     ++prune_it;
@@ -2489,13 +2489,13 @@ void TelemetryManager::record_frame_time(uint32_t frame_time_us) {
     // Skip idle frames where LVGL did no rendering work.
     // Validated on Pi 4 (DRM/dumb buffers): minimum real render is ~1.3ms,
     // giving 2.6x safety margin above 500µs threshold.
-    if (frame_time_us < IDLE_FRAME_THRESHOLD_US)
+    if (frame_time_us < kIdleFrameThresholdUs)
         return;
 
     // Always record even when telemetry is disabled to keep the buffer warm —
     // if telemetry is re-enabled mid-session the first snapshot has real data.
     // No mutex needed — LVGL thread only.
-    auto& sample = frame_ring_[frame_ring_idx_ % FRAME_RING_SIZE];
+    auto& sample = frame_ring_[frame_ring_idx_ % kFrameRingSize];
     sample.frame_time_us = frame_time_us;
     sample.panel_id = current_panel_id_;
     frame_ring_idx_++;
@@ -2511,7 +2511,7 @@ nlohmann::json TelemetryManager::build_performance_snapshot_event() const {
     event["snapshot_seq"] = snapshot_seq_;
     event["is_shutdown"] = is_shutdown_snapshot_;
 
-    size_t count = std::min(frame_ring_count_, FRAME_RING_SIZE);
+    size_t count = std::min(frame_ring_count_, kFrameRingSize);
     if (count == 0) {
         event["frame_time_p50_ms"] = 0;
         event["frame_time_p95_ms"] = 0;
@@ -2528,12 +2528,12 @@ nlohmann::json TelemetryManager::build_performance_snapshot_event() const {
     int dropped = 0;
     std::unordered_map<uint16_t, std::vector<uint32_t>> per_panel;
 
-    size_t start = (frame_ring_count_ > FRAME_RING_SIZE) ? (frame_ring_idx_ % FRAME_RING_SIZE) : 0;
+    size_t start = (frame_ring_count_ > kFrameRingSize) ? (frame_ring_idx_ % kFrameRingSize) : 0;
     for (size_t i = 0; i < count; ++i) {
-        size_t idx = (start + i) % FRAME_RING_SIZE;
+        size_t idx = (start + i) % kFrameRingSize;
         uint32_t ft = frame_ring_[idx].frame_time_us;
         times.push_back(ft);
-        if (ft > DROPPED_FRAME_THRESHOLD_US)
+        if (ft > kDroppedFrameThresholdUs)
             dropped++;
         per_panel[frame_ring_[idx].panel_id].push_back(ft);
     }
@@ -2580,7 +2580,7 @@ nlohmann::json TelemetryManager::build_performance_snapshot_event() const {
 
         int over_budget = 0;
         for (auto ft : ptimes) {
-            if (ft > DROPPED_FRAME_THRESHOLD_US)
+            if (ft > kDroppedFrameThresholdUs)
                 over_budget++;
         }
 
@@ -2679,7 +2679,7 @@ void TelemetryManager::start_settings_debounce_timer() {
             if (self)
                 self->settings_debounce_timer_ = nullptr;
         },
-        SETTINGS_DEBOUNCE_MS, this);
+        kSettingsDebounceMs, this);
     lv_timer_set_repeat_count(settings_debounce_timer_, 1);
 }
 
@@ -2783,7 +2783,7 @@ void TelemetryManager::start_snapshot_timer() {
         return;
 
     spdlog::debug("[TelemetryManager] Starting snapshot timer (interval={}ms)",
-                  SNAPSHOT_INTERVAL_MS);
+                  kSnapshotIntervalMs);
 
     snapshot_timer_ = lv_timer_create(
         [](lv_timer_t* timer) {
@@ -2792,7 +2792,7 @@ void TelemetryManager::start_snapshot_timer() {
                 self->fire_periodic_snapshot();
             }
         },
-        SNAPSHOT_INTERVAL_MS, this);
+        kSnapshotIntervalMs, this);
 }
 
 void TelemetryManager::stop_snapshot_timer() {
@@ -2807,7 +2807,7 @@ void TelemetryManager::start_frame_perf_timer() {
         return;
 
     spdlog::debug("[TelemetryManager] Starting frame perf timer (interval={}ms)",
-                  FRAME_PERF_INTERVAL_MS);
+                  kFramePerfIntervalMs);
 
     frame_perf_timer_ = lv_timer_create(
         [](lv_timer_t* timer) {
@@ -2816,7 +2816,7 @@ void TelemetryManager::start_frame_perf_timer() {
                 self->record_performance_snapshot();
             }
         },
-        FRAME_PERF_INTERVAL_MS, this);
+        kFramePerfIntervalMs, this);
 }
 
 void TelemetryManager::stop_frame_perf_timer() {
@@ -2840,7 +2840,7 @@ void TelemetryManager::save_accumulator() const {
     state["connection_stability"] = connection_stability_delta(now);
     state["screensaver_usage"] = screensaver_usage_delta(now);
 
-    const std::string path = (fs::path(config_dir_) / ACCUMULATOR_FILE).string();
+    const std::string path = (fs::path(config_dir_) / kAccumulatorFile).string();
     if (helix::text_io::write_file_atomic(path, helix::json_util::safe_dump(state, 2))) {
         spdlog::debug("[TelemetryManager] Accumulator saved to {} (seq={})", path, snapshot_seq_);
     } else {
@@ -2850,7 +2850,7 @@ void TelemetryManager::save_accumulator() const {
 }
 
 void TelemetryManager::recover_accumulator() {
-    const auto path = fs::path(config_dir_) / ACCUMULATOR_FILE;
+    const auto path = fs::path(config_dir_) / kAccumulatorFile;
     std::error_code ec;
     if (!fs::exists(path, ec)) {
         return;
@@ -2881,7 +2881,7 @@ void TelemetryManager::recover_accumulator() {
     }
 
     int recovered = 0;
-    for (const char* kind : DELTA_KINDS) {
+    for (const char* kind : kDeltaKinds) {
         auto payload = state.find(kind);
         if (payload == state.end() || !payload->is_object() || !delta_has_activity(*payload)) {
             continue;

@@ -169,13 +169,13 @@ class AmsBackend {
      * Event names are strings to allow backend-specific extensions.
      */
     static constexpr const char* EVENT_STATE_CHANGED = "STATE_CHANGED"; ///< System state updated
-    static constexpr const char* EVENT_SLOT_CHANGED = "SLOT_CHANGED";   ///< Slot info updated
-    static constexpr const char* EVENT_LOAD_COMPLETE = "LOAD_COMPLETE"; ///< Load operation finished
-    static constexpr const char* EVENT_UNLOAD_COMPLETE =
-        "UNLOAD_COMPLETE";                                            ///< Unload operation finished
-    static constexpr const char* EVENT_TOOL_CHANGED = "TOOL_CHANGED"; ///< Tool change completed
-    static constexpr const char* EVENT_ERROR = "ERROR";               ///< Error occurred
-    static constexpr const char* EVENT_ATTENTION_REQUIRED =
+    static constexpr const char* kEventSlotChanged = "SLOT_CHANGED";    ///< Slot info updated
+    static constexpr const char* kEventLoadComplete = "LOAD_COMPLETE";  ///< Load operation finished
+    static constexpr const char* kEventUnloadComplete =
+        "UNLOAD_COMPLETE";                                           ///< Unload operation finished
+    static constexpr const char* kEventToolChanged = "TOOL_CHANGED"; ///< Tool change completed
+    static constexpr const char* kEventError = "ERROR";              ///< Error occurred
+    static constexpr const char* kEventAttentionRequired =
         "ATTENTION"; ///< User intervention needed
 
     // ========================================================================
@@ -245,7 +245,7 @@ class AmsBackend {
      * Several backends coexist, so a slot index alone names a position on
      * every one of them at once. A backend that registration has not stamped,
      * and a slot index outside this backend's block, both yield
-     * helix::ams::INVALID_LANE_ID, which the lane funnels drop.
+     * helix::ams::kInvalidLaneId, which the lane funnels drop.
      *
      * Public because a caller holding a backend pointer needs the same
      * answer the backend gives itself: deriving the id from anything but the
@@ -1227,7 +1227,7 @@ class AmsBackend {
      * @brief Load filament from specified slot (async)
      *
      * Initiates filament load from the specified slot to the extruder.
-     * Results delivered via EVENT_LOAD_COMPLETE or EVENT_ERROR.
+     * Results delivered via kEventLoadComplete or kEventError.
      *
      * Requires:
      * - System not busy with another operation
@@ -1243,7 +1243,7 @@ class AmsBackend {
      * @brief Unload filament from a specific slot (async)
      *
      * Initiates filament unload from extruder back to its slot.
-     * Results delivered via EVENT_UNLOAD_COMPLETE or EVENT_ERROR.
+     * Results delivered via kEventUnloadComplete or kEventError.
      *
      * @param slot_index Slot to unload. MUST be explicit — there is no default.
      *        Callers that mean "whatever is active" should call
@@ -1429,7 +1429,7 @@ class AmsBackend {
      *
      * Complete tool change sequence: unload current, load new.
      * Equivalent to sending T{tool_number} command.
-     * Results delivered via EVENT_TOOL_CHANGED or EVENT_ERROR.
+     * Results delivered via kEventToolChanged or kEventError.
      *
      * @param tool_number Tool to change to (0-based)
      * @return AmsError indicating if operation was started successfully
@@ -3204,6 +3204,26 @@ class AmsBackend {
         (void)tools_used;
         (void)remap;
         return "";
+    }
+
+    /**
+     * @brief Whether the pre-print send can honor this remap right now.
+     *
+     * The pre-print counterpart to can_set_tool_mapping(): a remap naming a
+     * slot that cannot feed is refused here, and PrintStartController stops
+     * the print with the error's user_msg instead of sending a map the
+     * firmware would act on with a slot it cannot reach. A backend that
+     * refuses here also returns "" from build_preprint_gcode() for the same
+     * arguments. Default success.
+     *
+     * @param tools_used Logical tools the gcode body uses
+     * @param remap      Logical tool -> physical slot, only for changed tools
+     */
+    [[nodiscard]] virtual AmsError check_preprint_remap(const std::set<int>& tools_used,
+                                                        const std::map<int, int>& remap) const {
+        (void)tools_used;
+        (void)remap;
+        return AmsErrorHelper::success();
     }
 
     /**

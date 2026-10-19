@@ -169,7 +169,7 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
     void cancel_pending_load(const char* why);
 
     /// Sends the pending bay load when this frame shows its head empty, and
-    /// drops it, raising EVENT_ERROR, once its grace window has closed, the
+    /// drops it, raising kEventError, once its grace window has closed, the
     /// engine stops driving the units, or a print holds the heads. Main
     /// thread, mutex_ not held.
     void advance_pending_load();

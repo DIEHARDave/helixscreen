@@ -135,7 +135,7 @@ class BackgroundGhostBuilder {
     // UI yielding: timestamp of last user navigation (nanoseconds since steady_clock epoch)
     // Stored as int64_t because GCC 7 doesn't support atomic<time_point>
     std::atomic<int64_t> last_user_request_ns_{0};
-    static constexpr std::chrono::milliseconds YIELD_DURATION{50};
+    static constexpr std::chrono::milliseconds kYieldDuration{50};
 };
 
 /**
@@ -170,10 +170,10 @@ class BackgroundGhostBuilder {
 class GCodeStreamingController {
   public:
     /// Default prefetch radius (layers around current view to preload)
-    static constexpr size_t DEFAULT_PREFETCH_RADIUS = 3;
+    static constexpr size_t kDefaultPrefetchRadius = 3;
 
     /// Minimum cache budget (1MB)
-    static constexpr size_t MIN_CACHE_BUDGET = 1 * 1024 * 1024;
+    static constexpr size_t kMinCacheBudget = 1 * 1024 * 1024;
 
     /**
      * @brief Construct controller with default settings
@@ -345,7 +345,7 @@ class GCodeStreamingController {
      * @param center_layer Center layer index
      * @param radius Number of layers on each side (default: 3)
      */
-    void prefetch_around(size_t center_layer, size_t radius = DEFAULT_PREFETCH_RADIUS);
+    void prefetch_around(size_t center_layer, size_t radius = kDefaultPrefetchRadius);
 
     /**
      * @brief Block until the prefetch worker has no queued or in-flight work
@@ -578,7 +578,7 @@ class GCodeStreamingController {
 
     // State
     std::atomic<bool> is_open_{false};
-    size_t prefetch_radius_{DEFAULT_PREFETCH_RADIUS};
+    size_t prefetch_radius_{kDefaultPrefetchRadius};
 
     // Merged object name string table (accumulated from all parsed layers)
     mutable std::mutex name_table_mutex_;

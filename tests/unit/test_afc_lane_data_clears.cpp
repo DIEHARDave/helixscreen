@@ -358,7 +358,7 @@ TEST_CASE("AFC lane_data and status paths agree about a malformed colour", "[ams
     via_db.feed_lane_data(both_lanes(nlohmann::json{{"color", ""}}));
     via_status.feed_stepper("lane1", nlohmann::json{{"color", ""}});
     CHECK(via_db.color(0) == via_status.color(0));
-    CHECK(via_db.color(0) == AMS_DEFAULT_SLOT_COLOR);
+    CHECK(via_db.color(0) == kAmsDefaultSlotColor);
 }
 
 TEST_CASE("AFC lane_data and status paths agree about the null clear", "[ams][afc][1195]") {

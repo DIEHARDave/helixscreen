@@ -63,14 +63,14 @@ struct MacroOptionId {
     const char* id;
     PrePrintCategory group;
 };
-constexpr MacroOptionId MACRO_OPTION_IDS[] = {
+constexpr MacroOptionId kMacroOptionIds[] = {
     {helix::PrintStartOpCategory::BED_MESH, "bed_mesh", PrePrintCategory::Mechanical},
     {helix::PrintStartOpCategory::QGL, "qgl", PrePrintCategory::Mechanical},
     {helix::PrintStartOpCategory::Z_TILT, "z_tilt", PrePrintCategory::Mechanical},
     {helix::PrintStartOpCategory::NOZZLE_CLEAN, "nozzle_clean", PrePrintCategory::Quality},
 };
 
-/// The MacroParam option for one of MACRO_OPTION_IDS, or nullopt when the analysis
+/// The MacroParam option for one of kMacroOptionIds, or nullopt when the analysis
 /// did not find that operation controllable. Rows and the skip params sent at print
 /// start both come from here, so they cannot disagree.
 std::optional<PrePrintOption>
@@ -89,7 +89,7 @@ macro_option_for(const std::optional<helix::PrintStartAnalysis>& analysis,
     PrePrintOption opt;
     opt.id = entry.id;
     opt.category = entry.group;
-    opt.order = static_cast<int>(&entry - MACRO_OPTION_IDS);
+    opt.order = static_cast<int>(&entry - kMacroOptionIds);
     opt.default_enabled = true; // the macro runs the operation unless told to skip it
     opt.strategy_kind = PrePrintStrategyKind::MacroParam;
     PrePrintStrategyMacroParam param;
@@ -251,7 +251,7 @@ void PrintPreparationManager::reset_pending_skips() {
     skip_reset_sent_ = true;
     spdlog::info("[PrintPreparationManager] Leveling skip set with no job running; resetting");
     api_->execute_gcode(
-        helix::skip_wrappers::PREP_MACRO, []() {},
+        helix::skip_wrappers::kPrepMacro, []() {},
         [](const MoonrakerError& err) {
             spdlog::warn("[PrintPreparationManager] Resetting the leveling skips failed: {}",
                          err.message);
@@ -297,68 +297,92 @@ lv_subject_t* PrintPreparationManager::get_preprint_estimate_subject() {
     return &preprint_estimate_subject_;
 }
 
-void PrintPreparationManager::recalculate_estimate() {
+void PrintPreparationManager::recalculate_estimate(const FileMetadata* file_metadata,
+                                                   const std::string& file_key) {
     // Callers reach this before any getter fetch (the detail view computes
     // the estimate on open), so the subject is initialised here.
     ensure_estimate_subject_initialized();
 
-    if (!printer_state_)
+    // The heat-up runs to the file's own temperatures. Until its metadata is
+    // in, any number would leave them out, so there is no estimate.
+    if (!printer_state_ || !file_metadata) {
+        lv_subject_set_int(&preprint_estimate_subject_, 0);
         return;
+    }
 
-    auto& mgr = ThermalRateManager::instance();
+    auto& temps = printer_state_->temperature_state();
+    const float ext_temp = helix::ui::temperature::deci_to_degrees_f(
+        lv_subject_get_int(temps.get_active_extruder_temp_subject()));
+    const float bed_temp =
+        helix::ui::temperature::deci_to_degrees_f(lv_subject_get_int(temps.get_bed_temp_subject()));
+    const auto nozzle_target = static_cast<float>(file_metadata->first_layer_extr_temp);
+    const auto bed_target = static_cast<float>(file_metadata->first_layer_bed_temp);
 
-    // Current temps (decidegrees -> degrees)
-    float ext_temp = helix::ui::temperature::deci_to_degrees_f(
-        lv_subject_get_int(printer_state_->temperature_state().get_active_extruder_temp_subject()));
-    float ext_target = helix::ui::temperature::deci_to_degrees_f(lv_subject_get_int(
-        printer_state_->temperature_state().get_active_extruder_target_subject()));
-    float bed_temp = helix::ui::temperature::deci_to_degrees_f(
-        lv_subject_get_int(printer_state_->temperature_state().get_bed_temp_subject()));
-    float bed_target = helix::ui::temperature::deci_to_degrees_f(
-        lv_subject_get_int(printer_state_->temperature_state().get_bed_target_subject()));
+    auto& rates = ThermalRateManager::instance();
+    helix::PreprintHeating heating;
+    heating.nozzle_seconds = rates.estimate_heating_seconds("extruder", ext_temp, nozzle_target);
+    heating.bed_seconds = rates.estimate_heating_seconds("heater_bed", bed_temp, bed_target);
+    heating.nozzle_target_known = nozzle_target > 0.0f;
 
-    float total = 0.0f;
-
-    // Heating estimates
-    total += mgr.estimate_heating_seconds("extruder", ext_temp, ext_target);
-    total += mgr.estimate_heating_seconds("heater_bed", bed_temp, bed_target);
-
-    // Non-heating ops from predictor (cached to avoid reparsing config JSON on every toggle)
-    if (!predictor_cached_) {
-        auto entries = helix::PreprintPredictor::load_entries_from_config();
-        bool is_warm = bed_temp >= 40.0f;
+    // The history this start will be measured against: its temp bucket and
+    // whether a host-side block runs ahead of the job (the collector's window),
+    // built from what start_print() builds it from.
+    const int temp_bucket = helix::PreprintPredictor::temp_bucket_for(bed_temp);
+    const gcode::ScanResult* scan = scan_result_for(file_key);
+    const helix::PreprintWindow window =
+        pre_start_block(collect_macro_skip_params(), file_key,
+                        scan && scan->print_start.found ? &scan->print_start : nullptr)
+                .gcode.empty()
+            ? helix::PreprintWindow::PrinterEdge
+            : helix::PreprintWindow::HostPreStart;
+    if (!predictor_cached_ || cached_temp_bucket_ != temp_bucket || cached_window_ != window) {
         cached_predictor_ = helix::PreprintPredictor{};
-        cached_predictor_.load_entries(entries,
-                                       is_warm ? StartCondition::WARM : StartCondition::COLD);
+        cached_predictor_.load_entries(helix::PreprintPredictor::load_entries_from_config(),
+                                       temp_bucket, window);
+        cached_temp_bucket_ = temp_bucket;
+        cached_window_ = window;
         predictor_cached_ = true;
     }
 
-    // Homing always happens, and takes the collector's estimate for it
-    total += static_cast<float>(cached_predictor_.predicted_homing_seconds());
-    auto phases = cached_predictor_.predicted_phases();
-
-    // Add phase estimate if the option is currently enabled. State is read
-    // through the new framework (get_option_state(id) — provider-driven from
-    // the active panel's renderer; falls back to default_enabled if no panel
-    // is attached).
-    auto add_if_enabled = [&](const std::string& id, int phase_int, float default_s) {
-        if (get_option_state(id) != PrePrintOptionState::ENABLED) {
-            return;
-        }
-        auto it = phases.find(phase_int);
-        total += (it != phases.end()) ? static_cast<float>(it->second) : default_s;
-    };
-
-    add_if_enabled("bed_mesh", static_cast<int>(helix::PrintStartPhase::BED_MESH), 90.0f);
-    add_if_enabled("qgl", static_cast<int>(helix::PrintStartPhase::QGL), 60.0f);
-    add_if_enabled("z_tilt", static_cast<int>(helix::PrintStartPhase::Z_TILT), 45.0f);
-    add_if_enabled("nozzle_clean", static_cast<int>(helix::PrintStartPhase::CLEANING), 15.0f);
-    add_if_enabled("purge_line", static_cast<int>(helix::PrintStartPhase::PURGING), 10.0f);
-
-    int estimate_s = static_cast<int>(total);
+    const helix::PreprintPhaseOverrides overrides = preprint_phase_overrides();
+    const int estimate_s =
+        static_cast<int>(cached_predictor_.estimate(heating, overrides).total_seconds);
     lv_subject_set_int(&preprint_estimate_subject_, estimate_s);
 
-    spdlog::debug("[PrintPreparationManager] Pre-print estimate: {}s", estimate_s);
+    spdlog::debug("[PrintPreparationManager] Pre-print estimate: {}s (nozzle {:.0f}->{:.0f}C, "
+                  "bed {:.0f}->{:.0f}C, {} history entries)",
+                  estimate_s, ext_temp, nozzle_target, bed_temp, bed_target,
+                  cached_predictor_.get_entries().size());
+}
+
+helix::PreprintPhaseOverrides PrintPreparationManager::preprint_phase_overrides() const {
+    // A shown toggle the user turned off skips its phase; one left on runs it.
+    // A phase with no toggle runs as the start macro does.
+    static const std::pair<const char*, helix::PrintStartPhase> kTogglePhases[] = {
+        {"bed_mesh", helix::PrintStartPhase::BED_MESH},
+        {"qgl", helix::PrintStartPhase::QGL},
+        {"z_tilt", helix::PrintStartPhase::Z_TILT},
+        {"nozzle_clean", helix::PrintStartPhase::CLEANING},
+        {"purge_line", helix::PrintStartPhase::PURGING},
+    };
+    helix::PreprintPhaseOverrides overrides;
+    for (const auto& [id, phase] : kTogglePhases) {
+        const PrePrintOptionState state = get_option_state(id);
+        if (state != PrePrintOptionState::NOT_APPLICABLE) {
+            overrides[static_cast<int>(phase)] = state == PrePrintOptionState::ENABLED;
+        }
+    }
+    return overrides;
+}
+
+std::set<int> PrintPreparationManager::skipped_preprint_phases() const {
+    std::set<int> skipped;
+    for (const auto& [phase, runs] : preprint_phase_overrides()) {
+        if (!runs) {
+            skipped.insert(phase);
+        }
+    }
+    return skipped;
 }
 
 void PrintPreparationManager::invalidate_predictor_cache() {
@@ -412,7 +436,7 @@ void PrintPreparationManager::analyze_print_start_macro_internal() {
     macro_analysis_in_progress_ = true;
     spdlog::debug(
         "[PrintPreparationManager] Starting PRINT_START macro analysis (attempt {} of {})",
-        macro_analysis_retry_count_ + 1, MAX_MACRO_ANALYSIS_RETRIES + 1);
+        macro_analysis_retry_count_ + 1, kMaxMacroAnalysisRetries + 1);
 
     auto token = lifetime_.token();
     helix::PrintStartAnalyzer analyzer;
@@ -447,7 +471,7 @@ void PrintPreparationManager::analyze_print_start_macro_internal() {
                     "[PrintPreparationManager] PRINT_START analysis failed (attempt {}): {}",
                     macro_analysis_retry_count_ + 1, error.message);
                 // Check if we should retry
-                if (macro_analysis_retry_count_ < MAX_MACRO_ANALYSIS_RETRIES) {
+                if (macro_analysis_retry_count_ < kMaxMacroAnalysisRetries) {
                     macro_analysis_retry_count_++;
                     // Exponential backoff: 1s, 2s
                     int delay_ms = 1000 * (1 << (macro_analysis_retry_count_ - 1));
@@ -455,7 +479,7 @@ void PrintPreparationManager::analyze_print_start_macro_internal() {
                     spdlog::info("[PrintPreparationManager] Retrying PRINT_START analysis in "
                                  "{}ms (attempt {} of {})",
                                  delay_ms, macro_analysis_retry_count_ + 1,
-                                 MAX_MACRO_ANALYSIS_RETRIES + 1);
+                                 kMaxMacroAnalysisRetries + 1);
 
                     // Schedule retry via LVGL timer
                     struct RetryTimerData {
@@ -482,7 +506,7 @@ void PrintPreparationManager::analyze_print_start_macro_internal() {
                 // Final failure - notify user
                 spdlog::error(
                     "[PrintPreparationManager] PRINT_START analysis failed after {} attempts",
-                    MAX_MACRO_ANALYSIS_RETRIES + 1);
+                    kMaxMacroAnalysisRetries + 1);
                 NOTIFY_ERROR(lv_tr("Could not analyze PRINT_START macro. Some print options may be "
                                    "unavailable."));
 
@@ -509,7 +533,7 @@ PrePrintOptionSet PrintPreparationManager::displayed_options() const {
     if (database_declares_options) {
         return displayed;
     }
-    for (const auto& entry : MACRO_OPTION_IDS) {
+    for (const auto& entry : kMacroOptionIds) {
         if (displayed.find(entry.id)) {
             continue;
         }
@@ -698,7 +722,7 @@ void PrintPreparationManager::request_scan(const std::string& filename,
         }
 
         helix::PrinterStopCheck stop_check =
-            helix::printer_stop_check_in(content, helix::PRINTER_STOP_SCAN_BYTES);
+            helix::printer_stop_check_in(content, helix::kPrinterStopScanBytes);
         if (stop_check.state == helix::PrinterStopCheck::State::Stops) {
             spdlog::warn("[PrintPreparationManager] {} line {} calls {}, which stops this printer",
                          filename, stop_check.line_number, stop_check.command);
@@ -730,7 +754,7 @@ void PrintPreparationManager::request_scan(const std::string& filename,
     // waits for it (print_waits_on_scan()).
     if (!local_path.empty()) {
         helix::http::HttpExecutor::fast().submit([local_path, on_content, on_failure]() {
-            auto head = helix::text_io::read_file(local_path, helix::PRINTER_STOP_SCAN_BYTES);
+            auto head = helix::text_io::read_file(local_path, helix::kPrinterStopScanBytes);
             if (!head) {
                 on_failure("cannot read " + local_path);
                 return;
@@ -746,18 +770,18 @@ void PrintPreparationManager::request_scan(const std::string& filename,
         const ArchiveScanSource& source = archive->second;
         if (!source.converted_output.empty()) {
             api_->transfers().download_file_partial(
-                "gcodes", source.converted_output, helix::PRINTER_STOP_SCAN_BYTES, on_content,
+                "gcodes", source.converted_output, helix::kPrinterStopScanBytes, on_content,
                 [on_failure](const MoonrakerError& error) { on_failure(error.message); }, cancel);
         } else {
             three_mf::ThreeMfReader::read_entry_head(
-                api_->transfers(), file_path, source.plate_gcode, helix::PRINTER_STOP_SCAN_BYTES,
+                api_->transfers(), file_path, source.plate_gcode, helix::kPrinterStopScanBytes,
                 on_content, on_failure, cancel);
         }
         return;
     }
 
     api_->transfers().download_file_partial(
-        "gcodes", file_path, helix::PRINTER_STOP_SCAN_BYTES, on_content,
+        "gcodes", file_path, helix::kPrinterStopScanBytes, on_content,
         [on_failure](const MoonrakerError& error) { on_failure(error.message); }, cancel);
 }
 
@@ -1162,6 +1186,14 @@ void PrintPreparationManager::start_print(const std::string& filename,
         }
     }
 
+    // The run's history entry records what this start skips, so a later
+    // estimate can tell a phase no start ran from one the matcher missed.
+    if (auto* mgr = get_moonraker_manager()) {
+        if (auto collector = mgr->print_start_collector()) {
+            collector->note_skipped_phases(skipped_preprint_phases());
+        }
+    }
+
     if (!combined.empty()) {
         spdlog::info("[PrintPreparationManager] Executing pre-start gcode ({} line(s)): {}",
                      (pre_start.emit_setup ? 1 : 0) + pre_start.lines.size(), combined);
@@ -1213,7 +1245,7 @@ void PrintPreparationManager::start_print(const std::string& filename,
                                                              wrapped_completion);
                             });
             },
-            IMoonrakerAPI::PRE_START_MACRO_TIMEOUT_MS,
+            IMoonrakerAPI::kPreStartMacroTimeoutMs,
             /*silent=*/false, /*on_queued=*/nullptr, /*caller_surfaces_errors=*/true,
             /*bypass_busy_gate=*/true);
         return;
@@ -1430,7 +1462,7 @@ std::string PrintPreparationManager::describe_dropped_modifications(
 
     // LAYER 2 mirror: collect_macro_skip_params() also emits for ops the DB
     // never declared, picked up from PRINT_START analysis.
-    for (const auto& entry : MACRO_OPTION_IDS) {
+    for (const auto& entry : kMacroOptionIds) {
         if (covered.count(entry.id) ||
             get_option_state(entry.id) != PrePrintOptionState::DISABLED) {
             continue;
@@ -1576,7 +1608,7 @@ PrintPreparationManager::collect_macro_skip_params() const {
     // LAYER 2: Macro analysis. Picks up ops the DB didn't cover (e.g. QGL on a
     // Voron whose entry only declares bed_mesh). DB-handled ids are skipped to
     // avoid double-emission.
-    for (const auto& entry : MACRO_OPTION_IDS) {
+    for (const auto& entry : kMacroOptionIds) {
         if (handled_ids.count(entry.id) ||
             get_option_state(entry.id) != PrePrintOptionState::DISABLED) {
             continue;
@@ -1591,8 +1623,8 @@ PrintPreparationManager::collect_macro_skip_params() const {
     }
 
     if (!skip_params.empty()) {
-        spdlog::info("[PrintPreparationManager] Collected {} skip params (DB+macro combined)",
-                     skip_params.size());
+        spdlog::debug("[PrintPreparationManager] Collected {} skip params (DB+macro combined)",
+                      skip_params.size());
     }
 
     return skip_params;
@@ -1607,7 +1639,7 @@ PrintPreparationManager::PreStartBlock PrintPreparationManager::pre_start_block(
     // A skip an earlier print left unconsumed must not ride into this one,
     // including for a step whose toggle is hidden now.
     if (printer_state_ && !printer_state_->get_discovery().skip_active().empty()) {
-        block.lines.insert(block.lines.begin(), helix::skip_wrappers::PREP_MACRO);
+        block.lines.insert(block.lines.begin(), helix::skip_wrappers::kPrepMacro);
     }
     block.emit_setup = !macro_skip_params.empty() && !db_options.setup_gcode.empty();
     block.gcode =
@@ -1695,8 +1727,8 @@ std::vector<std::string> PrintPreparationManager::collect_pre_start_gcode_lines(
     }
 
     if (!lines.empty()) {
-        spdlog::info("[PrintPreparationManager] Collected {} pre-start gcode line(s)",
-                     lines.size());
+        spdlog::debug("[PrintPreparationManager] Collected {} pre-start gcode line(s)",
+                      lines.size());
     }
     return lines;
 }
@@ -1759,9 +1791,9 @@ void PrintPreparationManager::continue_print_start(
     // when an epoch was captured — there the check above is exact, and a clock
     // can only overrule it wrongly.
     if (pre_start_epoch_ == 0 && pre_start_sent_at_ != std::chrono::steady_clock::time_point{}) {
-        constexpr auto STALE_PRE_START_BOUND = std::chrono::minutes(3);
+        constexpr auto kStalePreStartBound = std::chrono::minutes(3);
         const auto age = std::chrono::steady_clock::now() - pre_start_sent_at_;
-        if (age > STALE_PRE_START_BOUND) {
+        if (age > kStalePreStartBound) {
             spdlog::warn("[PrintPreparationManager] Dropping stale pre-start completion "
                          "({}s old, bound 180s, no preparing job to check) - not starting '{}'",
                          std::chrono::duration_cast<std::chrono::seconds>(age).count(), filename);
@@ -1829,7 +1861,7 @@ void PrintPreparationManager::begin_pre_start_completion_wait(
     // update and this timer firing is handled by re-reading the subject: idle
     // means the macro finished and we can still start the print.
     pre_start_wait_guard_.begin(
-        IMoonrakerAPI::PRE_START_MACRO_TIMEOUT_MS,
+        IMoonrakerAPI::kPreStartMacroTimeoutMs,
         [this, filename, ops_to_disable, on_navigate_to_status, on_completion, timeout_error]() {
             const bool still_busy =
                 printer_state_ &&

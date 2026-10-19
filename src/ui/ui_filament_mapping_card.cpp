@@ -332,7 +332,7 @@ void FilamentMappingCard::rebuild_compact_view() {
 
     // Capacity is an input to the render, so it has to be an input to the
     // fingerprint. A render that lands before layout has settled measures a
-    // zero-width row and takes the MIN_VISIBLE_CHIPS fallback; without this the
+    // zero-width row and takes the kMinVisibleChips fallback; without this the
     // wrong answer would be PERMANENT, because every later rebuild carrying the
     // same data early-returns below and on_ui_destroyed() is the only other thing
     // that clears the fingerprint. Encode the capacity rather than the raw width:
@@ -377,7 +377,7 @@ void FilamentMappingCard::rebuild_compact_view() {
         // is not honoured by lv_xml_create (only "content"/"%"), and the band
         // labels use flex_grow (which contributes 0 to content width), so without
         // this the whole chip collapses to 0.
-        lv_obj_set_width(chip, CHIP_WIDTH); // DECLARATIVE_OK: lv_xml_create width limitation
+        lv_obj_set_width(chip, kChipWidth); // DECLARATIVE_OK: lv_xml_create width limitation
 
         // mappings_ is built parallel to tool_info_ and compacted in lockstep by
         // apply_used_tools_filter, so index i is this tool's mapping. Fall back to
@@ -508,7 +508,7 @@ void FilamentMappingCard::rebuild_compact_view() {
             // Same 40px slot as a chip - the capacity arithmetic above counted it
             // as one - and the row's full height, since the row is fixed-height
             // and the component is content-sized.
-            lv_obj_set_width(more, CHIP_WIDTH); // DECLARATIVE_OK: see the chip width above
+            lv_obj_set_width(more, kChipWidth); // DECLARATIVE_OK: see the chip width above
             lv_obj_set_height(more, lv_pct(100));
             if (auto* lbl = helix::ui::find_required(more, "count_label", "FilamentMapping")) {
                 const size_t hidden = tool_count - visible;
@@ -624,10 +624,10 @@ size_t FilamentMappingCard::chips_that_fit(int32_t content_width, int32_t gap) {
     // negative once padding is subtracted). Fall back to the floor rather than
     // to "everything": drawing past the right edge is what silently loses lanes.
     if (content_width <= 0) {
-        return MIN_VISIBLE_CHIPS;
+        return kMinVisibleChips;
     }
-    // n chips occupy n*CHIP_WIDTH + (n-1)*gap, hence the (+ gap) on both sides.
-    const int32_t n = (content_width + gap) / (CHIP_WIDTH + gap);
+    // n chips occupy n*kChipWidth + (n-1)*gap, hence the (+ gap) on both sides.
+    const int32_t n = (content_width + gap) / (kChipWidth + gap);
     // Always offer one slot: a row too narrow for a single chip still has to show
     // the "+N" pill rather than nothing at all.
     return static_cast<size_t>(std::max<int32_t>(1, n));

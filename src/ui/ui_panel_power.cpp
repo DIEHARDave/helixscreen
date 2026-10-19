@@ -549,3 +549,17 @@ lv_obj_t* PowerPanel::get_or_create_overlay(lv_obj_t* parent_screen) {
 PowerPanel& get_global_power_panel() {
     return helix::lazy_global<PowerPanel>("PowerPanel", get_printer_state(), get_moonraker_api());
 }
+
+namespace helix::ui {
+
+bool open_power_panel(lv_obj_t* parent_screen) {
+    lv_obj_t* overlay = get_global_power_panel().get_or_create_overlay(parent_screen);
+    if (!overlay) {
+        spdlog::error("[PowerPanel] Failed to open Power panel");
+        return false;
+    }
+    helix::nav::push_overlay(overlay);
+    return true;
+}
+
+} // namespace helix::ui

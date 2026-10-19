@@ -26,15 +26,15 @@ protocol itself is Klipper's: [G-Codes: action commands](https://www.klipper3d.o
 | `src/ui/action_prompt_manager.cpp` | Line parser, button-spec parser, command handlers, test prompt helpers |
 | `include/action_prompt_modal.h` | `helix::ui::ActionPromptModal` (a `Modal` subclass) and `report_action_prompt_gcode_failure()` |
 | `src/ui/action_prompt_modal.cpp` | Builds text labels and buttons from `PromptData`, button layout, color mapping, click handling |
-| `ui_xml/action_prompt_modal.xml` | Dialog shell: title, scrollable text area, AFC fault diagram, button rows, footer row |
+| `ui_xml/action_prompt_modal.xml` | Dialog shell: title, one scroll area holding the text, AFC fault diagram and button rows, footer row |
 | `ui_xml/action_prompt_button_row.xml` | One row of regular buttons: a button group, or a run of ungrouped buttons |
 | `src/application/gcode_response_routing.cpp#attach` | Wiring: creates manager and modal, registers the `notify_gcode_response` handler, sends button gcode and `prompt_end` |
 | `src/application/application_sdl_shortcuts.cpp` | `A` and `N` keys raise a test prompt and a test notification in `--test` |
-| `src/application/demo_overlays.cpp` | `ctl demo action-prompt-worst`, `action-prompt-many`, `action-prompt-hex` and `action-prompt-zmod` |
+| `src/application/demo_overlays.cpp` | `ctl demo action-prompt-worst`, `action-prompt-many`, `action-prompt-hex`, `action-prompt-zmod` and `action-prompt-afc-cal` |
 | `src/printer/ams_backend_mock.cpp#execute_device_action` | Mock AFC calibration wizard that injects a full prompt sequence |
 | `tests/unit/test_action_prompt.cpp` | Parser, button spec, state machine, callbacks, static accessors, line sink, `closed_on_screen()` for every close kind |
 | `tests/unit/test_action_prompt_dismiss.cpp` | Empty-gcode button closes without sending; which closes reach the dismiss callback |
-| `tests/unit/test_action_prompt_modal_layout.cpp` | One-row vs wrapping button layout, a row per button group, color tokens |
+| `tests/unit/test_action_prompt_modal_layout.cpp` | Wrap, one-row and grid button layouts, a row per button group, scrolling with the footer on the card, color tokens |
 | `tests/unit/test_action_prompt_modal_stress.cpp` | Rapid show/hide, reuse across prompt shapes (hidden tag) |
 | `tests/unit/test_action_prompt_gcode_failure.cpp` | Failed button gcode raises a toast |
 
@@ -68,7 +68,7 @@ ActionPromptManager::process_line()
                           ActionPromptModal::handle_button_click(gcode)
                                          |  gcode callback, then hide(ButtonPress)
                                          v
-                          IMoonrakerAPI::execute_gcode(gcode, ..., MACRO_TIMEOUT_MS)
+                          IMoonrakerAPI::execute_gcode(gcode, ..., kMacroTimeoutMs)
                                          |  on error
                                          v
                           report_action_prompt_gcode_failure() -> "Macro failed: ..." toast
@@ -110,7 +110,7 @@ against the known commands, longest first:
 ```cpp
 // Every command the protocol defines, LONGEST FIRST so that a prefix match can
 // never pick "prompt_button" out of "prompt_button_group_start".
-constexpr std::string_view ACTION_COMMANDS[] = {
+constexpr std::string_view kActionCommands[] = {
     "prompt_button_group_start",
     "prompt_button_group_end",
     "prompt_footer_button",
@@ -193,10 +193,16 @@ Button layout (`src/ui/action_prompt_modal.cpp#create_buttons`):
 - Regular buttons are split into rows (`split_button_rows`): each button group is a row of its
   own, and a run of ungrouped buttons between groups shares one. Each row is an
   `action_prompt_button_row` stacked in `button_container`.
-- In a row of three or fewer, each button is content-sized and the row wraps (`row_wrap`).
-- A row of four or more becomes equal-width cells on one non-wrapping row, but only if every
-  label fits its share of the measured width (`equal_width_row_fits`). Otherwise it keeps
-  wrapping, which never clips.
+- `choose_button_row_layout()` picks each row's layout from its measured width (a pure
+  function, tested without widgets). Three or fewer buttons are content-sized and wrap
+  (`row_wrap`). Four whose labels fit an even share make one non-wrapping row of equal cells.
+  Five or more labelled buttons make a grid of equal cells, three across, or two when the widest
+  label does not fit a third; a label wider than its cell ends in an ellipsis. Swatch rows keep
+  one line of tiles.
+- Text, the AFC diagram and the button rows sit in one scroll area, `prompt_scroll`.
+  `fit_rows()` sizes grid cells and swatch tiles, then caps `prompt_scroll` at the 85% card cap
+  less the header and footer, so a prompt with more buttons than the screen holds scrolls and
+  its footer stays on the card.
 - Footer buttons go in `footer_container`, full height, flex-grow 1, with a 1px divider between
   them. The footer and its divider are hidden when there are no footer buttons.
 - Empty text and empty regular-button sections hide their containers.
@@ -243,7 +249,7 @@ void ActionPromptModal::handle_button_click(const std::string& gcode) {
 Wire prompts never reach the empty-gcode branch, because the parser already substituted the
 label. Only `PromptData` built in C++ uses it.
 
-The callback installed by `init_action_prompt` sends with `IMoonrakerAPI::MACRO_TIMEOUT_MS`
+The callback installed by `init_action_prompt` sends with `IMoonrakerAPI::kMacroTimeoutMs`
 instead of the default request timeout, since prompt buttons routinely start long macros (heat,
 cut, purge). Its error callback calls `report_action_prompt_gcode_failure()`, which raises
 `Macro failed: <Klipper's message>`. That error callback is also what makes the request
@@ -261,7 +267,7 @@ backdrop tap, ESC, a hot-reload rebuild, a `ctl reset`) calls the modal's dismis
 | Close | Manager | Sent to Klipper |
 |-------|---------|-----------------|
 | Button with a gcode (`ButtonWithGcode`) | ends | The button's gcode only |
-| Button without a gcode, backdrop tap, ESC (`ButtonWithoutGcode`, `UserDismiss`) | ends | `RESPOND TYPE=command MSG="action:prompt_end"` (`ActionPromptManager::PROMPT_END_GCODE`) |
+| Button without a gcode, backdrop tap, ESC (`ButtonWithoutGcode`, `UserDismiss`) | ends | `RESPOND TYPE=command MSG="action:prompt_end"` (`ActionPromptManager::kPromptEndGcode`) |
 | `ctl reset` or another sweep (`External`) | ends | nothing: the screen was cleared, the user did not answer the printer |
 | Hot reload (`HotReload`, dev builds) | keeps `SHOWING`, re-shows the prompt from the rebuilt XML on a later tick | nothing |
 | Firmware `prompt_end` or next `prompt_begin` | already `IDLE`/`BUILDING`; `on_close` hid the modal | nothing |
@@ -348,7 +354,8 @@ In a running mock (`--test`):
 | `N` key (SDL window, test mode) | `trigger_test_notify()`: an `action:notify` toast |
 | `HELIX_MOCK_AMS=afc`, then the AFC device action "Run Calibration Wizard" | The mock backend replays an `AFC Calibration` prompt through `AmsState`'s gcode response callback, with four grouped lane buttons, a "Calibrate All" button and a Cancel footer |
 | `helix-screen ctl -s "$HELIX_SOCK" demo action-prompt-worst` | Tallest shape: AFC diagram, three wrapping text lines, three buttons and a footer, error severity. Used for the chrome budget in `ui_xml/action_prompt_modal.xml` |
-| `helix-screen ctl -s "$HELIX_SOCK" demo action-prompt-many` | Seven long-label buttons that must wrap |
+| `helix-screen ctl -s "$HELIX_SOCK" demo action-prompt-many` | Seven material presets, laid out as a grid |
+| `helix-screen ctl -s "$HELIX_SOCK" demo action-prompt-afc-cal` | `AFC_CALIBRATION`'s unit picker on a six-unit AFC, fed through `ActionPromptManager::process_line`: a grid of unit buttons and a two-button footer, the shape that overflows the card at 800x480 |
 | `helix-screen ctl -s "$HELIX_SOCK" demo action-prompt-hex` | Third-field hex buttons and a Z-Mod swatch grid, built through `parse_button_spec` |
 | `helix-screen ctl -s "$HELIX_SOCK" demo action-prompt-zmod` | Z-Mod's real color picker (#1806): its `// action:` lines, verbatim, fed through `ActionPromptManager::process_line` |
 
@@ -365,7 +372,7 @@ Logs to grep with `-vv`: `[ActionPrompt]` (wiring, sends, `Closed on screen, sen
 
 ### Adding a directive
 
-1. Add the command to `ACTION_COMMANDS` in `src/ui/action_prompt_manager.cpp`, keeping the list
+1. Add the command to `kActionCommands` in `src/ui/action_prompt_manager.cpp`, keeping the list
    longest first, or glued-command recovery can match the shorter prefix.
 2. Add a branch in `ActionPromptManager::process_line()` and a private `handle_*` method. Decide
    which states it is valid in and ignore it elsewhere, like the existing handlers.

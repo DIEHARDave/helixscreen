@@ -34,7 +34,7 @@ constexpr int PANEL_W = 480;
 constexpr int PANEL_H = 800;
 // The kernel declares Y as 0..640 while the digitizer emits 0..799, so lv_evdev
 // scales Y up and clamps everything past raw 640 onto the bottom row.
-const TouchRangeSettings DECLARED{true, false, 0, PANEL_W - 1, 0, 640};
+const TouchRangeSettings kDeclared{true, false, 0, PANEL_W - 1, 0, 640};
 
 /// lv_evdev's _evdev_calibrate(): integer scale, unconditional clamp.
 int evdev_calibrate(int v, int in_min, int in_max, int out_max) {
@@ -47,7 +47,7 @@ int evdev_calibrate(int v, int in_min, int in_max, int out_max) {
 /// Models the device's two stages: the evdev range (swap, scale, clamp) and the
 /// affine on top, each restorable the way the real backend's are.
 struct PipelineSink : ICalibrationSink {
-    TouchRangeSettings range = DECLARED;
+    TouchRangeSettings range = kDeclared;
     TouchRangeSource source = TouchRangeSource::Declared;
     TouchCalibration stored{};
     bool affine_enabled = true;
@@ -121,7 +121,7 @@ void capture_and_preview(WizardTouchCalibrationStep& step, PipelineSink& sink) {
     lv_obj_t* root = lv_obj_create(lv_screen_active());
     WizardTouchCalibrationTestAccess::invoke_calibration_complete(step, cal, root);
     lv_obj_delete(root);
-    REQUIRE(sink.range.max_y != DECLARED.max_y);
+    REQUIRE(sink.range.max_y != kDeclared.max_y);
 }
 
 void reset_stored_calibration_keys() {
@@ -177,8 +177,8 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     // Back out without committing: the declared range is what the device runs,
     // and the diagnostics still say where it came from.
     WizardTouchCalibrationTestAccess::session(step).restore(sink);
-    CHECK(sink.range.max_y == DECLARED.max_y);
-    CHECK(sink.range.max_x == DECLARED.max_x);
+    CHECK(sink.range.max_y == kDeclared.max_y);
+    CHECK(sink.range.max_x == kDeclared.max_x);
     CHECK(sink.source == TouchRangeSource::Declared);
 
     lv_obj_delete(root);
@@ -198,7 +198,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Wizard retry re-captures under the declared
 
     WizardTouchCalibrationTestAccess::invoke_retry(step);
 
-    CHECK(sink.range.max_y == DECLARED.max_y);
+    CHECK(sink.range.max_y == kDeclared.max_y);
     CHECK_FALSE(sink.affine_enabled);
 }
 
@@ -224,7 +224,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Wizard cleanup after a preview restores the
 
     step.cleanup();
 
-    CHECK(sink.range.max_y == DECLARED.max_y);
+    CHECK(sink.range.max_y == kDeclared.max_y);
     CHECK(sink.source == TouchRangeSource::Declared);
     CHECK_FALSE(sink.stored.valid);
     CHECK(sink.affine_enabled);
@@ -265,7 +265,7 @@ TEST_CASE("TouchCalibrationSession: restore puts back the LIVE range, not the st
     sink.apply_touch_range(false, 0, 0, PANEL_W - 1, PANEL_H - 1, TouchRangeSource::Stored);
     session.restore(sink);
 
-    CHECK(sink.range.max_y == DECLARED.max_y);
+    CHECK(sink.range.max_y == kDeclared.max_y);
     CHECK(sink.source == TouchRangeSource::Declared);
 
     reset_stored_calibration_keys();

@@ -43,7 +43,7 @@ int32_t get_const_int(const char* name) {
 
 // Representative values; the exact breakpoint rung does not matter to the
 // formula, only whether nav_width is subtracted at all.
-constexpr int32_t NAV_WIDTH = 54;
+constexpr int32_t kNavWidth = 54;
 constexpr int32_t GAP = 16;
 
 } // namespace
@@ -113,9 +113,9 @@ TEST_CASE("Landscape overlays still reserve the nav strip", "[theme][overlay-wid
     };
     for (const auto& c : cases) {
         INFO(c.label);
-        auto w = compute_overlay_widths(c.w, c.h, NAV_WIDTH, GAP);
-        CHECK(w.destination == c.w - NAV_WIDTH);
-        CHECK(w.transient == c.w - NAV_WIDTH - GAP);
+        auto w = compute_overlay_widths(c.w, c.h, kNavWidth, GAP);
+        CHECK(w.destination == c.w - kNavWidth);
+        CHECK(w.transient == c.w - kNavWidth - GAP);
     }
 }
 
@@ -136,7 +136,7 @@ TEST_CASE("Portrait overlays claim the full screen width", "[theme][overlay-widt
     };
     for (const auto& c : cases) {
         INFO(c.label);
-        auto w = compute_overlay_widths(c.w, c.h, NAV_WIDTH, GAP);
+        auto w = compute_overlay_widths(c.w, c.h, kNavWidth, GAP);
         CHECK(w.destination == c.w);
         // Transient is ALSO full width in portrait. The "you will return from
         // this" gap (#1178) is spent on whichever axis the nav bar occupies —
@@ -153,12 +153,12 @@ TEST_CASE("Portrait recovers exactly the width the nav strip was taking",
     // State the regression as a delta: on the 320x1480 target the old
     // arithmetic handed back 266 of 320. Assert we reclaimed those 54px rather
     // than merely rearranging the formula.
-    const auto portrait = compute_overlay_widths(320, 1480, NAV_WIDTH, GAP);
-    const int32_t old_destination = 320 - NAV_WIDTH;
+    const auto portrait = compute_overlay_widths(320, 1480, kNavWidth, GAP);
+    const int32_t old_destination = 320 - kNavWidth;
 
     CHECK(old_destination == 266);
     CHECK(portrait.destination == 320);
-    CHECK(portrait.destination - old_destination == NAV_WIDTH);
+    CHECK(portrait.destination - old_destination == kNavWidth);
 }
 
 TEST_CASE("Overlay width formula is wired into both const paths",

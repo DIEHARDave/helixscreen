@@ -10,8 +10,8 @@
 #include "../catch_amalgamated.hpp"
 
 static const char* TYPES[] = {"color", "px", "string"};
-static const char* SUFFIXES[] = {"_light",  "_dark",  "_micro",  "_tiny",   "_small",
-                                 "_medium", "_large", "_xlarge", "_xxlarge"};
+static const char* kSuffixes[] = {"_light",  "_dark",  "_micro",  "_tiny",   "_small",
+                                  "_medium", "_large", "_xlarge", "_xxlarge"};
 
 TEST_CASE("token table matches runtime scan (full element maps)", "[theme][tokens]") {
     // Fail loudly if HELIX_TOKEN_TABLE leaked into the test environment: with
@@ -32,7 +32,7 @@ TEST_CASE("token table matches runtime scan (suffix maps)", "[theme][tokens]") {
     // making the parity check vacuous (table compared against itself).
     REQUIRE_FALSE(helix::theme_tokens::enabled());
     for (const char* type : TYPES) {
-        for (const char* suffix : SUFFIXES) {
+        for (const char* suffix : kSuffixes) {
             INFO("type=" << type << " suffix=" << suffix
                          << " — if this fails, run: make regen-tokens");
             auto scanned = theme_manager_parse_all_xml_for_suffix("ui_xml", type, suffix);

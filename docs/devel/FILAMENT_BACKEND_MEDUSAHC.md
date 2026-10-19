@@ -172,7 +172,7 @@ the stage in flight. `abandon_feed_run_after_disconnect()` runs from both `on_st
 run without waiting for an ack.
 
 **The wait has a ceiling.** Nobody inserting the filament for three minutes
-(`mount_feed::PROMPT_TIMEOUT_MS`) unwinds the run the same way - a hot nozzle must not sit
+(`mount_feed::kPromptTimeoutMs`) unwinds the run the same way - a hot nozzle must not sit
 unattended - and raises an error toast. A `LvglTimerGuard` watches the wait while LVGL is
 up; unit tests drive `handle_wait_elapsed()` through `ToolChangerTestAccess` instead.
 

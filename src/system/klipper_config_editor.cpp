@@ -36,7 +36,7 @@ std::optional<ConfigKey> ConfigStructure::find_key(const std::string& section,
 // cancel flag. The monitor checks it once per 500ms poll, so a live one is gone
 // in well under a second; the bound only exists so a wedged worker cannot stall
 // shutdown on the main thread.
-static constexpr auto MONITOR_JOIN_TIMEOUT = std::chrono::seconds(3);
+static constexpr auto kMonitorJoinTimeout = std::chrono::seconds(3);
 
 KlipperConfigEditor::~KlipperConfigEditor() {
     cancel_restart_monitors();
@@ -79,7 +79,7 @@ void KlipperConfigEditor::cancel_restart_monitors() {
     // HttpExecutor worker — the worker would be waiting for its own item. Today
     // the owning panels are destroyed on the main thread by
     // StaticPanelRegistry::destroy_all(); keep it that way.
-    const auto deadline = std::chrono::steady_clock::now() + MONITOR_JOIN_TIMEOUT;
+    const auto deadline = std::chrono::steady_clock::now() + kMonitorJoinTimeout;
     for (auto& monitor : pending) {
         if (!monitor.valid())
             continue;
@@ -88,7 +88,7 @@ void KlipperConfigEditor::cancel_restart_monitors() {
         if (monitor.wait_until(deadline) != std::future_status::ready) {
             spdlog::warn("[ConfigEditor] Restart monitor did not finish within {}s — "
                          "giving up the wait",
-                         MONITOR_JOIN_TIMEOUT.count());
+                         kMonitorJoinTimeout.count());
         }
     }
 }
@@ -271,7 +271,7 @@ namespace {
 
 // The one file every Klipper install has and every include chain starts from.
 // Also the home for a section no active file declares yet.
-constexpr const char* ROOT_CONFIG_FILE = "printer.cfg";
+constexpr const char* kRootConfigFile = "printer.cfg";
 
 // Split content into lines, preserving the ability to rejoin with \n
 std::vector<std::string> split_lines(const std::string& content) {
@@ -523,7 +523,7 @@ void KlipperConfigEditor::load_config_files(IMoonrakerAPI& api, SectionMapCallba
         api,
         [this, on_complete](const std::set<std::string>& active_files,
                             const std::map<std::string, std::string>& contents) {
-            auto section_map = resolve_includes(contents, ROOT_CONFIG_FILE);
+            auto section_map = resolve_includes(contents, kRootConfigFile);
 
             {
                 std::lock_guard<std::mutex> lock(cache_mutex_);
@@ -880,7 +880,7 @@ void KlipperConfigEditor::safe_multi_edit(IMoonrakerAPI& api, const std::string&
                 // key says X"), so the only thing missing is a file to put it
                 // in: the root, which is the one file that always exists and is
                 // always active.
-                file_path = ROOT_CONFIG_FILE;
+                file_path = kRootConfigFile;
                 spdlog::info("[ConfigEditor] Section [{}] absent from config - creating it in {}",
                              section, file_path);
             } else {

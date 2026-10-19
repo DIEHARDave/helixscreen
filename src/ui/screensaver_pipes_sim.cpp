@@ -24,13 +24,13 @@ PipeGridDims pipes_grid_dims(int32_t w, int32_t h) {
     const int32_t long_side = std::max(w, h);
     const int32_t short_side = std::min(w, h);
     const int other = long_side > 0
-                          ? std::max(1, static_cast<int>(static_cast<int64_t>(PIPES_NODES_LONG) *
+                          ? std::max(1, static_cast<int>(static_cast<int64_t>(kPipesNodesLong) *
                                                          short_side / long_side))
                           : 1;
     if (w >= h) {
-        return {PIPES_NODES_LONG, other, PIPES_NODES_LONG};
+        return {kPipesNodesLong, other, kPipesNodesLong};
     }
-    return {other, PIPES_NODES_LONG, PIPES_NODES_LONG};
+    return {other, kPipesNodesLong, kPipesNodesLong};
 }
 
 PipeNode pipe_step(PipeNode n, PipeDir d) {
@@ -145,14 +145,14 @@ bool PipesGrid::random_empty(std::minstd_rand& rng, PipeNode& out) const {
 
 int pipes_choose_weight_straight(std::minstd_rand& rng) {
     if (random_below(rng, 20) == 0) {
-        return random_int(rng, 25, PIPES_MAX_WEIGHT_STRAIGHT);
+        return random_int(rng, 25, kPipesMaxWeightStraight);
     }
     return random_int(rng, 1, 4);
 }
 
 PipeJoint pipes_choose_joint(std::minstd_rand& rng) {
     // Any one value of the draw: the original tests against a fixed number.
-    if (random_below(rng, PIPES_TEAPOT_ODDS) == 153) {
+    if (random_below(rng, kPipesTeapotOdds) == 153) {
         return PipeJoint::TEAPOT;
     }
     return random_below(rng, 3) == 0 ? PipeJoint::BALL : PipeJoint::ELBOW;
@@ -161,19 +161,19 @@ PipeJoint pipes_choose_joint(std::minstd_rand& rng) {
 PipeDir pipes_choose_direction(const PipesGrid& grid, PipeNode pos, PipeDir last,
                                int weight_straight, std::minstd_rand& rng) {
     const bool straight_empty = last != PipeDir::NONE && grid.empty(pipe_step(pos, last));
-    if (weight_straight >= PIPES_MAX_WEIGHT_STRAIGHT && straight_empty) {
+    if (weight_straight >= kPipesMaxWeightStraight && straight_empty) {
         return last;
     }
-    std::array<PipeDir, PIPE_DIR_COUNT> turns{};
-    std::array<int, PIPE_DIR_COUNT> runs{};
+    std::array<PipeDir, kPipeDirCount> turns{};
+    std::array<int, kPipeDirCount> runs{};
     int turn_count = 0;
-    for (int i = 0; i < PIPE_DIR_COUNT; i++) {
+    for (int i = 0; i < kPipeDirCount; i++) {
         const auto d = static_cast<PipeDir>(i);
         if (d == last || !grid.empty(pipe_step(pos, d))) {
             continue;
         }
         turns[static_cast<size_t>(turn_count)] = d;
-        runs[static_cast<size_t>(turn_count)] = grid.empty_run(pos, d, PIPES_TURN_LOOKAHEAD);
+        runs[static_cast<size_t>(turn_count)] = grid.empty_run(pos, d, kPipesTurnLookahead);
         turn_count++;
     }
     const int w = straight_empty ? weight_straight : 0;
@@ -184,7 +184,7 @@ PipeDir pipes_choose_direction(const PipesGrid& grid, PipeNode pos, PipeDir last
         return last;
     }
     const int best = *std::max_element(runs.begin(), runs.begin() + turn_count);
-    std::array<PipeDir, PIPE_DIR_COUNT> ties{};
+    std::array<PipeDir, kPipeDirCount> ties{};
     int tie_count = 0;
     for (int i = 0; i < turn_count; i++) {
         if (runs[static_cast<size_t>(i)] == best) {
@@ -206,7 +206,7 @@ PipeVec3 normalized(PipeVec3 v) {
 }
 
 /// Light-model ambient (1.0) plus the light's own ambient (0.1).
-constexpr float AMBIENT_SCALE = 1.1f;
+constexpr float kAmbientScale = 1.1f;
 
 } // namespace
 
@@ -226,7 +226,7 @@ Rgb pipes_shade(const PipeMaterial& m, PipeVec3 n) {
     const float spec = nl > 0.0f ? std::pow(nh, m.shininess) : 0.0f;
     std::array<uint8_t, 3> c{};
     for (size_t i = 0; i < 3; i++) {
-        const float v = AMBIENT_SCALE * m.ka[i] + m.kd[i] * diffuse + m.ks[i] * spec;
+        const float v = kAmbientScale * m.ka[i] + m.kd[i] * diffuse + m.ks[i] * spec;
         c[i] = unit_to_u8(v);
     }
     return {c[0], c[1], c[2]};
@@ -256,13 +256,13 @@ PipePiece cylinder_piece(PipeVec3 at, PipeDir dir, float length, uint8_t materia
     return p;
 }
 
-constexpr float SHORT_PIPE = PIPES_PITCH - 2.0f * PIPES_RADIUS;
+constexpr float kShortPipe = kPipesPitch - 2.0f * kPipesRadius;
 
 } // namespace
 
 PipeVec3 pipes_node_world(PipeNode n, PipeGridDims dims) {
     const auto axis = [](int i, int dim) {
-        return (static_cast<float>(i) - static_cast<float>(dim - 1) * 0.5f) * PIPES_PITCH;
+        return (static_cast<float>(i) - static_cast<float>(dim - 1) * 0.5f) * kPipesPitch;
     };
     return {axis(n.x, dims.x), axis(n.y, dims.y), axis(n.z, dims.z)};
 }
@@ -292,7 +292,7 @@ void pipes_emit_start(PipeNode node, PipeDir first, PipeGridDims dims, uint8_t m
     const PipeVec3 c = pipes_node_world(node, dims);
     out.push_back(joint_piece(PipePieceKind::BALL, c, material));
     out.push_back(
-        cylinder_piece(c + pipes_dir_vec(first) * PIPES_RADIUS, first, SHORT_PIPE, material));
+        cylinder_piece(c + pipes_dir_vec(first) * kPipesRadius, first, kShortPipe, material));
 }
 
 void pipes_emit_move(PipeNode node, PipeDir last, PipeDir next, PipeJoint joint, PipeGridDims dims,
@@ -300,7 +300,7 @@ void pipes_emit_move(PipeNode node, PipeDir last, PipeDir next, PipeJoint joint,
     const PipeVec3 c = pipes_node_world(node, dims);
     const PipeVec3 d = pipes_dir_vec(next);
     if (next == last) {
-        out.push_back(cylinder_piece(c + d * -PIPES_RADIUS, next, PIPES_PITCH, material));
+        out.push_back(cylinder_piece(c + d * -kPipesRadius, next, kPipesPitch, material));
         return;
     }
     switch (joint) {
@@ -318,7 +318,7 @@ void pipes_emit_move(PipeNode node, PipeDir last, PipeDir next, PipeJoint joint,
         out.push_back(joint_piece(PipePieceKind::TEAPOT, c, material));
         break;
     }
-    out.push_back(cylinder_piece(c + d * PIPES_RADIUS, next, SHORT_PIPE, material));
+    out.push_back(cylinder_piece(c + d * kPipesRadius, next, kShortPipe, material));
 }
 
 void pipes_emit_end(PipeNode node, PipeGridDims dims, uint8_t material,
@@ -332,8 +332,8 @@ void PipesScreen::begin(PipeGridDims dims, std::minstd_rand& rng, std::vector<Pi
     joints_ = {};
     straight_ = 0;
     started_ = 0;
-    max_pipes_ = PIPES_PER_SCREEN;
-    const int n = std::min(PIPES_PER_SCREEN, random_int(rng, PIPES_MIN_ACTIVE, PIPES_MAX_ACTIVE));
+    max_pipes_ = kPipesPerScreen;
+    const int n = std::min(kPipesPerScreen, random_int(rng, kPipesMinActive, kPipesMaxActive));
     counted_ = n;
     for (size_t i = 0; i < static_cast<size_t>(n); i++) {
         if (!start_pipe(i, rng, out)) {
@@ -353,9 +353,9 @@ bool PipesScreen::start_pipe(size_t i, std::minstd_rand& rng, std::vector<PipePi
     p = {};
     p.alive = true;
     p.pos = node;
-    p.material = static_cast<uint8_t>(random_below(rng, static_cast<int>(PIPE_MATERIAL_COUNT)));
+    p.material = static_cast<uint8_t>(random_below(rng, static_cast<int>(kPipeMaterialCount)));
     p.weight_straight = pipes_choose_weight_straight(rng);
-    p.last = static_cast<PipeDir>(random_below(rng, PIPE_DIR_COUNT));
+    p.last = static_cast<PipeDir>(random_below(rng, kPipeDirCount));
     started_++;
     const PipeDir first = pipes_choose_direction(grid_, node, p.last, p.weight_straight, rng);
     if (first == PipeDir::NONE) {
@@ -433,15 +433,15 @@ void PipesScreen::release() {
 namespace {
 
 /// Bend segments of an elbow.
-constexpr int ELBOW_SEGMENTS = 6;
+constexpr int kElbowSegments = 6;
 /// Latitude bands of a ball.
-constexpr int BALL_STACKS = 8;
+constexpr int kBallStacks = 8;
 
-/// Joins ring `a` to ring `b` (PIPES_SLICES vertices each, b ahead of a along the tube) with
+/// Joins ring `a` to ring `b` (kPipesSlices vertices each, b ahead of a along the tube) with
 /// triangles facing out when each ring runs counter-clockwise about the direction of travel.
 void join_rings(uint16_t a, uint16_t b, std::vector<uint16_t>& tris) {
-    for (int k = 0; k < PIPES_SLICES; k++) {
-        const int k1 = (k + 1) % PIPES_SLICES;
+    for (int k = 0; k < kPipesSlices; k++) {
+        const int k1 = (k + 1) % kPipesSlices;
         const auto a0 = static_cast<uint16_t>(a + k);
         const auto a1 = static_cast<uint16_t>(a + k1);
         const auto b0 = static_cast<uint16_t>(b + k);
@@ -451,57 +451,57 @@ void join_rings(uint16_t a, uint16_t b, std::vector<uint16_t>& tris) {
 }
 
 float slice_angle(int k) {
-    return static_cast<float>(k) * 2.0f * SAVER_PI / static_cast<float>(PIPES_SLICES);
+    return static_cast<float>(k) * 2.0f * kSaverPi / static_cast<float>(kPipesSlices);
 }
 
 } // namespace
 
 float pipes_ball_radius() {
-    return std::sqrt(2.0f) * PIPES_RADIUS / std::cos(SAVER_PI / static_cast<float>(PIPES_SLICES));
+    return std::sqrt(2.0f) * kPipesRadius / std::cos(kSaverPi / static_cast<float>(kPipesSlices));
 }
 
 void pipes_build_cylinder(PipeMesh& out) {
     out.verts.clear();
     out.tris.clear();
     for (int ring = 0; ring < 2; ring++) {
-        for (int k = 0; k < PIPES_SLICES; k++) {
+        for (int k = 0; k < kPipesSlices; k++) {
             const float c = std::cos(slice_angle(k));
             const float s = std::sin(slice_angle(k));
             out.verts.push_back(
-                {{PIPES_RADIUS * c, PIPES_RADIUS * s, static_cast<float>(ring)}, {c, s, 0.0f}});
+                {{kPipesRadius * c, kPipesRadius * s, static_cast<float>(ring)}, {c, s, 0.0f}});
         }
     }
-    join_rings(0, PIPES_SLICES, out.tris);
+    join_rings(0, kPipesSlices, out.tris);
 }
 
 void pipes_build_ball(PipeMesh& out) {
     out.verts.clear();
     out.tris.clear();
     const float radius = pipes_ball_radius();
-    // Poles on the z axis, rings of PIPES_SLICES between them.
+    // Poles on the z axis, rings of kPipesSlices between them.
     out.verts.push_back({{0, 0, -radius}, {0, 0, -1}});
-    for (int stack = 1; stack < BALL_STACKS; stack++) {
-        const float polar = SAVER_PI * static_cast<float>(stack) / static_cast<float>(BALL_STACKS);
+    for (int stack = 1; stack < kBallStacks; stack++) {
+        const float polar = kSaverPi * static_cast<float>(stack) / static_cast<float>(kBallStacks);
         const float z = -std::cos(polar);
         const float rr = std::sin(polar);
-        for (int k = 0; k < PIPES_SLICES; k++) {
+        for (int k = 0; k < kPipesSlices; k++) {
             const PipeVec3 n{rr * std::cos(slice_angle(k)), rr * std::sin(slice_angle(k)), z};
             out.verts.push_back({{n.x * radius, n.y * radius, n.z * radius}, n});
         }
     }
     const auto top = static_cast<uint16_t>(out.verts.size());
     out.verts.push_back({{0, 0, radius}, {0, 0, 1}});
-    for (int k = 0; k < PIPES_SLICES; k++) {
-        const auto k1 = static_cast<uint16_t>(1 + (k + 1) % PIPES_SLICES);
+    for (int k = 0; k < kPipesSlices; k++) {
+        const auto k1 = static_cast<uint16_t>(1 + (k + 1) % kPipesSlices);
         out.tris.insert(out.tris.end(), {0, k1, static_cast<uint16_t>(1 + k)});
     }
-    for (int stack = 1; stack + 1 < BALL_STACKS; stack++) {
-        join_rings(static_cast<uint16_t>(1 + (stack - 1) * PIPES_SLICES),
-                   static_cast<uint16_t>(1 + stack * PIPES_SLICES), out.tris);
+    for (int stack = 1; stack + 1 < kBallStacks; stack++) {
+        join_rings(static_cast<uint16_t>(1 + (stack - 1) * kPipesSlices),
+                   static_cast<uint16_t>(1 + stack * kPipesSlices), out.tris);
     }
-    const auto last = static_cast<uint16_t>(1 + (BALL_STACKS - 2) * PIPES_SLICES);
-    for (int k = 0; k < PIPES_SLICES; k++) {
-        const auto k1 = static_cast<uint16_t>(last + (k + 1) % PIPES_SLICES);
+    const auto last = static_cast<uint16_t>(1 + (kBallStacks - 2) * kPipesSlices);
+    for (int k = 0; k < kPipesSlices; k++) {
+        const auto k1 = static_cast<uint16_t>(last + (k + 1) % kPipesSlices);
         out.tris.insert(out.tris.end(), {static_cast<uint16_t>(last + k), k1, top});
     }
 }
@@ -509,23 +509,23 @@ void pipes_build_ball(PipeMesh& out) {
 void pipes_build_elbow(PipeMesh& out) {
     out.verts.clear();
     out.tris.clear();
-    const float r = PIPES_RADIUS;
-    for (int seg = 0; seg <= ELBOW_SEGMENTS; seg++) {
-        const float phi = 0.5f * SAVER_PI * static_cast<float>(seg) / ELBOW_SEGMENTS;
+    const float r = kPipesRadius;
+    for (int seg = 0; seg <= kElbowSegments; seg++) {
+        const float phi = 0.5f * kSaverPi * static_cast<float>(seg) / kElbowSegments;
         // Centreline round (0, r, -r); the ring's frame is x and e2, with x cross e2 the
         // direction of travel.
         const PipeVec3 centre{0.0f, r - r * std::cos(phi), -r + r * std::sin(phi)};
         const PipeVec3 e2{0.0f, std::cos(phi), -std::sin(phi)};
-        for (int k = 0; k < PIPES_SLICES; k++) {
+        for (int k = 0; k < kPipesSlices; k++) {
             const float c = std::cos(slice_angle(k));
             const float s = std::sin(slice_angle(k));
             const PipeVec3 n{c, s * e2.y, s * e2.z};
             out.verts.push_back({{centre.x + r * n.x, centre.y + r * n.y, centre.z + r * n.z}, n});
         }
     }
-    for (int seg = 0; seg < ELBOW_SEGMENTS; seg++) {
-        join_rings(static_cast<uint16_t>(seg * PIPES_SLICES),
-                   static_cast<uint16_t>((seg + 1) * PIPES_SLICES), out.tris);
+    for (int seg = 0; seg < kElbowSegments; seg++) {
+        join_rings(static_cast<uint16_t>(seg * kPipesSlices),
+                   static_cast<uint16_t>((seg + 1) * kPipesSlices), out.tris);
     }
 }
 
@@ -601,12 +601,12 @@ PipeVec3 pipes_xform_point(const PipeXform& xf, PipeVec3 p) {
 
 namespace {
 
-constexpr int LUT_AD = 256;    ///< ambient + diffuse entries over n.L in [0, 1]
-constexpr int LUT_SPEC = 1024; ///< specular entries over n.H in [0, 1]
-constexpr size_t LUT_STRIDE = 3 * (LUT_AD + LUT_SPEC);
+constexpr int kLutAd = 256;    ///< ambient + diffuse entries over n.L in [0, 1]
+constexpr int kLutSpec = 1024; ///< specular entries over n.H in [0, 1]
+constexpr size_t kLutStride = 3 * (kLutAd + kLutSpec);
 
 /// Nearer than this a triangle is not drawn (nothing in the grid comes close).
-constexpr float NEAR_DEPTH = 0.5f;
+constexpr float kNearDepth = 0.5f;
 
 uint16_t lut_value(float v) {
     return static_cast<uint16_t>(std::lround(std::max(0.0f, v) * 255.0f));
@@ -625,19 +625,19 @@ void PipesRenderer::init(uint32_t w, uint32_t h, uint8_t scale) {
     const size_t most = std::max(
         {cylinder_.verts.size(), ball_.verts.size(), elbow_.verts.size(), teapot_.verts.size()});
     screen_.assign(most, ScreenVertex{});
-    lut_.assign(LUT_STRIDE * PIPE_MATERIAL_COUNT, 0);
-    for (size_t m = 0; m < PIPE_MATERIAL_COUNT; m++) {
-        const PipeMaterial& mat = PIPE_MATERIALS[m];
-        uint16_t* base = lut_.data() + m * LUT_STRIDE;
+    lut_.assign(kLutStride * kPipeMaterialCount, 0);
+    for (size_t m = 0; m < kPipeMaterialCount; m++) {
+        const PipeMaterial& mat = kPipeMaterials[m];
+        uint16_t* base = lut_.data() + m * kLutStride;
         for (size_t c = 0; c < 3; c++) {
-            uint16_t* ad = base + c * LUT_AD;
-            uint16_t* sp = base + 3 * LUT_AD + c * LUT_SPEC;
-            for (int i = 0; i < LUT_AD; i++) {
-                const float nl = static_cast<float>(i) / (LUT_AD - 1);
-                ad[i] = lut_value(AMBIENT_SCALE * mat.ka[c] + mat.kd[c] * nl);
+            uint16_t* ad = base + c * kLutAd;
+            uint16_t* sp = base + 3 * kLutAd + c * kLutSpec;
+            for (int i = 0; i < kLutAd; i++) {
+                const float nl = static_cast<float>(i) / (kLutAd - 1);
+                ad[i] = lut_value(kAmbientScale * mat.ka[c] + mat.kd[c] * nl);
             }
-            for (int i = 0; i < LUT_SPEC; i++) {
-                const float nh = static_cast<float>(i) / (LUT_SPEC - 1);
+            for (int i = 0; i < kLutSpec; i++) {
+                const float nh = static_cast<float>(i) / (kLutSpec - 1);
                 sp[i] = lut_value(mat.ks[c] * std::pow(nh, mat.shininess));
             }
         }
@@ -666,7 +666,7 @@ void PipesRenderer::set_scale(uint8_t scale) {
 }
 
 void PipesRenderer::set_view(float yrot_deg) {
-    const float rad = yrot_deg * SAVER_PI / 180.0f;
+    const float rad = yrot_deg * kSaverPi / 180.0f;
     cos_y_ = std::cos(rad);
     sin_y_ = std::sin(rad);
 }
@@ -676,13 +676,13 @@ void PipesRenderer::clear_depth() {
 }
 
 PipeVec3 PipesRenderer::to_eye(PipeVec3 p) const {
-    return {p.x * cos_y_ + p.z * sin_y_, p.y, -p.x * sin_y_ + p.z * cos_y_ - PIPES_VIEW_DIST};
+    return {p.x * cos_y_ + p.z * sin_y_, p.y, -p.x * sin_y_ + p.z * cos_y_ - kPipesViewDist};
 }
 
 bool PipesRenderer::project(PipeVec3 p, float& sx, float& sy) const {
     const PipeVec3 e = to_eye(p);
     const float d = -e.z;
-    if (d < NEAR_DEPTH) {
+    if (d < kNearDepth) {
         return false;
     }
     const auto s = static_cast<float>(scale_);
@@ -728,7 +728,7 @@ DirtyRect PipesRenderer::draw(const FrameTarget& frame, const PipePiece& piece) 
         ScreenVertex& sv = screen_[i];
         sv.n = {wn.x * cos_y_ + wn.z * sin_y_, wn.y, -wn.x * sin_y_ + wn.z * cos_y_};
         const float d = -e.z;
-        if (d < NEAR_DEPTH) {
+        if (d < kNearDepth) {
             sv.inv_depth = -1.0f;
             continue;
         }
@@ -743,7 +743,7 @@ DirtyRect PipesRenderer::draw(const FrameTarget& frame, const PipePiece& piece) 
     if (min_x > max_x) {
         return box;
     }
-    const uint16_t* lut = lut_.data() + (piece.material % PIPE_MATERIAL_COUNT) * LUT_STRIDE;
+    const uint16_t* lut = lut_.data() + (piece.material % kPipeMaterialCount) * kLutStride;
     for (size_t t = 0; t + 2 < mesh.tris.size(); t += 3) {
         const ScreenVertex& a = screen_[mesh.tris[t]];
         const ScreenVertex& b = screen_[mesh.tris[t + 1]];
@@ -814,9 +814,9 @@ void PipesRenderer::raster_triangle(const FrameTarget& frame, const ScreenVertex
 
     const PipeVec3 light = pipes_light_dir();
     const PipeVec3 half = pipes_half_vector();
-    const uint16_t* ad[3] = {lut, lut + LUT_AD, lut + 2 * LUT_AD};
-    const uint16_t* sp[3] = {lut + 3 * LUT_AD, lut + 3 * LUT_AD + LUT_SPEC,
-                             lut + 3 * LUT_AD + 2 * LUT_SPEC};
+    const uint16_t* ad[3] = {lut, lut + kLutAd, lut + 2 * kLutAd};
+    const uint16_t* sp[3] = {lut + 3 * kLutAd, lut + 3 * kLutAd + kLutSpec,
+                             lut + 3 * kLutAd + 2 * kLutSpec};
     PixelWriter out(frame);
     const int32_t s = scale_;
     for (int32_t py = y1; py <= y2; py++) {
@@ -843,7 +843,7 @@ void PipesRenderer::raster_triangle(const FrameTarget& frame, const ScreenVertex
             const float nl = dot(n, light);
             const size_t il = unit_to_u8(nl);
             const auto ih = static_cast<size_t>(
-                std::lround(std::clamp(dot(n, half), 0.0f, 1.0f) * (LUT_SPEC - 1)));
+                std::lround(std::clamp(dot(n, half), 0.0f, 1.0f) * (kLutSpec - 1)));
             uint8_t rgb[3];
             for (size_t ch = 0; ch < 3; ch++) {
                 const int v = ad[ch][il] + (nl > 0.0f ? sp[ch][ih] : 0);
@@ -862,7 +862,7 @@ void PipesRenderer::raster_triangle(const FrameTarget& frame, const ScreenVertex
 void PipesDissolve::init(uint32_t w, uint32_t h) {
     w_ = w;
     h_ = h;
-    block_px_ = std::max(1, static_cast<int>(std::min(w, h)) / PIPES_DISSOLVE_DIV);
+    block_px_ = std::max(1, static_cast<int>(std::min(w, h)) / kPipesDissolveDiv);
     const auto b = static_cast<uint32_t>(block_px_);
     cols_ = static_cast<int>((w + b - 1) / b);
     const uint32_t rows = (h + b - 1) / b;
@@ -895,7 +895,7 @@ void PipesDissolve::step(uint32_t dt_ms, const FrameTarget& frame, std::vector<D
     elapsed_ms_ += dt_ms;
     const size_t n = order_.size();
     const auto due = static_cast<size_t>(
-        std::min<uint64_t>(n, static_cast<uint64_t>(n) * elapsed_ms_ / PIPES_DISSOLVE_MS));
+        std::min<uint64_t>(n, static_cast<uint64_t>(n) * elapsed_ms_ / kPipesDissolveMs));
     PixelWriter out(frame);
     const auto w = static_cast<int32_t>(std::min(w_, frame.w));
     const auto h = static_cast<int32_t>(std::min(h_, frame.h));
@@ -921,11 +921,11 @@ void PipesDissolve::step(uint32_t dt_ms, const FrameTarget& frame, std::vector<D
 // ============================================================================
 
 void PipesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level) {
-    level_ = std::min(level, PIPES_LEVEL_COUNT - 1);
-    renderer_.init(frame.w, frame.h, PIPES_LEVELS[level_].scale);
+    level_ = std::min(level, kPipesLevelCount - 1);
+    renderer_.init(frame.w, frame.h, kPipesLevels[level_].scale);
     dissolve_.init(frame.w, frame.h);
     pieces_.clear();
-    pieces_.reserve(4 * PIPES_MAX_ACTIVE * PIPES_MAX_STEPS_PER_TICK);
+    pieces_.reserve(4 * kPipesMaxActive * kPipesMaxStepsPerTick);
     yrot_deg_ = 0.0f;
     screens_ = 0;
     std::vector<DirtyRect> unused;
@@ -934,7 +934,7 @@ void PipesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t leve
 
 void PipesSim::start_screen(const FrameTarget& frame, std::minstd_rand& rng,
                             std::vector<DirtyRect>& dirty) {
-    const uint8_t scale = PIPES_LEVELS[level_].scale;
+    const uint8_t scale = kPipesLevels[level_].scale;
     if (renderer_.scale() != scale) {
         renderer_.set_scale(scale);
     }
@@ -963,7 +963,7 @@ void PipesSim::draw_pieces(const FrameTarget& frame, std::vector<DirtyRect>& dir
 void PipesSim::step(uint32_t dt_ms, const FrameTarget& frame, std::minstd_rand& rng,
                     std::vector<DirtyRect>& dirty) {
     if (phase_ == PipesPhase::GROWING) {
-        const uint32_t due = steps_.steps_due(dt_ms, PIPES_STEP_MS, PIPES_MAX_STEPS_PER_TICK);
+        const uint32_t due = steps_.steps_due(dt_ms, kPipesStepMs, kPipesMaxStepsPerTick);
         for (uint32_t i = 0; i < due; i++) {
             const bool more = screen_.step(rng, pieces_);
             draw_pieces(frame, dirty);
@@ -981,12 +981,12 @@ void PipesSim::step(uint32_t dt_ms, const FrameTarget& frame, std::minstd_rand& 
     if (dissolve_.active()) {
         return;
     }
-    yrot_deg_ = std::fmod(yrot_deg_ + PIPES_YROT_STEP_DEG, 360.0f);
+    yrot_deg_ = std::fmod(yrot_deg_ + kPipesYrotStepDeg, 360.0f);
     start_screen(frame, rng, dirty);
 }
 
 void PipesSim::request_level(size_t level) {
-    level_ = std::min(level, PIPES_LEVEL_COUNT - 1);
+    level_ = std::min(level, kPipesLevelCount - 1);
 }
 
 void PipesSim::clear() {

@@ -106,7 +106,7 @@ class LedControlOverlay : public OverlayBase {
     [[nodiscard]] int active_effect_index() const;
     [[nodiscard]] std::vector<bool> focused_effects_enabled() const;
     /// Shows @p chip (-1 the None chip) until a frame changes the focused
-    /// strip's effect state or PENDING_EFFECT_TIMEOUT_MS passes.
+    /// strip's effect state or kPendingEffectTimeoutMs passes.
     void set_pending_effect_chip(int chip);
     /// A status frame: a pending chip holds until the effect state moves, then
     /// the tapped chip stays if it is running, else the running one wins.
@@ -194,7 +194,7 @@ class LedControlOverlay : public OverlayBase {
     /// Bumped by every control; a poll landing after a bump leaves the page alone.
     unsigned page_gen_ = 0;
 
-    static constexpr uint32_t PENDING_EFFECT_TIMEOUT_MS = 4000;
+    static constexpr uint32_t kPendingEffectTimeoutMs = 4000;
     std::optional<int> pending_effect_chip_;
     std::vector<bool> pending_effects_snapshot_;
     unsigned pending_effect_gen_ = 0;

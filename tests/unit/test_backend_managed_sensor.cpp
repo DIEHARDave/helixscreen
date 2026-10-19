@@ -38,9 +38,18 @@ helix::PrinterDiscovery make_discovery(AmsType type) {
         objects = {"mmu", "mmu_encoder mmu_encoder", "extruder", "heater_bed", "gcode_move"};
         break;
     case AmsType::AFC:
-        // lane1/lane2 + a buffer named "TN" so <lane>_* and <buffer>_* resolve.
-        objects = {"AFC",      "AFC_stepper lane1", "AFC_stepper lane2", "AFC_buffer TN",
-                   "extruder", "heater_bed",        "gcode_move"};
+        // lane1/lane2, a buffer named "TN" and two AFC extruders so <lane>_*,
+        // <buffer>_* and <extruder>_tool_* resolve.
+        objects = {"AFC",
+                   "AFC_stepper lane1",
+                   "AFC_stepper lane2",
+                   "AFC_buffer TN",
+                   "AFC_extruder extruder",
+                   "AFC_extruder extruder1",
+                   "extruder",
+                   "extruder1",
+                   "heater_bed",
+                   "gcode_move"};
         break;
     case AmsType::CFS:
         objects = {"box", "extruder", "heater_bed", "gcode_move"};
@@ -150,6 +159,31 @@ TEST_CASE("backend-managed sensor: AFC named + per-lane + per-buffer sensors",
     // HH-only names are NOT owned by AFC.
     CHECK_FALSE(is_ams("toolhead", afc));
     CHECK_FALSE(is_ams("filament_tension", afc));
+}
+
+// AFC registers each [AFC_extruder <name>]'s toolhead sensors as
+// <name>_tool_start / <name>_tool_end. With `pin_tool_start: virtual` the
+// tool_start entry is a software switch whose ENABLE means "filament is loaded",
+// so a generic sensor toggle would rewrite AFC's toolhead load state.
+TEST_CASE("backend-managed sensor: AFC per-extruder toolhead sensors", "[ams][sensor-ownership]") {
+    auto afc = make_discovery(AmsType::AFC);
+    REQUIRE(afc.mmu_type() == AmsType::AFC);
+    REQUIRE(afc.afc_extruder_names() == std::vector<std::string>{"extruder", "extruder1"});
+
+    for (const auto& ext : afc.afc_extruder_names()) {
+        CHECK(is_ams(ext + "_tool_start", afc));
+        CHECK(is_ams(ext + "_tool_end", afc));
+    }
+
+    // An extruder AFC does not manage keeps its sensors visible.
+    CHECK_FALSE(is_ams("extruder2_tool_start", afc));
+    CHECK_FALSE(is_ams("extruder2_tool_end", afc));
+    // Other suffixes on a managed extruder are not AFC's.
+    CHECK_FALSE(is_ams("extruder_runout", afc));
+
+    // Without an MMU nothing is suppressed, whatever the name.
+    auto plain = make_no_mmu_discovery();
+    CHECK_FALSE(is_ams("extruder_tool_start", plain));
 }
 
 // ---------------------------------------------------------------------------

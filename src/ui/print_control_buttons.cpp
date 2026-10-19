@@ -36,7 +36,7 @@ void PrintControlButtons::init_subjects() {
 
     UI_MANAGED_SUBJECT_STRING(primary_icon_subject_, primary_icon_buf_, "\xF3\xB0\x8F\xA4",
                               "print_control_primary_icon", subjects_);
-    UI_MANAGED_SUBJECT_STRING(primary_label_subject_, primary_label_buf_, CONTROL_LABEL_PAUSE,
+    UI_MANAGED_SUBJECT_STRING(primary_label_subject_, primary_label_buf_, kControlLabelPause,
                               "print_control_primary_label", subjects_);
     UI_MANAGED_SUBJECT_INT(primary_enabled_subject_, 0, "print_control_primary_enabled", subjects_);
     UI_MANAGED_SUBJECT_INT(stop_enabled_subject_, 0, "print_control_stop_enabled", subjects_);

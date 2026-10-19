@@ -27,34 +27,34 @@
 // ============================================================================
 
 // Default dimensions
-static constexpr int32_t DEFAULT_WIDTH = 300;
-static constexpr int32_t DEFAULT_HEIGHT = 50;
-static constexpr int DEFAULT_SLOT_COUNT = 4;
-static constexpr int32_t DEFAULT_SLOT_WIDTH = 80;
+static constexpr int32_t kDefaultWidth = 300;
+static constexpr int32_t kDefaultHeight = 50;
+static constexpr int kDefaultSlotCount = 4;
+static constexpr int32_t kDefaultSlotWidth = 80;
 
 // Line styling
 static constexpr int32_t LINE_WIDTH = 2;
-static constexpr int32_t DEFAULT_LANE_STEP = 10;
-static constexpr int32_t ARROW_SIZE = 6;       // Arrowhead half-width, room permitting
-static constexpr int32_t ARROW_WING_WIDTH = 2; // Stroke of an arrowhead's wings
-static constexpr int32_t DOT_RADIUS = 3;       // Bracket tick's end dot
-static constexpr int32_t BAR_GAP = 4;          // Half-width of a break in a crossed bar
+static constexpr int32_t kDefaultLaneStep = 10;
+static constexpr int32_t kArrowSize = 6;      // Arrowhead half-width, room permitting
+static constexpr int32_t kArrowWingWidth = 2; // Stroke of an arrowhead's wings
+static constexpr int32_t kDotRadius = 3;      // Bracket tick's end dot
+static constexpr int32_t kBarGap = 4;         // Half-width of a break in a crossed bar
 
 // Vertical spacing for multiple overlapping marks
 // Bars at height 0 are at the top, height N is further down
-static constexpr int32_t BASE_HEIGHT_OFFSET = 10;
-static constexpr int32_t HEIGHT_STEP = 8; // Separation between overlapping lines
+static constexpr int32_t kBaseHeightOffset = 10;
+static constexpr int32_t kHeightStep = 8; // Separation between overlapping lines
 
 // Maximum backup connections supported
-static constexpr int MAX_SLOTS = 16;
+static constexpr int kMaxSlots = helix::kAmsMaxSlots;
 
 // ============================================================================
 // Widget State
 // ============================================================================
 
 struct EndlessSpoolArrowsData {
-    int slot_count = DEFAULT_SLOT_COUNT;
-    int32_t slot_width = DEFAULT_SLOT_WIDTH;
+    int slot_count = kDefaultSlotCount;
+    int32_t slot_width = kDefaultSlotWidth;
     int32_t slot_overlap = 0; // Overlap between slots in pixels (for 5+ slots)
     int32_t slot_offset = 0;  // Left offset of the slot row, as the slot grid lays it out
 
@@ -66,7 +66,7 @@ struct EndlessSpoolArrowsData {
 
     // Theme-derived sizes
     int32_t line_width = LINE_WIDTH;
-    int32_t lane_step = DEFAULT_LANE_STEP; // Sideways offset of one arrow-end lane
+    int32_t lane_step = kDefaultLaneStep; // Sideways offset of one arrow-end lane
 };
 
 // Registry of widget data
@@ -118,9 +118,9 @@ using helix::ui::EndlessSpoolMarkKind;
 
 // A column's left-to-right position. Lanes are far narrower than a slot, so
 // any lane offset stays between its slot's neighbours.
-static constexpr int LANES_PER_SLOT = 64;
+static constexpr int kLanesPerSlot = 64;
 static int column_pos(const EndlessSpoolColumn& c) {
-    return c.slot * LANES_PER_SLOT + c.lane;
+    return c.slot * kLanesPerSlot + c.lane;
 }
 
 // The bar's drawn extent, lanes included
@@ -287,7 +287,7 @@ std::vector<EndlessSpoolMark> endless_spool_marks(const helix::printer::EndlessS
     }
     const bool heads_share_a_slot =
         std::any_of(targets_at.begin(), targets_at.end(), [](int count) { return count > 1; });
-    const int32_t min_lane_px = heads_share_a_slot ? 2 * (1 + ARROW_WING_WIDTH / 2) + 1 : 1;
+    const int32_t min_lane_px = heads_share_a_slot ? 2 * (1 + kArrowWingWidth / 2) + 1 : 1;
     int32_t lane_px = std::max<int32_t>(0, limits.lane_px);
     if (max_lane > 0 && limits.slot_spacing_px > 0 && lane_px > 0) {
         lane_px =
@@ -305,11 +305,11 @@ std::vector<EndlessSpoolMark> endless_spool_marks(const helix::printer::EndlessS
             continue;
         }
         // Arrowheads one lane apart must not overlap. A wing's stroke reaches
-        // ARROW_WING_WIDTH / 2 past the half-width, so two whole heads fit in
+        // kArrowWingWidth / 2 past the half-width, so two whole heads fit in
         // less than a lane.
         const bool shared = targets_at[static_cast<size_t>(mark.slots[1])] > 1;
-        const int32_t fits = (lane_px - 1) / 2 - ARROW_WING_WIDTH / 2;
-        mark.head_px = shared ? std::max<int32_t>(1, std::min(ARROW_SIZE, fits)) : ARROW_SIZE;
+        const int32_t fits = (lane_px - 1) / 2 - kArrowWingWidth / 2;
+        mark.head_px = shared ? std::max<int32_t>(1, std::min(kArrowSize, fits)) : kArrowSize;
     }
     return marks;
 }
@@ -346,7 +346,7 @@ static void draw_bar(lv_layer_t* layer, const std::vector<int32_t>& junction_xs,
     const int32_t x2 = junction_xs.back();
     int32_t start = x1;
     for (int32_t gap_x : gap_xs) {
-        int32_t half_gap = BAR_GAP + width / 2;
+        int32_t half_gap = kBarGap + width / 2;
         for (int32_t junction_x : junction_xs) {
             half_gap = std::min(half_gap, std::abs(gap_x - junction_x) - width);
         }
@@ -384,7 +384,7 @@ static void draw_arrow_down(lv_layer_t* layer, int32_t tip_x, int32_t tip_y, lv_
     lv_draw_line_dsc_t line_dsc;
     lv_draw_line_dsc_init(&line_dsc);
     line_dsc.color = color;
-    line_dsc.width = ARROW_WING_WIDTH;
+    line_dsc.width = kArrowWingWidth;
     line_dsc.round_start = true;
     line_dsc.round_end = true;
 
@@ -437,10 +437,10 @@ static void draw_bracket(lv_layer_t* layer, const std::vector<int32_t>& member_x
                          int32_t y_route, const std::vector<int32_t>& gap_xs, lv_color_t color,
                          int32_t line_width) {
     draw_bar(layer, member_xs, y_route, gap_xs, color, line_width);
-    const int32_t dot_y = y_bottom - DOT_RADIUS;
+    const int32_t dot_y = y_bottom - kDotRadius;
     for (int32_t x : member_xs) {
         draw_line(layer, x, y_route, x, dot_y, color, line_width);
-        draw_dot(layer, x, dot_y, color, DOT_RADIUS);
+        draw_dot(layer, x, dot_y, color, kDotRadius);
     }
 }
 
@@ -472,11 +472,11 @@ static void endless_spool_arrows_draw_cb(lv_event_t* e) {
     // levels would walk y_route past y_bottom and draw the "vertical" segments
     // inverted, outside the widget, so the layout stacks the deepest marks on
     // this bar instead - crowded, but inside the canvas.
-    const int32_t max_route_y = y_bottom - ARROW_SIZE - 2;
+    const int32_t max_route_y = y_bottom - kArrowSize - 2;
     helix::ui::EndlessSpoolMarkLimits limits;
     limits.max_height_level =
-        max_route_y > y_off + BASE_HEIGHT_OFFSET
-            ? static_cast<int>((max_route_y - (y_off + BASE_HEIGHT_OFFSET)) / HEIGHT_STEP)
+        max_route_y > y_off + kBaseHeightOffset
+            ? static_cast<int>((max_route_y - (y_off + kBaseHeightOffset)) / kHeightStep)
             : 0;
     limits.lane_px = data->lane_step;
     limits.slot_spacing_px =
@@ -495,7 +495,7 @@ static void endless_spool_arrows_draw_cb(lv_event_t* e) {
     };
 
     for (const auto& mark : marks) {
-        const int32_t y_route = y_off + BASE_HEIGHT_OFFSET + mark.height_level * HEIGHT_STEP;
+        const int32_t y_route = y_off + kBaseHeightOffset + mark.height_level * kHeightStep;
 
         std::vector<int32_t> gap_xs;
         gap_xs.reserve(mark.bar_gaps.size());
@@ -555,7 +555,7 @@ static void* endless_spool_arrows_xml_create(lv_xml_parser_state_t* state, const
     load_theme_colors(data);
 
     // Configure object
-    lv_obj_set_size(obj, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+    lv_obj_set_size(obj, kDefaultWidth, kDefaultHeight);
     lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(obj, 0, 0);
     lv_obj_set_style_pad_all(obj, 0, 0);
@@ -591,7 +591,7 @@ static void endless_spool_arrows_xml_apply(lv_xml_parser_state_t* state, const c
         const char* value = attrs[i + 1];
 
         if (strcmp(name, "slot_count") == 0) {
-            data->slot_count = LV_CLAMP(atoi(value), 1, MAX_SLOTS);
+            data->slot_count = LV_CLAMP(atoi(value), 1, kMaxSlots);
             needs_redraw = true;
         } else if (strcmp(name, "slot_width") == 0) {
             data->slot_width = LV_MAX(atoi(value), 20);
@@ -634,7 +634,7 @@ lv_obj_t* ui_endless_spool_arrows_create(lv_obj_t* parent) {
     load_theme_colors(data);
 
     // Configure object
-    lv_obj_set_size(obj, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+    lv_obj_set_size(obj, kDefaultWidth, kDefaultHeight);
     lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(obj, 0, 0);
     lv_obj_set_style_pad_all(obj, 0, 0);
@@ -652,7 +652,7 @@ lv_obj_t* ui_endless_spool_arrows_create(lv_obj_t* parent) {
 void ui_endless_spool_arrows_set_slot_count(lv_obj_t* obj, int count) {
     auto* data = get_data(obj);
     if (data) {
-        data->slot_count = LV_CLAMP(count, 1, MAX_SLOTS);
+        data->slot_count = LV_CLAMP(count, 1, kMaxSlots);
         lv_obj_invalidate(obj);
     }
 }

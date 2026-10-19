@@ -104,7 +104,7 @@ namespace {
 /// A tile component whose icon face is bound to whichever per-instance subject
 /// it is handed. Two instances get different subject names, so a verdict
 /// published to one must not move the other.
-constexpr const char* TILE_FIXTURE_XML = R"(<component>
+constexpr const char* kTileFixtureXml = R"(<component>
   <api>
     <prop name="tile_icon_subject" type="string" default=""/>
   </api>
@@ -123,7 +123,7 @@ constexpr const char* TILE_FIXTURE_XML = R"(<component>
 lv_obj_t* create_tile(lv_obj_t* parent, const helix::TileSizing& sizing) {
     static bool registered = false;
     if (!registered) {
-        REQUIRE(lv_xml_register_component_from_data("tile_size_fixture", TILE_FIXTURE_XML) ==
+        REQUIRE(lv_xml_register_component_from_data("tile_size_fixture", kTileFixtureXml) ==
                 LV_RESULT_OK);
         registered = true;
     }

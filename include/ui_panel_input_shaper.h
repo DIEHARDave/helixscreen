@@ -297,24 +297,24 @@ class InputShaperPanel : public OverlayBase {
     // Private setup helper (called by create())
     void setup_widgets();
 
-    // Per-axis comparison table subjects (up to MAX_SHAPERS rows per axis, bound in XML)
-    static constexpr size_t MAX_SHAPERS = 11;
-    static constexpr size_t CMP_TYPE_BUF = 32;
-    static constexpr size_t CMP_VALUE_BUF = 24;
+    // Per-axis comparison table subjects (up to kMaxShapers rows per axis, bound in XML)
+    static constexpr size_t kMaxShapers = 11;
+    static constexpr size_t kCmpTypeBuf = 32;
+    static constexpr size_t kCmpValueBuf = 24;
 
     struct ComparisonRow {
-        char type_buf[CMP_TYPE_BUF] = {};
+        char type_buf[kCmpTypeBuf] = {};
         lv_subject_t type{};
-        char freq_buf[CMP_VALUE_BUF] = {};
+        char freq_buf[kCmpValueBuf] = {};
         lv_subject_t freq{};
-        char vib_buf[CMP_VALUE_BUF] = {};
+        char vib_buf[kCmpValueBuf] = {};
         lv_subject_t vib{};
-        char accel_buf[CMP_VALUE_BUF] = {};
+        char accel_buf[kCmpValueBuf] = {};
         lv_subject_t accel{};
     };
 
-    std::array<ComparisonRow, MAX_SHAPERS> x_cmp_;
-    std::array<ComparisonRow, MAX_SHAPERS> y_cmp_;
+    std::array<ComparisonRow, kMaxShapers> x_cmp_;
+    std::array<ComparisonRow, kMaxShapers> y_cmp_;
 
     // Error message subject (replaces imperative lv_label_set_text)
     char is_error_message_buf_[128] = {};
@@ -364,7 +364,7 @@ class InputShaperPanel : public OverlayBase {
     lv_subject_t is_x_num_shapers_{};
     lv_subject_t is_y_num_shapers_{};
     /// Chart chips actually backed by a curve, per axis. The XML declares a
-    /// fixed MAX_SHAPERS of them, so the surplus must be hidden or they render
+    /// fixed kMaxShapers of them, so the surplus must be hidden or they render
     /// as empty outlines. Separate from num_shapers: the chips come from the CSV
     /// curves, the table from the console output, and those two lists can
     /// legitimately differ in length and order.
@@ -446,13 +446,13 @@ class InputShaperPanel : public OverlayBase {
         std::vector<ShaperResponseCurve> shaper_curves;
         ui_frequency_response_chart_t* chart = nullptr;
         int raw_series_id = -1;
-        int shaper_series_ids[MAX_SHAPERS]; // initialized to -1 in constructor
+        int shaper_series_ids[kMaxShapers]; // initialized to -1 in constructor
         int selected_shaper = -1;           ///< index into shaper_curves, -1 = none selected
-        bool shaper_visible[MAX_SHAPERS] = {};
+        bool shaper_visible[kMaxShapers] = {};
         int old_setting_series_id = -1; ///< Muted overlay of the live-before shaper curve
 
         AxisChartData() {
-            std::fill(shaper_series_ids, shaper_series_ids + MAX_SHAPERS, -1);
+            std::fill(shaper_series_ids, shaper_series_ids + kMaxShapers, -1);
         }
     };
 
@@ -473,19 +473,19 @@ class InputShaperPanel : public OverlayBase {
     lv_subject_t is_y_has_freq_data_{};
 
     // Chip label subjects (dynamically set from shaper names)
-    static constexpr size_t CHIP_LABEL_BUF = 20;
+    static constexpr size_t kChipLabelBuf = 20;
     struct ChipRow {
-        char label_buf[CHIP_LABEL_BUF] = {};
+        char label_buf[kChipLabelBuf] = {};
         lv_subject_t label{};
         lv_subject_t active{}; // 0=off, 1=on
     };
-    std::array<ChipRow, MAX_SHAPERS> x_chips_;
-    std::array<ChipRow, MAX_SHAPERS> y_chips_;
+    std::array<ChipRow, kMaxShapers> x_chips_;
+    std::array<ChipRow, kMaxShapers> y_chips_;
 
     // Legend subjects (shaper name label, updated on chip toggle)
-    char is_x_legend_shaper_label_buf_[CHIP_LABEL_BUF] = {};
+    char is_x_legend_shaper_label_buf_[kChipLabelBuf] = {};
     lv_subject_t is_x_legend_shaper_label_{};
-    char is_y_legend_shaper_label_buf_[CHIP_LABEL_BUF] = {};
+    char is_y_legend_shaper_label_buf_[kChipLabelBuf] = {};
     lv_subject_t is_y_legend_shaper_label_{};
 
     // Legend dot widget pointers (for programmatic color updates)

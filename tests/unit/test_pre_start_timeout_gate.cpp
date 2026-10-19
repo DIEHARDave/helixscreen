@@ -8,7 +8,7 @@
  * execute_gcode blocks until the macro finishes. A long pre-start macro
  * (Creality's BED_MESH_CALIBRATE_START_PRINT chain: home, wipe, soak, mesh —
  * ~10-19 min measured on a K2 Plus) can outlive the RPC ceiling even at
- * PRE_START_MACRO_TIMEOUT_MS. When that happens and Klipper still reports
+ * kPreStartMacroTimeoutMs. When that happens and Klipper still reports
  * idle_timeout "Printing", the app must wait for the busy->idle edge and start
  * the print then, not abort with "Pre-print command failed" while the printer
  * is mid-mesh.
@@ -141,11 +141,11 @@ TEST_CASE_METHOD(PreStartGateFixture,
     // The pre-start block went through execute_gcode with the long ceiling.
     REQUIRE(api->captured_error);
     REQUIRE(api->captured_gcode.find("BED_MESH_CALIBRATE_START_PRINT") != std::string::npos);
-    CHECK(api->captured_timeout == IMoonrakerAPI::PRE_START_MACRO_TIMEOUT_MS);
+    CHECK(api->captured_timeout == IMoonrakerAPI::kPreStartMacroTimeoutMs);
 
     // RPC ceiling hit — but Klipper is still executing the macro.
     api->captured_error(
-        MoonrakerError::timeout("printer.gcode.script", IMoonrakerAPI::PRE_START_MACRO_TIMEOUT_MS));
+        MoonrakerError::timeout("printer.gcode.script", IMoonrakerAPI::kPreStartMacroTimeoutMs));
     drain();
 
     CHECK_FALSE(completed);
@@ -171,7 +171,7 @@ TEST_CASE_METHOD(PreStartGateFixture,
     REQUIRE(api->captured_error);
 
     api->captured_error(
-        MoonrakerError::timeout("printer.gcode.script", IMoonrakerAPI::PRE_START_MACRO_TIMEOUT_MS));
+        MoonrakerError::timeout("printer.gcode.script", IMoonrakerAPI::kPreStartMacroTimeoutMs));
     drain();
 
     CHECK(completed);
@@ -208,7 +208,7 @@ TEST_CASE_METHOD(PreStartGateFixture,
     REQUIRE(api->captured_error);
 
     api->captured_error(
-        MoonrakerError::timeout("printer.gcode.script", IMoonrakerAPI::PRE_START_MACRO_TIMEOUT_MS));
+        MoonrakerError::timeout("printer.gcode.script", IMoonrakerAPI::kPreStartMacroTimeoutMs));
     drain();
     REQUIRE_FALSE(completed);
 
@@ -244,7 +244,7 @@ TEST_CASE_METHOD(PreStartGateFixture,
 
     // Macro finishes and the printer goes idle.
     api->captured_error(
-        MoonrakerError::timeout("printer.gcode.script", IMoonrakerAPI::PRE_START_MACRO_TIMEOUT_MS));
+        MoonrakerError::timeout("printer.gcode.script", IMoonrakerAPI::kPreStartMacroTimeoutMs));
     drain();
     set_busy(false);
     drain();
@@ -289,11 +289,11 @@ TEST_CASE("start_print outlives a print-start macro that heats synchronously",
 
     REQUIRE(started);
     REQUIRE(client.last_send_method() == "printer.print.start");
-    CHECK(client.last_send_timeout_ms() == MoonrakerJobAPI::PRINT_START_TIMEOUT_MS);
-    CHECK(MoonrakerJobAPI::PRINT_START_TIMEOUT_MS == 600000u);
+    CHECK(client.last_send_timeout_ms() == MoonrakerJobAPI::kPrintStartTimeoutMs);
+    CHECK(MoonrakerJobAPI::kPrintStartTimeoutMs == 600000u);
     // The ceiling only helps while it clears the default — pin the relation too.
-    CHECK(MoonrakerJobAPI::PRINT_START_TIMEOUT_MS >
-          helix::MoonrakerRequestTracker::DEFAULT_REQUEST_TIMEOUT_MS);
+    CHECK(MoonrakerJobAPI::kPrintStartTimeoutMs >
+          helix::MoonrakerRequestTracker::kDefaultRequestTimeoutMs);
 }
 
 TEST_CASE_METHOD(PreStartGateFixture,

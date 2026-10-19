@@ -19,7 +19,7 @@ namespace helix {
  * 0.2 s apart that each read "Printing" for ~0.8 s. A grace window after the
  * last ack cannot tell that apart from an external op for long, because a
  * sustained burst outlasts any window. The episode's start time can: the
- * episode is the app's when the app sent something in the GRACE_WINDOW before
+ * episode is the app's when the app sent something in the kGraceWindow before
  * it. Only a send made before the episode was observed can have caused it:
  * episode_start is when the main thread saw idle_timeout go high, and a send
  * is stamped before it goes out.
@@ -28,11 +28,11 @@ namespace helix {
  * Klipper runs one gcode at a time, so a send queued behind someone else's
  * long command does not ack until that command ends, while a jog into an idle
  * gcode queue acks in milliseconds:
- *   - a tracked send in flight with no ack for GRACE_WINDOW is stuck behind
+ *   - a tracked send in flight with no ack for kGraceWindow is stuck behind
  *     another operation, and disowns the episode for good, as does an ack
  *     that arrived that late;
  *   - a tracked send made before the episode settled (within
- *     IdleTimeoutBusy::SETTLE of its start) that acked promptly adopts it:
+ *     IdleTimeoutBusy::kSettle of its start) that acked promptly adopts it:
  *     a housekeeping burst can start an episode that the app's own fast
  *     jogs then keep up. While such a send is still in flight and not stuck,
  *     the episode reads as not owned and the decision waits for a later ask.
@@ -47,9 +47,9 @@ namespace helix {
  * have landed), so the recent send times are kept rather than only the last.
  * Ownership is decided once per episode, on the first ask that can settle it,
  * and lapses
- * MAX_SELF_BUSY after the latest activity: an ack, an untracked send or
+ * kMaxSelfBusy after the latest activity: an ack, an untracked send or
  * note_still_active(). A tracked send alone does not extend it; one that
- * never acks is stuck, not activity. More than HISTORY sends between an
+ * never acks is stuck, not activity. More than kHistory sends between an
  * episode's start and its first ask reads as not owned.
  *
  * Thread-safe: sends are stamped on the main thread and acks arrive on the
@@ -61,12 +61,12 @@ namespace helix {
 class BusyEpisodeOwner {
   public:
     using clock = std::chrono::steady_clock;
-    static constexpr std::chrono::seconds GRACE_WINDOW{2};
+    static constexpr std::chrono::seconds kGraceWindow{2};
     /// Longest a busy episode can pass as the app's own after its last activity.
-    static constexpr std::chrono::seconds MAX_SELF_BUSY{30};
+    static constexpr std::chrono::seconds kMaxSelfBusy{30};
 
     /// Send times kept to answer whether one landed just before an episode.
-    static constexpr unsigned HISTORY = 16;
+    static constexpr unsigned kHistory = 16;
 
     /// A send whose ack (or error) will be reported through note_done().
     void note_sent(clock::time_point now = clock::now()) {
@@ -135,19 +135,19 @@ class BusyEpisodeOwner {
             return false;
         }
         if (inflight() > 0) {
-            return true; // in flight and not stuck: it acked or started within GRACE_WINDOW
+            return true; // in flight and not stuck: it acked or started within kGraceWindow
         }
         const clock::time_point last{clock::duration{activity_ns_.load(std::memory_order_relaxed)}};
-        return (now - last) < MAX_SELF_BUSY;
+        return (now - last) < kMaxSelfBusy;
     }
 
   private:
     static constexpr long long grace_ns() {
-        return std::chrono::duration_cast<clock::duration>(GRACE_WINDOW).count();
+        return std::chrono::duration_cast<clock::duration>(kGraceWindow).count();
     }
 
     void record(long long ns) {
-        const unsigned slot = next_.fetch_add(1, std::memory_order_relaxed) % HISTORY;
+        const unsigned slot = next_.fetch_add(1, std::memory_order_relaxed) % kHistory;
         sent_ns_[slot].store(ns, std::memory_order_relaxed);
     }
 
@@ -164,7 +164,7 @@ class BusyEpisodeOwner {
             return false;
         }
         const long long settle_ns =
-            std::chrono::duration_cast<clock::duration>(IdleTimeoutBusy::SETTLE).count();
+            std::chrono::duration_cast<clock::duration>(IdleTimeoutBusy::kSettle).count();
         const long long done_ns = last_done_ns_.load(std::memory_order_relaxed);
         for (const auto& slot : sent_ns_) {
             const long long ns = slot.load(std::memory_order_relaxed);
@@ -179,7 +179,7 @@ class BusyEpisodeOwner {
     bool adoption_pending(long long start_ns, clock::time_point now) const {
         return inflight() > 0 && !stuck(now) &&
                sent_in(start_ns + 1, start_ns + std::chrono::duration_cast<clock::duration>(
-                                                    IdleTimeoutBusy::SETTLE)
+                                                    IdleTimeoutBusy::kSettle)
                                                     .count());
     }
 
@@ -193,7 +193,7 @@ class BusyEpisodeOwner {
         return false;
     }
 
-    std::array<std::atomic<long long>, HISTORY> sent_ns_{};
+    std::array<std::atomic<long long>, kHistory> sent_ns_{};
     std::atomic<unsigned> next_{0};
     std::atomic<int> inflight_{0};
     /// Last time the in-flight set made progress: went non-empty, or acked.

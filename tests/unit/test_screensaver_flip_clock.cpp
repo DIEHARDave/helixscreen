@@ -29,20 +29,13 @@ using helix::test::diff_against;
 using helix::test::FrameDiff;
 using helix::test::hms;
 using helix::test::TestFrame;
-using helix::ui::CLOCK_COUNTDOWN_RESYNC_S;
-using helix::ui::CLOCK_DONE_HOLD_MS;
-using helix::ui::CLOCK_DRIFT_STEP_MS;
 using helix::ui::clock_face;
-using helix::ui::CLOCK_MAX_COUNTDOWN_S;
 using helix::ui::ClockInput;
 using helix::ui::ClockMeridiem;
 using helix::ui::ClockMode;
 using helix::ui::ClockPrintPhase;
 using helix::ui::countdown_face;
 using helix::ui::DirtyRect;
-using helix::ui::FLIP_CLOCK_LEVEL_COUNT;
-using helix::ui::FLIP_CLOCK_LEVELS;
-using helix::ui::FLIP_DURATION_MS;
 using helix::ui::FlipCaption;
 using helix::ui::FlipClockScreensaver;
 using helix::ui::FlipClockSim;
@@ -51,6 +44,13 @@ using helix::ui::FlipFace;
 using helix::ui::FlipLayout;
 using helix::ui::FlipShape;
 using helix::ui::FrameTarget;
+using helix::ui::kClockCountdownResyncS;
+using helix::ui::kClockDoneHoldMs;
+using helix::ui::kClockDriftStepMs;
+using helix::ui::kClockMaxCountdownS;
+using helix::ui::kFlipClockLevelCount;
+using helix::ui::kFlipClockLevels;
+using helix::ui::kFlipDurationMs;
 using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
 using helix::ui::Rgb;
@@ -96,7 +96,7 @@ size_t lit_in(const TestFrame& frame, const DirtyRect& box) {
     size_t lit = 0;
     for (int32_t y = box.y1; y <= box.y2; y++) {
         for (int32_t x = box.x1; x <= box.x2; x++) {
-            lit += writer.get(x, y).g > FlipClockSim::DIGIT.g / 2 ? 1 : 0;
+            lit += writer.get(x, y).g > FlipClockSim::kDigit.g / 2 ? 1 : 0;
         }
     }
     return lit;
@@ -170,8 +170,8 @@ TEST_CASE("the countdown face shows H:MM:SS under an hour, past ten hours and at
     CHECK(cards_text(countdown_face(0)) == "0:00:00");
     CHECK(cards_text(countdown_face(-5)) == "0:00:00");
     CHECK(cards_text(countdown_face(hms(123, 4, 5))) == "123:04:05");
-    CHECK(cards_text(countdown_face(CLOCK_MAX_COUNTDOWN_S)) == "999:59:59");
-    CHECK(cards_text(countdown_face(CLOCK_MAX_COUNTDOWN_S + 3600)) == "999:59:59");
+    CHECK(cards_text(countdown_face(kClockMaxCountdownS)) == "999:59:59");
+    CHECK(cards_text(countdown_face(kClockMaxCountdownS + 3600)) == "999:59:59");
 }
 
 // ============================================================================
@@ -254,7 +254,7 @@ TEST_CASE("the countdown ticks at wall-clock rate and ignores small estimate jit
     CHECK(state.countdown_s() == 997);
 
     // An estimate a few seconds above the running count never flips it backwards.
-    in.print.remaining_s = 997 + CLOCK_COUNTDOWN_RESYNC_S;
+    in.print.remaining_s = 997 + kClockCountdownResyncS;
     state.step(0, in);
     CHECK(state.countdown_s() == 997);
 
@@ -313,14 +313,14 @@ TEST_CASE("a finished print holds 0:00:00 and DONE for a minute, then shows the 
     CHECK(cards_text(state.face()) == "0:00:00");
     CHECK(state.face().caption == FlipCaption::DONE);
 
-    state.step(CLOCK_DONE_HOLD_MS - 100, in);
+    state.step(kClockDoneHoldMs - 100, in);
     CHECK(state.mode() == ClockMode::DONE);
     state.step(100, in);
     CHECK(state.mode() == ClockMode::CLOCK);
     CHECK(cards_text(state.face()) == "14:00");
 
     // Still complete a while later: the hold does not come back.
-    state.step(CLOCK_DONE_HOLD_MS, in);
+    state.step(kClockDoneHoldMs, in);
     CHECK(state.mode() == ClockMode::CLOCK);
 }
 
@@ -435,12 +435,12 @@ TEST_CASE("the drift moves the cards once per step and stays within its range",
     helix::ui::clock_drift_at(0, 20, 10, dx, dy);
     CHECK(dx == 0);
     CHECK(dy == 0);
-    helix::ui::clock_drift_at(CLOCK_DRIFT_STEP_MS - 1, 20, 10, dx, dy);
+    helix::ui::clock_drift_at(kClockDriftStepMs - 1, 20, 10, dx, dy);
     CHECK(dx == 0);
     CHECK(dy == 0);
     bool moved = false;
     for (uint32_t step = 1; step < 200; step++) {
-        helix::ui::clock_drift_at(step * CLOCK_DRIFT_STEP_MS, 20, 10, dx, dy);
+        helix::ui::clock_drift_at(step * kClockDriftStepMs, 20, 10, dx, dy);
         CHECK(std::abs(dx) <= 20);
         CHECK(std::abs(dy) <= 10);
         moved = moved || dx != 0 || dy != 0;
@@ -462,7 +462,7 @@ TEST_CASE("the flip clock draws light digits on dark cards over black, in either
     const FlipLayout& layout = sim.layout();
     const PixelWriter writer(frame.target);
 
-    CHECK(writer.get(0, 0) == FlipClockSim::BACKGROUND);
+    CHECK(writer.get(0, 0) == FlipClockSim::kBackground);
     for (size_t i = 0; i < layout.card_count; i++) {
         CAPTURE(i);
         const DirtyRect& card = layout.cards[i];
@@ -470,17 +470,17 @@ TEST_CASE("the flip clock draws light digits on dark cards over black, in either
         // Card face just inside the corner, and the split line across the middle.
         CHECK(writer.get(cx, card.y1 + layout.corner + 1).g < 60);
         CHECK(writer.get(cx, card.y1 + layout.corner + 1).g > 10);
-        CHECK(writer.get(cx, card.y1 + layout.split_top) == FlipClockSim::BACKGROUND);
+        CHECK(writer.get(cx, card.y1 + layout.split_top) == FlipClockSim::kBackground);
         CHECK(lit_in(frame, card) > 100);
     }
-    CHECK(writer.get(layout.cards[0].x1, layout.cards[0].y1) == FlipClockSim::BACKGROUND);
+    CHECK(writer.get(layout.cards[0].x1, layout.cards[0].y1) == FlipClockSim::kBackground);
     // The colon between hours and minutes.
     REQUIRE(layout.colon_count == 1);
     const DirtyRect& colon = layout.colons[0];
     size_t colon_px = 0;
     for (int32_t y = colon.y1; y <= colon.y2; y++) {
         for (int32_t x = colon.x1; x <= colon.x2; x++) {
-            colon_px += writer.get(x, y) == FlipClockSim::BACKGROUND ? 0 : 1;
+            colon_px += writer.get(x, y) == FlipClockSim::kBackground ? 0 : 1;
         }
     }
     CHECK(colon_px > 4);
@@ -524,19 +524,19 @@ TEST_CASE("a changed card folds over the flip duration while the others stay sti
     CHECK(sim.flip_progress(0) == 1.0f);
     CHECK(sim.flip_progress(3) == 0.0f);
 
-    sim.step(FLIP_DURATION_MS / 4, frame.target, next, dirty);
+    sim.step(kFlipDurationMs / 4, frame.target, next, dirty);
     CHECK(sim.flip_progress(3) == Catch::Approx(0.25f));
     REQUIRE(dirty.size() == 1);
     CHECK(dirty[0] == minutes);
     const std::vector<uint8_t> quarter = card_bytes(frame, minutes);
     CHECK(quarter != start);
 
-    sim.step(FLIP_DURATION_MS / 2, frame.target, next, dirty);
+    sim.step(kFlipDurationMs / 2, frame.target, next, dirty);
     CHECK(sim.flip_progress(3) == Catch::Approx(0.75f));
     const std::vector<uint8_t> three_quarters = card_bytes(frame, minutes);
     CHECK(three_quarters != quarter);
 
-    sim.step(FLIP_DURATION_MS / 4, frame.target, next, dirty);
+    sim.step(kFlipDurationMs / 4, frame.target, next, dirty);
     CHECK_FALSE(sim.flipping());
     const std::vector<uint8_t> end = card_bytes(frame, minutes);
     CHECK(end != three_quarters);
@@ -603,7 +603,7 @@ TEST_CASE("only the digits that change flip, each on its own card and all at onc
 
     std::vector<DirtyRect> dirty;
     sim.step(0, frame.target, change.to, dirty);
-    for (const uint32_t dt : {FLIP_DURATION_MS / 3, FLIP_DURATION_MS / 3}) {
+    for (const uint32_t dt : {kFlipDurationMs / 3, kFlipDurationMs / 3}) {
         sim.step(dt, frame.target, change.to, dirty);
         // One box per flipping card, and nothing for the cards that stay.
         std::vector<DirtyRect> expected;
@@ -642,10 +642,10 @@ TEST_CASE("between changes a frame writes nothing", "[screensaver][screensaver_f
 
 TEST_CASE("a level that does not animate swaps the digits at once",
           "[screensaver][screensaver_flip_clock]") {
-    REQUIRE_FALSE(FLIP_CLOCK_LEVELS[FLIP_CLOCK_LEVEL_COUNT - 1].animate);
+    REQUIRE_FALSE(kFlipClockLevels[kFlipClockLevelCount - 1].animate);
     TestFrame frame(400, 240, PixelFormat::XRGB8888);
     FlipClockSim sim;
-    sim.init(frame.target, FLIP_CLOCK_LEVEL_COUNT - 1, clock_face(hms(10, 8), true));
+    sim.init(frame.target, kFlipClockLevelCount - 1, clock_face(hms(10, 8), true));
     std::vector<DirtyRect> dirty;
     sim.step(0, frame.target, clock_face(hms(10, 9), true), dirty);
     CHECK_FALSE(sim.flipping());
@@ -655,10 +655,10 @@ TEST_CASE("a level that does not animate swaps the digits at once",
         sim.request_level(0);
         sim.step(0, frame.target, clock_face(hms(10, 10), true), dirty);
         REQUIRE(sim.flipping());
-        sim.request_level(FLIP_CLOCK_LEVEL_COUNT - 1);
+        sim.request_level(kFlipClockLevelCount - 1);
         sim.step(0, frame.target, clock_face(hms(10, 10), true), dirty);
         CHECK_FALSE(sim.flipping());
-        CHECK(sim.level() == FLIP_CLOCK_LEVEL_COUNT - 1);
+        CHECK(sim.level() == kFlipClockLevelCount - 1);
     }
 }
 
@@ -695,7 +695,7 @@ TEST_CASE("every pixel a flip clock frame changes lies in one of its dirty boxes
             in.print.remaining_s = 0;
         }
         in.seconds_of_day = (in.seconds_of_day + (i % 3 == 0 ? 1 : 0)) % 86400;
-        const uint32_t dt = i % 50 == 0 ? CLOCK_DRIFT_STEP_MS / 4 : 33;
+        const uint32_t dt = i % 50 == 0 ? kClockDriftStepMs / 4 : 33;
         state.step(dt, in);
         const std::vector<uint8_t> before = frame.bytes;
         sim.step(dt, frame.target, state.face(), dirty);
@@ -720,7 +720,7 @@ TEST_CASE("a flip clock run replays exactly and a different print draws differen
         sim.init(frame.target, 0, state.face());
         std::vector<DirtyRect> dirty;
         for (int i = 0; i < 600; i++) {
-            const uint32_t dt = i % 97 == 0 ? CLOCK_DRIFT_STEP_MS / 2 : 33;
+            const uint32_t dt = i % 97 == 0 ? kClockDriftStepMs / 2 : 33;
             state.step(dt, in);
             sim.step(dt, frame.target, state.face(), dirty);
         }
@@ -761,7 +761,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     REQUIRE(!ss.sim().layout().caption.empty());
     advance_saver(ss, 33);
     reported.print.phase = ClockPrintPhase::COMPLETE;
-    for (uint32_t ms = 0; ms <= CLOCK_DONE_HOLD_MS + 1000; ms += 500) {
+    for (uint32_t ms = 0; ms <= kClockDoneHoldMs + 1000; ms += 500) {
         advance_saver(ss, 500);
     }
     REQUIRE(ss.clock().mode() == ClockMode::CLOCK);

@@ -121,9 +121,9 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     AmsBackendAd5xIfs(IMoonrakerAPI* api, helix::IMoonrakerClient* client);
     ~AmsBackendAd5xIfs() override;
 
-    static constexpr int NUM_PORTS = 4;
-    static constexpr int TOOL_MAP_SIZE = 16;
-    static constexpr int UNMAPPED_PORT = 5;
+    static constexpr int kNumPorts = 4;
+    static constexpr int kToolMapSize = 16;
+    static constexpr int kUnmappedPort = 5;
 
     /// Which auto-switchover macro package is driving the IFS, if any.
     ///
@@ -147,17 +147,17 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     /// definite OFF justifies telling the user switchover will not happen.
     /// Maps onto helix::printer::EndlessSpoolEnabled in
     /// get_endless_spool_capabilities().
-    static constexpr int BACKUP_UNKNOWN = -1;
-    static constexpr int BACKUP_OFF = 0;
-    static constexpr int BACKUP_ON = 1;
+    static constexpr int kBackupUnknown = -1;
+    static constexpr int kBackupOff = 0;
+    static constexpr int kBackupOn = 1;
 
     /// Cadence of the Adventurer5M.json freshness poll. Slower while printing:
     /// FFMInfo holds only per-slot colour/type labels, and each poll is a
     /// loopback HTTP GET on a 2-core board that is also feeding the MCU step
     /// queue. PAUSED keeps the fast cadence — a pause is when a user actually
     /// swaps a spool and relabels it.
-    static constexpr std::chrono::seconds JSON_POLL_IDLE{5};
-    static constexpr std::chrono::seconds JSON_POLL_PRINTING{30};
+    static constexpr std::chrono::seconds kJsonPollIdle{5};
+    static constexpr std::chrono::seconds kJsonPollPrinting{30};
 
     /// Should the JSON freshness poll fire now? (public for testing)
     ///
@@ -176,7 +176,7 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
      * types; the invariant and catalog-selector tests derive their expectations from
      * this array rather than re-typing it, so a change here propagates to its guards.
      */
-    static constexpr std::array<const char*, 7> STOCK_WHITELIST{"PLA", "PLA-CF", "SILK",   "TPU",
+    static constexpr std::array<const char*, 7> kStockWhitelist{"PLA", "PLA-CF", "SILK",   "TPU",
                                                                 "ABS", "PETG",   "PETG-CF"};
 
     /**
@@ -388,7 +388,7 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     /// backup_state_locked(): stock zMod returns nullopt here but backup_state
     /// reports ON, because ANALOG_PRUTOK is always-on regardless of any plugin.
     /// nullopt means UNKNOWN for the plugin path and must never be reported as
-    /// "off" - see BACKUP_UNKNOWN.
+    /// "off" - see kBackupUnknown.
     [[nodiscard]] std::optional<bool> plugin_backup_enabled() const;
 
     /// True while the backend is holding an unattended-runout fault (see
@@ -607,8 +607,8 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
         // SILENT slot lines and of the persisted ffmColor cache. When set, it is
         // the presence authority (apply_zcolor_result), which makes empty-channel
         // resurrection from a stale ffmColor structurally impossible (#981).
-        std::optional<std::array<bool, NUM_PORTS>> ifs_ports;
-        std::array<std::optional<ZColorSlot>, NUM_PORTS> slots;
+        std::optional<std::array<bool, kNumPorts>> ifs_ports;
+        std::array<std::optional<ZColorSlot>, kNumPorts> slots;
     };
 
   protected:
@@ -1018,7 +1018,7 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     std::string build_type_list_value() const;
     /// Shared shape logic for the `_IFS_VARS colors=` / `types=` payloads.
     /// The two plugins index these arrays differently: bambufy keeps 4-entry
-    /// PORT-indexed lists, while lessWaste keeps TOOL_MAP_SIZE-entry
+    /// PORT-indexed lists, while lessWaste keeps kToolMapSize-entry
     /// TOOL-indexed lists projected through tool_map_ (`variable_tools` — its
     /// `_RUNOUT_HEAD` backup scan iterates tool slots, not ports, and a
     /// port-indexed 4-entry payload truncates the arrays wholesale, #1247).
@@ -1080,7 +1080,7 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     void note_head_switch_reading_locked(bool detected);
 
     /// Stamp "a filament-moving command was just dispatched". Any head-empty
-    /// window that opens within RUNOUT_OP_SUPPRESSION of the stamp belongs to
+    /// window that opens within kRunoutOpSuppression of the stamp belongs to
     /// that operation, not to a runout. Covers the paths that leave the backend
     /// IDLE and armless: eject_lane() and the three early returns in
     /// do_unload_filament() that route to it. Caller must hold mutex_.
@@ -1159,7 +1159,7 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
         // IMPLICIT UNLOAD of the seated lane before the actual load, which
         // easily runs past the 90s LOADING budget (bundle NJB2U558: ch4 seated
         // → load ch2 took ~2min total, timed out at 90s mid-swap). The flag
-        // extends LOADING to SWAP_LOADING_TIMEOUT_SECONDS in check_action_timeout.
+        // extends LOADING to kSwapLoadingTimeoutSeconds in check_action_timeout.
         // Cleared by end_phase_tracking_locked on op completion.
         bool swap_expected = false;
     };
@@ -1245,8 +1245,8 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     // Variable prefix: "less_waste" (lessWaste/zmod) or "bambufy" — auto-detected from
     // whichever save_variables are present on the printer.
     std::string var_prefix_ = "less_waste";
-    std::array<std::string, NUM_PORTS> colors_;    // Hex strings: "FF0000"
-    std::array<std::string, NUM_PORTS> materials_; // Material names: "PLA"
+    std::array<std::string, kNumPorts> colors_;    // Hex strings: "FF0000"
+    std::array<std::string, kNumPorts> materials_; // Material names: "PLA"
 
     // Per-filament-type eject parameters parsed from /mod_data/filament.json:
     // material name -> {filament_tube_length (LEN), filament_ifs_speed (SPEED)}.
@@ -1275,13 +1275,13 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     // custom_types_mutex_; lock order is mutex_ → custom_types_mutex_.
     mutable std::mutex custom_types_mutex_;
     std::vector<std::string> custom_material_types_;
-    std::array<int, TOOL_MAP_SIZE> tool_map_;   // tool_map_[tool] = port (1-4, 5=unmapped)
-    std::array<bool, NUM_PORTS> port_presence_; // Per-port filament sensor state
+    std::array<int, kToolMapSize> tool_map_;    // tool_map_[tool] = port (1-4, 5=unmapped)
+    std::array<bool, kNumPorts> port_presence_; // Per-port filament sensor state
     // Whether any presence signal has ever spoken for each port. The first
     // sighting is the session's baseline, never an insert edge, so the insert
     // notice never fires for a spool that was already seated at boot.
     // Guarded by mutex_.
-    std::array<bool, NUM_PORTS> presence_observed_{};
+    std::array<bool, kNumPorts> presence_observed_{};
 
     // Whether a parse just moved this port's colour/material latch, i.e. the
     // values are a fresh statement from firmware rather than a cached re-file.
@@ -1290,7 +1290,7 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     // guard's differ-check would release the declaration on pre-edit values.
     // Set at every latch write, consumed (once) by update_slot_from_state().
     // Guarded by mutex_.
-    std::array<bool, NUM_PORTS> identity_statement_fresh_{};
+    std::array<bool, kNumPorts> identity_statement_fresh_{};
 
     // The base's own_write_echoes_, on this backend:
     // What the user declared in an edit of each port, staged against the
@@ -1313,13 +1313,13 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     // Per-port instant of the last optimistic eject clear. On the constrained
     // AD5X the RS-485 silk sensor lags ~1s after IFS_F11 cold-retracts a lane, so
     // the eject follow-up IFS_STATUS/GET_ZCOLOR can still read the just-ejected
-    // lane present and resurrect it. Within EJECT_PRESENCE_SUPPRESSION of the
+    // lane present and resurrect it. Within kEjectPresenceSuppression of the
     // stamp, a false->true presence transition for that lane is ignored so the
     // optimistic clear survives the settling window (#1065 — the last-ejected
     // lane had no later query to re-correct it and kept offering Unload). A
     // present->absent transition and any transition after the window still apply.
-    std::array<std::chrono::steady_clock::time_point, NUM_PORTS> last_eject_time_{};
-    static constexpr std::chrono::milliseconds EJECT_PRESENCE_SUPPRESSION{4000};
+    std::array<std::chrono::steady_clock::time_point, kNumPorts> last_eject_time_{};
+    static constexpr std::chrono::milliseconds kEjectPresenceSuppression{4000};
     int active_tool_ = -1; // Current tool (-1 = none)
     // Physically seated port from IFS_STATUS "Chan" (1-4; 0 = none). Persists at
     // the seated port while loaded-idle (when GET_ZCOLOR's "Extruder:" reads
@@ -1404,17 +1404,17 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     // fault is raised. Long enough to ride out a status-frame hiccup and to give
     // a firmware-driven sequence a chance to put filament back, short enough that
     // the user is not left staring at a stopped print with no explanation.
-    static constexpr std::chrono::seconds RUNOUT_CONFIRM_DELAY{30};
+    static constexpr std::chrono::seconds kRunoutConfirmDelay{30};
     // The lessWaste backup switchover is itself an unload + load, minutes long,
     // during which the toolhead is legitimately empty on a paused print. Wait it
     // out before claiming the runout is unattended.
-    static constexpr std::chrono::seconds RUNOUT_CONFIRM_DELAY_WITH_BACKUP{180};
+    static constexpr std::chrono::seconds kRunoutConfirmDelayWithBackup{180};
     // A head-empty window opening within this long after a filament-moving
     // dispatch is attributed to that operation. Covers eject_lane() and
     // do_unload_filament()'s early returns, which leave action IDLE.
-    static constexpr std::chrono::seconds RUNOUT_OP_SUPPRESSION{30};
+    static constexpr std::chrono::seconds kRunoutOpSuppression{30};
 
-    std::array<bool, NUM_PORTS> dirty_{}; // Per-slot dirty flag to prevent stale overwrites
+    std::array<bool, kNumPorts> dirty_{}; // Per-slot dirty flag to prevent stale overwrites
 
     helix::printer::SlotRegistry slots_;
 
@@ -1473,7 +1473,7 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     std::optional<bool> ifs_unlock_after_boot_;
 
     // Set by parse_save_variables() when a lessWaste `<prefix>_colors` or
-    // `_types` save_variables array arrives with fewer than TOOL_MAP_SIZE
+    // `_types` save_variables array arrives with fewer than kToolMapSize
     // entries — the truncation signature of the #1247 mirror bug. Consumed
     // (read + cleared) by handle_status() under the same lock hold,
     // then dispatched after unlock. Guarded by mutex_.
@@ -1569,15 +1569,15 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     // which far exceeds the 90s general timeout. 300s is a UI backstop only —
     // Klipper's own verify_heater aborts a genuinely stuck heater within ~1-2
     // min and the macro errors out, so this never gates real functionality.
-    static constexpr int ACTION_TIMEOUT_SECONDS = 90;
-    static constexpr int HEATING_TIMEOUT_SECONDS = 300;
+    static constexpr int kActionTimeoutSeconds = 90;
+    static constexpr int kHeatingTimeoutSeconds = 300;
     // A real purge runs far longer than the generic 90 s phase window (raza616:
     // ~3 min whole-op from cold; Vger1700 hit the 90 s ERROR twice mid-purge,
     // #1065). PURGING gets its own budget AND its clock is reset on
     // ifs_motion_sensor activity (see handle_status), so the budget is
     // effectively "time since filament last moved" — a long-but-healthy purge is
     // never falsely failed, a genuinely stalled one still surfaces ERROR.
-    static constexpr int PURGING_TIMEOUT_SECONDS = 240;
+    static constexpr int kPurgingTimeoutSeconds = 240;
     // INSERT_PRUTOK_IFS with another lane currently seated runs an implicit
     // UNLOAD first (heat → cut → retract, ~50-90s) before the actual load
     // begins. The 90s LOADING budget fires mid-swap on bundle NJB2U558
@@ -1586,7 +1586,7 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     // swap with margin; the head-drop reset in on_head_transition_locked is
     // the primary defence, this is the belt-and-suspenders backstop for
     // firmware variants where the head sensor doesn't transition reliably.
-    static constexpr int SWAP_LOADING_TIMEOUT_SECONDS = 180;
+    static constexpr int kSwapLoadingTimeoutSeconds = 180;
     std::chrono::steady_clock::time_point action_start_time_;
 
     // Indeterminate ("Working…") detector (#1065 row 14). Distinct from the
@@ -1600,7 +1600,7 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     // system_info_.operation_indeterminate. last_progress_temp_deci_ gates the
     // temp reset on a value change (not every frame) so a frozen subject — which
     // stops changing value — lets the clock elapse. Both under mutex_.
-    static constexpr int INDETERMINATE_THRESHOLD_SECONDS = 8;
+    static constexpr int kIndeterminateThresholdSeconds = 8;
     std::chrono::steady_clock::time_point last_phase_progress_time_;
     int last_progress_temp_deci_ = 0; // deci-degrees of the last progress-noting temp frame
 

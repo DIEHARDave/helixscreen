@@ -297,7 +297,7 @@ HeadFilament head_filament(const helix::ToolInfo& tool) {
     const helix::SlotInfo slot = backend->get_slot_info(tool.backend_slot);
     if (slot.status == helix::SlotStatus::EMPTY)
         return out;
-    out.has_color = slot.color_rgb != helix::AMS_DEFAULT_SLOT_COLOR;
+    out.has_color = slot.color_rgb != helix::kAmsDefaultSlotColor;
     out.color_rgb = slot.color_rgb;
     out.colors = slot.multi_color_hexes;
     out.finish = filament_finish_name(slot.finish());

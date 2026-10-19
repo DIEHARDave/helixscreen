@@ -113,7 +113,7 @@ class ScreensaverManager {
     ScreensaverManager& operator=(const ScreensaverManager&) = delete;
 
     /// Samples closer together than this are skipped by on_idle_check_tick().
-    static constexpr uint64_t SAMPLE_INTERVAL_NS = 250000000ULL;
+    static constexpr uint64_t kSampleIntervalNs = 250000000ULL;
 
     /**
      * @brief Start the specified screensaver type

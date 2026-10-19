@@ -393,7 +393,7 @@ TEST_CASE("mount-to-feed: the operator wait times out into the cleanup",
     CHECK(run.advance_wait(1000) == mf::Run::WaitResult::Waiting);
     CHECK(run.awaiting_operator());
     // Three minutes is the ceiling; the wait never outlives it.
-    CHECK(run.advance_wait(mf::PROMPT_TIMEOUT_MS) == mf::Run::WaitResult::Expired);
+    CHECK(run.advance_wait(mf::kPromptTimeoutMs) == mf::Run::WaitResult::Expired);
     CHECK(run.aborted());
     CHECK(run.current_gcode() ==
           std::optional<std::string>(mf::prompt_end_gcode() +
@@ -553,7 +553,7 @@ TEST_CASE("MedusaHC times a multi-tool load out and stops with every heater off"
     tc.ack(); // the prompt is up
     REQUIRE(tc.get_system_info().is_busy());
 
-    ToolChangerTestAccess::feed_wait_elapsed(tc, mf::PROMPT_TIMEOUT_MS);
+    ToolChangerTestAccess::feed_wait_elapsed(tc, mf::kPromptTimeoutMs);
     CHECK(tc.sent_.back() == mf::prompt_end_gcode() +
                                  "\nSET_HEATER_TEMPERATURE HEATER=extruder1 TARGET=0\n"
                                  "SET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=0\n"
@@ -606,7 +606,7 @@ TEST_CASE("MedusaHC times a single-tool load out when nobody inserts",
     tc.ack();
     tc.ack(); // the prompt is up
     // A wait inside the ceiling keeps waiting.
-    ToolChangerTestAccess::feed_wait_elapsed(tc, mf::PROMPT_TIMEOUT_MS - 1000);
+    ToolChangerTestAccess::feed_wait_elapsed(tc, mf::kPromptTimeoutMs - 1000);
     CHECK(tc.get_system_info().is_busy());
     CHECK(tc.sent_.size() == 3);
     ToolChangerTestAccess::feed_wait_elapsed(tc, 1000);

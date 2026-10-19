@@ -292,7 +292,7 @@ void DetectionManager::apply_capability(bool has_defect_detection) {
         // one concrete DetectionSource — so the match already establishes the
         // type and static_cast is equivalent to the dynamic_cast this replaces.
         // Needed because the firmware builds -fno-rtti.
-        if (src && src->id() == U1StockSource::SOURCE_ID) {
+        if (src && src->id() == U1StockSource::kSourceId) {
             static_cast<U1StockSource*>(src.get())->set_capable(has_defect_detection);
         }
     }

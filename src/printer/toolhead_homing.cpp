@@ -100,7 +100,7 @@ void ensure_homed_then(IMoonrakerAPI* api, AsyncLifetimeGuard& guard, std::funct
                             on_error(err);
                         }
                     }),
-        IMoonrakerAPI::HOMING_TIMEOUT_MS, /*silent=*/false,
+        IMoonrakerAPI::kHomingTimeoutMs, /*silent=*/false,
         /*on_queued=*/nullptr,
         /*caller_surfaces_errors=*/caller_surfaces);
 }

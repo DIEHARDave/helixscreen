@@ -96,8 +96,8 @@ void AppearanceSettingsOverlay::register_callbacks() {
          [](lv_event_t* e) {
              int index = event_selected(e);
 #ifndef ENABLE_GLES_3D
-             static const int INDEX_TO_MODE[] = {0, 2, 3}; // Auto, 2D Layers, Thumbnail Only
-             int mode = (index >= 0 && index <= 2) ? INDEX_TO_MODE[index] : 0;
+             static const int kIndexToMode[] = {0, 2, 3}; // Auto, 2D Layers, Thumbnail Only
+             int mode = (index >= 0 && index <= 2) ? kIndexToMode[index] : 0;
 #else
              int mode = index;
 #endif

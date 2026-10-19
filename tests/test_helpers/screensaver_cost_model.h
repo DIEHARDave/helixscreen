@@ -20,16 +20,16 @@ namespace helix::test {
  * drawing into its canvas, which is small for the starfield and not for a saver that draws
  * most of its frame.
  */
-inline constexpr double SAVER_COST_FIXED = 10.1;
-inline constexpr double SAVER_COST_PER_AREA = 0.244;
-inline constexpr double SAVER_COST_PER_PX = 6.7e-5;
+inline constexpr double kSaverCostFixed = 10.1;
+inline constexpr double kSaverCostPerArea = 0.244;
+inline constexpr double kSaverCostPerPx = 6.7e-5;
 
 /// Average areas and pixels a saver's frames asked to have redrawn.
 struct SaverLoad {
     double areas = 0;
     double pixels = 0;
     double cost() const {
-        return SAVER_COST_FIXED + SAVER_COST_PER_AREA * areas + SAVER_COST_PER_PX * pixels;
+        return kSaverCostFixed + kSaverCostPerArea * areas + kSaverCostPerPx * pixels;
     }
     /// Adds one frame's dirty areas; divide by the frame count with average_over().
     void add_frame(const std::vector<helix::ui::DirtyRect>& dirty) {

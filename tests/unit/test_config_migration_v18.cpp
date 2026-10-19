@@ -80,7 +80,7 @@ TEST_CASE_METHOD(MigrationV18Fixture,
                 {"input", {{"calibration", {{"valid", true}, {"a", 1.0}, {"e", 1.0}}}}}};
     write_and_init(v17);
 
-    REQUIRE(config.get<int>("/config_version") == CURRENT_CONFIG_VERSION);
+    REQUIRE(config.get<int>("/config_version") == kCurrentConfigVersion);
     REQUIRE(config.get<bool>("/input/calibration/recheck_pending", false) == true);
     // Existing calibration data is preserved (not clobbered).
     REQUIRE(config.get<bool>("/input/calibration/valid", false) == true);
@@ -92,7 +92,7 @@ TEST_CASE_METHOD(MigrationV18Fixture,
     json v17 = {{"config_version", 17}, {"active_printer_id", "default"}};
     REQUIRE_NOTHROW(write_and_init(v17));
 
-    REQUIRE(config.get<int>("/config_version") == CURRENT_CONFIG_VERSION);
+    REQUIRE(config.get<int>("/config_version") == kCurrentConfigVersion);
     REQUIRE(config.get<bool>("/input/calibration/recheck_pending", false) == true);
 }
 
@@ -113,12 +113,12 @@ TEST_CASE_METHOD(MigrationV18Fixture,
                  "Config migration v18: is idempotent — already-v18 config is untouched",
                  "[config][migration]") {
     // A config already at the current version must not have the flag flipped on.
-    json v18 = {{"config_version", CURRENT_CONFIG_VERSION},
+    json v18 = {{"config_version", kCurrentConfigVersion},
                 {"active_printer_id", "default"},
                 {"input", {{"calibration", {{"valid", true}, {"recheck_pending", false}}}}}};
     write_and_init(v18);
 
-    REQUIRE(config.get<int>("/config_version") == CURRENT_CONFIG_VERSION);
+    REQUIRE(config.get<int>("/config_version") == kCurrentConfigVersion);
     REQUIRE(config.get<bool>("/input/calibration/recheck_pending", true) == false);
 }
 
@@ -133,7 +133,7 @@ TEST_CASE_METHOD(MigrationV18Fixture,
                  {"printers", {{"default", {{"moonraker_host", "127.0.0.1"}}}}}};
     write_and_init(seed);
 
-    REQUIRE(config.get<int>("/config_version") == CURRENT_CONFIG_VERSION);
+    REQUIRE(config.get<int>("/config_version") == kCurrentConfigVersion);
     REQUIRE_FALSE(config.get<bool>("/input/calibration/recheck_pending", false));
     REQUIRE(config.get<bool>("/input/calibration/valid", false));
 }
@@ -149,7 +149,7 @@ TEST_CASE_METHOD(MigrationV18Fixture,
                    {"printer", {{"heaters", {{"bed", "heater_bed"}, {"hotend", "extruder"}}}}}};
     write_and_init(preset);
 
-    REQUIRE(config.get<int>("/config_version") == CURRENT_CONFIG_VERSION);
+    REQUIRE(config.get<int>("/config_version") == kCurrentConfigVersion);
     REQUIRE_FALSE(config.get<bool>("/input/calibration/recheck_pending", false));
     REQUIRE(config.get<bool>("/input/calibration/valid", false));
 }
@@ -168,7 +168,7 @@ TEST_CASE_METHOD(MigrationV18Fixture,
          {{"default", {{"wizard_completed", false}, {"heaters", {{"bed", "heater_bed"}}}}}}}};
     write_and_init(seed);
 
-    REQUIRE(config.get<int>("/config_version") == CURRENT_CONFIG_VERSION);
+    REQUIRE(config.get<int>("/config_version") == kCurrentConfigVersion);
     REQUIRE_FALSE(config.get<bool>("/input/calibration/recheck_pending", false));
     REQUIRE(config.get<bool>("/input/calibration/valid", false));
 }
@@ -184,7 +184,7 @@ TEST_CASE_METHOD(MigrationV18Fixture,
                  {"display", {{"calibration", {{"valid", true}, {"a", 1.5}, {"e", 1.7}}}}}};
     write_and_init(user);
 
-    REQUIRE(config.get<int>("/config_version") == CURRENT_CONFIG_VERSION);
+    REQUIRE(config.get<int>("/config_version") == kCurrentConfigVersion);
     REQUIRE(config.get<bool>("/input/calibration/valid", false));
     REQUIRE(config.get<bool>("/input/calibration/recheck_pending", false));
 }

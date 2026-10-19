@@ -207,7 +207,7 @@ TEST_CASE_METHOD(SwitchMenuFixture, "Printer switch menu: the card widens to sho
     lv_obj_set_pos(badge_, 10, 400);
     lv_obj_t* card = show();
     CHECK(lv_obj_get_width(card) > 160);
-    CHECK(lv_obj_get_width(card) <= TEST_DISPLAY_WIDTH / 2);
+    CHECK(lv_obj_get_width(card) <= kTestDisplayWidth / 2);
     CHECK(drawn_name("p0") == name);
     CHECK(drawn_name("p1") == "Snapmaker U1");
     check_on_screen(card);
@@ -219,7 +219,7 @@ TEST_CASE_METHOD(SwitchMenuFixture, "Printer switch menu: a name past half the s
     set_printers({name});
     lv_obj_set_pos(badge_, 10, 400);
     lv_obj_t* card = show();
-    CHECK(lv_obj_get_width(card) == TEST_DISPLAY_WIDTH / 2);
+    CHECK(lv_obj_get_width(card) == kTestDisplayWidth / 2);
     CHECK(drawn_name("p0") != name);
     check_on_screen(card);
 }
@@ -283,13 +283,13 @@ TEST_CASE_METHOD(SwitchMenuFixture,
                  "Printer switch menu: a portrait --layout override on a landscape screen opens "
                  "above the badge and uses the portrait cap",
                  "[context_menu][fit][printer_switch]") {
-    set_layout(TEST_DISPLAY_WIDTH, TEST_DISPLAY_HEIGHT, "portrait");
-    REQUIRE(helix::app_layout_is_portrait(TEST_DISPLAY_WIDTH, TEST_DISPLAY_HEIGHT));
+    set_layout(kTestDisplayWidth, kTestDisplayHeight, "portrait");
+    REQUIRE(helix::app_layout_is_portrait(kTestDisplayWidth, kTestDisplayHeight));
     const std::string name(120, 'W');
     set_printers({name});
     lv_obj_set_pos(badge_, 700, 400);
     lv_obj_t* card = show();
-    CHECK(lv_obj_get_width(card) == TEST_DISPLAY_WIDTH - 2 * margin());
+    CHECK(lv_obj_get_width(card) == kTestDisplayWidth - 2 * margin());
     check_on_screen(card);
 
     lv_area_t c;

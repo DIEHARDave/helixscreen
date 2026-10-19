@@ -57,7 +57,7 @@ enum class FilamentHeatOp { Load, Unload, Purge, Extrude, Retract };
 [[nodiscard]] const char* filament_heat_op_name(FilamentHeatOp op);
 
 /// A preheat is reached, and a hot nozzle counts as hot, within this many degrees.
-inline constexpr int PREHEAT_MARGIN_C = 5;
+inline constexpr int kPreheatMarginC = 5;
 
 /// What the nozzle reads now and what the op needs, in whole degrees.
 struct PreheatInputs {
@@ -78,19 +78,19 @@ struct PreheatInputs {
 struct PreheatDecision {
     bool heat = false; ///< false: the nozzle is hot enough, run the op now
     int send_c = 0;    ///< The target to command (the controller keeps a hotter one)
-    int wait_c = 0;    ///< The temperature the op waits for, within PREHEAT_MARGIN_C
+    int wait_c = 0;    ///< The temperature the op waits for, within kPreheatMarginC
 };
 
 /**
  * @brief The preheat rule, with no printer attached.
  *
  * Nothing runs below the extrusion floor. Above it, the nozzle is hot enough when
- *   - it is within PREHEAT_MARGIN_C of the hotter of the material's temperature
+ *   - it is within kPreheatMarginC of the hotter of the material's temperature
  *     and the swap latch, so the filament already in the melt zone still flows
  *     (with no material named, the floor stands in for it), or
  *   - @p honor_live_target is set and it has reached a target someone set.
  *
- * Otherwise it heats to the material's temperature, or DEFAULT_LOAD_PREHEAT_TEMP
+ * Otherwise it heats to the material's temperature, or kDefaultLoadPreheatTemp
  * when nothing names one, held between the floor and the ceiling, and waits for
  * that raised to the latch: the controller's keep_previous_hot holds the nozzle
  * there, so a lower wait would fire before the nozzle settles.
@@ -144,7 +144,7 @@ struct PreheatRequest {
 
     /// The surface's own answer when neither the lane nor the external spool names
     /// a material (the Filament panel's material preset). Unset falls through to
-    /// DEFAULT_LOAD_PREHEAT_TEMP.
+    /// kDefaultLoadPreheatTemp.
     std::optional<PreheatTarget> fallback_material;
 
     /// Raise the heater's own "Heating to…" toast. A surface that renders its own
@@ -176,7 +176,7 @@ struct PreheatRequest {
  *     Cancelled to its surface and the new one proceeds.
  *
  * A preheat ends without running its op when the target it sent never lands,
- * when that target is taken away, when it runs past PREHEAT_TIMEOUT, when the
+ * when that target is taken away, when it runs past kPreheatTimeout, when the
  * extruder it heats goes away, for a request made while no job held the
  * machine when a job takes it, and for a request made during a pause when the
  * pause ends. Heat it commanded for a preheat that ends unrun is put back the
@@ -188,11 +188,11 @@ class FilamentOpHeater {
     using Clock = std::function<std::chrono::steady_clock::time_point()>;
 
     /// How long a sent target may take to appear on the nozzle.
-    static constexpr std::chrono::seconds TARGET_LAND_TIMEOUT{20};
+    static constexpr std::chrono::seconds kTargetLandTimeout{20};
     /// How long a preheat may take altogether.
-    static constexpr std::chrono::minutes PREHEAT_TIMEOUT{10};
+    static constexpr std::chrono::minutes kPreheatTimeout{10};
     /// How long a backend op may run before its completion stops being watched.
-    static constexpr std::chrono::minutes BACKEND_WATCH_TIMEOUT{15};
+    static constexpr std::chrono::minutes kBackendWatchTimeout{15};
 
     /// @param clock Steady time; unset reads std::chrono::steady_clock.
     explicit FilamentOpHeater(PrinterState& state, Clock clock = {});
@@ -244,7 +244,7 @@ class FilamentOpHeater {
     /// A backend op for @p ticket is about to be dispatched and completes on the
     /// AMS action feed: op_succeeded() when the action moves to busy after this
     /// call and then returns to IDLE, op_failed() on ERROR, forgotten after
-    /// BACKEND_WATCH_TIMEOUT. Arm it BEFORE the dispatch so a fast backend cannot
+    /// kBackendWatchTimeout. Arm it BEFORE the dispatch so a fast backend cannot
     /// finish unseen; call op_failed() if the dispatch is refused. Does nothing
     /// for a ticket the heater did not heat for.
     void watch_backend_completion(FilamentOpTicket ticket);

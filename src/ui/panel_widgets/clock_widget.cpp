@@ -21,7 +21,7 @@
 #include <ctime>
 
 // Clock update interval (1 second)
-static constexpr uint32_t CLOCK_UPDATE_INTERVAL_MS = 1000;
+static constexpr uint32_t kClockUpdateIntervalMs = 1000;
 
 // Subjects owned by ClockWidget module — created before XML bindings resolve
 static lv_subject_t s_time_subject;
@@ -145,9 +145,8 @@ void ClockWidget::on_activate() {
     update_clock();
 
     if (!clock_timer_) {
-        clock_timer_ = lv_timer_create(clock_timer_cb, CLOCK_UPDATE_INTERVAL_MS, this);
-        spdlog::debug("[ClockWidget] Started clock timer ({}ms interval)",
-                      CLOCK_UPDATE_INTERVAL_MS);
+        clock_timer_ = lv_timer_create(clock_timer_cb, kClockUpdateIntervalMs, this);
+        spdlog::debug("[ClockWidget] Started clock timer ({}ms interval)", kClockUpdateIntervalMs);
     }
 }
 

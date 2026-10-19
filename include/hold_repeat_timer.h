@@ -14,7 +14,7 @@ namespace helix {
  *
  *  Both hold-to-repeat owners (the jog pad and the motion panel's Z buttons)
  *  share this class, so no timing logic exists twice; the poll period only
- *  has to divide both DELAY_MS and INTERVAL_MS for the repeats to land on a
+ *  has to divide both DELAY_MS and kIntervalMs for the repeats to land on a
  *  poll. Timing decisions themselves all live in HoldRepeat.
  *
  *  Lifecycle: begin() on press, release() on finger-up, cancel() on press

@@ -84,12 +84,12 @@ TEST_CASE_METHOD(LVGLTestFixture, "PanelWidgetConfig: save_soon writes once edit
     CHECK(stored_col(scene.path) == 0); // not written yet
 
     // A second edit inside the window restarts it.
-    process_lvgl(PanelWidgetConfig::SAVE_SETTLE_MS / 2);
+    process_lvgl(PanelWidgetConfig::kSaveSettleMs / 2);
     scene.config.save_soon();
-    process_lvgl(PanelWidgetConfig::SAVE_SETTLE_MS / 2 + 100);
+    process_lvgl(PanelWidgetConfig::kSaveSettleMs / 2 + 100);
     CHECK(stored_col(scene.path) == 0);
 
-    process_lvgl(PanelWidgetConfig::SAVE_SETTLE_MS);
+    process_lvgl(PanelWidgetConfig::kSaveSettleMs);
     CHECK_FALSE(scene.config.save_pending());
     CHECK(stored_col(scene.path) == 2);
 }
@@ -147,7 +147,7 @@ TEST_CASE_METHOD(XMLTestFixture,
         em.select_widget(scene.widget);
         GridEditModeTestAccess::commit_resize(
             em,
-            {0, 0, GridEditScene::COLSPAN + GridLayout::TRACKS_PER_CELL, GridEditScene::ROWSPAN});
+            {0, 0, GridEditScene::kColspan + GridLayout::TRACKS_PER_CELL, GridEditScene::kRowspan});
         REQUIRE(scene.config->save_pending());
         // The app shutting down destroys the home panel, and its session, here.
     }
@@ -155,7 +155,7 @@ TEST_CASE_METHOD(XMLTestFixture,
     const auto node = Config::get_instance()->get<nlohmann::json>(path, nlohmann::json());
     REQUIRE(node.contains("pages"));
     CHECK(node["pages"][1]["widgets"][0]["colspan"] ==
-          GridEditScene::COLSPAN + GridLayout::TRACKS_PER_CELL);
+          GridEditScene::kColspan + GridLayout::TRACKS_PER_CELL);
     process_lvgl(50);
     lv_obj_delete(scene.container);
 }
@@ -179,7 +179,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "PanelWidgetConfig: a destroyed config never f
     }
     // The timer's callback holds a raw `this`: the destructor cancels it, so
     // running past the window writes nothing for the freed object.
-    process_lvgl(PanelWidgetConfig::SAVE_SETTLE_MS + 200);
+    process_lvgl(PanelWidgetConfig::kSaveSettleMs + 200);
     CHECK(stored_col(path) == 0);
 }
 

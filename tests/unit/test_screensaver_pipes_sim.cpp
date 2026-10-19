@@ -127,7 +127,7 @@ TEST_CASE("a pipe with no empty neighbour goes nowhere", "[screensaver][pipes_si
     grid.reset({1, 1, 1});
     grid.take({0, 0, 0});
     std::minstd_rand rng(3);
-    for (int d = 0; d < PIPE_DIR_COUNT; d++) {
+    for (int d = 0; d < kPipeDirCount; d++) {
         for (int w : {1, 4, 50, 100}) {
             CHECK(pipes_choose_direction(grid, {0, 0, 0}, static_cast<PipeDir>(d), w, rng) ==
                   PipeDir::NONE);
@@ -312,11 +312,11 @@ TEST_CASE("a screen begins with 2 to 4 pipes on distinct taken nodes", "[screens
             alive++;
             positions.insert({p.pos.x, p.pos.y, p.pos.z});
             CHECK_FALSE(screen.grid().empty(p.pos));
-            CHECK(p.material < PIPE_MATERIAL_COUNT);
+            CHECK(p.material < kPipeMaterialCount);
             CHECK(p.segment_count == 0);
         }
-        CHECK(alive >= PIPES_MIN_ACTIVE);
-        CHECK(alive <= PIPES_MAX_ACTIVE);
+        CHECK(alive >= kPipesMinActive);
+        CHECK(alive <= kPipesMaxActive);
         CHECK(alive == screen.pipes_counted());
         CHECK(alive == screen.pipes_started());
         CHECK(positions.size() == static_cast<size_t>(alive));
@@ -338,7 +338,7 @@ TEST_CASE("a screen starts exactly 7 pipes before it finishes", "[screensaver][p
         }
         REQUIRE(steps < 20000);
         CHECK(screen.finished());
-        CHECK(screen.pipes_started() == PIPES_PER_SCREEN);
+        CHECK(screen.pipes_started() == kPipesPerScreen);
         CHECK(screen.grid().empty_count() > 0);
     }
 }
@@ -355,7 +355,7 @@ TEST_CASE("a pipe stops only where every neighbour is taken", "[screensaver][pip
                 continue;
             }
             any_stuck = true;
-            for (int d = 0; d < PIPE_DIR_COUNT; d++) {
+            for (int d = 0; d < kPipeDirCount; d++) {
                 CHECK_FALSE(screen.grid().empty(pipe_step(p.pos, static_cast<PipeDir>(d))));
             }
         }
@@ -417,7 +417,7 @@ TEST_CASE("over many turns a third of the joints are balls", "[screensaver][pipe
 
 TEST_CASE("a screen replays exactly from a seed", "[screensaver][pipes_sim]") {
     struct Run {
-        std::vector<std::array<PipeState, PIPES_MAX_ACTIVE>> pipes;
+        std::vector<std::array<PipeState, kPipesMaxActive>> pipes;
         std::vector<PipePiece> pieces;
 
         bool operator==(const Run& o) const {
@@ -444,17 +444,17 @@ TEST_CASE("a screen replays exactly from a seed", "[screensaver][pipes_sim]") {
 // ============================================================================
 
 TEST_CASE("the material table is the original's 16", "[screensaver][pipes_sim]") {
-    REQUIRE(PIPE_MATERIAL_COUNT == 16);
-    CHECK(PIPE_MATERIALS[0].kd[0] == Catch::Approx(0.07568f));
-    CHECK(PIPE_MATERIALS[0].kd[1] == Catch::Approx(0.61424f));
-    CHECK(PIPE_MATERIALS[0].shininess == Catch::Approx(76.8f));
-    CHECK(PIPE_MATERIALS[2].kd[0] == Catch::Approx(1.0f));
-    CHECK(PIPE_MATERIALS[2].kd[1] == Catch::Approx(0.829f));
-    CHECK(PIPE_MATERIALS[2].shininess == Catch::Approx(11.264f));
-    CHECK(PIPE_MATERIALS[5].shininess == Catch::Approx(27.897436f));
-    CHECK(PIPE_MATERIALS[15].ks[0] == Catch::Approx(0.7f));
-    CHECK(PIPE_MATERIALS[15].ks[2] == Catch::Approx(0.7f));
-    CHECK(PIPE_MATERIALS[15].shininess == Catch::Approx(10.0f));
+    REQUIRE(kPipeMaterialCount == 16);
+    CHECK(kPipeMaterials[0].kd[0] == Catch::Approx(0.07568f));
+    CHECK(kPipeMaterials[0].kd[1] == Catch::Approx(0.61424f));
+    CHECK(kPipeMaterials[0].shininess == Catch::Approx(76.8f));
+    CHECK(kPipeMaterials[2].kd[0] == Catch::Approx(1.0f));
+    CHECK(kPipeMaterials[2].kd[1] == Catch::Approx(0.829f));
+    CHECK(kPipeMaterials[2].shininess == Catch::Approx(11.264f));
+    CHECK(kPipeMaterials[5].shininess == Catch::Approx(27.897436f));
+    CHECK(kPipeMaterials[15].ks[0] == Catch::Approx(0.7f));
+    CHECK(kPipeMaterials[15].ks[2] == Catch::Approx(0.7f));
+    CHECK(kPipeMaterials[15].shininess == Catch::Approx(10.0f));
 }
 
 TEST_CASE("the light and half vector are fixed in eye space", "[screensaver][pipes_sim]") {
@@ -463,9 +463,9 @@ TEST_CASE("the light and half vector are fixed in eye space", "[screensaver][pip
 }
 
 TEST_CASE("pipes_shade is GL fixed-function lighting", "[screensaver][pipes_sim]") {
-    const PipeMaterial& emerald = PIPE_MATERIALS[0];
-    const PipeMaterial& ruby = PIPE_MATERIALS[3];
-    const PipeMaterial& white_rubber = PIPE_MATERIALS[15];
+    const PipeMaterial& emerald = kPipeMaterials[0];
+    const PipeMaterial& ruby = kPipeMaterials[3];
+    const PipeMaterial& white_rubber = kPipeMaterials[15];
     CHECK(near(pipes_shade(emerald, pipes_light_dir()), {27, 207, 27}));
     CHECK(near(pipes_shade(emerald, pipes_half_vector()), {186, 255, 186}));
     CHECK(near(pipes_shade(emerald, {0, 0, -1}), {6, 49, 6}));
@@ -479,7 +479,7 @@ TEST_CASE("pipes_shade is GL fixed-function lighting", "[screensaver][pipes_sim]
 TEST_CASE("the brightest point of a material faces the half vector", "[screensaver][pipes_sim]") {
     std::minstd_rand rng(31);
     std::normal_distribution<float> gauss;
-    for (const PipeMaterial& m : PIPE_MATERIALS) {
+    for (const PipeMaterial& m : kPipeMaterials) {
         const int peak = channel_sum(pipes_shade(m, pipes_half_vector()));
         for (int i = 0; i < 200; i++) {
             PipeVec3 n{gauss(rng), gauss(rng), gauss(rng)};
@@ -520,7 +520,7 @@ std::pair<size_t, size_t> outward_winding(const PipeMesh& m) {
 /// The 16 world positions of a ring of `mesh` starting at vertex `first`.
 std::vector<PipeVec3> ring(const PipeMesh& mesh, size_t first, const PipeXform& xf) {
     std::vector<PipeVec3> out;
-    for (size_t k = 0; k < static_cast<size_t>(PIPES_SLICES); k++) {
+    for (size_t k = 0; k < static_cast<size_t>(kPipesSlices); k++) {
         out.push_back(pipes_xform_point(xf, mesh.verts[first + k].p));
     }
     return out;
@@ -585,10 +585,10 @@ TEST_CASE("elbow end rings meet the cylinders without a crack", "[screensaver][p
     PipeMesh elbow;
     pipes_build_cylinder(cyl);
     pipes_build_elbow(elbow);
-    const size_t last_ring = elbow.verts.size() - static_cast<size_t>(PIPES_SLICES);
+    const size_t last_ring = elbow.verts.size() - static_cast<size_t>(kPipesSlices);
     int pairs = 0;
-    for (int f = 0; f < PIPE_DIR_COUNT; f++) {
-        for (int d = 0; d < PIPE_DIR_COUNT; d++) {
+    for (int f = 0; f < kPipeDirCount; f++) {
+        for (int d = 0; d < kPipeDirCount; d++) {
             const auto from = static_cast<PipeDir>(f);
             const auto dir = static_cast<PipeDir>(d);
             if (dir == from || dir == pipe_opposite(from)) {
@@ -610,7 +610,7 @@ TEST_CASE("elbow end rings meet the cylinders without a crack", "[screensaver][p
             in.length = 7.0f;
             in.at = {node.x - 8.0f * fv.x, node.y - 8.0f * fv.y, node.z - 8.0f * fv.z};
             CHECK(same_point_sets(ring(elbow, 0, jx),
-                                  ring(cyl, PIPES_SLICES, pipes_piece_xform(in))));
+                                  ring(cyl, kPipesSlices, pipes_piece_xform(in))));
 
             const PipeVec3 dv = pipes_dir_vec(dir);
             PipePiece out;
@@ -656,18 +656,18 @@ TEST_CASE("the teapot is the original's size", "[screensaver][pipes_sim]") {
 TEST_CASE("an elbow's centreline bends round (0, r, -r)", "[screensaver][pipes_sim]") {
     PipeMesh elbow;
     pipes_build_elbow(elbow);
-    REQUIRE(elbow.verts.size() % static_cast<size_t>(PIPES_SLICES) == 0);
-    for (size_t first = 0; first < elbow.verts.size(); first += PIPES_SLICES) {
+    REQUIRE(elbow.verts.size() % static_cast<size_t>(kPipesSlices) == 0);
+    for (size_t first = 0; first < elbow.verts.size(); first += kPipesSlices) {
         PipeVec3 mean{};
-        for (size_t k = 0; k < static_cast<size_t>(PIPES_SLICES); k++) {
+        for (size_t k = 0; k < static_cast<size_t>(kPipesSlices); k++) {
             const PipeVec3& p = elbow.verts[first + k].p;
-            mean = {mean.x + p.x / PIPES_SLICES, mean.y + p.y / PIPES_SLICES,
-                    mean.z + p.z / PIPES_SLICES};
+            mean = {mean.x + p.x / kPipesSlices, mean.y + p.y / kPipesSlices,
+                    mean.z + p.z / kPipesSlices};
         }
         CHECK(mean.x == Catch::Approx(0.0f).margin(1e-5));
-        const float dy = mean.y - PIPES_RADIUS;
-        const float dz = mean.z + PIPES_RADIUS;
-        CHECK(std::sqrt(dy * dy + dz * dz) == Catch::Approx(PIPES_RADIUS).margin(1e-5));
+        const float dy = mean.y - kPipesRadius;
+        const float dz = mean.z + kPipesRadius;
+        CHECK(std::sqrt(dy * dy + dz * dz) == Catch::Approx(kPipesRadius).margin(1e-5));
     }
 }
 
@@ -719,8 +719,8 @@ std::vector<PipePiece> random_pieces(uint32_t seed, size_t count) {
         p.kind = static_cast<PipePieceKind>(screensaver::random_below(rng, 4));
         p.at = pipes_node_world(node, dims);
         p.material = static_cast<uint8_t>(screensaver::random_below(rng, 16));
-        p.dir = static_cast<PipeDir>(screensaver::random_below(rng, PIPE_DIR_COUNT));
-        p.from = static_cast<PipeDir>((static_cast<int>(p.dir) + 2) % PIPE_DIR_COUNT);
+        p.dir = static_cast<PipeDir>(screensaver::random_below(rng, kPipeDirCount));
+        p.from = static_cast<PipeDir>((static_cast<int>(p.dir) + 2) % kPipeDirCount);
         p.length = screensaver::random_below(rng, 2) == 0 ? 7.0f : 5.0f;
         out.push_back(p);
     }
@@ -845,7 +845,7 @@ TEST_CASE("the highlight sits up-right of centre on every ball", "[screensaver][
     CHECK(static_cast<float>(bx) + 0.5f - cx > 0.0f);
     CHECK(static_cast<float>(by) + 0.5f - cy < 0.0f);
     CHECK(near(c1, c2, 16));
-    CHECK(near(c1, pipes_shade(PIPE_MATERIALS[0], pipes_half_vector()), 16));
+    CHECK(near(c1, pipes_shade(kPipeMaterials[0], pipes_half_vector()), 16));
 
     // On a pipe the highlight runs along the side facing up-right.
     r.clear_depth();
@@ -1346,12 +1346,12 @@ void run_screen_at(helix::test::SimRun<PipesSim>& run, size_t level, size_t heap
             REQUIRE(run.sim.heap_bytes() == heap);
         }
     }
-    REQUIRE(run.sim.renderer().scale() == PIPES_LEVELS[level].scale);
+    REQUIRE(run.sim.renderer().scale() == kPipesLevels[level].scale);
 }
 
 /// Depth-buffer bytes at `level` for a 160 x 96 frame.
 size_t depth_bytes(size_t level) {
-    const int32_t s = PIPES_LEVELS[level].scale;
+    const int32_t s = kPipesLevels[level].scale;
     return static_cast<size_t>(scaled_extent(160, s)) * scaled_extent(96, s) * sizeof(float);
 }
 
@@ -1360,13 +1360,13 @@ size_t depth_bytes(size_t level) {
 TEST_CASE("pipes frames and step-downs allocate nothing from any starting rung",
           "[screensaver][pipes_sim]") {
     for (PixelFormat format : {PixelFormat::XRGB8888, PixelFormat::RGB565}) {
-        for (size_t start = 0; start < PIPES_LEVEL_COUNT; start++) {
+        for (size_t start = 0; start < kPipesLevelCount; start++) {
             INFO("start " << start << " format " << static_cast<int>(format));
             helix::test::SimRun<PipesSim> run(9, 160, 96, format);
             run.init(start);
             const size_t heap = run.sim.heap_bytes();
             REQUIRE(heap > 0);
-            for (size_t level = start; level < PIPES_LEVEL_COUNT; level++) {
+            for (size_t level = start; level < kPipesLevelCount; level++) {
                 run_screen_at(run, level, heap);
             }
         }
@@ -1375,8 +1375,8 @@ TEST_CASE("pipes frames and step-downs allocate nothing from any starting rung",
 
 TEST_CASE("a pipes run that starts at the coarse rung holds only the coarse depth buffer",
           "[screensaver][pipes_sim]") {
-    const size_t last = PIPES_LEVEL_COUNT - 1;
-    REQUIRE(PIPES_LEVELS[last].scale > PIPES_LEVELS[0].scale);
+    const size_t last = kPipesLevelCount - 1;
+    REQUIRE(kPipesLevels[last].scale > kPipesLevels[0].scale);
     helix::test::SimRun<PipesSim> fine(9, 160, 96);
     helix::test::SimRun<PipesSim> coarse(9, 160, 96);
     fine.init(0);
@@ -1386,7 +1386,7 @@ TEST_CASE("a pipes run that starts at the coarse rung holds only the coarse dept
 
 TEST_CASE("a finer level mid-run grows the depth buffer and keeps drawing",
           "[screensaver][pipes_sim]") {
-    const size_t last = PIPES_LEVEL_COUNT - 1;
+    const size_t last = kPipesLevelCount - 1;
     helix::test::SimRun<PipesSim> run(9, 160, 96);
     run.init(last);
     const size_t coarse = run.sim.heap_bytes();

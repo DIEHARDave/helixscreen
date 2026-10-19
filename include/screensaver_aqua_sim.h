@@ -36,40 +36,40 @@ struct AquaLevel {
     uint32_t period_ms;
     uint8_t scale;    ///< the water renders at canvas / scale
     uint16_t slices;  ///< renderer depth slices
-    uint8_t grid_div; ///< height grid is AQUA_GRID_X / grid_div x AQUA_GRID_Z / grid_div
+    uint8_t grid_div; ///< height grid is kAquaGridX / grid_div x kAquaGridZ / grid_div
     uint16_t bubbles;
     bool splashes;
     bool still; ///< draw the water once, then only the clock
 };
 
 /// Most expensive first. The last rung draws the scene once and then only the clock.
-inline constexpr AquaLevel AQUA_LEVELS[] = {
-    {SAVER_FAST_PERIOD, 2, 110, 1, 300, true, false},
+inline constexpr AquaLevel kAquaLevels[] = {
+    {kSaverFastPeriod, 2, 110, 1, 300, true, false},
     {33, 2, 110, 1, 300, true, false},
     {50, 4, 64, 2, 200, true, false},
     {100, 4, 64, 2, 120, false, false},
     {250, 2, 110, 1, 0, false, true},
 };
-inline constexpr size_t AQUA_LEVEL_COUNT = std::size(AQUA_LEVELS);
+inline constexpr size_t kAquaLevelCount = std::size(kAquaLevels);
 
 /// Sim seconds per real second: one big slosh takes several seconds.
-inline constexpr float AQUA_TIME_SCALE = 0.25f;
+inline constexpr float kAquaTimeScale = 0.25f;
 /// Height grid at level 0, across (screen column) by deep.
-inline constexpr int32_t AQUA_GRID_X = 160;
-inline constexpr int32_t AQUA_GRID_Z = 64;
+inline constexpr int32_t kAquaGridX = 160;
+inline constexpr int32_t kAquaGridZ = 64;
 /// Near edge depth and the depth of water drawn behind it, world units.
-inline constexpr float AQUA_Z_NEAR = 3.5f;
-inline constexpr float AQUA_DEPTH = 4.0f;
+inline constexpr float kAquaZNear = 3.5f;
+inline constexpr float kAquaDepth = 4.0f;
 /// Droplet gravity, as a share of g, in sim time.
-inline constexpr float AQUA_DROPLET_GRAVITY = 0.35f;
+inline constexpr float kAquaDropletGravity = 0.35f;
 /// Most droplets alive at once. A crest that would exceed it emits fewer: live droplets are
 /// never culled.
-inline constexpr size_t AQUA_MAX_DROPLETS = 48;
+inline constexpr size_t kAquaMaxDroplets = 48;
 /// Rim brightness never falls below this.
-inline constexpr float AQUA_RIM_FLOOR = 0.4f;
+inline constexpr float kAquaRimFloor = 0.4f;
 /// Least share of light the water reflects, even looking straight down into it: real water's
 /// 0.02 reads dark and oily, 0.35 like chrome.
-inline constexpr float AQUA_FRESNEL_FLOOR = 0.12f;
+inline constexpr float kAquaFresnelFloor = 0.12f;
 
 /// Tank mode, Gerstner wave and impulse event, in world units and sim seconds.
 struct AquaMode {
@@ -99,7 +99,7 @@ class AquaWater {
   public:
     friend class AquaSimTestAccess;
     /// Seeds the modes, waves and the first impulse from `rng`; grid is gx x gz cells over
-    /// u in +-u_max and z from AQUA_Z_NEAR to AQUA_Z_NEAR + AQUA_DEPTH.
+    /// u in +-u_max and z from kAquaZNear to kAquaZNear + kAquaDepth.
     void init(std::minstd_rand& rng, int32_t gx, int32_t gz, float u_max);
     /// Re-sizes the grid, keeping the waves.
     void set_grid(int32_t gx, int32_t gz);
@@ -182,7 +182,7 @@ struct AquaLanding {
  * @brief Droplets flung from fast-rising crests
  *
  * A droplet lives until it falls below the surface at its own (x, z): no timer ends it and no
- * budget culls it. AQUA_MAX_DROPLETS caps how many are emitted.
+ * budget culls it. kAquaMaxDroplets caps how many are emitted.
  */
 class AquaSplashes {
   public:
@@ -247,7 +247,7 @@ AquaClockLayout layout_aqua_clock(int32_t w, int32_t h, int32_t dx, int32_t dy);
 class AquaSim {
   public:
     friend class AquaSimTestAccess;
-    static constexpr const auto& LEVELS = AQUA_LEVELS;
+    static constexpr const auto& kLevels = kAquaLevels;
 
     void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level,
               const ClockReading& reading);

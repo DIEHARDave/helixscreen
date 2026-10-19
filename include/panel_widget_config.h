@@ -77,7 +77,7 @@ struct PageConfig {
 };
 
 /// Soft cap on maximum number of pages
-static constexpr size_t MAX_PAGES = 8;
+static constexpr size_t kMaxPages = 8;
 
 class PanelWidgetConfig {
   public:
@@ -103,7 +103,7 @@ class PanelWidgetConfig {
     /// Save current order to config now. Replaces a save held by save_soon().
     void save();
 
-    /// Save once edits settle: SAVE_SETTLE_MS after the last request, to the
+    /// Save once edits settle: kSaveSettleMs after the last request, to the
     /// panel's path as it was at the first. Every save is a flash write that
     /// stalls a slow board's UI for hundreds of ms, and an edit session asks
     /// for one per drop and resize.
@@ -117,7 +117,7 @@ class PanelWidgetConfig {
         return deferred_save_.timer != nullptr;
     }
 
-    static constexpr uint32_t SAVE_SETTLE_MS = 2000;
+    static constexpr uint32_t kSaveSettleMs = 2000;
 
     /// Told after every write that persisted this panel's layout for the
     /// active printer: save(), and save_soon() / flush_pending_save() once
@@ -215,9 +215,9 @@ class PanelWidgetConfig {
     /// pass the id of an entry this call may erase.
     int place_entry(std::string id, size_t page_index, int col, int row, int colspan, int rowspan);
 
-    /// True while another page fits under the cap (MAX_PAGES).
+    /// True while another page fits under the cap (kMaxPages).
     bool can_add_page() const {
-        return pages_.size() < MAX_PAGES;
+        return pages_.size() < kMaxPages;
     }
 
     /// Add a new empty page. Returns the index of the new page, or -1 if at cap.

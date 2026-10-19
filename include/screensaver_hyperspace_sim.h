@@ -35,8 +35,8 @@ struct HyperspaceLevel {
 };
 
 /// The ladder, most expensive level first. A requested level applies at the next frame.
-inline constexpr HyperspaceLevel HYPERSPACE_LEVELS[] = {
-    {SAVER_FAST_PERIOD, 1, true, 160},
+inline constexpr HyperspaceLevel kHyperspaceLevels[] = {
+    {kSaverFastPeriod, 1, true, 160},
     {33, 1, true, 160},
     {33, 2, true, 160},
     {33, 2, false, 160},
@@ -44,27 +44,27 @@ inline constexpr HyperspaceLevel HYPERSPACE_LEVELS[] = {
     {33, 0, false, 96},
 };
 
-inline constexpr size_t HYPERSPACE_LEVEL_COUNT = std::size(HYPERSPACE_LEVELS);
+inline constexpr size_t kHyperspaceLevelCount = std::size(kHyperspaceLevels);
 
 /// Largest roll either way, in radians.
-inline constexpr float HYPERSPACE_MAX_ROLL = 0.3f;
+inline constexpr float kHyperspaceMaxRoll = 0.3f;
 
 /// Where the camera is and how it moves.
 struct HyperspaceCamera {
     float speed = 0.0f;   ///< forward, in depth units per second
-    float roll = 0.0f;    ///< radians, within HYPERSPACE_MAX_ROLL either way
+    float roll = 0.0f;    ///< radians, within kHyperspaceMaxRoll either way
     float drift_x = 0.0f; ///< vanishing point's offset from the frame centre, px
     float drift_y = 0.0f;
 };
 
 class HyperspaceSim {
   public:
-    static constexpr const auto& LEVELS = HYPERSPACE_LEVELS;
+    static constexpr const auto& kLevels = kHyperspaceLevels;
 
     /// Most star flares at any level.
-    static constexpr size_t MAX_STARS = 160;
+    static constexpr size_t kMaxStars = 160;
     /// Flares one starburst throws.
-    static constexpr size_t BURST_FLARES = 48;
+    static constexpr size_t kBurstFlares = 48;
 
     /**
      * @brief Sizes every buffer for `frame` and starts the flight at `level`
@@ -200,7 +200,7 @@ class HyperspaceSim {
     std::vector<uint32_t> sprite_at_; ///< offset of each radius in sprites_
 
     std::vector<Star> stars_;
-    std::vector<Flare> flares_; ///< BURST_FLARES, reused by every starburst
+    std::vector<Flare> flares_; ///< kBurstFlares, reused by every starburst
 };
 
 } // namespace helix::ui

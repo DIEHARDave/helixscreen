@@ -27,18 +27,18 @@ namespace helix::ui::screensaver {
 struct MotionClock {
     /// One gap longer than this counts as this long, so after a stall the motion resumes
     /// where it stopped instead of jumping ahead.
-    static constexpr uint32_t MAX_GAP_MS = 500;
+    static constexpr uint32_t kMaxGapMs = 500;
 
     constexpr void reset(uint32_t now_ms) {
         last_ms = now_ms;
     }
 
-    /// Milliseconds since the previous reset() or advance(), at most MAX_GAP_MS.
+    /// Milliseconds since the previous reset() or advance(), at most kMaxGapMs.
     constexpr uint32_t advance(uint32_t now_ms) {
         // Unsigned subtraction stays exact across the tick wrap.
         const uint32_t gap = now_ms - last_ms;
         last_ms = now_ms;
-        return std::min(gap, MAX_GAP_MS);
+        return std::min(gap, kMaxGapMs);
     }
 
     uint32_t last_ms = 0;

@@ -90,20 +90,20 @@ using json = nlohmann::json;
 namespace {
 
 /// GitHub API URL for latest release
-constexpr const char* GITHUB_API_URL =
+constexpr const char* kGithubApiUrl =
     "https://api.github.com/repos/prestonbrown/helixscreen/releases/latest";
 
 /// GitHub API URL for all releases (beta channel uses this)
-constexpr const char* GITHUB_RELEASES_URL =
+constexpr const char* kGithubReleasesUrl =
     "https://api.github.com/repos/prestonbrown/helixscreen/releases";
 
 /// HTTP request timeout in seconds
-constexpr int HTTP_TIMEOUT_SECONDS = 30;
+constexpr int kHttpTimeoutSeconds = 30;
 
 /// How long the download worker waits for the LVGL thread to run the queued
 /// restart before doing it itself. Must comfortably exceed one main-loop tick;
 /// the only thing it guards against is a main loop that is no longer running.
-constexpr int RESTART_MARSHAL_TIMEOUT_MS = 5000;
+constexpr int kRestartMarshalTimeoutMs = 5000;
 
 /// Perform an HTTP GET using the best available stack.
 ///
@@ -118,12 +118,12 @@ static std::pair<int, std::string> do_http_get(const std::string& url,
     const std::string ua = HELIX_USER_AGENT;
 
 #ifdef __ANDROID__
-    return helix::android::https_get(url, ua, accept, HTTP_TIMEOUT_SECONDS);
+    return helix::android::https_get(url, ua, accept, kHttpTimeoutSeconds);
 #else
     auto req = std::make_shared<HttpRequest>();
     req->method = HTTP_GET;
     req->url = url;
-    req->timeout = HTTP_TIMEOUT_SECONDS;
+    req->timeout = kHttpTimeoutSeconds;
     req->headers["User-Agent"] = ua;
     if (!accept.empty()) {
         req->headers["Accept"] = accept;
@@ -352,14 +352,14 @@ std::string fetch_changelog_for_version(const std::string& version) {
  * @param name Tool name (e.g., "tar", "cp", "gunzip")
  * @return Full absolute path if found, bare name as fallback (relies on $PATH)
  */
-constexpr const char* TOOL_SEARCH_DIRS[] = {"/usr/bin", "/bin",           "/usr/sbin",
-                                            "/sbin",    "/usr/local/bin", nullptr};
+constexpr const char* kToolSearchDirs[] = {"/usr/bin", "/bin",           "/usr/sbin",
+                                           "/sbin",    "/usr/local/bin", nullptr};
 
-/// Walk TOOL_SEARCH_DIRS for an executable `name`. Returns absolute path on
+/// Walk kToolSearchDirs for an executable `name`. Returns absolute path on
 /// the first hit, empty string when nothing is found.
 std::string find_tool_path(const std::string& name) {
-    for (int i = 0; TOOL_SEARCH_DIRS[i]; ++i) {
-        std::string path = std::string(TOOL_SEARCH_DIRS[i]) + "/" + name;
+    for (int i = 0; kToolSearchDirs[i]; ++i) {
+        std::string path = std::string(kToolSearchDirs[i]) + "/" + name;
         if (access(path.c_str(), X_OK) == 0) {
             return path;
         }
@@ -595,7 +595,7 @@ int extract_tar_member(const std::string& tarball_path, const std::string& extra
 /// python3 snippet: extract argv[2] from zip argv[1] into argv[3], restoring the
 /// member's unix mode bits (zipfile.extract() drops them) and forcing the exec
 /// bit on bin/* and *.sh so an extracted installer or binary is runnable.
-constexpr const char* PY_EXTRACT_SCRIPT =
+constexpr const char* kPyExtractScript =
     "import os, stat, sys, zipfile\n"
     "zip_path, member, destdir = sys.argv[1], sys.argv[2], sys.argv[3]\n"
     "try:\n"
@@ -1011,13 +1011,13 @@ std::string UpdateChecker::get_download_error() const {
 // Safety floor: even if the remote claims a tiny size, never accept a
 // candidate dir below this. Small enough to allow CI fixtures to pass while
 // large enough that a near-full embedded device doesn't slip through.
-static constexpr uint64_t DOWNLOAD_SPACE_FLOOR_BYTES = 50ULL * 1024 * 1024;
+static constexpr uint64_t kDownloadSpaceFloorBytes = 50ULL * 1024 * 1024;
 
 // Used when the caller doesn't know the remote size (manifest schemas that
 // omit size/zip_size, or any parse failure). Sized to cover the largest
 // current platform tarball (~75 MB on x86) with ~1.6× safety margin without
 // over-blocking users on tight rootfs. Bump in lockstep if archives grow.
-static constexpr uint64_t DOWNLOAD_SPACE_DEFAULT_BYTES = 120ULL * 1024 * 1024;
+static constexpr uint64_t kDownloadSpaceDefaultBytes = 120ULL * 1024 * 1024;
 
 /// The device's host name and the login it runs under, for scrubbing text bound
 /// for telemetry. From the environment, not getpwuid(): a static glibc build
@@ -1052,19 +1052,19 @@ static std::vector<std::string> device_identifiers() {
 // free-space search puts it. On boards whose gcodes root IS the data partition
 // (the AD5M symlinks /data whole into it) a plainly named archive shows up in
 // the user's print-file picker for the whole update.
-static const char* const DOWNLOAD_FILENAME = ".helixscreen-update.tar.gz";
-static const char* const DOWNLOAD_FILENAME_ZIP = ".helixscreen-update.zip";
+static const char* const kDownloadFilename = ".helixscreen-update.tar.gz";
+static const char* const kDownloadFilenameZip = ".helixscreen-update.zip";
 
 uint64_t UpdateChecker::required_download_space_bytes(uint64_t download_bytes) {
     // 20% headroom over the wire size + a small fixed buffer for the .partial
     // tail and filesystem overhead. install.sh runs its own ≥100 MB check
     // before extracting, so we don't need to oversize the staging here.
-    constexpr uint64_t FIXED_BUFFER = 10ULL * 1024 * 1024;
+    constexpr uint64_t kFixedBuffer = 10ULL * 1024 * 1024;
     if (download_bytes == 0) {
-        return DOWNLOAD_SPACE_DEFAULT_BYTES;
+        return kDownloadSpaceDefaultBytes;
     }
-    uint64_t need = (download_bytes * 6 / 5) + FIXED_BUFFER;
-    return need < DOWNLOAD_SPACE_FLOOR_BYTES ? DOWNLOAD_SPACE_FLOOR_BYTES : need;
+    uint64_t need = (download_bytes * 6 / 5) + kFixedBuffer;
+    return need < kDownloadSpaceFloorBytes ? kDownloadSpaceFloorBytes : need;
 }
 
 std::string UpdateChecker::install_failure_detail(const std::vector<std::string>& lines) {
@@ -1178,7 +1178,7 @@ std::string UpdateChecker::init_service_dest_dir() {
 }
 
 std::string UpdateChecker::download_filename_for_url(const std::string& url) {
-    return path_is_zip(url) ? DOWNLOAD_FILENAME_ZIP : DOWNLOAD_FILENAME;
+    return path_is_zip(url) ? kDownloadFilenameZip : kDownloadFilename;
 }
 
 namespace {
@@ -1223,19 +1223,19 @@ std::string UpdateChecker::compute_update_staging_dir(const std::string& tarball
     // ALWAYS a dot-prefixed subdir — never the bare dir. TMP_DIR is rm -rf'd on
     // installer cleanup; handing it a bare mount/install dir would wipe live
     // data (past incident wiped a device partition passed as TMP_DIR).
-    static constexpr const char* STAGING_NAME = ".helix-update-staging";
+    static constexpr const char* kStagingName = ".helix-update-staging";
     if (base == "/") {
-        return std::string("/") + STAGING_NAME;
+        return std::string("/") + kStagingName;
     }
-    return base + "/" + STAGING_NAME;
+    return base + "/" + kStagingName;
 }
 
 std::string UpdateChecker::get_download_path(DownloadPathDiag* diag,
                                              uint64_t threshold_bytes) const {
     if (threshold_bytes == 0) {
-        threshold_bytes = DOWNLOAD_SPACE_DEFAULT_BYTES;
-    } else if (threshold_bytes < DOWNLOAD_SPACE_FLOOR_BYTES) {
-        threshold_bytes = DOWNLOAD_SPACE_FLOOR_BYTES;
+        threshold_bytes = kDownloadSpaceDefaultBytes;
+    } else if (threshold_bytes < kDownloadSpaceFloorBytes) {
+        threshold_bytes = kDownloadSpaceFloorBytes;
     }
     // Candidate directories, checked exhaustively — we pick the one with
     // the MOST free space so we don't fill up a tiny tmpfs or crowd out
@@ -1345,7 +1345,7 @@ std::string UpdateChecker::get_download_path(DownloadPathDiag* diag,
     if (best_dir.back() != '/') {
         best_dir += '/';
     }
-    return best_dir + DOWNLOAD_FILENAME;
+    return best_dir + kDownloadFilename;
 }
 
 std::string UpdateChecker::platform_asset_name() {
@@ -1726,7 +1726,7 @@ void UpdateChecker::do_download() {
     if (path_is_zip(url)) {
         auto slash = download_path.find_last_of('/');
         std::string dir = (slash == std::string::npos) ? "" : download_path.substr(0, slash + 1);
-        download_path = dir + DOWNLOAD_FILENAME_ZIP;
+        download_path = dir + kDownloadFilenameZip;
     }
 
     spdlog::info("[UpdateChecker] Downloading {} to {}", url, download_path);
@@ -1950,7 +1950,7 @@ int UpdateChecker::extract_zip_member(const std::string& zip_path, const std::st
 
     const std::string py_bin = find_tool_path("python3");
     if (!py_bin.empty()) {
-        return safe_exec({py_bin, "-c", PY_EXTRACT_SCRIPT, zip_path, member, extract_dir});
+        return safe_exec({py_bin, "-c", kPyExtractScript, zip_path, member, extract_dir});
     }
 
     spdlog::error("[UpdateChecker] No unzip binary and no python3 — cannot extract '{}'", member);
@@ -1967,7 +1967,7 @@ UpdateChecker::ZipIntegrity UpdateChecker::verify_zip_integrity(const std::strin
         // Code 2 matters on the AD5M, whose python3.7 is built without zlib:
         // ZipFile() raises "Compression requires the (missing) zlib module" for
         // a deflated release zip, which must NOT be read as corruption.
-        static constexpr const char* TEST_SCRIPT =
+        static constexpr const char* kTestScript =
             "import sys\n"
             "try:\n"
             "    import zipfile, zlib\n"
@@ -1980,7 +1980,7 @@ UpdateChecker::ZipIntegrity UpdateChecker::verify_zip_integrity(const std::strin
             "    sys.exit(2)\n"
             "except Exception:\n"
             "    sys.exit(1)\n";
-        int ret = safe_exec({py_bin, "-c", TEST_SCRIPT, zip_path});
+        int ret = safe_exec({py_bin, "-c", kTestScript, zip_path});
         if (ret == 0) {
             return ZipIntegrity::Ok;
         }
@@ -2211,18 +2211,17 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
     // own child processes, all writing during the install window.  5 MB is
     // ~10× the log's worst case and leaves enough room that "passed the
     // probe" means the FS is genuinely healthy, not marginal.
-    constexpr uint64_t MIN_INSTALL_LOG_FREE_BYTES = 5 * 1024 * 1024; // 5 MB
+    constexpr uint64_t kMinInstallLogFreeBytes = 5 * 1024 * 1024; // 5 MB
 
     std::string install_log = "/var/log/helixscreen-install.log";
     {
-        auto probe =
-            helix::system::probe_log_path_writable(install_log, MIN_INSTALL_LOG_FREE_BYTES);
+        auto probe = helix::system::probe_log_path_writable(install_log, kMinInstallLogFreeBytes);
         if (!probe.ok) {
             const std::string fallback = tarball_path + ".install.log";
             flog_warn("[UpdateChecker] {} not writable ({}), falling back to {}", install_log,
                       probe.error, fallback);
             install_log = fallback;
-            probe = helix::system::probe_log_path_writable(install_log, MIN_INSTALL_LOG_FREE_BYTES);
+            probe = helix::system::probe_log_path_writable(install_log, kMinInstallLogFreeBytes);
             if (!probe.ok) {
                 flog_error("[UpdateChecker] fallback log {} also not writable ({}); "
                            "install.sh stdout/stderr will be lost",
@@ -2526,7 +2525,7 @@ void UpdateChecker::finish_install_and_restart(const std::string& install_root,
     // marshalled call has not fired by the deadline, restart from here instead.
     // perform_update_restart() is once-only, so at most one of the two forks.
     const auto deadline =
-        std::chrono::steady_clock::now() + std::chrono::milliseconds(RESTART_MARSHAL_TIMEOUT_MS);
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(kRestartMarshalTimeoutMs);
     while (!restart_initiated_.load() && std::chrono::steady_clock::now() < deadline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
@@ -2813,9 +2812,9 @@ void UpdateChecker::check_for_updates(Callback callback) {
     bool dev_channel = (get_channel() == UpdateChannel::Dev);
 
     if (!dev_channel && last_check_time_.time_since_epoch().count() > 0 &&
-        time_since_last < MIN_CHECK_INTERVAL) {
+        time_since_last < kMinCheckInterval) {
         auto minutes_remaining =
-            std::chrono::duration_cast<std::chrono::minutes>(MIN_CHECK_INTERVAL - time_since_last)
+            std::chrono::duration_cast<std::chrono::minutes>(kMinCheckInterval - time_since_last)
                 .count();
         spdlog::debug("[UpdateChecker] Rate limited, {} minutes until next check allowed",
                       minutes_remaining);
@@ -3036,7 +3035,7 @@ bool UpdateChecker::report_play_verdict(ReleaseInfo manifest, const std::string&
     const std::string installer = android::installer_package();
     android::PlayUpdateQuery play;
     if (android::installed_by_play(installer)) {
-        play = android::query_play_update(HTTP_TIMEOUT_SECONDS);
+        play = android::query_play_update(kHttpTimeoutSeconds);
     }
     const auto verdict = android::decide_update(installer, play, manifest.version);
     if (verdict.kind == android::UpdateVerdict::Kind::Manifest) {
@@ -3285,7 +3284,7 @@ std::string UpdateChecker::effective_r2_base_url() {
     // this points, and settings.json sits where the web UI can write it.
     std::string url = helix::config_trust::read_update_urls().r2_url;
     if (url.empty()) {
-        url = DEFAULT_R2_BASE_URL;
+        url = kDefaultR2BaseUrl;
     }
     // Normalize: strip trailing slashes so callers can join with "/<path>".
     while (url.size() > 1 && url.back() == '/') {
@@ -3348,8 +3347,8 @@ void UpdateChecker::dismiss_current_version() {
 // ============================================================================
 
 namespace {
-constexpr const char* UPDATE_RESPONSE_METHOD = "notify_update_response";
-constexpr const char* EXTERNAL_UPDATE_HANDLER = "external_update_restart";
+constexpr const char* kUpdateResponseMethod = "notify_update_response";
+constexpr const char* kExternalUpdateHandler = "external_update_restart";
 
 // notify_update_response params: [{"application":"helixscreen",
 //   "proc_id":N, "message":"...", "complete":true/false}]
@@ -3408,13 +3407,13 @@ void UpdateChecker::on_connected(helix::IMoonrakerClient& client) {
     // Detect when Moonraker finishes updating HelixScreen (e.g. via Mainsail).
     // On SysV platforms (AD5X, AD5M, K1) there is no systemd path watcher,
     // so this WebSocket-based detection is the only restart trigger.
-    replace_method_callback(client, UPDATE_RESPONSE_METHOD, EXTERNAL_UPDATE_HANDLER,
+    replace_method_callback(client, kUpdateResponseMethod, kExternalUpdateHandler,
                             handle_update_response);
 }
 
 void UpdateChecker::detach(helix::IMoonrakerClient& client) {
     ++moonraker_sync_generation_;
-    client.unregister_method_callback(UPDATE_RESPONSE_METHOD, EXTERNAL_UPDATE_HANDLER);
+    client.unregister_method_callback(kUpdateResponseMethod, kExternalUpdateHandler);
 }
 
 void UpdateChecker::start_auto_check() {
@@ -3658,8 +3657,8 @@ bool UpdateChecker::fetch_stable_release(ReleaseInfo& info, std::string& error) 
     spdlog::debug("[UpdateChecker] R2 stable fetch failed ({}), falling back to GitHub", r2_error);
     error.clear();
 
-    spdlog::debug("[UpdateChecker] Requesting: {}", GITHUB_API_URL);
-    auto [status, body] = do_http_get(GITHUB_API_URL, "application/vnd.github.v3+json");
+    spdlog::debug("[UpdateChecker] Requesting: {}", kGithubApiUrl);
+    auto [status, body] = do_http_get(kGithubApiUrl, "application/vnd.github.v3+json");
 
     if (cancelled_)
         return false;
@@ -3691,8 +3690,8 @@ bool UpdateChecker::fetch_beta_release(ReleaseInfo& info, std::string& error) {
     spdlog::debug("[UpdateChecker] R2 beta fetch failed ({}), falling back to GitHub", r2_error);
     error.clear();
 
-    spdlog::debug("[UpdateChecker] Requesting (beta): {}", GITHUB_RELEASES_URL);
-    auto [status, body] = do_http_get(GITHUB_RELEASES_URL, "application/vnd.github.v3+json");
+    spdlog::debug("[UpdateChecker] Requesting (beta): {}", kGithubReleasesUrl);
+    auto [status, body] = do_http_get(kGithubReleasesUrl, "application/vnd.github.v3+json");
 
     if (cancelled_)
         return false;

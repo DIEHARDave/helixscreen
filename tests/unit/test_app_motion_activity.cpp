@@ -166,7 +166,7 @@ TEST_CASE("AppMotionActivity: keeping an episode alive adopts no new one",
     CHECK_FALSE(a.owns_busy_episode(episode, episode + std::chrono::seconds(1)));
 }
 
-TEST_CASE("AppMotionActivity: an owned episode lapses MAX_SELF_BUSY after the last ack",
+TEST_CASE("AppMotionActivity: an owned episode lapses kMaxSelfBusy after the last ack",
           "[motion][busy_guard]") {
     // The jog that started the episode took 1.5 s to ack (a queued long move);
     // the lapse counts from that ack, not from the send.
@@ -176,8 +176,8 @@ TEST_CASE("AppMotionActivity: an owned episode lapses MAX_SELF_BUSY after the la
     const auto episode = t0 + std::chrono::milliseconds(30);
     const auto ack = t0 + std::chrono::milliseconds(1500);
     a.note_done(ack);
-    CHECK(a.owns_busy_episode(episode, ack + AppMotionActivity::MAX_SELF_BUSY -
+    CHECK(a.owns_busy_episode(episode, ack + AppMotionActivity::kMaxSelfBusy -
                                            std::chrono::milliseconds(100)));
-    CHECK_FALSE(a.owns_busy_episode(episode, ack + AppMotionActivity::MAX_SELF_BUSY +
+    CHECK_FALSE(a.owns_busy_episode(episode, ack + AppMotionActivity::kMaxSelfBusy +
                                                  std::chrono::milliseconds(100)));
 }

@@ -11,7 +11,7 @@
 
 namespace helix::ui {
 
-static_assert(SAVER_MAX_DIRTY_AREAS <= LV_INV_BUF_SIZE,
+static_assert(kSaverMaxDirtyAreas <= LV_INV_BUF_SIZE,
               "a saver frame's areas must fit LVGL's invalid-area buffer");
 
 bool SaverCanvas::create(lv_obj_t* parent, int32_t w, int32_t h, lv_color_format_t cf) {
@@ -68,7 +68,7 @@ void SaverCanvas::invalidate(std::vector<DirtyRect>& areas) {
     if (!canvas_) {
         return;
     }
-    reduce_dirty(areas, SAVER_MAX_DIRTY_AREAS, w_, h_);
+    reduce_dirty(areas, kSaverMaxDirtyAreas, w_, h_);
     if (areas.empty()) {
         return;
     }

@@ -398,12 +398,15 @@ void ui_panel_motion_init(lv_obj_t* parent);
 **Naming conventions:**
 - Functions/variables: `snake_case` (`ui_panel_home_init`, `temp_target`)
 - XML files: `snake_case` (`history_dashboard_panel.xml`)
-- Constants: `UPPER_SNAKE_CASE` (`MAX_TEMP`) — including `constexpr`, file-scope
-  `static const`, and enum enumerators. **Not** Google's `kCamelCase`: the tree
-  drifted into it for a while and was swept back, so a `kFoo` you find in a diff
-  is a mistake to fix, not a precedent to follow. The exceptions are names that
-  mirror a third-party API verbatim (Apple's `kCWSecurityWPA2Personal`) — match
-  the foreign spelling there rather than inventing a local one.
+- Constants: `kCamelCase` (`kMaxTemp`): `constexpr`, `const` at any scope, static
+  members. `UPPER_SNAKE_CASE` is reserved for preprocessor macros, because a macro
+  ignores scope and silently rewrites any constant spelled the same way. Every word
+  after the `k` is capitalised once, acronyms included (`kHttpRetryMs`, not
+  `kHTTPRetryMs`). `scripts/check_constant_naming.py` fails a new `UPPER_SNAKE`
+  declaration on added lines (`// CONST_NAME_OK: <reason>` opts one out), and
+  `scripts/rename_constants.py --apply --git-range main..HEAD` converts a branch's
+  own. Enumerators keep `UPPER_SNAKE_CASE` for now. Names that mirror a third-party
+  API verbatim (Apple's `kCWSecurityWPA2Personal`) match the foreign spelling.
 
 **Namespace organization:** all HelixScreen code lives under `helix::` (UI
 helpers in `helix::ui::`, sensor managers in `helix::sensors`):

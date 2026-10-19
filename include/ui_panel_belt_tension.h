@@ -76,11 +76,11 @@ class BeltTensionPanel : public OverlayBase {
     /// A sweep that goes this long without a progress line is treated as
     /// dead: Klipper prints a "Testing frequency" line every second, so two
     /// minutes of silence means the run is not coming back.
-    static constexpr uint32_t STALL_TIMEOUT_MS = 120000;
+    static constexpr uint32_t kStallTimeoutMs = 120000;
 
     /// Pairs and unpaired peaks named in the results facts and marked on the
     /// chart, strongest first.
-    static constexpr size_t MAX_LISTED_PEAKS = 3;
+    static constexpr size_t kMaxListedPeaks = 3;
 
     BeltTensionPanel() = default;
     ~BeltTensionPanel() override;
@@ -159,7 +159,7 @@ class BeltTensionPanel : public OverlayBase {
     void on_sweep_progress(int percent, float freq_hz);
     void on_sweep_complete(helix::calibration::BeltPath path, helix::calibration::BeltCurve curve);
     void on_sweep_error(const std::string& message);
-    /// The stall guard fired: no progress line for STALL_TIMEOUT_MS.
+    /// The stall guard fired: no progress line for kStallTimeoutMs.
     void on_stall();
     /// Queue empty: compare the runs and populate RESULTS, or error when a
     /// sweep returned too little in-band frequency data to compare.
@@ -320,6 +320,11 @@ class BeltTensionPanel : public OverlayBase {
 inline BeltTensionPanel& get_global_belt_tension_panel() {
     return helix::lazy_global<BeltTensionPanel>("BeltTensionPanel");
 }
+
+/// Open the Belt Tension panel over @p parent_screen, wired to the active API.
+namespace helix::ui {
+void open_belt_tension_panel(lv_obj_t* parent_screen);
+} // namespace helix::ui
 
 /**
  * @brief Register XML event callbacks for belt tension panel

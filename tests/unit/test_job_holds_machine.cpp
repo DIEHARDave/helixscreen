@@ -394,6 +394,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/calib_tile.xml",
     "ui_xml/components/camera_config_modal.xml",
     "ui_xml/components/camera_fullscreen.xml",
+    "ui_xml/components/capability_chip.xml",
     "ui_xml/components/chamber_fault_banner.xml",
     "ui_xml/components/chamber_stall_modal.xml",
     "ui_xml/components/clog_detection_config_modal.xml",
@@ -401,6 +402,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/color_swatch_grid.xml",
     "ui_xml/components/context_menu_backdrop.xml",
     "ui_xml/components/context_menu_card.xml",
+    "ui_xml/components/custom_color_swatch.xml",
     "ui_xml/components/exclude_object_map.xml",
     "ui_xml/components/exclude_object_row.xml",
     "ui_xml/components/exclude_object_side_list.xml",
@@ -469,6 +471,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/panel_widget_temperature.xml",
     "ui_xml/components/panel_widget_thermistor.xml",
     "ui_xml/components/panel_widget_tips.xml",
+    "ui_xml/components/plugin_menu_row.xml",
     "ui_xml/components/speed_flow_part.xml",
     "ui_xml/components/picker_chip.xml",
     "ui_xml/components/picker_option_row.xml",
@@ -484,7 +487,6 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/spaghetti_detection_modal.xml",
     "ui_xml/components/temp_card_unified.xml",
     "ui_xml/components/temp_graph_config_modal.xml",
-    "ui_xml/components/theme_swatch_grid.xml",
     // Head changes: guarded by tool_switcher_change_blocked (a print that
     // refuses the change, or spools on the bed) rather than moves_machine,
     // which also holds through a pause, where the change is offered behind a

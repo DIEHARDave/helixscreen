@@ -29,9 +29,9 @@ lv_coord_t ui_get_header_content_padding() {
     int32_t spacing = theme_manager_get_spacing("space_lg");
 
     // Fallback if theme not initialized (e.g., in unit tests)
-    constexpr int32_t DEFAULT_SPACE_LG = 16; // Medium breakpoint value
+    constexpr int32_t kDefaultSpaceLg = 16; // Medium breakpoint value
     if (spacing == 0) {
-        spacing = DEFAULT_SPACE_LG;
+        spacing = kDefaultSpaceLg;
     }
 
     return spacing;

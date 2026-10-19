@@ -59,7 +59,7 @@ json first_status_param(const json& notification) {
     return (*params)[0];
 }
 
-constexpr const char* TRIO_ENV =
+constexpr const char* kTrioEnv =
     "heater_generic dragonbreath dragonbreath output_pin dragonbreath_filter";
 
 bool object_list_contains(const json& response, const std::string& object) {
@@ -80,7 +80,7 @@ json query_object_list(MoonrakerClientMock& client) {
 } // namespace
 
 TEST_CASE_METHOD(HelixTestFixture, "mock materializes dragonbreath trio", "[chamber][mock]") {
-    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", TRIO_ENV);
+    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", kTrioEnv);
     MoonrakerClientMock client;
 
     SECTION("object list contains exactly the three parsed objects") {
@@ -227,7 +227,7 @@ TEST_CASE_METHOD(HelixTestFixture, "mock materializes dragonbreath trio", "[cham
 }
 
 TEST_CASE_METHOD(HelixTestFixture, "mock dragonbreath fault hook", "[chamber][mock]") {
-    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", TRIO_ENV);
+    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", kTrioEnv);
     ScopedEnv fault_env("HELIX_MOCK_DRAGONBREATH_FAULT", "1");
     MoonrakerClientMock client;
 
@@ -245,7 +245,7 @@ TEST_CASE_METHOD(HelixTestFixture, "mock dragonbreath fault hook", "[chamber][mo
 // every synthesized frame reports connected: false instead of true. One client
 // crosses the transition through the test-access setter.
 TEST_CASE_METHOD(HelixTestFixture, "mock dragonbreath offline hook", "[chamber][mock]") {
-    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", TRIO_ENV);
+    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", kTrioEnv);
     MoonrakerClientMock client;
 
     json frame;
@@ -290,7 +290,7 @@ TEST_CASE_METHOD(HelixTestFixture, "HELIX_MOCK_OBJECTS legacy shapes still parse
 // ============================================================================
 
 namespace {
-constexpr const char* STOCK_PAIR_ENV = "heater_generic panda_breath panda_breath";
+constexpr const char* kStockPairEnv = "heater_generic panda_breath panda_breath";
 
 /// The stock diagnostics object out of the first synthesized status frame.
 json first_stock_diagnostics(MoonrakerClientMock& client) {
@@ -307,7 +307,7 @@ json first_stock_diagnostics(MoonrakerClientMock& client) {
 
 TEST_CASE_METHOD(HelixTestFixture, "mock materializes the stock panda_breath pair",
                  "[chamber][mock][1290]") {
-    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", STOCK_PAIR_ENV);
+    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", kStockPairEnv);
     MoonrakerClientMock client;
 
     SECTION("discovery resolves the heater and its diagnostics, and no filter pin") {
@@ -345,7 +345,7 @@ TEST_CASE_METHOD(HelixTestFixture, "mock materializes the stock panda_breath pai
 // the state the rig sits in at rest, and the only one that raises External.
 TEST_CASE_METHOD(HelixTestFixture, "HELIX_MOCK_PANDA_BREATH_AUTO drives the device's own loop",
                  "[chamber][mock][1290]") {
-    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", STOCK_PAIR_ENV);
+    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", kStockPairEnv);
     ScopedEnv auto_env("HELIX_MOCK_PANDA_BREATH_AUTO", "1");
     MoonrakerClientMock client;
 
@@ -363,7 +363,7 @@ TEST_CASE_METHOD(HelixTestFixture, "HELIX_MOCK_PANDA_BREATH_AUTO drives the devi
 // heater section it owns.
 TEST_CASE_METHOD(HelixTestFixture, "HELIX_MOCK_PANDA_BREATH_OFFLINE drops the link",
                  "[chamber][mock][1290]") {
-    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", STOCK_PAIR_ENV);
+    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", kStockPairEnv);
     ScopedEnv offline_env("HELIX_MOCK_PANDA_BREATH_OFFLINE", "1");
     MoonrakerClientMock client;
 
@@ -379,7 +379,7 @@ TEST_CASE_METHOD(HelixTestFixture, "HELIX_MOCK_PANDA_BREATH_OFFLINE drops the li
 // requested target and length and a countdown, DRY_STOP ends it (#1299).
 TEST_CASE_METHOD(HelixTestFixture, "mock runs the stock drying cycle",
                  "[chamber][mock][dryer][1299]") {
-    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", STOCK_PAIR_ENV);
+    ScopedEnv objects_env("HELIX_MOCK_OBJECTS", kStockPairEnv);
     MoonrakerClientMock client;
 
     REQUIRE(client.gcode_script("PANDA_BREATH_DRY_START TEMP=55 HOURS=4") == 0);

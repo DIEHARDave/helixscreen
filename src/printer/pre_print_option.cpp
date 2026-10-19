@@ -264,19 +264,19 @@ std::string render_pre_start_gcode(const PrePrintOption& opt, bool enabled,
     // needs no marker: get_float(minval=0) accepts 0, and a bed target of 0
     // (unheated bed) is a real, slicable configuration that must pass
     // through as-is rather than read as "unknown".
-    static constexpr std::string_view EXT_OPEN = "{?ext}";
-    static constexpr std::string_view SEG_CLOSE = "{/?}";
+    static constexpr std::string_view kExtOpen = "{?ext}";
+    static constexpr std::string_view kSegClose = "{/?}";
     if (ctx.extruder_temp > 0) {
-        out = replace_all(std::move(out), std::string(EXT_OPEN), "");
-        out = replace_all(std::move(out), std::string(SEG_CLOSE), "");
+        out = replace_all(std::move(out), std::string(kExtOpen), "");
+        out = replace_all(std::move(out), std::string(kSegClose), "");
     } else {
-        for (size_t open = out.find(EXT_OPEN); open != std::string::npos;
-             open = out.find(EXT_OPEN)) {
-            const size_t close = out.find(SEG_CLOSE, open);
+        for (size_t open = out.find(kExtOpen); open != std::string::npos;
+             open = out.find(kExtOpen)) {
+            const size_t close = out.find(kSegClose, open);
             if (close == std::string::npos) {
                 break; // unmatched marker: leave the rest untouched
             }
-            out.erase(open, close - open + SEG_CLOSE.size());
+            out.erase(open, close - open + kSegClose.size());
         }
     }
 

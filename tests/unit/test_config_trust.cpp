@@ -146,7 +146,7 @@ TEST_CASE_METHOD(HelixTestFixture, "UpdateChecker: settings.json r2_url is ignor
     auto* config = helix::Config::get_instance();
     config->set<std::string>("/update/r2_url", "https://mirror.example.com/rel");
     REQUIRE(UpdateChecker::effective_r2_base_url() ==
-            std::string(UpdateChecker::DEFAULT_R2_BASE_URL));
+            std::string(UpdateChecker::kDefaultR2BaseUrl));
 }
 
 TEST_CASE_METHOD(HelixTestFixture, "UpdateChecker: trusted update_urls.json overrides r2 base",
@@ -161,7 +161,7 @@ TEST_CASE_METHOD(HelixTestFixture, "UpdateChecker: untrusted update_urls.json fa
     StateDirGuard guard;
     guard.write("{\"r2_url\": \"https://mirror.example.com\"}", 0666);
     REQUIRE(UpdateChecker::effective_r2_base_url() ==
-            std::string(UpdateChecker::DEFAULT_R2_BASE_URL));
+            std::string(UpdateChecker::kDefaultR2BaseUrl));
 }
 
 TEST_CASE("config_trust: log path roots", "[config-trust][log-path]") {

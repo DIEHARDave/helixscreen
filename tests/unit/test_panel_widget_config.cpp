@@ -408,7 +408,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
 
     while (wc.add_page() >= 0) {
     }
-    REQUIRE(wc.page_count() == MAX_PAGES);
+    REQUIRE(wc.page_count() == kMaxPages);
     // At the cap nothing is added, wherever it would land.
     REQUIRE(wc.add_page() == -1);
     REQUIRE(wc.add_page("", 0) == -1);
@@ -1722,16 +1722,16 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: add_page refuses 
     wc.load();
 
     // Add pages up to the cap
-    for (size_t i = 1; i < MAX_PAGES; ++i) {
+    for (size_t i = 1; i < kMaxPages; ++i) {
         int idx = wc.add_page();
         REQUIRE(idx >= 0);
     }
-    REQUIRE(wc.page_count() == MAX_PAGES);
+    REQUIRE(wc.page_count() == kMaxPages);
 
     // Adding one more should fail
     int idx = wc.add_page();
     REQUIRE(idx == -1);
-    REQUIRE(wc.page_count() == MAX_PAGES);
+    REQUIRE(wc.page_count() == kMaxPages);
 }
 
 TEST_CASE_METHOD(PanelWidgetConfigFixture,
@@ -1743,13 +1743,13 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     REQUIRE(wc.page_count() == 1);
     CHECK(wc.can_add_page());
 
-    while (wc.page_count() < MAX_PAGES) {
+    while (wc.page_count() < kMaxPages) {
         REQUIRE(wc.add_page() >= 0);
     }
     CHECK_FALSE(wc.can_add_page());
 
     REQUIRE(wc.remove_page(wc.page_count() - 1));
-    REQUIRE(wc.page_count() == MAX_PAGES - 1);
+    REQUIRE(wc.page_count() == kMaxPages - 1);
     CHECK(wc.can_add_page());
 }
 

@@ -151,7 +151,7 @@ class DragonbreathBackend : public ChamberHeaterBackend {
         // cannot hinge on one field (ptc_temp alone drops every delta that
         // mentions only the fan). Any dragonbreath-specific key marks the
         // frame ours; generic heater keys (temperature/target) never do.
-        static const char* const DB_FIELDS[] = {"ptc_temp",
+        static const char* const kDbFields[] = {"ptc_temp",
                                                 "fault",
                                                 "inhibited",
                                                 "fault_reason",
@@ -169,7 +169,7 @@ class DragonbreathBackend : public ChamberHeaterBackend {
                                                 "wait_active",
                                                 "wait_target"};
         bool known_field = false;
-        for (const char* f : DB_FIELDS) {
+        for (const char* f : kDbFields) {
             if (status.contains(f)) {
                 known_field = true;
                 break;

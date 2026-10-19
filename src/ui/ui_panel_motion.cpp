@@ -50,10 +50,10 @@ using helix::ui::find_required;
 
 namespace {
 /// How far Park lifts the nozzle away from the plate before moving over it.
-constexpr double PARK_Z_LIFT_MM = 10.0;
+constexpr double kParkZLiftMm = 10.0;
 
 /// Bed tab: finger travel up to this is still a tap at the press point.
-constexpr int BED_MAP_DRAG_THRESHOLD_PX = 8;
+constexpr int kBedMapDragThresholdPx = 8;
 } // namespace
 
 /// Trim trailing zeros so 0.1 reads "0.1" and 10.0 reads "10"; the default
@@ -86,11 +86,11 @@ helix::JogModeDistances helix::get_jog_mode_distances(JogMode mode) {
 std::vector<float> helix::unique_sorted_steps(std::vector<float> distances) {
     // Settings store floats typed on a keypad, so two "equal" distances can
     // differ in the last bits; a step button per bit pattern would repeat.
-    constexpr float SAME_STEP_MM = 0.001f;
+    constexpr float kSameStepMm = 0.001f;
     std::sort(distances.begin(), distances.end());
     std::vector<float> steps;
     for (float mm : distances) {
-        if (steps.empty() || mm - steps.back() > SAME_STEP_MM) {
+        if (steps.empty() || mm - steps.back() > kSameStepMm) {
             steps.push_back(mm);
         }
     }
@@ -100,8 +100,8 @@ std::vector<float> helix::unique_sorted_steps(std::vector<float> distances) {
 std::vector<float> helix::jog_step_list() {
     auto& settings = SettingsManager::instance();
     std::vector<float> distances;
-    distances.reserve(JOG_STEP_MAX);
-    for (int m = 0; m < JOG_MODE_COUNT; ++m) {
+    distances.reserve(kJogStepMax);
+    for (int m = 0; m < kJogModeCount; ++m) {
         const auto mode = static_cast<JogMode>(m);
         distances.push_back(settings.get_jog_distance(mode, /*outer=*/false));
         distances.push_back(settings.get_jog_distance(mode, /*outer=*/true));
@@ -244,10 +244,10 @@ bool helix::z_direction_blocked(bool z_homed, bool bounds_known, double z, doubl
     if (!z_homed || !bounds_known || direction_mm == 0.0) {
         return false;
     }
-    // The reading is truncated to POSITION_RESOLUTION_MM, so a head parked at
+    // The reading is truncated to kPositionResolutionMm, so a head parked at
     // the bound can read up to that much short of it. What a press could still
     // move from there is below what the clamp's margin already gives away.
-    const double tolerance = POSITION_RESOLUTION_MM + AxisMove::EPSILON_MM;
+    const double tolerance = kPositionResolutionMm + AxisMove::kEpsilonMm;
     if (direction_mm > 0.0) {
         return z >= z_max - tolerance;
     }
@@ -267,9 +267,9 @@ static std::string clean_gcode_error(const std::string& msg) {
     // "Move out of range" — let through with truncation so user sees the limits
 
     // Truncate long messages for toast display
-    constexpr size_t MAX_LEN = 80;
-    if (cleaned.size() > MAX_LEN) {
-        cleaned = cleaned.substr(0, MAX_LEN - 3) + "...";
+    constexpr size_t kMaxLen = 80;
+    if (cleaned.size() > kMaxLen) {
+        cleaned = cleaned.substr(0, kMaxLen - 3) + "...";
     }
 
     return cleaned;
@@ -316,7 +316,7 @@ MotionPanel::MotionPanel() {
     // Migrate from old bool /motion/jog_mode_fine to new int /motion/jog_mode
     auto* cfg = Config::get_instance();
     int mode = cfg->get<int>("/motion/jog_mode", -1);
-    if (mode >= 0 && mode < JOG_MODE_COUNT) {
+    if (mode >= 0 && mode < kJogModeCount) {
         current_mode_ = static_cast<JogMode>(mode);
     } else {
         // Migrate legacy bool setting and persist new key
@@ -377,7 +377,7 @@ void MotionPanel::init_subjects() {
     // Arrow layouts' step selector: one label and one active flag per slot;
     // the count drives how many slots the XML repeat builds.
     UI_MANAGED_SUBJECT_INT(step_count_subject_, 0, "motion_step_count", subjects_);
-    for (int i = 0; i < JOG_STEP_MAX; ++i) {
+    for (int i = 0; i < kJogStepMax; ++i) {
         char subject_name[32];
         snprintf(subject_name, sizeof(subject_name), "motion_step_label_%d", i);
         UI_MANAGED_SUBJECT_STRING(step_label_subject_[i], step_label_buf_[i], "", subject_name,
@@ -1227,7 +1227,7 @@ double MotionPanel::clamp_axis_delta(helix::Axis axis, double current, double un
                                      double delta, float min, float max, bool fresh_press) {
     const double allowed = helix::clamp_jog_delta(
         current, uncommitted, delta, static_cast<double>(min), static_cast<double>(max));
-    if (std::abs(allowed) > helix::AxisMove::EPSILON_MM) {
+    if (std::abs(allowed) > helix::AxisMove::kEpsilonMm) {
         // Full or partial travel: silent either way.
         return allowed;
     }
@@ -1241,13 +1241,13 @@ double MotionPanel::clamp_axis_delta(helix::Axis axis, double current, double un
 
 helix::AxisBounds MotionPanel::clamp_bounds() {
     return helix::inset_bounds(get_printer_state().motion_state().get_gcode_axis_bounds(),
-                               helix::GCODE_EDGE_MARGIN_MM);
+                               helix::kGcodeEdgeMarginMm);
 }
 
 void MotionPanel::warn_axis_limit(helix::Axis axis, float clamp_bound, bool at_max) {
-    // The clamp stops GCODE_EDGE_MARGIN_MM inside; tell the user the limit.
-    const auto limit = static_cast<float>(at_max ? clamp_bound + helix::GCODE_EDGE_MARGIN_MM
-                                                 : clamp_bound - helix::GCODE_EDGE_MARGIN_MM);
+    // The clamp stops kGcodeEdgeMarginMm inside; tell the user the limit.
+    const auto limit = static_cast<float>(at_max ? clamp_bound + helix::kGcodeEdgeMarginMm
+                                                 : clamp_bound - helix::kGcodeEdgeMarginMm);
     // Three literals rather than an assembled string: the translation
     // extractor scans for lv_tr() literals and cannot see a runtime key.
     char limit_buf[16];
@@ -1602,7 +1602,7 @@ void MotionPanel::park_over_plate(bool lift_z) {
         return;
     }
     if (lift_z && gcode.has_z) {
-        target->z = std::min(static_cast<double>(current_z_) + PARK_Z_LIFT_MM,
+        target->z = std::min(static_cast<double>(current_z_) + kParkZLiftMm,
                              static_cast<double>(gcode.z_max));
     }
     dispatch_target(*target);
@@ -1709,13 +1709,13 @@ void MotionPanel::fit_jog_layout(lv_obj_t* root) {
         MotionLayout layout;
         const char* prefix;
     };
-    static constexpr Named LAYOUTS[] = {
+    static constexpr Named kLayouts[] = {
         {"motion_jog_arrows", MotionLayout::Arrows, "arrows"},
         {"motion_jog_arrows_home", MotionLayout::ArrowsHome, "cross"},
         {"motion_jog_rows", MotionLayout::AxisRows, "rows"},
     };
     const Named* named = nullptr;
-    for (const auto& n : LAYOUTS) {
+    for (const auto& n : kLayouts) {
         if (lv_streq(lv_obj_get_name(root), n.view)) {
             named = &n;
         }
@@ -1775,12 +1775,12 @@ void MotionPanel::draw_bed_grid(lv_event_t* e) const {
 
     // The plate's own border color, faded: the grid follows the live/dim
     // styling the XML gives the plate.
-    constexpr lv_opa_t GRID_OPA_FRACTION = LV_OPA_30;
+    constexpr lv_opa_t kGridOpaFraction = LV_OPA_30;
     lv_draw_line_dsc_t dsc;
     lv_draw_line_dsc_init(&dsc);
     dsc.color = lv_obj_get_style_border_color(plate_obj, LV_PART_MAIN);
     dsc.opa = static_cast<lv_opa_t>(lv_obj_get_style_border_opa(plate_obj, LV_PART_MAIN) *
-                                    GRID_OPA_FRACTION / LV_OPA_COVER);
+                                    kGridOpaFraction / LV_OPA_COVER);
     dsc.width = 1;
 
     lv_layer_t* layer = lv_event_get_layer(e);
@@ -1891,8 +1891,8 @@ void MotionPanel::handle_bed_touch(helix::BedTouch phase, lv_obj_t* area, lv_poi
             return;
         }
         if (!bed_dragging_ &&
-            std::abs(screen_point.x - bed_press_point_.x) <= BED_MAP_DRAG_THRESHOLD_PX &&
-            std::abs(screen_point.y - bed_press_point_.y) <= BED_MAP_DRAG_THRESHOLD_PX) {
+            std::abs(screen_point.x - bed_press_point_.x) <= kBedMapDragThresholdPx &&
+            std::abs(screen_point.y - bed_press_point_.y) <= kBedMapDragThresholdPx) {
             return;
         }
         bed_dragging_ = true;
@@ -2039,12 +2039,12 @@ void MotionPanel::refresh_step_list() {
     if (!subjects_initialized_)
         return;
 
-    const int count = static_cast<int>(std::min<size_t>(steps_.size(), JOG_STEP_MAX));
+    const int count = static_cast<int>(std::min<size_t>(steps_.size(), kJogStepMax));
     for (int i = 0; i < count; ++i) {
         format_distance_label(step_label_buf_[i], sizeof(step_label_buf_[i]), steps_[i]);
         lv_subject_copy_string(&step_label_subject_[i], step_label_buf_[i]);
     }
-    for (int i = 0; i < JOG_STEP_MAX; ++i) {
+    for (int i = 0; i < kJogStepMax; ++i) {
         lv_subject_set_int(&step_active_subject_[i], i == static_cast<int>(step_index_) ? 1 : 0);
     }
     // Last: a changed count rebuilds the selector, whose new buttons bind the
@@ -2068,7 +2068,7 @@ void MotionPanel::select_jog_step(int index) {
     step_index_ = static_cast<size_t>(index);
     step_mm_ = steps_[step_index_];
     if (subjects_initialized_) {
-        for (int i = 0; i < JOG_STEP_MAX; ++i) {
+        for (int i = 0; i < kJogStepMax; ++i) {
             lv_subject_set_int(&step_active_subject_[i], i == index ? 1 : 0);
         }
     }

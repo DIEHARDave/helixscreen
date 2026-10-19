@@ -27,7 +27,7 @@ namespace helix::ui {
 
 namespace {
 
-constexpr float PI_F = 3.14159265358979f;
+constexpr float kPiF = 3.14159265358979f;
 
 uint32_t rgb_of(lv_color_t c) {
     return lv_color_to_u32(c) & 0xFFFFFF;
@@ -280,8 +280,8 @@ struct PixelTarget {
 // tails are what keep a tall region (a spool body) sheened end to end instead
 // of carrying a bare band across its middle.
 void silk_pixels(const PixelTarget& t) {
-    static constexpr float FRACS[] = {4, 55, 128, 200, 251};
-    static constexpr float OPAS[] = {22, 85, 170, 75, 18};
+    static constexpr float kFracs[] = {4, 55, 128, 200, 251};
+    static constexpr float kOpas[] = {22, 85, 170, 75, 18};
     const lv_area_t& a = t.area;
     const float w = static_cast<float>(lv_area_get_width(&a));
     const float h = static_cast<float>(lv_area_get_height(&a));
@@ -289,15 +289,15 @@ void silk_pixels(const PixelTarget& t) {
     for (int32_t y = a.y1; y <= a.y2; ++y) {
         for (int32_t x = a.x1; x <= a.x2; ++x) {
             const float f = ((x + 0.5f - a.x1) * w + (y + 0.5f - a.y1) * h) * inv;
-            if (f <= FRACS[0] || f >= FRACS[4]) {
+            if (f <= kFracs[0] || f >= kFracs[4]) {
                 continue;
             }
             size_t k = 0;
-            while (f > FRACS[k + 1]) {
+            while (f > kFracs[k + 1]) {
                 ++k;
             }
-            const float u = (f - FRACS[k]) / (FRACS[k + 1] - FRACS[k]);
-            const float op = OPAS[k] + u * (OPAS[k + 1] - OPAS[k]);
+            const float u = (f - kFracs[k]) / (kFracs[k + 1] - kFracs[k]);
+            const float op = kOpas[k] + u * (kOpas[k + 1] - kOpas[k]);
             const float cov = t.cover(x + 0.5f, y + 0.5f);
             if (lv_color32_t* p = t.at(x, y); p && cov > 0.0f) {
                 blend_over(*p, lv_color_white(), static_cast<uint8_t>(op * cov));
@@ -599,7 +599,7 @@ void swatch_paint_xml_apply(lv_xml_parser_state_t* state, const char** attrs) {
 
 bool swatch_needs_edge(uint32_t rgb, uint32_t surface) {
     return helix::contrast_ratio(lv_color_hex(rgb), lv_color_hex(surface)) <
-           SWATCH_EDGE_CONTRAST_RATIO;
+           kSwatchEdgeContrastRatio;
 }
 
 std::vector<uint32_t> swatch_edge_surfaces(std::optional<uint32_t> backdrop) {
@@ -676,7 +676,7 @@ SwatchFinish swatch_finish_of(const helix::SlotInfo& slot) {
 SwatchFinish swatch_effective_finish(SwatchFinish finish, int32_t w, int32_t h) {
     // By area, so a long thin band or a spool's wound body keeps its finish
     // while a dot of the same short side does not.
-    return w * h < SWATCH_FINISH_MIN_PX * SWATCH_FINISH_MIN_PX ? SwatchFinish::Plain : finish;
+    return w * h < kSwatchFinishMinPx * kSwatchFinishMinPx ? SwatchFinish::Plain : finish;
 }
 
 lv_color_t swatch_matte_color(lv_color_t c) {
@@ -698,7 +698,7 @@ SwatchPolygon swatch_shape_polygon(const lv_area_t& area, int32_t radius) {
         return {{x0, y0}, {x1, y0}, {x1, y1}, {x0, y1}};
     }
     // About one vertex per 1.5px of arc keeps the outline round at swatch sizes.
-    const int seg = std::clamp(static_cast<int>(r * PI_F / 2.0f / 1.5f), 3, 24);
+    const int seg = std::clamp(static_cast<int>(r * kPiF / 2.0f / 1.5f), 3, 24);
     SwatchPolygon poly;
     poly.reserve(static_cast<size_t>(4 * (seg + 1)));
     const SwatchPoint centres[4] = {
@@ -708,9 +708,9 @@ SwatchPolygon swatch_shape_polygon(const lv_area_t& area, int32_t radius) {
         {x0 + r, y0 + r}, // top-left: 180..270
     };
     for (int c = 0; c < 4; ++c) {
-        const float start = -PI_F / 2.0f + static_cast<float>(c) * PI_F / 2.0f;
+        const float start = -kPiF / 2.0f + static_cast<float>(c) * kPiF / 2.0f;
         for (int i = 0; i <= seg; ++i) {
-            const float t = start + (PI_F / 2.0f) * static_cast<float>(i) / static_cast<float>(seg);
+            const float t = start + (kPiF / 2.0f) * static_cast<float>(i) / static_cast<float>(seg);
             poly.push_back({centres[c].x + r * std::cos(t), centres[c].y + r * std::sin(t)});
         }
     }

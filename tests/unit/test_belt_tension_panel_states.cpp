@@ -363,7 +363,7 @@ TEST_CASE("a stall trips the stall guard", "[belt][panel]") {
     // over the mock's 5-135 Hz range), then wait out a full silent
     // STALL_TIMEOUT from that point.
     fx.pump_ms(15000);
-    fx.pump_ms(BeltTensionPanel::STALL_TIMEOUT_MS + 2000);
+    fx.pump_ms(BeltTensionPanel::kStallTimeoutMs + 2000);
     CHECK(fx.state_int("belt_tension_state") ==
           static_cast<int>(BeltTensionPanel::ViewState::ERROR));
     CHECK(fx.text("bt_error_message").find("stopped reporting progress") != std::string::npos);

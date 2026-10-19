@@ -199,7 +199,7 @@ TEST_CASE_METHOD(LedWidgetFixture,
     ScopedHomeLayout layout(
         nlohmann::json::array({placed_light("led", 0), placed_light("led:1", 2)}));
     auto* cfg = Config::get_instance();
-    cfg->set(cfg->df() + LIGHT_BUTTON_PENDING_PATH, std::string("neopixel sb_leds"));
+    cfg->set(cfg->df() + kLightButtonPendingPath, std::string("neopixel sb_leds"));
 
     LedWidget first("led", ps, api.get());
     LedWidget second("led:1", ps, api.get());
@@ -214,7 +214,7 @@ TEST_CASE_METHOD(LedWidgetFixture,
     CHECK(first.light_key() == "neopixel sb_leds");
     CHECK(second.light_key() == "neopixel sb_leds");
     CHECK(first.targets() == std::vector<std::string>{"neopixel sb_leds"});
-    CHECK(cfg->try_get_json(cfg->df() + LIGHT_BUTTON_PENDING_PATH)->is_null());
+    CHECK(cfg->try_get_json(cfg->df() + kLightButtonPendingPath)->is_null());
     first.detach_tile();
     second.detach_tile();
 }
@@ -268,10 +268,10 @@ TEST_CASE_METHOD(LedWidgetFixture,
                  "[led][light_button]") {
     ScopedHomeLayout layout(nlohmann::json::array());
     auto* cfg = Config::get_instance();
-    cfg->set(cfg->df() + LIGHT_BUTTON_PENDING_PATH, std::string("neopixel sb_leds"));
+    cfg->set(cfg->df() + kLightButtonPendingPath, std::string("neopixel sb_leds"));
 
     settle_light_buttons();
-    CHECK(cfg->try_get_json(cfg->df() + LIGHT_BUTTON_PENDING_PATH)->is_null());
+    CHECK(cfg->try_get_json(cfg->df() + kLightButtonPendingPath)->is_null());
 
     // A light button added to home later defaults to the chamber light.
     ScopedHomeLayout later(nlohmann::json::array({placed_light("led", 0)}));
@@ -400,7 +400,7 @@ TEST_CASE_METHOD(LedWidgetFixture,
     drain_queue();
     REQUIRE(scripts_naming(client, "chamber_light") == 0);
 
-    process_lvgl(LedController::WLED_DISCOVERY_TIMEOUT_MS + 100);
+    process_lvgl(LedController::kWledDiscoveryTimeoutMs + 100);
     drain_queue();
     CHECK(scripts_naming(client, "chamber_light") > 0);
 }

@@ -215,13 +215,7 @@ void SpoolEditModal::populate_fields() {
 
     lv_obj_t* price_field = find_widget("field_price");
     if (price_field) {
-        if (working_spool_.price > 0) {
-            char buf[16];
-            snprintf(buf, sizeof(buf), "%.2f", working_spool_.price);
-            lv_textarea_set_text(price_field, buf);
-        } else {
-            lv_textarea_set_text(price_field, "");
-        }
+        lv_textarea_set_text(price_field, format_spool_price(working_spool_.price).c_str());
     }
 
     lv_obj_t* lot_field = find_widget("field_lot_nr");

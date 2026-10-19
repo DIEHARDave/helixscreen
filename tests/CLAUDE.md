@@ -123,7 +123,7 @@ root panel in production, and overlay code reads `panel_stack_.back()` to find w
 beneath it. If you only ever `push_overlay()`, the *second* push still looks like the first:
 
 ```cpp
-std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+std::array<lv_obj_t*, kUiPanelCount> panels{};
 for (auto& p : panels) p = lv_obj_create(lv_screen_active());
 NavigationManager::instance().set_panels(panels.data());   // seeds panel_stack_[0]
 NavigationManager::instance().set_active(PanelId::Advanced);

@@ -179,7 +179,7 @@ HeatState classify_heat_state_with_mode(int current, int target, helix::ChamberM
 }
 
 bool is_residual_hot(int current_deci) {
-    return current_deci > RESIDUAL_HEAT_THRESHOLD_DECI;
+    return current_deci > kResidualHeatThresholdDeci;
 }
 
 lv_color_t get_heating_state_color(HeatState state) {
@@ -255,7 +255,7 @@ HeaterDisplayResult heater_display(int current_deci, int target_deci) {
     // decidegrees against the displayed reading so the glyph matches both the
     // string above and the temp_display card showing the same heater.
     const HeatState state =
-        classify_heat_state(shown_deci, target_deci, DEFAULT_AT_TEMP_TOLERANCE_DECI);
+        classify_heat_state(shown_deci, target_deci, kDefaultAtTempToleranceDeci);
     result.state = state;
 
     // Get color from the same heating state logic
@@ -354,7 +354,7 @@ HeaterStatus classify_heater_status(int current_deci, int target_deci, int power
                                     helix::ChamberMode mode) {
     HeaterStatus status;
     status.state = status_state_of(classify_heat_state_with_mode(
-        displayed_deci(current_deci), target_deci, mode, DEFAULT_AT_TEMP_TOLERANCE_DECI));
+        displayed_deci(current_deci), target_deci, mode, kDefaultAtTempToleranceDeci));
     // Resting holds at its ceiling as Neutral, which reads Ready — but the
     // check glyph means "your deliberate setpoint is satisfied". The standing
     // setpoint is the machine's own behavior, so it takes the auto glyph.

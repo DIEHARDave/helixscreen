@@ -275,7 +275,7 @@ void PrintSelectCardView::grow_pool(size_t count, const CardDimensions& dims) {
                                "",
                                NULL};
 
-        lv_obj_t* card = static_cast<lv_obj_t*>(lv_xml_create(container_, COMPONENT_NAME, attrs));
+        lv_obj_t* card = static_cast<lv_obj_t*>(lv_xml_create(container_, kComponentName, attrs));
 
         if (card) {
             lv_obj_set_width(card, dims.card_width);
@@ -384,7 +384,7 @@ VirtualWindow PrintSelectCardView::window_at(int32_t scroll_y, size_t file_count
     const int total_rows = static_cast<int>((file_count + static_cast<size_t>(columns) - 1) /
                                             static_cast<size_t>(columns));
     return compute_window(scroll_y, lv_obj_get_height(container_), row_height, total_rows,
-                          BUFFER_ROWS);
+                          kBufferRows);
 }
 
 void PrintSelectCardView::prebuild(const CardDimensions& dims, size_t expected_files) {
@@ -411,8 +411,8 @@ void PrintSelectCardView::prebuild(const CardDimensions& dims, size_t expected_f
     // a card takes tens of ms to build, so the period has to be well past that
     // for the display refresh and input to run between cards. The tick ends the
     // timer itself; it never runs out on its own.
-    constexpr uint32_t PREBUILD_TICK_MS = 100;
-    prebuild_timer_.reset(lv_timer_create(on_prebuild_tick, PREBUILD_TICK_MS, this));
+    constexpr uint32_t kPrebuildTickMs = 100;
+    prebuild_timer_.reset(lv_timer_create(on_prebuild_tick, kPrebuildTickMs, this));
     spdlog::debug("[PrintSelectCardView] Prebuilding pool {} -> {}", card_pool_.size(),
                   prebuild_target_);
 }

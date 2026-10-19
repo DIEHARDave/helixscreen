@@ -24,55 +24,55 @@ using screensaver::wrap_index;
 
 namespace {
 
-constexpr float GRAVITY = 9.81f;
+constexpr float kGravity = 9.81f;
 /// Tank depth and length, for the dispersion relation and the sloshing modes.
-constexpr float TANK_DEPTH = 1.2f;
-constexpr float TANK_L = 7.0f;
-constexpr float CAM_H = 0.80f;
+constexpr float kTankDepth = 1.2f;
+constexpr float kTankL = 7.0f;
+constexpr float kCamH = 0.80f;
 /// Focal length and horizon offset as tuned at a 400 x 240 internal frame.
-constexpr float FOCAL_AT_400 = 500.0f;
-constexpr float PITCH_AT_240 = -92.0f;
-constexpr float DZ_GROW = 1.015f;
+constexpr float kFocalAt400 = 500.0f;
+constexpr float kPitchAt240 = -92.0f;
+constexpr float kDzGrow = 1.015f;
 constexpr float F0 = 0.02f;
-constexpr float WRINKLE_AMP = 0.7f;
-constexpr int32_t WRINKLE_N = 64;
-constexpr int32_t ENV_N = 512;
-constexpr size_t ENV_LEVELS = 6;
-constexpr float ENV_SIGMAS[ENV_LEVELS] = {0.0f, 0.008f, 0.016f, 0.032f, 0.064f, 0.128f};
+constexpr float kWrinkleAmp = 0.7f;
+constexpr int32_t kWrinkleN = 64;
+constexpr int32_t kEnvN = 512;
+constexpr size_t kEnvLevels = 6;
+constexpr float kEnvSigmas[kEnvLevels] = {0.0f, 0.008f, 0.016f, 0.032f, 0.064f, 0.128f};
 /// Sun direction, normalised from (-0.3, 0.75, -0.6).
-constexpr float SUN_X = -0.29814f;
-constexpr float SUN_Y = 0.74536f;
-constexpr float SUN_Z = -0.59628f;
-constexpr uint32_t EMIT_STEP_MS = 50;
-constexpr uint32_t EMIT_STEPS_MAX = 4;
-constexpr uint16_t GLINT_MS = 250;
-constexpr size_t GLINT_CAP = 64;
-constexpr size_t BUBBLE_COUNT = 300;
-constexpr size_t IMPULSE_CAP = 8;
-constexpr float IMPULSE_LIFE = 12.0f;
+constexpr float kSunX = -0.29814f;
+constexpr float kSunY = 0.74536f;
+constexpr float kSunZ = -0.59628f;
+constexpr uint32_t kEmitStepMs = 50;
+constexpr uint32_t kEmitStepsMax = 4;
+constexpr uint16_t kGlintMs = 250;
+constexpr size_t kGlintCap = 64;
+constexpr size_t kBubbleCount = 300;
+constexpr size_t kImpulseCap = 8;
+constexpr float kImpulseLife = 12.0f;
 /// Crest score a grid cell needs to throw droplets, and how far behind the near edge.
-constexpr float CREST_SCORE = 2.6f;
-constexpr float CREST_DEPTH = 3.0f;
-constexpr Rgb TINT_NONE{};
-constexpr Rgb RING_TRACK{40, 42, 46};
-constexpr Rgb RING_FILL{220, 226, 232};
-constexpr Rgb DIGIT_COLOR{230, 236, 242};
-constexpr float DIGIT_OPACITY = 0.9f;
-constexpr float DIGIT_STROKE = 0.06f;
+constexpr float kCrestScore = 2.6f;
+constexpr float kCrestDepth = 3.0f;
+constexpr Rgb kTintNone{};
+constexpr Rgb kRingTrack{40, 42, 46};
+constexpr Rgb kRingFill{220, 226, 232};
+constexpr Rgb kDigitColor{230, 236, 242};
+constexpr float kDigitOpacity = 0.9f;
+constexpr float kDigitStroke = 0.06f;
 
 float omega_for(float k) {
-    return std::sqrt(GRAVITY * k * std::tanh(k * TANK_DEPTH));
+    return std::sqrt(kGravity * k * std::tanh(k * kTankDepth));
 }
 
 float sign(float v) {
     return v > 0.0f ? 1.0f : (v < 0.0f ? -1.0f : 0.0f);
 }
 
-constexpr float MODE_AMPS[3] = {0.34f, 0.20f, 0.10f};
+constexpr float kModeAmps[3] = {0.34f, 0.20f, 0.10f};
 struct WaveShape {
     float lambda, amp, angle, steep;
 };
-constexpr WaveShape WAVE_SHAPES[4] = {
+constexpr WaveShape kWaveShapes[4] = {
     {2.6f, 0.13f, 0.15f, 0.9f},
     {1.7f, 0.08f, -0.5f, 0.9f},
     {1.1f, 0.045f, 0.9f, 0.85f},
@@ -105,13 +105,13 @@ void splat_max(PixelWriter& w, const std::vector<Rgb>& tint, float fx, float fy,
 /// glow trailing down into the water.
 float rim_profile(float d) {
     constexpr float XS[] = {-2.0f, -1.0f, 0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
-    constexpr float YS[] = {0.0f, 0.4f, 1.0f, 0.7f, 0.4f, 0.2f, 0.1f, 0.0f};
+    constexpr float kYs[] = {0.0f, 0.4f, 1.0f, 0.7f, 0.4f, 0.2f, 0.1f, 0.0f};
     if (d <= XS[0] || d >= XS[7]) {
         return 0.0f;
     }
     const auto i = static_cast<size_t>(std::floor(d - XS[0]));
     const float f = d - XS[i];
-    return YS[i] + (YS[i + 1] - YS[i]) * f;
+    return kYs[i] + (kYs[i + 1] - kYs[i]) * f;
 }
 
 } // namespace
@@ -146,22 +146,22 @@ void AquaWater::init(std::minstd_rand& rng, int32_t gx, int32_t gz, float u_max)
     next_impulse_ = 0.6;
     fresh_ = true;
     for (size_t n = 0; n < modes_.size(); n++) {
-        const float k = static_cast<float>(n + 1) * SAVER_PI / TANK_L;
-        modes_[n] = {MODE_AMPS[n], k, omega_for(k), random_between(rng, 0.0f, SAVER_TWO_PI)};
+        const float k = static_cast<float>(n + 1) * kSaverPi / kTankL;
+        modes_[n] = {kModeAmps[n], k, omega_for(k), random_between(rng, 0.0f, kSaverTwoPi)};
     }
     for (size_t i = 0; i < waves_.size(); i++) {
-        const WaveShape& s = WAVE_SHAPES[i];
-        const float k = SAVER_TWO_PI / s.lambda;
+        const WaveShape& s = kWaveShapes[i];
+        const float k = kSaverTwoPi / s.lambda;
         waves_[i] = {s.amp,
                      k,
                      omega_for(k),
                      std::cos(s.angle),
                      std::sin(s.angle),
                      s.steep,
-                     random_between(rng, 0.0f, SAVER_TWO_PI)};
+                     random_between(rng, 0.0f, kSaverTwoPi)};
     }
     impulses_.clear();
-    impulses_.reserve(IMPULSE_CAP);
+    impulses_.reserve(kImpulseCap);
     set_grid(gx, gz);
 }
 
@@ -178,13 +178,13 @@ float AquaWater::cell_u(int32_t i) const {
 }
 
 float AquaWater::cell_z(int32_t k) const {
-    return AQUA_Z_NEAR + AQUA_DEPTH * static_cast<float>(k) / static_cast<float>(gz_ - 1);
+    return kAquaZNear + kAquaDepth * static_cast<float>(k) / static_cast<float>(gz_ - 1);
 }
 
 float AquaWater::height(float x, float z, double t) const {
     float h = 0.0f;
     for (const AquaMode& m : modes_) {
-        h += m.amp * fast_cos(m.k * (x + TANK_L / 2.0f)) * fast_cos(phase_at(m.omega, t, m.phase));
+        h += m.amp * fast_cos(m.k * (x + kTankL / 2.0f)) * fast_cos(phase_at(m.omega, t, m.phase));
     }
     for (const AquaWave& w : waves_) {
         h += aqua_gerstner_height(w, x, z, t);
@@ -205,14 +205,14 @@ float AquaWater::height(float x, float z, double t) const {
 
 void AquaWater::evaluate(double t, std::minstd_rand& rng) {
     impulses_.erase(std::remove_if(impulses_.begin(), impulses_.end(),
-                                   [t](const AquaImpulse& e) { return t - e.t0 >= IMPULSE_LIFE; }),
+                                   [t](const AquaImpulse& e) { return t - e.t0 >= kImpulseLife; }),
                     impulses_.end());
     while (t >= next_impulse_) {
-        if (impulses_.size() >= IMPULSE_CAP) {
+        if (impulses_.size() >= kImpulseCap) {
             impulses_.erase(impulses_.begin());
         }
         impulses_.push_back({next_impulse_, random_between(rng, -2.5f, 2.5f),
-                             AQUA_Z_NEAR + random_between(rng, 1.2f, 2.4f),
+                             kAquaZNear + random_between(rng, 1.2f, 2.4f),
                              random_between(rng, 0.5f, 0.9f)});
         next_impulse_ += random_between(rng, 2.0f, 4.0f);
     }
@@ -232,7 +232,7 @@ void AquaWater::evaluate(double t, std::minstd_rand& rng) {
     struct Live {
         float x, z, c, sigma, env;
     };
-    Live live[IMPULSE_CAP];
+    Live live[kImpulseCap];
     size_t live_n = 0;
     for (const AquaImpulse& e : impulses_) {
         const auto age = static_cast<float>(t - e.t0);
@@ -245,7 +245,7 @@ void AquaWater::evaluate(double t, std::minstd_rand& rng) {
 
     for (int32_t k = 0; k < gz_; k++) {
         const float z = cell_z(k);
-        float row_env[IMPULSE_CAP];
+        float row_env[kImpulseCap];
         for (size_t n = 0; n < live_n; n++) {
             row_env[n] = live[n].env * fast_gauss(z - live[n].z);
         }
@@ -254,7 +254,7 @@ void AquaWater::evaluate(double t, std::minstd_rand& rng) {
             const float x = cell_u(i) * z;
             float h = 0.0f;
             for (size_t m = 0; m < modes_.size(); m++) {
-                h += mode_time[m] * fast_cos(modes_[m].k * (x + TANK_L / 2.0f));
+                h += mode_time[m] * fast_cos(modes_[m].k * (x + kTankL / 2.0f));
             }
             for (size_t w = 0; w < waves_.size(); w++) {
                 h += gerstner_at_phase(waves_[w], x, z, wave_phase[w]);
@@ -279,7 +279,7 @@ void AquaWater::evaluate(double t, std::minstd_rand& rng) {
 float AquaWater::height_at(float x, float z) const {
     const float u = x / std::max(z, 0.01f);
     const float fi = (u + u_max_) / (2.0f * u_max_) * static_cast<float>(gx_ - 1);
-    const float fk = (z - AQUA_Z_NEAR) / AQUA_DEPTH * static_cast<float>(gz_ - 1);
+    const float fk = (z - kAquaZNear) / kAquaDepth * static_cast<float>(gz_ - 1);
     return bilinear_sample(h_.data(), gx_, gz_, fi, fk, false);
 }
 
@@ -330,10 +330,10 @@ void AquaSplashes::emit_crests(const AquaWater& water, std::minstd_rand& rng) {
     const int32_t gx = water.grid_x();
     const int32_t gz = water.grid_z();
     const auto is_crest = [&water](int32_t i, int32_t k) {
-        return water.rise_at(i, k) + 2.0f * std::max(water.cell_height(i, k), 0.0f) > CREST_SCORE;
+        return water.rise_at(i, k) + 2.0f * std::max(water.cell_height(i, k), 0.0f) > kCrestScore;
     };
     int32_t rows = 0;
-    while (rows < gz && water.cell_z(rows) < AQUA_Z_NEAR + CREST_DEPTH) {
+    while (rows < gz && water.cell_z(rows) < kAquaZNear + kCrestDepth) {
         rows++;
     }
     int32_t candidates = 0;
@@ -390,9 +390,9 @@ void AquaSplashes::emit_crests(const AquaWater& water, std::minstd_rand& rng) {
 }
 
 void AquaSplashes::move(float dt, const AquaWater& water, std::vector<AquaLanding>* landed) {
-    const float g = AQUA_DROPLET_GRAVITY * GRAVITY;
+    const float g = kAquaDropletGravity * kGravity;
     const float damp = 1.0f - 0.3f * dt;
-    const float z_far = AQUA_Z_NEAR + AQUA_DEPTH;
+    const float z_far = kAquaZNear + kAquaDepth;
     for (size_t i = 0; i < droplets_.size();) {
         AquaDroplet& d = droplets_[i];
         d.x += d.vx * dt;
@@ -403,11 +403,11 @@ void AquaSplashes::move(float dt, const AquaWater& water, std::vector<AquaLandin
         d.vy *= damp;
         d.vz *= damp;
         // The tank's walls: a droplet stays inside the water's depth, reflected back in.
-        if (d.z < AQUA_Z_NEAR) {
-            d.z = std::min(2.0f * AQUA_Z_NEAR - d.z, z_far);
+        if (d.z < kAquaZNear) {
+            d.z = std::min(2.0f * kAquaZNear - d.z, z_far);
             d.vz = -d.vz;
         } else if (d.z > z_far) {
-            d.z = std::max(2.0f * z_far - d.z, AQUA_Z_NEAR);
+            d.z = std::max(2.0f * z_far - d.z, kAquaZNear);
             d.vz = -d.vz;
         }
         const float surface = water.height_at(d.x, d.z);
@@ -484,7 +484,7 @@ AquaClockLayout layout_aqua_clock(int32_t w, int32_t h, int32_t dx, int32_t dy) 
     l.top_cy = cy - px(68.0f);
     l.digit_unit =
         std::max(3, static_cast<int32_t>(std::lround(0.8f * static_cast<float>(l.ring_r) /
-                                                     (STROKE_DIGIT_PATH_H + DIGIT_STROKE))));
+                                                     (kStrokeDigitPathH + kDigitStroke))));
     l.text = {cx - px(220.0f), cy + px(48.0f), cx + px(220.0f), cy + px(70.0f)};
     const int32_t pad = l.ring_width + 1;
     l.bounds = {};
@@ -513,20 +513,20 @@ class AquaSim::Scene : public HeightfieldScene {
         const int32_t gx = water.grid_x();
         const int32_t gz = water.grid_z();
         // The wrinkle scrolls by whole table turns, reduced in double.
-        const auto shift_u = static_cast<float>(std::fmod(s.t_sim_ * 0.4, WRINKLE_N));
-        const auto shift_v = static_cast<float>(std::fmod(s.t_sim_ * 0.6, WRINKLE_N));
+        const auto shift_u = static_cast<float>(std::fmod(s.t_sim_ * 0.4, kWrinkleN));
+        const auto shift_v = static_cast<float>(std::fmod(s.t_sim_ * 0.6, kWrinkleN));
         const float z = slice.z;
-        const float fk = std::clamp((z - AQUA_Z_NEAR) / AQUA_DEPTH * static_cast<float>(gz - 1),
+        const float fk = std::clamp((z - kAquaZNear) / kAquaDepth * static_cast<float>(gz - 1),
                                     0.0f, static_cast<float>(gz - 1));
         const int32_t k0 = std::min(static_cast<int32_t>(fk), gz - 2);
         const float fz = fk - static_cast<float>(k0);
         const float amp =
-            WRINKLE_AMP * std::clamp(1.4f - 1.6f * (z - AQUA_Z_NEAR) / AQUA_DEPTH, 0.1f, 1.0f);
+            kWrinkleAmp * std::clamp(1.4f - 1.6f * (z - kAquaZNear) / kAquaDepth, 0.1f, 1.0f);
         const float wv = z * 14.0f - shift_v;
         const float wv_floor = std::floor(wv);
         const float av = wv - wv_floor;
-        const int32_t v0 = static_cast<int32_t>(static_cast<int64_t>(wv_floor) & (WRINKLE_N - 1));
-        const int32_t v1 = (v0 + 1) & (WRINKLE_N - 1);
+        const int32_t v0 = static_cast<int32_t>(static_cast<int64_t>(wv_floor) & (kWrinkleN - 1));
+        const int32_t v1 = (v0 + 1) & (kWrinkleN - 1);
         const float* hg = water.heights().data();
         const float* gxg = s.grid_gx_.data();
         const float* gzg = s.grid_gz_.data();
@@ -552,13 +552,13 @@ class AquaSim::Scene : public HeightfieldScene {
             const float wu_floor = std::floor(wu);
             const float au = wu - wu_floor;
             const int32_t u0 =
-                static_cast<int32_t>(static_cast<int64_t>(wu_floor) & (WRINKLE_N - 1));
-            const int32_t u1 = (u0 + 1) & (WRINKLE_N - 1);
+                static_cast<int32_t>(static_cast<int64_t>(wu_floor) & (kWrinkleN - 1));
+            const int32_t u1 = (u0 + 1) & (kWrinkleN - 1);
             const auto wbil = [&](int32_t ch) {
-                const float p = wr[(v0 * WRINKLE_N + u0) * 2 + ch];
-                const float q = wr[(v0 * WRINKLE_N + u1) * 2 + ch];
-                const float r = wr[(v1 * WRINKLE_N + u0) * 2 + ch];
-                const float sv = wr[(v1 * WRINKLE_N + u1) * 2 + ch];
+                const float p = wr[(v0 * kWrinkleN + u0) * 2 + ch];
+                const float q = wr[(v0 * kWrinkleN + u1) * 2 + ch];
+                const float r = wr[(v1 * kWrinkleN + u0) * 2 + ch];
+                const float sv = wr[(v1 * kWrinkleN + u1) * 2 + ch];
                 return (p + (q - p) * au) * (1.0f - av) + (r + (sv - r) * au) * av;
             };
             const float hx = bil(gxg) + amp * wbil(0);
@@ -568,7 +568,7 @@ class AquaSim::Scene : public HeightfieldScene {
             const float nx = -hx * n_len;
             const float ny = n_len;
             const float nz = -hz * n_len;
-            const float vy0 = h - CAM_H;
+            const float vy0 = h - kCamH;
             const float v_len = 1.0f / std::sqrt(x * x + vy0 * vy0 + z * z);
             const float vx = x * v_len;
             const float vy = vy0 * v_len;
@@ -579,8 +579,8 @@ class AquaSim::Scene : public HeightfieldScene {
             const float rz = vz + 2.0f * cosi * nz;
             const float m = 1.0f - cosi;
             const float m2 = m * m;
-            const float fres = std::max(F0 + (1.0f - F0) * m2 * m2 * m, AQUA_FRESNEL_FLOOR);
-            float sp = std::clamp(rx * SUN_X + ry * SUN_Y + rz * SUN_Z, 0.0f, 1.0f);
+            const float fres = std::max(F0 + (1.0f - F0) * m2 * m2 * m, kAquaFresnelFloor);
+            float sp = std::clamp(rx * kSunX + ry * kSunY + rz * kSunZ, 0.0f, 1.0f);
             const float s2 = sp * sp;
             const float s4 = s2 * s2;
             const float s8 = s4 * s4;
@@ -606,13 +606,13 @@ class AquaSim::Scene : public HeightfieldScene {
                 foot = std::max(foot, std::fabs(el - s.prev_el_[c]));
             }
             const float lvl = std::clamp(std::log2(std::max(foot, 1e-4f) / 0.02f) + 1.0f, 0.0f,
-                                         static_cast<float>(ENV_LEVELS - 1));
+                                         static_cast<float>(kEnvLevels - 1));
             const auto l0 = static_cast<size_t>(lvl);
-            const size_t l1 = std::min(l0 + 1, ENV_LEVELS - 1);
+            const size_t l1 = std::min(l0 + 1, kEnvLevels - 1);
             const float lf = lvl - static_cast<float>(l0);
             const auto ei = static_cast<size_t>(std::clamp((el + 1.0f) * 255.5f, 0.0f, 511.0f));
             const float refl =
-                env[l0 * ENV_N + ei] + (env[l1 * ENV_N + ei] - env[l0 * ENV_N + ei]) * lf;
+                env[l0 * kEnvN + ei] + (env[l1 * kEnvN + ei] - env[l0 * kEnvN + ei]) * lf;
             const float fres = scratch[c * 4 + 0];
             const float sp = scratch[c * 4 + 1];
             const float thin = scratch[c * 4 + 2];
@@ -633,21 +633,21 @@ class AquaSim::Scene : public HeightfieldScene {
 namespace {
 
 void build_env(std::vector<float>& env) {
-    env.assign(ENV_LEVELS * ENV_N, 0.0f);
-    std::vector<float> base(ENV_N);
+    env.assign(kEnvLevels * kEnvN, 0.0f);
+    std::vector<float> base(kEnvN);
     const auto box = [](float e, float c, float w, float a, float soft) {
         return a * smoothstep01((w - std::fabs(e - c)) / soft);
     };
-    const float step = 2.0f / static_cast<float>(ENV_N - 1);
-    for (int32_t i = 0; i < ENV_N; i++) {
+    const float step = 2.0f / static_cast<float>(kEnvN - 1);
+    for (int32_t i = 0; i < kEnvN; i++) {
         const float e = -1.0f + step * static_cast<float>(i);
         base[i] = box(e, 0.07f, 0.022f, 0.9f, 0.025f) + box(e, 0.22f, 0.026f, 1.0f, 0.025f) +
                   box(e, 0.45f, 0.035f, 0.9f, 0.03f) + box(e, 0.70f, 0.03f, 0.7f, 0.03f) +
                   0.05f * std::clamp(e, 0.0f, 1.0f);
     }
-    for (size_t l = 0; l < ENV_LEVELS; l++) {
-        float* out = &env[l * ENV_N];
-        const float sigma = ENV_SIGMAS[l];
+    for (size_t l = 0; l < kEnvLevels; l++) {
+        float* out = &env[l * kEnvN];
+        const float sigma = kEnvSigmas[l];
         if (sigma <= 0.0f) {
             std::copy(base.begin(), base.end(), out);
             continue;
@@ -658,11 +658,11 @@ void build_env(std::vector<float>& env) {
             const float d = static_cast<float>(k) * step / sigma;
             norm += std::exp(-0.5f * d * d);
         }
-        for (int32_t i = 0; i < ENV_N; i++) {
+        for (int32_t i = 0; i < kEnvN; i++) {
             float sum = 0.0f;
             for (int32_t k = -reach; k <= reach; k++) {
                 const int32_t j = i + k;
-                if (j < 0 || j >= ENV_N) {
+                if (j < 0 || j >= kEnvN) {
                     continue;
                 }
                 const float d = static_cast<float>(k) * step / sigma;
@@ -676,7 +676,7 @@ void build_env(std::vector<float>& env) {
 /// One gentle octave of surface wrinkle as slopes across and deep: band-limited noise with a
 /// k^-2 spectrum, stretched across, normalised so the steepest slope is 1.
 void build_wrinkle(std::vector<float>& out) {
-    constexpr int32_t N = WRINKLE_N;
+    constexpr int32_t N = kWrinkleN;
     std::minstd_rand rng(7);
     std::vector<float> h(static_cast<size_t>(N) * N, 0.0f);
     std::vector<float> cos_x(N);
@@ -699,9 +699,8 @@ void build_wrinkle(std::vector<float>& out) {
                 for (int32_t x = 0; x < N; x++) {
                     const int32_t idx = wrap_index(fx * x + fz * z, N);
                     const float ca =
-                        FAST_SIN_TABLE
-                            .v[(idx * (FAST_SIN_N / N) + FAST_SIN_N / 4) & (FAST_SIN_N - 1)];
-                    const float sa = FAST_SIN_TABLE.v[idx * (FAST_SIN_N / N)];
+                        kFastSinTable.v[(idx * (kFastSinN / N) + kFastSinN / 4) & (kFastSinN - 1)];
+                    const float sa = kFastSinTable.v[idx * (kFastSinN / N)];
                     h[static_cast<size_t>(z) * N + x] += amp * (ca * cp - sa * spp);
                 }
             }
@@ -743,20 +742,20 @@ void AquaSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level
     drift_.reset();
     emit_steps_.reset();
     const int32_t iw0 = (w_ + 1) / 2;
-    const float focal0 = FOCAL_AT_400 * static_cast<float>(iw0) / 400.0f;
-    water_.init(rng, AQUA_GRID_X, AQUA_GRID_Z, (static_cast<float>(iw0) / 2.0f + 8.0f) / focal0);
+    const float focal0 = kFocalAt400 * static_cast<float>(iw0) / 400.0f;
+    water_.init(rng, kAquaGridX, kAquaGridZ, (static_cast<float>(iw0) / 2.0f + 8.0f) / focal0);
     build_scene(rng);
 
     // Size every buffer for the finest rung any later step down reaches (the still rung renders
     // at the finest scale), so a rung change allocates nothing.
     level_ = 0;
     apply_view();
-    level_ = std::min(level, AQUA_LEVEL_COUNT - 1);
+    level_ = std::min(level, kAquaLevelCount - 1);
     apply_view();
 
     update_clock_layout();
     drift_.set_range(clock_.bounds, w_, h_);
-    build_stroke_digits(clock_.digit_unit, DIGIT_STROKE, digits_);
+    build_stroke_digits(clock_.digit_unit, kDigitStroke, digits_);
     const DirtyRect& b = clock_.bounds;
     clock_save_.assign(
         static_cast<size_t>(b.x2 - b.x1 + 1) * (b.y2 - b.y1 + 1) * pixel_bytes(frame.format), 0);
@@ -767,7 +766,7 @@ void AquaSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level
     water_.evaluate(0.0f, rng);
     FrameTarget out = frame;
     paint_all(out, reading);
-    if (AQUA_LEVELS[level_].still) {
+    if (kAquaLevels[level_].still) {
         release_scene();
     }
     shown_ = reading;
@@ -777,24 +776,24 @@ void AquaSim::build_scene(std::minstd_rand& rng) {
     build_env(env_);
     build_wrinkle(wrinkle_);
     build_tint(tint_);
-    splashes_.init(AQUA_MAX_DROPLETS);
+    splashes_.init(kAquaMaxDroplets);
     landed_.clear();
-    landed_.reserve(AQUA_MAX_DROPLETS);
+    landed_.reserve(kAquaMaxDroplets);
     glints_.clear();
-    glints_.reserve(GLINT_CAP);
+    glints_.reserve(kGlintCap);
     spray_.clear();
-    spray_.reserve(AQUA_MAX_DROPLETS + GLINT_CAP);
+    spray_.reserve(kAquaMaxDroplets + kGlintCap);
     last_spray_.clear();
-    last_spray_.reserve(AQUA_MAX_DROPLETS + GLINT_CAP);
-    bubbles_.resize(BUBBLE_COUNT);
+    last_spray_.reserve(kAquaMaxDroplets + kGlintCap);
+    bubbles_.resize(kBubbleCount);
     for (Bubble& b : bubbles_) {
         b.x = random_between(rng, 0.0f, static_cast<float>(w_));
         b.y = random_between(rng, 0.0f, static_cast<float>(h_));
         b.speed = random_between(rng, 0.15f, 0.6f);
-        b.phase = random_between(rng, 0.0f, SAVER_TWO_PI);
+        b.phase = random_between(rng, 0.0f, kSaverTwoPi);
     }
     edge_rows_.assign(static_cast<size_t>(w_), static_cast<float>(h_));
-    rim_.assign(static_cast<size_t>(w_), AQUA_RIM_FLOOR);
+    rim_.assign(static_cast<size_t>(w_), kAquaRimFloor);
     scene_released_ = false;
 }
 
@@ -809,12 +808,12 @@ void AquaSim::release_scene() {
 }
 
 void AquaSim::apply_view() {
-    const AquaLevel& lv = AQUA_LEVELS[level_];
+    const AquaLevel& lv = kAquaLevels[level_];
     scale_ = std::max<int32_t>(1, lv.scale);
     iw_ = scaled_extent(w_, scale_);
     ih_ = scaled_extent(h_, scale_);
-    focal_ = FOCAL_AT_400 * static_cast<float>(iw_) / 400.0f;
-    horizon_ = static_cast<float>(ih_) / 2.0f + PITCH_AT_240 * static_cast<float>(ih_) / 240.0f;
+    focal_ = kFocalAt400 * static_cast<float>(iw_) / 400.0f;
+    horizon_ = static_cast<float>(ih_) / 2.0f + kPitchAt240 * static_cast<float>(ih_) / 240.0f;
 
     HeightfieldView v;
     v.w = iw_;
@@ -822,21 +821,21 @@ void AquaSim::apply_view() {
     v.horizon_row = horizon_;
     v.focal_x = focal_;
     v.focal_y = focal_;
-    v.cam_h = CAM_H;
-    v.z_near = AQUA_Z_NEAR;
-    v.z_far = AQUA_Z_NEAR + AQUA_DEPTH;
-    v.dz_grow = DZ_GROW;
+    v.cam_h = kCamH;
+    v.z_near = kAquaZNear;
+    v.z_far = kAquaZNear + kAquaDepth;
+    v.dz_grow = kDzGrow;
     v.slices = lv.slices;
     v.sink_depth = 0.0f;
     v.edge = HeightfieldEdge::FEATHERED_SILHOUETTE;
     v.span_gradient = true;
     v.first_slice_fills = false;
-    v.fog = {AQUA_Z_NEAR, AQUA_Z_NEAR + AQUA_DEPTH, 0.6f, true};
+    v.fog = {kAquaZNear, kAquaZNear + kAquaDepth, 0.6f, true};
     renderer_.set_view(v);
 
     const int32_t div = std::max<int32_t>(1, lv.grid_div);
-    if (water_.grid_x() != AQUA_GRID_X / div || water_.grid_z() != AQUA_GRID_Z / div) {
-        water_.set_grid(AQUA_GRID_X / div, AQUA_GRID_Z / div);
+    if (water_.grid_x() != kAquaGridX / div || water_.grid_z() != kAquaGridZ / div) {
+        water_.set_grid(kAquaGridX / div, kAquaGridZ / div);
         // The new grid starts flat: evaluate it at the current time so a frozen rung shows
         // water, not a blank surface.
         std::minstd_rand none(1);
@@ -875,7 +874,7 @@ void AquaSim::derive_grids() {
     const int32_t gx = water_.grid_x();
     const int32_t gz = water_.grid_z();
     const float du = 2.0f * water_.u_max() / static_cast<float>(gx - 1);
-    const float dzz = AQUA_DEPTH / static_cast<float>(gz - 1);
+    const float dzz = kAquaDepth / static_cast<float>(gz - 1);
     const float* h = water_.heights().data();
     for (int32_t k = 0; k < gz; k++) {
         const float z = water_.cell_z(k);
@@ -937,7 +936,7 @@ DirtyRect AquaSim::paint_water(FrameTarget& frame) {
             frame_[static_cast<size_t>(y) * iw_ + x] = c;
         }
     }
-    renderer_.resolve(frame_.data(), TINT_NONE, from, ih_, frame_);
+    renderer_.resolve(frame_.data(), kTintNone, from, ih_, frame_);
     const DirtyRect band = upscale_frame(frame_, iw_, ih_, scale_, from, ih_, frame);
     band_top_ = water_top * scale_;
 
@@ -951,7 +950,7 @@ DirtyRect AquaSim::paint_water(FrameTarget& frame) {
         const float e1 = renderer_.front_top_at(x1);
         edge_rows_[ox] = (e0 + (e1 - e0) * f) * static_cast<float>(scale_);
         const float r = rim[x0] + (rim[x1] - rim[x0]) * f;
-        rim_[ox] = std::clamp(0.40f + 1.2f * r, AQUA_RIM_FLOOR, 1.0f);
+        rim_[ox] = std::clamp(0.40f + 1.2f * r, kAquaRimFloor, 1.0f);
     }
     return band;
 }
@@ -976,7 +975,7 @@ void AquaSim::draw_rim(FrameTarget& frame) const {
 
 void AquaSim::draw_bubbles(FrameTarget& frame) const {
     PixelWriter writer(frame);
-    const size_t count = std::min<size_t>(AQUA_LEVELS[level_].bubbles, bubbles_.size());
+    const size_t count = std::min<size_t>(kAquaLevels[level_].bubbles, bubbles_.size());
     const float s = static_cast<float>(h_) / 480.0f;
     const auto wf = static_cast<float>(w_);
     for (size_t i = 0; i < count; i++) {
@@ -1009,11 +1008,11 @@ void AquaSim::draw_spray(FrameTarget& frame, std::vector<DirtyRect>& boxes) cons
     };
     for (const AquaDroplet& d : splashes_.droplets()) {
         const float px = d.x * f / d.z + cx;
-        const float py = hz + (CAM_H - d.y) * f / d.z;
+        const float py = hz + (kCamH - d.y) * f / d.z;
         // A short streak back along the motion, as a slow shutter sees it.
         const float tx = -d.vx * f / d.z * 0.035f;
         const float ty = d.vy * f / d.z * 0.035f;
-        const float bright = std::clamp(1.2f - (d.z - AQUA_Z_NEAR) / AQUA_DEPTH, 0.3f, 1.0f);
+        const float bright = std::clamp(1.2f - (d.z - kAquaZNear) / kAquaDepth, 0.3f, 1.0f);
         for (int i = 0; i < 10; i++) {
             const float u = static_cast<float>(i) / 9.0f;
             const float taper = std::pow(1.0f - u, 1.5f);
@@ -1024,8 +1023,8 @@ void AquaSim::draw_spray(FrameTarget& frame, std::vector<DirtyRect>& boxes) cons
     }
     for (const Glint& g : glints_) {
         const float px = g.x * f / g.z + cx;
-        const float py = hz + (CAM_H - g.y) * f / g.z;
-        const float v = 0.8f * (1.0f - static_cast<float>(g.age_ms) / GLINT_MS);
+        const float py = hz + (kCamH - g.y) * f / g.z;
+        const float v = 0.8f * (1.0f - static_cast<float>(g.age_ms) / kGlintMs);
         splat_max(writer, tint_, px, py, v);
         splat_max(writer, tint_, px - 1.0f, py, v * 0.5f);
         splat_max(writer, tint_, px + 1.0f, py, v * 0.5f);
@@ -1039,7 +1038,7 @@ void AquaSim::draw_clock(FrameTarget& frame, const ClockReading& reading) const 
     const auto ring = [&](int32_t cx, int32_t cy, int32_t r, float fill) {
         const float half = static_cast<float>(clock_.ring_width) / 2.0f;
         const auto rf = static_cast<float>(r);
-        const float end = std::clamp(fill, 0.0f, 1.0f) * SAVER_TWO_PI;
+        const float end = std::clamp(fill, 0.0f, 1.0f) * kSaverTwoPi;
         const int32_t reach = r + clock_.ring_width + 1;
         for (int32_t y = cy - reach; y <= cy + reach; y++) {
             for (int32_t x = cx - reach; x <= cx + reach; x++) {
@@ -1055,15 +1054,15 @@ void AquaSim::draw_clock(FrameTarget& frame, const ClockReading& reading) const 
                 }
                 // Clockwise from twelve o'clock, with soft ends.
                 float a = std::atan2(dx, -dy);
-                a += a < 0.0f ? SAVER_TWO_PI : 0.0f;
+                a += a < 0.0f ? kSaverTwoPi : 0.0f;
                 float filled = 0.0f;
                 if (end > 0.0f) {
                     filled = edge_coverage((end - a) * rf) * edge_coverage(a * rf);
-                    if (end >= SAVER_TWO_PI - 1e-4f) {
+                    if (end >= kSaverTwoPi - 1e-4f) {
                         filled = 1.0f;
                     }
                 }
-                const Rgb color = mix_rgb(RING_TRACK, RING_FILL, filled);
+                const Rgb color = mix_rgb(kRingTrack, kRingFill, filled);
                 writer.blend_over(x, y, color, cov);
             }
         }
@@ -1081,7 +1080,7 @@ void AquaSim::draw_clock(FrameTarget& frame, const ClockReading& reading) const 
         const std::array<int, 2> digit = two_digits(value);
         for (int n = 0; n < 2; n++) {
             blit_stroke_digit(writer, digits_, digit[n], x0 + n * (digits_.w + gap), y0,
-                              DIGIT_COLOR, DIGIT_OPACITY);
+                              kDigitColor, kDigitOpacity);
         }
     };
     number(clock_.hour_cx, clock_.hour_cy, reading.time.hour);
@@ -1109,7 +1108,7 @@ void AquaSim::save_clock_region(const FrameTarget& frame) {
 
 void AquaSim::restore(FrameTarget& frame, const DirtyRect& box,
                       std::vector<DirtyRect>& dirty) const {
-    if (!AQUA_LEVELS[level_].still || clock_saved_box_.empty() ||
+    if (!kAquaLevels[level_].still || clock_saved_box_.empty() ||
         !box.intersects(clock_saved_box_)) {
         return;
     }
@@ -1143,7 +1142,7 @@ void AquaSim::paint_all(FrameTarget& frame, const ClockReading& reading) {
 }
 
 void AquaSim::request_level(size_t level) {
-    const size_t next = std::min(level, AQUA_LEVEL_COUNT - 1);
+    const size_t next = std::min(level, kAquaLevelCount - 1);
     if (next == level_) {
         return;
     }
@@ -1157,7 +1156,7 @@ void AquaSim::request_level(size_t level) {
 
 float AquaSim::rim_brightness(int32_t x) const {
     if (rim_.empty()) {
-        return AQUA_RIM_FLOOR;
+        return kAquaRimFloor;
     }
     return rim_[static_cast<size_t>(std::clamp(x, 0, w_ - 1))];
 }
@@ -1172,7 +1171,7 @@ float AquaSim::rim_row(int32_t x) const {
 void AquaSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
                    const ClockReading& reading, std::vector<DirtyRect>& dirty) {
     dirty.clear();
-    const AquaLevel& lv = AQUA_LEVELS[level_];
+    const AquaLevel& lv = kAquaLevels[level_];
     if (scene_released_ && (!lv.still || !painted_)) {
         // A rung change after the still one: the water comes back before it is drawn.
         build_scene(rng);
@@ -1211,10 +1210,10 @@ void AquaSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
         return;
     }
 
-    const float dt_sim = static_cast<float>(dt_ms) / 1000.0f * AQUA_TIME_SCALE;
+    const float dt_sim = static_cast<float>(dt_ms) / 1000.0f * kAquaTimeScale;
     t_sim_ += dt_sim;
     water_.evaluate(t_sim_, rng);
-    const uint32_t emits = emit_steps_.steps_due(dt_ms, EMIT_STEP_MS, EMIT_STEPS_MAX);
+    const uint32_t emits = emit_steps_.steps_due(dt_ms, kEmitStepMs, kEmitStepsMax);
     if (lv.splashes) {
         for (uint32_t i = 0; i < emits; i++) {
             splashes_.emit_crests(water_, rng);
@@ -1224,13 +1223,13 @@ void AquaSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
     landed_.clear();
     splashes_.move(dt_sim, water_, &landed_);
     for (Glint& g : glints_) {
-        g.age_ms = static_cast<uint16_t>(std::min<uint32_t>(GLINT_MS, g.age_ms + dt_ms));
+        g.age_ms = static_cast<uint16_t>(std::min<uint32_t>(kGlintMs, g.age_ms + dt_ms));
     }
     glints_.erase(std::remove_if(glints_.begin(), glints_.end(),
-                                 [](const Glint& g) { return g.age_ms >= GLINT_MS; }),
+                                 [](const Glint& g) { return g.age_ms >= kGlintMs; }),
                   glints_.end());
     for (const AquaLanding& l : landed_) {
-        if (glints_.size() < GLINT_CAP) {
+        if (glints_.size() < kGlintCap) {
             glints_.push_back({l.x, l.surface, l.z, 0});
         }
     }
@@ -1239,8 +1238,8 @@ void AquaSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
     for (Bubble& b : bubbles_) {
         b.y -= b.speed * rise * dt_s;
         b.phase += 2.0f * dt_s;
-        if (b.phase > SAVER_TWO_PI) {
-            b.phase -= SAVER_TWO_PI;
+        if (b.phase > kSaverTwoPi) {
+            b.phase -= kSaverTwoPi;
         }
         if (b.y < 0.0f) {
             b.y = static_cast<float>(h_) + random_between(rng, 0.0f, 40.0f);
@@ -1287,7 +1286,7 @@ void AquaSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
     }
     last_spray_.swap(spray_);
     spray_.clear();
-    reduce_dirty(dirty, SAVER_MAX_DIRTY_AREAS, w_, h_);
+    reduce_dirty(dirty, kSaverMaxDirtyAreas, w_, h_);
     shown_ = reading;
 }
 

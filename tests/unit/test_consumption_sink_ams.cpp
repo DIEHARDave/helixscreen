@@ -260,13 +260,13 @@ TEST_CASE_METHOD(LVGLTestFixture,
     ams.deinit_subjects();
     ams.init_subjects(false);
 
-    constexpr int SLOTS = 4;
-    auto m = std::make_unique<helix::AmsBackendMock>(SLOTS);
+    constexpr int kSlots = 4;
+    auto m = std::make_unique<helix::AmsBackendMock>(kSlots);
     int idx = ams.add_backend(std::move(m));
     REQUIRE(idx == 0);
 
-    // After add_backend, SLOTS sinks should have been registered.
-    REQUIRE(FilamentConsumptionTrackerTestAccess::sink_count() >= static_cast<std::size_t>(SLOTS));
+    // After add_backend, kSlots sinks should have been registered.
+    REQUIRE(FilamentConsumptionTrackerTestAccess::sink_count() >= static_cast<std::size_t>(kSlots));
 
     ams.clear_backends();
     // After clear_backends, slot sinks should be gone (but an external sink may

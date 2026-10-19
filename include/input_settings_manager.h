@@ -32,8 +32,8 @@ class InputSettingsManager {
     /// The static PersistedSetting table this manager is built from.
     static settings::TableView persisted_table();
 
-    /// Default scroll momentum decay; see helix::input_defaults::SCROLL_THROW.
-    static constexpr int DEFAULT_SCROLL_THROW = helix::input_defaults::SCROLL_THROW;
+    /// Default scroll momentum decay; see helix::input_defaults::kScrollThrow.
+    static constexpr int kDefaultScrollThrow = helix::input_defaults::kScrollThrow;
 
     // Non-copyable
     InputSettingsManager(const InputSettingsManager&) = delete;

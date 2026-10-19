@@ -18,7 +18,7 @@ using namespace helix::ui;
 // The only non-mirroring assertion from the deleted "constants are reasonable"
 // case: the pool must outnumber the buffer rows above and below the viewport or
 // virtualization has nothing left to show. Compile-time, so it costs nothing.
-static_assert(SpoolmanListView::POOL_SIZE > SpoolmanListView::BUFFER_ROWS * 2,
+static_assert(SpoolmanListView::kPoolSize > SpoolmanListView::kBufferRows * 2,
               "pool must be larger than the buffer above + below the viewport");
 
 // ============================================================================
@@ -116,7 +116,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "SpoolmanListView - populate with many spool
     process_lvgl(50);
 
     REQUIRE(view.is_initialized() == true);
-    // Only POOL_SIZE rows should be created (not 50)
+    // Only kPoolSize rows should be created (not 50)
 }
 
 /// Find the visible pool row currently showing @p spool_id.

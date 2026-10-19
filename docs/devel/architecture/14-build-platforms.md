@@ -22,7 +22,7 @@ flowchart TB
     subgraph mk["Makefile + mk/*.mk"]
         CROSS["mk/cross.mk<br/>PLATFORM_TARGET to toolchain,<br/>flags, backend, feature gates"]
         PATCHES["mk/patches.mk<br/>patches/ onto lib/lvgl, lib/libhv, lib/lua"]
-        RULES["mk/rules.mk<br/>all: apply-patches, fonts,<br/>splash, link, strip"]
+        kRules["mk/rules.mk<br/>all: apply-patches, fonts,<br/>splash, link, strip"]
         TESTS["mk/tests.mk<br/>helix-tests + Catch2 shards"]
     end
 
@@ -35,9 +35,9 @@ flowchart TB
     DEV --> CROSS
     DOCKER --> CROSS
     REMOTE --> CROSS
-    CROSS --> RULES
-    PATCHES --> RULES
-    RULES --> BIN
+    CROSS --> kRules
+    PATCHES --> kRules
+    kRules --> BIN
     CROSS --> TESTS
     TESTS --> TESTBIN
     THOST --> TESTS

@@ -430,7 +430,7 @@ TEST_CASE("AD5X IFS module identity returns when the plugin contract demotes",
 
         Ad5xIfsTestAccess::on_gcode_response_line(backend, "// Unknown command:\"_IFS_VARS\"");
 
-        CHECK(Ad5xIfsTestAccess::tool_map(backend)[6] == AmsBackendAd5xIfs::UNMAPPED_PORT);
+        CHECK(Ad5xIfsTestAccess::tool_map(backend)[6] == AmsBackendAd5xIfs::kUnmappedPort);
     }
 
     SECTION("a live wire table owns the map and survives the demote") {

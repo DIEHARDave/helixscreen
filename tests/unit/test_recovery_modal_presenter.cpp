@@ -75,7 +75,7 @@ class RecoveryPreheatFixture : public LVGLUITestFixture {
         api_.set_safety_limits(limits);
 
         // No AMS backend and no external spool: the preheat target resolves to
-        // DEFAULT_LOAD_PREHEAT_TEMP, so the tests know what they are waiting for.
+        // kDefaultLoadPreheatTemp, so the tests know what they are waiting for.
         helix::AmsState::instance().set_backend(nullptr);
         prev_cold_extrude_ = helix::SafetySettingsManager::instance().get_allow_cold_extrude();
         helix::SafetySettingsManager::instance().set_allow_cold_extrude(false);
@@ -278,7 +278,7 @@ TEST_CASE_METHOD(RecoveryPreheatFixture, "Reaching target dispatches the deferre
     REQUIRE(TA::preheating(presenter()));
 
     // Comfortably past any target the resolver can pick (latch, material temp,
-    // or DEFAULT_LOAD_PREHEAT_TEMP).
+    // or kDefaultLoadPreheatTemp).
     set_nozzle_c(300);
     process_lvgl(600); // > one poll period
 

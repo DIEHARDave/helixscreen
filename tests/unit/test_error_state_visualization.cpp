@@ -238,7 +238,7 @@ class AfcErrorStateHelper : public AmsBackendAfc {
             slot.global_index = i;
             slot.status = SlotStatus::AVAILABLE;
             slot.mapped_tool = i;
-            slot.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+            slot.color_rgb = kAmsDefaultSlotColor;
             unit.slots.push_back(slot);
         }
 
@@ -541,7 +541,7 @@ class HappyHareErrorStateHelper : public AmsBackendHappyHare {
             slot.global_index = i;
             slot.status = SlotStatus::AVAILABLE;
             slot.mapped_tool = i;
-            slot.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+            slot.color_rgb = kAmsDefaultSlotColor;
             unit.slots.push_back(slot);
         }
 
@@ -558,7 +558,7 @@ class HappyHareErrorStateHelper : public AmsBackendHappyHare {
             auto* entry = HappyHareTestAccess::slots(*this).get_mut(i);
             if (entry) {
                 entry->info.status = SlotStatus::AVAILABLE;
-                entry->info.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+                entry->info.color_rgb = kAmsDefaultSlotColor;
             }
         }
     }

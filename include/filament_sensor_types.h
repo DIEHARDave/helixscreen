@@ -19,7 +19,7 @@ namespace helix {
 /// runout never refills. Anything shorter than a swap reports every tool change
 /// as a runout. Detection and the runout subjects still fire on the edge; only
 /// the toast waits.
-constexpr std::chrono::seconds RUNOUT_TOAST_DWELL{45};
+constexpr std::chrono::seconds kRunoutToastDwell{45};
 
 /**
  * @brief Role that a filament sensor can be assigned to.

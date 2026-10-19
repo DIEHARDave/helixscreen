@@ -26,6 +26,22 @@ ManifestParse with_setting(const std::string& setting) {
 ManifestParse with_widgets(const std::string& widgets) {
     return parse_manifest(R"({"id":"ab","name":"n","version":"1","widgets":[)" + widgets + "]}");
 }
+
+constexpr const char* kOneWidget = R"("widgets":[{"id":"ab__w","name":"W","component":"ab__c"}])";
+
+ManifestParse with_menu_items(const std::string& items, bool widget = false) {
+    return parse_manifest(R"({"id":"ab","name":"n","version":"1",)" +
+                          (widget ? std::string(kOneWidget) + "," : std::string()) +
+                          R"("menu_items":[)" + items + "]}");
+}
+
+std::string spool_items(int n, const char* menu = "spool") {
+    std::string out;
+    for (int i = 0; i < n; ++i)
+        out += std::string(i ? "," : "") + R"({"id":"i)" + std::to_string(i) + R"(","menu":")" +
+               menu + R"(","label":"L","handler":"h"})";
+    return out;
+}
 } // namespace
 
 TEST_CASE("plugin ids", "[plugin][manifest]") {
@@ -54,6 +70,10 @@ TEST_CASE("owned names need the id, the separator and a rest", "[plugin][manifes
     CHECK(owner_of("orca-cal__my_status") == "orca-cal");
     CHECK(owner_of("orca-cal_status").empty());
     CHECK(owner_of("nounderscore").empty());
+    CHECK(local_part_of("orca-cal__my_status") == "my_status");
+    CHECK(local_part_of("orca-cal__a__b") == "a__b");
+    CHECK(local_part_of("orca-cal_status").empty());
+    CHECK(local_part_of("orca-cal__").empty());
 }
 
 TEST_CASE("a complete manifest parses", "[plugin][manifest]") {
@@ -285,11 +305,125 @@ TEST_CASE("manifest widgets reject bad names and spans", "[plugin][manifest]") {
     CHECK(has_error_containing(with_widgets(R"({"id":"ab__l","name":"L","component":"ab__w"},
                                                {"id":"ab__l","name":"M","component":"ab__w"})"),
                                "duplicate widget id"));
-    std::string nine;
-    for (int i = 0; i < 9; ++i)
-        nine += std::string(i ? "," : "") + R"({"id":"ab__w)" + std::to_string(i) +
-                R"(","name":"W","component":"ab__c"})";
-    CHECK(has_error_containing(with_widgets(nine), "at most 8"));
+    auto widgets = [](int n) {
+        std::string out;
+        for (int i = 0; i < n; ++i)
+            out += std::string(i ? "," : "") + R"({"id":"ab__w)" + std::to_string(i) +
+                   R"(","name":"W","component":"ab__c"})";
+        return out;
+    };
+    auto most = with_widgets(widgets(32));
+    REQUIRE(most.manifest);
+    CHECK(most.manifest->widgets.size() == 32);
+    auto over = with_widgets(widgets(33));
+    CHECK_FALSE(over.manifest);
+    CHECK(has_error_containing(over, "'widgets' may list at most 32"));
+}
+
+TEST_CASE("menu_items parse", "[plugin][manifest]") {
+    auto r = with_menu_items(R"({"id":"calibrate","menu":"print_file","label":"Calibrate",
+        "icon":"tune","handler":"calibrate","check":"can_calibrate"},
+        {"id":"lookup","menu":"spool","label":"Look up","handler":"look-up_2"})");
+    REQUIRE(r.errors.empty());
+    REQUIRE(r.manifest);
+    REQUIRE(r.manifest->menu_items.size() == 2);
+    const auto& a = r.manifest->menu_items[0];
+    CHECK(a.id == "calibrate");
+    CHECK(a.menu == MenuKind::PrintFile);
+    CHECK(a.label == "Calibrate");
+    CHECK(a.icon == "tune");
+    CHECK(a.handler == "calibrate");
+    CHECK(a.check == "can_calibrate");
+    const auto& b = r.manifest->menu_items[1];
+    CHECK(b.menu == MenuKind::Spool);
+    CHECK(b.handler == "look-up_2");
+    CHECK(b.icon.empty());
+    CHECK(b.check.empty());
+
+    auto tile = with_menu_items(R"({"id":"t","menu":"tile","label":"T","handler":"h"},
+        {"id":"s","menu":"filament_slot","label":"S","handler":"h"})",
+                                /*widget=*/true);
+    REQUIRE(tile.manifest);
+    CHECK(tile.manifest->menu_items[0].menu == MenuKind::Tile);
+    CHECK(tile.manifest->menu_items[1].menu == MenuKind::FilamentSlot);
+
+    auto none = with_widgets(R"({"id":"ab__w","name":"W","component":"ab__c"})");
+    REQUIRE(none.manifest);
+    CHECK(none.manifest->menu_items.empty());
+}
+
+TEST_CASE("menu kinds round-trip through their names", "[plugin][manifest]") {
+    for (auto k : {MenuKind::PrintFile, MenuKind::FilamentSlot, MenuKind::Spool, MenuKind::Tile})
+        CHECK(parse_menu_kind(menu_kind_name(k)) == k);
+    CHECK(std::string(menu_kind_name(MenuKind::FilamentSlot)) == "filament_slot");
+    CHECK_FALSE(parse_menu_kind("toolbar"));
+    CHECK_FALSE(parse_menu_kind(""));
+}
+
+TEST_CASE("menu_items errors", "[plugin][manifest]") {
+    struct Case {
+        const char* items;
+        const char* needle;
+    };
+    const std::string long_label(kMaxMenuLabelBytes + 1, 'x');
+    const std::string long_item =
+        R"({"id":"a","menu":"spool","label":")" + long_label + R"(","handler":"h"})";
+    const Case cases[] = {
+        {R"({"menu":"spool","label":"L","handler":"h"})", "menu_items[0]: 'id'"},
+        {R"({"id":"a","menu":"spool","handler":"h"})", "menu_items[0]: 'label'"},
+        {R"({"id":"a","menu":"spool","label":"L"})", "menu_items[0]: 'handler'"},
+        {R"({"id":"a","menu":"spool","label":"L","handler":"Bad Name"})",
+         "menu_items[0]: 'handler'"},
+        {R"({"id":"a","menu":"spool","label":"L","handler":"h","check":"can check"})",
+         "menu_items[0]: 'check'"},
+        {R"({"id":"a","menu":"toolbar","label":"L","handler":"h"})",
+         "menu_items[0]: 'menu' must be one of print_file, filament_slot, spool, tile"},
+        {R"({"id":"a","label":"L","handler":"h"})", "menu_items[0]: 'menu'"},
+        {R"({"id":"a","menu":"spool","label":"L","handler":"h","icon":3})",
+         "menu_items[0]: 'icon'"},
+        {R"({"id":"a","menu":"spool","label":"L","handler":"h","icon":"no_such_icon"})",
+         "menu_items[0]: 'icon' 'no_such_icon' is not an app icon name"},
+        {long_item.c_str(), "menu_items[0]: 'label'"},
+        {R"({"id":"a","menu":"tile","label":"L","handler":"h"})",
+         "menu_items[0]: 'tile' items need a widget"},
+        {R"("not an object")", "menu_items[0] must be an object"},
+    };
+    for (const auto& c : cases) {
+        INFO(c.items);
+        auto r = with_menu_items(c.items);
+        CHECK_FALSE(r.manifest);
+        CHECK(has_error_containing(r, c.needle));
+    }
+
+    auto dup = with_menu_items(R"({"id":"a","menu":"spool","label":"L","handler":"h"},
+        {"id":"a","menu":"print_file","label":"M","handler":"h"})");
+    CHECK_FALSE(dup.manifest);
+    CHECK(has_error_containing(dup, "menu_items[1]: duplicate item id 'a'"));
+
+    CHECK(with_menu_items(spool_items(kMaxMenuItemsPerMenu)).manifest);
+    auto five = with_menu_items(spool_items(kMaxMenuItemsPerMenu + 1, "print_file"));
+    CHECK_FALSE(five.manifest);
+    CHECK(has_error_containing(five, "at most 4 items for print_file"));
+
+    auto seventeen = parse_manifest(R"({"id":"ab","name":"n","version":"1","menu_items":[)" +
+                                    spool_items(kMaxMenuItems + 1) + "]}");
+    CHECK_FALSE(seventeen.manifest);
+    CHECK(has_error_containing(seventeen, "'menu_items' may list at most 16"));
+
+    auto not_array =
+        parse_manifest(R"({"id":"ab","name":"n","version":"1","menu_items":{"id":"a"}})");
+    CHECK_FALSE(not_array.manifest);
+    CHECK(has_error_containing(not_array, "'menu_items' must be an array"));
+}
+
+TEST_CASE("local handler names", "[plugin][manifest]") {
+    CHECK(is_valid_local_name("calibrate"));
+    CHECK(is_valid_local_name("a-b_9"));
+    CHECK(is_valid_local_name(std::string(48, 'a')));
+    CHECK_FALSE(is_valid_local_name(std::string(49, 'a')));
+    CHECK_FALSE(is_valid_local_name(""));
+    CHECK_FALSE(is_valid_local_name("Bad"));
+    CHECK_FALSE(is_valid_local_name("a b"));
 }
 
 #endif // HELIX_HAS_PLUGINS

@@ -212,8 +212,8 @@ struct StatusFrame {
  *
  * params[1] is Klipper's eventtime. It is monotonic-clock derived, so it survives
  * a Klipper restart and only rewinds on a host reboot: a usable freshness key
- * within one connection. CACHED_SNAPSHOT_MARKER says the frame is a replay of an
- * earlier snapshot rather than current traffic; WHOLE_OBJECTS_MARKER says it is a
+ * within one connection. kCachedSnapshotMarker says the frame is a replay of an
+ * earlier snapshot rather than current traffic; kWholeObjectsMarker says it is a
  * subscription response rather than a delta.
  *
  * @return The frame, or nullopt for anything that is not a notify_status_update

@@ -40,21 +40,21 @@ ControlButtonView compute_control_button_view(const ControlButtonInputs& in) {
 
     switch (in.pending) {
     case PendingAction::Pausing:
-        v.primary_icon = CONTROL_ICON_HOURGLASS;
-        v.primary_label = CONTROL_LABEL_PAUSING;
+        v.primary_icon = kControlIconHourglass;
+        v.primary_label = kControlLabelPausing;
         break;
     case PendingAction::Resuming:
-        v.primary_icon = CONTROL_ICON_HOURGLASS;
-        v.primary_label = CONTROL_LABEL_RESUMING;
+        v.primary_icon = kControlIconHourglass;
+        v.primary_label = kControlLabelResuming;
         break;
     case PendingAction::None:
         // RAW_PRINT_STATE_OK: which macro the button would send.
         if (in.job_state == helix::PrintJobState::PAUSED) {
-            v.primary_icon = CONTROL_ICON_PLAY;
-            v.primary_label = CONTROL_LABEL_RESUME;
+            v.primary_icon = kControlIconPlay;
+            v.primary_label = kControlLabelResume;
         } else {
-            v.primary_icon = CONTROL_ICON_PAUSE;
-            v.primary_label = CONTROL_LABEL_PAUSE;
+            v.primary_icon = kControlIconPause;
+            v.primary_label = kControlLabelPause;
         }
         break;
     }

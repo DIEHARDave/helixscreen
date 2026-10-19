@@ -111,6 +111,11 @@ src/led/led_auto_state.cpp
 src/led/led_controller.cpp
 src/led/led_devices.cpp
 src/led/led_device_page.cpp
+# The app menus that take plugin items call these; with plugins compiled out the menu API answers empty.
+src/plugin/plugin_menu.cpp
+src/plugin/plugin_menu_context.cpp
+src/ui/ui_plugin_menu_rows.cpp
+src/ui/ui_plugin_items_menu.cpp
 src/print/active_print_media_manager.cpp
 src/print/crc32.cpp
 src/print/filament_sensor_manager.cpp
@@ -175,6 +180,7 @@ src/printer/lane_translation.cpp
 src/printer/lane_legacy_migration.cpp
 src/printer/lane_binding.cpp
 src/printer/bed_dimensions.cpp
+src/printer/capability_chip_text.cpp
 src/printer/bed_mesh_state.cpp
 src/printer/chamber_heater_assignment.cpp
 src/printer/chamber_heater_backend_dragonbreath.cpp
@@ -224,6 +230,7 @@ src/printer/printer_excluded_objects_state.cpp
 src/printer/printer_fan_state.cpp
 src/printer/printer_hardware.cpp
 src/printer/printer_hardware_validation_state.cpp
+src/printer/printer_image_variants.cpp
 src/printer/printer_motion_state.cpp
 src/printer/printer_network_state.cpp
 src/printer/printer_plugin_status_state.cpp
@@ -603,6 +610,7 @@ src/ui/ui_print_start_controller.cpp
 src/ui/ui_print_tune_overlay.cpp
 src/ui/ui_printer_list_overlay.cpp
 src/ui/ui_printer_manager_overlay.cpp
+src/ui/printer_manager_chips.cpp
 src/ui/ui_printer_status_icon.cpp
 src/ui/ui_printer_switch_menu.cpp
 src/ui/ui_probe_overlay.cpp
@@ -709,6 +717,7 @@ src/api/wifi_ap_steering.cpp
 src/api/wifi_manager.cpp
 src/api/wifi_interface.cpp
 src/api/wifi_scan_scheduler.cpp
+src/api/wifi_control_breaker.cpp
 src/api/wifi_backend.cpp
 src/api/moonraker_api.cpp
 src/api/moonraker_api_config.cpp

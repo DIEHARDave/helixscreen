@@ -1014,19 +1014,19 @@ void ToolState::request_tool_change(int tool_index, IMoonrakerAPI* api,
 // Spool assignment persistence
 // ============================================================================
 
-static constexpr const char* SPOOL_JSON_FILENAME = "tool_spools.json";
-static constexpr const char* MOONRAKER_DB_NAMESPACE = "helix-screen";
-static constexpr const char* MOONRAKER_DB_KEY = "tool_spool_assignments";
+static constexpr const char* kSpoolJsonFilename = "tool_spools.json";
+static constexpr const char* kMoonrakerDbNamespace = "helix-screen";
+static constexpr const char* kMoonrakerDbKey = "tool_spool_assignments";
 
 namespace {
 
 /// The spool file keeps one assignment set per printer under "printers"; a file without
 /// it is the single-printer layout, a bare set keyed by tool index.
-constexpr const char* SPOOL_JSON_PRINTERS = "printers";
+constexpr const char* kSpoolJsonPrinters = "printers";
 
 /// The printer whose set was adopted from a single-printer file and has not yet loaded
 /// from its own DB.
-constexpr const char* SPOOL_JSON_ADOPTED_BY = "adopted_by";
+constexpr const char* kSpoolJsonAdoptedBy = "adopted_by";
 
 /// The configured printer whose assignments are being read or written.
 std::string spool_printer_key() {
@@ -1036,7 +1036,7 @@ std::string spool_printer_key() {
 }
 
 bool is_per_printer_spool_file(const nlohmann::json& data) {
-    const auto it = data.find(SPOOL_JSON_PRINTERS);
+    const auto it = data.find(kSpoolJsonPrinters);
     return it != data.end() && it->is_object();
 }
 
@@ -1201,7 +1201,7 @@ void ToolState::apply_spool_assignments(const nlohmann::json& data) {
 }
 
 void ToolState::save_spool_json() const {
-    std::string path = hfs::join_path(config_dir_, SPOOL_JSON_FILENAME);
+    std::string path = hfs::join_path(config_dir_, kSpoolJsonFilename);
 
     // Ensure directory exists
     hfs::create_directories(config_dir_);
@@ -1220,13 +1220,13 @@ void ToolState::save_spool_json() const {
         return;
     }
     if (!is_per_printer_spool_file(file)) {
-        file = nlohmann::json{{SPOOL_JSON_PRINTERS, nlohmann::json::object()}};
+        file = nlohmann::json{{kSpoolJsonPrinters, nlohmann::json::object()}};
     }
-    file[SPOOL_JSON_PRINTERS][spool_printer_key()] = spool_assignments_to_json();
+    file[kSpoolJsonPrinters][spool_printer_key()] = spool_assignments_to_json();
     if (spool_set_adopted_) {
-        file[SPOOL_JSON_ADOPTED_BY] = spool_printer_key();
-    } else if (json_util::safe_string(file, SPOOL_JSON_ADOPTED_BY) == spool_printer_key()) {
-        file.erase(SPOOL_JSON_ADOPTED_BY);
+        file[kSpoolJsonAdoptedBy] = spool_printer_key();
+    } else if (json_util::safe_string(file, kSpoolJsonAdoptedBy) == spool_printer_key()) {
+        file.erase(kSpoolJsonAdoptedBy);
     }
 
     // Every connect reloads the assignments from Moonraker and saves them back,
@@ -1248,7 +1248,7 @@ void ToolState::save_spool_json() const {
 }
 
 bool ToolState::load_spool_json() {
-    std::string path = hfs::join_path(config_dir_, SPOOL_JSON_FILENAME);
+    std::string path = hfs::join_path(config_dir_, kSpoolJsonFilename);
 
     if (!hfs::exists(path)) {
         spdlog::debug("[ToolState] No spool JSON file at {}", path);
@@ -1279,7 +1279,7 @@ bool ToolState::load_spool_json() {
         return true;
     }
 
-    const auto& printers = data[SPOOL_JSON_PRINTERS];
+    const auto& printers = data[kSpoolJsonPrinters];
     const auto mine = printers.find(spool_printer_key());
     if (mine == printers.end()) {
         spdlog::debug("[ToolState] No spool assignments for printer '{}' in {}",
@@ -1287,7 +1287,7 @@ bool ToolState::load_spool_json() {
         return false;
     }
     apply_spool_assignments(*mine);
-    spool_set_adopted_ = json_util::safe_string(data, SPOOL_JSON_ADOPTED_BY) == spool_printer_key();
+    spool_set_adopted_ = json_util::safe_string(data, kSpoolJsonAdoptedBy) == spool_printer_key();
     spdlog::info("[ToolState] Loaded spool assignments for printer '{}' from {}",
                  spool_printer_key(), path);
     return true;
@@ -1295,13 +1295,13 @@ bool ToolState::load_spool_json() {
 
 void ToolState::forget_printer_spools(const std::string& printer_id) const {
     const std::string path =
-        helix::paths::write_target(hfs::join_path(config_dir_, SPOOL_JSON_FILENAME));
+        helix::paths::write_target(hfs::join_path(config_dir_, kSpoolJsonFilename));
     const auto text = helix::text_io::read_file(path);
     if (!text) {
         return;
     }
     auto data = nlohmann::json::parse(*text, nullptr, false);
-    if (!is_per_printer_spool_file(data) || data[SPOOL_JSON_PRINTERS].erase(printer_id) == 0) {
+    if (!is_per_printer_spool_file(data) || data[kSpoolJsonPrinters].erase(printer_id) == 0) {
         return;
     }
     if (!helix::text_io::write_file_atomic(path, helix::json_util::safe_dump(data, 2))) {
@@ -1327,7 +1327,7 @@ void ToolState::save_spool_assignments(IMoonrakerAPI* api) {
     if (api) {
         auto json_data = spool_assignments_to_json();
         api->database_post_item(
-            MOONRAKER_DB_NAMESPACE, MOONRAKER_DB_KEY, json_data,
+            kMoonrakerDbNamespace, kMoonrakerDbKey, json_data,
             []() { spdlog::debug("[ToolState] Spool assignments saved to Moonraker DB"); },
             [](const MoonrakerError& err) {
                 spdlog::warn("[ToolState] Failed to save to Moonraker DB: {}", err.message);
@@ -1356,7 +1356,7 @@ void ToolState::load_spool_assignments(IMoonrakerAPI* api) {
     // manual unique_ptr payload copy this used to do by hand.
     spool_load_printer_ = spool_printer_key();
     api->database_get_item(
-        MOONRAKER_DB_NAMESPACE, MOONRAKER_DB_KEY,
+        kMoonrakerDbNamespace, kMoonrakerDbKey,
         async_lifetime_.bg_cb("ToolState::load_spool_assignments",
                               [this](const nlohmann::json& data) {
                                   spool_load_printer_.clear();

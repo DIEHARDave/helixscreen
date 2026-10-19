@@ -45,7 +45,7 @@ void MoonrakerJobAPI::start_print(const std::string& filename, SuccessCallback o
             spdlog::debug("[Moonraker API] Print started successfully");
             on_success();
         },
-        on_error, PRINT_START_TIMEOUT_MS);
+        on_error, kPrintStartTimeoutMs);
 }
 
 void MoonrakerJobAPI::pause_print(SuccessCallback on_success, ErrorCallback on_error) {
@@ -83,7 +83,7 @@ void MoonrakerJobAPI::cancel_print(SuccessCallback on_success, ErrorCallback on_
             spdlog::info("[Moonraker API] Print canceled successfully");
             on_success();
         },
-        on_error, CANCEL_TIMEOUT_MS);
+        on_error, kCancelTimeoutMs);
 }
 
 // ============================================================================
@@ -223,5 +223,5 @@ void MoonrakerJobAPI::start_modified_print(const std::string& original_filename,
                 // Fallback ALSO failed — only now surface the error to the caller.
                 on_error);
         },
-        PRINT_MODIFIED_TIMEOUT_MS);
+        kPrintModifiedTimeoutMs);
 }

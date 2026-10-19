@@ -4,16 +4,12 @@
 // Layout tests for ActionPromptModal's regular-button rows.
 //
 // Each prompt_button_group gets its own row, and a run of ungrouped buttons
-// shares one. A row of content-sized buttons wraps inside the fixed-width
-// (320px) dialog, so a row of >= 4 (AFC's "Lane 1".."Lane 4", #1043) becomes an
-// equal-width non-wrapping row instead. With <= 3 buttons a row stays
-// content-sized.
-//
-// The count alone is not the rule, though. An equal-width row splits the
-// container evenly, so it only holds while the labels fit their share: a
-// preheat macro offering seven "PLA 220/60" presets gets a few dozen pixels per
-// cell and clips every label. Those fall back to row_wrap and take the lines
-// they need. The invariant these tests defend is that no label is ever clipped.
+// shares one. choose_button_row_layout() picks each row's layout: <= 3 buttons
+// stay content-sized and wrap; 4 whose labels fit an even share make one
+// equal-width row (AFC's "Lane 1".."Lane 4", #1043); 5 or more labelled buttons
+// make a grid of equal cells, three across or two when the widest label does
+// not fit a third. Text and button rows scroll together in prompt_scroll while
+// the footer stays on the card.
 //
 // Tagged [ui_integration] (NOT hidden) — it shows real widgets and forces a
 // real LVGL layout pass, which is the only way the wrap actually manifests.
@@ -60,15 +56,19 @@ helix::PromptData make_regular_prompt(int n_buttons) {
     return data;
 }
 
-// Z-Mod's color picker, parsed from the same wire lines the ctl demo sends.
-helix::PromptData make_zmod_color_prompt() {
+// A prompt parsed from wire lines, as the ctl demos send them.
+helix::PromptData parse_prompt(const std::vector<std::string>& lines) {
     helix::ActionPromptManager manager;
     helix::PromptData shown;
     manager.set_on_show([&shown](const helix::PromptData& data) { shown = data; });
-    for (const std::string& line : helix::demo::zmod_color_picker_lines()) {
+    for (const std::string& line : lines) {
         manager.process_line(line);
     }
     return shown;
+}
+
+helix::PromptData make_zmod_color_prompt() {
+    return parse_prompt(helix::demo::zmod_color_picker_lines());
 }
 
 class ActionPromptLayoutFixture : public LVGLUITestFixture {
@@ -209,7 +209,7 @@ TEST_CASE_METHOD(ActionPromptLayoutFixture,
 // answer once the row genuinely cannot hold them.
 // ----------------------------------------------------------------------------
 TEST_CASE_METHOD(ActionPromptLayoutFixture,
-                 "ActionPromptModal: long labels wrap onto multiple rows instead of clipping",
+                 "ActionPromptModal: long labels spread over several lines instead of clipping",
                  "[action_prompt][layout][ui_integration]") {
     helix::PromptData data;
     data.title = "Preheat for Load";
@@ -512,15 +512,191 @@ TEST_CASE_METHOD(ActionPromptLayoutFixture,
         CAPTURE(i);
         CHECK(lv_obj_get_height(btns[i]) == theme_manager_get_spacing("button_height"));
     }
-    lv_obj_t* container = lv_obj_find_by_name(dialog, "button_container");
-    REQUIRE(container != nullptr);
-    CHECK(lv_obj_has_flag(container, LV_OBJ_FLAG_SCROLLABLE));
-    CHECK(lv_obj_get_scroll_bottom(container) > 0);
+    lv_obj_t* scroll = lv_obj_find_by_name(dialog, "prompt_scroll");
+    REQUIRE(scroll != nullptr);
+    CHECK(lv_obj_has_flag(scroll, LV_OBJ_FLAG_SCROLLABLE));
+    CHECK(lv_obj_get_scroll_bottom(scroll) > 0);
 
     lv_area_t card, footer_area;
     lv_obj_get_coords(dialog, &card);
     lv_obj_get_coords(btns.back(), &footer_area);
     CHECK(lv_area_is_in(&footer_area, &card, 0));
+
+    modal_.hide();
+}
+
+// ----------------------------------------------------------------------------
+// choose_button_row_layout(): the row layout decision, without widgets
+// ----------------------------------------------------------------------------
+TEST_CASE("choose_button_row_layout picks wrap, one row or a grid", "[action_prompt][layout]") {
+    using helix::ui::ButtonRowKind;
+    using helix::ui::choose_button_row_layout;
+    // A 480px card's button row: 448px across, 8px gaps, 8px cell padding.
+    helix::ui::ButtonRowMeasure m;
+    m.available = 448;
+    m.gap = 8;
+    m.cell_pad = 8;
+    m.widest_label = 60;
+
+    SECTION("three or fewer wrap") {
+        m.count = 3;
+        CHECK(choose_button_row_layout(m).kind == ButtonRowKind::Wrap);
+    }
+    SECTION("four that fit an even share make one row") {
+        m.count = 4;
+        const auto layout = choose_button_row_layout(m);
+        CHECK(layout.kind == ButtonRowKind::EqualRow);
+        CHECK(layout.cols == 4);
+    }
+    SECTION("four that do not fit an even share wrap") {
+        m.count = 4;
+        m.widest_label = 110; // + 16 padding > (448 - 24) / 4 = 106
+        CHECK(choose_button_row_layout(m).kind == ButtonRowKind::Wrap);
+    }
+    SECTION("five labelled buttons make a three-column grid") {
+        m.count = helix::ui::kPromptGridMinButtons;
+        const auto layout = choose_button_row_layout(m);
+        CHECK(layout.kind == ButtonRowKind::Grid);
+        CHECK(layout.cols == 3);
+    }
+    SECTION("a label too wide for a third drops the grid to two columns") {
+        m.count = 6;
+        m.widest_label = 130; // + 16 > (448 - 16) / 3 = 144
+        const auto layout = choose_button_row_layout(m);
+        CHECK(layout.kind == ButtonRowKind::Grid);
+        CHECK(layout.cols == 2);
+    }
+    SECTION("the widest label exactly filling a third keeps three columns") {
+        m.count = 6;
+        m.widest_label = 144 - 16;
+        CHECK(choose_button_row_layout(m).cols == 3);
+    }
+    SECTION("a label too wide even for half still gets two columns, ellipsized") {
+        m.count = 6;
+        m.widest_label = 400;
+        const auto layout = choose_button_row_layout(m);
+        CHECK(layout.kind == ButtonRowKind::Grid);
+        CHECK(layout.cols == 2);
+    }
+    SECTION("a row of swatches stays one line of tiles") {
+        m.count = 6;
+        m.all_swatches = true;
+        m.widest_label = 0;
+        const auto layout = choose_button_row_layout(m);
+        CHECK(layout.kind == ButtonRowKind::EqualRow);
+        CHECK(layout.cols == 6);
+    }
+    SECTION("an unmeasured row wraps") {
+        m.count = 6;
+        m.available = 0;
+        CHECK(choose_button_row_layout(m).kind == ButtonRowKind::Wrap);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// AFC_CALIBRATION on a six-unit AFC: a grid of unit buttons, every one
+// reachable by scrolling, and both footer buttons on the card.
+// ----------------------------------------------------------------------------
+namespace {
+
+lv_area_t coords_of(lv_obj_t* obj) {
+    lv_area_t a;
+    lv_obj_get_coords(obj, &a);
+    return a;
+}
+
+void check_afc_calibration_fits(helix::ui::ActionPromptModal& modal, lv_obj_t* screen) {
+    REQUIRE(modal.show_prompt(screen, parse_prompt(helix::demo::afc_calibration_lines())));
+    lv_obj_t* dialog = modal.dialog();
+    REQUIRE(dialog != nullptr);
+    lv_obj_update_layout(screen);
+
+    const auto& btns = ActionPromptModalTestAccess::buttons(modal);
+    REQUIRE(btns.size() == 8); // six units + two footer buttons
+    const lv_area_t card = coords_of(dialog);
+    const lv_area_t screen_area = coords_of(screen);
+    CHECK(lv_area_is_in(&card, &screen_area, 0));
+
+    // The footer never leaves the card.
+    for (size_t i = 6; i < 8; ++i) {
+        const lv_area_t footer = coords_of(btns[i]);
+        CAPTURE(i, card.y2, footer.y2);
+        CHECK(lv_area_is_in(&footer, &card, 0));
+    }
+
+    // A grid: equal cells, at most three to a line, the first line full.
+    const int32_t w0 = lv_obj_get_width(btns[0]);
+    std::vector<int32_t> line_ys;
+    for (size_t i = 0; i < 6; ++i) {
+        CAPTURE(i, lv_obj_get_width(btns[i]), w0);
+        CHECK(lv_obj_get_width(btns[i]) == w0);
+        const int32_t y = coords_of(btns[i]).y1;
+        if (std::find(line_ys.begin(), line_ys.end(), y) == line_ys.end()) {
+            line_ys.push_back(y);
+        }
+    }
+    CHECK(line_ys.size() >= 2);
+    CHECK(line_ys.size() <= 3);
+
+    // Every unit button can be scrolled fully into the visible scroll area.
+    lv_obj_t* scroll = lv_obj_find_by_name(dialog, "prompt_scroll");
+    REQUIRE(scroll != nullptr);
+    for (size_t i = 0; i < 6; ++i) {
+        lv_obj_scroll_to_view_recursive(btns[i], LV_ANIM_OFF);
+        lv_obj_update_layout(screen);
+        const lv_area_t area = coords_of(scroll);
+        const lv_area_t btn = coords_of(btns[i]);
+        CAPTURE(i, area.y1, area.y2, btn.y1, btn.y2);
+        CHECK(lv_area_is_in(&btn, &area, 0));
+        CHECK(lv_area_is_in(&btn, &card, 0));
+    }
+    modal.hide();
+}
+
+} // namespace
+
+TEST_CASE_METHOD(ActionPromptLayoutFixture,
+                 "ActionPromptModal: six-unit AFC calibration fits a 480x272 card",
+                 "[action_prompt][layout][ui_integration]") {
+    helix::test::ScopedGeometry micro(480, 272);
+    check_afc_calibration_fits(modal_, test_screen());
+}
+
+TEST_CASE_METHOD(ActionPromptLayoutFixture,
+                 "ActionPromptModal: six-unit AFC calibration fits an 800x480 card",
+                 "[action_prompt][layout][ui_integration]") {
+    helix::test::ScopedGeometry medium(800, 480);
+    check_afc_calibration_fits(modal_, test_screen());
+}
+
+// One label longer than the card is wide must not pan the prompt sideways.
+TEST_CASE_METHOD(ActionPromptLayoutFixture,
+                 "ActionPromptModal: a wrap-row label wider than the card ends in an ellipsis",
+                 "[action_prompt][layout][ui_integration]") {
+    helix::PromptData data;
+    data.title = "Long";
+    data.text_lines.push_back("Pick one");
+    helix::PromptButton btn;
+    btn.label = std::string(120, 'W');
+    btn.gcode = "RESPOND MSG=x";
+    btn.color = "primary";
+    data.buttons.push_back(btn);
+    REQUIRE(modal_.show_prompt(test_screen(), data));
+    lv_obj_update_layout(test_screen());
+
+    const auto& btns = ActionPromptModalTestAccess::buttons(modal_);
+    REQUIRE(btns.size() == 1);
+    lv_obj_t* row = lv_obj_get_parent(btns[0]);
+    CHECK(lv_obj_get_width(btns[0]) <= lv_obj_get_content_width(row));
+    lv_obj_t* label = lv_obj_get_child_by_type(btns[0], 0, &lv_label_class);
+    REQUIRE(label != nullptr);
+    CHECK(lv_obj_get_width(label) <= lv_obj_get_content_width(btns[0]));
+    CHECK(lv_label_get_long_mode(label) == LV_LABEL_LONG_MODE_DOTS);
+
+    lv_obj_t* scroll = lv_obj_find_by_name(modal_.dialog(), "prompt_scroll");
+    REQUIRE(scroll != nullptr);
+    CHECK(lv_obj_get_scroll_dir(scroll) == LV_DIR_VER);
+    CHECK(lv_obj_get_scroll_right(scroll) <= 0);
 
     modal_.hide();
 }

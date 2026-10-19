@@ -72,8 +72,8 @@ bool probe_snapshot_reachable(const std::string& snapshot_url) {
     auto req = std::make_shared<HttpRequest>();
     req->method = HTTP_GET;
     req->url = snapshot_url;
-    req->connect_timeout = SNAPSHOT_PROBE_CONNECT_TIMEOUT_SEC;
-    req->timeout = SNAPSHOT_PROBE_TOTAL_TIMEOUT_SEC;
+    req->connect_timeout = kSnapshotProbeConnectTimeoutSec;
+    req->timeout = kSnapshotProbeTotalTimeoutSec;
     auto resp = requests::request(req);
     if (resp && resp->status_code == 200) {
         return true;
@@ -87,8 +87,7 @@ bool probe_snapshot_reachable(const std::string& snapshot_url) {
     } else {
         spdlog::debug("[Discovery] Snapshot probe of {} got no response within {}s "
                       "(connect budget {}s)",
-                      snapshot_url, SNAPSHOT_PROBE_TOTAL_TIMEOUT_SEC,
-                      SNAPSHOT_PROBE_CONNECT_TIMEOUT_SEC);
+                      snapshot_url, kSnapshotProbeTotalTimeoutSec, kSnapshotProbeConnectTimeoutSec);
     }
     return false;
 }

@@ -37,7 +37,7 @@ using WidgetReuseMap = std::unordered_map<std::string, std::unique_ptr<PanelWidg
 
 /// Appended to a widget id in compute_visible_widget_ids() while its hardware
 /// gate reads 0, so a gate flip changes the page's id list.
-inline constexpr char GATED_ID_SUFFIX[] = "~gated";
+inline constexpr char kGatedIdSuffix[] = "~gated";
 
 /// A placed widget's footprint on the grid, in tracks, as the card background
 /// pass reads it.

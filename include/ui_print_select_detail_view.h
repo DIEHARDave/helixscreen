@@ -6,6 +6,7 @@
 #include "ui_exclude_mode_controller.h"
 #include "ui_filament_mapping_card.h"
 #include "ui_observer_guard.h"
+#include "ui_plugin_items_menu.h"
 #include "ui_pre_print_options_renderer.h"
 #include "ui_print_preparation_manager.h"
 
@@ -259,6 +260,10 @@ class PrintSelectDetailView : public OverlayBase {
      */
     void show_remap_help_modal();
 
+    /// Opens the plugin items menu for the file shown, below the more button, with
+    /// the print_file context as it stands now (metadata not yet loaded is left out).
+    void show_plugin_actions();
+
     /**
      * @brief Set the visible subject for XML binding
      *
@@ -364,7 +369,7 @@ class PrintSelectDetailView : public OverlayBase {
      * Unlike run_when_loaded() this fires when EITHER the viewer parse OR the
      * headless tools_used scan completes, and the file scan has answered — so it
      * never hangs on 2D-only platforms. If already ready, runs @p cb
-     * synchronously. A safety timeout (see PREFLIGHT_READY_TIMEOUT_MS) fires
+     * synchronously. A safety timeout (see kPreflightReadyTimeoutMs) fires
      * @p cb anyway if the answers do not arrive, so a stuck/failed scan can never
      * wedge the print: the print proceeds without those checks rather than never
      * starting.
@@ -634,6 +639,10 @@ class PrintSelectDetailView : public OverlayBase {
         return cached_file_metadata_;
     }
 
+    /// The shown file's identity, PrintPreparationManager::scan_key(): the key
+    /// of its operations scan and of its ToolsUsedCache entry.
+    [[nodiscard]] std::string current_file_key() const;
+
     // === Checkbox Access (for prep manager setup) ===
 
     [[nodiscard]] lv_obj_t* get_bed_mesh_checkbox() const {
@@ -692,6 +701,12 @@ class PrintSelectDetailView : public OverlayBase {
 
   private:
     friend class ::PrintSelectDetailViewTestAccess;
+
+    /// Keep the file's fetched metadata and re-estimate the prep time, which
+    /// heats to the metadata's first-layer temperatures. Metadata fetched for
+    /// @p file_key, a current_file_key(), is dropped once another file shows.
+    /// @return false when dropped
+    bool apply_file_metadata(const std::string& file_key, const FileMetadata& metadata);
 
     /**
      * @brief LV_EVENT_DELETE hook on the detail root: the only notice this view
@@ -904,7 +919,7 @@ class PrintSelectDetailView : public OverlayBase {
     // Safety fallback: if neither the viewer parse nor the headless scan reports
     // readiness within this window, fire the deferred print attempt anyway
     // (graceful degradation — print without Part A's optimization, never hang).
-    static constexpr uint32_t PREFLIGHT_READY_TIMEOUT_MS = 8000;
+    static constexpr uint32_t kPreflightReadyTimeoutMs = 8000;
 
     // Pre-print option toggle state lives in `option_rows_renderer_` (one
     // heap-allocated subject per option) — the legacy fixed six subjects
@@ -928,6 +943,10 @@ class PrintSelectDetailView : public OverlayBase {
     // the copy is chosen when the icon is tapped, not when it is published.
     lv_subject_t color_card_remap_help_visible_{};
     lv_subject_t empty_tools_warning_{}; // 1 = at least one used tool's slot is empty
+    /// 1 while an enabled plugin declares a print_file menu item: the button row
+    /// becomes Delete, more, Print as square icon buttons. Set on every show().
+    lv_subject_t print_detail_has_plugin_items_{};
+    helix::ui::PluginItemsMenu plugin_items_menu_;
     // Whether a job rewrite can run, in the tri-state the pre-print option rows
     // that need one bind their visibility to: 1 yes, 0 no, -1 not known yet.
     // Published by publish_rewrite_availability().
@@ -1074,10 +1093,6 @@ class PrintSelectDetailView : public OverlayBase {
     void resolve_local_gcodes_root();
 
     void reclaim_download(const std::string& path);
-
-    /// The shown file's identity, PrintPreparationManager::scan_key(): the key
-    /// of its operations scan and of its ToolsUsedCache entry.
-    [[nodiscard]] std::string current_file_key() const;
 
     /**
      * @brief Invoke @p cb (main thread) once the current file's gcode is on disk

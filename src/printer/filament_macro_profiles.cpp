@@ -49,7 +49,7 @@ struct MacroProfile {
 // with CLEAR_NOZZLE, which has no `_CG28` and reaches Z through MOVE_TO_TRASH's
 // XY-only guard - which is why the backend still answers
 // delegates_homing_to_printer() false and routes through ensure_homed_then().
-constexpr std::array<MacroProfile, 2> MACRO_PROFILES{{
+constexpr std::array<MacroProfile, 2> kMacroProfiles{{
     {"M604", "QIDI stock", /*heats_hotend=*/true, /*homes_if_needed=*/true},
     {"M603", "QIDI stock", /*heats_hotend=*/true, /*homes_if_needed=*/true},
 }};
@@ -60,7 +60,7 @@ const MacroProfile* find_profile(const std::string& macro_name) {
         return nullptr;
     }
     const std::string upper = helix::text_io::to_upper(macro_name);
-    for (const MacroProfile& p : MACRO_PROFILES) {
+    for (const MacroProfile& p : kMacroProfiles) {
         if (upper == p.name) {
             return &p;
         }

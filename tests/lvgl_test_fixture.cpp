@@ -31,7 +31,7 @@ bool LVGLTestFixture::s_queue_initialized = false;
 // Size: width * 10 lines for partial rendering mode
 // IMPORTANT: Must be aligned to LV_DRAW_BUF_ALIGN (typically 4 or 8 bytes)
 // Using alignas(64) for maximum compatibility with all platforms
-alignas(64) static lv_color_t s_display_buf[TEST_DISPLAY_WIDTH * 10];
+alignas(64) static lv_color_t s_display_buf[kTestDisplayWidth * 10];
 
 /**
  * @brief Flush callback for virtual display (no-op for testing)
@@ -93,8 +93,8 @@ void LVGLTestFixture::reclaim_display() {
     }
     const int32_t w = lv_display_get_horizontal_resolution(s_display);
     const int32_t h = lv_display_get_vertical_resolution(s_display);
-    if (w != TEST_DISPLAY_WIDTH || h != TEST_DISPLAY_HEIGHT) {
-        lv_display_set_resolution(s_display, TEST_DISPLAY_WIDTH, TEST_DISPLAY_HEIGHT);
+    if (w != kTestDisplayWidth || h != kTestDisplayHeight) {
+        lv_display_set_resolution(s_display, kTestDisplayWidth, kTestDisplayHeight);
         geometry_moved = true;
     }
     if (lv_display_get_default() != s_display) {
@@ -194,7 +194,7 @@ void LVGLTestFixture::ensure_lvgl_initialized() {
         lv_init_safe();
 
         // Create virtual display for headless testing
-        s_display = lv_display_create(TEST_DISPLAY_WIDTH, TEST_DISPLAY_HEIGHT);
+        s_display = lv_display_create(kTestDisplayWidth, kTestDisplayHeight);
         if (s_display != nullptr) {
             lv_display_set_buffers(s_display, s_display_buf, nullptr, sizeof(s_display_buf),
                                    LV_DISPLAY_RENDER_MODE_PARTIAL);

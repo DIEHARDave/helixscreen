@@ -41,20 +41,20 @@
 // ============================================================================
 
 /** Minimum bar width in pixels (prevents bars from becoming invisible) */
-static constexpr int32_t MIN_BAR_WIDTH_PX = 3;
+static constexpr int32_t kMinBarWidthPx = 3;
 
 /** Maximum bar width in pixels (prevents bars from becoming too wide) */
-static constexpr int32_t MAX_BAR_WIDTH_PX = 24;
+static constexpr int32_t kMaxBarWidthPx = 24;
 
 /** Bar width cap when the caller never reported a width (non-home callers) */
-static constexpr int32_t DEFAULT_MAX_BAR_WIDTH_PX = 16;
+static constexpr int32_t kDefaultMaxBarWidthPx = 16;
 
 /**
  * Cell width per unit of bar width cap. Four lanes then span about half the
  * cell, and the cap scales with the tier instead of stepping at fixed pixel
  * widths. More lanes shrink below the cap through calc_bar_width().
  */
-static constexpr int32_t BAR_WIDTH_DIVISOR = 8;
+static constexpr int32_t kBarWidthDivisor = 8;
 
 /**
  * Smallest spool graphic the wide view will draw (px).
@@ -64,7 +64,7 @@ static constexpr int32_t BAR_WIDTH_DIVISOR = 8;
  * font ladder is doing. Deliberately not derived from a spacing or font token -
  * see min_spool_cell_w() for what IS derived from it.
  */
-static constexpr int MIN_SPOOL_IMG_PX = 24;
+static constexpr int kMinSpoolImgPx = 24;
 
 /**
  * Largest spool graphic the wide view will draw (px).
@@ -77,7 +77,7 @@ static constexpr int MIN_SPOOL_IMG_PX = 24;
  * so adopting it would shrink the graphic on the three cramped tiers and grow
  * it on the rest for reasons unrelated to fitting anything.
  */
-static constexpr int MAX_SPOOL_IMG_PX = 56;
+static constexpr int kMaxSpoolImgPx = 56;
 
 /**
  * Minimum width of one spool cell in the wide spool view (px), and the divisor
@@ -98,7 +98,7 @@ static constexpr int MAX_SPOOL_IMG_PX = 56;
  * per line. Sharing one `min_text` makes that disagreement unrepresentable.
  */
 static int min_spool_cell_w(int min_text, int gap) {
-    return MIN_SPOOL_IMG_PX + helix::ui::AMS_LANE_SPOOL_BADGE_MARGIN_PX + gap + min_text;
+    return kMinSpoolImgPx + helix::ui::kAmsLaneSpoolBadgeMarginPx + gap + min_text;
 }
 
 // ============================================================================
@@ -106,7 +106,7 @@ static int min_spool_cell_w(int min_text, int gap) {
 // ============================================================================
 
 /** Magic number to identify ams_mini_status widgets ("AMS1" as ASCII) */
-static constexpr uint32_t AMS_MINI_STATUS_MAGIC = 0x414D5331;
+static constexpr uint32_t kAmsMiniStatusMagic = 0x414D5331;
 
 /** Render mode: narrow bars vs. wide spool cells (selected by width_px) */
 enum class AmsMiniMode { BAR, SPOOL };
@@ -145,7 +145,7 @@ struct UnitRowInfo {
  * @brief User data stored on each ams_mini_status widget
  */
 struct AmsMiniStatusData {
-    uint32_t magic = AMS_MINI_STATUS_MAGIC;
+    uint32_t magic = kAmsMiniStatusMagic;
     int32_t height = 32;
     int slot_count = 0;
     int max_visible = AMS_MINI_STATUS_MAX_VISIBLE;
@@ -255,8 +255,8 @@ static int32_t effective_max_bar_width(const AmsMiniStatusData* data) {
     // has ever run - set_slot_count()/set_slot_label() can trigger a rebuild in
     // that state, and callers outside the home grid never set it.
     if (data->width_px <= 0)
-        return DEFAULT_MAX_BAR_WIDTH_PX;
-    return std::clamp(data->width_px / BAR_WIDTH_DIVISOR, MIN_BAR_WIDTH_PX, MAX_BAR_WIDTH_PX);
+        return kDefaultMaxBarWidthPx;
+    return std::clamp(data->width_px / kBarWidthDivisor, kMinBarWidthPx, kMaxBarWidthPx);
 }
 
 /**
@@ -425,7 +425,7 @@ static void rebuild_bars(AmsMiniStatusData* data) {
             per_row_height = 12; // Minimum per-row height
 
         int32_t bar_height =
-            per_row_height - ams_draw::STATUS_LINE_HEIGHT_PX - ams_draw::STATUS_LINE_GAP_PX;
+            per_row_height - ams_draw::kStatusLineHeightPx - ams_draw::kStatusLineGapPx;
         if (bar_height < 6)
             bar_height = 6;
 
@@ -449,7 +449,7 @@ static void rebuild_bars(AmsMiniStatusData* data) {
 
             int32_t max_bw = effective_max_bar_width(data);
             int32_t bar_width = ams_draw::calc_bar_width(container_width, row_slots, gap,
-                                                         MIN_BAR_WIDTH_PX, max_bw, 90);
+                                                         kMinBarWidthPx, max_bw, 90);
 
             // Create/update slots in this unit row
             for (int s = 0; s < row_info->slot_count; ++s) {
@@ -510,12 +510,12 @@ static void rebuild_bars(AmsMiniStatusData* data) {
         lv_obj_set_style_pad_row(data->bars_container, 0, LV_PART_MAIN);
 
         int32_t bar_height =
-            effective_height - ams_draw::STATUS_LINE_HEIGHT_PX - ams_draw::STATUS_LINE_GAP_PX;
+            effective_height - ams_draw::kStatusLineHeightPx - ams_draw::kStatusLineGapPx;
 
         // Use 90% of container width for bars (leave 10% margin for centering)
         int32_t max_bw = effective_max_bar_width(data);
         int32_t bar_width = ams_draw::calc_bar_width(container_width, visible_count, gap,
-                                                     MIN_BAR_WIDTH_PX, max_bw, 90);
+                                                     kMinBarWidthPx, max_bw, 90);
 
         // Create/update bars
         for (int i = 0; i < AMS_MINI_STATUS_MAX_VISIBLE; i++) {
@@ -847,7 +847,7 @@ static void rebuild_spools(AmsMiniStatusData* data) {
     int gap = theme_manager_get_spacing("space_xxs");
     // What the ams_lane_spool widget adds around the graphic for the lane
     // badge, so a cell is this much wider than the spool size asked for.
-    const int badge_margin = helix::ui::AMS_LANE_SPOOL_BADGE_MARGIN_PX;
+    const int badge_margin = helix::ui::kAmsLaneSpoolBadgeMarginPx;
     const int lanes = std::max(1, data->slot_count);
     // The widest material string this render will draw, in the font that will
     // draw it. Both the cell count and the text reservation come from it, so the
@@ -856,7 +856,7 @@ static void rebuild_spools(AmsMiniStatusData* data) {
     const int min_text = measure_widest_material(data, sc);
     const int min_cell = min_spool_cell_w(min_text, gap);
     // Below a spool and its badge a cell no longer identifies its lane.
-    const int floor_cell = MIN_SPOOL_IMG_PX + badge_margin;
+    const int floor_cell = kMinSpoolImgPx + badge_margin;
     // Every lane's equal share of the row. -2px so sub-pixel rounding cannot
     // tip a row that fits into a spurious scrollbar.
     const int share = (avail_w - (lanes - 1) * gap - 2) / lanes;
@@ -871,11 +871,11 @@ static void rebuild_spools(AmsMiniStatusData* data) {
     const int pct_h = pct_font ? static_cast<int>(lv_font_get_line_height(pct_font)) : 12;
     // The spool's wrap is badge_margin taller than the spool, and the cell
     // spaces the wrap and the text block by one gap.
-    const int floor_h = MIN_SPOOL_IMG_PX + badge_margin + gap;
-    const int row_spool = std::min(avail_h - 4, MAX_SPOOL_IMG_PX); // square spool fits the row
+    const int floor_h = kMinSpoolImgPx + badge_margin + gap;
+    const int row_spool = std::min(avail_h - 4, kMaxSpoolImgPx); // square spool fits the row
     const int stacked_cell = std::max(share, floor_cell);
     auto stacked_spool_with = [&](int text_block) {
-        return std::min({avail_h - badge_margin - text_block - gap, MAX_SPOOL_IMG_PX,
+        return std::min({avail_h - badge_margin - text_block - gap, kMaxSpoolImgPx,
                          stacked_cell - badge_margin});
     };
     // The spool already draws how full it is, so the percent line under the
@@ -902,7 +902,7 @@ static void rebuild_spools(AmsMiniStatusData* data) {
         // Beside the spool, every lane, the name shortened into what is left
         // next to the spool or dropped when too little is left to read.
         cell_px = share;
-        spool_size = std::max(std::min(spool_size, cell_px - badge_margin), MIN_SPOOL_IMG_PX);
+        spool_size = std::max(std::min(spool_size, cell_px - badge_margin), kMinSpoolImgPx);
         const int leftover = cell_px - (spool_size + badge_margin) - gap;
         if (leftover >= min_readable_text_w(sc)) {
             text_w = leftover;
@@ -915,10 +915,10 @@ static void rebuild_spools(AmsMiniStatusData* data) {
         // overflow the cell and a long name wraps inside it.
         cell_px = std::max(share, min_cell);
         spool_size = std::min(spool_size, cell_px - badge_margin - gap - min_text);
-        text_w = std::max(cell_px - (std::max(spool_size, MIN_SPOOL_IMG_PX) + badge_margin) - gap,
+        text_w = std::max(cell_px - (std::max(spool_size, kMinSpoolImgPx) + badge_margin) - gap,
                           min_text);
     }
-    spool_size = std::max(spool_size, MIN_SPOOL_IMG_PX);
+    spool_size = std::max(spool_size, kMinSpoolImgPx);
 
     const int n = static_cast<int>(data->spool_cells.size());
     if (n <= 0) {
@@ -1008,7 +1008,7 @@ static void rebuild_spools(AmsMiniStatusData* data) {
         const bool show_text = text_w > 0;
         const bool show_pct = !stacked || stacked_pct;
         const lv_opa_t text_opa =
-            cd.lane_state == helix::ui::LaneState::Ghosted ? ams_draw::GHOST_OPA : LV_OPA_COVER;
+            cd.lane_state == helix::ui::LaneState::Ghosted ? ams_draw::kGhostOpa : LV_OPA_COVER;
         lv_obj_t* col = cell_part(cell, "spool_text_%d", slot);
         if (col) {
             lv_obj_set_width(col, text_w);
@@ -1343,7 +1343,7 @@ void ui_ams_mini_status_set_width(lv_obj_t* obj, int width_px) {
 
 bool ui_ams_mini_status_is_valid(lv_obj_t* obj) {
     auto* data = get_data(obj);
-    return data && data->magic == AMS_MINI_STATUS_MAGIC;
+    return data && data->magic == kAmsMiniStatusMagic;
 }
 
 // ============================================================================

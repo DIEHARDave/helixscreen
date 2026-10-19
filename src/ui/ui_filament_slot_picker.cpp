@@ -19,14 +19,14 @@ namespace helix::ui {
 // per AMS configuration. lv_obj_add_event_cb and lv_label_set_text are used
 // here as allowed exceptions for dynamic content.
 namespace {
-constexpr lv_opa_t SWATCH_BORDER_OPA = 30;
-constexpr lv_opa_t SELECTED_BG_OPA = 40;
+constexpr lv_opa_t kSwatchBorderOpa = 30;
+constexpr lv_opa_t kSelectedBgOpa = 40;
 /// Empty bays stay selectable (mapping a tool to a bay you are about to load is
 /// legitimate) but must read as clearly not-ready at a glance. 60% was too close
 /// to a filled row to carry that on a glossy panel.
-constexpr lv_opa_t EMPTY_ROW_OPA = LV_OPA_30;
-constexpr lv_opa_t BACKDROP_OPA = 128;
-constexpr int32_t CARD_MIN_WIDTH = 480;
+constexpr lv_opa_t kEmptyRowOpa = LV_OPA_30;
+constexpr lv_opa_t kBackdropOpa = 128;
+constexpr int32_t kCardMinWidth = 480;
 } // namespace
 
 FilamentSlotPicker::~FilamentSlotPicker() {
@@ -67,7 +67,7 @@ void FilamentSlotPicker::show(lv_obj_t* parent, lv_obj_t* trigger,
     lv_obj_remove_style_all(backdrop_);
     lv_obj_set_size(backdrop_, LV_PCT(100), LV_PCT(100));
     lv_obj_set_style_bg_color(backdrop_, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(backdrop_, BACKDROP_OPA, 0);
+    lv_obj_set_style_bg_opa(backdrop_, kBackdropOpa, 0);
     lv_obj_add_flag(backdrop_, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_remove_flag(backdrop_, LV_OBJ_FLAG_SCROLLABLE);
 
@@ -89,7 +89,7 @@ void FilamentSlotPicker::show(lv_obj_t* parent, lv_obj_t* trigger,
     lv_obj_remove_style_all(card);
     lv_obj_set_size(card, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_style_max_height(card, LV_PCT(60), 0);
-    lv_obj_set_style_min_width(card, CARD_MIN_WIDTH, 0);
+    lv_obj_set_style_min_width(card, kCardMinWidth, 0);
     lv_obj_set_style_bg_color(card, theme_manager_get_color("elevated_bg"), 0);
     lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(card, card_radius, 0);
@@ -129,7 +129,7 @@ void FilamentSlotPicker::hide() {
     // Restore trigger border before clearing reference
     if (trigger_ && trigger_highlighted_) {
         lv_obj_set_style_border_color(trigger_, theme_manager_get_color("text_muted"), 0);
-        lv_obj_set_style_border_opa(trigger_, SWATCH_BORDER_OPA, 0);
+        lv_obj_set_style_border_opa(trigger_, kSwatchBorderOpa, 0);
     }
 
     helix::ui::safe_delete_deferred(backdrop_);
@@ -153,7 +153,7 @@ void FilamentSlotPicker::create_slot_row(lv_obj_t* list, int index,
     }
 
     if (slot.is_empty) {
-        lv_obj_set_style_opa(row, EMPTY_ROW_OPA, 0);
+        lv_obj_set_style_opa(row, kEmptyRowOpa, 0);
     }
 
     bool is_selected = !current_selection_.is_auto &&
@@ -161,7 +161,7 @@ void FilamentSlotPicker::create_slot_row(lv_obj_t* list, int index,
                        slot.backend_index == current_selection_.backend_index;
     if (is_selected) {
         lv_obj_set_style_bg_color(row, theme_manager_get_color("primary"), 0);
-        lv_obj_set_style_bg_opa(row, SELECTED_BG_OPA, 0);
+        lv_obj_set_style_bg_opa(row, kSelectedBgOpa, 0);
         lv_obj_set_style_border_width(row, 1, 0);
         lv_obj_set_style_border_color(row, theme_manager_get_color("primary"), 0);
     }

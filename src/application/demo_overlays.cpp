@@ -54,6 +54,30 @@ using namespace helix;
 #ifdef HELIX_ENABLE_REMOTE_CONTROL
 namespace helix {
 
+namespace {
+
+/// Feed a prompt's `// action:` lines through the app's ActionPromptManager,
+/// the path a printer's response takes.
+bool feed_prompt_lines(const std::string& name, const std::vector<std::string>& lines,
+                       std::string* error) {
+    auto* manager = helix::ActionPromptManager::instance();
+    if (manager == nullptr) {
+        const std::string reason =
+            name + ": no ActionPromptManager is registered (no printer session)";
+        spdlog::warn("[Demo] {}", reason);
+        if (error != nullptr) {
+            *error = reason;
+        }
+        return false;
+    }
+    for (const std::string& line : lines) {
+        manager->process_line(line);
+    }
+    return true;
+}
+
+} // namespace
+
 // Bring up a demo overlay/modal with representative sample data. These screens
 // only appear in response to a real printer event (pre-print check, runout,
 // active print) or configured state (lock PIN), so mock-mode navigation can't
@@ -180,15 +204,13 @@ bool show_demo_overlay(const std::string& name, std::string* error) {
         // it sits below the scroll area, so it is the shape most likely to
         // overrun the 85% card cap. Unreachable in mock mode — it needs a live
         // Klipper `action:prompt_begin` — so this is the only way to measure it.
-        lv_subject_t* seg = lv_xml_get_subject(nullptr, "afc_fault_segment");
-        if (seg != nullptr) {
-            lv_subject_set_int(seg, static_cast<int>(PathSegment::HUB));
-        }
+        // The modal places the diagram from its own text, so the first line is
+        // AFC's hub fault sentence.
         helix::PromptData data;
         data.title = "Filament Runout Detected";
         data.severity = "error";
         data.text_lines = {
-            "Lane 1 ran out of filament during the print.",
+            "lane1 filament did not trigger hub sensor, CHECK FILAMENT PATH",
             "The toolhead has been parked and the print is paused.",
             "Load a new spool into lane 1, then choose how to continue.",
         };
@@ -258,23 +280,15 @@ bool show_demo_overlay(const std::string& name, std::string* error) {
         return true;
     }
 
+    if (name == "action-prompt-afc-cal") {
+        // AFC_CALIBRATION's unit picker on a six-unit AFC: more buttons than one
+        // row holds, a two-button footer, and a long text line.
+        return feed_prompt_lines(name, helix::demo::afc_calibration_lines(), error);
+    }
+
     if (name == "action-prompt-zmod") {
-        // The lines go through the app's ActionPromptManager, the same path a
-        // printer's response takes, so this is exactly what Z-Mod's macro shows.
-        auto* manager = helix::ActionPromptManager::instance();
-        if (manager == nullptr) {
-            const std::string reason =
-                "action-prompt-zmod: no ActionPromptManager is registered (no printer session)";
-            spdlog::warn("[Demo] {}", reason);
-            if (error != nullptr) {
-                *error = reason;
-            }
-            return false;
-        }
-        for (const std::string& line : helix::demo::zmod_color_picker_lines()) {
-            manager->process_line(line);
-        }
-        return true;
+        // Exactly what Z-Mod's color-picker macro shows.
+        return feed_prompt_lines(name, helix::demo::zmod_color_picker_lines(), error);
     }
 
     if (name == "lock-screen") {
