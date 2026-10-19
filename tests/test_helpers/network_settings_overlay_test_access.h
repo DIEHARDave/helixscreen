@@ -41,6 +41,11 @@ class NetworkSettingsOverlayTestAccess {
     static lv_subject_t& wifi_connected(NetworkSettingsOverlay& o) {
         return o.wifi_connected_;
     }
+    /// Apply a status read's answer the way the async read does.
+    static void apply_wifi_status(NetworkSettingsOverlay& o,
+                                  const WifiBackend::ConnectionStatus& status) {
+        o.apply_wifi_status(status);
+    }
     /// The country dropdown's selection subject (0 = not set).
     static lv_subject_t& wifi_country_index(NetworkSettingsOverlay& o) {
         return o.wifi_country_index_;

@@ -142,3 +142,31 @@ TEST_CASE("network section states when frequency is unavailable", "[wifi][link]"
     CHECK(link_history_to_json(h, false)["frequency_available"] == false);
     CHECK(link_history_to_json(h, true)["frequency_available"] == true);
 }
+
+TEST_CASE("a status WiFi control could not read makes no link sample", "[wifi][link]") {
+    WifiBackend::ConnectionStatus st;
+    st.connected = true;
+    st.frequency_mhz = 2437;
+
+    const auto live = link_sample_from_status(st, 42, kProcSample, "wlan0");
+    REQUIRE(live.has_value());
+    CHECK(live->uptime_s == 42);
+    CHECK(live->connected);
+    CHECK(live->frequency_mhz == 2437);
+    CHECK(live->radio.rssi_dbm == -52);
+
+    // The cached answer of a wedged lane: recording it would log a stale link.
+    st.unresponsive = true;
+    CHECK_FALSE(link_sample_from_status(st, 43, kProcSample, "wlan0").has_value());
+}
+
+TEST_CASE("a disconnected status samples no radio row", "[wifi][link]") {
+    WifiBackend::ConnectionStatus st;
+    st.connected = false;
+    st.frequency_mhz = 2437;
+    const auto s = link_sample_from_status(st, 7, kProcSample, "wlan0");
+    REQUIRE(s.has_value());
+    CHECK_FALSE(s->connected);
+    CHECK(s->frequency_mhz == 0);
+    CHECK_FALSE(s->radio.rssi_dbm.has_value());
+}

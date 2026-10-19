@@ -132,3 +132,22 @@ TEST_CASE_METHOD(CapabilityFixture,
 
     CHECK(hidden(root, "wifi_country_container"));
 }
+
+TEST_CASE_METHOD(CapabilityFixture,
+                 "Network settings shows WiFi isn't responding only while control is unresponsive",
+                 "[network_settings][wifi_control_lane]") {
+    NetworkSettingsOverlay overlay;
+    lv_obj_t* root = open_overlay(overlay, std::make_unique<WifiBackendMock>());
+
+    WifiBackend::ConnectionStatus status;
+    status.connected = true;
+    status.ssid = "Home";
+    Access::apply_wifi_status(overlay, status);
+    CHECK(hidden(root, "wifi_unresponsive_state"));
+
+    status.unresponsive = true;
+    Access::apply_wifi_status(overlay, status);
+    CHECK_FALSE(hidden(root, "wifi_unresponsive_state"));
+    // The rows above keep the last known state.
+    CHECK_FALSE(hidden(root, "wifi_connected_state"));
+}

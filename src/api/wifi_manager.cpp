@@ -643,8 +643,6 @@ void WiFiManager::stop_scan() {
         std::lock_guard<std::mutex> lock(callback_mutex_);
         scan_callback_ = nullptr;
     }
-    user_scan_waiting_ = false;
-    ++scan_wait_generation_;
 }
 
 void WiFiManager::scan_timer_callback(lv_timer_t* timer) {
@@ -775,16 +773,9 @@ void WiFiManager::apply_connect_result(uint64_t generation, const std::string& s
     }
     // Success/failure will be reported via CONNECTED/AUTH_FAILED events — or, when the
     // backend never produces either, by the watchdog armed here. Either event may
-    // already have landed while the join ran on the lane: a CONNECTED clears
-    // connecting_in_progress_, an AUTH_FAILED owns the attempt through its grace timer.
-    bool pending;
-    {
-        std::lock_guard<std::mutex> lock(callback_mutex_);
-        pending = connecting_in_progress_;
-    }
-    if (pending && !auth_fail_grace_timer_) {
-        start_connect_timeout();
-    }
+    // already have landed while the join ran on the lane; the watchdog then finds
+    // nothing pending when it fires and delivers nothing.
+    start_connect_timeout();
 }
 
 void WiFiManager::disconnect() {

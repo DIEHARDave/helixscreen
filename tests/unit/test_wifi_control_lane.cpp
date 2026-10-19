@@ -48,6 +48,13 @@ class StallingBackend : public WifiBackendMock {
   public:
     static constexpr auto kMaxStall = std::chrono::seconds(3);
 
+    WiFiError get_scan_results(std::vector<WiFiNetwork>& networks) override {
+        if (fail_results_.load()) {
+            networks.clear();
+            return WiFiError(WiFiResult::BACKEND_ERROR, "SCAN_RESULTS failed", "");
+        }
+        return WifiBackendMock::get_scan_results(networks);
+    }
     WiFiError trigger_scan() override {
         enter(triggers_);
         if (fail_triggers_.load()) {
@@ -108,6 +115,9 @@ class StallingBackend : public WifiBackendMock {
     void fail_triggers() {
         fail_triggers_ = true;
     }
+    void fail_results() {
+        fail_results_ = true;
+    }
 
     int triggers() const {
         return triggers_.load();
@@ -152,6 +162,7 @@ class StallingBackend : public WifiBackendMock {
     std::atomic<int> status_delay_ms_{0};
     std::atomic<int> connect_delay_ms_{0};
     std::atomic<bool> fail_triggers_{false};
+    std::atomic<bool> fail_results_{false};
 };
 
 struct ControlLaneFixture : LVGLTestFixture {
@@ -645,4 +656,55 @@ TEST_CASE_METHOD(ControlLaneFixture,
     CHECK(batched.ssid == "Home");
     CHECK(probe_answered);
     CHECK(backend->statuses() == asked + 1);
+}
+
+TEST_CASE_METHOD(ControlLaneFixture, "a periodic scan tick sends its trigger down the lane",
+                 "[wifi][wifi_control_lane]") {
+    wm->start_scan([](const std::vector<WiFiNetwork>&) {});
+    REQUIRE(wait_until([&] { return backend->triggers() == 1; }));
+    WiFiManagerTestAccess::fire_scan_complete(*wm);
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    REQUIRE(WiFiManagerTestAccess::scan_should_trigger(*wm));
+
+    WiFiManagerTestAccess::fire_scan_timer(*wm);
+    REQUIRE(wait_until([&] { return backend->triggers() == 2; }));
+    const auto callers = backend->callers();
+    REQUIRE_FALSE(callers.empty());
+    CHECK(callers.back() != main_thread);
+}
+
+TEST_CASE_METHOD(ControlLaneFixture, "a scan whose results cannot be read keeps the list shown",
+                 "[wifi][wifi_control_lane]") {
+    std::vector<size_t> deliveries;
+    wm->start_scan([&](const std::vector<WiFiNetwork>& n) { deliveries.push_back(n.size()); });
+    REQUIRE(wait_until([&] { return backend->triggers() == 1; }));
+    WiFiManagerTestAccess::fire_scan_complete(*wm);
+    REQUIRE(wait_until([&] { return deliveries.size() == 1; }));
+    const size_t shown = deliveries.front();
+    REQUIRE(shown > 0);
+
+    // The next scan completes, but SCAN_RESULTS fails: nothing new was learned.
+    backend->fail_results();
+    WiFiManagerTestAccess::fire_scan_timer(*wm);
+    REQUIRE(wait_until([&] { return backend->triggers() == 2; }));
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    WiFiManagerTestAccess::fire_scan_complete(*wm);
+    REQUIRE(wait_until([&] { return deliveries.size() == 2; }));
+    CHECK(deliveries.back() == shown);
+}
+
+TEST_CASE_METHOD(ControlLaneFixture,
+                 "a disconnect clears the cached connection unresponsive polls answer with",
+                 "[wifi][wifi_control_lane][wifi_breaker]") {
+    WiFiManagerTestAccess::set_breaker_config(*wm, {50, 3, 400, 2000});
+    backend->set_connected_state(true, "Home", "192.168.1.10", 80);
+    REQUIRE(read_status().ssid == "Home");
+
+    WiFiManagerTestAccess::fire_disconnected(*wm);
+    stall_lane_on_status_read(50);
+
+    const auto cached = read_status();
+    REQUIRE(cached.unresponsive);
+    CHECK_FALSE(cached.connected);
+    CHECK(cached.ssid.empty());
 }
