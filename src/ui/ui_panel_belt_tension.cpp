@@ -2379,13 +2379,16 @@ void BeltTensionPanel::refresh_preview_series() {
         return;
     }
     const auto [lo, hi] = ui_frequency_response_chart_get_freq_range(chart_);
+    // The column the curve that replaces the preview draws: a full check's
+    // psd_xyz, the tuning loop's in-plane sum.
+    const auto column = run_kind_ == RunKind::CHECK ? helix::calibration::SweepColumn::XYZ
+                                                    : helix::calibration::SweepColumn::IN_PLANE;
     for (int idx = 0; idx < 2; ++idx) {
         if (!preview_live_[idx]) {
             ui_frequency_response_chart_show_series(chart_, preview_series_[idx], false);
             continue;
         }
-        const auto laid = helix::calibration::layout_preview(
-            preview_points_[idx], helix::calibration::SweepColumn::XYZ, lo, hi);
+        const auto laid = helix::calibration::layout_preview(preview_points_[idx], column, lo, hi);
         helix::calibration::BeltCurve curve;
         curve.reserve(laid.freqs.size());
         for (size_t i = 0; i < laid.freqs.size(); ++i) {

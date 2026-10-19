@@ -88,6 +88,14 @@ TEST_CASE("SweepPoint columns match the CSV's", "[sweep_preview]") {
     CHECK(std::isnan(sweep_column_value(unclean, SweepColumn::Y)));
 }
 
+TEST_CASE("the in-plane column sums x and y and ignores z", "[sweep_preview]") {
+    const SweepPoint point{50.0f, 1.0f, 2.0f, 30.0f, true};
+    CHECK(sweep_column_value(point, SweepColumn::IN_PLANE) == 3.0f);
+
+    const SweepPoint unclean{50.0f, 1.0f, 2.0f, 30.0f, false};
+    CHECK(std::isnan(sweep_column_value(unclean, SweepColumn::IN_PLANE)));
+}
+
 TEST_CASE("goertzel_psd reads a sine's PSD at its frequency", "[sweep_preview]") {
     const auto x = sine(3200, 1000.0f, 50.0f, 3200.0f);
     const double expected = hann_sine_psd(3200, 1000.0, 3200.0);

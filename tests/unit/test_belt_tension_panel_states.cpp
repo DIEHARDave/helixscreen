@@ -3579,9 +3579,30 @@ TEST_CASE("a tuning round keeps each preview until the round is in",
     REQUIRE(fx.text("bt_run_title") == "Measuring Path B");
     CHECK(series_visible(fx, live_a));
     CHECK_FALSE(series_visible(fx, fx.panel_series_id(0)));
-    fx.panel_preview_points(BeltPath::PATH_B, ramp_points(static_cast<int>(std::ceil(lo)),
-                                                          static_cast<int>(std::floor(hi))));
+    // B's points sit on the axis's 1 Hz slots, in-plane f, with a z that falls
+    // as f rises: the tuning curves are in-plane, so the preview ignores z.
+    const size_t slots = static_cast<size_t>(std::lround(hi - lo)) + 1;
+    const auto slot_hz = [lo = lo, hi = hi, slots](size_t i) {
+        return lo + static_cast<float>(i) * (hi - lo) / static_cast<float>(slots - 1);
+    };
+    std::vector<SweepPoint> b_points;
+    for (size_t i = 0; i < slots; ++i) {
+        SweepPoint p;
+        p.freq_hz = slot_hz(i);
+        p.psd_x = 0.5f * slot_hz(i);
+        p.psd_y = 0.5f * slot_hz(i);
+        p.psd_z = 1000.0f - slot_hz(i);
+        p.clean = true;
+        b_points.push_back(p);
+    }
+    fx.panel_preview_points(BeltPath::PATH_B, b_points);
     CHECK(series_visible(fx, live_b));
+    const auto b_amps = ui_frequency_response_chart_get_series_amplitudes(chart, live_b);
+    REQUIRE(b_amps.size() == slots);
+    for (size_t i = 0; i < slots; ++i) {
+        INFO("slot " << i << " at " << slot_hz(i) << " Hz");
+        CHECK(b_amps[i] == Catch::Approx(100.0f * slot_hz(i) / slot_hz(slots - 1)));
+    }
 
     for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping; t += 100) {
         fx.pump_ms(100);

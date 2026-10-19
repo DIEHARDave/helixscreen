@@ -48,6 +48,8 @@ float sweep_column_value(const SweepPoint& point, SweepColumn column) {
         return point.psd_x;
     case SweepColumn::Y:
         return point.psd_y;
+    case SweepColumn::IN_PLANE:
+        return point.psd_x + point.psd_y;
     }
     return kNaNf;
 }

@@ -87,9 +87,10 @@ struct SweepPoint {
 
 /// Which CSV column a consumer reads; the preview must read the same one.
 enum class SweepColumn {
-    XYZ, ///< belt paths
-    X,   ///< input shaper, X axis
-    Y,   ///< input shaper, Y axis
+    XYZ,      ///< belt paths
+    X,        ///< input shaper, X axis
+    Y,        ///< input shaper, Y axis
+    IN_PLANE, ///< psd_x + psd_y: the belt tuning loop's curves
 };
 
 /// The point's value in `column`; NaN for an unclean point.
