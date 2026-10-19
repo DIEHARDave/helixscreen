@@ -588,7 +588,7 @@ void draw_animation_linear_hub(lv_layer_t* layer, FilamentPathData* data) {
         float base = static_cast<float>(static_cast<int>(prev_seg) - 1);
         float target = static_cast<float>(static_cast<int>(fil_seg) - 1);
         float tip_fraction = (base + (target - base) * progress_factor) / kNumIntervals;
-        tip_fraction = LV_CLAMP(tip_fraction, 0.0f, 1.0f);
+        tip_fraction = LV_CLAMP(0.0f, tip_fraction, 1.0f);
         float tip_distance = tip_fraction * pg::path_length(path);
         pg::PathPoint tip = pg::path_point_at(path, tip_distance);
         int32_t tip_x = (int32_t)lroundf(tip.x);

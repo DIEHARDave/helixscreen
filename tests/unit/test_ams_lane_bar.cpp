@@ -10,6 +10,7 @@
 #include "ams_lane_state.h"
 #include "ams_state.h"
 #include "helix-xml/src/xml/lv_xml.h"
+#include "static_subject_registry.h"
 #include "theme_manager.h"
 
 #include "../catch_amalgamated.hpp"
@@ -252,4 +253,29 @@ TEST_CASE_METHOD(XMLTestFixture, "ams_lane_bar: create_range skips masked lanes"
     CHECK(helix::ui::ams_lane_bar_slot_index(lv_obj_get_child(row, 0)) == 0);
     CHECK(helix::ui::ams_lane_bar_slot_index(lv_obj_get_child(row, 1)) == 3);
     lv_obj_delete(row);
+}
+
+TEST_CASE_METHOD(XMLTestFixture,
+                 "ams_lane_bar: a printer switch's cleanup leaves no observer on a live subject",
+                 "[ams][lane_bar]") {
+    ui_ams_lane_bar_register();
+    AmsState::instance().init_subjects(true);
+    lv_subject_t* lane_state = AmsState::instance().get_slot_lane_state_subject(0);
+    lv_subject_t* fill = AmsState::instance().get_slot_fill_subject(0);
+    const uint32_t lane_before = lv_ll_get_len(&lane_state->subs_ll);
+    const uint32_t fill_before = lv_ll_get_len(&fill->subs_ll);
+
+    lv_obj_t* bar = make_bar(test_screen(), 0);
+    REQUIRE(bar != nullptr);
+    process_lvgl(20);
+    REQUIRE(lv_ll_get_len(&lane_state->subs_ll) > lane_before);
+    REQUIRE(lv_ll_get_len(&fill->subs_ll) > fill_before);
+
+    // AmsState's subjects outlive this cleanup here, as they do when the switch
+    // runs it ahead of AmsState's own teardown.
+    REQUIRE(StaticSubjectRegistry::instance().deinit_one(
+        "AmsLaneBarWidgets", StaticSubjectRegistry::Scope::PrinterSwitch));
+    CHECK(lv_ll_get_len(&lane_state->subs_ll) == lane_before);
+    CHECK(lv_ll_get_len(&fill->subs_ll) == fill_before);
+    lv_obj_delete(bar);
 }

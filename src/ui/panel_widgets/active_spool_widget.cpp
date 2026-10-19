@@ -213,7 +213,7 @@ void ActiveSpoolWidget::update_spool_display() {
         spool_color = lv_color_hex(active->color_rgb);
         if (total_weight > 0) {
             fill_level = remaining_weight / total_weight;
-            fill_level = LV_CLAMP(fill_level, 0.0f, 1.0f);
+            fill_level = LV_CLAMP(0.0f, fill_level, 1.0f);
         } else {
             fill_level = 1.0f; // No weight data -- show full
         }

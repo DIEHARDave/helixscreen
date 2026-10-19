@@ -116,6 +116,19 @@ TEST_CASE("Overview plan: each unit's route is continuous with a clamp band on i
         CHECK_FALSE(plan.routes[1].style[i].filled);
 }
 
+TEST_CASE("Overview plan: a unit stem placed past the canvas edge is drawn on the canvas",
+          "[system_path][filament_path]") {
+    // A card laid out wider than the canvas reports a center the canvas cannot reach.
+    auto d = multi();
+    d->unit_x_positions[1] = 1000;
+    const PathPlan& plan = plan_of(*d);
+    const SysLayout L = compute_sys_layout(*d, AREA);
+    REQUIRE(plan.route_count == 2);
+    const pg::PathPoint stem = seg_start(plan.routes[1].path.segs[0]);
+    CHECK(stem.x <= (float)(L.x_off + L.width));
+    CHECK(stem.x > (float)d->unit_x_positions[0]);
+}
+
 TEST_CASE("Overview layout: the toolheads stand on their glyph-bottom line",
           "[system_path][filament_path]") {
     auto d = multi();

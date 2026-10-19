@@ -29,6 +29,7 @@
 #include "display_settings_manager.h"
 #include "lvgl/src/core/lv_obj_draw_private.h"
 #include "printer_state.h"
+#include "static_subject_registry.h"
 #include "ui/ams_drawing_utils.h"
 
 #include <array>
@@ -538,6 +539,37 @@ TEST_CASE_METHOD(LVGLUITestFixture, "ams_slot: deletion cleans up observers",
 
     // If we get here, cleanup was successful
     SUCCEED("Observer cleanup on deletion succeeded");
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "ams_slot: a printer switch's cleanup leaves no observer on a live subject",
+                 "[ui][ams_slot][cleanup]") {
+    ui_ams_slot_register();
+    AmsState::instance().init_subjects(true);
+    AmsState::instance().set_backend(AmsBackend::create_mock(4));
+    AmsState::instance().sync_from_backend();
+    process_lvgl(50);
+    lv_subject_t* current_slot = AmsState::instance().get_current_slot_subject();
+    lv_subject_t* remaining = AmsState::instance().get_slot_remaining_subject(0);
+    REQUIRE(current_slot != nullptr);
+    REQUIRE(remaining != nullptr);
+    const uint32_t current_before = lv_ll_get_len(&current_slot->subs_ll);
+    const uint32_t remaining_before = lv_ll_get_len(&remaining->subs_ll);
+
+    lv_obj_t* slot = create_ams_slot(test_screen(), 0);
+    REQUIRE(slot != nullptr);
+    process_lvgl(50);
+    REQUIRE(lv_ll_get_len(&current_slot->subs_ll) > current_before);
+    REQUIRE(lv_ll_get_len(&remaining->subs_ll) > remaining_before);
+
+    // AmsState's subjects outlive this cleanup here, as they do when the switch
+    // runs it ahead of AmsState's own teardown.
+    REQUIRE(StaticSubjectRegistry::instance().deinit_one(
+        "AmsSlotWidgets", StaticSubjectRegistry::Scope::PrinterSwitch));
+    CHECK(lv_ll_get_len(&current_slot->subs_ll) == current_before);
+    CHECK(lv_ll_get_len(&remaining->subs_ll) == remaining_before);
+    lv_obj_delete(slot);
+    AmsState::instance().set_backend(nullptr);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "ams_slot: multiple slots cleanup independently",
