@@ -14,6 +14,7 @@
 #include "remote_screen_manager.h"
 #include "remote_screen_server_sink.h"
 #include "remote_screen_settings_manager.h"
+#include "remote_screen_webcam.h"
 
 #include <spdlog/spdlog.h>
 
@@ -95,6 +96,13 @@ void RemoteScreenService::watch_print_state() {
 }
 
 void RemoteScreenService::apply_settings() {
+    apply_server();
+    if (IMoonrakerAPI* api = get_moonraker_api()) {
+        sync_remote_screen_webcam(*api);
+    }
+}
+
+void RemoteScreenService::apply_server() {
     auto& settings = RemoteScreenSettingsManager::instance();
     const bool want = available() && settings.get_enabled();
 

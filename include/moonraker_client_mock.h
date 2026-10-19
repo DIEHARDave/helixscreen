@@ -2242,8 +2242,22 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     // Mock service availability flags (initialized from env vars in constructor)
     bool mock_spoolman_enabled_{true};     ///< Controlled by HELIX_MOCK_SPOOLMAN env var
     std::vector<WebcamInfo> mock_webcams_; ///< Published at discovery; HELIX_MOCK_WEBCAMS
-    bool accelerometer_available_{true};   ///< Accelerometer available for input shaper tests
-    bool input_shaper_configured_{true};   ///< Input shaper configured for config query tests
+
+  public:
+    /// Entries added through server.webcams.post_item, listed after the HELIX_MOCK_WEBCAMS
+    /// ones. Keyed by name like Moonraker's own registry.
+    struct PostedWebcams {
+        std::mutex mutex;
+        std::vector<nlohmann::json> items;
+    };
+    PostedWebcams& posted_webcams() {
+        return posted_webcams_;
+    }
+
+  private:
+    PostedWebcams posted_webcams_;
+    bool accelerometer_available_{true}; ///< Accelerometer available for input shaper tests
+    bool input_shaper_configured_{true}; ///< Input shaper configured for config query tests
     /// Staged input shaper values served while configured (see
     /// set_input_shaper_values); defaults mirror the mock's original payload.
     std::string shaper_type_x_{"mzv"};

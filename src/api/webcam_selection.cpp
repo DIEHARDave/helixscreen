@@ -45,6 +45,10 @@ bool is_usable_snapshot_url(const std::string& snapshot_url) {
 
 namespace webcam {
 
+bool is_own_screen_webcam(const WebcamInfo& cam) {
+    return cam.name == kRemoteScreenWebcamName;
+}
+
 WebcamInfo parse_webcam_entry(const nlohmann::json& entry) {
     WebcamInfo cam;
     if (!entry.is_object())

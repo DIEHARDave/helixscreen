@@ -59,6 +59,7 @@ class RemoteScreenService {
     RemoteScreenService();
     ~RemoteScreenService();
 
+    void apply_server();
     void cancel_idle_timer();
 
     std::shared_ptr<ScreenFrameStore> store_;

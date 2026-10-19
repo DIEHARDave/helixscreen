@@ -40,7 +40,14 @@ namespace helix {
  */
 [[nodiscard]] bool is_usable_snapshot_url(const std::string& snapshot_url);
 
+/// The name the built-in screen server registers its webcam under (#1825).
+constexpr const char* kRemoteScreenWebcamName = "HelixScreen Screen";
+
 namespace webcam {
+
+/// Our own screen, registered by the built-in screen server. Never a camera feed:
+/// the camera view would be showing the screen it is drawn on.
+[[nodiscard]] bool is_own_screen_webcam(const WebcamInfo& cam);
 
 /// Read one `server.webcams.list` entry. Unknown or missing fields keep the
 /// WebcamInfo defaults; `unavailable_reason` is always empty here (discovery

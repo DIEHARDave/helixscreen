@@ -18,6 +18,7 @@
 #include "hardware_setup_prompter.h"
 #include "power_device_state.h"
 #include "printer_state.h"
+#include "remote_screen_webcam.h"
 #include "sensor_state.h"
 #include "settings_manager.h"
 #include "spoolman_active_spool_sync.h"
@@ -151,6 +152,12 @@ void manual_probe_autoopen_step(DiscoveryContext& ctx) {
     });
 }
 
+// Keep Moonraker's webcam list in step with the screen server, and refresh the LAN
+// address an absolute entry carries.
+void remote_screen_webcam_step(DiscoveryContext& ctx) {
+    sync_remote_screen_webcam(ctx.api);
+}
+
 constexpr DiscoveryStep kTailSteps[] = {
     {"update_checker_connected", false, update_checker_connected_step, nullptr},
     {"about_print_hours", false, about_print_hours_step, nullptr},
@@ -164,6 +171,7 @@ constexpr DiscoveryStep kTailSteps[] = {
     {"spoolman_sync", false, spoolman_sync_step, nullptr},
     {"auto_update_check", false, auto_update_check_step, nullptr},
     {"moonraker_update_channel", false, moonraker_update_channel_step, nullptr},
+    {"remote_screen_webcam", false, remote_screen_webcam_step, nullptr},
     {"manual_probe_autoopen", false, manual_probe_autoopen_step, nullptr},
 };
 
