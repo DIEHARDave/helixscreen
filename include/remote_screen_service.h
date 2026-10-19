@@ -6,6 +6,7 @@
 #include "ui_observer_guard.h"
 
 #include "lvgl/lvgl.h"
+#include "remote_screen_control.h"
 
 #include <atomic>
 #include <memory>
@@ -13,6 +14,7 @@
 
 namespace helix {
 
+class PairingStore;
 class RemoteScreenManager;
 class ScreenFrameStore;
 class ScreenHttpServer;
@@ -60,13 +62,21 @@ class RemoteScreenService {
     ~RemoteScreenService();
 
     void apply_server();
-    void cancel_idle_timer();
+    void stop_server();
+    void cancel_housekeeping_timer();
+    /// HTTP thread: hand @p e to the UI thread's synthetic pointer and wait until
+    /// LVGL has sampled it.
+    bool apply_touch(const TouchEvent& e);
 
     std::shared_ptr<ScreenFrameStore> store_;
     std::unique_ptr<ScreenHttpServer> server_;
     bool lan_mode_ = false;
     bool sink_attached_ = false;
-    lv_timer_t* idle_timer_ = nullptr;
+    std::shared_ptr<PairingStore> pairing_;
+    TouchSession touch_session_;
+    /// Read by HTTP handlers; false before the server stops so a waiting touch returns.
+    std::atomic<bool> serving_{false};
+    lv_timer_t* housekeeping_timer_ = nullptr;
     std::atomic<bool> printing_{false};
     ObserverGuard print_observer_;
 };

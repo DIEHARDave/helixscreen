@@ -259,6 +259,7 @@ translations:
   All time: 'Todo o período'
   Allow: 'Permitir'
   Allow Home Screen Editing: 'Permitir a edição da tela inicial'
+  Allow Remote Control: 'Permitir controle remoto'
   Allow cold load/unload: Permitir carregar/descarregar a frio
   Allow display to sleep during active prints: Permitir suspensão da tela durante
     impressões
@@ -1235,6 +1236,8 @@ translations:
   Ethernet: Ethernet
   Events appear here after sessions and prints: Eventos aparecem aqui após sessões
     e impressões
+  Every browser needs a new code to control this screen: 'Cada navegador precisará de um novo código para controlar esta tela'
+  Every browser that can control this screen will need the new pairing code.: 'Cada navegador que pode controlar esta tela precisará do novo código de pareamento.'
   Every extruder's temperature at once: A temperatura de todos os extrusores
   Everything else was saved. Change them in Spoolman.: Todo o resto foi salvo. Altere-os no Spoolman.
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: 'Todo o resto foi salvo. Renomeie o material usando letras, dígitos, espaços e + - _ . ( ) /'
@@ -1551,6 +1554,8 @@ translations:
   Force/weight sensors: 'Sensores de força/peso'
   Forget: Esquecer
   Forget Network?: Esquecer Rede?
+  Forget Paired Browsers: 'Esquecer navegadores pareados'
+  Forget Paired Browsers?: 'Esquecer navegadores pareados?'
   Forget network '{}'? You will need the password to reconnect.: Esquecer a rede '{}'? Você precisará da senha para reconectar.
   Form tip: 'Formar a ponta'
   Form tip & retract: 'Formar a ponta e retrair'
@@ -1991,6 +1996,7 @@ translations:
   Length of filament to purge: 'Comprimento de filamento a purgar'
   Length of the cooling tube section: 'Comprimento da seção do tubo de resfriamento'
   'Length:': 'Comprimento:'
+  Let a browser tap and drag on this screen: 'Permitir que um navegador toque e arraste nesta tela'
   Let's take a quick tour so you can find things fast.: Vamos fazer um tour rápido para você encontrar as coisas com facilidade.
   Level: Nível
   Leveling Gantry...: Nivelando pórtico...
@@ -2552,6 +2558,7 @@ translations:
   Pair with: Parear com
   Paired: Emparelhado
   Paired successfully: Pareado com sucesso
+  Pairing Code: 'Código de pareamento'
   Pairing did not complete — the scanner did not bond. Try turning it off and on, then tap Pair again.: O
     emparelhamento não foi concluído — o scanner não se vinculou. Tente desligá-lo
     e ligá-lo novamente, depois toque em Pair novamente.

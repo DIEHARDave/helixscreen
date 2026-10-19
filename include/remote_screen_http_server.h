@@ -3,10 +3,14 @@
 
 #pragma once
 
+#include "remote_screen_control.h"
+
 #include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
+
+class HttpRequest; // NAMESPACE_OK: libhv declares it globally
 
 namespace helix {
 
@@ -28,6 +32,11 @@ struct ScreenServerHooks {
     /// Invalidate the whole display so the next flush repaints every pixel.
     std::function<void()> request_full_redraw;
     std::function<bool()> is_printing;
+    /// Drive the screen with one pointer event; false when the UI never sampled it.
+    /// Blocks until it has (a tap's press must be seen before its release arrives).
+    std::function<bool(const TouchEvent&)> apply_touch;
+    /// Paired browsers when the server faces the LAN; null behind nginx.
+    std::shared_ptr<PairingStore> pairing;
 };
 
 /**
@@ -35,8 +44,10 @@ struct ScreenServerHooks {
  *
  * Routes, all relative to the mount point (nginx strips its prefix):
  *   GET /snapshot.jpg  one JPEG of the current screen (query strings ignored)
- *   GET /info          {"w","h","control"} so the page can size itself
+ *   GET /info          {"w","h","control","paired"} so the page can size itself
  *   GET /              the control page
+ *   POST /touch        {"type":"down|move|up","x","y"} in image pixels (control on)
+ *   POST /pair         {"code":"123456"}, answered with the pairing cookie (LAN mode)
  *
  * One libhv worker thread. A request may block for up to kFirstFrameWaitMs while
  * a full repaint lands; stop() wakes it.
@@ -59,6 +70,10 @@ class ScreenHttpServer {
     void set_control_allowed(bool allowed);
 
   private:
+    /// Behind nginx every request that reached us is authenticated; on the LAN, only
+    /// one carrying a paired browser's cookie.
+    bool request_paired(::HttpRequest* req) const;
+
     struct Impl;
     std::unique_ptr<Impl> impl_;
     std::shared_ptr<ScreenFrameStore> store_;

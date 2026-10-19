@@ -248,6 +248,7 @@ translations:
   All time: '全期間'
   Allow: '許可'
   Allow Home Screen Editing: 'ホーム画面の編集を許可'
+  Allow Remote Control: 'リモート操作を許可'
   Allow cold load/unload: コールド時の装填/取り出しを許可
   Allow display to sleep during active prints: 印刷中のスリープを許可
   Allwinner: Allwinner
@@ -1160,6 +1161,8 @@ translations:
   Estimating...: 推定中...
   Ethernet: イーサネット
   Events appear here after sessions and prints: セッションと印刷の後にイベントがここに表示されます
+  Every browser needs a new code to control this screen: 'この画面を操作するには、各ブラウザに新しいコードが必要です'
+  Every browser that can control this screen will need the new pairing code.: 'この画面を操作できるすべてのブラウザで、新しいペアリングコードが必要になります。'
   Every extruder's temperature at once: 全エクストルーダーの温度を一覧表示
   Everything else was saved. Change them in Spoolman.: その他はすべて保存されました。変更は Spoolman で行ってください。
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: 'その他はすべて保存されました。材料名は英字・数字・スペース・+ - _ . ( ) / で構成される名前に変更してください'
@@ -1464,6 +1467,8 @@ translations:
   Force/weight sensors: '力/重量センサー'
   Forget: 登録解除
   Forget Network?: ネットワークを登録解除しますか？
+  Forget Paired Browsers: 'ペアリング済みブラウザを削除'
+  Forget Paired Browsers?: 'ペアリング済みブラウザを削除しますか？'
   Forget network '{}'? You will need the password to reconnect.: ネットワーク '{}' を登録解除しますか？再接続にはパスワードが必要です。
   Form tip: '先端を成形'
   Form tip & retract: '先端を成形して引き戻し'
@@ -1872,6 +1877,7 @@ translations:
   Length of filament to purge: 'パージするフィラメントの長さ'
   Length of the cooling tube section: '冷却チューブ区間の長さ'
   'Length:': '長さ:'
+  Let a browser tap and drag on this screen: 'ブラウザからこの画面のタップとドラッグを許可'
   Let's take a quick tour so you can find things fast.: 機能をすぐに見つけられるよう、簡単なツアーを始めましょう。
   Level: レベル
   Leveling Gantry...: ガントリーレベリング中...
@@ -2414,6 +2420,7 @@ translations:
   Pair with: ペアリング先
   Paired: ペアリング済み
   Paired successfully: ペアリング成功
+  Pairing Code: 'ペアリングコード'
   Pairing did not complete — the scanner did not bond. Try turning it off and on, then tap Pair again.: ペアリングが完了しませんでした
     — スキャナーがボンディングされませんでした。スキャナーの電源を入れ直してから、もう一度 Pair をタップしてください。
   Pairing failed: ペアリング失敗

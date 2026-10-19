@@ -246,6 +246,7 @@
   <translation tag="All time" pt="Todo o período"/>
   <translation tag="Allow" pt="Permitir"/>
   <translation tag="Allow Home Screen Editing" pt="Permitir a edição da tela inicial"/>
+  <translation tag="Allow Remote Control" pt="Permitir controle remoto"/>
   <translation tag="Allow cold load/unload" pt="Permitir carregar/descarregar a frio"/>
   <translation tag="Allow display to sleep during active prints" pt="Permitir suspensão da tela durante impressões"/>
   <translation tag="Allwinner" pt="Allwinner"/>
@@ -1117,6 +1118,8 @@
   <translation tag="Estimating..." pt="Estimando..."/>
   <translation tag="Ethernet" pt="Ethernet"/>
   <translation tag="Events appear here after sessions and prints" pt="Eventos aparecem aqui após sessões e impressões"/>
+  <translation tag="Every browser needs a new code to control this screen" pt="Cada navegador precisará de um novo código para controlar esta tela"/>
+  <translation tag="Every browser that can control this screen will need the new pairing code." pt="Cada navegador que pode controlar esta tela precisará do novo código de pareamento."/>
   <translation tag="Every extruder&apos;s temperature at once" pt="A temperatura de todos os extrusores"/>
   <translation tag="Every object is set to skip, so there is nothing to print" pt="Todos os objetos estão marcados para pular, não há nada para imprimir"/>
   <translation tag="Every tool&apos;s offsets are measured again and replace the current ones. Save afterwards to keep the result." pt="Os offsets de todas as ferramentas são medidos novamente e substituem os atuais. Salve depois para manter o resultado."/>
@@ -1412,6 +1415,8 @@
   <translation tag="Force/weight sensors" pt="Sensores de força/peso"/>
   <translation tag="Forget" pt="Esquecer"/>
   <translation tag="Forget Network?" pt="Esquecer Rede?"/>
+  <translation tag="Forget Paired Browsers" pt="Esquecer navegadores pareados"/>
+  <translation tag="Forget Paired Browsers?" pt="Esquecer navegadores pareados?"/>
   <translation tag="Forget network &apos;{}&apos;? You will need the password to reconnect." pt="Esquecer a rede &apos;{}&apos;? Você precisará da senha para reconectar."/>
   <translation tag="Form tip" pt="Formar a ponta"/>
   <translation tag="Form tip &amp; retract" pt="Formar a ponta e retrair"/>
@@ -1795,6 +1800,7 @@
   <translation tag="Length of filament to purge" pt="Comprimento de filamento a purgar"/>
   <translation tag="Length of the cooling tube section" pt="Comprimento da seção do tubo de resfriamento"/>
   <translation tag="Length:" pt="Comprimento:"/>
+  <translation tag="Let a browser tap and drag on this screen" pt="Permitir que um navegador toque e arraste nesta tela"/>
   <translation tag="Let&apos;s take a quick tour so you can find things fast." pt="Vamos fazer um tour rápido para você encontrar as coisas com facilidade."/>
   <translation tag="Level" pt="Nível"/>
   <translation tag="Leveling Gantry..." pt="Nivelando pórtico..."/>
@@ -2322,6 +2328,7 @@
   <translation tag="Pair with" pt="Parear com"/>
   <translation tag="Paired" pt="Emparelhado"/>
   <translation tag="Paired successfully" pt="Pareado com sucesso"/>
+  <translation tag="Pairing Code" pt="Código de pareamento"/>
   <translation tag="Pairing did not complete — the scanner did not bond. Try turning it off and on, then tap Pair again." pt="O emparelhamento não foi concluído — o scanner não se vinculou. Tente desligá-lo e ligá-lo novamente, depois toque em Pair novamente."/>
   <translation tag="Pairing failed" pt="Falha ao parear"/>
   <translation tag="Pairing..." pt="Pareando..."/>

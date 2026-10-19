@@ -10,6 +10,7 @@
 #include "data_root_resolver.h"
 #include "observer_factory.h"
 #include "printer_state.h"
+#include "remote_pointer.h"
 #include "remote_screen_http_server.h"
 #include "remote_screen_manager.h"
 #include "remote_screen_server_sink.h"
@@ -21,12 +22,18 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <future>
 
 namespace helix {
 
 namespace {
-/// How often a stopped viewer's buffers are checked for release.
-constexpr uint32_t kIdleCheckMs = 2000;
+/// How often to release a gone viewer's buffers and a press nobody finished.
+constexpr uint32_t kHousekeepingMs = 500;
+/// How long a touch waits for the UI thread to take it, then for LVGL to sample it.
+constexpr auto kTouchQueueWait = std::chrono::seconds(1);
+constexpr auto kTouchSampleWait = std::chrono::seconds(2);
+/// Handed back by the UI thread when there is no display to point at.
+constexpr uint64_t kNoPointer = UINT64_MAX;
 } // namespace
 
 bool remote_screen_firmware_provides() {
@@ -60,7 +67,7 @@ RemoteScreenService& RemoteScreenService::instance() {
 RemoteScreenService::RemoteScreenService() : store_(std::make_shared<ScreenFrameStore>()) {}
 
 RemoteScreenService::~RemoteScreenService() {
-    cancel_idle_timer();
+    cancel_housekeeping_timer();
 }
 
 bool RemoteScreenService::available() const {
@@ -84,6 +91,11 @@ void RemoteScreenService::init(RemoteScreenManager* screens) {
         sink_attached_ = true;
     }
     settings.set_change_handler([this] { apply_settings(); });
+    settings.set_forget_handler([this] {
+        if (pairing_) {
+            pairing_->forget_all();
+        }
+    });
     apply_settings();
 }
 
@@ -107,24 +119,39 @@ void RemoteScreenService::apply_server() {
     const bool want = available() && settings.get_enabled();
 
     if (!want) {
-        if (server_) {
-            server_->stop();
-            server_.reset();
-        }
-        cancel_idle_timer();
+        stop_server();
         store_->release();
         return;
     }
 
     const std::string route = remote_screen_route(writable_path(".remote_screen_route"));
     const bool lan_mode = route.empty();
+    settings.set_lan_mode(lan_mode);
     if (server_ && lan_mode != lan_mode_) {
-        server_->stop();
-        server_.reset();
+        stop_server();
     }
     if (server_) {
         server_->set_control_allowed(settings.get_control());
         return;
+    }
+
+    if (lan_mode) {
+        PairingStore::Persist persist;
+        // The store is used from the HTTP thread; config and subjects belong to the UI thread.
+        persist.save_code = [](const std::string& code) {
+            ui::queue_update("remote_screen::save_pair_code", [code] {
+                RemoteScreenSettingsManager::instance().set_pair_code(code);
+            });
+        };
+        persist.save_tokens = [](const std::vector<std::string>& tokens) {
+            ui::queue_update("remote_screen::save_paired", [tokens] {
+                RemoteScreenSettingsManager::instance().set_paired_tokens(tokens);
+            });
+        };
+        pairing_ = std::make_shared<PairingStore>(settings.get_pair_code(),
+                                                  settings.get_paired_tokens(), persist);
+    } else {
+        pairing_.reset();
     }
 
     ScreenServerHooks hooks;
@@ -137,6 +164,8 @@ void RemoteScreenService::apply_server() {
         });
     };
     hooks.is_printing = [this] { return printing_.load(); };
+    hooks.apply_touch = [this](const TouchEvent& e) { return apply_touch(e); };
+    hooks.pairing = pairing_;
 
     ScreenServerConfig cfg;
     cfg.bind_host = lan_mode ? "0.0.0.0" : "127.0.0.1";
@@ -151,32 +180,84 @@ void RemoteScreenService::apply_server() {
     }
     server_ = std::move(server);
     lan_mode_ = lan_mode;
+    serving_.store(true);
 
-    if (!idle_timer_) {
-        idle_timer_ = lv_timer_create(
+    if (!housekeeping_timer_) {
+        housekeeping_timer_ = lv_timer_create(
             [](lv_timer_t* t) {
                 auto* self = static_cast<RemoteScreenService*>(lv_timer_get_user_data(t));
                 if (self->store_->release_if_idle()) {
                     spdlog::debug("[RemoteScreen] Viewer gone; frame buffers released");
                 }
+                if (auto rel =
+                        self->touch_session_.take_stale_release(std::chrono::steady_clock::now())) {
+                    spdlog::info("[RemoteScreen] Releasing a remote press nobody finished");
+                    remote::RemotePointer::instance().set_logical_state(rel->x, rel->y, false);
+                }
             },
-            kIdleCheckMs, this);
+            kHousekeepingMs, this);
     }
 }
 
-void RemoteScreenService::cancel_idle_timer() {
-    ui::lv_timer_cancel_safe(idle_timer_);
-    idle_timer_ = nullptr;
-}
-
-void RemoteScreenService::shutdown() {
-    RemoteScreenSettingsManager::instance().set_change_handler(nullptr);
-    print_observer_.reset();
+void RemoteScreenService::stop_server() {
+    serving_.store(false);
     if (server_) {
         server_->stop();
         server_.reset();
     }
-    cancel_idle_timer();
+    cancel_housekeeping_timer();
+    if (remote::RemotePointer::instance().pressed()) {
+        auto& ptr = remote::RemotePointer::instance();
+        ptr.set_logical_state(ptr.x(), ptr.y(), false);
+    }
+}
+
+bool RemoteScreenService::apply_touch(const TouchEvent& e) {
+    auto baseline = std::make_shared<std::promise<uint64_t>>();
+    auto taken = baseline->get_future();
+    touch_session_.on_event(e, std::chrono::steady_clock::now());
+    ui::queue_update("remote_screen::touch", [baseline, e] {
+        // A remote tap wakes a sleeping display the way a finger does.
+        lv_display_trigger_activity(nullptr);
+        auto& ptr = remote::RemotePointer::instance();
+        if (!ptr.ensure_created()) {
+            baseline->set_value(kNoPointer);
+            return;
+        }
+        const uint64_t before = ptr.read_count();
+        ptr.set_logical_state(e.x, e.y, e.type != TouchEvent::Type::Up);
+        baseline->set_value(before);
+    });
+    if (taken.wait_for(kTouchQueueWait) != std::future_status::ready) {
+        return false;
+    }
+    uint64_t before = kNoPointer;
+    try {
+        before = taken.get();
+    } catch (const std::future_error&) {
+        // The queue dropped the update unrun (shutdown).
+        return false;
+    }
+    if (before == kNoPointer) {
+        return false;
+    }
+    return remote::RemotePointer::instance().wait_for_samples(before, kTouchSampleWait, [this] {
+        return serving_.load();
+    }) == remote::RemotePointer::WaitResult::Sampled;
+}
+
+void RemoteScreenService::cancel_housekeeping_timer() {
+    ui::lv_timer_cancel_safe(housekeeping_timer_);
+    housekeeping_timer_ = nullptr;
+}
+
+void RemoteScreenService::shutdown() {
+    auto& settings = RemoteScreenSettingsManager::instance();
+    settings.set_change_handler(nullptr);
+    settings.set_forget_handler(nullptr);
+    print_observer_.reset();
+    stop_server();
+    pairing_.reset();
     store_->release();
 }
 

@@ -114,6 +114,7 @@ src/application/remote_screen_http_server.cpp  # no screen server on the K-Touch
 src/application/remote_screen_service.cpp  # no screen server on the K-Touch
 src/application/remote_screen_webcam.cpp  # no screen server on the K-Touch
 src/application/remote_pointer.cpp  # not in the v1 Core+AMS cut
+src/application/remote_screen_control.cpp  # no screen server on the K-Touch
 src/application/splash_screen_manager.cpp  # not in the v1 Core+AMS cut
 src/application/xml_hot_reloader.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_capture.cpp  # not in the v1 Core+AMS cut
@@ -372,3 +373,4 @@ src/plugin/plugin_surfaces.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_consts.cpp  # not in the v1 Core+AMS cut
 src/system/jpeg_encode.cpp  # no screen server on the K-Touch: nothing to encode
 src/system/http_listen_socket.cpp  # only the screen server and the mock file server listen
+src/system/random_bytes.cpp  # its callers (telemetry, screen server pairing) are not in the firmware

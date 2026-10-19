@@ -246,6 +246,7 @@
   <translation tag="All time" zh="全部时间"/>
   <translation tag="Allow" zh="允许"/>
   <translation tag="Allow Home Screen Editing" zh="允许编辑主屏幕"/>
+  <translation tag="Allow Remote Control" zh="允许远程控制"/>
   <translation tag="Allow cold load/unload" zh="允许冷态加载/卸载"/>
   <translation tag="Allow display to sleep during active prints" zh="打印时允许屏幕休眠"/>
   <translation tag="Allwinner" zh="Allwinner"/>
@@ -1117,6 +1118,8 @@
   <translation tag="Estimating..." zh="估算中..."/>
   <translation tag="Ethernet" zh="以太网"/>
   <translation tag="Events appear here after sessions and prints" zh="会话和打印后事件将显示在此处"/>
+  <translation tag="Every browser needs a new code to control this screen" zh="每个浏览器都需要新代码才能控制此屏幕"/>
+  <translation tag="Every browser that can control this screen will need the new pairing code." zh="所有可以控制此屏幕的浏览器都需要新的配对码。"/>
   <translation tag="Every extruder&apos;s temperature at once" zh="同时查看所有挤出机温度"/>
   <translation tag="Every object is set to skip, so there is nothing to print" zh="所有对象都已设为跳过，没有可打印的内容"/>
   <translation tag="Every tool&apos;s offsets are measured again and replace the current ones. Save afterwards to keep the result." zh="所有工具的偏移将重新测量并替换当前值。之后请保存以保留结果。"/>
@@ -1412,6 +1415,8 @@
   <translation tag="Force/weight sensors" zh="力/重量传感器"/>
   <translation tag="Forget" zh="忘记"/>
   <translation tag="Forget Network?" zh="忘记网络？"/>
+  <translation tag="Forget Paired Browsers" zh="忘记已配对的浏览器"/>
+  <translation tag="Forget Paired Browsers?" zh="忘记已配对的浏览器？"/>
   <translation tag="Forget network &apos;{}&apos;? You will need the password to reconnect." zh="忘记网络 &apos;{}&apos;？重新连接时需要密码。"/>
   <translation tag="Form tip" zh="成型尖端"/>
   <translation tag="Form tip &amp; retract" zh="成型尖端并回抽"/>
@@ -1795,6 +1800,7 @@
   <translation tag="Length of filament to purge" zh="要排出的耗材长度"/>
   <translation tag="Length of the cooling tube section" zh="冷却管段的长度"/>
   <translation tag="Length:" zh="长度："/>
+  <translation tag="Let a browser tap and drag on this screen" zh="允许浏览器在此屏幕上点击和拖动"/>
   <translation tag="Let&apos;s take a quick tour so you can find things fast." zh="让我们快速浏览一下，帮助您快速找到所需内容。"/>
   <translation tag="Level" zh="级别"/>
   <translation tag="Leveling Gantry..." zh="正在调平龙门..."/>
@@ -2322,6 +2328,7 @@
   <translation tag="Pair with" zh="配对"/>
   <translation tag="Paired" zh="已配对"/>
   <translation tag="Paired successfully" zh="配对成功"/>
+  <translation tag="Pairing Code" zh="配对码"/>
   <translation tag="Pairing did not complete — the scanner did not bond. Try turning it off and on, then tap Pair again." zh="配对未完成 — 扫描器未绑定。请尝试关闭再开启扫描器，然后再次点击 Pair。"/>
   <translation tag="Pairing failed" zh="配对失败"/>
   <translation tag="Pairing..." zh="正在配对..."/>

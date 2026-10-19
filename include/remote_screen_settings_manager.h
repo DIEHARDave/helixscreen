@@ -8,6 +8,8 @@
 #include "subject_managed_panel.h"
 
 #include <functional>
+#include <string>
+#include <vector>
 
 namespace helix {
 
@@ -48,6 +50,24 @@ class RemoteScreenSettingsManager {
     /// `/remote_screen/port`; not shown in the UI. 0 asks for an ephemeral port.
     int get_port() const;
 
+    /// `/remote_screen/pair_code`: the 6 digits a browser enters to pair; "" until
+    /// control is first used facing the LAN.
+    std::string get_pair_code() const;
+    /// Persist and publish to the settings row. Main thread.
+    void set_pair_code(const std::string& code);
+    /// `/remote_screen/paired`: tokens of the paired browsers.
+    std::vector<std::string> get_paired_tokens() const;
+    void set_paired_tokens(const std::vector<std::string>& tokens);
+
+    /// Whether the server faces the LAN (pairing rows shown). Set by the server's owner.
+    void set_lan_mode(bool lan_mode);
+
+    /// "Forget paired browsers": hands the request to whoever owns the pairing store.
+    void forget_paired_browsers();
+    void set_forget_handler(std::function<void()> handler) {
+        forget_handler_ = std::move(handler);
+    }
+
     /// Called after view or control changes. The server's owner installs it, so the
     /// settings UI never has to know a server exists (the firmware build has none).
     void set_change_handler(std::function<void()> handler) {
@@ -76,7 +96,11 @@ class RemoteScreenSettingsManager {
     void notify_changed();
 
     std::function<void()> change_handler_;
+    std::function<void()> forget_handler_;
     lv_subject_t available_subject_{};
+    lv_subject_t lan_mode_subject_{};
+    lv_subject_t pair_code_subject_{};
+    char pair_code_buf_[16] = {};
     bool subjects_initialized_ = false;
 };
 

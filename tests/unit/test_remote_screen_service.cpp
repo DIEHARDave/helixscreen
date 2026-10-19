@@ -6,6 +6,8 @@
  * @brief The screen server's settings and the service that starts and stops it.
  */
 
+#include "ui_update_queue.h"
+
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/raw_http_client.h"
@@ -14,10 +16,14 @@
 #include "remote_screen_service.h"
 #include "remote_screen_settings_manager.h"
 
+#include <atomic>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <string>
+#include <thread>
+#include <utility>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -164,4 +170,125 @@ TEST_CASE_METHOD(RemoteScreenFixture, "service: firmware-provided screen never s
     svc.init(nullptr);
     svc.apply_settings();
     CHECK_FALSE(svc.running());
+}
+
+// ---------------------------------------------------------------------------
+// Remote touches reach LVGL's input pipeline
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// The service with sharing and control on, facing the LAN, a browser paired, and
+/// the store holding a frame the size of the test display.
+struct TouchFixture : RemoteScreenFixture {
+    std::string cookie;
+    std::vector<uint8_t> px;
+
+    TouchFixture() {
+        auto& svc = RemoteScreenService::instance();
+        svc.init(nullptr);
+        auto& m = RemoteScreenSettingsManager::instance();
+        m.set_enabled(true);
+        m.set_control(true);
+        REQUIRE(svc.running());
+        helix::ui::UpdateQueue::instance().drain(); // the generated code reaches config
+
+        px.assign(static_cast<size_t>(kTestDisplayWidth) * kTestDisplayHeight * 4, 0);
+        RemoteScreenFrame f;
+        f.px_map = px.data();
+        f.px_map_len = px.size();
+        f.x2 = kTestDisplayWidth - 1;
+        f.y2 = kTestDisplayHeight - 1;
+        f.disp_w = kTestDisplayWidth;
+        f.disp_h = kTestDisplayHeight;
+        f.src_stride = kTestDisplayWidth * 4;
+        f.src_format = RemoteScreenPixelFormat::BGRA8888;
+        svc.store()->note_request();
+        svc.store()->on_frame(f);
+
+        const std::string code = m.get_pair_code();
+        REQUIRE(code.size() == 6);
+        auto r = helix::test::raw_http(svc.port(), "POST", "/pair", json_headers(),
+                                       "{\"code\":\"" + code + "\"}");
+        REQUIRE(r.status == 200);
+        const auto at = r.headers.find("helix_screen=");
+        REQUIRE(at != std::string::npos);
+        cookie = "helix_screen=" + r.headers.substr(at + 13, 32);
+    }
+
+    static std::vector<std::pair<std::string, std::string>> json_headers() {
+        return {{"Content-Type", "application/json"}, {"X-Helix-Touch", "1"}};
+    }
+
+    /// POST one touch from a client thread while this thread plays LVGL's main loop:
+    /// the queued update runs, then the indevs are read until the request returns.
+    int touch(const char* type, int x, int y) {
+        auto headers = json_headers();
+        headers.push_back({"Cookie", cookie});
+        const std::string body = std::string("{\"type\":\"") + type +
+                                 "\",\"x\":" + std::to_string(x) + ",\"y\":" + std::to_string(y) +
+                                 "}";
+        std::atomic<int> status{0};
+        const int port = RemoteScreenService::instance().port();
+        std::thread client(
+            [&] { status = helix::test::raw_http(port, "POST", "/touch", headers, body).status; });
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (status.load() == 0 && std::chrono::steady_clock::now() < deadline) {
+            helix::ui::UpdateQueue::instance().drain();
+            for (lv_indev_t* i = lv_indev_get_next(nullptr); i; i = lv_indev_get_next(i)) {
+                lv_indev_read(i);
+            }
+            lv_tick_inc(5);
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+        client.join();
+        return status.load();
+    }
+};
+
+std::atomic<int> g_clicks{0};
+
+} // namespace
+
+TEST_CASE_METHOD(TouchFixture, "touch through LVGL: down/up at a button center fires CLICKED",
+                 "[remote_screen][control]") {
+    lv_obj_t* btn = lv_button_create(lv_screen_active());
+    lv_obj_set_pos(btn, 100, 100);
+    lv_obj_set_size(btn, 80, 60);
+    lv_obj_update_layout(btn);
+    g_clicks = 0;
+    lv_obj_add_event_cb(btn, [](lv_event_t*) { g_clicks.fetch_add(1); }, LV_EVENT_CLICKED, nullptr);
+
+    CHECK(touch("down", 140, 130) == 204);
+    CHECK(touch("up", 140, 130) == 204);
+    CHECK(g_clicks.load() == 1);
+    lv_obj_delete(btn);
+}
+
+TEST_CASE_METHOD(TouchFixture,
+                 "touch through LVGL: a drag across a list scrolls it and clicks nothing",
+                 "[remote_screen][control]") {
+    lv_obj_t* list = lv_obj_create(lv_screen_active());
+    lv_obj_set_pos(list, 0, 0);
+    lv_obj_set_size(list, 300, 300);
+    lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
+    g_clicks = 0;
+    for (int i = 0; i < 20; ++i) {
+        lv_obj_t* item = lv_button_create(list);
+        lv_obj_set_size(item, 260, 60);
+        lv_obj_add_event_cb(
+            item, [](lv_event_t*) { g_clicks.fetch_add(1); }, LV_EVENT_CLICKED, nullptr);
+    }
+    lv_obj_update_layout(list);
+    REQUIRE(lv_obj_get_scroll_y(list) == 0);
+
+    CHECK(touch("down", 150, 250) == 204);
+    for (int y = 240; y >= 60; y -= 20) {
+        CHECK(touch("move", 150, y) == 204);
+    }
+    CHECK(touch("up", 150, 60) == 204);
+
+    CHECK(lv_obj_get_scroll_y(list) > 0);
+    CHECK(g_clicks.load() == 0);
+    lv_obj_delete(list);
 }

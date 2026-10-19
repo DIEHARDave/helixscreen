@@ -37,6 +37,9 @@ void RemoteScreenSettingsManager::init_subjects() {
     }
     settings_.init(subjects_);
     UI_MANAGED_SUBJECT_INT(available_subject_, 0, "remote_screen_available", subjects_);
+    UI_MANAGED_SUBJECT_INT(lan_mode_subject_, 0, "remote_screen_lan_mode", subjects_);
+    UI_MANAGED_SUBJECT_STRING(pair_code_subject_, pair_code_buf_, get_pair_code().c_str(),
+                              "remote_screen_pair_code", subjects_);
     // A config edited by hand can hold control without view.
     if (get_control() && !get_enabled()) {
         settings_.set(Key::Control, false);
@@ -85,6 +88,41 @@ void RemoteScreenSettingsManager::notify_changed() {
 void RemoteScreenSettingsManager::set_available(bool available) {
     if (subjects_initialized_) {
         lv_subject_set_int(&available_subject_, available ? 1 : 0);
+    }
+}
+
+std::string RemoteScreenSettingsManager::get_pair_code() const {
+    return Config::get_instance()->get<std::string>("/remote_screen/pair_code", "");
+}
+
+void RemoteScreenSettingsManager::set_pair_code(const std::string& code) {
+    Config* config = Config::get_instance();
+    config->set<std::string>("/remote_screen/pair_code", code);
+    config->save();
+    if (subjects_initialized_) {
+        lv_subject_copy_string(&pair_code_subject_, code.c_str());
+    }
+}
+
+std::vector<std::string> RemoteScreenSettingsManager::get_paired_tokens() const {
+    return Config::get_instance()->get_string_array("/remote_screen/paired");
+}
+
+void RemoteScreenSettingsManager::set_paired_tokens(const std::vector<std::string>& tokens) {
+    Config* config = Config::get_instance();
+    config->set<nlohmann::json>("/remote_screen/paired", nlohmann::json(tokens));
+    config->save();
+}
+
+void RemoteScreenSettingsManager::set_lan_mode(bool lan_mode) {
+    if (subjects_initialized_) {
+        lv_subject_set_int(&lan_mode_subject_, lan_mode ? 1 : 0);
+    }
+}
+
+void RemoteScreenSettingsManager::forget_paired_browsers() {
+    if (forget_handler_) {
+        forget_handler_();
     }
 }
 

@@ -7,6 +7,7 @@
  */
 
 #include "../test_helpers/raw_http_client.h"
+#include "remote_screen_control.h"
 #include "remote_screen_http_server.h"
 #include "remote_screen_server_sink.h"
 
@@ -15,6 +16,7 @@
 #include <cstdio>
 #include <fstream>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -182,4 +184,157 @@ TEST_CASE("http: a port already in use fails start cleanly", "[remote_screen][ht
     cfg.port = first.server->port();
     CHECK_FALSE(second.start(cfg));
     CHECK(second.port() == 0);
+}
+
+// ---------------------------------------------------------------------------
+// Control routes
+// ---------------------------------------------------------------------------
+
+namespace {
+
+struct ControlFixture {
+    std::shared_ptr<ScreenFrameStore> store = std::make_shared<ScreenFrameStore>();
+    std::shared_ptr<PairingStore> pairing;
+    std::vector<TouchEvent> touches;
+    std::mutex touches_mutex;
+    std::unique_ptr<ScreenHttpServer> server;
+
+    ControlFixture(bool control, bool lan_mode) {
+        if (lan_mode) {
+            pairing = std::make_shared<PairingStore>("123456", std::vector<std::string>{},
+                                                     PairingStore::Persist{});
+        }
+        ScreenServerHooks hooks;
+        hooks.request_full_redraw = [] {};
+        hooks.is_printing = [] { return false; };
+        hooks.apply_touch = [this](const TouchEvent& e) {
+            std::lock_guard<std::mutex> lock(touches_mutex);
+            touches.push_back(e);
+            return true;
+        };
+        hooks.pairing = pairing;
+        server = std::make_unique<ScreenHttpServer>(store, hooks);
+        ScreenServerConfig cfg;
+        cfg.bind_host = "127.0.0.1";
+        cfg.port = 0;
+        cfg.control_allowed = control;
+        cfg.lan_mode = lan_mode;
+        REQUIRE(server->start(cfg));
+        Frame frame(64, 48);
+        store->on_frame(frame.f);
+    }
+
+    std::string host() const {
+        return "127.0.0.1:" + std::to_string(server->port());
+    }
+
+    helix::test::RawHttpReply touch(const std::string& body, bool header = true,
+                                    const std::string& origin = "", const std::string& cookie = "",
+                                    const std::string& type = "application/json") {
+        std::vector<std::pair<std::string, std::string>> h = {{"Content-Type", type}};
+        if (header) {
+            h.push_back({"X-Helix-Touch", "1"});
+        }
+        if (!origin.empty()) {
+            h.push_back({"Origin", origin});
+        }
+        if (!cookie.empty()) {
+            h.push_back({"Cookie", cookie});
+        }
+        return raw_http(server->port(), "POST", "/touch", h, body);
+    }
+
+    size_t touch_count() {
+        std::lock_guard<std::mutex> lock(touches_mutex);
+        return touches.size();
+    }
+};
+
+const std::string kDown = R"({"type":"down","x":10,"y":10})";
+
+} // namespace
+
+TEST_CASE("http: touch is refused unless every gate passes", "[remote_screen][http][control]") {
+    SECTION("control off is 403") {
+        ControlFixture fx(false, false);
+        CHECK(fx.touch(kDown).status == 403);
+        CHECK(fx.touch_count() == 0);
+    }
+    SECTION("missing X-Helix-Touch is 403") {
+        ControlFixture fx(true, false);
+        CHECK(fx.touch(kDown, false).status == 403);
+        CHECK(fx.touch_count() == 0);
+    }
+    SECTION("a form content type is 403") {
+        ControlFixture fx(true, false);
+        CHECK(fx.touch(kDown, true, "", "", "text/plain").status == 403);
+        CHECK(fx.touch_count() == 0);
+    }
+    SECTION("a foreign Origin is 403") {
+        ControlFixture fx(true, false);
+        CHECK(fx.touch(kDown, true, "http://evil.example").status == 403);
+        CHECK(fx.touch_count() == 0);
+    }
+    SECTION("unpaired in LAN mode is 401") {
+        ControlFixture fx(true, true);
+        CHECK(fx.touch(kDown).status == 401);
+        CHECK(fx.touch_count() == 0);
+    }
+    SECTION("a point outside the image is 400") {
+        ControlFixture fx(true, false);
+        CHECK(fx.touch(R"({"type":"down","x":64,"y":0})").status == 400);
+        CHECK(fx.touch_count() == 0);
+    }
+    SECTION("behind nginx with every gate passed, the event is applied") {
+        ControlFixture fx(true, false);
+        auto r = fx.touch(kDown, true, "http://" + fx.host());
+        CHECK(r.status == 204);
+        REQUIRE(fx.touch_count() == 1);
+        CHECK(fx.touches[0].type == TouchEvent::Type::Down);
+        CHECK(fx.touches[0].x == 10);
+    }
+}
+
+TEST_CASE("http: pair sets an HttpOnly SameSite=Strict cookie that then allows touch",
+          "[remote_screen][http][control]") {
+    ControlFixture fx(true, true);
+    const std::vector<std::pair<std::string, std::string>> h = {
+        {"Content-Type", "application/json"}, {"X-Helix-Touch", "1"}};
+
+    auto info =
+        nlohmann::json::parse(raw_http(fx.server->port(), "GET", "/info").body, nullptr, false);
+    CHECK(info["paired"] == false);
+
+    auto wrong = raw_http(fx.server->port(), "POST", "/pair", h, R"({"code":"000000"})");
+    CHECK(wrong.status == 403);
+
+    auto ok = raw_http(fx.server->port(), "POST", "/pair", h, R"({"code":"123456"})");
+    REQUIRE(ok.status == 200);
+    REQUIRE(ok.has_header("set-cookie: helix_screen="));
+    CHECK(ok.has_header("httponly"));
+    CHECK(ok.has_header("samesite=strict"));
+
+    const auto start = ok.headers.find("set-cookie: helix_screen=") + 25;
+    const std::string token = ok.headers.substr(start, 32);
+    REQUIRE(fx.pairing->is_paired(token));
+    CHECK(fx.touch(kDown, true, "", std::string("helix_screen=") + token).status == 204);
+    CHECK(fx.touch_count() == 1);
+
+    auto paired_info = nlohmann::json::parse(
+        raw_http(fx.server->port(), "GET", "/info", {{"Cookie", "helix_screen=" + token}}).body,
+        nullptr, false);
+    CHECK(paired_info["paired"] == true);
+}
+
+TEST_CASE("http: pairing past the attempt limit is 429 with Retry-After",
+          "[remote_screen][http][control]") {
+    ControlFixture fx(true, true);
+    const std::vector<std::pair<std::string, std::string>> h = {
+        {"Content-Type", "application/json"}, {"X-Helix-Touch", "1"}};
+    for (int i = 0; i < kPairAttemptsPerWindow; ++i) {
+        raw_http(fx.server->port(), "POST", "/pair", h, R"({"code":"000000"})");
+    }
+    auto limited = raw_http(fx.server->port(), "POST", "/pair", h, R"({"code":"123456"})");
+    CHECK(limited.status == 429);
+    CHECK(limited.has_header("retry-after: "));
 }
