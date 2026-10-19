@@ -6149,3 +6149,55 @@ TEST_CASE_METHOD(SnapmakerFixture,
     h.frame(make_feed_status(0, "unload_finish", /*filament_detected=*/true));
     CHECK(h.config_writes().size() == 2);
 }
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker an edit after a spool went in names that spool for later drops",
+                 "[ams][snapmaker][filament_record][record_drift]") {
+    lv_init_safe();
+    FilamentRecordHarness h("drift_restore_edit_names_insert");
+    declare_head0_asa(h);
+
+    h.frame(make_feed_status(0, "wait_insert", /*filament_detected=*/false));
+    h.frame(make_feed_status(0, "wait_insert", /*filament_detected=*/true));
+    h.frame(make_filament_detect_status(0, "NONE", 0u, "NONE", json::array()));
+    REQUIRE(h.backend.slot_insert_identity(0) == InsertIdentity::NoTag);
+    helix::test::edit_slot_as_user(h.backend, 0, polymaker_asa());
+    FilamentRecordHarness::drain();
+    h.frame(make_head_record(0, "ASA", "FF9800FF"));
+    h.printer.client.clear_gcode_script_history();
+
+    h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+    CHECK(h.config_writes().size() == 2);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker a restart judges a dropped record afresh",
+                 "[ams][snapmaker][filament_record][record_drift]") {
+    lv_init_safe();
+    FilamentRecordHarness h("drift_restore_restart");
+    declare_head0_asa(h);
+
+    SECTION("a write-back the previous session sent") {
+        h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+        REQUIRE(h.config_writes().size() == 2);
+    }
+    SECTION("a spool the previous session saw go in") {
+        h.frame(make_feed_status(0, "wait_insert", /*filament_detected=*/false));
+        h.frame(make_feed_status(0, "wait_insert", /*filament_detected=*/true));
+        h.frame(make_filament_detect_status(0, "NONE", 0u, "NONE", json::array()));
+        h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+        REQUIRE(h.config_writes().empty());
+    }
+    SECTION("an offset calibration the previous session saw hold the heads") {
+        h.frame(json{{"machine_state_manager", {{"main_state", 2}}}});
+        h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+        REQUIRE(h.config_writes().empty());
+    }
+
+    SnapmakerTestAccess::call_on_started(h.backend);
+    FilamentRecordHarness::drain();
+    h.printer.client.clear_gcode_script_history();
+    h.print("standby");
+    h.frame(make_feed_status(0, "unload_finish", /*filament_detected=*/true));
+    h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+    CHECK(h.config_writes().size() == 2);
+}
