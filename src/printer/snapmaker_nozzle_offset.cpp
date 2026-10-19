@@ -3,12 +3,16 @@
 
 #include "snapmaker_nozzle_offset.h"
 
+#include "i_moonraker_client.h"
+#include "moonraker_error.h"
 #include "printer_discovery.h"
 #include "snapmaker_exceptions.h"
 #include "snapmaker_screws_tilt.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
+
+#include <atomic>
 
 namespace helix::snapmaker::nozzle_offset {
 
@@ -17,6 +21,28 @@ namespace {
 /// The macro each per-head step runs; the module refuses a head whose macro is missing.
 constexpr std::array<const char*, 5> kPerHeadHooks = {"HEAT", "AUTO_CLEAN", "MANUAL_CLEAN",
                                                       "WAIT_COOL", "PROBE_CALIBRATE"};
+
+/// Runners in this process that are mid-run.
+std::atomic<int> s_live_runs{0};
+
+bool phase_is_live(Runner::Phase phase) {
+    return phase == Runner::Phase::Running || phase == Runner::Phase::AwaitingUser ||
+           phase == Runner::Phase::Finishing;
+}
+
+/// The status map inside an objects.query response, or the response itself
+/// when it already is one.
+const nlohmann::json* status_map(const nlohmann::json& response) {
+    const nlohmann::json* status = &response;
+    if (const auto result = response.find("result");
+        result != response.end() && result->is_object()) {
+        status = &*result;
+    }
+    if (const auto inner = status->find("status"); inner != status->end() && inner->is_object()) {
+        status = &*inner;
+    }
+    return status->is_object() ? status : nullptr;
+}
 
 /// The status object Klipper names each head's extruder by.
 std::string extruder_object(int head) {
@@ -114,15 +140,8 @@ nlohmann::json offsets_query_params() {
 
 std::optional<std::vector<std::array<double, 3>>>
 offsets_from_query(const nlohmann::json& response) {
-    const nlohmann::json* status = &response;
-    if (const auto result = response.find("result");
-        result != response.end() && result->is_object()) {
-        status = &*result;
-    }
-    if (const auto inner = status->find("status"); inner != status->end() && inner->is_object()) {
-        status = &*inner;
-    }
-    if (!status->is_object()) {
+    const nlohmann::json* status = status_map(response);
+    if (!status) {
         return std::nullopt;
     }
 
@@ -148,11 +167,58 @@ offsets_from_query(const nlohmann::json& response) {
     return out;
 }
 
+bool run_live() {
+    return s_live_runs.load() > 0;
+}
+
+bool stale_calibration_state(const nlohmann::json& response, bool live) {
+    const nlohmann::json* status = status_map(response);
+    if (!status || live) {
+        return false;
+    }
+    const auto held = screws_tilt::main_state_from_status(*status);
+    return held && *held == kMainStateXyzOffsetCalibrate;
+}
+
+void reconcile_on_connect(helix::IMoonrakerClient& client) {
+    nlohmann::json params = {
+        {"objects", {{"machine_state_manager", nlohmann::json::array({"main_state"})}}}};
+    client.send_jsonrpc(
+        "printer.objects.query", params,
+        [&client](const nlohmann::json& response) {
+            // Decided at answer time: a run started since the query went out owns the state.
+            if (!stale_calibration_state(response, run_live())) {
+                return;
+            }
+            spdlog::info("[NozzleOffsetCal] Leaving a toolhead offset calibration state no run "
+                         "here owns");
+            client.send_jsonrpc(
+                "printer.gcode.script", {{"script", kExitGcode}},
+                [](const nlohmann::json&) {
+                    spdlog::info("[NozzleOffsetCal] Calibration state cleared");
+                },
+                [](const MoonrakerError& err) {
+                    spdlog::warn("[NozzleOffsetCal] {} failed: {}", kExitGcode, err.message);
+                },
+                kStepTimeoutMs, true);
+        },
+        [](const MoonrakerError& err) {
+            spdlog::debug("[NozzleOffsetCal] Connect-time state read failed: {}", err.message);
+        },
+        0, true);
+}
+
 // ============================================================================
 // Runner
 // ============================================================================
 
 Runner::Runner(Hooks hooks) : hooks_(std::move(hooks)), steps_(build_sequence()) {}
+
+Runner::~Runner() {
+    if (phase_is_live(phase_)) {
+        s_live_runs.fetch_sub(1);
+    }
+}
 
 const Step* Runner::current_step() const {
     if (phase_ == Phase::Idle || index_ >= steps_.size()) {
@@ -265,6 +331,11 @@ void Runner::send_exit(Phase then) {
 }
 
 void Runner::set_phase(Phase phase) {
+    const bool was_live = phase_is_live(phase_);
+    const bool is_live = phase_is_live(phase);
+    if (is_live != was_live) {
+        s_live_runs.fetch_add(is_live ? 1 : -1);
+    }
     phase_ = phase;
     if (hooks_.changed) {
         hooks_.changed();

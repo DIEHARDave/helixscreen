@@ -40,8 +40,9 @@
  */
 
 namespace helix {
+class IMoonrakerClient;
 class PrinterDiscovery;
-}
+} // namespace helix
 
 namespace helix::snapmaker::nozzle_offset {
 
@@ -111,6 +112,33 @@ offsets_from_query(const nlohmann::json& response);
 /// The objects.query params offsets_from_query() reads.
 [[nodiscard]] nlohmann::json offsets_query_params();
 
+/// machine_state_manager.main_state while the firmware holds the offset
+/// calibration state (MachineMainState.XYZ_OFFSET_CALIBRATE). IDLE is 0.
+inline constexpr int kMainStateXyzOffsetCalibrate = 2;
+
+/// True while a Runner in this process is mid-run (Running, AwaitingUser or
+/// Finishing). A held firmware state is then ours, not stale.
+[[nodiscard]] bool run_live();
+
+/**
+ * @brief True when an objects.query response (or its status map) shows the
+ *        firmware holding the calibration state with no run here to own it
+ *
+ * Every step but PRESTART refuses outside the state and EXIT is the only way
+ * out, so a run whose driver died leaves the heaters at the run's targets and
+ * the idle timeout at the pause value until something sends EXIT.
+ */
+[[nodiscard]] bool stale_calibration_state(const nlohmann::json& response, bool run_live);
+
+/**
+ * @brief Connect-time cleanup of a calibration state a previous session left
+ *
+ * Reads main_state fresh (the discovery subscription does not always carry
+ * machine_state_manager) and sends EXIT once when stale_calibration_state()
+ * says so. @p client must outlive the round trip.
+ */
+void reconcile_on_connect(helix::IMoonrakerClient& client);
+
 /**
  * @brief Walks build_sequence() one command at a time
  *
@@ -147,6 +175,9 @@ class Runner {
     };
 
     explicit Runner(Hooks hooks);
+    ~Runner();
+    Runner(const Runner&) = delete;
+    Runner& operator=(const Runner&) = delete;
 
     /// Begins a run from any phase but Running, AwaitingUser and Finishing.
     void start();

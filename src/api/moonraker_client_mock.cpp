@@ -1226,7 +1226,7 @@ void MoonrakerClientMock::populate_capabilities() {
              {"tool", "fm175xx_reader", "tmc2240 stepper_x", "purifier", "camera",
               "defect_detection", "gcode_macro FILAMENT_DT_UPDATE", "gcode_macro FILAMENT_DT_QUERY",
               "gcode_macro EXTRUDER_OFFSET_ACTION_PROBE_CALIBRATE_ALL",
-              "extruder_offset_calibration", "gcode_macro _EXTRUDER_OFFSET_ACTION_PRESTART",
+              "gcode_macro _EXTRUDER_OFFSET_ACTION_PRESTART",
               "gcode_macro _EXTRUDER_OFFSET_ACTION_EXIT"}) {
             mock_objects.push_back(obj);
         }
@@ -5944,6 +5944,11 @@ std::array<double, 3> MoonrakerClientMock::nozzle_offset(int head) const {
         return {0.0, 0.0, 0.0};
     }
     return nozzle_offsets_[static_cast<size_t>(head)];
+}
+
+bool MoonrakerClientMock::nozzle_calibration_active() const {
+    std::lock_guard<std::mutex> lock(nozzle_cal_mutex_);
+    return nozzle_cal_active_;
 }
 
 bool MoonrakerClientMock::simulate_nozzle_offset_calibration(

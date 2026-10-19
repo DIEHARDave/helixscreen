@@ -3,6 +3,7 @@
 
 #include "env_knobs.h"
 #include "moonraker_client_mock_internal.h"
+#include "snapmaker_nozzle_offset.h"
 #include "text_io.h"
 
 #include <spdlog/spdlog.h>
@@ -602,8 +603,15 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                 }
             }
 
-            // The U1 reports each head's calibrated offset on its extruder.
+            // The U1 reports each head's calibrated offset on its extruder, and
+            // the offset calibration state on machine_state_manager.
             if (self->get_printer_type() == MoonrakerClientMock::PrinterType::SNAPMAKER_U1) {
+                if (objects.contains("machine_state_manager")) {
+                    status_obj["machine_state_manager"]["main_state"] =
+                        self->nozzle_calibration_active()
+                            ? helix::snapmaker::nozzle_offset::kMainStateXyzOffsetCalibrate
+                            : 0;
+                }
                 for (int head = 0; head < 4; ++head) {
                     const std::string name =
                         head == 0 ? std::string("extruder") : "extruder" + std::to_string(head);

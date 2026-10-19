@@ -398,3 +398,52 @@ TEST_CASE("each phase maps to one screen", "[snapmaker][nozzle_offset]") {
     REQUIRE(nozzle_offset_screen(P::Done, Prompt::None) == Screen::Done);
     REQUIRE(nozzle_offset_screen(P::Failed, Prompt::None) == Screen::Failed);
 }
+
+TEST_CASE("a held calibration state is stale only when no run here owns it",
+          "[snapmaker][nozzle_offset][reconcile]") {
+    const nlohmann::json held = {{"machine_state_manager", {{"main_state", 2}}}};
+    REQUIRE(stale_calibration_state(held, false));
+    REQUIRE_FALSE(stale_calibration_state(held, true));
+    REQUIRE(stale_calibration_state({{"result", {{"status", held}}}}, false));
+
+    SECTION("any other main state is not ours to leave") {
+        REQUIRE_FALSE(
+            stale_calibration_state({{"machine_state_manager", {{"main_state", 0}}}}, false));
+        // SCREWS_TILT_ADJUST belongs to the screws-tilt reconcile.
+        REQUIRE_FALSE(
+            stale_calibration_state({{"machine_state_manager", {{"main_state", 8}}}}, false));
+    }
+    SECTION("no state reported reads as nothing to clear") {
+        REQUIRE_FALSE(stale_calibration_state(nlohmann::json::object(), false));
+        REQUIRE_FALSE(
+            stale_calibration_state({{"machine_state_manager", {{"main_state", "2"}}}}, false));
+    }
+}
+
+TEST_CASE("a run is live from start until it ends", "[snapmaker][nozzle_offset][reconcile]") {
+    REQUIRE_FALSE(run_live());
+    {
+        Harness h;
+        h.runner.start();
+        REQUIRE(run_live());
+        h.advance_to("EXTRUDER_OFFSET_ACTION_MANUAL_CLEAN TOOL_ID=T0");
+        h.finish();
+        REQUIRE(h.runner.phase() == Runner::Phase::AwaitingUser);
+        REQUIRE(run_live());
+        h.runner.cancel();
+        REQUIRE_FALSE(run_live());
+
+        h.runner.start();
+        h.advance_to("EXTRUDER_OFFSET_ACTION_PROBE_CALIBRATE TOOL_ID=T3");
+        h.finish();
+        REQUIRE(h.runner.phase() == Runner::Phase::Finishing);
+        REQUIRE(run_live());
+        h.finish();
+        REQUIRE_FALSE(run_live());
+
+        h.runner.start();
+        REQUIRE(run_live());
+    }
+    // A runner destroyed mid-run stops counting.
+    REQUIRE_FALSE(run_live());
+}

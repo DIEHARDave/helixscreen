@@ -1266,6 +1266,10 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// objects query reports it.
     [[nodiscard]] std::array<double, 3> nozzle_offset(int head) const;
 
+    /// Whether the simulated firmware holds the offset calibration state
+    /// (PRESTART ran, EXIT has not). machine_state_manager.main_state reports it.
+    [[nodiscard]] bool nozzle_calibration_active() const;
+
     /// The inverse: which axis a PARAMETER= names, or nullopt for any other
     /// tool parameter (the mock models only the three offsets).
     static std::optional<helix::Axis> tool_offset_axis(const std::string& param);

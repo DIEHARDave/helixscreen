@@ -276,6 +276,18 @@ void AmsBackendSnapmaker::set_discovery(const helix::PrinterDiscovery& discovery
 }
 
 void AmsBackendSnapmaker::on_started() {
+    // A session that died mid-calibration leaves the firmware in its offset
+    // calibration state with heaters on. The reconcile leaves a state a run in
+    // this process still owns, which is the reconnect case.
+    bool nozzle_offset = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        nozzle_offset = nozzle_offset_supported_;
+    }
+    if (nozzle_offset && client_) {
+        snapmaker::nozzle_offset::reconcile_on_connect(*client_);
+    }
+
     // Load persisted per-slot overrides (brand, spool name, spoolman IDs, etc.)
     // from the Moonraker DB lane_data namespace BEFORE any status parse runs.
     // AmsSubscriptionBackend::start() registers the WebSocket subscription

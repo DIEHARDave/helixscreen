@@ -127,3 +127,53 @@ TEST_CASE_METHOD(NozzleCalFixture, "mock: a failed probe ends the run",
     CHECK(runner.current_step()->tool == 1);
     CHECK(runner.error().find("tolerance") != std::string::npos);
 }
+
+TEST_CASE_METHOD(NozzleCalFixture, "mock: connect-time reconcile leaves a stale state",
+                 "[mock][snapmaker][nozzle_offset][reconcile]") {
+    // A previous session entered the state and died.
+    client.send_jsonrpc(
+        "printer.gcode.script", json{{"script", "EXTRUDER_OFFSET_ACTION_PRESTART"}},
+        [](const json&) {}, [](const MoonrakerError&) {});
+    process_lvgl(1300);
+    REQUIRE(client.nozzle_calibration_active());
+
+    reconcile_on_connect(client);
+    process_lvgl(1300);
+    CHECK_FALSE(client.nozzle_calibration_active());
+}
+
+TEST_CASE_METHOD(NozzleCalFixture, "mock: connect-time reconcile leaves a live run alone",
+                 "[mock][snapmaker][nozzle_offset][reconcile]") {
+    runner.start();
+    process_lvgl(1300);
+    REQUIRE(client.nozzle_calibration_active());
+    REQUIRE(run_live());
+
+    reconcile_on_connect(client);
+    process_lvgl(1300);
+    CHECK(client.nozzle_calibration_active());
+    runner.cancel();
+    process_lvgl(1300);
+    CHECK_FALSE(client.nozzle_calibration_active());
+}
+
+TEST_CASE_METHOD(NozzleCalFixture, "mock: connect-time reconcile sends nothing when idle",
+                 "[mock][snapmaker][nozzle_offset][reconcile]") {
+    std::vector<std::string> console;
+    client.register_method_callback("notify_gcode_response", "test_console",
+                                    [&console](const json& msg) {
+                                        for (const auto& p : msg.at("params")) {
+                                            if (p.is_string()) {
+                                                console.push_back(p.get<std::string>());
+                                            }
+                                        }
+                                    });
+    reconcile_on_connect(client);
+    process_lvgl(1300);
+    client.unregister_method_callback("notify_gcode_response", "test_console");
+    // An EXIT outside the state would be refused with the firmware's fault.
+    for (const auto& line : console) {
+        CHECK(line.find("0003-0530-0000-0009") == std::string::npos);
+    }
+    CHECK_FALSE(client.nozzle_calibration_active());
+}

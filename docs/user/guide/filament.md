@@ -576,7 +576,9 @@ The U1 measures how far each toolhead's nozzle sits from the others, so every he
 3. When all four are clean, take the PEI sheet off the bed and tap **Next**. The printer checks the sheet is off before probing; if it still detects the sheet, it asks again.
 4. Each toolhead is probed and the offsets are saved. The final screen lists every toolhead's X, Y and Z offset. Put the PEI sheet back.
 
-Tapping **Cancel** or leaving the screen stops the calibration and turns the heaters off. A step already running finishes first (a heat-up, for example), except probing, which stops straight away. If a step fails, nothing is saved and the heaters are turned off. The button is greyed out while a print is running or paused.
+Every toolhead is purged and probed, including one with no filament loaded, exactly as on the stock screen; an empty head just turns its extruder over without pushing anything out.
+
+Tapping **Cancel** or leaving the screen stops the calibration and turns the heaters off. If HelixScreen restarts in the middle of a calibration, it ends the printer's calibration mode and turns the heaters off when it reconnects. A step already running finishes first (a heat-up, for example), except probing, which stops straight away. If a step fails, nothing is saved and the heaters are turned off. The button is greyed out while a print is running or paused.
 
 > **Note:** Because each toolhead is independent, the Snapmaker backend has no Home, Recover, Reset, Bypass, or Endless Spool controls — those apply to shared-path AMS hardware only.
 
