@@ -60,6 +60,8 @@ Z belts are deliberately unsupported; see the header comment on
 | `src/calibration/resonance_console.cpp` | `[resonance_tester]` config query and console-line parsing shared with input shaper |
 | `src/calibration/shaper_csv_parser.cpp` | `parse_resonance_csv`: reads the CSV, returns `(freq, psd_xyz)` pairs plus the in-plane `psd_x + psd_y` curve, or a classified error |
 | `src/api/moonraker_advanced_api.cpp` | `BeltResonanceCollector` (console follow + CSV read) and `test_belt_resonance` (entry point); `detect_belt_hardware` for kinematics |
+| `src/calibration/live_sweep_preview.cpp`, `include/live_sweep_preview.h` | `LiveSweepPreview` and the single gate `live_sweep_target`: the live curve while a sweep runs (§ Live preview) |
+| `src/calibration/sweep_response_estimator.cpp`, `include/sweep_response_estimator.h` | Pure estimator: `SweepResponseAccumulator` turns accelerometer samples into one PSD point per Hz, `DriveLock` finds where the ramp is in the samples |
 | `src/ui/ui_frequency_response_chart.cpp` | Shared chart: series styles, muted ghost series, sweep cursor, numbered and hollow markers, percent gridline labels, label gutters sized from the font (see `INPUT_SHAPER.md` § Axis label gutters) |
 | `src/calibration/belt_gating.cpp` | The pure Start-gate predicate |
 | `src/api/moonraker_client_mock.cpp` | `dispatch_test_resonances_response`: the `--test` simulation of a sweep |
@@ -127,6 +129,79 @@ there: the check has to happen before Start.
 clear the movement state the aborted sweep left behind. The button is "Stop" with the
 `alert_octagon` icon on every view that can be measuring (`btn_stop`, `btn_tune_stop`),
 matching the other emergency-stop controls.
+
+## Live preview
+
+While a sweep runs, the chart draws the measured response as it arrives instead of waiting
+for the CSV. The sweep lasts minutes, and a flat chart for that long reads as a hang.
+Classes: `include/live_sweep_preview.h#LiveSweepPreview` (stream lifecycle),
+`SweepResponseAccumulator` in `include/sweep_response_estimator.h` (samples to points). The Input
+Shaper panel and wizard step use the same two classes (`INPUT_SHAPER.md` § Live sweep chart).
+
+Four signals meet here, and each answers a different question:
+
+| Signal | Says | Used for |
+|--------|------|----------|
+| Accelerometer stream (klippy's dump endpoint, the client in `BELT_TUNER.md`) | The measured acceleration, per sample | The curve itself: a single-bin PSD per Hz |
+| Console `Testing frequency N Hz` | Roughly where the sweep is; printed when a move is planned, a lookahead buffer ahead of the motion | Starts the stream, and narrows the drive search (`note_console_frequency`) |
+| `[resonance_tester]` config | The ramp: start, end, `hz_per_sec`, the accelerometer chip | `live_sweep_target`, `sweep_plan_for` |
+| The CSV | Klipper's own analysis of the finished sweep | Replaces the preview, and is the only source of every verdict |
+
+**The lock.** The console frequency is not used to place samples on the frequency axis.
+Because it runs ahead of the motion by an unknown buffer, a step binned by console time would
+sit seconds off. `DriveLock` instead reads the drive frequency out of the samples (the
+strongest line near the console value, against off-drive reference bins) and fixes the
+ramp's start time once enough readings agree. Until it locks, no point is emitted as clean.
+
+**NaN is a gap, not zero.** A step is unclean when its samples had a gap, fell out of the
+buffer, or finished while the lock was lost. `layout_preview` puts NaN in that slot, and the
+chart skips it (`INPUT_SHAPER.md` § NaN gaps). A zero would draw a false dip.
+
+**Never a verdict.** The preview only draws. Similarity, peaks, the tuning loop's centroids
+and every outcome come from the CSV curves, so a wrong or partial preview cannot move a
+recommendation.
+
+**No fallback.** With no stream the preview does not draw, and the chart behaves as it does
+without the feature. No stream means: the EMBEDDED tier (no chart at all), a klippy socket
+the screen cannot reach (`live_sweep_target` returns nullopt), a sweep recorded by two
+different chips, a chart the layout hides, or `HELIX_SWEEP_PREVIEW_OFF=1`. The console
+timing is deliberately not drawn in its place: it would present a guess as a measurement.
+
+**Arming.** `BeltTensionPanel::arm_preview` runs when a path's sweep starts, after the
+automatic settling laps, which are a separate step. The preview then waits for the sweep's
+first console line before it opens the stream, so the tester's own client already holds the
+chip. The socket path comes from the same probe the Start gate uses
+(`BeltTensionPanel::probe_klippy_socket`), the ramp and chip from the panel's
+`[resonance_tester]` answer (`sweep_cfg_`), and a narrowed tuning window from `run_window_`.
+
+**Per-path series and the CSV swap.** Each path has its own preview series
+(`preview_series_`), drawn on its own 0-100% scale (the final curves share one, so the swap
+rescales). What happens when a path's sweep completes depends on `run_kind_`:
+
+| Run | Preview column | On `on_sweep_complete` |
+|-----|----------------|------------------------|
+| Full check (Test Both, Re-test): `RunKind::CHECK` | `SweepColumn::XYZ` | The CSV curve replaces that path's preview at once |
+| Calibration, baseline and tune runs | `SweepColumn::IN_PLANE` (`psd_x + psd_y`) | The finished path's preview stays frozen until the round's chart push, because the loop draws only whole rounds |
+
+The column matches the CSV column the same run reads, so the swap changes the numbers only
+by what Klipper's own analysis adds. `BeltTensionPanel::refresh_preview_series` is the one
+place this is decided.
+
+**Threading.** The stream's callbacks arrive on its own libhv loop thread, where the
+accumulator runs and nothing else. Finished points cross to the LVGL thread through a
+`LifetimeToken::defer`; `LiveSweepPreview::stop` expires that token before it joins the
+loop, so a point already queued is dropped instead of reaching a destroyed panel. The loop
+thread takes nice 10 (`kPreviewLoopNice`), since a starved klippy fails the sweep's moves.
+The stream stops at the last point, at `finish()`, on a source error and on every teardown,
+so the preview never keeps the accelerometer running.
+
+**CB1 cost.** The CPU cost on a BTT CB1 (Voron 2.4) is a pending hardware check, not a
+measured fact. Procedure: run the same full check twice, once normally and once with
+`HELIX_SWEEP_PREVIEW_OFF=1`, and compare the loop thread's CPU from the `[LiveSweepPreview]`
+stop line, klippy's and helix-screen's CPU over the sweep from `/proc/<pid>/stat`, and the
+count of `Timer too close` lines in klippy.log. The result will be recorded in the GitHub
+issue for the preview (prestonbrown/helixscreen#1812); this section carries no numbers
+until it lands.
 
 ## Klipper facts the implementation leans on
 
@@ -656,6 +731,8 @@ one `###` entry per variable.
 | `tests/unit/test_belt_tune_session.cpp` | `BeltTuneSession`: candidates, already matched, calibration, the range clamp, repeatability, centroids, every outcome, the sanity bound, turn sizes, the power hint, tensioner kinds; the Voron and K1C hardware captures |
 | `tests/unit/test_belt_gap_gauge.cpp` | `belt_gap_gauge_x`, `belt_gap_severity` and the widget's set/get |
 | `tests/unit/test_mock_test_resonances.cpp` | The mock's sweep simulation, including each `HELIX_MOCK_BELT_FAIL` mode |
+| `tests/unit/test_live_sweep_preview.cpp`, `test_live_sweep_target.cpp`, `test_live_sweep_header_weight.cpp` | `LiveSweepPreview` states and threading, the `live_sweep_target` gate and `layout_preview`, the ESP32 header-weight rule |
+| `tests/unit/test_sweep_response_estimator.cpp`, `test_sweep_synth.cpp`, `test_mock_accel_batch_source.cpp` | The estimator and drive lock, the synthetic sweep, the mock stream |
 | `tests/unit/test_frequency_response_chart_style.cpp` (`[belt]` cases) | Series styling, muted ghost, sweep cursor, markers |
 
 Run them with `make t F='[belt]'` (the `[belt]` tag also collects the pluck-tuner units

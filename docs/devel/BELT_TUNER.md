@@ -98,6 +98,8 @@ BeltTensionPanel (UI, state machine, XML-bound subjects)
   |     Klipper's UDS webhooks endpoint (dump_adxl345), \x03-framed JSON,
   |     on its own libhv event loop. Klipper serves a second client
   |     alongside Moonraker, so this does not disturb the printer.
+  |     Also feeds the live sweep preview (BELT_TENSION.md § Live preview),
+  |     through an unchanged client behind `IAccelBatchSource`.
   |
   +-> BeltListenSession             belt_listen_session.h
   |     Owns the live detection window. Applies kMinDetectableRatio,

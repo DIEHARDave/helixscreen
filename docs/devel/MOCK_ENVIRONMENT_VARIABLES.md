@@ -1562,6 +1562,32 @@ HELIX_MOCK_BELT_TUNE_SCRIPT="B:98.3,102.1,102.1,105.0,108.5,109.9" ./build/bin/h
 HELIX_MOCK_BELT_TUNE_SCRIPT="B:flat,104" ./build/bin/helix-screen --test --sim-speed 6 -vv
 ```
 
+### Live sweep preview under `--test`
+
+No variable switches this on: under `--test` the live sweep charts (Input Shaper panel and
+wizard step, Belt Tension) are fed by the mock printer's own accelerometer stream, so the
+whole path from the loop thread to the chart runs without hardware.
+
+- **The stream.** `MockAccelBatchSource` (`include/accel_batch_source_mock.h`) plays a synthetic
+  sweep (`SweepSynth`) through the callbacks klippy's dump endpoint feeds, on a private
+  libhv loop thread, one batch per `kBatchIntervalMs` of wall time. `make_accel_batch_source`
+  picks it when `RuntimeConfig::should_mock_moonraker()`; the mock's
+  `MoonrakerClientMock::make_accel_batch_source` hands it the response of the sweep it
+  started last. The stream's ramp starts `kDriveLeadS` after the stream, as a real one
+  trails the console line the preview attaches on.
+- **The response.** It matches the CSV the mock writes for the same sweep, so the swap to
+  the CSV curve is seamless. Belt paths follow `HELIX_MOCK_BELT_A_HZ` / `_B_HZ` (and the
+  tune script); `SHAPER_CALIBRATE` peaks at 53.8 Hz (X) and 48.2 Hz (Y).
+- **Pacing.** `--sim-speed` scales the stream (stream seconds per wall second) and the
+  console lines together, so the two stay in step at any factor. Check the preview at 4-10x, as for
+  any active sweep.
+- **Realtime shaper sweep.** `SHAPER_CALIBRATE` plays one `Testing frequency` line per whole
+  Hz at the belt sweep's cadence when `MoonrakerClientMock::set_shaper_sweep_realtime` is on,
+  which `MoonrakerManager` sets for the app. Unit tests keep the compact 20-line transcript.
+- **Failure modes.** `HELIX_MOCK_BELT_FAIL=stall` and the other modes end the console
+  transcript as before, and the preview stops with the run. `HELIX_SWEEP_PREVIEW_OFF=1`
+  (`ENVIRONMENT_VARIABLES.md`) removes the preview under `--test` too.
+
 ### `HELIX_MOCK_BELT_FAIL`
 
 Make the mock's next `TEST_RESONANCES` run fail the way real hardware does, so the belt-tension UI's error paths are reachable without a printer. Read once at mock construction.
