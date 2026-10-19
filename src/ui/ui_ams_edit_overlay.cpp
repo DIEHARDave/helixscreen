@@ -180,6 +180,11 @@ bool AmsEditOverlay::show_for_slot(lv_obj_t* parent, int slot_index, const SlotI
     // Every piece of per-session state starts from THIS slot. A picker-entry
     // session never runs enter_editor() up front, so nothing may be left for
     // it to inherit from the previous slot.
+    // A session still owed its completion ends here, unsaved: reopened while
+    // it was sliding out, the overlay stays open and that close never runs.
+    if (completion_callback_) {
+        fire_completion(false);
+    }
     ++session_;
     slot_index_ = slot_index;
     original_info_ = initial_info;
@@ -218,19 +223,6 @@ bool AmsEditOverlay::show_for_slot(lv_obj_t* parent, int slot_index, const SlotI
     lv_subject_set_int(&more_open_subject_, 0);
     // After show(): the first one initialises the subjects this writes.
     load_lane_settings();
-
-    // Safety net + memory reclaim on close. A dismissal that bypasses our
-    // handlers (backdrop tap, external go_back) must still complete as "not
-    // saved" — fire_completion is idempotent, so Save/back paths that already
-    // fired are unaffected. We ALSO tear the widget tree down here: this
-    // overlay is large (dropdown form + 30 preset swatches + picker + color
-    // view) and is opened only to edit a spool. It has to be ONE combined
-    // callback: NavigationManager keeps a single close callback per widget.
-    helix::nav::on_close(overlay_root_, []() {
-        auto& overlay = get_ams_edit_overlay();
-        overlay.fire_completion(false);
-        overlay.destroy_overlay_ui();
-    });
 
     // Reset per-session view state HERE (covered-safe — on_deactivate must not
     // touch it, since it also fires when the QR scanner merely covers us).
@@ -426,6 +418,11 @@ lv_obj_t* AmsEditOverlay::create(lv_obj_t* parent) {
 }
 
 void AmsEditOverlay::on_ui_destroyed() {}
+
+void AmsEditOverlay::on_dismissed() {
+    // Idempotent: Save and Back have already fired it on their own paths.
+    fire_completion(false);
+}
 
 void AmsEditOverlay::on_activate() {
     OverlayBase::on_activate();

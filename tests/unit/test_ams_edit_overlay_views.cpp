@@ -19,6 +19,7 @@
 #include "../test_helpers/backend_user_edit.h"
 #include "../test_helpers/log_capture.h"
 #include "../test_helpers/scoped_breakpoint.h"
+#include "../test_helpers/scoped_platform_tier.h"
 #include "../ui_test_utils.h"
 #include "ams_backend_mock.h"
 #include "ams_error.h"
@@ -2492,6 +2493,54 @@ TEST_CASE_METHOD(LVGLUITestFixture, "picker-entry then Back builds the editor fr
     CHECK_FALSE(access.is_dirty());
 
     close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "the editor reopens while its last close is still sliding out",
+                 "[ams_edit_overlay][session]") {
+    // Overlays slide out only on the full-effects tier with animations on.
+    ScopedTier tier(helix::PlatformTier::STANDARD);
+    auto& display = DisplaySettingsManager::instance();
+    const bool animations_were_enabled = display.get_animations_enabled();
+    display.set_animations_enabled(true);
+
+    auto& overlay = get_ams_edit_overlay();
+    auto& nav = NavigationManager::instance();
+    std::vector<std::pair<int, bool>> completions;
+    auto record = [&completions](const AmsEditOverlay::EditResult& r) {
+        completions.emplace_back(r.slot_index, r.saved);
+    };
+
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, untracked_slot(), nullptr, record));
+    process_lvgl(400);
+    lv_obj_t* root = overlay.get_root();
+    REQUIRE(nav.is_panel_on_top(root));
+
+    nav.go_back();
+    UpdateQueue::instance().drain();
+    process_lvgl(50);
+    // Mid slide-out: the close has not reached the tree yet.
+    REQUIRE(overlay.get_root() == root);
+    REQUIRE_FALSE(nav.is_panel_in_stack(root));
+
+    for (int slot : {1, 2}) {
+        REQUIRE(overlay.show_for_slot(test_screen(), slot, tracked_slot(), nullptr, record));
+        process_lvgl(400);
+        REQUIRE(lv_obj_is_valid(overlay.get_root()));
+        CHECK(nav.is_panel_on_top(overlay.get_root()));
+        CHECK_FALSE(lv_obj_has_flag(overlay.get_root(), LV_OBJ_FLAG_HIDDEN));
+
+        nav.go_back();
+        UpdateQueue::instance().drain();
+        process_lvgl(50);
+    }
+    process_lvgl(400);
+    CHECK(overlay.get_root() == nullptr);
+
+    // Every session settles exactly once, the reopened-over ones included.
+    const std::vector<std::pair<int, bool>> expected{{0, false}, {1, false}, {2, false}};
+    CHECK(completions == expected);
+
+    display.set_animations_enabled(animations_were_enabled);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "leaving the picker keeps the edits staged in the editor",
