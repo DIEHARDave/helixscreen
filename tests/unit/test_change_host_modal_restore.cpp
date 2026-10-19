@@ -23,7 +23,9 @@
 #include "app_globals.h"
 #include "config.h"
 #include "moonraker_manager.h"
+#include "platform_info.h"
 #include "printer_retarget.h"
+#include "utils/network_validation.h"
 
 #include <lvgl.h>
 #include <memory>
@@ -410,4 +412,22 @@ TEST_CASE_METHOD(ChangeHostRestoreFixture,
     UpdateQueue::instance().drain();
 
     CHECK(std::string(lv_label_get_text(status)).empty());
+}
+
+TEST_CASE_METHOD(ChangeHostRestoreFixture,
+                 "Change Host: a failed test names what to check, as the wizard does",
+                 "[change_host][connect_failure]") {
+    const auto kind =
+        GENERATE(helix::ConnectFailureKind::Timeout, helix::ConnectFailureKind::Refused,
+                 helix::ConnectFailureKind::Unknown);
+    client_->connect_failure = kind;
+    lv_obj_t* dialog = open_and_test("10.9.9.9");
+
+    REQUIRE(client_->fire_disconnected());
+    UpdateQueue::instance().drain();
+
+    lv_obj_t* status = lv_obj_find_by_name(dialog, "status_text");
+    REQUIRE(status != nullptr);
+    CHECK(std::string(lv_label_get_text(status)) ==
+          lv_tr(helix::connect_failure_hint(kind, helix::is_android_platform())));
 }

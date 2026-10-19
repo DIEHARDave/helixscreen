@@ -2098,6 +2098,8 @@
   <translation tag="No USB printers found" en="No USB printers found"/>
   <translation tag="No actions right now" en="No actions right now"/>
   <translation tag="No active Spoolman spool." en="No active Spoolman spool."/>
+  <translation tag="No answer: check the IP address and that this device is on the printer&apos;s Wi-Fi, not mobile data." en="No answer: check the IP address and that this device is on the printer&apos;s Wi-Fi, not mobile data."/>
+  <translation tag="No answer: check the IP address and that this device is on the printer&apos;s network." en="No answer: check the IP address and that this device is on the printer&apos;s network."/>
   <translation tag="No buffer data available" en="No buffer data available"/>
   <translation tag="No camera — use USB barcode scanner" en="No camera — use USB barcode scanner"/>
   <translation tag="No chamber temperature sensor detected" en="No chamber temperature sensor detected"/>
@@ -3401,6 +3403,7 @@
   <translation tag="The printer lost power during a print. The resumed layer may not line up exactly." en="The printer lost power during a print. The resumed layer may not line up exactly."/>
   <translation tag="The printer lost power while printing {}. Resume where it left off?" en="The printer lost power while printing {}. Resume where it left off?"/>
   <translation tag="The printer lost power while printing {}. The resumed layer may not line up exactly." en="The printer lost power while printing {}. The resumed layer may not line up exactly."/>
+  <translation tag="The printer refused that port: check the port (Moonraker is usually 7125)." en="The printer refused that port: check the port (Moonraker is usually 7125)."/>
   <translation tag="The printer rejected the filament configuration. The print was not started." en="The printer rejected the filament configuration. The print was not started."/>
   <translation tag="The printer reports measured fan speeds. HelixScreen shows them on the Fans screen." en="The printer reports measured fan speeds. HelixScreen shows them on the Fans screen."/>
   <translation tag="The printer swaps between several toolheads. Manage the tools on the filament system screen." en="The printer swaps between several toolheads. Manage the tools on the filament system screen."/>

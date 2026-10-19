@@ -2311,6 +2311,8 @@ translations:
   No USB printers found: Nessuna stampante USB trovata
   No actions right now: 'Nessuna azione al momento'
   No active Spoolman spool.: Nessuna bobina Spoolman attiva.
+  "No answer: check the IP address and that this device is on the printer's Wi-Fi, not mobile data.": "Nessuna risposta: controlla l'indirizzo IP e che questo dispositivo sia sul Wi-Fi della stampante, non sui dati mobili."
+  "No answer: check the IP address and that this device is on the printer's network.": "Nessuna risposta: controlla l'indirizzo IP e che questo dispositivo sia sulla rete della stampante."
   No buffer data available: Nessun dato buffer disponibile
   No camera — use USB barcode scanner: Nessuna telecamera — usa scanner USB per codici
     a barre
@@ -3758,6 +3760,7 @@ translations:
   The printer lost power while printing {}. Resume where it left off?: La stampante ha
     perso l'alimentazione durante la stampa di {}. Riprendere da dove si è interrotta?
   The printer lost power while printing {}. The resumed layer may not line up exactly.: La stampante ha perso l'alimentazione durante la stampa di {}. Il layer ripreso potrebbe non allinearsi perfettamente.
+  'The printer refused that port: check the port (Moonraker is usually 7125).': "La stampante ha rifiutato quella porta: controlla la porta (Moonraker di solito usa la 7125)."
   The printer rejected the filament configuration. The print was not started.: La
     stampante ha rifiutato la configurazione del filamento. La stampa non è stata
     avviata.

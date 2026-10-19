@@ -2098,6 +2098,8 @@
   <translation tag="No USB printers found" zh="未找到 USB 打印机"/>
   <translation tag="No actions right now" zh="当前没有可用操作"/>
   <translation tag="No active Spoolman spool." zh="Spoolman中没有当前料盘。"/>
+  <translation tag="No answer: check the IP address and that this device is on the printer&apos;s Wi-Fi, not mobile data." zh="无响应:请检查 IP 地址,并确认此设备连接的是打印机的 Wi-Fi,而不是移动数据。"/>
+  <translation tag="No answer: check the IP address and that this device is on the printer&apos;s network." zh="无响应:请检查 IP 地址,并确认此设备与打印机在同一网络。"/>
   <translation tag="No buffer data available" zh="无可用缓冲区数据"/>
   <translation tag="No camera — use USB barcode scanner" zh="无摄像头 — 请使用 USB 条码扫描器"/>
   <translation tag="No chamber temperature sensor detected" zh="未检测到腔体温度传感器"/>
@@ -3401,6 +3403,7 @@
   <translation tag="The printer lost power during a print. The resumed layer may not line up exactly." zh="打印机在打印过程中断电。恢复后的层可能无法完全对准。"/>
   <translation tag="The printer lost power while printing {}. Resume where it left off?" zh="打印机在打印 {} 时断电。是否从中断处继续？"/>
   <translation tag="The printer lost power while printing {}. The resumed layer may not line up exactly." zh="打印机在打印 {} 时断电。恢复后的层可能无法完全对准。"/>
+  <translation tag="The printer refused that port: check the port (Moonraker is usually 7125)." zh="打印机拒绝了该端口:请检查端口(Moonraker 通常为 7125)。"/>
   <translation tag="The printer rejected the filament configuration. The print was not started." zh="打印机拒绝了该耗材配置。打印未启动。"/>
   <translation tag="The printer reports measured fan speeds. HelixScreen shows them on the Fans screen." zh="打印机会报告测得的风扇转速。HelixScreen 在风扇界面显示。"/>
   <translation tag="The printer swaps between several toolheads. Manage the tools on the filament system screen." zh="打印机在多个工具头之间切换。在耗材系统界面管理工具。"/>

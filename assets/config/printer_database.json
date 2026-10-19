@@ -2784,6 +2784,29 @@
           "pattern": "ender-3-v3-ke",
           "confidence": 95,
           "reason": "Hostname contains 'ender-3-v3-ke'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "nebula",
+          "confidence": 50,
+          "reason": "Creality Nebula Pad host (hostname 'Nebula'). The pad drives the Ender-3 V3 SE/KE and retrofits onto an Ender-3 / Pro / V2, so it names the family, never the model"
+        },
+        {
+          "type": "cpu_arch_match",
+          "field": "cpu_arch",
+          "pattern": "mips",
+          "confidence": 50,
+          "corroborating": true,
+          "reason": "MIPS host (Nebula Pad's Ingenic X2000E) - shared with FlashForge and the K1 line, so it supports a Nebula Pad identification and never establishes one"
+        },
+        {
+          "type": "macro_match",
+          "field": "macros",
+          "pattern": "CX_PRINT_LEVELING_CALIBRATION",
+          "confidence": 50,
+          "corroborating": true,
+          "reason": "Creality stock-firmware macro set (Nebula Pad, K1 line) - names the vendor's firmware, not a model"
         }
       ]
     },
@@ -2888,6 +2911,29 @@
           "pattern": "ender-3",
           "confidence": 85,
           "reason": "Hostname contains 'ender-3'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "nebula",
+          "confidence": 50,
+          "reason": "Creality Nebula Pad host (hostname 'Nebula'). The pad drives the Ender-3 V3 SE/KE and retrofits onto an Ender-3 / Pro / V2, so it names the family, never the model"
+        },
+        {
+          "type": "cpu_arch_match",
+          "field": "cpu_arch",
+          "pattern": "mips",
+          "confidence": 50,
+          "corroborating": true,
+          "reason": "MIPS host (Nebula Pad's Ingenic X2000E) - shared with FlashForge and the K1 line, so it supports a Nebula Pad identification and never establishes one"
+        },
+        {
+          "type": "macro_match",
+          "field": "macros",
+          "pattern": "CX_PRINT_LEVELING_CALIBRATION",
+          "confidence": 50,
+          "corroborating": true,
+          "reason": "Creality stock-firmware macro set (Nebula Pad, K1 line) - names the vendor's firmware, not a model"
         }
       ]
     },
