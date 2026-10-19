@@ -290,7 +290,7 @@ void PrintExcludeObjectManager::handle_exclude_undo() {
     pending_exclude_object_.clear();
 
     // Show confirmation that undo succeeded
-    ToastManager::instance().show(ToastSeverity::SUCCESS, lv_tr("Exclusion cancelled"), 2000);
+    ToastManager::instance().show(ToastSeverity::SUCCESS, lv_tr("Exclusion canceled"), 2000);
 }
 
 // ============================================================================

@@ -20,7 +20,7 @@ Opens the network screen. It has two columns.
 
 - **WiFi**: turn Wi-Fi on or off and see the network name, IP address, MAC address and signal strength. A **2.4GHz** tag appears if your hardware only supports that band.
 - **Ethernet**: the IP and MAC address of the wired connection. Read-only.
-- **Test Network**: checks that the internet is reachable. Greyed out when nothing is connected.
+- **Test Network**: checks that the internet is reachable. Grayed out when nothing is connected.
 
 **Right: available networks**
 

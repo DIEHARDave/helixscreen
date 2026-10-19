@@ -17,7 +17,7 @@ Your dashboard is built from **widgets** — individual cards that display print
 - Widgets cannot overlap — the grid enforces clean layouts
 - **Everything saves automatically** and persists across restarts and updates
 
-Most widgets don't draw their own box. Instead, neighbouring widgets sit on one **shared card background** that flows around the whole group, so a cluster of small readouts reads as a single panel rather than a row of separate tiles. A few widgets bring their own surface and stay visually distinct — Print Status, Camera, Nozzle Temperatures and the AMS spool view — and Printer Image and Tips deliberately float on the bare background. Move a widget and the card reshapes itself around wherever it lands.
+Most widgets don't draw their own box. Instead, neighboring widgets sit on one **shared card background** that flows around the whole group, so a cluster of small readouts reads as a single panel rather than a row of separate tiles. A few widgets bring their own surface and stay visually distinct — Print Status, Camera, Nozzle Temperatures and the AMS spool view — and Printer Image and Tips deliberately float on the bare background. Move a widget and the card reshapes itself around wherever it lands.
 
 When you first launch HelixScreen, a default layout is created with your printer image, print status, temperatures, and other commonly used widgets, arranged to suit your screen and what your printer can do. Every screen size gets one, from the small 320x240 panels up to large desktop windows. From there, you can customize everything.
 
@@ -71,7 +71,7 @@ One page is designated as the **main page** (the first page by default). This is
 
 ### Adding a Page
 
-**The easy way: the Add page tile.** A tile with a **+** sits one swipe past your last page, labelled **Add page**.
+**The easy way: the Add page tile.** A tile with a **+** sits one swipe past your last page, labeled **Add page**.
 
 1. Swipe to your last page, then one more: the **Add page** tile slides in
 2. Tap the **+**. The new page is created right away and you land on it, empty and ready for widgets (see [Adding a Widget](#adding-a-widget))
@@ -143,12 +143,12 @@ The widget you long-pressed is selected, not picked up, however long you keep ho
 
 1. Start dragging a widget
 2. Carry it past the left or right edge of the page until most of the widget is over the border, or hold your finger near the edge of the widget area for a moment (in landscape, the left edge is the one beside the navigation bar)
-3. The neighbouring page slides in, with the widget still under your finger. At the left edge of your first page there is no page to slide in: letting go there creates a new page in front (see [Adding a Page](#adding-a-page))
+3. The neighboring page slides in, with the widget still under your finger. At the left edge of your first page there is no page to slide in: letting go there creates a new page in front (see [Adding a Page](#adding-a-page))
 4. Drop the widget where you want it
 
 **Creating a page by dropping:** drag a widget past your last page and an empty page slides in. Drop the widget anywhere on it and the page is created, with the widget where you dropped it. Drag back instead and no page is created. At the **left edge of your first page** no page slides in: release the widget with most of it past that edge and a new page is created **before** your first one, with the widget at its left side. At the 8-page limit neither edge creates a page.
 
-**Empty pages remove themselves:** when a page's last widget is moved to another page or removed, the empty page is deleted from your layout. The main page is never removed this way. A page that still holds widgets greyed out because their hardware isn't detected is not empty, and stays.
+**Empty pages remove themselves:** when a page's last widget is moved to another page or removed, the empty page is deleted from your layout. The main page is never removed this way. A page that still holds widgets grayed out because their hardware isn't detected is not empty, and stays.
 
 
 ### Resizing a Widget
@@ -243,7 +243,7 @@ Some widgets have settings you can change directly from Edit Mode. When you sele
 | **Print Status** | Opens the section picker — choose which sections to show |
 | **Filament Sensor** | Opens the sensor source picker - choose which sensor the tile follows: Auto, Runout, Toolhead, or Entry |
 | **Power** | Opens the device picker — choose which power device to bind |
-| **Z-Offset** | The live Z-offset in millimetres, with baby steps and Save when there is room (see [Z-Offset Widget](#z-offset-widget) below). It turns the warning color while there is an adjustment you have not saved. Tap anywhere else on the widget to open the Print Tune overlay. | 2x1 | 0.5x0.5 | 4x2 | Yes | - |
+| **Z-Offset** | The live Z-offset in millimeters, with baby steps and Save when there is room (see [Z-Offset Widget](#z-offset-widget) below). It turns the warning color while there is an adjustment you have not saved. Tap anywhere else on the widget to open the Print Tune overlay. | 2x1 | 0.5x0.5 | 4x2 | Yes | - |
 | **Camera** | Opens the camera configuration modal - pick which webcam the widget shows (Automatic, or one of your printer's named webcams), and set rotation and flip |
 | **Clog Detection** | Opens the Clog Detection config modal — set detection source, mode, and thresholds |
 
@@ -329,7 +329,7 @@ These are the same 5 groups the Widget Catalog uses on the device.
 |--------|-------------|---------|-----|-----|-----------|-------------------|
 | **Active Spool** | Shows the currently loaded Spoolman spool — displays the spool color, material type, brand, and remaining weight. Tap to edit the active spool. At compact sizes (1x1) shows just the colored spool icon; at wider sizes shows material details alongside. | 1x1 | 1x1 | 4x2 | Yes | Spoolman configured |
 | **AMS Status** | A live view of your multi-material spool lanes. At 1x it's a compact row of colored bars — one per lane, each filled to show roughly how much filament is left. At 2x and wider it switches to a detailed view: a small spool for each lane with its lane number, material type (PLA, PETG…), and percent remaining, and the currently loaded lane's number badge is highlighted green. The spools size to fit the widget — 2 across at 2x, 4 across at 4x — and any lanes that don't fit scroll sideways. Tap for the full AMS panel. | 1x1 | 1x1 | 4x2 | Yes | AMS/MMU detected |
-| **Filament Sensor** | Filament runout detection status. Tap to load, unload, or purge filament - what happens depends on what's going on: if the sensor is turned off, tapping opens its settings instead; while a print is running the modal is a status readout only; and if the print is paused you also get **Resume Print** and **Cancel Print**, so a runout pause can be dealt with without leaving the home screen. Cancelling asks you to confirm first. Configurable via the gear icon in Edit Mode - choose which sensor the tile follows. See [Configuring a Widget](#configuring-a-widget) above. | 1x1 | 0.5x1 | Full grid | Yes | Filament sensor |
+| **Filament Sensor** | Filament runout detection status. Tap to load, unload, or purge filament - what happens depends on what's going on: if the sensor is turned off, tapping opens its settings instead; while a print is running the modal is a status readout only; and if the print is paused you also get **Resume Print** and **Cancel Print**, so a runout pause can be dealt with without leaving the home screen. Canceling asks you to confirm first. Configurable via the gear icon in Edit Mode - choose which sensor the tile follows. See [Configuring a Widget](#configuring-a-widget) above. | 1x1 | 0.5x1 | Full grid | Yes | Filament sensor |
 | **Width Sensor** | Live filament width reading from a diameter sensor. | 1x1 | 1x1 | 2x2 | Yes | Width sensor |
 | **Clog Detection** | Filament clog and flow health monitor. Shows the FlowGuard bar. Tap to open the Buffer Status detail modal. Configurable via the gear icon in Edit Mode. See [Clog Detection Widget](#clog-detection-widget) below. | 2x1 | 2x1 | 4x2 | Yes | AMS/MMU detected |
 | **Filament Buffer** | Where the filament buffer between your feeder and extruder sits against its target: an upright slider (loose up, tight down) beside a big colored reading; an OpenAMS pressure sensor is a fill gauge instead, rising from the bottom with a tick at its target. At 2x1 it adds the target, the last minute as a trace, and says whether the filament is running tight, loose or balanced (OpenAMS: at, above or below target). Tap for Buffer Status. | 1x1 | 1x1 | 2x1 | Yes | A filament pressure sensor or sync feedback |
@@ -364,7 +364,7 @@ These are the same 5 groups the Widget Catalog uses on the device.
 | **Tips** | Rotating helpful tips about 3D printing and HelixScreen features. Tap any tip to see the full article. Tips rotate automatically. | 4x2 | 2x1 | Full width x2 | Horizontal only | — |
 | **Shutdown/Reboot** | Shutdown or reboot your printer's host system. Shows a confirmation dialog before acting. When the screen runs on a different machine than the printer, the dialog lets you pick Screen, Printer or Both, and starts on Screen. | 1x1 | 0.5x1 | Full grid | Yes | — |
 | **Firmware Restart** | Restart the Klipper firmware. Useful when Klipper enters SHUTDOWN state. This widget automatically appears during firmware errors even if disabled. | 1x1 | 0.5x1 | Full grid | Yes | — |
-| **Lock Screen** | Locks the screen immediately. With no PIN set the lock icon is greyed out and tapping it opens Settings > System > Security so you can set one. | 1x1 | 0.5x1 | Full grid | Yes | — |
+| **Lock Screen** | Locks the screen immediately. With no PIN set the lock icon is grayed out and tapping it opens Settings > System > Security so you can set one. | 1x1 | 0.5x1 | Full grid | Yes | — |
 
 #### Shutdown/Reboot Widget
 
@@ -377,7 +377,7 @@ Some widgets depend on specific hardware being detected by Klipper. If the hardw
 
 - The widget still **appears** in the Widget Catalog, under the **Unavailable on this printer** section at the bottom of the category list - **dimmed and untappable**, with the reason added to its name in parentheses, for example "Humidity (No humidity sensor detected)". In search results it shows up inline, dimmed the same way
 - If hardware is detected later (plugged in, configured), the widget becomes available automatically
-- If hardware is removed after placing a widget, the widget **greys out automatically** and can't be tapped, but keeps its grid position, and it works again if the hardware returns
+- If hardware is removed after placing a widget, the widget **grays out automatically** and can't be tapped, but keeps its grid position, and it works again if the hardware returns
 
 | Widget | Required Hardware |
 |--------|-------------------|
@@ -640,7 +640,7 @@ In Edit Mode, select the Clog Detection widget and tap the **gear icon** to open
 
 The filament buffer is the slack between your feeder and the extruder, and the feeder steers it toward a target. The widget shows where it sits right now. The upright slider has loose filament up and tight filament down, with the target as a dashed window in the middle and faint zones at both ends. Only the block on the filament moves.
 
-The block and the number beside it share one color: grey when the buffer is near its target, amber as it drifts off, and red when it is close to an end. The small label under the number says what is measuring: **FPS** for a filament pressure sensor (OpenAMS, or an AFC buffer with a pressure sensor) or **Sync** for Happy Hare's sync feedback.
+The block and the number beside it share one color: gray when the buffer is near its target, amber as it drifts off, and red when it is close to an end. The small label under the number says what is measuring: **FPS** for a filament pressure sensor (OpenAMS, or an AFC buffer with a pressure sensor) or **Sync** for Happy Hare's sync feedback.
 
 | Size | Shows |
 |------|-------|
@@ -710,7 +710,7 @@ Tap a tool that is not mounted to switch to it. Tapping the tool that is already
 
 - **When idle**, HelixScreen asks "Switch to Tool 2 (T1)?" first. Turn off [Confirm tool changes](settings/printing.md#confirm-tool-changes) in Settings > Printing to switch right away.
 - **When paused**, a confirmation dialog always appears first, because changing tools mid-print can cause problems. Printers whose filament change homes the toolhead itself (such as the AD5X) refuse tool changes while paused as well.
-- **While printing or preparing to print**, and while spools are [drying on the bed](temperature.md#drying-filament-on-the-bed), switching is unavailable: the tools are greyed out, and a tap shows a warning instead of changing tools.
+- **While printing or preparing to print**, and while spools are [drying on the bed](temperature.md#drying-filament-on-the-bed), switching is unavailable: the tools are grayed out, and a tap shows a warning instead of changing tools.
 - **While your filament system needs attention** (it has stopped and is waiting for you), a tap shows a warning instead. While it is busy loading or unloading, a tap does nothing.
 
 Where a hub feeds several lanes into one toolhead, tapping that head picks up the lane already loaded in it, so its filament stays where it is (#1811). With no lane loaded, or more than one claiming the head, the head's lowest lane is used.
@@ -719,7 +719,7 @@ A toolhead on your [filament system's screen](filament.md#switching-toolheads-fr
 
 ### Parking the Tool
 
-On printers that can leave the carriage empty (Snapmaker U1 and klipper-toolchanger setups) the widget also has a **Park** button, which puts the mounted tool back in its dock. It sits at the end of the row when there is room, beside the large button on smaller widgets, and otherwise in the tool picker. Park is greyed out when no tool is mounted, and unavailable while a print is running or paused.
+On printers that can leave the carriage empty (Snapmaker U1 and klipper-toolchanger setups) the widget also has a **Park** button, which puts the mounted tool back in its dock. It sits at the end of the row when there is room, beside the large button on smaller widgets, and otherwise in the tool picker. Park is grayed out when no tool is mounted, and unavailable while a print is running or paused.
 
 > **Tool Switcher vs. Active Tool Badge:** The Tool Switcher is an optional, interactive widget you add to your dashboard. The [Active Tool Badge](#active-tool-badge) is a small read-only indicator that always appears in the top bar on multi-tool printers. The badge shows the current tool; the widget lets you change it.
 
@@ -753,7 +753,7 @@ The Z-Offset widget shows the live Z-offset, the same number as the Z-Offset row
 
 | Size | What you see |
 |------|--------------|
-| 0.5x0.5 | The offset in millimetres, two decimals, under a small icon |
+| 0.5x0.5 | The offset in millimeters, two decimals, under a small icon |
 | 1x0.5, 0.5x1 | The offset to three decimals |
 | 1x1 | The offset with a caption underneath |
 | 2x1 | The same beside a small bar that flashes up or down as the offset moves, plus a **Save** button while there is something to save |
@@ -761,7 +761,7 @@ The Z-Offset widget shows the live Z-offset, the same number as the Z-Offset row
 
 - The **arrow buttons** raise or lower the offset by the chosen step. The **step button** between them cycles 0.05, 0.025, 0.01 and 0.005 mm, and the Print Tune overlay uses the same remembered step.
 - The caption reads "mm Z-offset" until you change it. After that it shows how far you have moved since the last save, for example "+0.020 unsaved", and the number turns the warning color.
-- **Save** writes the offset to your printer's config. Klipper restarts when it does, and you are asked to confirm first. It is greyed out while a print is running.
+- **Save** writes the offset to your printer's config. Klipper restarts when it does, and you are asked to confirm first. It is grayed out while a print is running.
 - On a tool changer the number is the active tool's own offset. Printers whose firmware keeps the offset itself, such as the FlashForge AD5M and AD5X on ZMOD, have nothing to save, so **Save** never appears.
 - **Save** also stays hidden when **Save Z-Offset Buttons** is off in [Settings > Motion](motion.md#motion-settings), which it is by default on tool changers.
 
@@ -793,7 +793,7 @@ When two or more dryers run at once, the smaller sizes show how many are drying 
 
 ## Host Health Widget
 
-The Host Health widget watches the computer running Klipper and your printer's controller boards (MCUs). The same readings are on **Settings > System > Performance**, which a tap on the widget opens. It is greyed out until Moonraker reports performance data.
+The Host Health widget watches the computer running Klipper and your printer's controller boards (MCUs). The same readings are on **Settings > System > Performance**, which a tap on the widget opens. It is grayed out until Moonraker reports performance data.
 
 ![Host Health at 2x2: host CPU and memory, free disk space and each controller board](../../images/user/home-widget-host-health.png)
 
@@ -1111,7 +1111,7 @@ Directly below the printer name, the **model row** shows the model HelixScreen h
 3. Pick the model that matches your printer from the list
 4. The overlay closes and the choice is saved immediately
 
-The list is filtered to your printer's motion type, the same way the setup wizard filters it. Picking a model loads that printer's known behaviour — the print macros HelixScreen calls, which fans it treats as part cooling versus hotend, and how its calibration flows behave.
+The list is filtered to your printer's motion type, the same way the setup wizard filters it. Picking a model loads that printer's known behavior — the print macros HelixScreen calls, which fans it treats as part cooling versus hotend, and how its calibration flows behave.
 
 **When you need this:** automatic detection declines to guess when the evidence is inconclusive, and on printers that look identical over the network it can settle on the wrong sibling. Correcting the model here fixes both cases — no need to delete the printer and run setup again. Detection will not overwrite a model you chose yourself.
 
@@ -1134,7 +1134,7 @@ The list is filtered to your printer's motion type, the same way the setup wizar
 
 While the printer is working, small chips on the printer image show what each part is doing:
 
-- **Nozzle, bed and chamber** - a temperature chip appears while the heater has a target, and stays, greyed, until a heater you turned off has cooled below 50°C. The chamber chip appears only on printers with a chamber heater.
+- **Nozzle, bed and chamber** - a temperature chip appears while the heater has a target, and stays, grayed, until a heater you turned off has cooled below 50°C. The chamber chip appears only on printers with a chamber heater.
 - **Part fan** - shows its speed while it is running.
 - **Light** - a small light bulb at the top of the picture, shown whenever your printer has a light HelixScreen can switch. It is lit while the light is on and dark while it is off.
 

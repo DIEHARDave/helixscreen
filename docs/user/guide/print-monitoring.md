@@ -74,7 +74,7 @@ Like the empty-slot check, this one is skipped while you're printing from bypass
 
 ### The Filament Grade Mismatch dialog
 
-Some filaments are the same plastic with something mixed into it. **PLA-CF** is PLA with chopped carbon fibre; **ASA-GF** is ASA with glass fibre; wood, marble, metal and glow-in-the-dark filaments carry a powder. Those all print differently from the plain version — slower, because the filler thickens the melt, and they grind away at a brass nozzle, which is why they normally want a hardened one. A slicer profile for a filled filament is not the profile for its plain counterpart.
+Some filaments are the same plastic with something mixed into it. **PLA-CF** is PLA with chopped carbon fiber; **ASA-GF** is ASA with glass fiber; wood, marble, metal and glow-in-the-dark filaments carry a powder. Those all print differently from the plain version — slower, because the filler thickens the melt, and they grind away at a brass nozzle, which is why they normally want a hardened one. A slicer profile for a filled filament is not the profile for its plain counterpart.
 
 Marketing suffixes are the opposite case. **PLA+**, **ABS+** and the like are the same plastic with a toughener, printed on the same hardware with much the same settings, and **Silk** and **Matte** are finishes rather than fillers.
 
@@ -93,7 +93,7 @@ Your Filament Mapping is unaffected either way. HelixScreen still routes the too
 
 ### The Filament In The Toolhead dialog
 
-The dialogs above compare what the *file* needs against what your slots hold. This one looks at the toolhead itself: filament is sitting in it, but no lane in your filament system reports having loaded it. That usually means leftovers — filament that was on its way in or out when an earlier job was cancelled or aborted, and never got seated in a lane. Rather than silently print on top of unknown material, HelixScreen asks first:
+The dialogs above compare what the *file* needs against what your slots hold. This one looks at the toolhead itself: filament is sitting in it, but no lane in your filament system reports having loaded it. That usually means leftovers — filament that was on its way in or out when an earlier job was canceled or aborted, and never got seated in a lane. Rather than silently print on top of unknown material, HelixScreen asks first:
 
 > *The toolhead has filament but no AMS lane reports it loaded. Pull it out manually before printing. Start anyway?*
 
@@ -151,7 +151,7 @@ This modal is what handles the recovery on tool-changer and single-extruder prin
 Systems that *do* raise their own runout alert show that alert instead, so one runout never produces two dialogs. What actually happens next differs by system:
 
 - **AFC (Box Turtle) and Happy Hare** can switch to a backup slot, if you configured one and it holds compatible filament. Otherwise their alert offers the recovery buttons.
-- **Creality CFS** always pauses the print first. The box only switches spools when **Auto-Refill** is switched on *and* another slot holds the exact same material **and** colour. If either condition is missing it says so and the print simply stays paused until you load filament and resume.
+- **Creality CFS** always pauses the print first. The box only switches spools when **Auto-Refill** is switched on *and* another slot holds the exact same material **and** color. If either condition is missing it says so and the print simply stays paused until you load filament and resume.
 - **FlashForge AD5X IFS** does not switch spools at all on stock firmware. Its alert tells you filament ran out and offers Resume, Purge, and an IFS reset.
 
 ---

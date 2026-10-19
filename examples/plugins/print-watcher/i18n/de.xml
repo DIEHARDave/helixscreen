@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <translations languages="de">
   <!-- Event words the app catalog already carries (Started, Paused, Completed,
-       Cancelled, Failed) are not repeated here: t() falls through this pack to
+       Canceled, Failed) are not repeated here: t() falls through this pack to
        the app's, so only plugin-specific strings live below. -->
   <translation tag="Resumed" de="Fortgesetzt"/>
   <translation tag="armed" de="aktiv"/>

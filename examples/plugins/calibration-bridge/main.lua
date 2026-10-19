@@ -345,7 +345,7 @@ local function on_print_state(v)
         end
     else
         set_state(1)
-        set_status(v == "cancelled" and "print cancelled" or "print failed")
+        set_status(v == "cancelled" and "print canceled" or "print failed")
     end
 end
 

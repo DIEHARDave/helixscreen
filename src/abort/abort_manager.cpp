@@ -600,7 +600,7 @@ void AbortManager::on_cancel_success() {
     // Note: cancel_state_observer_ is cleaned up by complete_abort() → cancel_all_timers()
 
     spdlog::info("[AbortManager] printer.print.cancel succeeded");
-    complete_abort("Print cancelled");
+    complete_abort("Print canceled");
 }
 
 void AbortManager::on_cancel_timeout() {
@@ -617,7 +617,7 @@ void AbortManager::on_cancel_timeout() {
         escalate_to_estop();
     } else {
         spdlog::info("[AbortManager] Cancel taking a while, escalation disabled — showing nudge");
-        set_progress_message("Cancelling is taking a while.\nUse E-Stop to stop immediately.");
+        set_progress_message("Canceling is taking a while.\nUse E-Stop to stop immediately.");
     }
 }
 
@@ -701,7 +701,7 @@ void AbortManager::on_print_state_during_cancel(PrintJobState state) {
                      print_job_state_to_string(state));
 
         // complete_abort() → cancel_all_timers() handles timer + observer cleanup
-        complete_abort("Print cancelled");
+        complete_abort("Print canceled");
         break;
 
     // RAW_PRINT_STATE_OK: still-running arms of the cancel wait; see above.

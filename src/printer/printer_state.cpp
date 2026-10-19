@@ -87,7 +87,7 @@ const char* print_job_state_to_string(PrintJobState state) {
     case PrintJobState::COMPLETE:
         return "Complete";
     case PrintJobState::CANCELLED:
-        return "Cancelled";
+        return "Canceled";
     case PrintJobState::ERROR:
         return "Error";
     default:

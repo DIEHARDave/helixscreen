@@ -126,7 +126,7 @@ While the pre-print steps are showing:
 - **Cancel** is available and always stops the print from starting. If the printer
   is mid-way through a leveling pass it will finish that motion first, because a
   running macro cannot be interrupted - but the print will not begin, and the
-  screen reports it as cancelled rather than as a failure.
+  screen reports it as canceled rather than as a failure.
 - **Pause** is unavailable, since there is no print to pause yet.
 - **Tune** works. Speed and flow adjustments carry into the print. A Z-offset
   change made here may be overwritten by the printer's own start macro, so it is
@@ -194,7 +194,7 @@ You can tell a running print to pause at a layer you pick - to drop in a magnet 
 
 When the print reaches that layer, it pauses the way your **Pause** button does (your printer's `PAUSE` macro, or `M600` if your config sets that). Tap **Resume** to continue.
 
-**Cancelling:** tap the layer count again and choose **Cancel Scheduled Pause**. A pause you scheduled here that the print never reached is cleared when the print finishes, is cancelled or fails, so it cannot catch the next print by surprise.
+**Canceling:** tap the layer count again and choose **Cancel Scheduled Pause**. A pause you scheduled here that the print never reached is cleared when the print finishes, is canceled or fails, so it cannot catch the next print by surprise.
 
 > **Note:** A pause scheduled from Mainsail or Fluidd shows here too, since they use the same macros.
 
@@ -376,7 +376,7 @@ When a print completes, a **completion modal** appears showing:
 - Notification sound plays (if enabled in Sound Settings)
 - Print is logged to history
 
-Once a print has finished — whether it completed, was cancelled, or failed — a **Reprint** button replaces the Cancel button in the print controls. Tap it to start the same file again without browsing back to it.
+Once a print has finished — whether it completed, was canceled, or failed — a **Reprint** button replaces the Cancel button in the print controls. Tap it to start the same file again without browsing back to it.
 
 ---
 

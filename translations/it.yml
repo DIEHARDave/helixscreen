@@ -538,7 +538,7 @@ translations:
   Calibration Failed: Calibrazione fallita
   Calibration Saved: Calibrazione salvata
   Calibration and system configuration: 'Calibrazione e configurazione di sistema'
-  Calibration cancelled.: Calibrazione annullata.
+  Calibration canceled.: Calibrazione annullata.
   Calibration complete: Calibrazione completata
   Calibration complete - save to keep the offsets: Calibrazione completata - salva per conservare gli offset
   Calibration complete!: Calibrazione completata!
@@ -571,8 +571,8 @@ translations:
   Cancel Scheduled Pause: 'Annulla pausa programmata'
   Cancel macro not configured: Macro annullamento non configurata
   Cancel print: 'Annulla stampa'
-  Cancelled: Annullato
-  Cancelling turns the chamber target off so the wait ends, then stops the print.: 'L''annullamento spegne il target della camera per terminare l''attesa, poi ferma la stampa.'
+  Canceled: Annullato
+  Canceling turns the chamber target off so the wait ends, then stops the print.: 'L''annullamento spegne il target della camera per terminare l''attesa, poi ferma la stampa.'
   'Cannot add to queue: internal error': 'Impossibile aggiungere alla coda: errore interno'
   Cannot be changed from here on a multi-unit MMU: Non modificabile da qui su un MMU multi-unità
   'Cannot control timelapse: printer not connected': 'Impossibile controllare timelapse:
@@ -700,7 +700,7 @@ translations:
   Choose rendering mode for bed mesh visualization: Scegli modalità di rendering per
     visualizzazione mesh piano
   Choose sound style: Scegli stile sonoro
-  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses.
+  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses.
   : Scegli il modello corrispondente alla tua stampante. Questo imposta le macro di stampa, i ruoli delle ventole e il comportamento di calibrazione usati da HelixScreen.
   Choose what to power off or restart.: Scegli cosa spegnere o riavviare.
   'Chute position: X {:.1f}, Y {:.1f}': 'Posizione del condotto di spurgo: X {:.1f}, Y {:.1f}'
@@ -1243,7 +1243,7 @@ translations:
   Exclude Objects: 'Escludi oggetti'
   Excluded: Escluso
   Excluding "{}"...: 'Esclusione di "{}"...'
-  Exclusion cancelled: Esclusione annullata
+  Exclusion canceled: Esclusione annullata
   Execute printer macros: Esegui macro stampante
   Exhaust Fan: Ventola scarico
   Exit Code: Codice di uscita
@@ -1961,7 +1961,7 @@ translations:
   Last 30 days: 'Ultimi 30 giorni'
   Last 7 days: 'Ultimi 7 giorni'
   Last measured: 'Ultima misurazione'
-  Last print cancelled: Ultima stampa annullata
+  Last print canceled: Ultima stampa annullata
   Last print failed: Ultima stampa fallita
   Later: Dopo
   Layer: Strato
@@ -2012,7 +2012,7 @@ translations:
   Load a filament first before trying to unload: Prima carica il filamento, poi prova a scaricarlo
   Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: Caricare una nuova bobina in questo slot, oppure attivare il rifornimento automatico per passare a una compatibile
   Load and unload filament at the tool by hand: 'Carica e scarica il filamento a mano sullo strumento'
-  'Load cancelled: nozzle target dropped': 'Caricamento annullato: il target dell''ugello è sceso'
+  'Load canceled: nozzle target dropped': 'Caricamento annullato: il target dell''ugello è sceso'
   Load complete: 'Caricamento completato'
   Load failed: Caricamento non riuscito
   Load filament: 'Carica il filamento'
@@ -2442,7 +2442,7 @@ translations:
   Nozzle Temps: Temp. ugelli
   Nozzle clean complete: Pulizia ugello completata
   Nozzle clog detected: Rilevata ostruzione dell'ugello
-  Nozzle did not reach {}°C — {} cancelled: L'ugello non ha raggiunto {}°C — {} annullato
+  Nozzle did not reach {}°C — {} canceled: L'ugello non ha raggiunto {}°C — {} annullato
   Nozzle interval: 'Intervallo ugello'
   Nozzle min cannot exceed max: Il minimo dell’ugello non può superare il massimo
   Nozzle target set to {}°C: Obiettivo ugello impostato a {}°C
@@ -2655,7 +2655,7 @@ translations:
   Preheat %s (%d/%d): 'Preriscaldamento %s (%d/%d)'
   Preheat Macro: Macro preriscaldamento
   Preheat PLA: Preriscalda PLA
-  Preheat cancelled: Preriscaldamento annullato
+  Preheat canceled: Preriscaldamento annullato
   'Preheat: all {} tools + bed set': 'Preriscaldamento: tutti i {} utensili + piano
     impostati'
   'Preheat: {} + bed set': 'Preriscaldamento: {} + piano impostati'
@@ -2691,8 +2691,8 @@ translations:
   Priming...: Preparazione ugello...
   Print: Stampa
   Print Anyway: Stampa comunque
-  'Print Behaviour': 'Comportamento di stampa'
-  Print Cancelled: Stampa annullata
+  Print Behavior: 'Comportamento di stampa'
+  Print Canceled: Stampa annullata
   Print Complete!: Stampa completata!
   Print Completion Alert: Avviso completamento stampa
   Print Controls: 'Controlli di stampa'
@@ -2716,9 +2716,9 @@ translations:
   Print Tuning: Regolazione stampa
   Print Was Terminated: Stampa interrotta
   Print a test tower and tune K by eye: Stampa una torre di prova e regola K a occhio
-  Print cancelled: Stampa annullata
   Print details: 'Dettagli di stampa'
   Print did not start: La stampa non è iniziata
+  Print canceled: Stampa annullata
   Print complete: Stampa completata
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): La
     stampa non è iniziata — la stampante potrebbe essere occupata o offline (B3 polls={},
@@ -3716,7 +3716,7 @@ translations:
 
   The plate finishes its current move, but drying will not start.: 'Il piano termina lo spostamento in corso, ma l''essiccazione non partirà.'
   The print ended before any layer was printed. Nothing was changed.: La stampa è terminata prima di stampare uno strato. Non è stato cambiato nulla.
-  The print is cancelled and you pick the best band from what has printed so far.: La stampa viene annullata e scegli la fascia migliore tra quanto stampato finora.
+  The print is canceled and you pick the best band from what has printed so far.: La stampa viene annullata e scegli la fascia migliore tra quanto stampato finora.
   The print is on its last layer.: 'La stampa è all''ultimo strato.'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : La stampa è in pausa. Cambiare utensile ora muove la testina e sostituisce il
@@ -3861,7 +3861,7 @@ translations:
   This tool probes each bed screw and tells you how much to adjust.: Questo strumento
     sonda ogni vite del piano e indica quanto regolare.
   'This update asks for new permissions:': 'Questo aggiornamento richiede nuovi permessi:'
-  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': 'Questa attesa termina solo alla sua temperatura: l''annullamento richiede un arresto di emergenza e un riavvio del firmware.'
+  'This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart.': 'Questa attesa termina solo alla sua temperatura: l''annullamento richiede un arresto di emergenza e un riavvio del firmware.'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : Questo applicherà lo Z-offset al tuo endstop e riavvierà Klipper per salvare la

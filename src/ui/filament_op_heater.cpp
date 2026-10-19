@@ -482,9 +482,9 @@ void FilamentOpHeater::on_target(int target_deci) {
     // Whoever took the target away decided where the heater stands.
     if (pending_->req.op == FilamentHeatOp::Load) {
         abandon("Nozzle target dropped during the preheat",
-                lv_tr("Load cancelled: nozzle target dropped"), /*restore=*/false);
+                lv_tr("Load canceled: nozzle target dropped"), /*restore=*/false);
     } else {
-        abandon("Nozzle target dropped during the preheat", lv_tr("Preheat cancelled"),
+        abandon("Nozzle target dropped during the preheat", lv_tr("Preheat canceled"),
                 /*restore=*/false);
     }
 }
@@ -511,7 +511,7 @@ void FilamentOpHeater::on_lifecycle() {
     const bool restore = !job_holds_machine(state_.print_state().get_print_lifecycle());
     abandon(pending_->job_free_at_request ? "A print took the machine during the preheat"
                                           : "The pause ended during the preheat",
-            lv_tr("Preheat cancelled"), restore);
+            lv_tr("Preheat canceled"), restore);
 }
 
 void FilamentOpHeater::check_deadlines() {
@@ -522,7 +522,7 @@ void FilamentOpHeater::check_deadlines() {
         (pending_->extruder_life.expired() || !temp_subject(pending_->extruder))) {
         // A reconnect rebuilt the extruders: the subjects this preheat watched
         // are gone, and nothing would ever say it got hot.
-        abandon("The extruder being heated went away", lv_tr("Preheat cancelled"),
+        abandon("The extruder being heated went away", lv_tr("Preheat canceled"),
                 /*restore=*/false);
         return;
     }
@@ -545,7 +545,7 @@ bool FilamentOpHeater::cancel() {
     spdlog::info("{} Preheat for {} cancelled", pending_->req.log_tag,
                  filament_heat_op_name(pending_->req.op));
     restore_prior(pending_->heater, pending_->prior_target_c);
-    NOTIFY_INFO(lv_tr("Preheat cancelled"));
+    NOTIFY_INFO(lv_tr("Preheat canceled"));
     end_pending(PreheatPhase::Cancelled);
     return true;
 }

@@ -781,7 +781,7 @@ If your dashboard is full and you want a specific widget back, make room for it:
 
 1. **Long-press the widget grid** to enter Edit Mode
 2. **Long-press an empty area** of the grid — the Widget Catalog opens
-3. Tap the widget you want. Widgets already on your dashboard are dimmed and labelled "Placed"; the ones you lost will not be
+3. Tap the widget you want. Widgets already on your dashboard are dimmed and labeled "Placed"; the ones you lost will not be
 4. Tap **Done** to leave Edit Mode
 
 **Fix — put back everything at once:**
@@ -948,7 +948,7 @@ To confirm the setting was picked up, look for this line in the log after the re
 If it says `false (config override)`, your display driver has no way to power the panel down, and this setting cannot help on your hardware.
 
 **If it makes things worse:**
-On some screens, a full power-down causes flashing colours, edges that glow white, a colour test pattern, or a screen that does not come back when touched. If you see any of these, SSH in, set `"panel_power_off": -1` (automatic) or remove the line, and restart HelixScreen. Screen sleep in **Settings → Display** can also be set to **Never** as a fallback.
+On some screens, a full power-down causes flashing colors, edges that glow white, a color test pattern, or a screen that does not come back when touched. If you see any of these, SSH in, set `"panel_power_off": -1` (automatic) or remove the line, and restart HelixScreen. Screen sleep in **Settings → Display** can also be set to **Never** as a fallback.
 
 **Helping us fix it:**
 If `panel_power_off: 1` works for you, please tell us your printer and screen model (or send a debug bundle from **Settings → Help & About → Upload Debug Bundle**). We can then turn it on automatically for that hardware.
@@ -1432,7 +1432,7 @@ During this window the Print Status panel and the home panel's print card show t
 
 **Check the printer is actually working.** Look at the machine — is the toolhead moving, the bed heating? Or open a web interface's console and watch for ongoing output. Motion and messages mean it's working, not stuck.
 
-**Not willing to wait? Cancel — it's clean.** Cancel is always available during preparation, and cancelling there is a clean cancel, not a failed print: the print never starts, and if the printer is mid-way through a motion it finishes that move first. Then start again with the slow step switched off — see [Pre-Print Options](guide/printing.md#pre-print-options).
+**Not willing to wait? Cancel — it's clean.** Cancel is always available during preparation, and canceling there is a clean cancel, not a failed print: the print never starts, and if the printer is mid-way through a motion it finishes that move first. Then start again with the slow step switched off — see [Pre-Print Options](guide/printing.md#pre-print-options).
 
 **If the printer has gone quiet** — no motion, no console output, for a good while — it may genuinely be stuck. Collect a [debug bundle](#collecting-logs) and check the Klipper log for the macro that was running.
 
@@ -1472,7 +1472,7 @@ The U1 will not resume while a toolhead the print uses has no material recorded 
 
 **Solution:**
 1. Open the filament system screen and tap the slot the message names
-2. Tap **Edit Spool** and set the material (and colour, if you like), then save
+2. Tap **Edit Spool** and set the material (and color, if you like), then save
 3. Tap **Resume** again
 
 If the printer refuses the resume for some other reason, HelixScreen shows the printer's own message as "Failed to resume: ..." instead.
@@ -1492,7 +1492,7 @@ On printers whose firmware saves recovery data when power drops mid-print — th
 
 | Choice | What happens |
 |--------|--------------|
-| **Resume** | The printer continues the interrupted print from where its firmware saved its progress. On Creality, check the first resumed layer before walking away — it can sit a millimetre or two off. |
+| **Resume** | The printer continues the interrupted print from where its firmware saved its progress. On Creality, check the first resumed layer before walking away — it can sit a millimeter or two off. |
 | **Discard** | The recovery data is cleared and nothing is printed. The printer is back to a clean slate; start whatever you like. |
 | Dismiss the dialog (tap outside it) | Nothing is decided: the recovery data is kept, and you are asked again the next time HelixScreen connects. |
 
@@ -1585,7 +1585,7 @@ sudo systemctl restart helixscreen
 **Symptoms:**
 - The filament panel opens but the CFS is empty — no bays, no spools
 - Your CFS is populated and works fine in Fluidd or Mainsail
-- The home screen's multi-filament widget is greyed out or missing
+- The home screen's multi-filament widget is grayed out or missing
 
 **Cause:** you're most likely running **community firmware** whose CFS module was rewritten from scratch. It reports the CFS in a completely different format than Creality's, and HelixScreen 0.99.106 and earlier only understood Creality's.
 

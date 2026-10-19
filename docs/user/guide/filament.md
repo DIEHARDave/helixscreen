@@ -97,7 +97,7 @@ How the two are arranged depends on the shape of your screen:
 The slot view shows all your filament slots in a visual tray layout:
 
 - **Spool icons** — Each slot displays a 3D spool visualization with its filament color
-- **Spool labels**: Above each spool. With four slots or fewer, the label shows the spool's name (for example "Bone White") over its material (PLA, PETG, ABS, etc.). When the name already says the material, as in "PLA+ Bone White", only the name is shown, and a slot with no name shows just the material. With five or more slots there is only room for the material, shortened to its first four letters. On smaller screens five or more labels alternate between two rows, so neighbours never overlap, and a thin line leads from a raised label down to its spool.
+- **Spool labels**: Above each spool. With four slots or fewer, the label shows the spool's name (for example "Bone White") over its material (PLA, PETG, ABS, etc.). When the name already says the material, as in "PLA+ Bone White", only the name is shown, and a slot with no name shows just the material. With five or more slots there is only room for the material, shortened to its first four letters. On smaller screens five or more labels alternate between two rows, so neighbors never overlap, and a thin line leads from a raised label down to its spool.
 - **Status badge** — Slot number with color-coded background (green = loaded, gray = empty, red = error)
 - **Tool badge**: A small badge (T0, T1, etc.) on a slot shows which tool prints from it. When every tool feeds the slot of its own number (T0 the first slot, T1 the second, and so on), the badges would only repeat the slot numbers, so they are hidden. They appear when the tools are mapped any other way, for example after you change a slot's [Assigned Tool](#assigned-tool) or when two tools share a slot. A badge in the warning color marks a mapping you set yourself rather than the one your system reports.
 - **Environment pill**: On a box that reports temperature or humidity, a pill stands at the right end of the box: a thermometer with the temperature over a water drop with the humidity. The drop fills to the humidity reading, so a wet box shows a full drop at a glance; a box whose sensor gives no reading shows an empty outline. While the box dries, the temperature line shows the heat icon and the time left. Tap the pill to open that box's drying and humidity screen (see [Filament Drying and Humidity](#filament-drying-and-humidity)). Boxes with no readings have no pill, and the box takes the full width.
@@ -109,12 +109,12 @@ Below the slot grid, a **filament path diagram** shows the routing from slots th
 When a slot runs into trouble, HelixScreen shows it visually so you don't have to dig through logs:
 
 - **Error dot** — A small colored dot appears at the corner of a slot's spool when that slot reports a problem. **Red** means an error (jam, runout, hardware fault); **amber** means a warning. With animations enabled, the dot gently pulses to draw your eye.
-- **Buffer-health tint**: On systems with a buffer between the slots and the toolhead (an AFC buffer - a TurtleNeck, or a pressure-sensor buffer such as an `FPS_PSF` - an OpenAMS filament pressure sensor, or Happy Hare with sync feedback), the hub on the filament path diagram changes color as the buffer drifts toward a fault: grey on target, amber as it drifts, red near an end stop.
+- **Buffer-health tint**: On systems with a buffer between the slots and the toolhead (an AFC buffer - a TurtleNeck, or a pressure-sensor buffer such as an `FPS_PSF` - an OpenAMS filament pressure sensor, or Happy Hare with sync feedback), the hub on the filament path diagram changes color as the buffer drifts toward a fault: gray on target, amber as it drifts, red near an end stop.
 - **Filament pressure (OpenAMS)**: On OpenAMS running without AFC, each unit's filament pressure sensor appears on the filament path as a box labeled **FPS**. The sensor measures how hard the filament is pressing (compression) only: 0% is no pressure and 100% is fully compressed. The box stays gray while the pressure regulates around its target and turns amber near the top (85% and up) or red (95% and up), or amber near zero while filament is loaded because the feed is not engaging. A sensor with no target is only tinted at those ends. Tap the box to open Buffer Status: an upright gauge that fills from the bottom up to the reading with a tick at the target, the reading against its target (for example "FPS 53%" and "target 50%"), whether it is at, above or below target (within 5 points counts as at target), and the last minute as a line with the target dashed. OpenAMS has no clog detection, so only the pressure reading is shown. AFC pressure-sensor buffers and Happy Hare keep the two-ended slider with its tight and loose wording.
 
 **To recover:**
 
-- Use **Reset** in the sidebar (it reads **Home** on Happy Hare). This clears the error message your system is holding onto and then puts the system back to a known-good state. It is the right first move for almost every jam or fault, including one reported against a single slot. On Happy Hare it runs `MMU_RECOVER` and then `MMU_HOME`, which unloads any loaded filament before homing, so the button is greyed out while a print is running. On AFC it runs `RESET_FAILURE` and `AFC_CLEAR_MESSAGE`, then `AFC_RESET`.
+- Use **Reset** in the sidebar (it reads **Home** on Happy Hare). This clears the error message your system is holding onto and then puts the system back to a known-good state. It is the right first move for almost every jam or fault, including one reported against a single slot. On Happy Hare it runs `MMU_RECOVER` and then `MMU_HOME`, which unloads any loaded filament before homing, so the button is grayed out while a print is running. On AFC it runs `RESET_FAILURE` and `AFC_CLEAR_MESSAGE`, then `AFC_RESET`.
 - If filament from one slot is stuck partway down the tube, tap that slot. When your system can pull it back, the slot menu's second button changes from **Unload** to **Recover**. Tap it to draw the filament back toward the slot without heating the nozzle.
 - For a system-wide problem that Reset does not shift, use **Recover** in the AMS Management overlay (Settings). On Happy Hare this is how you run `MMU_RECOVER` from the screen, and it moves nothing - see [AMS Management](#ams-management-settings-overlay) for what it sends. When a Happy Hare error pops up on screen, its own **Recover** button sends plain `MMU_RECOVER` and lets Happy Hare work out the filament position from its sensors.
 
@@ -159,7 +159,7 @@ On **Happy Hare**:
 
 Systems that don't publish a step list of their own get a shorter generic bar: Heat nozzle → Feed filament → Purge, with a tip step added for a swap.
 
-Some steps only apply to how your machine is set up. A step your system never reaches stays greyed out instead of lighting up, so a bar that skips **Cut tip** or **Kick away** is normal, not a stall. Each step updates in real time so you can see exactly where the operation is.
+Some steps only apply to how your machine is set up. A step your system never reaches stays grayed out instead of lighting up, so a bar that skips **Cut tip** or **Kick away** is normal, not a stall. Each step updates in real time so you can see exactly where the operation is.
 
 On small portrait screens there is room for the steps only as a row of dots, so the name of the current step is shown under them.
 
@@ -172,20 +172,20 @@ On small portrait screens there is room for the steps only as a row of dots, so 
 | **Unload** | Retract the currently loaded filament back to its slot. It also works when filament is stuck in the toolhead and no slot claims it, on systems that can tell. If your system needs to know which slot that filament came from and cannot tell, Unload first asks **Which lane is in the toolhead?** - pick the lane, or tap outside the list to cancel. On a printer with several toolheads it reads **Unload...** and opens the picker instead - see below |
 | **Mount...** / **Park** | Tool changers. **Mount...** picks a tool and puts it on the carriage; **Park** puts the mounted tool back in its dock. On a tool changer that cannot feed filament itself, these stand where Load and Unload would be |
 | **Reset** | Reset the AMS system state (useful after jams or errors) |
-| **Check slots** | Happy Hare only: checks every slot's sensor. The printer parks the toolhead and moves each lane's filament to test it, so the button is greyed out while a print is running |
+| **Check slots** | Happy Hare only: checks every slot's sensor. The printer parks the toolhead and moves each lane's filament to test it, so the button is grayed out while a print is running |
 | **Settings** | Open the AMS Management overlay for advanced controls |
 
 **Load and Unload always mean filament.** They never mount or park a tool - that is what tapping a toolhead, **Mount...** and **Park** are for. A printer that needs a tool on the carriage to feed it mounts the tool as part of the load.
 
-**The tool picker.** Each row names a tool and, where it is not the tool's own, the slot it uses, with what that slot holds - the material and whether it is loaded, ready to load, or empty. The tool you have selected, or else the one on the carriage, comes ticked when it can take the operation. A tool with no slot assigned to it is greyed out with **Assign a slot first**; set one with **Assigned Tool** in the slot's menu.
+**The tool picker.** Each row names a tool and, where it is not the tool's own, the slot it uses, with what that slot holds - the material and whether it is loaded, ready to load, or empty. The tool you have selected, or else the one on the carriage, comes ticked when it can take the operation. A tool with no slot assigned to it is grayed out with **Assign a slot first**; set one with **Assigned Tool** in the slot's menu.
 
 **Loading or unloading several heads at once.** On a printer with a toolhead per slot (Snapmaker U1, MedusaHC), the picker lets you tick several heads. The prompt text the printer shows is English - every screen attached to the printer sees the same words. If a ticked head turns out not to take the operation, it is skipped with a warning naming the head and the reason, and the rest continue. A head whose own sensor reports it empty is not tickable for Unload at all: there is nothing in it for an unload to act on.
 
 **MedusaHC.** One extruder drive serves every tool, so **Load** mounts the tool, heats it and asks you to insert the filament into that tool - the extruder grabs it, so tap **Continue** once it is in. The printer then draws it in slowly, purges and puts back whichever tool was on the carriage before (or parks, if none was). **Unload** mounts, heats, retracts until the filament is fully out, and restores the carriage the same way. The prompt's words are English even on a translated screen, because every client attached to the printer shows them. **Cancel** on the prompt or in the sidebar, closing the prompt without answering, or leaving it waiting for three minutes all turn the heater off and restore the carriage, with a message saying so.
 
-Ticking several tools loads or unloads them in one run. A load asks once up front - insert a strand into every ticked tool as far as it goes - then works tool by tool, warming each next tool partway while the current one runs, and puts the carriage back at the end. Stopping part way (cancelling, a timeout, a failure) turns every heater off, restores the carriage, and names the tools that did finish. If your printer defines its own `LOAD_FILAMENT` / `UNLOAD_FILAMENT` taking `T=`, those run for each tool's feed and retract; a `LOAD_ALL_FILAMENT` / `UNLOAD_ALL_FILAMENT` runs the whole batch when you ticked every tool. Neither works while a print is running or paused.
+Ticking several tools loads or unloads them in one run. A load asks once up front - insert a strand into every ticked tool as far as it goes - then works tool by tool, warming each next tool partway while the current one runs, and puts the carriage back at the end. Stopping part way (canceling, a timeout, a failure) turns every heater off, restores the carriage, and names the tools that did finish. If your printer defines its own `LOAD_FILAMENT` / `UNLOAD_FILAMENT` taking `T=`, those run for each tool's feed and retract; a `LOAD_ALL_FILAMENT` / `UNLOAD_ALL_FILAMENT` runs the whole batch when you ticked every tool. Neither works while a print is running or paused.
 
-**Tool changers that cannot feed filament.** On a klipper-toolchanger with no feed command, filament goes in and out of each tool by hand. The sidebar shows **Mount...** and **Park** instead of Load and Unload, and a slot's menu shows Load and Unload greyed out with **Load and unload filament at the tool by hand**, plus **Mount** (or **Park**, on the mounted tool). On the Creator 5 with the afclite feed, Load feeds the tool and Unload stays a cut by hand.
+**Tool changers that cannot feed filament.** On a klipper-toolchanger with no feed command, filament goes in and out of each tool by hand. The sidebar shows **Mount...** and **Park** instead of Load and Unload, and a slot's menu shows Load and Unload grayed out with **Load and unload filament at the tool by hand**, plus **Mount** (or **Park**, on the mounted tool). On the Creator 5 with the afclite feed, Load feeds the tool and Unload stays a cut by hand.
 
 ### When Bypass Doesn't Appear
 
@@ -225,7 +225,7 @@ Bypass load deliberately does not go through the AMS. It runs your configured **
 
 If bypass is not engaged when you tap **Load**, it is engaged first. On systems that require it, a lane's filament is unloaded before bypass engages, and the load starts once that finishes — the same sequence the Bypass toggle performs, so nothing is fed down the lane path by mistake.
 
-Both entries grey out for the same reasons the Filament panel's buttons do: while a filament operation is already running, while a job holds the machine, and — for Unload — when there is nothing at the toolhead to retract.
+Both entries gray out for the same reasons the Filament panel's buttons do: while a filament operation is already running, while a job holds the machine, and — for Unload — when there is nothing at the toolhead to retract.
 
 > The same Load and Unload are on the **Filament panel**, which acts on the external spool whenever bypass is the current selection.
 
@@ -242,14 +242,14 @@ Tapping the mounted toolhead, or any slot's filament tube or spool, opens the sl
 | Action | Description |
 |--------|-------------|
 | **Load** | Feed filament from this slot to the toolhead. Disabled if the slot is empty. |
-| **Unload** | Retract filament from this slot. Only available if this slot is currently loaded. Greyed out while filament sits in the toolhead that no slot claims, because the slot this menu names may not be the one holding it: use **Unload** in the filament sidebar instead. |
+| **Unload** | Retract filament from this slot. Only available if this slot is currently loaded. Grayed out while filament sits in the toolhead that no slot claims, because the slot this menu names may not be the one holding it: use **Unload** in the filament sidebar instead. |
 | **Eject** | Push filament fully out of the lane to release the spool, when the slot has filament in its lane but **not** loaded into the toolhead. Replaces the Unload button in that state. Only on backends that support per-lane eject (AFC and Happy Hare). |
 | **Recover** | Pull filament that is stranded partway down the tube back toward its slot, without heating the nozzle. Takes the place of **Unload** when the system can tell that this slot's filament is stuck past the hub. |
-| **Preload** | Happy Hare only. Feed filament from the spool into its gate, ready for a later load. Greyed out during a print, while any filament is loaded, or while the MMU is busy. |
+| **Preload** | Happy Hare only. Feed filament from the spool into its gate, ready for a later load. Grayed out during a print, while any filament is loaded, or while the MMU is busy. |
 | **Edit Spool** | Open the spool editor to view or change the material, brand, color and remaining weight. See [Editing Filament Properties](#editing-filament-properties). |
 | **Select Spool** | Open the spool editor on your list of Spoolman spools, to assign one to this slot. Only shown when Spoolman is configured. |
 | **Scan QR Code** | Scan a filament QR code to auto-fill spool data. Only shown when Spoolman is configured. |
-| **Clear Spool** | Erase everything HelixScreen and the printer's firmware remember about this slot: your saved edits, the slot's spool details, and the Spoolman link, plus the printer's own record where the firmware lets it be wiped (Happy Hare's whole gate map entry, the QIDI Box's stored slot values). What is left afterwards is only what the hardware can physically read - on the ACE, the Snapmaker U1 and a stock CFS the firmware's record cannot be wiped (read-only, or the RFID tag is simply re-read), so the slot repopulates from it. Shown whenever the slot carries an assignment, loaded or not. Refused on the lane feeding an active, paused or preparing print - the button greys out and says why. |
+| **Clear Spool** | Erase everything HelixScreen and the printer's firmware remember about this slot: your saved edits, the slot's spool details, and the Spoolman link, plus the printer's own record where the firmware lets it be wiped (Happy Hare's whole gate map entry, the QIDI Box's stored slot values). What is left afterwards is only what the hardware can physically read - on the ACE, the Snapmaker U1 and a stock CFS the firmware's record cannot be wiped (read-only, or the RFID tag is simply re-read), so the slot repopulates from it. Shown whenever the slot carries an assignment, loaded or not. Refused on the lane feeding an active, paused or preparing print - the button grays out and says why. |
 
 > **Note:** On a Happy Hare printer that fills its gates from Spoolman (Spoolman pull mode), the firmware side is refused for both edits and Clear Spool, and the reason names Spoolman: make color, material and spool changes in Spoolman itself. Clear Spool still clears HelixScreen's own copy, so remove the spool in Spoolman to finish the job.
 
@@ -259,7 +259,7 @@ Tapping the mounted toolhead, or any slot's filament tube or spool, opens the sl
 
 **Assigned Tool** - On systems where HelixScreen can set which tool a slot feeds, the menu has an **Assigned Tool** dropdown: pick the tool this slot should feed. See [Assigned Tool](#assigned-tool) below.
 
-**The Creality CFS is different: there is nothing to pick.** Its **Auto-Refill** is managed entirely by the box's firmware. Stock CFS firmware never says which slot it would switch to, so the menu has no Backup Slot row and no backup arrows are drawn between the slots; the line at the bottom of the menu says whether Auto-Refill is on and that the firmware chooses. A community Kalico-based CFS setup that publishes its switch plan is the exception: while Auto-Refill is on, a slot with a planned backup shows the Backup Slot row **greyed out** with that slot in it, and arrows mark the plan. Either way, the box decides for itself which slot can stand in, and it only accepts one holding the **exact same material and the exact same colour**. If nothing matches, or Auto-Refill is switched off, it does not switch at all: the print stays paused and HelixScreen tells you which of the two it was. Auto-Refill itself can be turned on or off from the CFS device actions.
+**The Creality CFS is different: there is nothing to pick.** Its **Auto-Refill** is managed entirely by the box's firmware. Stock CFS firmware never says which slot it would switch to, so the menu has no Backup Slot row and no backup arrows are drawn between the slots; the line at the bottom of the menu says whether Auto-Refill is on and that the firmware chooses. A community Kalico-based CFS setup that publishes its switch plan is the exception: while Auto-Refill is on, a slot with a planned backup shows the Backup Slot row **grayed out** with that slot in it, and arrows mark the plan. Either way, the box decides for itself which slot can stand in, and it only accepts one holding the **exact same material and the exact same color**. If nothing matches, or Auto-Refill is switched off, it does not switch at all: the print stays paused and HelixScreen tells you which of the two it was. Auto-Refill itself can be turned on or off from the CFS device actions.
 
 > **Clearing every backup at once:** To remove every Endless Spool backup in one step — back to "a runout just stops the print" — open the AMS Management overlay and tap **Reset Endless Spool**. See [AMS Management (Settings Overlay)](#ams-management-settings-overlay) below.
 
@@ -275,15 +275,15 @@ Tap a slot and choose **Edit Spool** to open the spool editor. This tells HelixS
 - **Remaining weight** - the pill on the summary line, for example **750 g of 1000 g**. Tap it and type the grams left on the spool.
 - **Temperatures** - the nozzle range and bed temperature for what you've picked: a product's own range when you pick one, otherwise the material's usual range.
 - **Material, Variant, Brand, Product** - four dropdowns that narrow each other down. Pick the material first (PLA, PETG, ABS, ASA, PA, TPU, PC and the rest); **Variant** offers that material's kinds (Basic, +, CF, GF, HS, Silk, Matte, Wood, Marble, Recycled and so on); **Brand** lists the makers of it, with **Generic** first; **Product** lists that brand's lines and is hidden while the brand is Generic. With Spoolman, the materials and brands of your recent spools come first in their lists. Changing the material resets the variant to Basic, and keeps the brand when it makes the new material, otherwise it goes back to Generic. The Material and Brand lists end in **Browse catalog...**, which opens the full filament catalog: search it, or type a filament it doesn't list, and the pick fills in all four.
-- **Color** - a grid of colour swatches, beside the dropdowns or below them depending on the screen. Tap one to use it. The rainbow swatch at the start of the row opens the full colour view (so does tapping the colour dot on the summary line). A ring marks the current colour, on the rainbow swatch when the colour is one the row doesn't show.
+- **Color** - a grid of color swatches, beside the dropdowns or below them depending on the screen. Tap one to use it. The rainbow swatch at the start of the row opens the full color view (so does tapping the color dot on the summary line). A ring marks the current color, on the rainbow swatch when the color is one the row doesn't show.
 
-**The colour view** has the full set of preset colours and a custom colour picker (a hue and shade picker, a hex field and **Select**). Tap a preset to use it, or mix a colour and tap **Select**; either takes you back to the editor. On larger screens the presets and the picker show side by side. On small screens (480x320, 480x272 and portrait 320x480) they take turns: tap the rainbow swatch at the start of the presets to switch to the picker, and **Presets** to switch back. Back returns to the editor without changing the colour.
+**The color view** has the full set of preset colors and a custom color picker (a hue and shade picker, a hex field and **Select**). Tap a preset to use it, or mix a color and tap **Select**; either takes you back to the editor. On larger screens the presets and the picker show side by side. On small screens (480x320, 480x272 and portrait 320x480) they take turns: tap the rainbow swatch at the start of the presets to switch to the picker, and **Presets** to switch back. Back returns to the editor without changing the color.
 
-**From tag.** On systems that read the spool's RFID or NFC tag, a small **from tag** pill sits beside each value that came from the tag: on the summary line, the material, brand, product, colour and the temperatures. Change a value and its pill goes away. **Reset to tag**, below the form, puts back every value the tag states.
+**From tag.** On systems that read the spool's RFID or NFC tag, a small **from tag** pill sits beside each value that came from the tag: on the summary line, the material, brand, product, color and the temperatures. Change a value and its pill goes away. **Reset to tag**, below the form, puts back every value the tag states.
 
 **Spoolman** (when Spoolman is configured):
 
-- The two round buttons in the header, left of **Save**, open your **Spoolman spool list** and **Scan QR Code** (scan a spool label to look the spool up). In the list, search for a spool and tap it: the editor comes back with that spool's brand, material, colour and temperatures filled in, ready to save. The list ends in **Not in your spools? Set it up**, which goes back to the editor so you can describe the spool by hand.
+- The two round buttons in the header, left of **Save**, open your **Spoolman spool list** and **Scan QR Code** (scan a spool label to look the spool up). In the list, search for a spool and tap it: the editor comes back with that spool's brand, material, color and temperatures filled in, ready to save. The list ends in **Not in your spools? Set it up**, which goes back to the editor so you can describe the spool by hand.
 - **Select Spool** in the slot's menu opens the same list directly. Tapping a spool there links it to the slot and saves straight away.
 - **More** (only on a slot linked to a Spoolman spool) opens the spool's **Price**, **Location**, **Lot/Batch Nr** and **Notes**, plus **Print Label** when a label printer is set up. These are saved to the spool in Spoolman.
 - **Add to Spoolman + label** (only on a slot that isn't linked) creates the spool in Spoolman from what you've entered, links it to the slot, and prints its label when a label printer is set up.
@@ -291,7 +291,7 @@ Tap a slot and choose **Edit Spool** to open the spool editor. This tells HelixS
 **Saving:**
 
 1. **Save** in the header lights up once something has changed, including a field under **More**.
-2. If the slot is linked to a Spoolman spool and you changed its material, brand or colour, HelixScreen asks **Different filament?**: **Update in Spoolman** points the spool at the matching filament in Spoolman (creating it if needed; a filament record other spools share is never edited), and **Unlink, keep on this slot** keeps your changes on the slot only and removes the Spoolman link.
+2. If the slot is linked to a Spoolman spool and you changed its material, brand or color, HelixScreen asks **Different filament?**: **Update in Spoolman** points the spool at the matching filament in Spoolman (creating it if needed; a filament record other spools share is never edited), and **Unlink, keep on this slot** keeps your changes on the slot only and removes the Spoolman link.
 3. The editor closes once the save is done. A save that is still talking to Spoolman finishes even if you leave the screen. Opening the same slot again before it finishes shows **Still saving this spool…**; try again in a moment.
 
 Tapping Back with unsaved changes asks whether to **Save** or **Discard** them.
@@ -308,7 +308,7 @@ Which tool a slot feeds is not set here: use **Assigned Tool** in the slot's men
 
 > **Adding brands and products from a file.** The catalog can be extended or corrected by editing `user_filaments.json` instead of using the screen. See [Editing materials and brands by hand](settings/printing.md#editing-materials-and-brands-by-hand).
 
-> **Tip: favourite filaments.** Tap the star on any row in the filament catalog (the brand and material picker). Starred filaments lead the vendor list in a **Favorites** section and float to the top of their own vendor's list too, on every printer. Tap the star again to unstar.
+> **Tip: favorite filaments.** Tap the star on any row in the filament catalog (the brand and material picker). Starred filaments lead the vendor list in a **Favorites** section and float to the top of their own vendor's list too, on every printer. Tap the star again to unstar.
 
 > **Material names with punctuation or spaces.** On AFC and Happy Hare the material is stored
 > by the firmware itself, so the name has to be something Klipper accepts. Names like `PLA+`,
@@ -322,7 +322,7 @@ Which tool a slot feeds is not set here: use **Assigned Tool** in the slot's men
 
 Every piece of information on a lane - color, material, brand, spool name, remaining weight - can arrive from more than one place: you edit it on the screen, the printer's firmware reports it, or a linked Spoolman spool carries it. HelixScreen remembers which source said what, and the more trustworthy source for each field wins, rather than whichever wrote last:
 
-- **A color you pick yourself beats the linked spool's.** The spool record says what the vendor sells; your pick says what is actually loaded in that lane right now. The color name you chose travels with it, so a swatch is never labelled with a different color's name.
+- **A color you pick yourself beats the linked spool's.** The spool record says what the vendor sells; your pick says what is actually loaded in that lane right now. The color name you chose travels with it, so a swatch is never labeled with a different color's name.
 - **A spool linked from Spoolman owns its brand, material and spool name.** While Spoolman is unreachable those fields are read-only in the editor - the picker shows the spool's own values instead of letting you type over what the server will replace anyway. The spool's remaining weight also comes from the server.
 - **Your edits are marked as yours in the record the printer shares with other tools**, so Mainsail, OrcaSlicer or a macro refreshing that record does not wipe what you entered.
 - **A reading that leaves a field out leaves it standing.** A status frame that says nothing about, say, brand keeps whatever another source already knew.
@@ -439,7 +439,7 @@ Below the top-level controls, **device-specific settings appear as expandable se
 
 - **Load Extruder** and **Unload Extruder** (Maintenance) run only the extruder part of a load or unload, for filament that is already at the toolhead. Happy Hare heats the nozzle for them. Not available during a print.
 - **Motors** (Maintenance) switches the MMU's motors on or off. Switching them on does not home the MMU.
-- **Refresh Spoolman** (Accessories) asks Happy Hare to re-read its spool details from Spoolman. Greyed out when Spoolman support is off in Happy Hare.
+- **Refresh Spoolman** (Accessories) asks Happy Hare to re-read its spool details from Spoolman. Grayed out when Spoolman support is off in Happy Hare.
 
 Other backends show their own (usually smaller) set of sections, or none at all.
 
@@ -522,7 +522,7 @@ Tap the menu icon on the CFS panel to access device actions:
 | Action | What It Does |
 |--------|--------------|
 | **Refresh** | Re-read all RFID tags across all units — useful after swapping spools while the printer was off |
-| **Auto-Refill** | Switch to a matching slot on runout. A runout pauses the print either way; with this on, the box then swaps in another slot **only** if one holds the exact same material and colour, and resumes. With it off, or with no match, the print stays paused |
+| **Auto-Refill** | Switch to a matching slot on runout. A runout pauses the print either way; with this on, the box then swaps in another slot **only** if one holds the exact same material and color, and resumes. With it off, or with no match, the print stays paused |
 | **Nozzle Clean** | Trigger the nozzle cleaning routine using the CFS's built-in silicone strip |
 
 ### CFS and the External Spool
@@ -545,9 +545,9 @@ Turning bypass on also switches the toolhead runout sensor on at the printer (st
 
 The Snapmaker U1 is a **4-toolhead changer**, not a shared-path AMS. Each of its four slots has its own independent toolhead, so the topology is **parallel** — every slot keeps its own spool permanently attached to its own tool. There is no hub or selector to share between slots.
 
-That fixed slot-to-toolhead pairing is not the same thing as which toolhead prints which part of your file. When you start a print, the printer is told which head to use for each colour in the file, matching on the filament that is actually loaded. So a file sliced with its first colour red will print red even if your red spool sits in the third slot — you do not have to rearrange spools to match the slicing order.
+That fixed slot-to-toolhead pairing is not the same thing as which toolhead prints which part of your file. When you start a print, the printer is told which head to use for each color in the file, matching on the filament that is actually loaded. So a file sliced with its first color red will print red even if your red spool sits in the third slot — you do not have to rearrange spools to match the slicing order.
 
-The model preview on the print screen follows the same routing: each part of the model is drawn in the colour of the filament that will really print it, not in the slicer's slot order. If the preview colours look swapped compared to your slicing software, that is the preview showing you what the printer is actually going to do.
+The model preview on the print screen follows the same routing: each part of the model is drawn in the color of the filament that will really print it, not in the slicer's slot order. If the preview colors look swapped compared to your slicing software, that is the preview showing you what the printer is actually going to do.
 
 ### RFID Detection
 
@@ -578,7 +578,7 @@ The U1 measures how far each toolhead's nozzle sits from the others, so every he
 
 Every toolhead is purged and probed, including one with no filament loaded, exactly as on the stock screen; an empty head just turns its extruder over without pushing anything out.
 
-Tapping **Cancel** or leaving the screen stops the calibration and turns the heaters off. If HelixScreen restarts in the middle of a calibration, it ends the printer's calibration mode and turns the heaters off when it reconnects. A step already running finishes first (a heat-up, for example), except probing, which stops straight away. If a step fails, nothing is saved and the heaters are turned off. The button is greyed out while a print is running or paused.
+Tapping **Cancel** or leaving the screen stops the calibration and turns the heaters off. If HelixScreen restarts in the middle of a calibration, it ends the printer's calibration mode and turns the heaters off when it reconnects. A step already running finishes first (a heat-up, for example), except probing, which stops straight away. If a step fails, nothing is saved and the heaters are turned off. The button is grayed out while a print is running or paused.
 
 > **Note:** Because each toolhead is independent, the Snapmaker backend has no Home, Recover, Reset, Bypass, or Endless Spool controls — those apply to shared-path AMS hardware only.
 
@@ -590,7 +590,7 @@ MedusaHC swaps only the **hot end** — heater, thermistor and fan — rather th
 toolhead. It runs on top of klipper-toolchanger, so HelixScreen shows it as a tool changer
 with **parallel** topology: each tool is its own independent path, with no hub or selector.
 
-You don't need to configure anything. HelixScreen recognises a MedusaHC automatically when
+You don't need to configure anything. HelixScreen recognizes a MedusaHC automatically when
 your Klipper config has both a tool changer and MedusaHC's own dock sensors.
 
 ### Which tool is mounted
@@ -645,9 +645,9 @@ How the mapping reaches the printer depends on your setup:
 
 ### What HelixScreen remembers per tool
 
-Your printer reports nothing about the filament in each hot end — no material, no colour,
+Your printer reports nothing about the filament in each hot end — no material, no color,
 no brand. So whatever you set in HelixScreen *is* the record, and it's kept for you:
-material, colour, brand, spool name, and remaining weight, per tool.
+material, color, brand, spool name, and remaining weight, per tool.
 
 That survives restarts and reconnects. It's stored on your printer via Moonraker rather
 than only on the screen, and it uses the same records Mainsail writes, so spools you've
@@ -759,7 +759,7 @@ On a Happy Hare 4 unit that has its own heater on every lane (an EMU-style build
 
 To make room for the chips, the Material Comfort list wraps into two columns while they show, and on the smallest screens (480x272) it is hidden; the humidity reading above it stays.
 
-Happy Hare runs one drying cycle per unit, so pick your lanes before you tap **Start Drying**. A lane can't be added to a cycle that is already running: stop it and start again with the new selection. On these units the button and the time left follow the unit's cycle, so a lane that isn't drying still shows **Stop Drying** while its neighbours are.
+Happy Hare runs one drying cycle per unit, so pick your lanes before you tap **Start Drying**. A lane can't be added to a cycle that is already running: stop it and start again with the new selection. On these units the button and the time left follow the unit's cycle, so a lane that isn't drying still shows **Stop Drying** while its neighbors are.
 
 Each lane's part in the cycle shows on its spool on the **Filament** panel, as a small badge on the spool face:
 

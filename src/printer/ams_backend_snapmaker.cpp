@@ -3394,7 +3394,7 @@ std::vector<helix::printer::DeviceSection> AmsBackendSnapmaker::get_device_secti
     if (!print_preferences().empty()) {
         DeviceSection s;
         s.id = "snapmaker_print_prefs";
-        s.label = lv_tr("Print Behaviour");
+        s.label = lv_tr("Print Behavior");
         s.display_order = 50;
         out.push_back(std::move(s));
     }

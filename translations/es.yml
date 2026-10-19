@@ -537,7 +537,7 @@ translations:
   Calibration Failed: Calibración Fallida
   Calibration Saved: Calibración guardada
   Calibration and system configuration: 'Calibración y configuración del sistema'
-  Calibration cancelled.: Calibración cancelada.
+  Calibration canceled.: Calibración cancelada.
   Calibration complete: Calibración completa
   Calibration complete - save to keep the offsets: Calibración completa - guarda para conservar los offsets
   Calibration complete!: ¡Calibración completa!
@@ -573,8 +573,8 @@ translations:
   Cancel Scheduled Pause: 'Cancelar pausa programada'
   Cancel macro not configured: Macro de cancelar no configurado
   Cancel print: 'Cancelar impresión'
-  Cancelled: Cancelado
-  Cancelling turns the chamber target off so the wait ends, then stops the print.: 'Cancelar apaga el objetivo de la cámara para que termine la espera y luego detiene la impresión.'
+  Canceled: Cancelado
+  Canceling turns the chamber target off so the wait ends, then stops the print.: 'Cancelar apaga el objetivo de la cámara para que termine la espera y luego detiene la impresión.'
   'Cannot add to queue: internal error': 'No se puede añadir a la cola: error interno'
   Cannot be changed from here on a multi-unit MMU: No se puede cambiar aquí en un MMU de varias unidades
   'Cannot control timelapse: printer not connected': 'No se puede controlar timelapse:
@@ -703,7 +703,7 @@ translations:
   Choose rendering mode for bed mesh visualization: Elija el modo de renderizado para
     la visualización de malla de cama
   Choose sound style: Elegir estilo de sonido
-  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses.
+  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses.
   : Elija el modelo que coincida con su impresora. Esto establece las macros de impresión, los roles de los ventiladores y el comportamiento de calibración que usa HelixScreen.
   Choose what to power off or restart.: Elija qué apagar o reiniciar.
   'Chute position: X {:.1f}, Y {:.1f}': 'Posición del conducto de purga: X {:.1f}, Y {:.1f}'
@@ -1246,7 +1246,7 @@ translations:
   Exclude Objects: 'Excluir objetos'
   Excluded: Excluido
   Excluding "{}"...: 'Excluyendo "{}"...'
-  Exclusion cancelled: Exclusión cancelada
+  Exclusion canceled: Exclusión cancelada
   Execute printer macros: Ejecutar macros de impresora
   Exhaust Fan: Ventilador de Escape
   Exit Code: Código de salida
@@ -1962,7 +1962,7 @@ translations:
   Last 30 days: 'Últimos 30 días'
   Last 7 days: 'Últimos 7 días'
   Last measured: 'Última medición'
-  Last print cancelled: Última impresión cancelada
+  Last print canceled: Última impresión cancelada
   Last print failed: Última impresión fallida
   Later: Más Tarde
   Layer: Capa
@@ -2011,7 +2011,7 @@ translations:
   Load a filament first before trying to unload: Cargue primero filamento antes de intentar descargar
   Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: Cargue una bobina nueva en esta ranura, o active el rellenado automático para cambiar a una equivalente
   Load and unload filament at the tool by hand: 'Carga y descarga el filamento a mano en la herramienta'
-  'Load cancelled: nozzle target dropped': 'Carga cancelada: el objetivo de la boquilla bajó'
+  'Load canceled: nozzle target dropped': 'Carga cancelada: el objetivo de la boquilla bajó'
   Load complete: 'Carga completa'
   Load failed: Error al cargar
   Load filament: 'Cargar filamento'
@@ -2442,7 +2442,7 @@ translations:
   Nozzle Temps: Temps de boquilla
   Nozzle clean complete: Limpieza de boquilla completa
   Nozzle clog detected: Se detectó una obstrucción en la boquilla
-  Nozzle did not reach {}°C — {} cancelled: La boquilla no alcanzó {}°C — se canceló {}
+  Nozzle did not reach {}°C — {} canceled: La boquilla no alcanzó {}°C — se canceló {}
   Nozzle interval: 'Intervalo de la boquilla'
   Nozzle min cannot exceed max: El mínimo de la boquilla no puede superar el máximo
   Nozzle target set to {}°C: Boquilla configurada a {}°C
@@ -2655,7 +2655,7 @@ translations:
   Preheat %s (%d/%d): 'Precalentar %s (%d/%d)'
   Preheat Macro: Macro de Precalentamiento
   Preheat PLA: Precalentar PLA
-  Preheat cancelled: Precalentamiento cancelado
+  Preheat canceled: Precalentamiento cancelado
   'Preheat: all {} tools + bed set': 'Precalentar: todas las {} herramientas + cama
     configurada'
   'Preheat: {} + bed set': 'Precalentar: {} + cama configurada'
@@ -2691,8 +2691,8 @@ translations:
   Priming...: Cebando...
   Print: Imprimir
   Print Anyway: Imprimir de todos modos
-  'Print Behaviour': 'Comportamiento de impresión'
-  Print Cancelled: Impresión Cancelada
+  Print Behavior: 'Comportamiento de impresión'
+  Print Canceled: Impresión Cancelada
   Print Complete!: ¡Impresión Completa!
   Print Completion Alert: Alerta de Impresión Completa
   Print Controls: 'Controles de impresión'
@@ -2716,9 +2716,9 @@ translations:
   Print Tuning: Ajuste de Impresión
   Print Was Terminated: La impresión fue terminada
   Print a test tower and tune K by eye: Imprime una torre de prueba y ajusta K a ojo
-  Print cancelled: Impresión cancelada
   Print details: 'Detalles de impresión'
   Print did not start: La impresión no se inició
+  Print canceled: Impresión cancelada
   Print complete: Impresión completa
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): La
     impresión no comenzó — la impresora puede estar ocupada o desconectada (sondeos
@@ -3717,7 +3717,7 @@ translations:
 
   The plate finishes its current move, but drying will not start.: 'La cama termina su movimiento actual, pero el secado no empezará.'
   The print ended before any layer was printed. Nothing was changed.: La impresión terminó antes de imprimir ninguna capa. No se cambió nada.
-  The print is cancelled and you pick the best band from what has printed so far.: La impresión se cancela y eliges la mejor franja de lo impreso hasta ahora.
+  The print is canceled and you pick the best band from what has printed so far.: La impresión se cancela y eliges la mejor franja de lo impreso hasta ahora.
   The print is on its last layer.: 'La impresión está en su última capa.'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : La impresión está pausada. Cambiar de herramienta ahora mueve el cabezal y cambia
@@ -3863,7 +3863,7 @@ translations:
   This tool probes each bed screw and tells you how much to adjust.: Esta herramienta
     sondea cada tornillo de cama y le indica cuánto ajustar.
   'This update asks for new permissions:': 'Esta actualización pide nuevos permisos:'
-  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': 'Esta espera solo termina al alcanzar su temperatura: cancelar requiere una parada de emergencia y un reinicio del firmware.'
+  'This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart.': 'Esta espera solo termina al alcanzar su temperatura: cancelar requiere una parada de emergencia y un reinicio del firmware.'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : Esto aplicará el Z-offset a su endstop y reiniciará Klipper para guardar la configuración.

@@ -526,7 +526,7 @@ translations:
   Calibration Failed: Calibration Failed
   Calibration Saved: Calibration Saved
   Calibration and system configuration: Calibration and system configuration
-  Calibration cancelled.: Calibration cancelled.
+  Calibration canceled.: Calibration canceled.
   Calibration complete: Calibration complete
   Calibration complete - save to keep the offsets: Calibration complete - save to keep the offsets
   Calibration complete!: Calibration complete!
@@ -559,8 +559,8 @@ translations:
   Cancel Scheduled Pause: Cancel Scheduled Pause
   Cancel macro not configured: Cancel macro not configured
   Cancel print: Cancel print
-  Cancelled: Cancelled
-  Cancelling turns the chamber target off so the wait ends, then stops the print.: Cancelling turns the chamber target off so the wait ends, then stops the print.
+  Canceled: Canceled
+  Canceling turns the chamber target off so the wait ends, then stops the print.: Canceling turns the chamber target off so the wait ends, then stops the print.
   'Cannot add to queue: internal error': 'Cannot add to queue: internal error'
   Cannot be changed from here on a multi-unit MMU: Cannot be changed from here on a multi-unit MMU
   'Cannot control timelapse: printer not connected': 'Cannot control timelapse: printer
@@ -685,8 +685,8 @@ translations:
   Choose rendering mode for bed mesh visualization: Choose rendering mode for bed
     mesh visualization
   Choose sound style: Choose sound style
-  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses.
-  : Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses.
+  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses.
+  : Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses.
   Choose what to power off or restart.: Choose what to power off or restart.
   'Chute position: X {:.1f}, Y {:.1f}': 'Chute position: X {:.1f}, Y {:.1f}'
   Clean Brush: Clean Brush
@@ -1205,7 +1205,7 @@ translations:
   Exclude Objects: Exclude Objects
   Excluded: Excluded
   Excluding "{}"...: Excluding "{}"...
-  Exclusion cancelled: Exclusion cancelled
+  Exclusion canceled: Exclusion canceled
   Execute printer macros: Execute printer macros
   Exhaust Fan: Exhaust Fan
   Exit Code: Exit Code
@@ -1907,7 +1907,7 @@ translations:
   Last 30 days: Last 30 days
   Last 7 days: Last 7 days
   Last measured: Last measured
-  Last print cancelled: Last print cancelled
+  Last print canceled: Last print canceled
   Last print failed: Last print failed
   Later: Later
   Layer: Layer
@@ -1955,7 +1955,7 @@ translations:
   Load a filament first before trying to unload: Load a filament first before trying to unload
   Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one
   Load and unload filament at the tool by hand: Load and unload filament at the tool by hand
-  'Load cancelled: nozzle target dropped': 'Load cancelled: nozzle target dropped'
+  'Load canceled: nozzle target dropped': 'Load canceled: nozzle target dropped'
   Load complete: Load complete
   Load failed: Load failed
   Load filament: Load filament
@@ -2380,7 +2380,7 @@ translations:
   Nozzle Temps: Nozzle Temps
   'Nozzle clean complete': 'Nozzle clean complete'
   Nozzle clog detected: Nozzle clog detected
-  Nozzle did not reach {}°C — {} cancelled: Nozzle did not reach {}°C — {} cancelled
+  Nozzle did not reach {}°C — {} canceled: Nozzle did not reach {}°C — {} canceled
   Nozzle interval: Nozzle interval
   Nozzle min cannot exceed max: Nozzle min cannot exceed max
   Nozzle target set to {}°C: Nozzle target set to {}°C
@@ -2590,7 +2590,7 @@ translations:
   Preheat %s (%d/%d): Preheat %s (%d/%d)
   Preheat Macro: Preheat Macro
   Preheat PLA: Preheat PLA
-  Preheat cancelled: Preheat cancelled
+  Preheat canceled: Preheat canceled
   'Preheat: all {} tools + bed set': 'Preheat: all {} tools + bed set'
   'Preheat: {} + bed set': 'Preheat: {} + bed set'
   Preheating and homing...: Preheating and homing...
@@ -2626,8 +2626,8 @@ translations:
   Priming...: Priming...
   Print: Print
   Print Anyway: Print Anyway
-  'Print Behaviour': 'Print Behaviour'
-  Print Cancelled: Print Cancelled
+  Print Behavior: Print Behavior
+  Print Canceled: Print Canceled
   Print Complete!: Print Complete!
   Print Completion Alert: Print Completion Alert
   Print Controls: Print Controls
@@ -2651,7 +2651,7 @@ translations:
   Print Tuning: Print Tuning
   Print Was Terminated: Print Was Terminated
   Print a test tower and tune K by eye: Print a test tower and tune K by eye
-  Print cancelled: Print cancelled
+  Print canceled: Print canceled
   'Print complete': 'Print complete'
   Print details: Print details
   Print did not start: Print did not start
@@ -3627,7 +3627,7 @@ translations:
   The plate and the spools are still hot. Use gloves.: The plate and the spools are still hot. Use gloves.
   The plate finishes its current move, but drying will not start.: The plate finishes its current move, but drying will not start.
   The print ended before any layer was printed. Nothing was changed.: The print ended before any layer was printed. Nothing was changed.
-  The print is cancelled and you pick the best band from what has printed so far.: The print is cancelled and you pick the best band from what has printed so far.
+  The print is canceled and you pick the best band from what has printed so far.: The print is canceled and you pick the best band from what has printed so far.
   The print is on its last layer.: The print is on its last layer.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
@@ -3763,7 +3763,7 @@ translations:
   This tool probes each bed screw and tells you how much to adjust.: This tool probes
     each bed screw and tells you how much to adjust.
   'This update asks for new permissions:': 'This update asks for new permissions:'
-  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': 'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.'
+  'This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart.': 'This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart.'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
