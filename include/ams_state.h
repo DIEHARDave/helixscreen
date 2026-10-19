@@ -741,6 +741,37 @@ class AmsState {
     }
 
     /**
+     * @brief 1 while the active backend lets the user switch Endless Spool on
+     * and off (EndlessSpoolCapabilities::switchable), else 0.
+     *
+     * Registered for XML as `ams_endless_spool_switchable`; gates the one
+     * Endless Spool switch in the device-operations overlay.
+     */
+    lv_subject_t* get_endless_spool_switchable_subject() {
+        return &ams_endless_spool_switchable_;
+    }
+
+    /**
+     * @brief 1 while Endless Spool is switched on (with or without a backup to
+     * switch to), else 0. Registered for XML as `ams_endless_spool_on`.
+     */
+    lv_subject_t* get_endless_spool_on_subject() {
+        return &ams_endless_spool_on_;
+    }
+
+    /**
+     * @brief 1 while there is a filament system whose device operations can be
+     * shown, else 0. Registered for XML as `ams_has_device_ops`.
+     *
+     * Every entry point to the device-operations overlay (the AMS sidebar's
+     * Settings button, Settings > Printing) binds to this one subject, so they
+     * appear and disappear together.
+     */
+    lv_subject_t* get_has_device_ops_subject() {
+        return &ams_has_device_ops_;
+    }
+
+    /**
      * @brief Get the granular operation-phase subject.
      *
      * Holds the active load/unload sub-phase for backends that expose one
@@ -2424,6 +2455,11 @@ class AmsState {
     lv_subject_t ams_endless_state_{};
     lv_subject_t ams_endless_text_{};
     char ams_endless_text_buf_[384];
+    lv_subject_t ams_endless_spool_switchable_{};
+    lv_subject_t ams_endless_spool_on_{};
+
+    /// 1 while a backend is present; see get_has_device_ops_subject().
+    lv_subject_t ams_has_device_ops_{};
 
     // Tool change progress (AFC multi-color prints)
     lv_subject_t toolchange_visible_{};        // 1 when swaps expected, 0 otherwise

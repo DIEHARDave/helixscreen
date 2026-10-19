@@ -454,9 +454,6 @@ bool AmsOperationSidebar::setup(lv_obj_t* panel) {
     if (lv_subject_t* portrait = lv_xml_get_subject(nullptr, "ui_is_portrait"))
         place_summary(lv_subject_get_int(portrait) != 0);
 
-    // Hide settings button if no device sections
-    update_settings_visibility();
-
     active_ = true;
 
     // Independent stall watchdog for the indeterminate "Working…" state (#1065
@@ -776,32 +773,9 @@ void AmsOperationSidebar::sync_from_state() {
     // Sync loaded card display
     update_current_loaded_display();
 
-    // Update settings visibility (backend may have changed)
-    update_settings_visibility();
     update_check_gates_visibility();
     sync_reset_button_label();
     refresh_button_gating();
-}
-
-// ============================================================================
-// Settings Visibility
-// ============================================================================
-
-void AmsOperationSidebar::update_settings_visibility() {
-    if (!sidebar_root_) {
-        return;
-    }
-
-    auto* backend = AmsState::instance().get_backend(0);
-    lv_obj_t* btn_settings = lv_obj_find_by_name(sidebar_root_, "btn_settings");
-    if (btn_settings && backend) {
-        auto sections = backend->get_device_sections();
-        if (sections.empty()) {
-            lv_obj_add_flag(btn_settings, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_remove_flag(btn_settings, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
 }
 
 // ============================================================================

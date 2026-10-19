@@ -182,6 +182,9 @@ void AmsState::init_subjects(bool register_xml) {
     subjects_.register_subject(&ams_endless_text_, register_xml ? "ams_endless_text" : nullptr);
     if (register_xml)
         helix::xml::register_subject_in_current_scope("ams_endless_text", &ams_endless_text_);
+    INIT_SUBJECT_INT(ams_endless_spool_switchable, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(ams_endless_spool_on, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(ams_has_device_ops, 0, subjects_, register_xml);
 
     // Tool change progress subjects
     INIT_SUBJECT_INT(toolchange_visible, 0, subjects_, register_xml);
@@ -693,6 +696,10 @@ void AmsState::register_xml_subject_names() {
     helix::xml::register_subject_in_current_scope("ams_current_tool_text", &ams_current_tool_text_);
     helix::xml::register_subject_in_current_scope("ams_endless_state", &ams_endless_state_);
     helix::xml::register_subject_in_current_scope("ams_endless_text", &ams_endless_text_);
+    helix::xml::register_subject_in_current_scope("ams_endless_spool_switchable",
+                                                  &ams_endless_spool_switchable_);
+    helix::xml::register_subject_in_current_scope("ams_endless_spool_on", &ams_endless_spool_on_);
+    helix::xml::register_subject_in_current_scope("ams_has_device_ops", &ams_has_device_ops_);
 
     // Tool change progress subjects
     helix::xml::register_subject_in_current_scope("toolchange_visible", &toolchange_visible_);

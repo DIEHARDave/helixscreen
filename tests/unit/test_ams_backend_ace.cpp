@@ -10,16 +10,19 @@
 #include "ams_backend_ace.h"
 #include "ams_bypass_policy.h"
 #include "ams_types.h"
+#include "config.h"
 #include "fake_moonraker_client.h"
 #include "filament_slot_override.h"
 #include "filament_slot_override_store.h"
 #include "lane_translation.h"
 #include "lvgl_ui_test_fixture.h"
+#include "macro_choice.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "moonraker_types.h"
 #include "printer_discovery.h"
 #include "printer_state.h"
+#include "settings_manager.h"
 #include "test_helpers/ace_test_access.h"
 #include "test_helpers/backend_user_edit.h"
 #include "test_helpers/registered_backend.h"
@@ -464,6 +467,75 @@ TEST_CASE("Bypass macros resolve from discovery", "[ams][ace][bypass][1677]") {
         CHECK(macros.on.empty());
         CHECK(macros.off.empty());
     }
+}
+
+TEST_CASE("macro choice: auto or empty is the detected macro, anything else is verbatim",
+          "[ams][bypass][macro_choice]") {
+    CHECK(helix::resolve_macro_choice("auto", "MHC_OPEN") == "MHC_OPEN");
+    CHECK(helix::resolve_macro_choice("", "MHC_OPEN") == "MHC_OPEN");
+    CHECK(helix::resolve_macro_choice("OPEN", "MHC_OPEN") == "OPEN");
+    CHECK(helix::resolve_macro_choice("auto", "").empty());
+    CHECK(helix::macro_choice_or_auto("") == "auto");
+    CHECK(helix::macro_choice_or_auto("MY_BYPASS_ON") == "MY_BYPASS_ON");
+}
+
+TEST_CASE("Bypass macro options list the printer's bypass macros after auto",
+          "[ams][ace][bypass][macro_choice]") {
+    auto hw = discovery_with({"configfile", "ace", "gcode_macro MY_BYPASS_ON",
+                              "gcode_macro ACE_BYPASS_OFF", "gcode_macro PRINT_START"});
+    CHECK(helix::bypass_macro_options(hw) ==
+          std::vector<std::string>{"auto", "ACE_BYPASS_OFF", "MY_BYPASS_ON"});
+    CHECK(helix::bypass_macro_options(discovery_with({"configfile", "ace"})).empty());
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "ACE bypass macros are picked from device action dropdowns",
+                 "[ams][ace][bypass][macro_choice]") {
+    helix::Config::get_instance();
+    auto& settings = helix::SettingsManager::instance();
+    settings.set_ace_bypass_on_macro("auto");
+    settings.set_ace_bypass_off_macro("auto");
+
+    AmsBackendAceTestHelper helper;
+    helper.set_running(true);
+    helper.set_discovery(discovery_with({"configfile", "ace", "gcode_macro ACE_BYPASS_ON",
+                                         "gcode_macro ACE_BYPASS_OFF", "gcode_macro MY_BYPASS_ON",
+                                         "gcode_macro MY_BYPASS_OFF"}));
+    AceTestAccess::parse_ace(helper, make_kobra_instance_object());
+    AceTestAccess::parse_ace(helper, make_kobra_manager_object(-1));
+
+    auto find = [&](const std::string& id) -> std::optional<helix::printer::DeviceAction> {
+        for (auto& a : helper.get_device_actions()) {
+            if (a.id == id) {
+                return a;
+            }
+        }
+        return std::nullopt;
+    };
+    const auto on = find("ace_bypass_on_macro");
+    REQUIRE(on.has_value());
+    CHECK(on->type == helix::printer::ActionType::DROPDOWN);
+    CHECK(on->options == std::vector<std::string>{"auto", "ACE_BYPASS_OFF", "ACE_BYPASS_ON",
+                                                  "MY_BYPASS_OFF", "MY_BYPASS_ON"});
+    CHECK(std::any_cast<std::string>(on->current_value) == "auto");
+    REQUIRE(find("ace_bypass_off_macro").has_value());
+
+    REQUIRE(helper.enable_bypass().success());
+    CHECK(helper.captured_gcodes.back() == "ACE_BYPASS_ON");
+
+    REQUIRE(
+        helper.execute_device_action("ace_bypass_on_macro", std::string("MY_BYPASS_ON")).success());
+    REQUIRE(helper.execute_device_action("ace_bypass_off_macro", std::string("MY_BYPASS_OFF"))
+                .success());
+    CHECK(settings.get_ace_bypass_on_macro() == "MY_BYPASS_ON");
+    CHECK(std::any_cast<std::string>(find("ace_bypass_on_macro")->current_value) == "MY_BYPASS_ON");
+
+    REQUIRE(helper.disable_bypass().success());
+    CHECK(helper.captured_gcodes.back() == "MY_BYPASS_OFF");
+
+    CHECK_FALSE(helper.execute_device_action("ace_bypass_on_macro", std::string()).success());
+
+    settings.set_ace_bypass_on_macro("auto");
+    settings.set_ace_bypass_off_macro("auto");
 }
 
 TEST_CASE("ACE names no bypass macros, so it offers no bypass", "[ams][ace][bypass][1677]") {
@@ -3165,7 +3237,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "ACE endless spool changes at runtime reach Am
     }
 }
 
-TEST_CASE("ACE endless spool device actions send the driver commands",
+TEST_CASE("ACE endless spool switch and match mode send the driver commands",
           "[ams][ace][endless][1679]") {
     AmsBackendAceTestHelper helper;
     seed_endless(helper, false, "exact");
@@ -3179,11 +3251,15 @@ TEST_CASE("ACE endless spool device actions send the driver commands",
         return helix::printer::DeviceAction{};
     };
 
-    CHECK(std::any_cast<bool>(find("ace_endless_spool_toggle").current_value) == false);
+    // The on/off switch is the generic Endless Spool row, not a device action.
+    for (const auto& a : helper.get_device_actions()) {
+        CHECK(a.id != "ace_endless_spool_toggle");
+    }
+    CHECK(helper.get_endless_spool_capabilities().switchable);
     CHECK(std::any_cast<std::string>(find("ace_endless_spool_mode").current_value) == "exact");
 
-    REQUIRE(helper.execute_device_action("ace_endless_spool_toggle", true).success());
-    REQUIRE(helper.execute_device_action("ace_endless_spool_toggle", false).success());
+    REQUIRE(helper.set_endless_spool_enabled(true).success());
+    REQUIRE(helper.set_endless_spool_enabled(false).success());
     REQUIRE(
         helper.execute_device_action("ace_endless_spool_mode", std::string("material")).success());
     REQUIRE(helper.captured_gcodes.size() == 3);
@@ -3194,6 +3270,14 @@ TEST_CASE("ACE endless spool device actions send the driver commands",
     CHECK_FALSE(
         helper.execute_device_action("ace_endless_spool_mode", std::string("bogus")).success());
     CHECK(helper.captured_gcodes.size() == 3);
+}
+
+TEST_CASE("ACE endless spool switch is refused before the driver reports it",
+          "[ams][ace][endless][1679]") {
+    AmsBackendAceTestHelper helper;
+    CHECK_FALSE(helper.get_endless_spool_capabilities().switchable);
+    CHECK_FALSE(helper.set_endless_spool_enabled(true).success());
+    CHECK(helper.captured_gcodes.empty());
 }
 
 TEST_CASE("ACE endless spool matches the driver's ready and material rules",

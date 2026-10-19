@@ -211,10 +211,12 @@
         <bind_state_if_eq subject="ams_sidebar_check_gates_disabled" state="disabled" ref_value="1"/>
         <event_cb trigger="clicked" callback="ams_sidebar_check_gates_clicked"/>
       </ui_button>
-      <!-- Settings Button (full width) -->
+      <!-- Settings Button (full width): opens the device operations, shown
+           whenever Settings > Printing offers them too -->
       <ui_button name="btn_settings"
                  icon="settings" text="Settings" stacked_subject="ams_actions_stacked" stacked_if_eq="1"
                  long_mode="dots" icon_hidden_subject="ams_actions_text_only" icon_hidden_if_eq="1">
+        <bind_flag_if_eq subject="ams_has_device_ops" flag="hidden" ref_value="0"/>
         <style name="styles.action_cell"/>
         <bind_style_if name="styles.action_cell_text" cond="ams_actions_text_only eq 1"/>
         <bind_style_if name="styles.action_cell_stacked" cond="ams_actions_stacked eq 1"/>

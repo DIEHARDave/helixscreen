@@ -53,10 +53,6 @@ void AmsDeviceOperationsOverlay::init_subjects() {
         UI_MANAGED_SUBJECT_STRING(system_info_subject_, system_info_buf_, "",
                                   "ams_device_ops_system_info", subjects_);
 
-        // Status text
-        UI_MANAGED_SUBJECT_STRING(status_subject_, status_buf_, lv_tr("Idle"),
-                                  "ams_device_ops_status", subjects_);
-
         // Capability subjects
         UI_MANAGED_SUBJECT_INT(supports_bypass_subject_, 0, "ams_device_ops_supports_bypass",
                                subjects_);
@@ -67,8 +63,6 @@ void AmsDeviceOperationsOverlay::init_subjects() {
         UI_MANAGED_SUBJECT_INT(supports_auto_heat_subject_, 0, "ams_device_ops_supports_auto_heat",
                                subjects_);
         UI_MANAGED_SUBJECT_INT(has_backend_subject_, 0, "ams_device_ops_has_backend", subjects_);
-        UI_MANAGED_SUBJECT_INT(unload_after_print_configurable_subject_, 0,
-                               "ams_device_ops_unload_after_print_configurable", subjects_);
         UI_MANAGED_SUBJECT_INT(bypass_is_virtual_subject_, 0, "ams_device_ops_bypass_is_virtual",
                                subjects_);
 
@@ -170,9 +164,20 @@ void AmsDeviceOperationsOverlay::register_callbacks() {
              AmsState::instance().sync_from_backend();
              lv_subject_notify(AmsState::instance().get_bypass_active_subject());
          }},
-        {"on_ams_afc_unload_after_print_toggled",
+        {"on_ams_endless_spool_toggled",
          [](lv_event_t* e) {
-             SettingsManager::instance().set_afc_unload_after_print(event_checked(e));
+             const bool enable = event_checked(e);
+             AmsBackend* backend = AmsState::instance().get_backend();
+             AmsError result = backend ? backend->set_endless_spool_enabled(enable)
+                                       : AmsErrorHelper::not_supported("Endless Spool");
+             if (result.success()) {
+                 return; // The backend's next report moves ams_endless_spool_on.
+             }
+             helix::ui::notify_ams_error(result, lv_tr("Endless Spool change failed"));
+             // The switch flipped itself and the refusal left ams_endless_spool_on
+             // where it was; an unchanged set does not notify, so the binding is
+             // re-applied by hand.
+             lv_subject_notify(AmsState::instance().get_endless_spool_on_subject());
          }},
         {"on_ams_always_show_bypass_spool_toggled",
          [](lv_event_t* e) {
@@ -344,7 +349,6 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
         lv_subject_set_int(&fw_supports_bypass_subject_, 0);
         lv_subject_set_int(&hw_bypass_sensor_subject_, 0);
         lv_subject_set_int(&supports_auto_heat_subject_, 0);
-        lv_subject_set_int(&unload_after_print_configurable_subject_, 0);
         lv_subject_set_int(&bypass_is_virtual_subject_, 0);
         lv_subject_set_int(&reports_spool_ids_subject_, 0);
         lv_subject_set_int(&printer_retains_spool_info_subject_, 0);
@@ -356,9 +360,6 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
         lv_subject_set_int(&has_details_subject_, 0);
         system_info_buf_[0] = '\0';
         lv_subject_copy_string(&system_info_subject_, system_info_buf_);
-        snprintf(status_buf_, sizeof(status_buf_), "%s",
-                 lv_tr("No Multi-Filament System connected"));
-        lv_subject_copy_string(&status_subject_, status_buf_);
 
         if (section_list_container_) {
             helix::ui::safe_clean_children(section_list_container_); // [L081]
@@ -412,10 +413,6 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
 
     lv_subject_set_int(&supports_auto_heat_subject_, backend->supports_auto_heat_on_load() ? 1 : 0);
 
-    // The unload-after-print row is offered only where the behavior is the
-    // user's setting rather than fixed by firmware.
-    lv_subject_set_int(&unload_after_print_configurable_subject_,
-                       backend->supports_configurable_unload_after_print() ? 1 : 0);
     // The always-show-bypass row is only meaningful where the bypass node
     // hides when disengaged, i.e. where the reported bypass is virtual.
     lv_subject_set_int(&bypass_is_virtual_subject_, backend->bypass_is_virtual() ? 1 : 0);
@@ -467,12 +464,6 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
     // stale button that won the race just reports the refusal.
     lv_subject_set_int(&can_reset_endless_spool_subject_,
                        backend->get_endless_spool_capabilities().editable() ? 1 : 0);
-
-    // Update status
-    AmsAction action = backend->get_current_action();
-    const char* status_str = action_to_string(static_cast<int>(action));
-    snprintf(status_buf_, sizeof(status_buf_), "%s", status_str);
-    lv_subject_copy_string(&status_subject_, status_buf_);
 
     // Populate section rows
     populate_section_list();
@@ -575,39 +566,6 @@ void AmsDeviceOperationsOverlay::create_section_row(lv_obj_t* parent,
         }
     }
     lv_obj_set_user_data(row, reinterpret_cast<void*>(section_index));
-}
-
-// ============================================================================
-// ACTION TO STRING
-// ============================================================================
-
-const char* AmsDeviceOperationsOverlay::action_to_string(int action) {
-    switch (static_cast<AmsAction>(action)) {
-    case AmsAction::IDLE:
-        return lv_tr("Idle");
-    case AmsAction::LOADING:
-        return lv_tr("Loading filament...");
-    case AmsAction::UNLOADING:
-        return lv_tr("Unloading filament...");
-    case AmsAction::SELECTING:
-        return lv_tr("Selecting slot...");
-    case AmsAction::RESETTING:
-        return lv_tr("Resetting...");
-    case AmsAction::FORMING_TIP:
-        return lv_tr("Forming tip...");
-    case AmsAction::CUTTING:
-        return lv_tr("Cutting filament...");
-    case AmsAction::HEATING:
-        return lv_tr("Heating...");
-    case AmsAction::CHECKING:
-        return lv_tr("Checking slots...");
-    case AmsAction::PAUSED:
-        return lv_tr("Paused (attention needed)");
-    case AmsAction::ERROR:
-        return lv_tr("Error state");
-    default:
-        return lv_tr("Unknown");
-    }
 }
 
 } // namespace helix::ui

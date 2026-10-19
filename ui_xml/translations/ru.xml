@@ -488,6 +488,8 @@
   <translation tag="Bypass failed" ru="Ошибка байпаса"/>
   <translation tag="Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?" ru="Активен байпас, но эта печать использует слоты AMS. Принтер может отказаться загружать слот, пока филамент байпаса находится в печатающей головке. Извлеките филамент и выключите байпас перед печатью. Всё равно начать?"/>
   <translation tag="Bypass mode is not currently active" ru="Режим обхода сейчас не активен"/>
+  <translation tag="Bypass off macro" ru="Макрос выключения обхода"/>
+  <translation tag="Bypass on macro" ru="Макрос включения обхода"/>
   <translation tag="Bypass toggle failed" ru="Не удалось переключить байпас"/>
   <translation tag="C" ru="К"/>
   <translation tag="CALIBRATION" ru="КАЛИБРОВКА"/>
@@ -1107,6 +1109,7 @@
   <translation tag="Ended" ru="Завершено"/>
   <translation tag="Endless Spool" ru="Бесконечная катушка"/>
   <translation tag="Endless Spool backups cleared" ru="Резервы бесконечной катушки очищены"/>
+  <translation tag="Endless Spool change failed" ru="Не удалось изменить бесконечную катушку"/>
   <translation tag="Endless Spool is configured in its package, not from here" ru="Бесконечная катушка настраивается в своём плагине, не здесь"/>
   <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" ru="Бесконечная катушка включена, но нет двух слотов с совпадающим филаментом, поэтому переключение при обрыве не сработает"/>
   <translation tag="Endless Spool is turned off on this MMU" ru="Бесконечная катушка отключена на этом MMU"/>
@@ -1332,6 +1335,7 @@
   <translation tag="Feature not available" ru="Функция недоступна"/>
   <translation tag="Features: " ru="Функции: "/>
   <translation tag="Feed Assist" ru="Помощь подачи"/>
+  <translation tag="Feed assist and bypass macros" ru="Помощь подачи и макросы обхода"/>
   <translation tag="Feed assist and debug tools" ru="Помощь подачи и инструменты отладки"/>
   <translation tag="Feed failed" ru="Не удалась подача"/>
   <translation tag="Feed filament" ru="Подать филамент"/>
@@ -2498,6 +2502,7 @@
   <translation tag="Priming..." ru="Грунтование..."/>
   <translation tag="Print" ru="Печать"/>
   <translation tag="Print Anyway" ru="Всё равно печатать"/>
+  <translation tag="Print Behavior" ru="Поведение печати"/>
   <translation tag="Print Behaviour" ru="Поведение печати"/>
   <translation tag="Print Cancelled" ru="Печать отменена"/>
   <translation tag="Print Complete!" ru="Печать завершена!"/>
@@ -2642,6 +2647,7 @@
   <translation tag="Provide a numeric {}" ru="Укажите числовое значение для {}"/>
   <translation tag="Provide a speed multiplier value" ru="Укажите множитель скорости"/>
   <translation tag="Provide a {}" ru="Укажите {}"/>
+  <translation tag="Provide an on/off value" ru="Укажите значение вкл/выкл"/>
   <translation tag="Provide {}" ru="Укажите {}"/>
   <translation tag="Pulling filament back" ru="Откат филамента"/>
   <translation tag="Purge" ru="Продуть"/>
@@ -2688,6 +2694,7 @@
   <translation tag="RFID reader malfunction (left)" ru="Неисправность RFID-считывателя (левый)"/>
   <translation tag="RFID reader malfunction (right)" ru="Неисправность RFID-считывателя (правый)"/>
   <translation tag="RFID, Auto-Refill, nozzle and link care" ru="RFID, автопополнение, уход за соплом и связью"/>
+  <translation tag="RFID, nozzle and link care" ru="RFID, уход за соплом и связью"/>
   <translation tag="RH" ru="RH"/>
   <translation tag="RSS" ru="RSS"/>
   <translation tag="RSS:" ru="RSS:"/>
@@ -3287,6 +3294,7 @@
   <translation tag="Switch the active tool or extruder" ru="Смена активного инструмента"/>
   <translation tag="Switch to a backup slot on runout" ru="Переключаться на резервный слот при окончании филамента"/>
   <translation tag="Switch to a matching slot on runout" ru="Переключаться на подходящий слот при окончании филамента"/>
+  <translation tag="Switch to a matching spool when one runs out" ru="Переключаться на подходящую катушку, когда одна закончится"/>
   <translation tag="Switch to v%s" ru="Перейти на v%s"/>
   <translation tag="Switch to {}?" ru="Переключиться на {}?"/>
   <translation tag="Switched to {}" ru="Переключено на {}"/>
@@ -3702,6 +3710,7 @@
   <translation tag="Unload macro not configured" ru="Макрос выгрузки не настроен"/>
   <translation tag="Unload stopped" ru="Выгрузка остановлена"/>
   <translation tag="Unload the CFS filament before enabling bypass" ru="Выгрузите филамент CFS перед включением обхода"/>
+  <translation tag="Unload the toolhead when a print ends" ru="Выгружать печатающую головку по окончании печати"/>
   <translation tag="Unload this unit first" ru="Сначала выгрузите этот узел"/>
   <translation tag="Unload which tool?" ru="Из какого инструмента выгрузить?"/>
   <translation tag="Unload..." ru="Выгрузить..."/>
@@ -3823,10 +3832,13 @@
   <translation tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." ru="Данные о весе синхронизируются из Spoolman для отображения оставшегося филамента. Изменения также синхронизируются при начале, паузе или завершении печати."/>
   <translation tag="Welcome to HelixScreen" ru="Добро пожаловать в HelixScreen"/>
   <translation tag="What We Collect" ru="Что мы собираем"/>
+  <translation tag="What happens when a print ends" ru="Что происходит по окончании печати"/>
   <translation tag="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs." ru="Когда включено, запускается только макрос. Когда выключено, сначала задаются температуры, затем запускается макрос."/>
   <translation tag="Where UI sounds play" ru="Где воспроизводятся звуки интерфейса"/>
   <translation tag="Whether filament is loaded" ru="Загружен ли филамент"/>
   <translation tag="Which lane is in the toolhead?" ru="Какая дорожка в печатающей головке?"/>
+  <translation tag="Which macro switches the ACE path back on" ru="Какой макрос снова включает тракт ACE"/>
+  <translation tag="Which macro switches the ACE path off for bypass" ru="Какой макрос выключает тракт ACE для обхода"/>
   <translation tag="Which macro the Close feeder button sends" ru="Какой макрос отправляет кнопка «Закрыть фидер»"/>
   <translation tag="Which macro the Open feeder button sends" ru="Какой макрос отправляет кнопка «Открыть фидер»"/>
   <translation tag="White" ru="Белый"/>

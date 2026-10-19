@@ -34,6 +34,18 @@ const DeviceAction* find_action(const std::vector<DeviceAction>& as, const std::
     return it == as.end() ? nullptr : &(*it);
 }
 
+class CapturingU1 : public AmsBackendSnapmaker {
+  public:
+    CapturingU1() : AmsBackendSnapmaker(nullptr, nullptr) {
+        running_.store(true);
+    }
+    std::vector<std::string> captured;
+    AmsError execute_gcode(const std::string& gcode) override {
+        captured.push_back(gcode);
+        return AmsErrorHelper::success();
+    }
+};
+
 /// The per-tool unload-at-end choice lives in a SettingsManager subject, which
 /// answers its default until init_subjects() runs.
 struct EndUnloadFixture : LVGLTestFixture {
@@ -59,10 +71,8 @@ TEST_CASE("snapmaker exposes its firmware settings as device actions",
                                                        {"end_led_turn_off", true}}));
     const auto actions = backend.get_device_actions();
 
-    const DeviceAction* rep = find_action(actions, "snapmaker_auto_replenish");
-    REQUIRE(rep != nullptr);
-    REQUIRE(rep->type == ActionType::TOGGLE);
-    REQUIRE(std::any_cast<bool>(rep->current_value) == true);
+    // Auto-replenish is the generic Endless Spool switch, not a device action.
+    REQUIRE(find_action(actions, "snapmaker_auto_replenish") == nullptr);
 
     const DeviceAction* color = find_action(actions, "snapmaker_replenish_ignore_color");
     REQUIRE(color != nullptr);
@@ -87,7 +97,8 @@ TEST_CASE("a setting the firmware has not reported is not offered", "[ams][snapm
     HelixTestFixture fixture;
     AmsBackendSnapmaker backend(nullptr, nullptr);
     const auto actions = backend.get_device_actions();
-    REQUIRE(find_action(actions, "snapmaker_auto_replenish") == nullptr);
+    REQUIRE(find_action(actions, "snapmaker_replenish_ignore_color") == nullptr);
+    REQUIRE_FALSE(backend.get_endless_spool_capabilities().available());
 }
 
 TEST_CASE_METHOD(EndUnloadFixture, "end-unload offers one toggle per reported toolhead",
@@ -336,8 +347,6 @@ TEST_CASE("a value whose type does not match the action is refused, not thrown",
     HelixTestFixture fixture;
     AmsBackendSnapmaker backend(nullptr, nullptr);
     SnapmakerTestAccess::handle_status(backend, frame({{"end_unload_filament", {false, false}}}));
-    REQUIRE(backend.build_preference_gcode("snapmaker_auto_replenish", std::any(std::string("on")))
-                .empty());
     REQUIRE(
         backend
             .build_preference_gcode("snapmaker_replenish_ignore_color", std::any(std::string("on")))
@@ -418,5 +427,34 @@ TEST_CASE("toolhead offset calibration is offered when the firmware has it",
             backend, nlohmann::json{{"print_stats", {{"state", "complete"}}}});
         REQUIRE(find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId)
                     ->enabled);
+    }
+}
+
+TEST_CASE("snapmaker auto-replenish is the Endless Spool switch", "[ams][snapmaker][endless]") {
+    HelixTestFixture fixture;
+    CapturingU1 backend;
+
+    SECTION("unreported, the switch is not offered and refuses") {
+        CHECK_FALSE(backend.get_endless_spool_capabilities().available());
+        CHECK_FALSE(backend.set_endless_spool_enabled(true).success());
+        CHECK(backend.captured.empty());
+    }
+
+    SECTION("the reported flag is the enabled state") {
+        SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", false}}));
+        auto caps = backend.get_endless_spool_capabilities();
+        CHECK(caps.available());
+        CHECK(caps.switchable);
+        CHECK(caps.enabled == EndlessSpoolEnabled::Off);
+
+        SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", true}}));
+        CHECK(backend.get_endless_spool_capabilities().enabled == EndlessSpoolEnabled::On);
+    }
+
+    SECTION("switching it sends the firmware preference") {
+        SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", false}}));
+        REQUIRE(backend.set_endless_spool_enabled(true).success());
+        REQUIRE(backend.captured.size() == 1);
+        CHECK(backend.captured[0] == "SET_PRINT_PREFERENCES AUTO_REPLENISH_FILAMENT=1");
     }
 }

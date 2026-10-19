@@ -473,6 +473,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   Bypass mode is not currently active: Bypass mode is not currently active
+  Bypass off macro: Bypass off macro
+  Bypass on macro: Bypass on macro
   Bypass toggle failed: Bypass toggle failed
   C: C
   CALIBRATION: CALIBRATION
@@ -1140,6 +1142,7 @@ translations:
   Ended: Ended
   Endless Spool: Endless Spool
   Endless Spool backups cleared: Endless Spool backups cleared
+  Endless Spool change failed: Endless Spool change failed
   Endless Spool is configured in its package, not from here: Endless Spool is configured in its package, not from here
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout
   Endless Spool is turned off on this MMU: Endless Spool is turned off on this MMU
@@ -1377,6 +1380,7 @@ translations:
   Feature not available: Feature not available
   'Features: ': 'Features: '
   Feed Assist: Feed Assist
+  Feed assist and bypass macros: Feed assist and bypass macros
   Feed assist and debug tools: Feed assist and debug tools
   Feed failed: Feed failed
   Feed filament: Feed filament
@@ -2626,6 +2630,7 @@ translations:
   Priming...: Priming...
   Print: Print
   Print Anyway: Print Anyway
+  Print Behavior: Print Behavior
   'Print Behaviour': 'Print Behaviour'
   Print Cancelled: Print Cancelled
   Print Complete!: Print Complete!
@@ -2769,6 +2774,7 @@ translations:
   Provide a numeric {}: Provide a numeric {}
   Provide a speed multiplier value: Provide a speed multiplier value
   Provide a {}: Provide a {}
+  Provide an on/off value: Provide an on/off value
   Provide {}: Provide {}
   Pulling filament back: Pulling filament back
   Purge: Purge
@@ -2818,6 +2824,7 @@ translations:
   RFID reader malfunction (left): RFID reader malfunction (left)
   RFID reader malfunction (right): RFID reader malfunction (right)
   RFID, Auto-Refill, nozzle and link care: RFID, Auto-Refill, nozzle and link care
+  RFID, nozzle and link care: RFID, nozzle and link care
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3464,6 +3471,7 @@ translations:
   Switch the active tool or extruder: Switch the active tool or extruder
   Switch to a backup slot on runout: Switch to a backup slot on runout
   Switch to a matching slot on runout: Switch to a matching slot on runout
+  Switch to a matching spool when one runs out: Switch to a matching spool when one runs out
   Switch to v%s: Switch to v%s
   Switch to {}?: Switch to {}?
   Switched to {}: Switched to {}
@@ -3949,6 +3957,7 @@ translations:
   Unload from toolhead first: Unload from toolhead first
   Unload macro not configured: Unload macro not configured
   Unload the CFS filament before enabling bypass: Unload the CFS filament before enabling bypass
+  Unload the toolhead when a print ends: Unload the toolhead when a print ends
   Unload this unit first: Unload this unit first
   Unload which tool?: Unload which tool?
   Unload...: Unload...
@@ -4076,11 +4085,14 @@ translations:
     also synced when prints start, pause, or complete.
   Welcome to HelixScreen: Welcome to HelixScreen
   What We Collect: What We Collect
+  What happens when a print ends: What happens when a print ends
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: When
     enabled, only the macro runs. When disabled, temperatures are set first, then
     the macro runs.
   Where UI sounds play: Where UI sounds play
   Whether filament is loaded: Whether filament is loaded
+  Which macro switches the ACE path back on: Which macro switches the ACE path back on
+  Which macro switches the ACE path off for bypass: Which macro switches the ACE path off for bypass
   Which macro the Close feeder button sends: Which macro the Close feeder button sends
   Which macro the Open feeder button sends: Which macro the Open feeder button sends
   White: White

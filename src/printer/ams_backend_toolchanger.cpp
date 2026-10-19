@@ -2450,13 +2450,11 @@ AmsError AmsBackendToolChanger::execute_device_action(const std::string& action_
             return AmsErrorHelper::invalid_parameter("No macro selected");
         }
         const bool is_open = (action_id == "feeder_open_macro");
-        // "auto" is a sentinel, not a macro: it restores whatever the add-on
-        // detected for this machine, so a user who migrates later picks up the
-        // new native command without touching this again.
-        const std::string resolved =
-            (*chosen == helix::toolchanger_addon::kAutoMacro)
-                ? (is_open ? feeder_.detected_open : feeder_.detected_close)
-                : *chosen;
+        // "auto" restores whatever the add-on detected for this machine, so a
+        // user who migrates later picks up the new native command without
+        // touching this again.
+        const std::string resolved = helix::resolve_macro_choice(
+            *chosen, is_open ? feeder_.detected_open : feeder_.detected_close);
         {
             std::lock_guard<std::mutex> lock(mutex_);
             (is_open ? feeder_.open_gcode : feeder_.close_gcode) = resolved;

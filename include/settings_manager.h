@@ -493,25 +493,26 @@ class SettingsManager {
     // =========================================================================
 
     /**
-     * @brief Get whether AFC unloads filament from the toolhead after a print.
+     * @brief Whether the filament system unloads the toolhead when a print ends,
+     * on systems where that is the user's end-of-print macros' choice (AFC).
      *
-     * AFC behavior depends on the user's end-of-print macros: some retract
-     * filament out of the extruder, leaving the toolhead empty by design,
-     * others leave it loaded. When enabled, the pre-print runout warning is
-     * suppressed (an empty toolhead is expected, not a fault). Default false.
+     * Some end macros retract filament out of the extruder, leaving the
+     * toolhead empty by design, others leave it loaded. When enabled, the
+     * pre-print runout warning is suppressed (an empty toolhead is expected,
+     * not a fault). Default false.
      */
-    bool get_afc_unload_after_print() const {
-        return settings_.get_bool(Key::AfcUnloadAfterPrint);
+    bool get_unload_after_print() const {
+        return settings_.get_bool(Key::UnloadAfterPrint);
     }
 
-    /** @brief Set whether AFC unloads filament from the toolhead after a print */
-    void set_afc_unload_after_print(bool enabled) {
-        settings_.set(Key::AfcUnloadAfterPrint, enabled);
+    /** @brief Set whether the toolhead is unloaded when a print ends */
+    void set_unload_after_print(bool enabled) {
+        settings_.set(Key::UnloadAfterPrint, enabled);
     }
 
-    /** @brief AFC unload-after-print subject (integer: 0=off, 1=on) */
-    lv_subject_t* subject_afc_unload_after_print() {
-        return settings_.subject(Key::AfcUnloadAfterPrint);
+    /** @brief Unload-after-print subject (integer: 0=off, 1=on) */
+    lv_subject_t* subject_unload_after_print() {
+        return settings_.subject(Key::UnloadAfterPrint);
     }
 
     // =========================================================================
@@ -912,7 +913,7 @@ class SettingsManager {
         ShowPrinterSwitcher,
         ShowWidgetLabels,
         AutoColorMap,
-        AfcUnloadAfterPrint,
+        UnloadAfterPrint,
         EndOfPrintUnloadTools,
         AmsAlwaysShowBypassSpool,
         AmsKeepSpoolInfoOnEject,

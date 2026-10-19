@@ -5034,7 +5034,7 @@ TEST_CASE("AFC get_type returns AFC", "[ams][afc][spoolman]") {
 //
 // Unlike CFS/IFS (which hardcode auto_unloads_after_print()==true), AFC's
 // post-print unload depends on the user's macros. The behaviour is controlled
-// by a per-printer setting: get_afc_unload_after_print() (default false). The
+// by a per-printer setting: get_unload_after_print() (default false). The
 // pre-print runout warning is suppressed only when the setting is enabled.
 
 TEST_CASE_METHOD(LVGLTestFixture, "AFC auto_unloads_after_print defaults to false (setting off)",
@@ -5043,7 +5043,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "AFC auto_unloads_after_print defaults to fals
     helix::SettingsManager::instance().init_subjects();
 
     // Ensure the setting starts disabled
-    helix::SettingsManager::instance().set_afc_unload_after_print(false);
+    helix::SettingsManager::instance().set_unload_after_print(false);
 
     AmsBackendAfcTestHelper helper;
     REQUIRE(helper.auto_unloads_after_print() == false);
@@ -5054,44 +5054,79 @@ TEST_CASE_METHOD(LVGLTestFixture, "AFC auto_unloads_after_print returns true whe
     helix::Config::get_instance();
     helix::SettingsManager::instance().init_subjects();
 
-    helix::SettingsManager::instance().set_afc_unload_after_print(true);
+    helix::SettingsManager::instance().set_unload_after_print(true);
 
     AmsBackendAfcTestHelper helper;
     REQUIRE(helper.auto_unloads_after_print() == true);
 
     // Toggling the setting back off must flip the capability back
-    helix::SettingsManager::instance().set_afc_unload_after_print(false);
+    helix::SettingsManager::instance().set_unload_after_print(false);
     REQUIRE(helper.auto_unloads_after_print() == false);
 }
 
-TEST_CASE_METHOD(LVGLTestFixture, "SettingsManager afc_unload_after_print round-trips and persists",
+TEST_CASE_METHOD(LVGLTestFixture, "AFC Unload at end is a device action over the setting",
+                 "[ams][afc][capability][device_actions]") {
+    helix::Config::get_instance();
+    auto& settings = helix::SettingsManager::instance();
+    settings.init_subjects();
+    settings.set_unload_after_print(false);
+
+    AmsBackendAfcTestHelper helper;
+    auto find = [&]() -> std::optional<helix::printer::DeviceAction> {
+        for (auto& a : helper.get_device_actions()) {
+            if (a.id == "unload_at_end") {
+                return a;
+            }
+        }
+        return std::nullopt;
+    };
+
+    auto action = find();
+    REQUIRE(action.has_value());
+    CHECK(action->type == helix::printer::ActionType::TOGGLE);
+    CHECK(action->label == "Unload at end");
+    CHECK(std::any_cast<bool>(action->current_value) == false);
+
+    REQUIRE(helper.execute_device_action("unload_at_end", std::any(true)).success());
+    CHECK(settings.get_unload_after_print());
+    CHECK(helper.auto_unloads_after_print());
+    CHECK(std::any_cast<bool>(find()->current_value) == true);
+
+    CHECK_FALSE(helper.execute_device_action("unload_at_end", std::any(1)).success());
+    CHECK(settings.get_unload_after_print());
+
+    REQUIRE(helper.execute_device_action("unload_at_end", std::any(false)).success());
+    CHECK_FALSE(helper.auto_unloads_after_print());
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "SettingsManager unload_after_print round-trips and persists",
                  "[ams][afc][settings]") {
     helix::Config* config = helix::Config::get_instance();
     auto& settings = helix::SettingsManager::instance();
     settings.init_subjects();
 
-    const std::string path = config->df() + "ams/afc_unload_after_print";
+    const std::string path = config->df() + "ams/unload_after_print";
 
     SECTION("defaults to false") {
-        settings.set_afc_unload_after_print(false);
-        REQUIRE(settings.get_afc_unload_after_print() == false);
+        settings.set_unload_after_print(false);
+        REQUIRE(settings.get_unload_after_print() == false);
     }
 
     SECTION("set true -> get true -> persisted to per-printer config path") {
-        settings.set_afc_unload_after_print(true);
-        REQUIRE(settings.get_afc_unload_after_print() == true);
+        settings.set_unload_after_print(true);
+        REQUIRE(settings.get_unload_after_print() == true);
         REQUIRE(config->get<bool>(path, false) == true);
 
         // subject reflects the new value
-        REQUIRE(lv_subject_get_int(settings.subject_afc_unload_after_print()) == 1);
+        REQUIRE(lv_subject_get_int(settings.subject_unload_after_print()) == 1);
     }
 
     SECTION("set false after true clears the value") {
-        settings.set_afc_unload_after_print(true);
-        settings.set_afc_unload_after_print(false);
-        REQUIRE(settings.get_afc_unload_after_print() == false);
+        settings.set_unload_after_print(true);
+        settings.set_unload_after_print(false);
+        REQUIRE(settings.get_unload_after_print() == false);
         REQUIRE(config->get<bool>(path, true) == false);
-        REQUIRE(lv_subject_get_int(settings.subject_afc_unload_after_print()) == 0);
+        REQUIRE(lv_subject_get_int(settings.subject_unload_after_print()) == 0);
     }
 }
 

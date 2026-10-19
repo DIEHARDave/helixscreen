@@ -485,6 +485,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : Il bypass è attivo, ma questa stampa usa gli slot AMS. La stampante potrebbe rifiutare il caricamento di uno slot mentre il filamento del bypass è nella testina. Rimuovi il filamento e disattiva il bypass prima di stampare. Avviare comunque?
   Bypass mode is not currently active: 'La modalità bypass non è attiva'
+  Bypass off macro: 'Macro di disattivazione bypass'
+  Bypass on macro: 'Macro di attivazione bypass'
   Bypass toggle failed: Cambio bypass fallito
   C: C
   CALIBRATION: CALIBRAZIONE
@@ -1176,6 +1178,7 @@ translations:
   Ended: Terminato
   Endless Spool: 'Bobina infinita'
   Endless Spool backups cleared: Riserve della bobina infinita cancellate
+  Endless Spool change failed: 'Modifica della bobina infinita non riuscita'
   Endless Spool is configured in its package, not from here: La bobina infinita si configura nel suo plugin, non da qui
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: La bobina infinita è attiva, ma nessuna coppia di slot ha filamento compatibile, quindi nulla cambierà all'esaurimento
   Endless Spool is turned off on this MMU: 'La bobina infinita è disattivata su questo MMU'
@@ -1419,6 +1422,7 @@ translations:
   Feature not available: Funzione non disponibile
   'Features: ': 'Caratteristiche: '
   Feed Assist: 'Assistenza all''alimentazione'
+  Feed assist and bypass macros: 'Assistenza all''alimentazione e macro di bypass'
   Feed assist and debug tools: Assistenza all'alimentazione e strumenti di debug
   Feed failed: Alimentazione non riuscita
   Feed filament: Alimenta filamento
@@ -2691,6 +2695,7 @@ translations:
   Priming...: Preparazione ugello...
   Print: Stampa
   Print Anyway: Stampa comunque
+  Print Behavior: 'Comportamento di stampa'
   'Print Behaviour': 'Comportamento di stampa'
   Print Cancelled: Stampa annullata
   Print Complete!: Stampa completata!
@@ -2836,6 +2841,7 @@ translations:
   Provide a numeric {}: 'Fornisci un valore numerico per {}'
   Provide a speed multiplier value: 'Fornisci un moltiplicatore di velocità'
   Provide a {}: 'Fornisci {}'
+  Provide an on/off value: 'Fornisci un valore on/off'
   Provide {}: 'Fornisci {}'
   Pulling filament back: Retrazione filamento
   Purge: Spurga
@@ -2886,6 +2892,7 @@ translations:
   RFID reader malfunction (left): Malfunzionamento del lettore RFID (sinistro)
   RFID reader malfunction (right): Malfunzionamento del lettore RFID (destro)
   RFID, Auto-Refill, nozzle and link care: RFID, rifornimento automatico, cura di ugello e collegamento
+  RFID, nozzle and link care: 'RFID, cura di ugello e collegamento'
   RH: UR
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3551,6 +3558,7 @@ translations:
   Switch the active tool or extruder: Cambia utensile o estrusore attivo
   Switch to a backup slot on runout: Passa a uno slot di riserva a filamento esaurito
   Switch to a matching slot on runout: Passa a uno slot corrispondente a filamento esaurito
+  Switch to a matching spool when one runs out: 'Passa a una bobina corrispondente quando una si esaurisce'
   Switch to v%s: 'Passa alla v%s'
   Switch to {}?: 'Passare a {}?'
   Switched to {}: 'Passato a {}'
@@ -4049,6 +4057,7 @@ translations:
   Unload from toolhead first: 'Scarica prima dalla testina'
   Unload macro not configured: Macro scaricamento non configurata
   Unload the CFS filament before enabling bypass: 'Scarica il filamento del CFS prima di attivare il bypass'
+  Unload the toolhead when a print ends: 'Scarica la testina al termine di una stampa'
   Unload this unit first: 'Scarica prima questa unità'
   Unload which tool?: 'Quale strumento scaricare?'
   Unload...: Scarica...
@@ -4175,11 +4184,14 @@ translations:
     in pausa o si completano.
   Welcome to HelixScreen: Benvenuto in HelixScreen
   What We Collect: Cosa raccogliamo
+  What happens when a print ends: 'Cosa succede al termine di una stampa'
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: Se
     abilitato, viene eseguita solo la macro. Se disabilitato, le temperature vengono
     impostate prima, poi la macro viene eseguita.
   Where UI sounds play: Dove vengono riprodotti i suoni dell'interfaccia
   Whether filament is loaded: Se il filamento è caricato
+  Which macro switches the ACE path back on: 'Quale macro riattiva il percorso ACE'
+  Which macro switches the ACE path off for bypass: 'Quale macro disattiva il percorso ACE per il bypass'
   Which macro the Close feeder button sends: Quale macro invia il pulsante Chiudi alimentatore
   Which macro the Open feeder button sends: Quale macro invia il pulsante Apri alimentatore
   White: Bianco

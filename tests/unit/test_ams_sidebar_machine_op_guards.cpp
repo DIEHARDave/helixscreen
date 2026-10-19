@@ -295,3 +295,30 @@ TEST_CASE_METHOD(SidebarDirectionGateFixture,
         CHECK(published_action() == helix::AmsAction::HEATING);
     }
 }
+
+namespace {
+/// A filament system that declares no device sections of its own.
+class NoSectionsBackend : public helix::AmsBackendMock {
+  public:
+    NoSectionsBackend() : helix::AmsBackendMock(4) {}
+    [[nodiscard]] std::vector<helix::printer::DeviceSection> get_device_sections() const override {
+        return {};
+    }
+};
+} // namespace
+
+TEST_CASE_METHOD(SidebarDirectionGateFixture,
+                 "AMS sidebar Settings shows for a backend with no device sections",
+                 "[ams][sidebar][device-ops]") {
+    // The device operations still carry Quick Actions and the generic rows, so
+    // the button follows the same gate as Settings > Printing.
+    auto backend = std::make_unique<NoSectionsBackend>();
+    REQUIRE(backend->start().success());
+    build(std::move(backend));
+    CHECK(gate_value("ams_has_device_ops") == 1);
+    CHECK_FALSE(lv_obj_has_flag(button("btn_settings"), LV_OBJ_FLAG_HIDDEN));
+
+    helix::AmsState::instance().set_backend(nullptr);
+    CHECK(gate_value("ams_has_device_ops") == 0);
+    CHECK(lv_obj_has_flag(button("btn_settings"), LV_OBJ_FLAG_HIDDEN));
+}

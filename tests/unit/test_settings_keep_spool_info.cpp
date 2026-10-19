@@ -5,8 +5,8 @@
  * @file test_settings_keep_spool_info.cpp
  * @brief ams/keep_spool_info_on_eject setting: default, round-trip, persistence
  *
- * Mirrors the afc_unload_after_print round-trip test
- * (test_ams_backend_afc.cpp "SettingsManager afc_unload_after_print
+ * Mirrors the unload_after_print round-trip test
+ * (test_ams_backend_afc.cpp "SettingsManager unload_after_print
  * round-trips and persists") — same per-printer ams/* config key family.
  */
 

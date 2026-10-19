@@ -3302,7 +3302,7 @@ AmsError AmsBackendCfs::enable_bypass() {
     // is [A]-verified on both families (K2 command table; K1 .so symbol list
     // carries both the name and the ENABLE parameter token). Plain
     // execute_gcode, not dispatch_action_script — it is a state flag, not a
-    // motion, same as toggle_auto_refill.
+    // motion, same as the auto-refill setter.
     {
         auto err = execute_gcode("BOX_ENABLE_CFS_PRINT ENABLE=0");
         if (err.result != AmsResult::SUCCESS) {
@@ -4411,10 +4411,36 @@ helix::printer::EndlessSpoolCapabilities AmsBackendCfs::get_endless_spool_capabi
         enabled = EndlessSpoolEnabled::OnWithoutBackup;
     }
 
+    // The box takes an explicit on/off, except a flat module with no verified
+    // dialect, where reject_if_flat_schema() refuses the setter.
+    const bool switchable = schema_ != CfsSchema::Flat || macro_variant_ == CfsMacroVariant::Fork;
     return {.availability = EndlessSpoolAvailability::Available,
             .enabled = enabled,
             .editability = EndlessSpoolEditability::ReadOnly,
-            .restriction = EndlessSpoolRestriction::FirmwareManaged};
+            .restriction = EndlessSpoolRestriction::FirmwareManaged,
+            .switchable = switchable};
+}
+
+AmsError AmsBackendCfs::apply_endless_spool_enabled(bool enabled) {
+    if (auto err = reject_if_flat_schema("Endless Spool"); !err.success()) {
+        return err;
+    }
+    // Setter, not a toggle: the handler reads ENABLE via gcmd.get_int, and
+    // Creality's own master-server sends an explicit ENABLE=1/0 on both
+    // families ([A]: string tables in CR4CU220812S11 V2.3.5.34 and
+    // CR0CN240110C10 V1.1.4.11). The fork registers its own setter for the
+    // same flag.
+    const std::string setter = macro_variant_ == CfsMacroVariant::Fork
+                                   ? "_BOX_SET_RUNOUT_SWAP ENABLE="
+                                   : "BOX_ENABLE_AUTO_REFILL ENABLE=";
+    // Recorded only once Klipper has run it: a dispatch proves nothing, and a
+    // dialect without the command or a rejected send must leave the cache on
+    // the box's last word.
+    auto token = lifetime_.token();
+    return execute_gcode(setter + (enabled ? "1" : "0"), [this, token, enabled]() {
+        token.defer("AmsBackendCfs::auto_refill_sent",
+                    [this, enabled]() { record_auto_refill_sent(enabled); });
+    });
 }
 
 helix::printer::EndlessSpoolConfig AmsBackendCfs::get_endless_spool_config() const {
@@ -4495,13 +4521,13 @@ std::atomic<int> s_gcode_watch_seq{0};
 } // namespace
 
 std::vector<helix::printer::DeviceSection> AmsBackendCfs::get_device_sections() const {
-    // All four box operations are one-shot care commands against the CFS
+    // The box operations are one-shot care commands against the CFS
     // hardware, so a single maintenance section carries them; a split would be
     // a taxonomy with one or two members each. The device-operations overlay
     // renders only actions whose section matches one declared here.
     using DS = helix::printer::DeviceSection;
     std::vector<DS> sections = {
-        DS{"maintenance", "Maintenance", 0, "RFID, Auto-Refill, nozzle and link care"},
+        DS{"maintenance", "Maintenance", 0, "RFID, nozzle and link care"},
     };
     if (macro_variant_ == CfsMacroVariant::K1) {
         sections.push_back(
@@ -4512,20 +4538,9 @@ std::vector<helix::printer::DeviceSection> AmsBackendCfs::get_device_sections() 
 
 std::vector<helix::printer::DeviceAction> AmsBackendCfs::get_device_actions() const {
     using DA = helix::printer::DeviceAction;
-    // No value until a frame has reported the bit: an unchecked switch would
-    // claim off.
-    std::any auto_refill;
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (endless_spool_enable_reported_) {
-            auto_refill = system_info_.endless_spool_enabled;
-        }
-    }
     std::vector<DA> actions = {
         DA::button("refresh_rfid", "Refresh RFID", "maintenance", "",
                    "Re-read spool RFID tags and remaining length"),
-        DA::toggle("toggle_auto_refill", "Toggle Auto-Refill", "maintenance",
-                   std::move(auto_refill), "", "Switch to a matching slot on runout"),
         DA::button("nozzle_clean", "Clean Nozzle", "maintenance", "",
                    "Wipe nozzle on silicone cleaning strip"),
         DA::button("comm_test", "Communication Test", "maintenance", "",
@@ -4581,38 +4596,6 @@ AmsError AmsBackendCfs::execute_device_action(const std::string& action_id, cons
         // UI. The box module publishes the updated `box` object after the scan.
         on_started();
         return AmsErrorHelper::success();
-    }
-
-    if (action_id == "toggle_auto_refill") {
-        if (auto err = reject_if_flat_schema("Auto-refill"); !err.success()) {
-            return err;
-        }
-        // Setter, not a toggle: the handler reads ENABLE via gcmd.get_int, and
-        // Creality's own master-server sends an explicit ENABLE=1/0 on both
-        // families ([A]: string tables in CR4CU220812S11 V2.3.5.34 and
-        // CR0CN240110C10 V1.1.4.11). A bare call leaves the argument absent;
-        // whether the wrapper then throws or defaults is unverified, so send
-        // the state we want: the switch's, or with no switch value the
-        // inverse of the cached flag.
-        bool enable;
-        if (const bool* requested = std::any_cast<bool>(&value)) {
-            enable = *requested;
-        } else {
-            std::lock_guard<std::mutex> lock(mutex_);
-            enable = !system_info_.endless_spool_enabled;
-        }
-        // The fork registers its own setter for the same flag.
-        const std::string setter = macro_variant_ == CfsMacroVariant::Fork
-                                       ? "_BOX_SET_RUNOUT_SWAP ENABLE="
-                                       : "BOX_ENABLE_AUTO_REFILL ENABLE=";
-        // Recorded only once Klipper has run it: a dispatch proves nothing, and
-        // a dialect without the command or a rejected send must leave the
-        // cache on the box's last word.
-        auto token = lifetime_.token();
-        return execute_gcode(setter + (enable ? "1" : "0"), [this, token, enable]() {
-            token.defer("AmsBackendCfs::auto_refill_sent",
-                        [this, enable]() { record_auto_refill_sent(enable); });
-        });
     }
 
     if (action_id == "nozzle_clean") {

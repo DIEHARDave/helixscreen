@@ -1260,7 +1260,7 @@ The remaining AMS settings are **per printer**, so they live under the printer's
         "force_bypass_controls": false,
         "always_show_bypass_spool": false,
         "keep_spool_info_on_eject": true,
-        "afc_unload_after_print": false
+        "unload_after_print": false
       }
     }
   }
@@ -1288,10 +1288,10 @@ See [Filament → When Bypass Doesn't Appear](guide/filament.md#when-bypass-does
 **Default:** `true`
 **Description:** Keep a lane's spool details after it empties, so reloading the same spool after maintenance needs no re-selection. Turn it off to start fresh whenever a lane empties. Applies only to spools selected in HelixScreen; a spool assigned elsewhere (such as Mainsail) clears with the lane. To have every assigned spool remembered no matter where it was picked, use the firmware's own retention instead (AFC: `remember_spool` in AFC.cfg) - HelixScreen follows the spool the firmware reports. When that firmware retention covers every lane, it takes precedence and the matching toggle shows as disabled. The toggle (**Keep Spool Info on Eject**, in the AMS Management overlay) is shown only on systems whose firmware tracks spool ids per lane (AFC, Happy Hare); systems that detect spool swaps by tag always refresh on a swap regardless of this setting.
 
-#### `afc_unload_after_print`
+#### `unload_after_print`
 **Type:** boolean
 **Default:** `false`
-**Description:** On AFC systems, retract filament back to its lane when a print finishes.
+**Description:** On AFC systems, whether your end-of-print macros unload the toolhead when a print finishes, so an empty toolhead at the next print start is expected rather than a warning. Set it with **Unload at end** in the **Print Behavior** section. Older configs stored it as `afc_unload_after_print`, which is moved to this name on upgrade.
 
 ---
 

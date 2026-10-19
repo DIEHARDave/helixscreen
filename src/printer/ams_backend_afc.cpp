@@ -301,7 +301,7 @@ bool AmsBackendAfc::owns_filament_sensor(const std::string& bare_name,
 bool AmsBackendAfc::auto_unloads_after_print() const {
     // AFC's post-print unload depends on the user's end-of-print macros, so
     // this is a per-printer user setting rather than a firmware constant.
-    return SettingsManager::instance().get_afc_unload_after_print();
+    return SettingsManager::instance().get_unload_after_print();
 }
 
 // ============================================================================
@@ -6503,6 +6503,9 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
             a.current_value = bowden_length_;
             a.max_value = std::max(2000.0f, bowden_length_ * 1.5f);
         }
+        if (a.id == "unload_at_end") {
+            a.current_value = SettingsManager::instance().get_unload_after_print();
+        }
         if (a.id == "led_toggle") {
             a.label = afc_led_state_ ? "Turn Off LEDs" : "Turn On LEDs";
             a.icon = afc_led_state_ ? "lightbulb-off" : "lightbulb-on";
@@ -6738,6 +6741,17 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
 AmsError AmsBackendAfc::execute_device_action(const std::string& action_id, const std::any& value) {
     spdlog::info("[AMS AFC] Executing device action: {}", action_id);
 
+    if (action_id == "unload_at_end") {
+        // AFC unloads from the user's own end macros; the setting records which
+        // they do, so the pre-print check expects an empty toolhead.
+        const bool* unload = std::any_cast<bool>(&value);
+        if (!unload) {
+            return AmsError(AmsResult::WRONG_STATE, "Unload at end needs an on/off value",
+                            lv_tr("Invalid value type"), lv_tr("Provide an on/off value"));
+        }
+        SettingsManager::instance().set_unload_after_print(*unload);
+        return AmsErrorHelper::success();
+    }
     if (action_id == "calibration_wizard") {
         return execute_gcode("AFC_CALIBRATION");
     } else if (action_id == "toolhead_calibration") {

@@ -490,6 +490,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : Bypass ist aktiv, aber dieser Druck verwendet AMS-Slots. Der Drucker verweigert möglicherweise das Laden eines Slots, solange Bypass-Filament im Werkzeugkopf ist. Entfernen Sie das Filament und deaktivieren Sie Bypass, bevor Sie drucken. Trotzdem starten?
   Bypass mode is not currently active: 'Der Bypass-Modus ist derzeit nicht aktiv'
+  Bypass off macro: 'Bypass-aus-Makro'
+  Bypass on macro: 'Bypass-ein-Makro'
   Bypass toggle failed: Bypass-Umschaltung fehlgeschlagen
   C: K
   CALIBRATION: KALIBRIERUNG
@@ -1183,6 +1185,7 @@ translations:
   Ended: Beendet
   Endless Spool: 'Endlosspule'
   Endless Spool backups cleared: Endlosspulen-Reserven gelöscht
+  Endless Spool change failed: 'Ändern der Endlosspule fehlgeschlagen'
   Endless Spool is configured in its package, not from here: Die Endlosspule wird im zugehörigen Plugin konfiguriert, nicht hier
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: Die Endlosspule ist an, aber es gibt keine zwei Slots mit passendem Filament, daher wird bei Filamentende nichts gewechselt
   Endless Spool is turned off on this MMU: 'Die Endlosspule ist auf diesem MMU deaktiviert'
@@ -1431,6 +1434,7 @@ translations:
   Feature not available: Funktion nicht verfügbar
   'Features: ': 'Funktionen: '
   Feed Assist: 'Vorschubunterstützung'
+  Feed assist and bypass macros: 'Vorschubunterstützung und Bypass-Makros'
   Feed assist and debug tools: Vorschubunterstützung und Debug-Werkzeuge
   Feed failed: Zuführen fehlgeschlagen
   Feed filament: Filament zuführen
@@ -2699,6 +2703,7 @@ translations:
   Priming...: Primen...
   Print: Drucken
   Print Anyway: Trotzdem drucken
+  Print Behavior: 'Druckverhalten'
   'Print Behaviour': 'Druckverhalten'
   Print Cancelled: Druck abgebrochen
   Print Complete!: Druck abgeschlossen!
@@ -2846,6 +2851,7 @@ translations:
   Provide a numeric {}: 'Geben Sie einen numerischen Wert für {} an'
   Provide a speed multiplier value: 'Geben Sie einen Geschwindigkeitsmultiplikator an'
   Provide a {}: 'Geben Sie {} an'
+  Provide an on/off value: 'Geben Sie einen Ein/Aus-Wert an'
   Provide {}: 'Geben Sie {} an'
   Pulling filament back: Filament wird zurückgezogen
   Purge: Entlüften
@@ -2895,6 +2901,7 @@ translations:
   RFID reader malfunction (left): Fehlfunktion des RFID-Lesers (links)
   RFID reader malfunction (right): Fehlfunktion des RFID-Lesers (rechts)
   RFID, Auto-Refill, nozzle and link care: RFID, automatisches Nachfüllen, Düsen- und Verbindungspflege
+  RFID, nozzle and link care: 'RFID, Düsen- und Verbindungspflege'
   RH: rF
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3557,6 +3564,7 @@ translations:
   Switch the active tool or extruder: Aktives Werkzeug oder Extruder wechseln
   Switch to a backup slot on runout: Bei Filamentende zu einem Ersatz-Slot wechseln
   Switch to a matching slot on runout: Bei Filamentende zu einem passenden Slot wechseln
+  Switch to a matching spool when one runs out: 'Bei Filamentende zu einer passenden Spule wechseln'
   Switch to v%s: 'Zu v%s wechseln'
   Switch to {}?: 'Zu {} wechseln?'
   Switched to {}: 'Gewechselt zu {}'
@@ -4057,6 +4065,7 @@ translations:
   Unload from toolhead first: 'Entladen Sie zuerst aus dem Werkzeugkopf'
   Unload macro not configured: Entlade-Makro nicht konfiguriert
   Unload the CFS filament before enabling bypass: 'Entladen Sie das CFS-Filament, bevor Sie den Bypass aktivieren'
+  Unload the toolhead when a print ends: 'Den Werkzeugkopf am Druckende entladen'
   Unload this unit first: 'Entladen Sie zuerst diese Einheit'
   Unload which tool?: 'Welches Werkzeug entladen?'
   Unload...: Entladen...
@@ -4182,11 +4191,14 @@ translations:
     werden.
   Welcome to HelixScreen: Willkommen bei HelixScreen
   What We Collect: Was wir erfassen
+  What happens when a print ends: 'Was am Druckende passiert'
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: Wenn
     aktiviert, wird nur das Makro ausgeführt. Wenn deaktiviert, werden zuerst die
     Temperaturen gesetzt, dann das Makro.
   Where UI sounds play: Wo UI-Töne abgespielt werden
   Whether filament is loaded: Ob Filament geladen ist
+  Which macro switches the ACE path back on: 'Welches Makro den ACE-Pfad wieder einschaltet'
+  Which macro switches the ACE path off for bypass: 'Welches Makro den ACE-Pfad für den Bypass ausschaltet'
   Which macro the Close feeder button sends: Welches Makro die Schaltfläche zum Schließen der Zuführung sendet
   Which macro the Open feeder button sends: Welches Makro die Schaltfläche zum Öffnen der Zuführung sendet
   White: Weiß

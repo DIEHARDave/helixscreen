@@ -3,8 +3,11 @@
 
 #include "ams_bypass_policy.h"
 
+#include "macro_choice.h"
 #include "printer_discovery.h"
 #include "settings_manager.h"
+
+#include <algorithm>
 
 namespace helix {
 
@@ -12,27 +15,36 @@ namespace {
 
 /// The conventional wrapper names on hardware whose filament path has a master
 /// switch but no bypass command. An owner whose macros are named differently
-/// says so in settings.
+/// picks theirs in the device operations.
 constexpr const char* kConventionalBypassOn = "ACE_BYPASS_ON";
 constexpr const char* kConventionalBypassOff = "ACE_BYPASS_OFF";
 
-/// Sentinel meaning "whatever discovery found", matching the feeder picker.
-constexpr const char* kAutoMacro = "auto";
-
-std::string resolve_one(const PrinterDiscovery& hw, const std::string& override_name,
-                        const char* conventional) {
-    if (!override_name.empty() && override_name != kAutoMacro) {
-        return override_name;
-    }
-    return hw.has_macro(conventional) ? std::string(conventional) : std::string{};
-}
-
 } // namespace
 
-BypassMacros resolve_bypass_macros(const PrinterDiscovery& hw, const std::string& on_override,
-                                   const std::string& off_override) {
-    BypassMacros macros{resolve_one(hw, on_override, kConventionalBypassOn),
-                        resolve_one(hw, off_override, kConventionalBypassOff)};
+BypassMacros detect_bypass_macros(const PrinterDiscovery& hw) {
+    return {hw.has_macro(kConventionalBypassOn) ? std::string(kConventionalBypassOn) : "",
+            hw.has_macro(kConventionalBypassOff) ? std::string(kConventionalBypassOff) : ""};
+}
+
+std::vector<std::string> bypass_macro_options(const PrinterDiscovery& hw) {
+    std::vector<std::string> out;
+    for (const auto& macro : hw.macros()) {
+        if (macro.find("BYPASS") != std::string::npos) {
+            out.push_back(macro);
+        }
+    }
+    if (out.empty()) {
+        return out;
+    }
+    std::sort(out.begin(), out.end());
+    out.insert(out.begin(), kAutoMacro);
+    return out;
+}
+
+BypassMacros resolve_bypass_macros(const BypassMacros& detected, const std::string& on_choice,
+                                   const std::string& off_choice) {
+    BypassMacros macros{resolve_macro_choice(on_choice, detected.on),
+                        resolve_macro_choice(off_choice, detected.off)};
 
     // Half a pair cannot round-trip: engaging bypass with no way back strands
     // the machine in a state the UI offers no exit from.
@@ -40,6 +52,11 @@ BypassMacros resolve_bypass_macros(const PrinterDiscovery& hw, const std::string
         return {};
     }
     return macros;
+}
+
+BypassMacros resolve_bypass_macros(const PrinterDiscovery& hw, const std::string& on_override,
+                                   const std::string& off_override) {
+    return resolve_bypass_macros(detect_bypass_macros(hw), on_override, off_override);
 }
 
 BypassMacros resolve_bypass_macros_for(const PrinterDiscovery& hw) {

@@ -24,6 +24,8 @@
 // Adding a machine means adding one Provider to the table in
 // toolchanger_addon.cpp - no call site changes.
 
+#include "macro_choice.h"
+
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -38,8 +40,7 @@ class PrinterDiscovery;
 
 namespace helix::toolchanger_addon {
 
-/// Sentinel meaning "use the detected default" in the settings picker.
-inline constexpr const char* kAutoMacro = "auto";
+using helix::kAutoMacro;
 
 /// Filament feeder on the frame. Default-constructed is the "no feeder" answer,
 /// so a tool changer nobody told anything exposes nothing.

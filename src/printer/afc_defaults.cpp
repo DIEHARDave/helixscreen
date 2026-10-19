@@ -16,6 +16,7 @@ std::vector<DeviceSection> afc_default_sections() {
         {"hub", "Hub & Cutter", 4, "Blade change and parking"},
         {"tip_forming", "Tip Forming", 5, "Tip shaping configuration"},
         {"purge", "Purge & Wipe", 6, "Purge tower and brush settings"},
+        {"print_behavior", "Print Behavior", 7, "What happens when a print ends"},
     };
 }
 
@@ -86,6 +87,10 @@ std::vector<DeviceAction> afc_default_actions() {
                    "Length of filament to purge"),
         DA::toggle("brush_enabled", "Enable Brush Wipe", "purge", false, "broom",
                    "Enable brush wipe after purging"),
+
+        // Print Behavior section
+        DA::toggle("unload_at_end", "Unload at end", "print_behavior", false, "filament",
+                   "Unload the toolhead when a print ends"),
     };
 }
 

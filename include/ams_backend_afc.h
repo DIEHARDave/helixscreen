@@ -246,9 +246,6 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
         BackendTraits t;
         // AFC firmware publishes a bypass sensor whether or not one is wired.
         t.bypass_is_virtual = true;
-        // The end-of-print macros consult the user's setting, so the toggle row
-        // is offered.
-        t.supports_configurable_unload_after_print = true;
         // AFC users have a console; the screen passes their command through rather
         // than synthesising a prerequisite operation they never asked for (#1229).
         t.allows_implicit_chaining = false;
@@ -465,7 +462,8 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
      *
      * Unlike CFS/IFS (which always unload via firmware), AFC's post-print
      * behavior depends on the user's end-of-print macros. This is driven by
-     * the per-printer SettingsManager toggle get_afc_unload_after_print()
+     * the per-printer SettingsManager setting get_unload_after_print(), which
+     * the "Unload at end" device action writes
      * (default false). When enabled, the pre-print runout warning is
      * suppressed because an empty toolhead is expected, not a fault.
      */

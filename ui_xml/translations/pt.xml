@@ -449,6 +449,8 @@
   <translation tag="Bypass failed" pt="Falha no bypass"/>
   <translation tag="Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?" pt="O bypass está ativo, mas esta impressão usa slots AMS. A impressora pode não conseguir carregar um slot enquanto houver filamento de bypass no cabeçote. Remova o filamento e desative o bypass antes de imprimir. Iniciar mesmo assim?"/>
   <translation tag="Bypass mode is not currently active" pt="O modo bypass não está ativo no momento"/>
+  <translation tag="Bypass off macro" pt="Macro de desligar bypass"/>
+  <translation tag="Bypass on macro" pt="Macro de ligar bypass"/>
   <translation tag="Bypass toggle failed" pt="Falha ao alternar bypass"/>
   <translation tag="C" pt="C"/>
   <translation tag="CALIBRATION" pt="CALIBRAÇÃO"/>
@@ -1065,6 +1067,7 @@
   <translation tag="Ended" pt="Finalizado"/>
   <translation tag="Endless Spool" pt="Carretel infinito"/>
   <translation tag="Endless Spool backups cleared" pt="Reservas do carretel infinito limpas"/>
+  <translation tag="Endless Spool change failed" pt="Falha ao alterar o carretel infinito"/>
   <translation tag="Endless Spool is configured in its package, not from here" pt="O carretel infinito é configurado no seu plugin, não aqui"/>
   <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" pt="O carretel infinito está ligado, mas nenhum par de slots tem filamento compatível, então nada trocará ao acabar o filamento"/>
   <translation tag="Endless Spool is turned off on this MMU" pt="O carretel infinito está desativado neste MMU"/>
@@ -1290,6 +1293,7 @@
   <translation tag="Feature not available" pt="Recurso não disponível"/>
   <translation tag="Features: " pt="Recursos: "/>
   <translation tag="Feed Assist" pt="Assistência de alimentação"/>
+  <translation tag="Feed assist and bypass macros" pt="Assistência de alimentação e macros de bypass"/>
   <translation tag="Feed assist and debug tools" pt="Assistência de alimentação e ferramentas de depuração"/>
   <translation tag="Feed failed" pt="Falha na alimentação"/>
   <translation tag="Feed filament" pt="Alimentar filamento"/>
@@ -2450,6 +2454,7 @@
   <translation tag="Priming..." pt="Preparando..."/>
   <translation tag="Print" pt="Imprimir"/>
   <translation tag="Print Anyway" pt="Imprimir Mesmo Assim"/>
+  <translation tag="Print Behavior" pt="Comportamento de impressão"/>
   <translation tag="Print Behaviour" pt="Comportamento de impressão"/>
   <translation tag="Print Cancelled" pt="Impressão Cancelada"/>
   <translation tag="Print Complete!" pt="Impressão Concluída!"/>
@@ -2588,6 +2593,7 @@
   <translation tag="Provide a numeric {}" pt="Forneça um valor numérico para {}"/>
   <translation tag="Provide a speed multiplier value" pt="Forneça um multiplicador de velocidade"/>
   <translation tag="Provide a {}" pt="Forneça {}"/>
+  <translation tag="Provide an on/off value" pt="Forneça um valor ligado/desligado"/>
   <translation tag="Provide {}" pt="Forneça {}"/>
   <translation tag="Pulling filament back" pt="Retraindo filamento"/>
   <translation tag="Purge" pt="Purgar"/>
@@ -2634,6 +2640,7 @@
   <translation tag="RFID reader malfunction (left)" pt="Falha do leitor RFID (esquerdo)"/>
   <translation tag="RFID reader malfunction (right)" pt="Falha do leitor RFID (direito)"/>
   <translation tag="RFID, Auto-Refill, nozzle and link care" pt="RFID, reabastecimento automático, cuidados com bico e enlace"/>
+  <translation tag="RFID, nozzle and link care" pt="RFID, cuidados com bico e enlace"/>
   <translation tag="RH" pt="UR"/>
   <translation tag="RSS" pt="RSS"/>
   <translation tag="RSS:" pt="RSS:"/>
@@ -3227,6 +3234,7 @@
   <translation tag="Switch the active tool or extruder" pt="Trocar a ferramenta ou extrusor ativo"/>
   <translation tag="Switch to a backup slot on runout" pt="Trocar para um slot de reserva ao acabar o filamento"/>
   <translation tag="Switch to a matching slot on runout" pt="Trocar para um slot compatível ao acabar o filamento"/>
+  <translation tag="Switch to a matching spool when one runs out" pt="Trocar para um carretel compatível quando um acabar"/>
   <translation tag="Switch to v%s" pt="Mudar para a v%s"/>
   <translation tag="Switch to {}?" pt="Trocar para {}?"/>
   <translation tag="Switched to {}" pt="Alterado para {}"/>
@@ -3642,6 +3650,7 @@
   <translation tag="Unload macro not configured" pt="Macro de descarga não configurado"/>
   <translation tag="Unload stopped" pt="Descarregamento interrompido"/>
   <translation tag="Unload the CFS filament before enabling bypass" pt="Descarregue o filamento do CFS antes de ativar o bypass"/>
+  <translation tag="Unload the toolhead when a print ends" pt="Descarregar o cabeçote ao terminar uma impressão"/>
   <translation tag="Unload this unit first" pt="Descarregue primeiro esta unidade"/>
   <translation tag="Unload which tool?" pt="Descarregar qual ferramenta?"/>
   <translation tag="Unload..." pt="Descarregar..."/>
@@ -3763,10 +3772,13 @@
   <translation tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." pt="Dados de peso são sincronizados do Spoolman para exibir filamento restante. Alterações também são sincronizadas quando impressões iniciam, pausam ou terminam."/>
   <translation tag="Welcome to HelixScreen" pt="Bem-vindo ao HelixScreen"/>
   <translation tag="What We Collect" pt="O Que Coletamos"/>
+  <translation tag="What happens when a print ends" pt="O que acontece ao terminar uma impressão"/>
   <translation tag="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs." pt="Quando habilitado, apenas a macro é executada. Quando desabilitado, as temperaturas são definidas primeiro, depois a macro é executada."/>
   <translation tag="Where UI sounds play" pt="Onde os sons da interface são reproduzidos"/>
   <translation tag="Whether filament is loaded" pt="Se há filamento carregado"/>
   <translation tag="Which lane is in the toolhead?" pt="Qual via está na cabeça?"/>
+  <translation tag="Which macro switches the ACE path back on" pt="Qual macro religa o caminho do ACE"/>
+  <translation tag="Which macro switches the ACE path off for bypass" pt="Qual macro desliga o caminho do ACE para o bypass"/>
   <translation tag="Which macro the Close feeder button sends" pt="Qual macro o botão Fechar alimentador envia"/>
   <translation tag="Which macro the Open feeder button sends" pt="Qual macro o botão Abrir alimentador envia"/>
   <translation tag="White" pt="Branco"/>

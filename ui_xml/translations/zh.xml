@@ -449,6 +449,8 @@
   <translation tag="Bypass failed" zh="旁通失败"/>
   <translation tag="Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?" zh="旁路已启用，但此打印使用 AMS 槽位。当旁路耗材仍在工具头中时，打印机可能拒绝装载槽位。请在打印前取出耗材并关闭旁路。仍要开始打印吗？"/>
   <translation tag="Bypass mode is not currently active" zh="旁通模式当前未启用"/>
+  <translation tag="Bypass off macro" zh="关闭旁路宏"/>
+  <translation tag="Bypass on macro" zh="开启旁路宏"/>
   <translation tag="Bypass toggle failed" zh="旁通切换失败"/>
   <translation tag="C" zh="腔"/>
   <translation tag="CALIBRATION" zh="校准"/>
@@ -1065,6 +1067,7 @@
   <translation tag="Ended" zh="已结束"/>
   <translation tag="Endless Spool" zh="无限料盘"/>
   <translation tag="Endless Spool backups cleared" zh="已清除无限料盘备用设置"/>
+  <translation tag="Endless Spool change failed" zh="更改无限料盘失败"/>
   <translation tag="Endless Spool is configured in its package, not from here" zh="无限料盘在其插件中配置，而非此处"/>
   <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" zh="无限料盘已开启，但没有两个槽位装有相同的耗材，因此耗材用尽时不会切换"/>
   <translation tag="Endless Spool is turned off on this MMU" zh="此 MMU 上的无限料盘已关闭"/>
@@ -1290,6 +1293,7 @@
   <translation tag="Feature not available" zh="功能不可用"/>
   <translation tag="Features: " zh="特性: "/>
   <translation tag="Feed Assist" zh="送料辅助"/>
+  <translation tag="Feed assist and bypass macros" zh="送料辅助与旁路宏"/>
   <translation tag="Feed assist and debug tools" zh="送料辅助与调试工具"/>
   <translation tag="Feed failed" zh="送料失败"/>
   <translation tag="Feed filament" zh="进料"/>
@@ -2450,6 +2454,7 @@
   <translation tag="Priming..." zh="正在预挤..."/>
   <translation tag="Print" zh="打印"/>
   <translation tag="Print Anyway" zh="仍要打印"/>
+  <translation tag="Print Behavior" zh="打印行为"/>
   <translation tag="Print Behaviour" zh="打印行为"/>
   <translation tag="Print Cancelled" zh="打印已取消"/>
   <translation tag="Print Complete!" zh="打印完成！"/>
@@ -2588,6 +2593,7 @@
   <translation tag="Provide a numeric {}" zh="请为 {} 提供数值"/>
   <translation tag="Provide a speed multiplier value" zh="请提供速度倍率值"/>
   <translation tag="Provide a {}" zh="请提供 {}"/>
+  <translation tag="Provide an on/off value" zh="请提供开/关值"/>
   <translation tag="Provide {}" zh="请提供 {}"/>
   <translation tag="Pulling filament back" zh="正在回抽耗材"/>
   <translation tag="Purge" zh="排料"/>
@@ -2634,6 +2640,7 @@
   <translation tag="RFID reader malfunction (left)" zh="RFID 读取器故障（左）"/>
   <translation tag="RFID reader malfunction (right)" zh="RFID 读取器故障（右）"/>
   <translation tag="RFID, Auto-Refill, nozzle and link care" zh="RFID、自动续料、喷嘴与链路维护"/>
+  <translation tag="RFID, nozzle and link care" zh="RFID、喷嘴与链路维护"/>
   <translation tag="RH" zh="RH"/>
   <translation tag="RSS" zh="RSS"/>
   <translation tag="RSS:" zh="RSS："/>
@@ -3227,6 +3234,7 @@
   <translation tag="Switch the active tool or extruder" zh="切换当前工具或挤出机"/>
   <translation tag="Switch to a backup slot on runout" zh="耗材用尽时切换到备用槽位"/>
   <translation tag="Switch to a matching slot on runout" zh="耗材用尽时切换到匹配的槽位"/>
+  <translation tag="Switch to a matching spool when one runs out" zh="料盘用尽时切换到匹配的料盘"/>
   <translation tag="Switch to v%s" zh="切换到 v%s"/>
   <translation tag="Switch to {}?" zh="切换到 {}?"/>
   <translation tag="Switched to {}" zh="已切换到 {}"/>
@@ -3642,6 +3650,7 @@
   <translation tag="Unload macro not configured" zh="卸载宏未配置"/>
   <translation tag="Unload stopped" zh="卸载已停止"/>
   <translation tag="Unload the CFS filament before enabling bypass" zh="启用旁通前请先卸载 CFS 耗材"/>
+  <translation tag="Unload the toolhead when a print ends" zh="打印结束时卸载工具头"/>
   <translation tag="Unload this unit first" zh="请先卸载此单元"/>
   <translation tag="Unload which tool?" zh="卸载哪个工具？"/>
   <translation tag="Unload..." zh="卸载..."/>
@@ -3763,10 +3772,13 @@
   <translation tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." zh="重量数据从 Spoolman 同步以显示剩余耗材。打印开始、暂停或完成时也会同步更改。"/>
   <translation tag="Welcome to HelixScreen" zh="欢迎使用 HelixScreen"/>
   <translation tag="What We Collect" zh="我们收集的内容"/>
+  <translation tag="What happens when a print ends" zh="打印结束时的操作"/>
   <translation tag="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs." zh="启用时仅运行宏。禁用时先设置温度，然后运行宏。"/>
   <translation tag="Where UI sounds play" zh="界面声音的播放位置"/>
   <translation tag="Whether filament is loaded" zh="耗材是否已装载"/>
   <translation tag="Which lane is in the toolhead?" zh="哪个料道在打印头里？"/>
+  <translation tag="Which macro switches the ACE path back on" zh="重新开启ACE通路的宏"/>
+  <translation tag="Which macro switches the ACE path off for bypass" zh="为旁路关闭ACE通路的宏"/>
   <translation tag="Which macro the Close feeder button sends" zh="“关闭送料器”按钮发送的宏"/>
   <translation tag="Which macro the Open feeder button sends" zh="“打开送料器”按钮发送的宏"/>
   <translation tag="White" zh="白色"/>

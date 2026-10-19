@@ -456,6 +456,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : バイパスが有効ですが、この印刷はAMSスロットを使用します。バイパスのフィラメントがツールヘッドにある間は、プリンターがスロットの装填を拒否する場合があります。印刷前にフィラメントを取り除き、バイパスをオフにしてください。それでも印刷を開始しますか？
   Bypass mode is not currently active: 'バイパスモードは現在アクティブではありません'
+  Bypass off macro: 'バイパスオフのマクロ'
+  Bypass on macro: 'バイパスオンのマクロ'
   Bypass toggle failed: バイパス切替に失敗しました
   C: C
   CALIBRATION: キャリブレーション
@@ -1108,6 +1110,7 @@ translations:
   Ended: 終了
   Endless Spool: 'エンドレススプール'
   Endless Spool backups cleared: エンドレススプールの予備を消去しました
+  Endless Spool change failed: 'エンドレススプールの変更に失敗しました'
   Endless Spool is configured in its package, not from here: エンドレススプールはプラグイン側で設定します
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: エンドレススプールはオンですが、フィラメントが一致するスロットが2つないため、フィラメント切れになっても何も切り替わりません
   Endless Spool is turned off on this MMU: 'この MMU ではエンドレススプールが無効です'
@@ -1337,6 +1340,7 @@ translations:
   Feature not available: この機能は利用できません
   'Features: ': '機能: '
   Feed Assist: '送りアシスト'
+  Feed assist and bypass macros: '送りアシストとバイパスマクロ'
   Feed assist and debug tools: 送りアシストとデバッグツール
   Feed failed: 送り出しに失敗しました
   Feed filament: フィラメントを送る
@@ -2549,6 +2553,7 @@ translations:
   Priming...: プライミング中...
   Print: 印刷
   Print Anyway: それでも印刷
+  Print Behavior: '印刷の動作'
   'Print Behaviour': '印刷の動作'
   Print Cancelled: 印刷キャンセル
   Print Complete!: 印刷完了！
@@ -2687,6 +2692,7 @@ translations:
   Provide a numeric {}: '{} を数値で入力してください'
   Provide a speed multiplier value: '速度の倍率を入力してください'
   Provide a {}: '{} を入力してください'
+  Provide an on/off value: 'オン/オフの値を入力してください'
   Provide {}: '{} を入力してください'
   Pulling filament back: フィラメントを引き戻し中
   Purge: パージ
@@ -2735,6 +2741,7 @@ translations:
   RFID reader malfunction (left): RFID リーダーの異常（左）
   RFID reader malfunction (right): RFID リーダーの異常（右）
   RFID, Auto-Refill, nozzle and link care: RFID、自動補充、ノズルと接続のメンテナンス
+  RFID, nozzle and link care: 'RFID、ノズルと接続のメンテナンス'
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3349,6 +3356,7 @@ translations:
   Switch the active tool or extruder: アクティブなツールやエクストルーダーを切り替え
   Switch to a backup slot on runout: フィラメント切れ時に予備スロットへ切り替え
   Switch to a matching slot on runout: フィラメント切れ時に一致するスロットへ切り替え
+  Switch to a matching spool when one runs out: 'スプールが切れたら一致するスプールに切り替え'
   Switch to v%s: 'v%s に切り替え'
   Switch to {}?: '{} に切り替えますか?'
   Switched to {}: '{} に切替えました'
@@ -3807,6 +3815,7 @@ translations:
   Unload from toolhead first: '先にツールヘッドから取り出してください'
   Unload macro not configured: アンロードマクロが未設定です
   Unload the CFS filament before enabling bypass: 'バイパスを有効にする前に CFS のフィラメントを取り出してください'
+  Unload the toolhead when a print ends: '印刷終了時にツールヘッドからアンロード'
   Unload this unit first: '先にこのユニットを排出してください'
   Unload which tool?: 'どのツールをアンロードしますか？'
   Unload...: 排出...
@@ -3927,9 +3936,12 @@ translations:
   : 残りのフィラメントを表示するために、重量データが Spoolman から同期されます。印刷の開始、一時停止、完了時にも変更が同期されます。
   Welcome to HelixScreen: HelixScreen へようこそ
   What We Collect: 収集する情報
+  What happens when a print ends: '印刷終了時の動作'
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: 有効時はマクロのみ実行されます。無効時は先に温度を設定してからマクロが実行されます。
   Where UI sounds play: UIサウンドの再生先
   Whether filament is loaded: フィラメントの装填状態
+  Which macro switches the ACE path back on: 'ACE経路を再びオンにするマクロ'
+  Which macro switches the ACE path off for bypass: 'バイパスのためにACE経路をオフにするマクロ'
   Which macro the Close feeder button sends: 「フィーダーを閉じる」ボタンが送信するマクロ
   Which macro the Open feeder button sends: 「フィーダーを開く」ボタンが送信するマクロ
   White: ホワイト

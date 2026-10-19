@@ -433,7 +433,7 @@ TEST_CASE_METHOD(SettingsScopeFixture,
         sm.set_qidi_eject_distance(500);
         sm.set_qidi_eject_velocity(120);
         sm.set_auto_color_map(true);
-        sm.set_afc_unload_after_print(true);
+        sm.set_unload_after_print(true);
         sm.set_end_of_print_unload_tools(0b0101);
         sm.set_filament_auto_cooldown(false);
         sm.set_hidden_macros({"_HOME_Z"});
@@ -452,7 +452,7 @@ TEST_CASE_METHOD(SettingsScopeFixture,
         expect_per_printer("ams/qidi_eject_distance");
         expect_per_printer("ams/qidi_eject_velocity");
         expect_per_printer("filament/auto_color_map");
-        expect_per_printer("ams/afc_unload_after_print");
+        expect_per_printer("ams/unload_after_print");
         expect_per_printer("ams/end_of_print_unload_tools");
         expect_per_printer("filament/auto_cooldown");
         expect_per_printer("macros/hidden");

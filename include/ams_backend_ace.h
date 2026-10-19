@@ -235,6 +235,9 @@ class AmsBackendAce : public AmsSubscriptionBackend {
     [[nodiscard]] helix::printer::EndlessSpoolConfig get_endless_spool_config() const override;
 
   protected:
+    /// ACE_ENABLE_ENDLESS_SPOOL / ACE_DISABLE_ENDLESS_SPOOL.
+    AmsError apply_endless_spool_enabled(bool enabled) override;
+
     // ========================================================================
     // AmsSubscriptionBackend hooks
     // ========================================================================
@@ -605,6 +608,11 @@ class AmsBackendAce : public AmsSubscriptionBackend {
     /// Macros that turn the ACE path off (engaging bypass) and back on.
     std::string bypass_on_macro_;
     std::string bypass_off_macro_;
+
+    /// What discovery found for the pair, and the macros the user may pick
+    /// instead (kAutoMacro first). Re-resolved when a pick changes.
+    helix::BypassMacros bypass_detected_;
+    std::vector<std::string> bypass_macro_options_;
 
     /// The driver's per-slot `park_state`. "parked" is a strand the driver left
     /// staged short of the hub: after a sensor-verified unload or smart load, but
