@@ -91,7 +91,8 @@ HELIX_GLES2_ENTRY_POINTS(HELIX_GLES2_DECLARE)
 
 /// Resolve every entry point through @p get_proc (SDL_GL_GetProcAddress with a
 /// GL context current, or gpu_libs::gles2_proc). All or nothing; logs the
-/// missing names on failure.
+/// missing names on failure. Runs once per process: later calls return the
+/// first call's answer and ignore their @p get_proc.
 bool load(void* (*get_proc)(const char*));
 
 } // namespace helix::gles2
