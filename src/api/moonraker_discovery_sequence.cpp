@@ -20,6 +20,7 @@
 #include "humidity_sensor_types.h"
 #include "hv/requests.h"
 #include "i_moonraker_api.h"
+#include "json_utils.h"
 #include "klipper_extruder_naming.h"
 #include "layer_pause.h"
 #include "led/led_controller.h"
@@ -245,6 +246,32 @@ void MoonrakerDiscoverySequence::discover_sensors() {
 void MoonrakerDiscoverySequence::publish_identity_locked() {
     hardware_.set_hostname(reported_machine_name_.empty() ? reported_hostname_
                                                           : reported_machine_name_);
+}
+
+void MoonrakerDiscoverySequence::fetch_moonraker_version_fallback(uint64_t seq) {
+    client_.send_jsonrpc(
+        "machine.update.status", json::object(),
+        [this, seq](const json& response) {
+            if (is_stale() || !is_current_sequence(seq))
+                return;
+            const json* result = helix::json_util::find_member(response, "result");
+            const std::string version =
+                result ? helix::moonraker_version_from_update_status(*result) : std::string();
+            if (version.empty())
+                return;
+            spdlog::debug("[Moonraker Client] Moonraker version from update_manager: {}", version);
+            {
+                std::lock_guard<std::mutex> lock(hardware_mutex_);
+                hardware_.set_moonraker_version(version);
+            }
+            get_printer_state().set_moonraker_version(version);
+        },
+        [](const MoonrakerError& err) {
+            spdlog::debug("[Moonraker Client] update_manager version query failed: {}",
+                          err.message);
+        },
+        0,     // default timeout
+        true); // silent: the version stays Unknown
 }
 
 // Read the hardware fields HelixScreen keeps out of a machine.system_info
@@ -728,6 +755,12 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
                         if (has_job_queue_component) {
                             spdlog::info("[Moonraker Client] Job queue component detected");
                             get_printer_state().capabilities_state().set_job_queue_available(true);
+                        }
+
+                        if (helix::is_placeholder_version(moonraker_version) &&
+                            std::find(components.begin(), components.end(), "update_manager") !=
+                                components.end()) {
+                            fetch_moonraker_version_fallback(seq);
                         }
                     }
                 }

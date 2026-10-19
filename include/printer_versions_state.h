@@ -6,6 +6,8 @@
 #include <lvgl.h>
 #include <string>
 
+#include "hv/json.hpp"
+
 namespace helix {
 
 /**
@@ -28,6 +30,26 @@ inline constexpr const char* kMinMoonrakerVersion = "0.9.0";
  * never announced a version, so anything unparseable answers false here.
  */
 [[nodiscard]] bool moonraker_history_is_degraded(const std::string& version);
+
+/**
+ * @brief True for a version string that names no version.
+ *
+ * Empty, "?" (what Moonraker's server.info reports when `git describe` fails,
+ * as on a tagless fork checkout) and "unknown" (what discovery substitutes for
+ * a missing field), all ignoring case and surrounding whitespace.
+ */
+[[nodiscard]] bool is_placeholder_version(const std::string& version);
+
+/**
+ * @brief The Moonraker version update_manager knows, from a machine.update.status result.
+ *
+ * The fallback for a server.info that reports a placeholder. Takes
+ * `version_info.moonraker.version` when it names a release; a checkout with no
+ * release tags reads "v0.0.0-N" there, so it answers the short commit hash
+ * (`current_hash`, 7 characters) instead, the form Kalico reports itself in.
+ * "" when neither is present.
+ */
+[[nodiscard]] std::string moonraker_version_from_update_status(const nlohmann::json& result);
 
 /**
  * @brief Manages software version subjects for UI display
