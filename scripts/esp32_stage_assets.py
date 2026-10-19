@@ -35,6 +35,7 @@ import sys
 from pathlib import Path
 
 import esp32_printer_images
+from translation_packs import MERGED_CATALOGUE, UNLOADED_TRANSLATION_FILES
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUT = REPO_ROOT / "firmware" / "helixscreen-esp32" / "build" / "littlefs_staging"
@@ -48,8 +49,6 @@ UI_XML_OVERRIDES_DIR = REPO_ROOT / "firmware" / "helixscreen-esp32" / "ui_xml_ov
 
 # ui_xml subtrees/files excluded from staging.
 EXCLUDED_XML_DIRS = ("micro",)
-EXCLUDED_XML_FILES = ("translations.xml",)  # merged file; per-language files ship instead
-IDENTITY_LOCALE = "en"  # the source language: its pack maps each tag to itself
 # Languages that need a CJK font. The firmware builds HELIX_HAS_CJK=0 and ships
 # no CJK face, so their packs would render as empty boxes; --with-cjk is for a
 # build that ships the font.
@@ -162,7 +161,7 @@ def stage_ui_xml(ui_xml_dir: Path, out_dir: Path) -> int:
             continue
         if rel.parts and rel.parts[0] == "translations":
             continue  # handled by stage_translations
-        if src.name in EXCLUDED_XML_FILES:
+        if src.name == MERGED_CATALOGUE:
             continue
         text = src.read_text(encoding="utf-8")
         minified = minify_xml(text)
@@ -209,7 +208,7 @@ def stage_translations(ui_xml_dir: Path, out_dir: Path,
     included: list[str] = []
     total = 0
     for src in sorted(translations_dir.glob("*.xml")):
-        if src.name in EXCLUDED_XML_FILES or src.stem == IDENTITY_LOCALE:
+        if src.name in UNLOADED_TRANSLATION_FILES:
             continue
         if src.stem in CJK_LOCALES and not with_cjk:
             continue

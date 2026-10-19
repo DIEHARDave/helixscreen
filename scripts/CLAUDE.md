@@ -63,6 +63,7 @@ what each script is for; the script's own header carries the reasoning behind it
 | Script | Purpose |
 |--------|---------|
 | `generate_translations.py` | Main translation generator - YAML → runtime XML packs. A key holding a real newline or tab survives the XML parse only as a `&#10;`/`&#9;` character reference; `escape_xml_attr()` says why |
+| `translation_packs.py` | The `ui_xml/translations/` files no locale loads: the merged `translations.xml` and the identity locale's pack, read from `kIdentityLocale` in `include/translation_loader.h`. Imported by `platform_manifest.py` (release prune) and `esp32_stage_assets.py`; `android/app/build.gradle` restates the list and `tests/python/test_translation_packs.py` fails if it drifts |
 | `translation_sync.py` | Sync keys (XML/C++ → YAML); also `coverage`, `obsolete`, `glossary` subcommands |
 | `translations/yaml_manager.py` | Reads/edits the locale YAMLs by **line splice**, never a re-dump (no dump config reproduces the committed files byte-for-byte). `load_yaml_file()` refuses a file that defines a key twice: a later placeholder would otherwise silently replace the translation. Gated by `tests/shell/test_translation_duplicate_keys.bats` |
 | `translations/` | Python package: extractor, YAML manager, coverage, glossary, CLI |

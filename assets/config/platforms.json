@@ -278,11 +278,27 @@
         "variable": true,
         "candidates": [
           "k1",
-          "ad5x"
+          "ad5x",
+          {
+            "board": "creator5-pro",
+            "width": 480,
+            "height": 800,
+            "rotate": 90,
+            "verified": true,
+            "source": "docs/devel/printers/FLASHFORGE_CREATOR5_PRO_SUPPORT.md: 480x800 portrait framebuffer, display.rotate = 90 verified on the printer"
+          },
+          {
+            "board": "creator5",
+            "width": 480,
+            "height": 800,
+            "rotate": 90,
+            "verified": false,
+            "source": "assets/config/presets/creator5.json rotates 90 like the Pro; the plain Creator 5 panel is unmeasured and assumed to be the Pro's"
+          }
         ],
         "verified": true,
         "source": "Both boards measured 2026-09-11: K1C 480x800 rotate 270, AD5X 800x480 rotate 0 — 800x480 effective on each. Which one this binary lands on is a runtime fact (helix::ad5x_mod_layout_present), so the panel is unknown at package time.",
-        "notes": "Ships what its candidate boards need: the union of the k1 and ad5x splash classes and printer tiers, hedges included. Both are 800x480 effective, so no request exceeds the 300px tier and the source PNGs are dropped."
+        "notes": "Ships what its candidate boards need: the union of the K1, AD5X and Creator 5 / 5 Pro splash classes and printer tiers, hedges included. All are 800x480 effective, so no request exceeds the 300px tier and the source PNGs are dropped. The Creator 5 boards have no platform entry of their own, so their panels are inline."
       },
       "storage": {
         "root": "detected",
