@@ -2,8 +2,8 @@
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Printing Settings Overlay Panel -->
-<!-- Machine limits/motion/retraction/enclosure, filament temperature and cooldown -->
-<!-- behaviour, and print extras (timelapse, macro buttons) -->
+<!-- Machine limits/motion/retraction/enclosure, multi-filament system management, -->
+<!-- filament temperature and cooldown behaviour, and print extras (timelapse, macro buttons) -->
 <!-- Uses setting_* components for consistency with main settings panel -->
 <component>
   <view name="settings_printing_overlay" extends="overlay_panel" title="Printing" bg_color="#screen_bg">
@@ -40,6 +40,13 @@
       <!-- ================================================================== -->
       <setting_group name="group_filament">
         <setting_group_header title="FILAMENT"/>
+        <!-- MULTI-FILAMENT MANAGEMENT (hidden if no AMS detected) -->
+        <lv_obj name="container_ams_settings" width="100%" style_pad_all="0" scrollable="false">
+          <bind_flag_if_eq subject="ams_slot_count" flag="hidden" ref_value="0"/>
+          <setting_action_row name="row_ams_settings"
+                              label="Multi-Filament System Management" icon="filament"
+                              description="Quick actions, calibration, speed" callback="on_ams_settings_clicked"/>
+        </lv_obj>
         <setting_action_row name="row_material_temps"
                             label="Material Temperatures" icon="thermometer" description="Customize preset temperatures"
                             callback="on_material_temps_clicked"/>

@@ -172,8 +172,11 @@ TEST_CASE_METHOD(PageRowsFixture,
     CHECK(has("row_allow_cold_extrude"));
     CHECK(has("row_filament_auto_cooldown"));
     CHECK(has("row_filament_auto_open_editor"));
+    CHECK(has("row_ams_settings"));
     build("settings_safety_overlay");
     CHECK_FALSE(has("row_allow_cold_extrude"));
+    build("settings_hardware_overlay");
+    CHECK_FALSE(has("row_ams_settings"));
 }
 
 TEST_CASE_METHOD(PageRowsFixture, "Appearance fills the printer-visual dropdowns on activate",
