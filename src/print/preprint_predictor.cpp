@@ -118,6 +118,16 @@ int PreprintPredictor::temp_bucket_for(float bed_c) {
     return bed_c >= kWarmBedC ? 2 : 1;
 }
 
+std::set<int> PreprintPredictor::phases_skipped_by(const PreprintPhaseOverrides& overrides) {
+    std::set<int> skipped;
+    for (const auto& [phase, runs] : overrides) {
+        if (!runs) {
+            skipped.insert(phase);
+        }
+    }
+    return skipped;
+}
+
 bool PreprintPredictor::has_predictions() const {
     return !entries_.empty();
 }

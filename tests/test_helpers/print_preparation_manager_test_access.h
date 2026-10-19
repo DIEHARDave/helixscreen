@@ -42,8 +42,9 @@ class PrintPreparationManagerTestAccess {
                              helix::FileVersion version = {}) {
         m.request_scan(filename, "", "", version);
     }
-    static std::set<int> skipped_preprint_phases(const helix::ui::PrintPreparationManager& m) {
-        return m.skipped_preprint_phases();
+    static helix::PreprintPhaseOverrides
+    preprint_phase_overrides(const helix::ui::PrintPreparationManager& m) {
+        return m.preprint_phase_overrides();
     }
     /// Keep @p scan as the answer for the file whose scan_key() is @p key.
     static void keep_scan(helix::ui::PrintPreparationManager& m, const std::string& key,

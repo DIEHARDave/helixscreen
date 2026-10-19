@@ -885,8 +885,6 @@ class PrintPreparationManager {
     /// The pre-print phases the option toggles decide: a shown toggle turned
     /// off skips its phase (false), one left on runs it (true).
     [[nodiscard]] helix::PreprintPhaseOverrides preprint_phase_overrides() const;
-    /// The phases preprint_phase_overrides() skips, as the run's history records them.
-    [[nodiscard]] std::set<int> skipped_preprint_phases() const;
 
     /**
      * @brief Download, modify, and print a G-code file

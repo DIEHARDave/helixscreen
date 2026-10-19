@@ -375,16 +375,6 @@ helix::PreprintPhaseOverrides PrintPreparationManager::preprint_phase_overrides(
     return overrides;
 }
 
-std::set<int> PrintPreparationManager::skipped_preprint_phases() const {
-    std::set<int> skipped;
-    for (const auto& [phase, runs] : preprint_phase_overrides()) {
-        if (!runs) {
-            skipped.insert(phase);
-        }
-    }
-    return skipped;
-}
-
 void PrintPreparationManager::invalidate_predictor_cache() {
     predictor_cached_ = false;
 }
@@ -1186,11 +1176,12 @@ void PrintPreparationManager::start_print(const std::string& filename,
         }
     }
 
-    // The run's history entry records what this start skips, so a later
+    // The countdown estimates with the same toggles print details did, and
+    // the run's history entry records what this start skips, so a later
     // estimate can tell a phase no start ran from one the matcher missed.
     if (auto* mgr = get_moonraker_manager()) {
         if (auto collector = mgr->print_start_collector()) {
-            collector->note_skipped_phases(skipped_preprint_phases());
+            collector->note_phase_overrides(preprint_phase_overrides());
         }
     }
 
