@@ -12,10 +12,11 @@
  *
  * Cases use deinit_one() rather than deinit_all() so they never touch the other
  * entries the process-wide registry is holding for the rest of the suite; the
- * one deinit_all() case clears the registry first.
+ * one deinit_all() case runs against an isolated registry.
  */
 
 #include "../helix_test_fixture.h"
+#include "../test_helpers/scoped_subject_registry_isolation.h"
 #include "static_subject_registry.h"
 
 #include <algorithm>
@@ -144,12 +145,12 @@ TEST_CASE_METHOD(HelixTestFixture,
                  "StaticSubjectRegistry deinit_all at a printer switch keeps what the rebuild "
                  "does not re-register",
                  "[core][subjects]") {
-    // The one case here that fires deinit_all(): clear() first drops whatever earlier
-    // fixtures left, without running it, so only this case's entries are walked.
+    // The one case here that fires deinit_all(): it walks an isolated registry, so only
+    // this case's entries run and the process-wide ones come back afterwards.
     using Lifetime = StaticSubjectRegistry::Lifetime;
     using Scope = StaticSubjectRegistry::Scope;
+    ScopedSubjectRegistryIsolation isolated;
     auto& registry = StaticSubjectRegistry::instance();
-    registry.clear();
 
     std::vector<std::string> ran;
     registry.register_deinit("Printer", [&ran]() { ran.emplace_back("printer"); });
