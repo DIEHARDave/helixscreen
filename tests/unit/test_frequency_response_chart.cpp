@@ -32,6 +32,7 @@
 #include "../test_fixtures.h"
 #include "../ui_test_utils.h"
 #include "lvgl/lvgl.h"
+#include "lvgl/src/core/lv_obj_draw_private.h"
 #include "lvgl/src/misc/lv_text_private.h"
 
 #include <algorithm>
@@ -1235,6 +1236,15 @@ TEST_CASE_METHOD(XMLTestFixture, "amplitude labels follow each chart's own range
     CHECK(drew(texts, "100"));
     CHECK_FALSE(drew(texts, "400"));
 
+    // A sub-unit axis draws the SI labels fr_chart_amplitude_labels() picks.
+    ui_frequency_response_chart_set_amplitude_range(a, 0.0f, 0.022f);
+    texts = drawn_label_texts(a);
+    for (const auto& label : fr_chart_amplitude_labels(0.0f, 0.022f, 4, false)) {
+        INFO(label);
+        CHECK(drew(texts, label.c_str()));
+    }
+    ui_frequency_response_chart_set_amplitude_range(a, 0.0f, 100.0f);
+
     ui_frequency_response_chart_set_y_labels_percent(a, true);
     texts = drawn_label_texts(a);
     CHECK(drew(texts, "100%"));
@@ -1392,6 +1402,106 @@ TEST_CASE_METHOD(LVGLTestFixture, "styled, muted and marked series render gaps",
     lv_refr_now(lv_obj_get_display(screen));
     CHECK(ui_frequency_response_chart_get_series_amplitudes(chart, styled).size() == 40);
     ui_frequency_response_chart_destroy(chart);
+}
+
+namespace {
+
+/// Renders @p plot and counts the pixels in rows [y1, y2] (screen coordinates)
+/// whose @p channel (0 = red, 1 = green) leads the other two by a clear margin.
+int tinted_pixels(lv_obj_t* plot, int channel, int32_t y1, int32_t y2) {
+    lv_draw_buf_t* snap = lv_snapshot_take(plot, LV_COLOR_FORMAT_ARGB8888);
+    REQUIRE(snap != nullptr);
+    lv_area_t coords;
+    lv_obj_get_coords(plot, &coords);
+    const int32_t origin_y = coords.y1 - lv_obj_get_ext_draw_size(plot);
+    int count = 0;
+    for (int32_t y = std::max(y1, origin_y);
+         y <= y2 && y - origin_y < static_cast<int32_t>(snap->header.h); ++y) {
+        const uint8_t* row = snap->data + static_cast<size_t>(y - origin_y) * snap->header.stride;
+        for (uint32_t x = 0; x < snap->header.w; ++x) {
+            // ARGB8888 is stored B, G, R, A.
+            const int b = row[x * 4 + 0];
+            const int g = row[x * 4 + 1];
+            const int r = row[x * 4 + 2];
+            const int lead = channel == 0 ? r - std::max(g, b) : g - std::max(r, b);
+            if (lead > 40) {
+                ++count;
+            }
+        }
+    }
+    lv_draw_buf_destroy(snap);
+    return count;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture, "nothing a series draws reaches toward a gap",
+                 "[frequency_response_chart][gaps]") {
+    lv_obj_t* screen = test_screen();
+    auto* chart = ui_frequency_response_chart_create(screen);
+    REQUIRE(chart != nullptr);
+    lv_obj_set_size(ui_frequency_response_chart_get_obj(chart), 600, 300);
+    ui_frequency_response_chart_configure_for_platform(chart, PlatformTier::STANDARD);
+    ui_frequency_response_chart_set_amplitude_range(chart, 0.0f, 100.0f);
+    lv_obj_update_layout(screen);
+
+    // Every finite value sits in the bottom 40% of the axis; index 3 is a gap,
+    // and the peak and the numbered marker both land on it.
+    std::vector<float> freqs(40);
+    std::vector<float> amps(40);
+    for (size_t i = 0; i < 40; ++i) {
+        freqs[i] = static_cast<float>(i);
+        amps[i] = (i % 7 == 3) ? kGap : static_cast<float>(i);
+    }
+    const int styled =
+        ui_frequency_response_chart_add_series(chart, "styled", lv_color_hex(0xFF0000));
+    ui_frequency_response_chart_set_series_style(chart, styled, FrChartSeriesStyle{3, true, true});
+    ui_frequency_response_chart_set_data(chart, styled, freqs.data(), amps.data(), amps.size());
+    const FrChartMarker markers[] = {{3.0f, 1}, {10.0f, 2}};
+    ui_frequency_response_chart_set_markers(chart, styled, markers, 2);
+    ui_frequency_response_chart_mark_peak(chart, styled, 3.0f, 50.0f);
+
+    const int muted =
+        ui_frequency_response_chart_add_series(chart, "muted", lv_color_hex(0x00FF00));
+    ui_frequency_response_chart_set_series_muted(chart, muted, true);
+    ui_frequency_response_chart_set_data(chart, muted, freqs.data(), amps.data(), amps.size());
+
+    lv_obj_t* plot = inner_lv_chart(chart);
+    REQUIRE(plot != nullptr);
+    lv_area_t content;
+    lv_obj_get_content_coords(plot, &content);
+    REQUIRE(lv_area_get_height(&content) > 100);
+    // The tallest finite value is 39% of the axis, so the top 30% holds no
+    // curve, fill or dot; a gap drawn as a point would land at the top.
+    const int32_t ceiling = content.y1 + lv_area_get_height(&content) * 3 / 10;
+
+    // Both series do draw, below the ceiling.
+    REQUIRE(tinted_pixels(plot, 0, ceiling, content.y2) > 0);
+    REQUIRE(tinted_pixels(plot, 1, ceiling, content.y2) > 0);
+    CHECK(tinted_pixels(plot, 0, content.y1, ceiling) == 0);
+    CHECK(tinted_pixels(plot, 1, content.y1, ceiling) == 0);
+
+    ui_frequency_response_chart_destroy(chart);
+}
+
+TEST_CASE("the gutter holds every amplitude label the axis prints",
+          "[frequency_response_chart][axis]") {
+    // A proportional face, where a label's width depends on its letters.
+    const lv_font_t* font = &noto_sans_28;
+    const int32_t gutter = ui_frequency_response_chart_y_gutter_width(font);
+    // Spans of 22 per decade: their quarter steps need a decimal ("16.5m").
+    for (const float top : {0.000022f, 0.00022f, 0.0022f, 0.022f, 0.22f, 2.2f, 22.0f, 220.0f,
+                            2200.0f, 22000.0f, 220000.0f, 2.2e6f, 22e6f}) {
+        for (const bool percent : {false, true}) {
+            if (percent && top > 100.0f) {
+                continue;
+            }
+            for (const auto& label : fr_chart_amplitude_labels(0.0f, top, 4, percent)) {
+                INFO(label << " on a 0.." << top << " axis");
+                CHECK(gutter >= sample_width(font, label.c_str()));
+            }
+        }
+    }
 }
 
 TEST_CASE("amplitude labels are distinct and compact", "[frequency_response_chart][axis]") {

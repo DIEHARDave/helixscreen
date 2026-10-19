@@ -128,6 +128,15 @@ struct InputShaperPanelTestAccess {
     static void set_parent_screen(InputShaperPanel& p, lv_obj_t* screen) {
         p.parent_screen_ = screen;
     }
+
+    /// An axis's results chart and its raw PSD series.
+    static ui_frequency_response_chart_t* results_chart(const InputShaperPanel& p, char axis) {
+        return axis == 'X' ? p.x_chart_.chart : p.y_chart_.chart;
+    }
+
+    static int raw_series_id(const InputShaperPanel& p, char axis) {
+        return axis == 'X' ? p.x_chart_.raw_series_id : p.y_chart_.raw_series_id;
+    }
 };
 
 } // namespace ui

@@ -1014,3 +1014,16 @@ TEST_CASE_METHOD(WizardPreviewFixture, "the wizard step streams nothing where it
     REQUIRE(done);
     CHECK(log_.created == 0);
 }
+
+TEST_CASE_METHOD(WizardPreviewFixture, "a sweep error stops the wizard's stream",
+                 "[wizard][input_shaper][preview]") {
+    start();
+    REQUIRE(run_until([&] { return has_chart() == 1; }));
+    REQUIRE(log_.stopped == 0);
+    REQUIRE(lv_subject_get_int(step_->get_active_subject()) == 1);
+    client_.dispatch_gcode_response("!! Move out of range: 0.000 400.000 10.000 [0.000]");
+    REQUIRE(run_until([&] { return lv_subject_get_int(step_->get_active_subject()) == 0; }));
+    CHECK(log_.stopped == log_.created);
+    CHECK(has_chart() == 0);
+    CHECK_FALSE(step_->is_calibration_complete());
+}

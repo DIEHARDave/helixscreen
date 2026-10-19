@@ -754,6 +754,8 @@ TEST_CASE("a theme toggle recolors the open chart's curves", "[belt][panel][char
     const uint32_t a = rgb(fx.panel_series_id(0));
     const uint32_t ghost_a = rgb(fx.panel_ghost_id(0));
     const uint32_t b = rgb(fx.panel_series_id(1));
+    const uint32_t live_a = rgb(fx.panel_preview_series_id(0));
+    const uint32_t live_b = rgb(fx.panel_preview_series_id(1));
     theme_manager_toggle_dark_mode();
     UpdateQueue::instance().drain();
 
@@ -761,6 +763,8 @@ TEST_CASE("a theme toggle recolors the open chart's curves", "[belt][panel][char
     CHECK(a == want_a);
     CHECK(ghost_a == want_a);
     CHECK(b == want_b);
+    CHECK(live_a == want_a);
+    CHECK(live_b == want_b);
 
     // Axis labels repaint in the new mode's text_muted.
     REQUIRE(muted_after != muted_before);
@@ -2717,11 +2721,13 @@ TEST_CASE("destroying the UI drops every chart host and the tuning ghosts",
     REQUIRE(fx.panel_chart_host_tuning() != nullptr);
     REQUIRE(fx.panel_tune_ghost_id(0, 0) >= 0);
     REQUIRE(fx.panel_tune_ghost_id(1, 1) >= 0);
+    REQUIRE(fx.panel_preview_series_id(0) >= 0);
 
     fx.panel().on_ui_destroyed();
     CHECK(fx.panel_chart() == nullptr);
     CHECK(fx.panel_chart_host_tuning() == nullptr);
     for (int path = 0; path < 2; ++path) {
+        CHECK(fx.panel_preview_series_id(path) == -1);
         for (int k = 0; k < 2; ++k) {
             CHECK(fx.panel_tune_ghost_id(path, k) == -1);
         }
@@ -3569,6 +3575,38 @@ TEST_CASE("a full check draws each path live until its CSV lands", "[belt][panel
     CHECK(fx.panel_run(0).has);
     CHECK(log.stopped >= 1);
     CHECK(log.accel_chip == "adxl345");
+}
+
+TEST_CASE("a calibration turn drops its previews once its sweeps are in",
+          "[belt][panel][preview][tune]") {
+    BeltPanelFixture fx;
+    get_printer_state().set_printer_type_sync("Voron 2.4");
+    fx.mock().set_belt_tune_script('B', {98.3f, 104.0f});
+    enter_tuning(fx);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
+    auto& log = fx.source_log();
+    const int before = log.created;
+
+    fx.panel().handle_tune_measure_clicked();
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseSweeping);
+    REQUIRE(pump_until_created(fx, before + 1));
+    auto* chart = fx.panel_chart();
+    REQUIRE(chart != nullptr);
+    const auto [lo, hi] = ui_frequency_response_chart_get_freq_range(chart);
+    const int live_a = fx.panel_preview_series_id(0);
+    fx.panel_preview_points(BeltPath::PATH_A, ramp_points(static_cast<int>(std::ceil(lo)),
+                                                          static_cast<int>(std::floor(hi))));
+    REQUIRE(series_visible(fx, live_a));
+
+    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping; t += 100) {
+        fx.pump_ms(100);
+    }
+    // The first turn does not register: the calibration stays open, and the
+    // finished turn's preview is gone.
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
+    CHECK_FALSE(series_visible(fx, live_a));
+    CHECK_FALSE(series_visible(fx, fx.panel_preview_series_id(1)));
+    CHECK(log.stopped == log.created);
 }
 
 TEST_CASE("a tuning round keeps each preview until the round is in",

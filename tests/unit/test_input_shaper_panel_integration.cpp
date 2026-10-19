@@ -795,3 +795,86 @@ TEST_CASE_METHOD(InputShaperPreviewFixture,
     CHECK(chart().chart() == nullptr);
     CHECK(lv_obj_find_by_name(view_, "chart_container_measuring") != nullptr);
 }
+
+#include "moonraker_api_mock.h"
+
+TEST_CASE_METHOD(InputShaperPreviewFixture,
+                 "opening the panel asks the printer for klippy's socket",
+                 "[input_shaper][panel][preview]") {
+    // Nothing seeds the facts: the panel learns them from the mock printer.
+    ispta::InputShaperPanelTestAccess::set_preview_facts(*panel_, LiveSweepFacts{});
+    MoonrakerAPIMock mock_api(mock_client_, printer_state_);
+    panel_->set_api(&mock_client_, &mock_api);
+    panel_->on_activate();
+    helix::ui::UpdateQueue::instance().drain();
+
+    panel_->handle_calibrate_x_clicked();
+    const bool streamed = run_until([&] { return log_.created == 1; });
+    CHECK(log_.accel_chip == "adxl345");
+    const bool finished = run_until([&] { return panel_state() == 2; });
+    panel_->set_api(&mock_client_, api_.get());
+    CHECK(streamed);
+    CHECK(finished);
+}
+
+TEST_CASE_METHOD(InputShaperPreviewFixture, "dropping the panel's subjects stops the live stream",
+                 "[input_shaper][panel][preview]") {
+    panel_->handle_calibrate_x_clicked();
+    REQUIRE(run_until([&] { return log_.created == 1 && log_.last != nullptr; }));
+    REQUIRE(log_.stopped == 0);
+    panel_->deinit_subjects();
+    CHECK(log_.stopped == log_.created);
+    panel_->init_subjects();
+}
+
+TEST_CASE_METHOD(InputShaperPreviewFixture, "cleanup frees the live chart and stops its stream",
+                 "[input_shaper][panel][preview]") {
+    panel_->handle_calibrate_x_clicked();
+    REQUIRE(run_until([&] { return subject_int("is_measuring_has_chart") == 1; }));
+    REQUIRE(chart().chart() != nullptr);
+    panel_->cleanup();
+    CHECK(chart().chart() == nullptr);
+    CHECK(log_.stopped == log_.created);
+    CHECK(subject_int("is_measuring_has_chart") == 0);
+}
+
+TEST_CASE_METHOD(InputShaperPreviewFixture, "a sweep error stops the live stream",
+                 "[input_shaper][panel][preview]") {
+    panel_->handle_calibrate_x_clicked();
+    REQUIRE(run_until([&] { return subject_int("is_measuring_has_chart") == 1; }));
+    REQUIRE(log_.stopped == 0);
+    mock_client_.dispatch_gcode_response("!! Move out of range: 0.000 400.000 10.000 [0.000]");
+    REQUIRE(run_until([&] { return panel_state() == 3; }));
+    CHECK(log_.stopped == log_.created);
+    CHECK(subject_int("is_measuring_has_chart") == 0);
+}
+
+TEST_CASE_METHOD(InputShaperPreviewFixture,
+                 "the results chart draws its raw PSD like the live curve",
+                 "[input_shaper][panel][preview]") {
+    // The results charts exist only in a created view.
+    ispta::InputShaperPanelTestAccess::set_parent_screen(*panel_, test_screen());
+    REQUIRE(panel_->rebuild());
+    view_ = panel_->get_root();
+    helix::ui::UpdateQueue::instance().drain();
+    // The rebuild's activation asked this fixture's API, which has no socket.
+    set_reachable(true);
+
+    panel_->handle_calibrate_x_clicked();
+    REQUIRE(run_until([&] { return subject_int("is_measuring_has_chart") == 1; }));
+    REQUIRE(chart().chart() != nullptr);
+    const auto live = ui_frequency_response_chart_get_series_style(chart().chart(), 0);
+    const lv_color_t live_color = ui_frequency_response_chart_get_series_color(chart().chart(), 0);
+    REQUIRE(live.fill);
+
+    REQUIRE(run_until([&] { return panel_state() == 2; }));
+    auto* results = ispta::InputShaperPanelTestAccess::results_chart(*panel_, 'X');
+    REQUIRE(results != nullptr);
+    const int raw = ispta::InputShaperPanelTestAccess::raw_series_id(*panel_, 'X');
+    REQUIRE(raw >= 0);
+    const auto style = ui_frequency_response_chart_get_series_style(results, raw);
+    CHECK(style.line_width == live.line_width);
+    CHECK(style.glow == live.glow);
+    CHECK(style.fill == live.fill);
+    CHECK(lv_color_eq(ui_frequency_response_chart_get_series_color(results, raw), live_color));
+}
