@@ -96,5 +96,5 @@ EOF
     echo "Alice Example" > CONTRIBUTORS.txt
     BUILD_DIR=build ./scripts/gen-contributors.sh
     grep -q 'kContributorCount' build/generated/contributors.h
-    grep -q 'CONTRIBUTORS\[\]' build/generated/contributors.h
+    grep -q 'kContributors\[\]' build/generated/contributors.h
 }
