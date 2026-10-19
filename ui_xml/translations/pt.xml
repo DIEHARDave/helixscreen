@@ -103,6 +103,7 @@
   <translation tag="2. Place paper between nozzle and bed" pt="2. Coloque papel entre o bico e a mesa"/>
   <translation tag="2. Results show how much to turn each screw" pt="2. Os resultados mostram quanto girar cada parafuso"/>
   <translation tag="2. Take the PEI sheet off the bed when asked" pt="2. Retire a folha PEI da mesa quando solicitado"/>
+  <translation tag="2.4 GHz only" pt="Só 2,4 GHz"/>
   <translation tag="20 minutes" pt="20 minutos"/>
   <translation tag="24 Hour" pt="24 horas"/>
   <translation tag="24-hour" pt="24 horas"/>
@@ -826,6 +827,7 @@
   <translation tag="Could not save the drying state: nothing was heated" pt="Não foi possível salvar o estado da secagem: nada foi aquecido"/>
   <translation tag="Could not save the mesh as &apos;{}&apos;: {}" pt="Não foi possível salvar a malha como &apos;{}&apos;: {}"/>
   <translation tag="Could not save the printer image tags" pt="Falha ao salvar as marcações da imagem"/>
+  <translation tag="Could not set the WiFi country" pt="Não foi possível definir o país do WiFi"/>
   <translation tag="Could not skip {}" pt="Não foi possível pular {}"/>
   <translation tag="Could not start Bluetooth discovery" pt="Não foi possível iniciar a descoberta Bluetooth"/>
   <translation tag="Could not turn the heaters off" pt="Não foi possível desligar os aquecedores"/>
@@ -839,6 +841,7 @@
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" pt="Não foi possível salvar o mapa de gates da impressora"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." pt="Não foi possível salvar no Spoolman. Nada foi alterado nesta impressora."/>
   <translation tag="Couldn&apos;t set the backup" pt="Não foi possível definir a reserva"/>
+  <translation tag="Country" pt="País"/>
   <translation tag="Cover open" pt="Tampa aberta"/>
   <translation tag="Crash Report" pt="Relatório de Falha"/>
   <translation tag="Crash report sent — thank you!" pt="Relatório de erro enviado — obrigado!"/>
@@ -2191,6 +2194,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." pt="Não há espaço suficiente para este widget. Reorganize ou remova widgets para criar espaço."/>
   <translation tag="Not in your spools? Set it up" pt="Não está nos seus carretéis? Configure aqui"/>
   <translation tag="Not now" pt="Agora não"/>
+  <translation tag="Not set" pt="Não definido"/>
   <translation tag="Not yet available on this display" pt="Ainda não disponível neste display"/>
   <translation tag="Not yet calibrated" pt="Ainda não calibrado"/>
   <translation tag="Notes" pt="Notas"/>

@@ -18,6 +18,7 @@
 #include "ui_timer_guard.h"
 
 #include "async_lifetime_guard.h"
+#include "wifi_backend.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -51,6 +52,15 @@ enum class LinkEvent { None, Disconnected, Reconnected, FrequencyChanged, RssiDr
 /// nullopt when there is no such row: another interface's numbers are never substituted.
 std::optional<WirelessProcStats> parse_proc_net_wireless(std::string_view text,
                                                          std::string_view iface = {});
+
+/// The sample one status read makes. @p proc_net_wireless is the table's text,
+/// read only while connected. nullopt when WiFi control did not answer: the
+/// status then holds the last answer it gave, and recording it would log a
+/// stale link as current.
+std::optional<LinkSample> link_sample_from_status(const WifiBackend::ConnectionStatus& status,
+                                                  int64_t uptime_s,
+                                                  std::string_view proc_net_wireless,
+                                                  std::string_view netdev);
 
 /// 802.11 channel number for a center frequency, 0 when not a WiFi channel.
 int wifi_channel_from_frequency(int frequency_mhz);

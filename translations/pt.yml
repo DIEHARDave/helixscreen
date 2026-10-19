@@ -107,6 +107,7 @@ translations:
   2. Results show how much to turn each screw: 2. Os resultados mostram quanto girar
     cada parafuso
   2. Take the PEI sheet off the bed when asked: 2. Retire a folha PEI da mesa quando solicitado
+  2.4 GHz only: Só 2,4 GHz
   20 minutes: 20 minutos
   24 Hour: 24 horas
   24-hour: 24 horas
@@ -926,6 +927,7 @@ translations:
 
   "Could not save the mesh as '{}': {}": "Não foi possível salvar a malha como '{}': {}"
   Could not save the printer image tags: Falha ao salvar as marcações da imagem
+  Could not set the WiFi country: Não foi possível definir o país do WiFi
   Could not skip {}: 'Não foi possível pular {}'
   Could not start Bluetooth discovery: Não foi possível iniciar a descoberta Bluetooth
   Could not update filaments: Não foi possível atualizar os filamentos
@@ -939,6 +941,7 @@ translations:
   Couldn't save the printer's gate map: Não foi possível salvar o mapa de gates da impressora
   Couldn't save to Spoolman. Nothing changed on this printer.: Não foi possível salvar no Spoolman. Nada foi alterado nesta impressora.
   Couldn't set the backup: Não foi possível definir a reserva
+  Country: País
   Cover open: Tampa aberta
   Crash Report: Relatório de Falha
   Crash report sent — thank you!: Relatório de erro enviado — obrigado!
@@ -2413,6 +2416,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Não há espaço suficiente para este widget. Reorganize ou remova widgets para criar espaço.
   Not in your spools? Set it up: Não está nos seus carretéis? Configure aqui
   Not now: Agora não
+  Not set: Não definido
   Not yet available on this display: 'Ainda não disponível neste display'
   Not yet calibrated: Ainda não calibrado
   Notes: Notas

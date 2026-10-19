@@ -249,6 +249,11 @@ class WifiBackendWpaSupplicant : public WifiBackend, private hv::EventLoopThread
     bool supports_forget() const override {
         return true;
     }
+    bool supports_country() const override {
+        return true;
+    }
+    WiFiError get_country(std::string& code) override;
+    WiFiError set_country(const std::string& code) override;
 
   private:
     // ========================================================================

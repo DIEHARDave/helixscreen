@@ -8,16 +8,21 @@
 #include "helix_thread.h"
 #include "safe_log.h"
 #include "spdlog/spdlog.h"
+#include "wifi_country.h"
 #include "wifi_saved_config.h"
 
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
 
 WifiBackendMock::WifiBackendMock()
     : running_(false), connected_(false), connected_signal_(0),
       rng_(static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count())) {
     spdlog::debug("[WifiBackend] Mock backend initialized");
     init_mock_networks();
+    if (const char* country = std::getenv("HELIX_MOCK_WIFI_COUNTRY")) {
+        country_ = helix::wifi::country::normalize(country);
+    }
 }
 
 WifiBackendMock::~WifiBackendMock() {
@@ -413,6 +418,38 @@ bool WifiBackendMock::supports_5ghz() const {
 
 std::optional<helix::wifi::WifiInterface> WifiBackendMock::resolved_interface() const {
     return resolved_interface_;
+}
+
+WiFiError WifiBackendMock::get_country(std::string& code) {
+    std::lock_guard<std::mutex> lock(country_mutex_);
+    code = country_;
+    return WiFiErrorHelper::success();
+}
+
+WiFiError WifiBackendMock::set_country(const std::string& code) {
+    const std::string clean = helix::wifi::country::normalize(code);
+    if (clean.empty()) {
+        return WiFiError(WiFiResult::INVALID_PARAMETERS, "Not an ISO 3166-1 alpha-2 country");
+    }
+    {
+        std::lock_guard<std::mutex> lock(country_mutex_);
+        country_ = clean;
+        ++set_country_calls_;
+    }
+    spdlog::info("[WifiBackend] Mock: Country set to {}", clean);
+    dispatch_event("REGDOM_CHANGE",
+                   "<3>CTRL-EVENT-REGDOM-CHANGE init=USER type=COUNTRY alpha2=" + clean);
+    return WiFiErrorHelper::success();
+}
+
+void WifiBackendMock::set_country_for_test(const std::string& code) {
+    std::lock_guard<std::mutex> lock(country_mutex_);
+    country_ = code;
+}
+
+int WifiBackendMock::set_country_calls() const {
+    std::lock_guard<std::mutex> lock(country_mutex_);
+    return set_country_calls_;
 }
 
 // ============================================================================

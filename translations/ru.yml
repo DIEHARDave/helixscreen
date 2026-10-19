@@ -151,6 +151,7 @@ translations:
   2. Results show how much to turn each screw: 2. Результаты покажут, насколько повернуть
     каждый винт
   2. Take the PEI sheet off the bed when asked: 2. Снимите лист PEI со стола, когда появится запрос
+  2.4 GHz only: Только 2,4 ГГц
   20 minutes: 20 минут
   24 Hour: 24 часа
   24-hour: 24-часовой
@@ -969,6 +970,7 @@ translations:
 
   "Could not save the mesh as '{}': {}": "Не удалось сохранить сетку как '{}': {}"
   Could not save the printer image tags: Не удалось сохранить отметки изображения
+  Could not set the WiFi country: Не удалось задать страну WiFi
   Could not skip {}: 'Не удалось пропустить {}'
   Could not start Bluetooth discovery: Не удалось запустить поиск Bluetooth
   Could not update filaments: Не удалось обновить филаменты
@@ -982,6 +984,7 @@ translations:
   Couldn't save the printer's gate map: Не удалось сохранить карту шлюзов принтера
   Couldn't save to Spoolman. Nothing changed on this printer.: Не удалось сохранить в Spoolman. На этом принтере ничего не изменено.
   Couldn't set the backup: Не удалось задать резерв
+  Country: Страна
   Cover open: Крышка открыта
   Crash Report: Отчёт о сбое
   Crash report sent — thank you!: Отчёт об ошибке отправлен — спасибо!
@@ -2450,6 +2453,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Недостаточно места для этого виджета. Измените раскладку или удалите виджеты, чтобы освободить место.
   Not in your spools? Set it up: Нет в ваших катушках? Настроить
   Not now: Не сейчас
+  Not set: Не задана
   Not yet available on this display: 'Пока недоступно на этом дисплее'
   Not yet calibrated: Ещё не откалибровано
   Notes: Заметки

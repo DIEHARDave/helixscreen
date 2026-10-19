@@ -281,6 +281,44 @@ class WiFiManager {
     bool supports_radio_toggle();
 
     // ========================================================================
+    // Regulatory Country
+    // ========================================================================
+
+    /// The one toast every WiFi action shows when control is not answering,
+    /// in place of that action's own failure toast. LVGL thread.
+    static void notify_unresponsive();
+
+    /// Whether the backend can read and set the radio's regulatory country.
+    bool supports_country();
+
+    struct CountryState {
+        bool read_ok = false; ///< The radio answered; false keeps `system` empty
+        std::string system;   ///< What the radio reports ("" = world)
+        std::string stored;   ///< The saved choice ("" = never chosen)
+        std::string display;  ///< What the UI shows as current (country::plan())
+    };
+
+    /**
+     * @brief Read the radio's country on the control lane
+     *
+     * @p on_done runs on the LVGL thread, and only while @p token lives.
+     * A backend without country support answers at once with read_ok false.
+     */
+    void get_country_async(helix::LifetimeToken token,
+                           std::function<void(const CountryState&)> on_done);
+
+    /**
+     * @brief Save the user's country choice and apply it to the radio
+     *
+     * LVGL thread. @p code "" clears the saved choice and leaves the radio as
+     * it is, so the device's own configuration governs it again. A non-empty
+     * code is saved even when the radio refuses it, and reapplied at the next
+     * start. @p on_done(success) runs on the LVGL thread while @p token lives.
+     */
+    void set_country_async(const std::string& code, helix::LifetimeToken token,
+                           std::function<void(bool success)> on_done);
+
+    // ========================================================================
     // Hardware Detection (Legacy Compatibility)
     // ========================================================================
 
@@ -492,6 +530,12 @@ class WiFiManager {
     void handle_disconnected(const std::string& event_data);
     void handle_auth_failed(const std::string& event_data);
     void handle_init_failed(bool silent, const std::string& msg);
+    // LVGL thread: logs the change and rescans while a scan session is open,
+    // since the new domain can enable channels the last scan could not use.
+    void handle_regdom_change(const std::string& event_data);
+    // LVGL thread, once the backend is READY: sends the saved country when the
+    // radio disagrees with it. With nothing saved the radio is left alone.
+    void apply_stored_country();
 
     // Registers SCAN_COMPLETE/CONNECTED/DISCONNECTED/AUTH_FAILED/INIT_FAILED/READY
     // handlers on the current backend_. Called once from the constructor and
@@ -650,7 +694,6 @@ class WiFiManager {
     // that action's own failure toast. LVGL thread for the toast.
     static WiFiError unresponsive_error();
     static bool is_unresponsive_error(const WiFiError& error);
-    static void notify_unresponsive();
     // Runs `fn` on the LVGL thread after `ms`, unless the manager is gone by
     // then. The timer frees itself, so nothing is left for the destructor.
     void after_ms(uint32_t ms, std::function<void()> fn);

@@ -22,6 +22,7 @@
 #include "static_panel_registry.h"
 #include "system_settings_manager.h"
 #include "ui/ui_widget_helpers.h"
+#include "wifi_country.h"
 #include "wifi_manager.h"
 #include "wifi_radio_toggle.h"
 #include "wifi_ui_utils.h"
@@ -141,6 +142,7 @@ NetworkSettingsOverlay::~NetworkSettingsOverlay() {
     overlay_root_ = nullptr;
     parent_screen_ = nullptr;
     networks_list_ = nullptr;
+    country_dropdown_ = nullptr;
     // NOTE: Do NOT use spdlog here - it may be destroyed during exit
 }
 
@@ -160,6 +162,8 @@ void NetworkSettingsOverlay::init_subjects() {
     UI_MANAGED_SUBJECT_INT(wifi_scanning_, 0, "wifi_scanning", subjects_);
     UI_MANAGED_SUBJECT_INT(wifi_can_forget_, 0, "wifi_can_forget", subjects_);
     UI_MANAGED_SUBJECT_INT(wifi_can_toggle_radio_, 0, "wifi_can_toggle_radio", subjects_);
+    UI_MANAGED_SUBJECT_INT(wifi_can_set_country_, 0, "wifi_can_set_country", subjects_);
+    UI_MANAGED_SUBJECT_INT(wifi_country_index_, 0, "wifi_country_index", subjects_);
     UI_MANAGED_SUBJECT_INT(wifi_unresponsive_, 0, "wifi_unresponsive", subjects_);
 
     // WiFi string subjects
@@ -213,6 +217,8 @@ void NetworkSettingsOverlay::register_callbacks() {
         // Scoped name: the XML callback namespace is flat and other overlays have forget flows.
         {"on_network_settings_forget",
          [](lv_event_t*) { get_network_settings_overlay().handle_network_settings_forget(); }},
+        {"on_network_settings_country_changed",
+         [](lv_event_t* e) { get_network_settings_overlay().handle_country_changed(e); }},
         // Network test modal
         {"on_network_test_close",
          [](lv_event_t*) { get_network_settings_overlay().handle_network_test_close(); }},
@@ -250,6 +256,15 @@ lv_obj_t* NetworkSettingsOverlay::create(lv_obj_t* parent_screen) {
     networks_list_ = helix::ui::find_required(overlay_root_, "networks_list", get_name());
     if (!networks_list_) {
         return nullptr;
+    }
+
+    // Country options are data: 249 ISO 3166 entries behind a "Not set" row.
+    country_dropdown_ =
+        helix::ui::find_required(overlay_root_, "wifi_country_dropdown", get_name());
+    if (country_dropdown_) {
+        const std::string options = helix::wifi::country::dropdown_options(lv_tr("Not set"));
+        lv_dropdown_set_options(country_dropdown_, options.c_str());
+        show_country_choice(lv_subject_get_int(&wifi_country_index_), false);
     }
 
     // Note: Back button is wired via header_bar.xml default callback (on_header_back_clicked)
@@ -314,8 +329,10 @@ void NetworkSettingsOverlay::on_activate() {
     // Registered per activation — on_deactivate() invalidates lifetime_, so
     // a create()-time token would die at the first close and never return.
     if (wifi_manager_) {
-        wifi_manager_->add_state_observer(lifetime_.token(),
-                                          [this]() { refresh_transport_status(); });
+        wifi_manager_->add_state_observer(lifetime_.token(), [this]() {
+            refresh_transport_status();
+            refresh_country();
+        });
     }
 
     // Backend capabilities: the 2.4GHz-only indicator, and the Forget and
@@ -328,6 +345,7 @@ void NetworkSettingsOverlay::on_activate() {
         lv_subject_set_int(&wifi_can_forget_, wifi_manager_->supports_forget() ? 1 : 0);
         lv_subject_set_int(&wifi_can_toggle_radio_, wifi_manager_->supports_radio_toggle() ? 1 : 0);
     }
+    refresh_country();
 
     // Start scanning if WiFi enabled
     if (wifi_manager_ && wifi_manager_->is_enabled()) {
@@ -398,6 +416,7 @@ void NetworkSettingsOverlay::cleanup() {
 
     parent_screen_ = nullptr;
     networks_list_ = nullptr;
+    country_dropdown_ = nullptr;
 
     current_ssid_[0] = '\0';
     current_network_is_secured_ = false;
@@ -413,6 +432,55 @@ void NetworkSettingsOverlay::refresh_transport_status() {
     update_wifi_status();
     update_ethernet_status();
     update_any_network_connected();
+}
+
+void NetworkSettingsOverlay::refresh_country() {
+    const bool supported = wifi_manager_ && wifi_manager_->supports_country();
+    lv_subject_set_int(&wifi_can_set_country_, supported ? 1 : 0);
+    if (!supported) {
+        return;
+    }
+    wifi_manager_->get_country_async(
+        lifetime_.token(), [this](const WiFiManager::CountryState& state) {
+            const int index = helix::wifi::country::dropdown_index(state.display);
+            lv_subject_set_int(&wifi_country_index_, index);
+            // The hint follows the radio, not the saved choice: a saved
+            // country the radio refused still leaves 5 GHz scanning off.
+            const std::string& effective = state.read_ok ? state.system : state.stored;
+            country_hint_5ghz_ = wifi_manager_ && helix::wifi::country::should_hint_5ghz(
+                                                      wifi_manager_->supports_5ghz(), effective);
+            show_country_choice(index, country_hint_5ghz_);
+        });
+}
+
+void NetworkSettingsOverlay::show_country_choice(int index, bool hint_5ghz) {
+    if (!country_dropdown_) {
+        return;
+    }
+    // The closed dropdown shows the code alone, which fits the narrowest
+    // card; the open list carries the names. Unset on a 5 GHz radio, it says
+    // what that costs.
+    if (index == 0) {
+        country_button_text_ = hint_5ghz ? lv_tr("2.4 GHz only") : lv_tr("Not set");
+    } else {
+        country_button_text_ = helix::wifi::country::code_at_dropdown_index(index);
+    }
+    // lv_dropdown keeps the pointer, so the text lives in a member.
+    lv_dropdown_set_text(country_dropdown_, country_button_text_.c_str());
+}
+
+void NetworkSettingsOverlay::handle_country_changed(lv_event_t* e) {
+    if (!wifi_manager_) {
+        return;
+    }
+    auto* dropdown = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    const std::string code = helix::wifi::country::code_at_dropdown_index(
+        static_cast<int>(lv_dropdown_get_selected(dropdown)));
+    spdlog::info("[{}] WiFi country selected: {}", get_name(), code.empty() ? "not set" : code);
+    show_country_choice(helix::wifi::country::dropdown_index(code), country_hint_5ghz_);
+    // A set that reaches the radio refreshes through REGDOM_CHANGE; a clear
+    // or a refusal does not, so refresh here too.
+    wifi_manager_->set_country_async(code, lifetime_.token(), [this](bool) { refresh_country(); });
 }
 
 void NetworkSettingsOverlay::update_wifi_status() {
@@ -1396,6 +1464,12 @@ void NetworkSettingsOverlay::handle_network_settings_forget() {
         [this, gen = status_generation_](const WifiBackend::ConnectionStatus& status) {
             forget_read_pending_ = false;
             if (gen != status_generation_) {
+                return;
+            }
+            // A stalled lane answers from a cache that may not know the
+            // network's name; say why nothing happens instead of doing nothing.
+            if (status.ssid.empty() && status.unresponsive) {
+                WiFiManager::notify_unresponsive();
                 return;
             }
             confirm_forget(status.ssid);

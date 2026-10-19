@@ -15,14 +15,18 @@
 
 #include "text_io.h"
 #include "wifi_5ghz_detection.h"
+#include "wifi_country.h"
 
 #include <algorithm>
+#include <array>
 #include <cerrno>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
 #include <sstream>
 #include <sys/wait.h>
+#include <thread>
 #include <unistd.h>
 #include <unordered_map>
 
@@ -980,6 +984,95 @@ WiFiError WifiBackendNetworkManager::set_radio_enabled(bool on) {
 
 bool WifiBackendNetworkManager::is_radio_enabled() const {
     return radio_enabled_.load();
+}
+
+// ============================================================================
+// Regulatory Country
+// ============================================================================
+
+namespace {
+
+const char* find_iw() {
+    for (const char* path : {"/usr/sbin/iw", "/sbin/iw", "/usr/bin/iw", "/bin/iw"}) {
+        if (access(path, X_OK) == 0) {
+            return path;
+        }
+    }
+    return nullptr;
+}
+
+/// Runs `iw <args>`; @p args is a fixed verb plus at most a validated
+/// two-letter code, so the shell sees nothing a caller typed.
+std::string exec_iw(const char* iw, const std::string& args, int& exit_code) {
+    const std::string cmd = std::string(iw) + " " + args + " 2>/dev/null";
+    exit_code = -1;
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) {
+        return {};
+    }
+    std::string out;
+    std::array<char, 512> buffer;
+    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+        out += buffer.data();
+    }
+    const int ret = pclose(pipe);
+    exit_code = WIFEXITED(ret) ? WEXITSTATUS(ret) : -1;
+    return out;
+}
+
+} // namespace
+
+bool WifiBackendNetworkManager::supports_country() const {
+    return find_iw() != nullptr;
+}
+
+WiFiError WifiBackendNetworkManager::get_country(std::string& code) {
+    code.clear();
+    const char* iw = find_iw();
+    if (!iw) {
+        return WiFiError(WiFiResult::NOT_SUPPORTED, "iw not installed");
+    }
+    int exit_code = -1;
+    const std::string out = exec_iw(iw, "reg get", exit_code);
+    if (exit_code != 0) {
+        return WiFiError(WiFiResult::BACKEND_ERROR,
+                         "iw reg get exited " + std::to_string(exit_code));
+    }
+    code = helix::wifi::country::parse_iw_reg_get(out);
+    return WiFiErrorHelper::success();
+}
+
+WiFiError WifiBackendNetworkManager::set_country(const std::string& code) {
+    const std::string clean = helix::wifi::country::normalize(code);
+    if (clean.empty()) {
+        return WiFiError(WiFiResult::INVALID_PARAMETERS, "Not an ISO 3166-1 alpha-2 country");
+    }
+    const char* iw = find_iw();
+    if (!iw) {
+        return WiFiError(WiFiResult::NOT_SUPPORTED, "iw not installed");
+    }
+    int exit_code = -1;
+    exec_iw(iw, "reg set " + clean, exit_code);
+    if (exit_code != 0) {
+        // iw reg set needs CAP_NET_ADMIN; without it the kernel refuses.
+        return WiFiError(WiFiResult::PERMISSION_DENIED,
+                         "iw reg set " + clean + " exited " + std::to_string(exit_code));
+    }
+    // The kernel applies the request asynchronously; read it back before
+    // reporting success, as set_radio_enabled() does.
+    constexpr int kReadbackAttempts = 5;
+    std::string now;
+    for (int i = 0; i < kReadbackAttempts; ++i) {
+        if (get_country(now).success() && now == clean) {
+            spdlog::info("[WifiBackend] NM: Country set to {}", clean);
+            request_status_refresh();
+            fire_event("REGDOM_CHANGE", "alpha2=" + clean);
+            return WiFiErrorHelper::success();
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+    return WiFiError(WiFiResult::BACKEND_ERROR,
+                     "Regulatory domain still '" + now + "' after iw reg set " + clean);
 }
 
 // ============================================================================

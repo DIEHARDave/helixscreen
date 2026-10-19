@@ -103,6 +103,7 @@
   <translation tag="2. Place paper between nozzle and bed" it="2. Posizionare carta tra ugello e piano"/>
   <translation tag="2. Results show how much to turn each screw" it="2. I risultati mostrano quanto girare ogni vite"/>
   <translation tag="2. Take the PEI sheet off the bed when asked" it="2. Rimuovi il foglio PEI dal piatto quando richiesto"/>
+  <translation tag="2.4 GHz only" it="Solo 2,4 GHz"/>
   <translation tag="20 minutes" it="20 minuti"/>
   <translation tag="24 Hour" it="24 ore"/>
   <translation tag="24-hour" it="24 ore"/>
@@ -826,6 +827,7 @@
   <translation tag="Could not save the drying state: nothing was heated" it="Impossibile salvare lo stato dell&apos;essiccazione: non è stato riscaldato nulla"/>
   <translation tag="Could not save the mesh as &apos;{}&apos;: {}" it="Impossibile salvare la mesh come &apos;{}&apos;: {}"/>
   <translation tag="Could not save the printer image tags" it="Impossibile salvare i contrassegni dell&apos;immagine"/>
+  <translation tag="Could not set the WiFi country" it="Impossibile impostare il paese del WiFi"/>
   <translation tag="Could not skip {}" it="Impossibile saltare {}"/>
   <translation tag="Could not start Bluetooth discovery" it="Impossibile avviare la ricerca Bluetooth"/>
   <translation tag="Could not turn the heaters off" it="Impossibile spegnere i riscaldatori"/>
@@ -839,6 +841,7 @@
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" it="Impossibile salvare la mappa dei gate della stampante"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." it="Impossibile salvare su Spoolman. Nulla è stato modificato su questa stampante."/>
   <translation tag="Couldn&apos;t set the backup" it="Impossibile impostare la riserva"/>
+  <translation tag="Country" it="Paese"/>
   <translation tag="Cover open" it="Coperchio aperto"/>
   <translation tag="Crash Report" it="Rapporto di crash"/>
   <translation tag="Crash report sent — thank you!" it="Report crash inviato — grazie!"/>
@@ -2191,6 +2194,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." it="Non c&apos;è abbastanza spazio per questo widget. Riorganizza o rimuovi widget per fare spazio."/>
   <translation tag="Not in your spools? Set it up" it="Non è tra le tue bobine? Configuralo"/>
   <translation tag="Not now" it="Non ora"/>
+  <translation tag="Not set" it="Non impostato"/>
   <translation tag="Not yet available on this display" it="Non ancora disponibile su questo display"/>
   <translation tag="Not yet calibrated" it="Non ancora calibrato"/>
   <translation tag="Notes" it="Note"/>

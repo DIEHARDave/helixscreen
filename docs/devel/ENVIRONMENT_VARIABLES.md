@@ -1198,6 +1198,24 @@ device deployment should ever need it.
 | **Default** | Unset — the real `/sys/class/net` |
 | **File** | `src/api/wifi_backend_wpa_supplicant.cpp` |
 
+### `HELIX_WPA_PROC_ROOT`
+
+Override the process table the wpa backend scans for a running
+`wpa_supplicant` (its `-O`, `-c` and `-i` arguments).
+
+Each `start()` walks every PID's `cmdline` several times. On a device that is
+a few hundred files; on a host carrying tens of thousands of processes, such as
+a container that never reaps its zombies, it is seconds, and `start()` gives
+initialization 5 s. The fake-supplicant unit tests
+(`tests/test_helpers/wpa_fake_supplicant.h`) pin it to an empty directory so
+their timing does not depend on the host. No device deployment should need it.
+
+| Property | Value |
+|----------|-------|
+| **Values** | Absolute directory path to use in place of `/proc` |
+| **Default** | Unset — the real `/proc` |
+| **File** | `src/api/wifi_backend_wpa_supplicant.cpp` |
+
 ### `HELIX_NETD_SOCKET`
 
 Override the control socket of the printer's network daemon (`netd`, the

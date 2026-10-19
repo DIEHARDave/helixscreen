@@ -105,6 +105,7 @@ translations:
   2. Place paper between nozzle and bed: 2. ノズルとベッドの間に紙を置いてください
   2. Results show how much to turn each screw: 2. 各ネジをどれだけ回すか結果が表示されます
   2. Take the PEI sheet off the bed when asked: 2. 指示が出たらPEIシートをベッドから取り外します
+  2.4 GHz only: 2.4 GHz のみ
   20 minutes: 20分
   24 Hour: 24時間
   24-hour: 24時間制
@@ -858,6 +859,7 @@ translations:
 
   "Could not save the mesh as '{}': {}": "メッシュを '{}' として保存できませんでした: {}"
   Could not save the printer image tags: プリンター画像のタグの保存に失敗しました
+  Could not set the WiFi country: WiFi の地域を設定できませんでした
   Could not skip {}: '{} をスキップできませんでした'
   Could not start Bluetooth discovery: Bluetooth の検出を開始できませんでした
   Could not update filaments: フィラメントを更新できませんでした
@@ -871,6 +873,7 @@ translations:
   Couldn't save the printer's gate map: プリンターのゲートマップを保存できませんでした
   Couldn't save to Spoolman. Nothing changed on this printer.: Spoolman に保存できませんでした。このプリンターでは何も変更されていません。
   Couldn't set the backup: 予備を設定できませんでした
+  Country: 地域
   Cover open: カバーが開いています
   Crash Report: クラッシュレポート
   Crash report sent — thank you!: クラッシュレポートを送信しました — ありがとうございます！
@@ -2277,6 +2280,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: このウィジェットを配置するスペースが足りません。スペースを確保するためにウィジェットを整理または削除してください。
   Not in your spools? Set it up: スプールにない？登録する
   Not now: 後で
+  Not set: 未設定
   Not yet available on this display: 'このディスプレイではまだ利用できません'
   Not yet calibrated: 未キャリブレーション
   Notes: メモ

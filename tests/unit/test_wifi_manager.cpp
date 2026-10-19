@@ -3,6 +3,7 @@
 
 #include "../../include/async_lifetime_guard.h"
 #include "../../include/config.h"
+#include "../../include/http_executor.h"
 #include "../../include/runtime_config.h"
 #include "../../include/system_settings_manager.h"
 #include "../../include/ui_update_queue.h"
@@ -19,8 +20,10 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <mutex>
 #include <optional>
 #include <thread>
+#include <vector>
 
 #include "../catch_amalgamated.hpp"
 
@@ -1455,5 +1458,89 @@ TEST_CASE("READY leaves the stored WiFi setting alone when the backend cannot to
 
     SystemSettingsManager::instance().set_wifi_enabled(true);
     SystemSettingsManager::instance().deinit_subjects();
+    WiFiManagerTestAccess::reset_sys_root();
+}
+
+namespace {
+
+/// Records the thread every set_radio_enabled() ran on.
+class RadioThreadBackend : public WifiBackendMock {
+  public:
+    WiFiError set_radio_enabled(bool on) override {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            callers_.push_back(std::this_thread::get_id());
+        }
+        return WifiBackendMock::set_radio_enabled(on);
+    }
+    std::vector<std::thread::id> callers() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return callers_;
+    }
+    void clear_callers() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        callers_.clear();
+    }
+
+  private:
+    std::mutex mutex_;
+    std::vector<std::thread::id> callers_;
+};
+
+} // namespace
+
+// Each branch of the READY reassert that moves the radio sends the change down
+// the control lane: on a wedged driver a radio call blocks for seconds, and the
+// LVGL thread must never be the one waiting.
+TEST_CASE("READY's radio reassert runs on the control lane, never the LVGL thread",
+          "[wifi][manager][radio][persistence][wifi_control_lane]") {
+    http::HttpExecutor::fast().start();
+    Config::get_instance();
+    SystemSettingsManager::instance().init_subjects();
+    SysFixture sys;
+    WiFiManagerTestAccess::set_sys_root(sys.sys_root());
+
+    auto backend = std::make_unique<RadioThreadBackend>();
+    RadioThreadBackend* raw = backend.get();
+    helix::wifi::WifiInterface iface;
+    iface.netdev = "wlan0";
+    raw->set_resolved_interface_for_test(iface);
+    bool want_radio_on = false;
+
+    SECTION("stored off, wired path up: the radio goes off") {
+        SystemSettingsManager::instance().set_wifi_enabled(false);
+        sys.write_up("eth0");
+        want_radio_on = false;
+    }
+    SECTION("stored off, no wired path, radio blocked: the radio comes back on") {
+        Config::get_instance()->set_wifi_expected(true);
+        SystemSettingsManager::instance().set_wifi_enabled(false);
+        raw->set_radio_enabled(false);
+        want_radio_on = true;
+    }
+    SECTION("stored on, radio blocked: the stale block is cleared") {
+        Config::get_instance()->set_wifi_expected(true);
+        SystemSettingsManager::instance().set_wifi_enabled(true);
+        raw->set_radio_enabled(false);
+        want_radio_on = true;
+    }
+    raw->clear_callers();
+
+    const auto main_thread = std::this_thread::get_id();
+    {
+        auto manager = std::make_shared<WiFiManager>(std::move(backend));
+        manager->init_self_reference(manager);
+        REQUIRE(WiFiManagerTestAccess::settle(*manager));
+
+        CHECK(raw->is_radio_enabled() == want_radio_on);
+        const auto callers = raw->callers();
+        REQUIRE(callers.size() == 1);
+        CHECK(callers.front() != main_thread);
+    }
+    helix::ui::UpdateQueue::instance().drain();
+
+    SystemSettingsManager::instance().set_wifi_enabled(true);
+    SystemSettingsManager::instance().deinit_subjects();
+    Config::get_instance()->set_wifi_expected(false);
     WiFiManagerTestAccess::reset_sys_root();
 }

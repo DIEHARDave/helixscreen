@@ -104,6 +104,7 @@ translations:
   2. Results show how much to turn each screw: 2. Results show how much to turn each
     screw
   2. Take the PEI sheet off the bed when asked: 2. Take the PEI sheet off the bed when asked
+  2.4 GHz only: 2.4 GHz only
   20 minutes: 20 minutes
   24 Hour: 24 Hour
   24-hour: 24-hour
@@ -895,6 +896,7 @@ translations:
   'Could not save the drying state: nothing was heated': 'Could not save the drying state: nothing was heated'
   "Could not save the mesh as '{}': {}": "Could not save the mesh as '{}': {}"
   Could not save the printer image tags: Could not save the printer image tags
+  Could not set the WiFi country: Could not set the WiFi country
   Could not skip {}: Could not skip {}
   Could not start Bluetooth discovery: Could not start Bluetooth discovery
   Could not update filaments: Could not update filaments
@@ -908,6 +910,7 @@ translations:
   Couldn't save the printer's gate map: Couldn't save the printer's gate map
   Couldn't save to Spoolman. Nothing changed on this printer.: Couldn't save to Spoolman. Nothing changed on this printer.
   Couldn't set the backup: Couldn't set the backup
+  Country: Country
   Cover open: Cover open
   Crash Report: Crash Report
   Crash report sent — thank you!: Crash report sent — thank you!
@@ -2349,6 +2352,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Not enough room for this widget. Rearrange or remove widgets to make space.
   Not in your spools? Set it up: Not in your spools? Set it up
   Not now: Not now
+  Not set: Not set
   Not yet available on this display: Not yet available on this display
   Not yet calibrated: Not yet calibrated
   Notes: Notes

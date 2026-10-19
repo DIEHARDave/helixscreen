@@ -48,6 +48,13 @@ class StallingBackend : public WifiBackendMock {
   public:
     static constexpr auto kMaxStall = std::chrono::seconds(3);
 
+    WiFiError get_scan_results(std::vector<WiFiNetwork>& networks) override {
+        if (fail_results_.load()) {
+            networks.clear();
+            return WiFiError(WiFiResult::BACKEND_ERROR, "SCAN_RESULTS failed", "");
+        }
+        return WifiBackendMock::get_scan_results(networks);
+    }
     WiFiError trigger_scan() override {
         enter(triggers_);
         if (fail_triggers_.load()) {
@@ -108,6 +115,9 @@ class StallingBackend : public WifiBackendMock {
     void fail_triggers() {
         fail_triggers_ = true;
     }
+    void fail_results() {
+        fail_results_ = true;
+    }
 
     int triggers() const {
         return triggers_.load();
@@ -152,6 +162,7 @@ class StallingBackend : public WifiBackendMock {
     std::atomic<int> status_delay_ms_{0};
     std::atomic<int> connect_delay_ms_{0};
     std::atomic<bool> fail_triggers_{false};
+    std::atomic<bool> fail_results_{false};
 };
 
 struct ControlLaneFixture : LVGLTestFixture {
@@ -584,7 +595,19 @@ TEST_CASE_METHOD(ControlLaneFixture,
     WiFiManagerTestAccess::fire_init_failed(*wm, /*silent=*/true, "init failed");
     const auto started = std::chrono::steady_clock::now();
     helix::ui::UpdateQueue::instance().drain();
-    CHECK(std::chrono::steady_clock::now() - started < std::chrono::milliseconds(500));
+    CHECK(std::chrono::steady_clock::now() - started < std::chrono::milliseconds(100));
+
+    // The swap keeps retrying while the call is stuck; no retry may wait on it.
+    auto worst = std::chrono::steady_clock::duration::zero();
+    for (int i = 0; i < 4; ++i) {
+        lv_tick_inc(150);
+        const auto t0 = std::chrono::steady_clock::now();
+        lv_timer_handler();
+        worst = std::max(worst, std::chrono::steady_clock::now() - t0);
+    }
+    CHECK(worst < std::chrono::milliseconds(100));
+    REQUIRE(dynamic_cast<WifiBackendWpaSupplicant*>(WiFiManagerTestAccess::backend(*wm)) ==
+            nullptr);
 
     // The swap happens once the call in progress returns; what was queued for
     // the failed backend is answered, not sent.
@@ -645,4 +668,102 @@ TEST_CASE_METHOD(ControlLaneFixture,
     CHECK(batched.ssid == "Home");
     CHECK(probe_answered);
     CHECK(backend->statuses() == asked + 1);
+}
+
+TEST_CASE_METHOD(ControlLaneFixture, "a periodic scan tick sends its trigger down the lane",
+                 "[wifi][wifi_control_lane]") {
+    wm->start_scan([](const std::vector<WiFiNetwork>&) {});
+    REQUIRE(wait_until([&] { return backend->triggers() == 1; }));
+    WiFiManagerTestAccess::fire_scan_complete(*wm);
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    REQUIRE(WiFiManagerTestAccess::scan_should_trigger(*wm));
+
+    WiFiManagerTestAccess::fire_scan_timer(*wm);
+    REQUIRE(wait_until([&] { return backend->triggers() == 2; }));
+    const auto callers = backend->callers();
+    REQUIRE_FALSE(callers.empty());
+    CHECK(callers.back() != main_thread);
+}
+
+TEST_CASE_METHOD(ControlLaneFixture, "a scan whose results cannot be read keeps the list shown",
+                 "[wifi][wifi_control_lane]") {
+    std::vector<size_t> deliveries;
+    wm->start_scan([&](const std::vector<WiFiNetwork>& n) { deliveries.push_back(n.size()); });
+    REQUIRE(wait_until([&] { return backend->triggers() == 1; }));
+    WiFiManagerTestAccess::fire_scan_complete(*wm);
+    REQUIRE(wait_until([&] { return deliveries.size() == 1; }));
+    const size_t shown = deliveries.front();
+    REQUIRE(shown > 0);
+
+    // The next scan completes, but SCAN_RESULTS fails: nothing new was learned.
+    backend->fail_results();
+    WiFiManagerTestAccess::fire_scan_timer(*wm);
+    REQUIRE(wait_until([&] { return backend->triggers() == 2; }));
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    WiFiManagerTestAccess::fire_scan_complete(*wm);
+    REQUIRE(wait_until([&] { return deliveries.size() == 2; }));
+    CHECK(deliveries.back() == shown);
+}
+
+TEST_CASE_METHOD(ControlLaneFixture,
+                 "a disconnect clears the cached connection unresponsive polls answer with",
+                 "[wifi][wifi_control_lane][wifi_breaker]") {
+    WiFiManagerTestAccess::set_breaker_config(*wm, {50, 3, 400, 2000});
+    backend->set_connected_state(true, "Home", "192.168.1.10", 80);
+    REQUIRE(read_status().ssid == "Home");
+
+    WiFiManagerTestAccess::fire_disconnected(*wm);
+    stall_lane_on_status_read(50);
+
+    const auto cached = read_status();
+    REQUIRE(cached.unresponsive);
+    CHECK_FALSE(cached.connected);
+    CHECK(cached.ssid.empty());
+}
+
+TEST_CASE_METHOD(ControlLaneFixture, "the wpa_supplicant fallback starts with the breaker closed",
+                 "[wifi][wifi_control_lane][wifi_breaker]") {
+    WiFiManagerTestAccess::set_breaker_config(*wm, {50, 3, 400, 2000});
+    backend->set_status_delay_ms(80);
+    for (int i = 0; i < 3; ++i) {
+        read_status();
+    }
+    REQUIRE(WiFiManagerTestAccess::breaker_open(*wm));
+    backend->set_status_delay_ms(0);
+
+    WiFiManagerTestAccess::fire_init_failed(*wm, /*silent=*/true, "init failed");
+    REQUIRE(wait_until([&] {
+        return dynamic_cast<WifiBackendWpaSupplicant*>(WiFiManagerTestAccess::backend(*wm)) !=
+               nullptr;
+    }));
+    backend = nullptr; // freed by the swap
+    CHECK_FALSE(WiFiManagerTestAccess::breaker_open(*wm));
+}
+
+TEST_CASE_METHOD(ControlLaneFixture,
+                 "a user op that finishes after its deadline still refreshes the UI",
+                 "[wifi][wifi_control_lane]") {
+    WiFiManagerTestAccess::set_user_op_timeouts(*wm, 300, 300, 60000);
+    int notified = 0;
+    WiFiManagerTestAccess::add_observer(*wm, guard.token(), [&] { notified++; });
+
+    // Radio off to start with; turning it on fires no backend event of its
+    // own, so only the manager can tell the UI it moved.
+    backend->set_radio_enabled(false);
+    helix::ui::UpdateQueue::instance().drain();
+    const int radios = backend->radios();
+
+    backend->stall();
+    std::optional<bool> radio_ok;
+    wm->set_enabled_async(true, guard.token(), [&](bool ok, bool) { radio_ok = ok; });
+    REQUIRE(wait_until([&] { return backend->radios() == radios + 1; }));
+    REQUIRE(wait_until([&] { return radio_ok.has_value(); }, 2000));
+    REQUIRE_FALSE(*radio_ok);
+    const int before = notified;
+
+    // The radio call returns after the user was told it failed: it did move.
+    backend->release();
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    CHECK(backend->is_radio_enabled());
+    CHECK(notified > before);
 }
