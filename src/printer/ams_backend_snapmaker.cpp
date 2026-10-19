@@ -13,6 +13,7 @@
 #include "app_globals.h"
 #include "batch_feed_reconcile.h"
 #include "display_numbering.h"
+#include "filament_database.h"
 #include "filament_slot_override.h"
 #include "filament_slot_override_store.h"
 #include "json_utils.h"
@@ -93,18 +94,32 @@ constexpr std::string_view kProductLineVendor = "Snapmaker";
 }
 
 // The filament families the firmware's filament table marks soft (TPU, PEBA,
-// PVA), plus TPE, which is softer than any TPU and has no row there. The
-// firmware's end-of-print macro skips a soft head, and the stock screen
-// refuses to enable unload-at-end on one.
-constexpr std::array<std::string_view, 4> kSoftFamilies = {"TPU", "TPE", "PEBA", "PVA"};
+// PVA), plus TPE, which is softer than any TPU and has no row there, and the
+// generic "Flex" names. The firmware's end-of-print macro skips a soft head,
+// and the stock screen refuses to enable unload-at-end on one.
+constexpr std::array<std::string_view, 6> kSoftFamilies = {"TPU", "TPE",  "PEBA",
+                                                           "PVA", "FLEX", "FLEXIBLE"};
+
+/// The material database's group for flexible filament.
+constexpr std::string_view kSoftCompatGroup = "TPU";
 
 /// Whether @p material is soft filament. The firmware keys its table by the
-/// exact type, so a grade it has no row for ("TPU-85A") reads rigid there;
-/// this judges the family, the text before the first '-', ' ' or '_'.
+/// exact type, so a grade it has no row for ("TPU-85A", "TPU95A") reads rigid
+/// there. This asks the material database first, then judges the family: a
+/// soft family name followed by the end or a non-letter ("PVA+", "TPU95A"),
+/// so a longer word that merely starts with one ("TPUX") stays rigid.
 [[nodiscard]] bool is_soft_material(std::string_view material) {
-    const std::string_view family = material.substr(0, material.find_first_of("- _"));
+    if (const auto info = filament::find_material(material);
+        info && info->compat_group && kSoftCompatGroup == info->compat_group) {
+        return true;
+    }
     return std::any_of(kSoftFamilies.begin(), kSoftFamilies.end(), [&](std::string_view f) {
-        return helix::text_io::equals_ignore_case(family, f);
+        if (material.size() < f.size() ||
+            !helix::text_io::equals_ignore_case(material.substr(0, f.size()), f)) {
+            return false;
+        }
+        return material.size() == f.size() ||
+               !std::isalpha(static_cast<unsigned char>(material[f.size()]));
     });
 }
 

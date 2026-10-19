@@ -249,6 +249,35 @@ TEST_CASE_METHOD(EndUnloadFixture,
     REQUIRE(SettingsManager::instance().get_end_of_print_unload_tools() == 0b1111);
 }
 
+TEST_CASE_METHOD(EndUnloadFixture,
+                 "soft grades and flexible names read soft; rigid families stay rigid",
+                 "[ams][snapmaker][actions][end_unload]") {
+    SettingsManager::instance().set_end_of_print_unload_tools(0b1111);
+    const auto enabled = [](const std::vector<std::string>& types) {
+        AmsBackendSnapmaker backend(nullptr, nullptr);
+        SnapmakerTestAccess::handle_status(
+            backend, frame({{"end_unload_filament", {false, false, false, false}},
+                            {"filament_type", types},
+                            {"filament_soft", {false, false, false, false}}}));
+        const auto actions = backend.get_device_actions();
+        std::vector<bool> out;
+        for (int t = 0; t < 4; ++t) {
+            const DeviceAction* a =
+                find_action(actions, "snapmaker_end_unload_t" + std::to_string(t));
+            REQUIRE(a != nullptr);
+            out.push_back(a->enabled);
+        }
+        return out;
+    };
+    CHECK(enabled({"TPU95A", "TPU+", "PVA+", "Flex"}) ==
+          std::vector<bool>{false, false, false, false});
+    CHECK(enabled({"flexible", "PLA", "PETG", "PA-CF"}) ==
+          std::vector<bool>{false, true, true, true});
+    // A soft family name only counts as a whole word or a grade of it.
+    CHECK(enabled({"TPUX", "PLA+", "TPE", "TPU-Soft"}) ==
+          std::vector<bool>{true, true, false, false});
+}
+
 TEST_CASE("executing a toggle emits only that field", "[ams][snapmaker][actions]") {
     HelixTestFixture fixture;
     AmsBackendSnapmaker backend(nullptr, nullptr);
