@@ -6491,6 +6491,46 @@ TEST_CASE_METHOD(SnapmakerFixture,
     CHECK(probe.asked.empty());
 }
 
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker never says a print this screen started came from outside",
+                 "[ams][snapmaker][task_config_notice]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    StickyWarnings warnings;
+    FilamentRecordHarness h("task_notice_started_here");
+    FileToolsProbe probe(h.backend, /*later_tool=*/true);
+    h.frame(used_heads({false, false, false, false}));
+
+    // A start from here whose file's tools were never read sends no used heads.
+    h.backend.note_print_start_from_here();
+    h.print("printing");
+    REQUIRE(warnings.seen.size() == 1);
+    CHECK(warnings.seen[0].find("couldn't read which toolheads") != std::string::npos);
+    CHECK(warnings.seen[0].find("outside HelixScreen") == std::string::npos);
+
+    // The mark belongs to that one print: the next, started elsewhere, is not ours.
+    h.print("complete");
+    h.print("printing");
+    REQUIRE(warnings.seen.size() == 2);
+    CHECK(warnings.seen[1].find("outside HelixScreen") != std::string::npos);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker lets a start from here lapse when no print follows",
+                 "[ams][snapmaker][task_config_notice]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    StickyWarnings warnings;
+    FilamentRecordHarness h("task_notice_lapsed");
+    FileToolsProbe probe(h.backend, /*later_tool=*/true);
+    h.frame(used_heads({false, false, false, false}));
+
+    h.backend.note_print_start_from_here();
+    SnapmakerTestAccess::age_start_from_here(h.backend, std::chrono::minutes(5));
+    h.print("printing");
+    REQUIRE(warnings.seen.size() == 1);
+    CHECK(warnings.seen[0].find("outside HelixScreen") != std::string::npos);
+}
+
 TEST_CASE("Snapmaker reads a later tool from the file's tools, weights, then palette",
           "[ams][snapmaker][task_config_notice]") {
     helix::FileStartFacts facts;

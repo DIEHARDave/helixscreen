@@ -118,7 +118,8 @@ Resume after a failed load is held as on a stock U1 (`FILAMENT_BACKEND_SNAPMAKER
 gate applies unchanged, and the engine's own `head_source[h].load_failed` (rising edge)
 marks the head's load unconfirmed too. While the engine is active Resume never loads a head
 itself (`resume_may_refeed_locked()`): the stock `AUTO_FEEDING` is not the engine's load, so
-a held head is refused with a pointer to the filament panel instead
+a held head is refused with a pointer to the filament panel instead, and so is a runout,
+which on a stock U1 refeeds
 (`src/printer/ams_backend_multiace.cpp#resume_may_refeed_locked`).
 
 An ACE head's unload ends at `preload_finish`, not `unload_finish`: multiACE's feed unload

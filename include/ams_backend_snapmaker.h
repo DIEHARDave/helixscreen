@@ -407,6 +407,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     [[nodiscard]] std::string build_preprint_gcode(const std::set<int>& tools_used,
                                                    const std::map<int, int>& remap) const override;
 
+    /// The next print to begin within kStartFromHereWindow is this screen's.
+    void note_print_start_from_here() override;
+
     /// The builder above, as a free-standing function.
     ///
     /// It reads no member state — the routing is entirely a function of its two
@@ -632,6 +635,13 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         bool material_declared = false;
     };
 
+    /// What judge_task_config_locked() found for the running print.
+    enum class TaskConfigNotice {
+        None,         ///< nothing to say
+        OtherClient,  ///< another client started it without the task setup
+        ToolsUnknown, ///< this screen started it without knowing the file's tools
+    };
+
     struct FrameEffects {
         bool changed = false;
         /// The active-tool port-present flag changed (#991): published to
@@ -664,7 +674,7 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         std::vector<std::pair<int, PendingRecordWrite>> record_flushes;
         /// The running print's task names no used head: its file is checked
         /// for a tool past the first, and the user told once.
-        bool task_config_unset = false;
+        TaskConfigNotice task_config_unset = TaskConfigNotice::None;
         std::string task_config_unset_file;
         uint32_t task_config_print = 0;
     };
@@ -944,6 +954,17 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// heads: once per print, reset when the print ends. Under mutex_.
     bool task_config_judged_ = false;
 
+    /// How long a start from this screen waits for its print to begin before
+    /// the mark lapses; print_stats reads printing as soon as the file opens.
+    static constexpr std::chrono::seconds kStartFromHereWindow{120};
+
+    /// When this screen last began a start; unset when none is waiting.
+    /// Under mutex_.
+    std::optional<std::chrono::steady_clock::time_point> start_from_here_at_;
+
+    /// The running print was started from this screen. Under mutex_.
+    bool print_started_here_ = false;
+
     /// Counts prints: bumped each time print_stats.state enters or leaves a
     /// print, so an answer about one print's file is dropped once it ends.
     /// Under mutex_.
@@ -1116,9 +1137,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// Once per print: a print running with every extruders_used flag false
     /// was started without the task setup, so the firmware neither feeds,
     /// primes nor switch-checks a head before its first use, and unloads
-    /// nothing at the end. Returns true when its file should be checked.
-    /// Caller holds mutex_.
-    [[nodiscard]] bool judge_task_config_locked();
+    /// nothing at the end. Answers whose doing that was, so its file can be
+    /// checked and the user told in words true of it. Caller holds mutex_.
+    [[nodiscard]] TaskConfigNotice judge_task_config_locked();
 
     /// Whether a file uses a tool past the first, by its scanned tools, else
     /// its per-tool weights, else its palette size. A file nothing answers
@@ -1127,7 +1148,8 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
 
     /// Check the file of print @p print for a tool past the first and warn
     /// the user when it has one and that print is still running.
-    void warn_if_unset_task_uses_later_tool(const std::string& filename, uint32_t print);
+    void warn_if_unset_task_uses_later_tool(const std::string& filename, uint32_t print,
+                                            TaskConfigNotice notice);
 
     /// On a channel whose firmware states no identity at all, drop the brand
     /// and product line the lane only remembers. Caller holds mutex_.

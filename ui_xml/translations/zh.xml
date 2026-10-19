@@ -1526,6 +1526,7 @@
   <translation tag="HelixScreen" zh="HelixScreen"/>
   <translation tag="HelixScreen Crashed" zh="HelixScreen 崩溃"/>
   <translation tag="HelixScreen Macros" zh="HelixScreen 宏"/>
+  <translation tag="HelixScreen couldn&apos;t read which toolheads this file uses, so the printer wasn&apos;t told." zh="HelixScreen 无法读取此文件使用哪些工具头，因此未告知打印机。"/>
   <translation tag="HelixScreen is detecting your display orientation" zh="HelixScreen正在检测显示屏方向"/>
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." zh="HelixScreen 将与您的耗材更换器集成，用于多料盘/多色打印操作。"/>
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." zh="HelixScreen 会将此写入 printer.cfg 并重启 Klipper。打印机将短暂断开连接。"/>

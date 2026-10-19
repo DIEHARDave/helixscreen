@@ -102,6 +102,13 @@ class SnapmakerTestAccess {
                          std::function<void(const std::string&, std::function<void(bool)>)> probe) {
         b.file_tools_probe_ = std::move(probe);
     }
+    /// Move this screen's last start mark @p by into the past.
+    static void age_start_from_here(AmsBackendSnapmaker& b, std::chrono::seconds by) {
+        std::lock_guard<std::mutex> lock(b.mutex_);
+        if (b.start_from_here_at_) {
+            *b.start_from_here_at_ -= by;
+        }
+    }
     static bool file_uses_later_tool(const FileStartFacts& facts) {
         return AmsBackendSnapmaker::file_uses_later_tool(facts);
     }

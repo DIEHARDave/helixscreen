@@ -80,6 +80,7 @@ void restart_print_from_beginning(IMoonrakerAPI* api, const std::string& filenam
     std::string prep = "SDCARD_RESET_FILE\nCANCEL_PRINT_BASE";
     if (AmsBackend* backend = AmsState::instance().get_backend();
         backend && backend->requires_preprint_send()) {
+        backend->note_print_start_from_here();
         if (const std::string prefs = backend->build_preprint_gcode({}, {}); !prefs.empty())
             prep += "\n" + prefs;
     }

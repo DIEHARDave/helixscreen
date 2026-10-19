@@ -1581,6 +1581,7 @@ translations:
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen 崩溃
   HelixScreen Macros: 'HelixScreen 宏'
+  HelixScreen couldn't read which toolheads this file uses, so the printer wasn't told.: 'HelixScreen 无法读取此文件使用哪些工具头，因此未告知打印机。'
   HelixScreen is detecting your display orientation: HelixScreen正在检测显示屏方向
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     将与您的耗材更换器集成，用于多料盘/多色打印操作。

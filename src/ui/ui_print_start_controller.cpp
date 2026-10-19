@@ -403,6 +403,7 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
         }
         return;
     }
+    backend->note_print_start_from_here();
 
     // A remap the backend cannot honor stops the print here, before anything
     // is sent, with the same report a printer-side refusal gets below.

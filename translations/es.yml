@@ -1677,6 +1677,7 @@ translations:
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen se Bloqueó
   HelixScreen Macros: 'Macros de HelixScreen'
+  HelixScreen couldn't read which toolheads this file uses, so the printer wasn't told.: 'HelixScreen no pudo leer qué cabezales usa este archivo, así que no se le indicó a la impresora.'
   HelixScreen is detecting your display orientation: HelixScreen está detectando la
     orientación de su pantalla
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen

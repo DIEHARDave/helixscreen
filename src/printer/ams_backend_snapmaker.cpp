@@ -1116,6 +1116,20 @@ void AmsBackendSnapmaker::prepare_for_resume(int slot_index, ResumeReadyCallback
         // different spool, and the material remembered for the old one would
         // be recorded against it. The firmware's refusal and classify_error's
         // explanation are the answer there.
+        if (!may_refeed) {
+            spdlog::warn("{} prepare_for_resume: tool {} ran out and this backend does not "
+                         "refeed it — refusing RESUME",
+                         backend_log_tag(), slot);
+            if (on_ready) {
+                on_ready(
+                    AmsError(AmsResult::COMMAND_FAILED, "runout: refeed left to the user",
+                             helix::ui::tool_label_in_form(tool_noun(), helix::ui::tool_label(slot),
+                                                           slot, helix::ui::ToolLabelForm::Full) +
+                                 ": " + lv_tr("Filament runout"),
+                             lv_tr("Load it in the filament panel, then tap Resume.")));
+            }
+            return;
+        }
         run_runout_refeed(slot, std::move(on_ready));
         return;
     }
@@ -1323,7 +1337,18 @@ void AmsBackendSnapmaker::apply_print_state_locked(const std::string& state) {
         load_unconfirmed_.fill(false);
         task_config_judged_ = false;
         ++print_generation_;
+        print_started_here_ = false;
+        if (print_in_progress_locked() && start_from_here_at_) {
+            print_started_here_ =
+                std::chrono::steady_clock::now() - *start_from_here_at_ <= kStartFromHereWindow;
+            start_from_here_at_.reset();
+        }
     }
+}
+
+void AmsBackendSnapmaker::note_print_start_from_here() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    start_from_here_at_ = std::chrono::steady_clock::now();
 }
 
 bool AmsBackendSnapmaker::file_uses_later_tool(const FileStartFacts& facts) {
@@ -1342,8 +1367,9 @@ bool AmsBackendSnapmaker::file_uses_later_tool(const FileStartFacts& facts) {
 }
 
 void AmsBackendSnapmaker::warn_if_unset_task_uses_later_tool(const std::string& filename,
-                                                             uint32_t print) {
-    auto on_answer = [this, filename, print](bool later_tool) {
+                                                             uint32_t print,
+                                                             TaskConfigNotice notice) {
+    auto on_answer = [this, filename, print, notice](bool later_tool) {
         {
             std::lock_guard<std::mutex> lock(mutex_);
             if (print != print_generation_) {
@@ -1358,8 +1384,11 @@ void AmsBackendSnapmaker::warn_if_unset_task_uses_later_tool(const std::string& 
             return;
         }
         ui_notification_warning_sticky(
-            lv_tr("This print was started outside HelixScreen, so the printer doesn't know "
-                  "which toolheads it uses."),
+            notice == TaskConfigNotice::ToolsUnknown
+                ? lv_tr("HelixScreen couldn't read which toolheads this file uses, so the "
+                        "printer wasn't told.")
+                : lv_tr("This print was started outside HelixScreen, so the printer doesn't "
+                        "know which toolheads it uses."),
             lv_tr("Each toolhead after the first will pause the print the first time it is "
                   "used, because the printer won't load or prime it. Filament won't unload "
                   "when the print ends."));
@@ -1381,13 +1410,16 @@ void AmsBackendSnapmaker::warn_if_unset_task_uses_later_tool(const std::string& 
     });
 }
 
-bool AmsBackendSnapmaker::judge_task_config_locked() {
+AmsBackendSnapmaker::TaskConfigNotice AmsBackendSnapmaker::judge_task_config_locked() {
     if (task_config_judged_ || !print_in_progress_locked() || extruders_used_.empty()) {
-        return false;
+        return TaskConfigNotice::None;
     }
     task_config_judged_ = true;
-    return std::none_of(extruders_used_.begin(), extruders_used_.end(),
-                        [](bool used) { return used; });
+    if (std::any_of(extruders_used_.begin(), extruders_used_.end(),
+                    [](bool used) { return used; })) {
+        return TaskConfigNotice::None;
+    }
+    return print_started_here_ ? TaskConfigNotice::ToolsUnknown : TaskConfigNotice::OtherClient;
 }
 
 // ============================================================================
@@ -2881,13 +2913,13 @@ void AmsBackendSnapmaker::dispatch_effects(const FrameEffects& fx) {
         write_task_filament_record(head, pending.info, pending.material_declared);
     }
 
-    if (fx.task_config_unset) {
+    if (fx.task_config_unset != TaskConfigNotice::None) {
         std::string file = fx.task_config_unset_file;
         if (file.empty()) {
             file = lv_subject_get_string(
                 get_printer_state().print_state().get_print_filename_subject());
         }
-        warn_if_unset_task_uses_later_tool(file, fx.task_config_print);
+        warn_if_unset_task_uses_later_tool(file, fx.task_config_print, fx.task_config_unset);
     }
 
     if (fx.changed) {

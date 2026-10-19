@@ -944,6 +944,24 @@ TEST_CASE_METHOD(MultiAceFixture, "an ACE head short of load_finish holds Resume
     CHECK(b.sent.empty());
 }
 
+TEST_CASE_METHOD(MultiAceFixture, "a runout on an engine-fed head refuses Resume without a refeed",
+                 "[multiace][resume][load_unconfirmed]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    pause_app_print();
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_4ace.json"));
+    b.frame(json{{"print_stats", {{"state", "paused"}}}});
+    SnapmakerTestAccess::set_sensor_present(b, 1, false);
+    b.sent.clear();
+
+    const AmsError held = resume_head(b, 1);
+    CHECK_FALSE(held.success());
+    CHECK(held.user_msg == "Toolhead 2 (T1): Filament runout");
+    CHECK(held.suggestion == "Load it in the filament panel, then tap Resume.");
+    CHECK(b.sent.empty());
+}
+
 TEST_CASE_METHOD(MultiAceFixture, "only the four heads are tools", "[multiace]") {
     CapturingMultiAce b;
     b.frame(ace_frame("head_mode_4ace.json"));

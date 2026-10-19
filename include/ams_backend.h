@@ -3237,6 +3237,15 @@ class AmsBackend {
     }
 
     /**
+     * @brief This screen is about to start a print on a pre-print-send backend.
+     *
+     * Called by every start that runs the pre-print step, before the step is
+     * sent and whatever it holds, so the backend can tell the print that
+     * follows from one another client started. Main thread. Default: no-op.
+     */
+    virtual void note_print_start_from_here() {}
+
+    /**
      * @brief Whether the pre-print send can honor this remap right now.
      *
      * The pre-print counterpart to can_set_tool_mapping(): a remap naming a

@@ -473,7 +473,11 @@ toolhead after the first pauses the print on its first use. The backend judges e
 once, on the first frame that names it printing or paused; when its task names no used
 head it reads the file's tools (`FileStartFactsLoader`: scanned tools, else per-tool
 weights, else palette size, else assumed) and, when one past T0 is used and the print is
-still the same one, raises one sticky warning saying so
+still the same one, raises one sticky warning saying so. Every start from this screen
+calls `note_print_start_from_here()` before its pre-print step (the start controller and
+the restart-from-beginning path), and the print that begins within two minutes counts as
+this screen's: it never gets the "started outside HelixScreen" line, and one whose file's
+tools went unread gets "HelixScreen couldn't read which toolheads this file uses" instead
 (`src/printer/ams_backend_snapmaker.cpp#judge_task_config_locked`).
 
 Related capability flags: `recovers_filament_on_resume() = true` (Resume re-feeds, so

@@ -1526,6 +1526,7 @@
   <translation tag="HelixScreen" es="HelixScreen"/>
   <translation tag="HelixScreen Crashed" es="HelixScreen se Bloqueó"/>
   <translation tag="HelixScreen Macros" es="Macros de HelixScreen"/>
+  <translation tag="HelixScreen couldn&apos;t read which toolheads this file uses, so the printer wasn&apos;t told." es="HelixScreen no pudo leer qué cabezales usa este archivo, así que no se le indicó a la impresora."/>
   <translation tag="HelixScreen is detecting your display orientation" es="HelixScreen está detectando la orientación de su pantalla"/>
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." es="HelixScreen se integrará con su cambiador de filamento para operaciones de impresión multi-bobina/color."/>
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." es="HelixScreen escribirá esto en printer.cfg y reiniciará Klipper. La impresora se desconectará brevemente."/>
