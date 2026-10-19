@@ -489,6 +489,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/spaghetti_detection_modal.xml",
     "ui_xml/components/temp_card_unified.xml",
     "ui_xml/components/temp_graph_config_modal.xml",
+    "ui_xml/components/tile_color_grid.xml",
     // Head changes: guarded by tool_switcher_change_blocked (a print that
     // refuses the change, or spools on the bed) rather than moves_machine,
     // which also holds through a pause, where the change is offered behind a
@@ -560,6 +561,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/plugin_install_modal.xml",
     "ui_xml/portrait/print_status_panel.xml",
     "ui_xml/portrait/print_tune_panel.xml",
+    "ui_xml/power_device_picker.xml",
     "ui_xml/power_device_row.xml",
     "ui_xml/print_completion_modal.xml",
     "ui_xml/print_cancel_confirm_modal.xml",
