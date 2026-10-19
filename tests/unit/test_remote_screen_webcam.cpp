@@ -26,13 +26,13 @@
 using namespace helix;
 using json = nlohmann::json;
 
-TEST_CASE("webcam item: view-only with route is mjpegstreamer-adaptive, relative snapshot, "
-          "target_fps 2",
+TEST_CASE("webcam item: view-only with route is mjpegstreamer on stream.mjpg, relative snapshot",
           "[remote_screen][webcam]") {
     auto item = remote_screen_webcam_item(true, false, "/helixscreen/screen/", "10.0.0.5", 7130);
     REQUIRE(item.has_value());
     CHECK((*item)["name"] == kRemoteScreenWebcamName);
-    CHECK((*item)["service"] == "mjpegstreamer-adaptive");
+    CHECK((*item)["service"] == "mjpegstreamer");
+    CHECK((*item)["stream_url"] == "/helixscreen/screen/stream.mjpg");
     CHECK((*item)["snapshot_url"] == "/helixscreen/screen/snapshot.jpg");
     CHECK((*item)["target_fps"] == 2);
     CHECK((*item)["location"] == "printer");

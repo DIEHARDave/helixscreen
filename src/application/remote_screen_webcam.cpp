@@ -39,9 +39,8 @@ std::optional<nlohmann::json> remote_screen_webcam_item(bool enabled, bool contr
         item["service"] = "iframe";
         item["stream_url"] = base;
     } else {
-        // Mainsail and Fluidd poll snapshot_url for this service; stream_url is unused.
-        item["service"] = "mjpegstreamer-adaptive";
-        item["stream_url"] = snapshot;
+        item["service"] = "mjpegstreamer";
+        item["stream_url"] = base + "stream.mjpg";
         item["target_fps"] = 2;
     }
     return item;

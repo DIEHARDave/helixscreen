@@ -11,6 +11,8 @@
 #include "remote_screen_http_server.h"
 #include "remote_screen_server_sink.h"
 
+#include <algorithm>
+#include <arpa/inet.h>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -18,7 +20,10 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <sys/socket.h>
+#include <sys/time.h>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -337,4 +342,140 @@ TEST_CASE("http: pairing past the attempt limit is 429 with Retry-After",
     auto limited = raw_http(fx.server->port(), "POST", "/pair", h, R"({"code":"123456"})");
     CHECK(limited.status == 429);
     CHECK(limited.has_header("retry-after: "));
+}
+
+// ---------------------------------------------------------------------------
+// MJPEG stream
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// Opens stream.mjpg and reads until @p parts JPEG parts have arrived (or the
+/// server closes, or @p timeout passes). Returns the raw bytes read.
+std::string read_stream(int port, int parts, std::chrono::milliseconds timeout,
+                        std::atomic<bool>* closed_by_server = nullptr) {
+    int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    REQUIRE(fd >= 0);
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_port = htons(static_cast<uint16_t>(port));
+    REQUIRE(::connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0);
+    timeval tv{0, 100 * 1000};
+    ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    const std::string req = "GET /stream.mjpg HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n";
+    REQUIRE(::send(fd, req.data(), req.size(), 0) == static_cast<ssize_t>(req.size()));
+
+    std::string raw;
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    char buf[8192];
+    while (std::chrono::steady_clock::now() < deadline) {
+        const ssize_t n = ::recv(fd, buf, sizeof(buf), 0);
+        if (n == 0) {
+            if (closed_by_server) {
+                *closed_by_server = true;
+            }
+            break;
+        }
+        if (n > 0) {
+            raw.append(buf, static_cast<size_t>(n));
+        }
+        size_t count = 0;
+        for (size_t at = raw.find("\r\n\r\n\xFF\xD8"); at != std::string::npos;
+             at = raw.find("\r\n\r\n\xFF\xD8", at + 1)) {
+            ++count;
+        }
+        if (static_cast<int>(count) >= parts && raw.rfind("\xFF\xD9") != std::string::npos) {
+            break;
+        }
+    }
+    ::close(fd);
+    return raw;
+}
+
+} // namespace
+
+TEST_CASE("stream: first two parts are JPEGs with the boundary", "[remote_screen][http]") {
+    ServerFixture fx;
+    std::atomic<bool> stop_feeding{false};
+    // A changing screen: each new generation is a new part.
+    std::thread feeder([&] {
+        int shade = 0;
+        while (!stop_feeding.load()) {
+            Frame frame(32, 24);
+            std::fill(frame.px.begin(), frame.px.end(), static_cast<uint8_t>(shade++ * 40));
+            fx.store->on_frame(frame.f);
+            std::this_thread::sleep_for(50ms);
+        }
+    });
+    const std::string raw = read_stream(fx.server->port(), 2, 5s);
+    stop_feeding = true;
+    feeder.join();
+
+    const std::string lower = helix::test::raw_http_lower(raw.substr(0, raw.find("\r\n\r\n")));
+    CHECK(lower.find("multipart/x-mixed-replace; boundary=helixframe") != std::string::npos);
+    size_t parts = 0;
+    for (size_t at = raw.find("--helixframe\r\nContent-Type: image/jpeg\r\n");
+         at != std::string::npos;
+         at = raw.find("--helixframe\r\nContent-Type: image/jpeg\r\n", at + 1)) {
+        ++parts;
+    }
+    CHECK(parts >= 2);
+}
+
+TEST_CASE("stream: stop() ends an open stream within 1s", "[remote_screen][http]") {
+    ServerFixture fx;
+    fx.store->note_request();
+    fx.capture();
+    std::atomic<bool> closed{false};
+    std::thread client([&] { read_stream(fx.server->port(), 1000, 5s, &closed); });
+    std::this_thread::sleep_for(300ms);
+    const auto start = std::chrono::steady_clock::now();
+    fx.server->stop();
+    CHECK(std::chrono::steady_clock::now() - start < 1s);
+    client.join();
+    CHECK(closed.load());
+}
+
+TEST_CASE("stream: an open stream keeps wants_frames true past kViewerIdleMs",
+          "[remote_screen][http]") {
+    auto fake_now = std::make_shared<std::atomic<int64_t>>(3600LL * 1000000000LL);
+    auto store = std::make_shared<ScreenFrameStore>([fake_now] {
+        return std::chrono::steady_clock::time_point(
+            std::chrono::steady_clock::duration(fake_now->load()));
+    });
+    ScreenServerHooks hooks;
+    hooks.request_full_redraw = [] {};
+    hooks.is_printing = [] { return false; };
+    ScreenHttpServer server(store, hooks);
+    ScreenServerConfig cfg;
+    cfg.bind_host = "127.0.0.1";
+    cfg.port = 0;
+    REQUIRE(server.start(cfg));
+    Frame frame(16, 16);
+    store->on_frame(frame.f);
+
+    std::atomic<bool> done{false};
+    std::thread client([&] {
+        read_stream(server.port(), 1000, 3s);
+        done = true;
+    });
+    std::this_thread::sleep_for(300ms);
+    REQUIRE(store->wants_frames());
+    // Ten seconds pass with no snapshot request: the open stream alone keeps the viewer.
+    fake_now->fetch_add(std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                            std::chrono::milliseconds(kViewerIdleMs + 1000))
+                            .count());
+    const auto deadline = std::chrono::steady_clock::now() + 1500ms;
+    bool alive = false;
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (store->wants_frames()) {
+            alive = true;
+            break;
+        }
+        std::this_thread::sleep_for(20ms);
+    }
+    CHECK(alive);
+    server.stop();
+    client.join();
 }

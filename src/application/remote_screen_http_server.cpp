@@ -10,18 +10,41 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <condition_variable>
 #include <fstream>
 #include <iterator>
+#include <mutex>
+#include <thread>
 #include <unistd.h>
 #include <utility>
+#include <vector>
 
 #include "hv/json.hpp"
 
 namespace helix {
 
+namespace {
+/// Open MJPEG streams served at once; each costs a socket and a write per frame.
+constexpr size_t kMaxStreams = 4;
+constexpr const char* kStreamBoundary = "helixframe";
+} // namespace
+
 struct ScreenHttpServer::Impl {
     hv::HttpService router;
     hv::HttpServer server;
+
+    /// Every open stream.mjpg, fed by one thread so no request owns a thread of its own.
+    struct Stream {
+        HttpResponseWriterPtr writer;
+        uint64_t sent_generation = 0;
+        bool sent_any = false;
+    };
+    std::mutex streams_mutex;
+    std::condition_variable streams_cv;
+    std::vector<Stream> streams;
+    bool stopping = false;
+    std::thread stream_thread;
 };
 
 ScreenHttpServer::ScreenHttpServer(std::shared_ptr<ScreenFrameStore> store, ScreenServerHooks hooks)
@@ -67,6 +90,26 @@ bool ScreenHttpServer::start(const ScreenServerConfig& cfg) {
         resp->content_type = IMAGE_JPEG;
         resp->body.assign(reinterpret_cast<const char*>(snap->jpeg->data()), snap->jpeg->size());
         return static_cast<int>(HTTP_STATUS_OK);
+    });
+
+    impl->router.GET("/stream.mjpg", [this, raw = impl.get()](const HttpContextPtr& ctx) {
+        std::lock_guard<std::mutex> lock(raw->streams_mutex);
+        if (raw->stopping || raw->streams.size() >= kMaxStreams) {
+            ctx->writer->Begin();
+            ctx->writer->WriteStatus(HTTP_STATUS_SERVICE_UNAVAILABLE);
+            ctx->writer->WriteHeader("Retry-After", "1");
+            ctx->writer->End();
+            return static_cast<int>(HTTP_STATUS_UNFINISHED);
+        }
+        ctx->writer->Begin();
+        ctx->writer->WriteStatus(HTTP_STATUS_OK);
+        ctx->writer->WriteHeader(
+            "Content-Type", std::string("multipart/x-mixed-replace; boundary=") + kStreamBoundary);
+        ctx->writer->WriteHeader("Cache-Control", "no-store");
+        ctx->writer->EndHeaders();
+        raw->streams.push_back({ctx->writer});
+        raw->streams_cv.notify_all();
+        return static_cast<int>(HTTP_STATUS_UNFINISHED);
     });
 
     impl->router.GET("/info", [this](HttpRequest* req, HttpResponse* resp) {
@@ -157,6 +200,7 @@ bool ScreenHttpServer::start(const ScreenServerConfig& cfg) {
         return false;
     }
 
+    impl->stream_thread = std::thread([this, raw = impl.get(), cap] { run_streams(raw, cap); });
     impl_ = std::move(impl);
     port_ = port;
     spdlog::info("[RemoteScreen] Screen server listening on {}:{}", cfg.bind_host, port);
@@ -169,10 +213,67 @@ void ScreenHttpServer::stop() {
     }
     // A handler blocked in its first-frame wait would hold stop() for the whole wait.
     store_->abort_waits();
+    {
+        std::lock_guard<std::mutex> lock(impl_->streams_mutex);
+        impl_->stopping = true;
+    }
+    impl_->streams_cv.notify_all();
+    if (impl_->stream_thread.joinable()) {
+        impl_->stream_thread.join();
+    }
+    for (auto& s : impl_->streams) {
+        s.writer->close();
+    }
+    impl_->streams.clear();
     impl_->server.stop();
     impl_.reset();
     port_ = 0;
     spdlog::info("[RemoteScreen] Screen server stopped");
+}
+
+void ScreenHttpServer::run_streams(Impl* impl, SnapshotRateCap cap) {
+    std::unique_lock<std::mutex> lock(impl->streams_mutex);
+    while (!impl->stopping) {
+        if (impl->streams.empty()) {
+            impl->streams_cv.wait(lock,
+                                  [impl] { return impl->stopping || !impl->streams.empty(); });
+            continue;
+        }
+        lock.unlock();
+
+        // An open stream is a viewer, whether or not anyone polls snapshot.jpg.
+        if (store_->note_request() == ScreenFrameStore::Need::FullRedraw &&
+            hooks_.request_full_redraw) {
+            hooks_.request_full_redraw();
+        }
+        const bool printing = hooks_.is_printing && hooks_.is_printing();
+        const auto snap = store_->snapshot(printing, cap);
+
+        lock.lock();
+        auto& streams = impl->streams;
+        streams.erase(
+            std::remove_if(streams.begin(), streams.end(),
+                           [](const Impl::Stream& s) { return !s.writer->isConnected(); }),
+            streams.end());
+        if (snap) {
+            for (auto& s : streams) {
+                if (s.sent_any && s.sent_generation == snap->generation) {
+                    continue;
+                }
+                std::string head = std::string("--") + kStreamBoundary +
+                                   "\r\nContent-Type: image/jpeg\r\nContent-Length: " +
+                                   std::to_string(snap->jpeg->size()) + "\r\n\r\n";
+                s.writer->WriteBody(head);
+                s.writer->WriteBody(reinterpret_cast<const char*>(snap->jpeg->data()),
+                                    static_cast<int>(snap->jpeg->size()));
+                s.writer->WriteBody("\r\n", 2);
+                s.sent_generation = snap->generation;
+                s.sent_any = true;
+            }
+        }
+        impl->streams_cv.wait_for(lock, min_encode_interval(cap, printing),
+                                  [impl] { return impl->stopping; });
+    }
 }
 
 bool ScreenHttpServer::request_paired(HttpRequest* req) const {

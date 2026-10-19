@@ -15,6 +15,7 @@ class HttpRequest; // NAMESPACE_OK: libhv declares it globally
 namespace helix {
 
 class ScreenFrameStore;
+struct SnapshotRateCap;
 
 struct ScreenServerConfig {
     /// "127.0.0.1" behind an nginx route, "0.0.0.0" when the server faces the LAN.
@@ -45,6 +46,7 @@ struct ScreenServerHooks {
  * Routes, all relative to the mount point (nginx strips its prefix):
  *   GET /snapshot.jpg  one JPEG of the current screen (query strings ignored)
  *   GET /info          {"w","h","control","paired"} so the page can size itself
+ *   GET /stream.mjpg   multipart MJPEG at the same rate cap, one part per new frame
  *   GET /              the control page
  *   POST /touch        {"type":"down|move|up","x","y"} in image pixels (control on)
  *   POST /pair         {"code":"123456"}, answered with the pairing cookie (LAN mode)
@@ -75,6 +77,8 @@ class ScreenHttpServer {
     bool request_paired(::HttpRequest* req) const;
 
     struct Impl;
+    /// The stream thread: one JPEG part per new frame to every open stream.mjpg.
+    void run_streams(Impl* impl, SnapshotRateCap cap);
     std::unique_ptr<Impl> impl_;
     std::shared_ptr<ScreenFrameStore> store_;
     ScreenServerHooks hooks_;
