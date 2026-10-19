@@ -1128,10 +1128,11 @@ void EspMoonrakerClient::get_temperature_store(
 // excluded from the ESP image (helixapp/app_srcs.txt). The one portable piece —
 // PrinterDiscovery::parse_objects() — is reused as-is.
 //
-// v1 (Core+AMS) drops the desktop steps that only feed the About screen / webcam
-// / power UI: 2nd server.info (Moonraker version, Spoolman, webcam), printer.info
-// hostname, machine.system_info OS/arch, MCU last_stats queries, and
-// machine.device_power / server.sensors probes.
+// The Moonraker version comes from the readiness gate's server.info and the Klipper
+// version from printer.info, both shown on the Printer Manager. v1 (Core+AMS) drops
+// the desktop steps that only feed the About screen / webcam / power UI: Spoolman and
+// webcam detection, printer.info hostname, machine.system_info OS/arch, MCU last_stats
+// queries, and machine.device_power / server.sensors probes.
 // ---------------------------------------------------------------------------
 
 namespace {
@@ -1461,9 +1462,11 @@ void EspMoonrakerClient::discovery_gate_klippy(DiscoveryDone done, DiscoveryFail
                 return;
             }
             std::string klippy_state = "unknown";
-            if (resp.contains("result") && resp["result"].contains("klippy_state") &&
-                resp["result"]["klippy_state"].is_string()) {
-                klippy_state = resp["result"]["klippy_state"].get<std::string>();
+            std::string moonraker_version = "unknown";
+            if (const json* result = helix::json_util::find_member(resp, "result")) {
+                klippy_state = helix::json_util::safe_string(*result, "klippy_state", "unknown");
+                moonraker_version =
+                    helix::json_util::safe_string(*result, "moonraker_version", "unknown");
             }
             spdlog::debug("[helixnet] Klippy state gate: {}", klippy_state);
             // "ready" and "shutdown" both expose valid Klipper objects; anything
@@ -1474,7 +1477,8 @@ void EspMoonrakerClient::discovery_gate_klippy(DiscoveryDone done, DiscoveryFail
                 discovery_fail(fail, MoonrakerEventType::DISCOVERY_DEFERRED, reason, generation);
                 return;
             }
-            discovery_query_objects(std::move(done), std::move(fail), generation);
+            discovery_query_objects(std::move(done), std::move(fail), generation,
+                                    std::move(moonraker_version));
         },
         [this, done, fail, generation](const MoonrakerError& err) {
             if (helix::is_stale_generation(generation, connection_generation_.load())) {
@@ -1486,13 +1490,14 @@ void EspMoonrakerClient::discovery_gate_klippy(DiscoveryDone done, DiscoveryFail
 }
 
 void EspMoonrakerClient::discovery_query_objects(DiscoveryDone done, DiscoveryFail fail,
-                                                 uint64_t generation) {
+                                                 uint64_t generation,
+                                                 std::string moonraker_version) {
     // Step c — printer.objects.list → parse_objects() → fire on_hardware_discovered_.
     // silent=true suppresses the error toast if Klippy vanished between the gate and
     // this call.
     send_jsonrpc(
         "printer.objects.list", json(),
-        [this, done, fail, generation](const json& resp) {
+        [this, done, fail, generation, moonraker_version](const json& resp) {
             if (helix::is_stale_generation(generation, connection_generation_.load())) {
                 return;
             }
@@ -1521,6 +1526,7 @@ void EspMoonrakerClient::discovery_query_objects(DiscoveryDone done, DiscoveryFa
             PrinterDiscovery snapshot;
             {
                 std::lock_guard<std::mutex> lock(hardware_mutex_);
+                hardware_.set_moonraker_version(moonraker_version);
                 spdlog::info("[helixnet] discovered {} heaters, {} sensors, {} fans, {} leds, "
                              "{} filament sensors",
                              hardware_.heaters().size(), hardware_.sensors().size(),
@@ -1534,7 +1540,7 @@ void EspMoonrakerClient::discovery_query_objects(DiscoveryDone done, DiscoveryFa
                 hw_cb(snapshot);
             }
 
-            discovery_subscribe(std::move(done), std::move(fail), generation);
+            discovery_printer_info(std::move(done), std::move(fail), generation);
         },
         [this, done, fail, generation](const MoonrakerError& err) {
             if (helix::is_stale_generation(generation, connection_generation_.load())) {
@@ -1542,6 +1548,35 @@ void EspMoonrakerClient::discovery_query_objects(DiscoveryDone done, DiscoveryFa
             }
             spdlog::error("[helixnet] printer.objects.list request failed: {}", err.message);
             discovery_request_failed(fail, err, generation);
+        },
+        0,     // default timeout
+        true); // silent
+}
+
+void EspMoonrakerClient::discovery_printer_info(DiscoveryDone done, DiscoveryFail fail,
+                                                uint64_t generation) {
+    // Step c2 — printer.info for the Klipper version and the Kalico marker. Best-effort:
+    // a printer that cannot answer still gets its subscription, with the version unknown.
+    send_jsonrpc(
+        "printer.info", json(),
+        [this, done, fail, generation](const json& resp) {
+            if (helix::is_stale_generation(generation, connection_generation_.load())) {
+                return;
+            }
+            if (const json* result = helix::json_util::find_member(resp, "result")) {
+                std::lock_guard<std::mutex> lock(hardware_mutex_);
+                hardware_.apply_printer_info(*result);
+                spdlog::info("[helixnet] {} {}", hardware_.firmware_name(),
+                             hardware_.software_version());
+            }
+            discovery_subscribe(std::move(done), std::move(fail), generation);
+        },
+        [this, done, fail, generation](const MoonrakerError& err) {
+            if (helix::is_stale_generation(generation, connection_generation_.load())) {
+                return;
+            }
+            spdlog::warn("[helixnet] printer.info failed (continuing): {}", err.message);
+            discovery_subscribe(std::move(done), std::move(fail), generation);
         },
         0,     // default timeout
         true); // silent

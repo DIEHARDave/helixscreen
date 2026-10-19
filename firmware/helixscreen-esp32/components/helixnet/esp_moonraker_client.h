@@ -334,7 +334,11 @@ class EspMoonrakerClient final : public IMoonrakerClient {
     // continuation abandons in place without touching hardware_,
     // discovery_in_flight_, or the user callbacks.
     void discovery_gate_klippy(DiscoveryDone done, DiscoveryFail fail, uint64_t generation);
-    void discovery_query_objects(DiscoveryDone done, DiscoveryFail fail, uint64_t generation);
+    // `moonraker_version` comes from the gate's server.info reply; it is stored after
+    // parse_objects(), which clears the printer info.
+    void discovery_query_objects(DiscoveryDone done, DiscoveryFail fail, uint64_t generation,
+                                 std::string moonraker_version);
+    void discovery_printer_info(DiscoveryDone done, DiscoveryFail fail, uint64_t generation);
     void discovery_subscribe(DiscoveryDone done, DiscoveryFail fail, uint64_t generation);
     // Emit `ev`, clear discovery_in_flight_, and invoke the error callback once
     // — but only if `generation` still matches (see above).

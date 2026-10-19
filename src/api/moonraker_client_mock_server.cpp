@@ -536,6 +536,8 @@ void register_server_handlers(std::unordered_map<std::string, MethodHandler>& re
         // Detect HELIX_MOCK_KALICO env var for Kalico firmware simulation
         bool mock_kalico = helix::env_flag("HELIX_MOCK_KALICO");
         std::string app_name = mock_kalico ? "Kalico" : "Klipper";
+        const char* version_env = std::getenv("HELIX_MOCK_KLIPPER_VERSION");
+        const std::string software_version = version_env != nullptr ? version_env : "v0.12.0-mock";
 
         // The persona's hostname, which PrinterDetector's hostname heuristic
         // scores (an "ad5m" hostname is what loads the AD5M pre-print options).
@@ -547,7 +549,7 @@ void register_server_handlers(std::unordered_map<std::string, MethodHandler>& re
                            {"state_message", state_message},
                            {"hostname", hostname},
                            {"app", app_name},
-                           {"software_version", "v0.12.0-mock"},
+                           {"software_version", software_version},
                            {"klipper_path", "/home/pi/klipper"},
                            {"python_path", "/home/pi/klippy-env/bin/python"},
                            {"log_file", "/home/pi/printer_data/logs/klippy.log"}}}};

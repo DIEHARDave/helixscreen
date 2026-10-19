@@ -803,22 +803,21 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
                     if (printer_response.contains("result")) {
                         const json& result = printer_response["result"];
                         auto hostname = result.value("hostname", "unknown");
-                        auto software_version = result.value("software_version", "unknown");
+                        std::string software_version;
+                        bool kalico = false;
                         {
                             std::lock_guard<std::mutex> lock(hardware_mutex_);
                             reported_hostname_ = hostname;
                             publish_identity_locked();
-                            hardware_.set_software_version(software_version);
+                            hardware_.apply_printer_info(result);
+                            software_version = hardware_.software_version();
+                            kalico = hardware_.is_kalico();
                         }
                         const KlippyStatus status = parse_klippy_status(result);
                         const std::string& state = status.state;
                         const std::string& state_message = status.state_message;
 
-                        // Detect Kalico (Klipper fork with MPC support)
-                        auto app = result.value("app", "");
-                        if (app == "Kalico") {
-                            std::lock_guard<std::mutex> lock(hardware_mutex_);
-                            hardware_.set_is_kalico(true);
+                        if (kalico) {
                             spdlog::info("[Moonraker Client] Kalico firmware detected");
                         }
 
