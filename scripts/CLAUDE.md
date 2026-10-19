@@ -181,6 +181,7 @@ each screen maps to a navigation recipe in `screenshot-recipes.sh`, the single s
 | `test_clean_shutdown.sh` | Verify clean shutdown behavior |
 | `afc-test.sh` | AFC live smoke test against a real printer |
 | `plugin-state-snapshot.sh` | Read-only record of what a HelixPrint plugin install or uninstall touches on one printer (`--ssh USER@HOST DEVICE LABEL`, `--port`, `--chroot`, `--sshpass-env VAR`): the paths `moonraker-plugin/install.sh` would find, found by running its own discovery functions on the printer, copies of moonraker.conf and every include, the components dir, unit hardening, version, and the Moonraker HTTP state. `--diff A B` compares two; `--root DIR` reads a fixture tree instead of ssh. Tests: `tests/shell/test_plugin_state_snapshot.bats` |
+| `plugin-host-matrix.sh` | HelixPrint plugin install/uninstall against real Moonrakers in containers: one image per vintage (`tests/plugin-host/Dockerfile`, default v0.8.0 v0.9.3 master), one container per printer layout (`tests/plugin-host/cell.sh`: plain, legacy `/opt`, K1 nested, Forge-X chroot, mod-owned symlinked conf, `[helix_print]` in an include). Per cell: install as the app user (under bwrap reproducing `ProtectSystem=strict` where the app is a systemd service), `/server/restart`, components and warnings checked, reinstall, uninstall, byte diff of the config. Needs docker; run it on the test host with `test-host-run.sh plugin-host`, never from the commit hook. Tests: `tests/shell/test_plugin_host_matrix.bats` |
 
 ### Developer Tools
 | Script | Purpose |

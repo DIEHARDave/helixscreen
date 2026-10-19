@@ -1,0 +1,206 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# The in-container half of the HelixPrint plugin host harness. One container
+# is one cell: a Moonraker vintage (the image) laid out as one kind of printer.
+# scripts/plugin-host-matrix.sh starts the container with `cell.sh start
+# LAYOUT` and drives every other verb through docker exec.
+#
+#   start LAYOUT      lay the printer out, then keep Moonraker running
+#   stage             copy the plugin into INSTALL_DIR, keep a copy of the config
+#   install           moonraker-plugin/install.sh --no-restart --auto, as the app
+#   uninstall         moonraker-plugin/install.sh --no-restart --uninstall-auto
+#   sections          how many [helix_print] sections the config tree holds
+#   link              the state of <components>/helix_print.py
+#   confdiff          the config against the staged copy, backups aside (ours
+#                     are *.bak.<ts>; Moonraker keeps its own .moonraker.conf.bkp)
+#   backups           the *.bak* files the config dir gained
+#   env               the cell's facts, KEY=value
+#
+# Layouts:
+#   plain             a Pi: ~pi/moonraker, ~pi/printer_data, app ~pi/helixscreen
+#   legacy            plain, but the app lives in /opt/helixscreen
+#   k1                Creality K1: root, the repo nested in /usr/data/moonraker
+#   forgex            Forge-X: Moonraker chrooted in /data/.mod/.forge-x, its
+#                     moonraker.conf a symlink into the mod's tree including
+#                     mod_data/user.moonraker.conf, /opt/config bind-mounted in
+#   modconf           plain, with a mod-owned symlinked moonraker.conf that
+#                     includes user.moonraker.conf
+#   incsec            plain, with [helix_print] already in an included file
+#
+# Moonraker v0.8 resolves a relative [include] against the directory of the
+# symlink's target, later versions against the link's own directory; the mod
+# layouts carry a link beside the target so either finds the same file.
+#
+# A layout whose app runs under systemd (plain, legacy, modconf, incsec) runs
+# install.sh the way config/helixscreen.service does: ProtectSystem=strict
+# with ReadWritePaths of INSTALL_DIR, its parent and /var/log, and
+# NoNewPrivileges, reproduced with bwrap. CELL_STRICT=0 runs it unconfined.
+set -eu
+
+STATE=/run/cell.env
+PLUGIN_SRC=/plugin-src
+PRE=/var/tmp/cell-pre
+MR_SRC=/opt/moonraker-src
+FX=/data/.mod/.forge-x
+
+base_conf() { # <with authorization: yes|no>
+    printf '[server]\nhost: 0.0.0.0\nport: 7125\nklippy_uds_address: /tmp/klippy_uds\n\n'
+    if [ "$1" = yes ]; then
+        printf '[authorization]\ntrusted_clients:\n  127.0.0.0/8\n  0.0.0.0/0\ncors_domains:\n  *\n\n'
+    fi
+    printf '[machine]\nprovider: none\n'
+}
+
+data_dirs() { # <data dir> <owner>
+    mkdir -p "$1/config" "$1/gcodes" "$1/logs" "$1/database"
+    chown -R "$2:$2" "$1"
+}
+
+layout() { # <layout>
+    APP_USER=pi APP_HOME=/home/pi INSTALL_DIR=/home/pi/helixscreen STRICT=1
+    CONFIG_DIR=/home/pi/printer_data/config
+    COMPONENTS_DIR=/home/pi/moonraker/moonraker/components
+    case "$1" in
+        plain|legacy|modconf|incsec)
+            cp -a "$MR_SRC" /home/pi/moonraker
+            chown -R pi:pi /home/pi/moonraker
+            data_dirs /home/pi/printer_data pi
+            MR_CMD="setpriv --reuid=pi --regid=pi --init-groups env HOME=/home/pi python3 /home/pi/moonraker/moonraker/moonraker.py -d /home/pi/printer_data"
+            case "$1" in
+                legacy)
+                    INSTALL_DIR=/opt/helixscreen ;;
+                modconf)
+                    mkdir -p "$CONFIG_DIR/mod"
+                    { base_conf no; printf '\n[include user.moonraker.conf]\n'; } > "$CONFIG_DIR/mod/moonraker.conf"
+                    ln -s mod/moonraker.conf "$CONFIG_DIR/moonraker.conf"
+                    ln -s ../user.moonraker.conf "$CONFIG_DIR/mod/user.moonraker.conf"
+                    base_conf yes | sed -n '/^\[authorization\]/,/^$/p' > "$CONFIG_DIR/user.moonraker.conf" ;;
+                incsec)
+                    { base_conf yes; printf '\n[include helix.conf]\n'; } > "$CONFIG_DIR/moonraker.conf"
+                    printf '[helix_print]\n# kept with the other HelixScreen settings\n' > "$CONFIG_DIR/helix.conf" ;;
+            esac
+            [ -e "$CONFIG_DIR/moonraker.conf" ] || base_conf yes > "$CONFIG_DIR/moonraker.conf"
+            chown -R pi:pi "$CONFIG_DIR" ;;
+        k1)
+            APP_USER=root APP_HOME=/root INSTALL_DIR=/usr/data/helixscreen STRICT=0
+            CONFIG_DIR=/usr/data/printer_data/config
+            COMPONENTS_DIR=/usr/data/moonraker/moonraker/moonraker/components
+            mkdir -p /usr/data/moonraker
+            cp -a "$MR_SRC" /usr/data/moonraker/moonraker
+            data_dirs /usr/data/printer_data root
+            base_conf yes > "$CONFIG_DIR/moonraker.conf"
+            MR_CMD="python3 /usr/data/moonraker/moonraker/moonraker/moonraker.py -d /usr/data/printer_data" ;;
+        forgex)
+            APP_USER=root APP_HOME=/root INSTALL_DIR=/opt/config/mod_data/helixscreen STRICT=0
+            CONFIG_DIR=$FX/root/printer_data/config
+            COMPONENTS_DIR=$FX/root/moonraker/moonraker/components
+            mkdir -p "$(dirname "$FX")"
+            cp -a /opt/fx-root "$FX"
+            mkdir -p "$FX/proc" "$FX/dev" "$FX/tmp" "$FX/root" "$FX/opt/config" /opt/config/mod_data
+            chmod 1777 "$FX/tmp"
+            mount --bind /proc "$FX/proc"
+            mount --bind /dev "$FX/dev"
+            mount --bind /opt/config "$FX/opt/config"
+            cp -a "$MR_SRC" "$FX/root/moonraker"
+            data_dirs "$FX/root/printer_data" root
+            mkdir -p "$CONFIG_DIR/mod" "$CONFIG_DIR/mod_data"
+            { base_conf no; printf '\n[include mod_data/user.moonraker.conf]\n'; } > "$CONFIG_DIR/mod/moonraker.conf"
+            ln -s mod/moonraker.conf "$CONFIG_DIR/moonraker.conf"
+            ln -s ../mod_data "$CONFIG_DIR/mod/mod_data"
+            base_conf yes | sed -n '/^\[authorization\]/,/^$/p' > "$CONFIG_DIR/mod_data/user.moonraker.conf"
+            MR_CMD="chroot $FX python3 /root/moonraker/moonraker/moonraker.py -d /root/printer_data" ;;
+        *)
+            echo "cell.sh: unknown layout $1" >&2; exit 2 ;;
+    esac
+    INSTALL_PARENT=$(dirname "$INSTALL_DIR")
+    mkdir -p "$INSTALL_DIR"
+    chown "$APP_USER:$APP_USER" "$INSTALL_DIR"
+    [ "${CELL_STRICT:-1}" = 1 ] || STRICT=0
+    {
+        printf 'LAYOUT=%s\nAPP_USER=%s\nAPP_HOME=%s\nINSTALL_DIR=%s\nINSTALL_PARENT=%s\n' \
+            "$1" "$APP_USER" "$APP_HOME" "$INSTALL_DIR" "$INSTALL_PARENT"
+        printf 'CONFIG_DIR=%s\nCOMPONENTS_DIR=%s\nSTRICT=%s\n' "$CONFIG_DIR" "$COMPONENTS_DIR" "$STRICT"
+        printf 'MR_CMD="%s"\n' "$MR_CMD"
+    } > "$STATE"
+}
+
+# Moonraker exits to restart on some vintages; a service manager starts it
+# again, and this loop is that service manager.
+supervise() {
+    # shellcheck disable=SC1090
+    . "$STATE"
+    while :; do
+        printf '%s cell: starting moonraker\n' "$(date '+%F %T')" >> /var/log/moonraker.out
+        # shellcheck disable=SC2086  # MR_CMD is a word list
+        $MR_CMD >> /var/log/moonraker.out 2>&1 || true
+        sleep 1
+    done
+}
+
+load() {
+    # shellcheck disable=SC1090
+    . "$STATE"
+}
+
+# Run install.sh with <args> as the app, confined as its service confines it.
+as_app() { # <args...>
+    load
+    set -- env HOME="$APP_HOME" PATH=/usr/local/bin:/usr/bin:/bin sh "$INSTALL_DIR/moonraker-plugin/install.sh" "$@"
+    if [ "$STRICT" = 1 ]; then
+        # The bwrap runs as the app user, so the writes it allows are the
+        # app user's own; bwrap sets no_new_privs as NoNewPrivileges does.
+        set -- bwrap --ro-bind / / --dev-bind /dev /dev --proc /proc \
+            --bind "$INSTALL_DIR" "$INSTALL_DIR" --bind "$INSTALL_PARENT" "$INSTALL_PARENT" \
+            --bind /var/log /var/log -- "$@"
+    fi
+    if [ "$APP_USER" != root ]; then
+        set -- setpriv --reuid="$APP_USER" --regid="$APP_USER" --init-groups "$@"
+    fi
+    cd "$INSTALL_DIR"
+    exec "$@"
+}
+
+case "${1:-}" in
+    start)
+        layout "${2:?layout}"
+        supervise ;;
+    stage)
+        load
+        rm -rf "$INSTALL_DIR/moonraker-plugin" "$PRE"
+        cp -R "$PLUGIN_SRC" "$INSTALL_DIR/moonraker-plugin"
+        chown -R "$APP_USER:$APP_USER" "$INSTALL_DIR/moonraker-plugin"
+        mkdir -p "$PRE"
+        cp -a "$CONFIG_DIR/." "$PRE/" ;;
+    install)
+        as_app --no-restart --auto ;;
+    uninstall)
+        as_app --no-restart --uninstall-auto ;;
+    sections)
+        load
+        # Each file once, however many links lead to it.
+        find -L "$CONFIG_DIR" -type f ! -name '*.bak*' ! -name '*.bkp' -exec readlink -f {} + | sort -u |
+            while IFS= read -r f; do
+                grep -q '^\[helix_print\]' "$f" || continue
+                printf '%s %s\n' "$(grep -c '^\[helix_print\]' "$f")" "${f#"$CONFIG_DIR"/}"
+            done ;;
+    link)
+        load
+        l="$COMPONENTS_DIR/helix_print.py"
+        if [ -L "$l" ]; then printf 'symlink %s\n' "$(readlink "$l")"
+        elif [ -e "$l" ]; then echo file
+        else echo absent
+        fi ;;
+    confdiff)
+        load
+        diff -r --no-dereference -x '*.bak*' -x '*.bkp' "$PRE" "$CONFIG_DIR" ;;
+    backups)
+        load
+        find "$CONFIG_DIR" -name '*.bak*' | sed "s#^$CONFIG_DIR/##" | sort ;;
+    env)
+        load
+        cat "$STATE" ;;
+    *)
+        sed -n '3,/^set -eu$/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2
+        exit 2 ;;
+esac
