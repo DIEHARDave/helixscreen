@@ -101,6 +101,11 @@ TEST_CASE("wpa_supplicant fallback swap replaces the backend and unlatches a sca
     // Scan session live with one scan outstanding on the failing backend.
     wm->start_scan([](const std::vector<WiFiNetwork>&) {});
     REQUIRE_FALSE(WiFiManagerTestAccess::scan_should_trigger(*wm)); // the latch is set
+    // The scan request has returned and only its completion is owed. While a
+    // call is still on the lane the swap does not wait for it: it retries on a
+    // timer, and the single timer pass below would see the old backend.
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    REQUIRE_FALSE(WiFiManagerTestAccess::scan_should_trigger(*wm));
 
     // The underlying network service turns out to be dead: INIT_FAILED
     // schedules the deferred backend swap.

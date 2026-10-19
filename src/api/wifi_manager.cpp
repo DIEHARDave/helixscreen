@@ -1010,12 +1010,17 @@ void WiFiManager::set_country_async(const std::string& code, helix::LifetimeToke
         "set_country", user_op_timeouts_.other_ms,
         [this, clean, answer]() -> std::function<void()> {
             const WiFiError result = backend_->set_country(clean);
-            return [clean, result, answer]() {
-                // Saved only once the radio took it: a choice it refuses would
-                // fail again at every start.
-                if (result.success()) {
+            if (result.success()) {
+                // Saved only once the radio took it, since a choice it refuses
+                // would fail again at every start. Deferred on its own rather
+                // than in the answer: the answer is dropped when it comes after
+                // the deadline, and the radio has the country all the same.
+                async_lifetime_.defer("WiFiManager::save_country", [clean]() {
                     helix::SystemSettingsManager::instance().set_wifi_country(clean);
-                } else {
+                });
+            }
+            return [clean, result, answer]() {
+                if (!result.success()) {
                     spdlog::warn("[WiFiManager] Could not set WiFi country {}: {}", clean,
                                  result.technical_msg);
                     NOTIFY_ERROR("{}", lv_tr("Could not set the WiFi country"));

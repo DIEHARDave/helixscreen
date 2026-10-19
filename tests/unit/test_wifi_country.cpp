@@ -19,10 +19,12 @@
 #include "wifi_manager.h"
 
 #include <atomic>
+#include <chrono>
 #include <memory>
 #include <optional>
 #include <set>
 #include <string>
+#include <thread>
 
 #include "../catch_amalgamated.hpp"
 
@@ -166,7 +168,12 @@ class CountingCountryBackend : public WifiBackendMock {
     }
     /// Stand in for a kernel that refuses the change (no CAP_NET_ADMIN).
     std::atomic<bool> refuse_country{false};
+    /// Hold set_country() this long, to outlast a user-op deadline.
+    std::atomic<int> set_delay_ms{0};
     WiFiError set_country(const std::string& code) override {
+        if (const int ms = set_delay_ms.load(); ms > 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+        }
         if (refuse_country.load()) {
             return WiFiError(WiFiResult::PERMISSION_DENIED, "iw reg set exited 1");
         }
@@ -339,4 +346,20 @@ TEST_CASE_METHOD(CountryFixture,
     REQUIRE(WiFiManagerTestAccess::settle(*wm));
     helix::ui::UpdateQueue::instance().drain();
     CHECK(country_wakes >= 1);
+}
+
+TEST_CASE_METHOD(CountryFixture, "a country the radio takes after the deadline is still saved",
+                 "[wifi][wifi_country]") {
+    start("");
+    WiFiManagerTestAccess::set_user_op_timeouts(*wm, 100, 100, 60000);
+    backend->set_delay_ms = 400;
+    std::optional<bool> ok;
+    wm->set_country_async("DE", guard.token(), [&](bool success) { ok = success; });
+    REQUIRE(wait_until([&] { return ok.has_value(); }, 2000));
+    CHECK_FALSE(*ok); // the caller was told it failed at the deadline
+
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(radio_country(*backend) == "DE");
+    CHECK(SystemSettingsManager::instance().get_wifi_country() == "DE");
 }
