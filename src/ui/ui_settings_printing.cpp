@@ -8,6 +8,7 @@
 
 #include "ui_settings_printing.h"
 
+#include "ui_ams_device_operations_overlay.h"
 #include "ui_callback_helpers.h"
 #include "ui_overlay_retraction_settings.h"
 #include "ui_overlay_timelapse_settings.h"
@@ -42,6 +43,11 @@ void PrintingSettingsOverlay::register_callbacks() {
              overlay.show(get_printing_settings_overlay().parent_screen_);
          }},
         {"on_motion_settings_clicked", [](lv_event_t*) { show_motion_settings_overlay(); }},
+        {"on_ams_settings_clicked",
+         [](lv_event_t*) {
+             helix::ui::get_ams_device_operations_overlay().show(
+                 get_printing_settings_overlay().parent_screen_);
+         }},
         {"on_material_temps_clicked",
          [](lv_event_t*) {
              get_material_temps_overlay().show(get_printing_settings_overlay().parent_screen_);

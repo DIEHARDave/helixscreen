@@ -85,6 +85,7 @@
   <translation tag="1 print" en="1 print"/>
   <translation tag="1 profile" en="1 profile"/>
   <translation tag="1 unit" en="1 unit"/>
+  <translation tag="1. Each nozzle is heated, wiped and parked at the front for you to brush clean" en="1. Each nozzle is heated, wiped and parked at the front for you to brush clean"/>
   <translation tag="1. Printer homes all axes (~1 minute)" en="1. Printer homes all axes (~1 minute)"/>
   <translation tag="1. Printer homes and probes the bed" en="1. Printer homes and probes the bed"/>
   <translation tag="1. Printer will home and probe each screw" en="1. Printer will home and probe each screw"/>
@@ -101,6 +102,7 @@
   <translation tag="2. Jog Y until the nozzle is centered over the chute opening" en="2. Jog Y until the nozzle is centered over the chute opening"/>
   <translation tag="2. Place paper between nozzle and bed" en="2. Place paper between nozzle and bed"/>
   <translation tag="2. Results show how much to turn each screw" en="2. Results show how much to turn each screw"/>
+  <translation tag="2. Take the PEI sheet off the bed when asked" en="2. Take the PEI sheet off the bed when asked"/>
   <translation tag="20 minutes" en="20 minutes"/>
   <translation tag="24 Hour" en="24 Hour"/>
   <translation tag="24-hour" en="24-hour"/>
@@ -109,6 +111,7 @@
   <translation tag="2D Heatmap" en="2D Heatmap"/>
   <translation tag="2D Layers" en="2D Layers"/>
   <translation tag="3. Adjust screws, then re-probe to verify" en="3. Adjust screws, then re-probe to verify"/>
+  <translation tag="3. Every toolhead is probed and the offsets are saved" en="3. Every toolhead is probed and the offsets are saved"/>
   <translation tag="3. Lower nozzle until paper drags slightly" en="3. Lower nozzle until paper drags slightly"/>
   <translation tag="3. Save the position" en="3. Save the position"/>
   <translation tag="30 minutes" en="30 minutes"/>
@@ -476,6 +479,7 @@
   <translation tag="Calibrate Gear" en="Calibrate Gear"/>
   <translation tag="Calibrate Purge Chute" en="Calibrate Purge Chute"/>
   <translation tag="Calibrate Toolhead" en="Calibrate Toolhead"/>
+  <translation tag="Calibrate Toolhead Offsets" en="Calibrate Toolhead Offsets"/>
   <translation tag="Calibrate X" en="Calibrate X"/>
   <translation tag="Calibrate Y" en="Calibrate Y"/>
   <translation tag="Calibrate input shaping to reduce ringing artifacts in prints" en="Calibrate input shaping to reduce ringing artifacts in prints"/>
@@ -617,6 +621,7 @@
   <translation tag="Checking for webcam..." en="Checking for webcam..."/>
   <translation tag="Checking plugin" en="Checking plugin"/>
   <translation tag="Checking slots..." en="Checking slots..."/>
+  <translation tag="Checking the PEI sheet is off..." en="Checking the PEI sheet is off..."/>
   <translation tag="Checking the printer..." en="Checking the printer..."/>
   <translation tag="Checking timelapse plugin..." en="Checking timelapse plugin..."/>
   <translation tag="Checking webcam" en="Checking webcam"/>
@@ -639,6 +644,7 @@
   <translation tag="Chute position: X {:.1f}, Y {:.1f}" en="Chute position: X {:.1f}, Y {:.1f}"/>
   <translation tag="Clean Brush" en="Clean Brush"/>
   <translation tag="Clean Nozzle" en="Clean Nozzle"/>
+  <translation tag="Clean {}" en="Clean {}"/>
   <translation tag="Cleaning Nozzle..." en="Cleaning Nozzle..."/>
   <translation tag="Cleaning nozzle..." en="Cleaning nozzle..."/>
   <translation tag="Clear" en="Clear"/>
@@ -780,6 +786,7 @@
   <translation tag="Cooling Tube Length" en="Cooling Tube Length"/>
   <translation tag="Cooling Tube Retraction" en="Cooling Tube Retraction"/>
   <translation tag="Cooling for probing..." en="Cooling for probing..."/>
+  <translation tag="Cooling {}..." en="Cooling {}..."/>
   <translation tag="Copied to clipboard!" en="Copied to clipboard!"/>
   <translation tag="Copy" en="Copy"/>
   <translation tag="Copy Command" en="Copy Command"/>
@@ -1508,6 +1515,7 @@
   <translation tag="Heating to {}°C before {}..." en="Heating to {}°C before {}..."/>
   <translation tag="Heating to {}°C for {}..." en="Heating to {}°C for {}..."/>
   <translation tag="Heating to {}°C..." en="Heating to {}°C..."/>
+  <translation tag="Heating {}..." en="Heating {}..."/>
   <translation tag="Heating..." en="Heating..."/>
   <translation tag="Heating: %d / %d°C" en="Heating: %d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" en="Heightmap and flatness of the active bed mesh"/>
@@ -1703,6 +1711,7 @@
   <translation tag="Keep clear of the printer while the toolhead is moving" en="Keep clear of the printer while the toolhead is moving"/>
   <translation tag="Keep current" en="Keep current"/>
   <translation tag="Keep current ({})" en="Keep current ({})"/>
+  <translation tag="Keep hands clear except when asked. The printer moves on its own." en="Keep hands clear except when asked. The printer moves on its own."/>
   <translation tag="Keep hands clear. The printer moves on its own." en="Keep hands clear. The printer moves on its own."/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." en="Keep its own data on this screen (up to 256 KB)."/>
   <translation tag="Keep the bypass spool visible when bypass is off" en="Keep the bypass spool visible when bypass is off"/>
@@ -1938,6 +1947,7 @@
   <translation tag="Maximum acceleration (mm/s²)" en="Maximum acceleration (mm/s²)"/>
   <translation tag="Maximum toolhead speed (mm/s)" en="Maximum toolhead speed (mm/s)"/>
   <translation tag="Measure" en="Measure"/>
+  <translation tag="Measure each toolhead&apos;s X, Y and Z offset (about 20 minutes)" en="Measure each toolhead&apos;s X, Y and Z offset (about 20 minutes)"/>
   <translation tag="Measure every tool&apos;s XYZ offset automatically" en="Measure every tool&apos;s XYZ offset automatically"/>
   <translation tag="Measure pressure advance automatically" en="Measure pressure advance automatically"/>
   <translation tag="Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed." en="Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed."/>
@@ -1945,6 +1955,7 @@
   <translation tag="Measured filament diameter" en="Measured filament diameter"/>
   <translation tag="Measured pressure advance" en="Measured pressure advance"/>
   <translation tag="Measurement incomplete. Try again." en="Measurement incomplete. Try again."/>
+  <translation tag="Measures each toolhead&apos;s X, Y and Z offset so every head prints in the same place. Takes about 20 minutes." en="Measures each toolhead&apos;s X, Y and Z offset so every head prints in the same place. Takes about 20 minutes."/>
   <translation tag="Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen." en="Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen."/>
   <translation tag="Measures vibration for input shaping. Run resonance tests on the Input Shaper screen." en="Measures vibration for input shaping. Run resonance tests on the Input Shaper screen."/>
   <translation tag="Measuring" en="Measuring"/>
@@ -1952,6 +1963,7 @@
   <translation tag="Measuring accelerometer noise..." en="Measuring accelerometer noise..."/>
   <translation tag="Measuring vibrations... {}%" en="Measuring vibrations... {}%"/>
   <translation tag="Measuring wheel error" en="Measuring wheel error"/>
+  <translation tag="Measuring {}..." en="Measuring {}..."/>
   <translation tag="Memory" en="Memory"/>
   <translation tag="Memory (MB)" en="Memory (MB)"/>
   <translation tag="Memory Snapshot" en="Memory Snapshot"/>
@@ -2005,6 +2017,7 @@
   <translation tag="Moves the print head to measure vibration frequencies on each axis. Takes 2-3 minutes. The printer will make noise — this is normal." en="Moves the print head to measure vibration frequencies on each axis. Takes 2-3 minutes. The printer will make noise — this is normal."/>
   <translation tag="Moving lane" en="Moving lane"/>
   <translation tag="Moving the plate..." en="Moving the plate..."/>
+  <translation tag="Moving {} to the front..." en="Moving {} to the front..."/>
   <translation tag="Multi-Filament" en="Multi-Filament"/>
   <translation tag="Multi-Filament Overview" en="Multi-Filament Overview"/>
   <translation tag="Multi-Filament System" en="Multi-Filament System"/>
@@ -2183,6 +2196,7 @@
   <translation tag="Nothing to remap" en="Nothing to remap"/>
   <translation tag="Nothing to unload: no filament at the nozzle" en="Nothing to unload: no filament at the nozzle"/>
   <translation tag="Nothing was changed. Temperature and material are kept, so a retry is one tap." en="Nothing was changed. Temperature and material are kept, so a retry is one tap."/>
+  <translation tag="Nothing was saved and the heaters are off." en="Nothing was saved and the heaters are off."/>
   <translation tag="Notification" en="Notification"/>
   <translation tag="Notifications" en="Notifications"/>
   <translation tag="Notify when print finishes" en="Notify when print finishes"/>
@@ -2228,6 +2242,7 @@
   <translation tag="Off:" en="Off:"/>
   <translation tag="Off: runs with these values without asking" en="Off: runs with these values without asking"/>
   <translation tag="Offer to save Z-offset changes to the printer config" en="Offer to save Z-offset changes to the printer config"/>
+  <translation tag="Offsets Saved" en="Offsets Saved"/>
   <translation tag="Offsets saved" en="Offsets saved"/>
   <translation tag="Old setting on today&apos;s data: {} residual - now: {}" en="Old setting on today&apos;s data: {} residual - now: {}"/>
   <translation tag="On" en="On"/>
@@ -2350,6 +2365,7 @@
   <translation tag="Pill" en="Pill"/>
   <translation tag="Pixels before a press becomes a scroll (lower = scrolls engage sooner)" en="Pixels before a press becomes a scroll (lower = scrolls engage sooner)"/>
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." en="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels."/>
+  <translation tag="Place the PEI sheet back onto the heated bed." en="Place the PEI sheet back onto the heated bed."/>
   <translation tag="Place the spools" en="Place the spools"/>
   <translation tag="Placed" en="Placed"/>
   <translation tag="Plate {}" en="Plate {}"/>
@@ -2399,6 +2415,7 @@
   <translation tag="Preheat cancelled" en="Preheat cancelled"/>
   <translation tag="Preheat: all {} tools + bed set" en="Preheat: all {} tools + bed set"/>
   <translation tag="Preheat: {} + bed set" en="Preheat: {} + bed set"/>
+  <translation tag="Preheating and homing..." en="Preheating and homing..."/>
   <translation tag="Preload" en="Preload"/>
   <translation tag="Preload failed" en="Preload failed"/>
   <translation tag="Prepared" en="Prepared"/>
@@ -2511,6 +2528,7 @@
   <translation tag="Printer hardware detected" en="Printer hardware detected"/>
   <translation tag="Printer image set to auto-detect" en="Printer image set to auto-detect"/>
   <translation tag="Printer is busy - {} stays in the queue" en="Printer is busy - {} stays in the queue"/>
+  <translation tag="Printer is busy with a print" en="Printer is busy with a print"/>
   <translation tag="Printer is busy — try again in a moment" en="Printer is busy — try again in a moment"/>
   <translation tag="Printer is not paired — pair it first" en="Printer is not paired — pair it first"/>
   <translation tag="Printer is not ready" en="Printer is not ready"/>
@@ -2684,6 +2702,7 @@
   <translation tag="Remove PIN" en="Remove PIN"/>
   <translation tag="Remove Spoolman?" en="Remove Spoolman?"/>
   <translation tag="Remove plugin from printer" en="Remove plugin from printer"/>
+  <translation tag="Remove the PEI Sheet" en="Remove the PEI Sheet"/>
   <translation tag="Remove the PEI sheet from the bed, then start again: probing through the sheet gives wrong results" en="Remove the PEI sheet from the bed, then start again: probing through the sheet gives wrong results"/>
   <translation tag="Remove the bypass spool from the toolhead first" en="Remove the bypass spool from the toolhead first"/>
   <translation tag="Remove the spools" en="Remove the spools"/>
@@ -2878,6 +2897,7 @@
   <translation tag="Saves to Klipper config and restarts firmware." en="Saves to Klipper config and restarts firmware."/>
   <translation tag="Saving Configuration..." en="Saving Configuration..."/>
   <translation tag="Saving Z-offset..." en="Saving Z-offset..."/>
+  <translation tag="Saving and finishing..." en="Saving and finishing..."/>
   <translation tag="Saving config... Klipper will restart." en="Saving config... Klipper will restart."/>
   <translation tag="Saving offsets..." en="Saving offsets..."/>
   <translation tag="Saving the position and parking the toolhead." en="Saving the position and parking the toolhead."/>
@@ -3167,6 +3187,7 @@
   <translation tag="Std Deviation" en="Std Deviation"/>
   <translation tag="Step" en="Step"/>
   <translation tag="Step 1 of 3" en="Step 1 of 3"/>
+  <translation tag="Step {} of {}" en="Step {} of {}"/>
   <translation tag="Still saving this spool…" en="Still saving this spool…"/>
   <translation tag="Still working... taking longer than usual" en="Still working... taking longer than usual"/>
   <translation tag="Stop" en="Stop"/>
@@ -3233,6 +3254,7 @@
   <translation tag="TOOLS" en="TOOLS"/>
   <translation tag="TPU" en="TPU"/>
   <translation tag="Tag Parts" en="Tag Parts"/>
+  <translation tag="Take the PEI sheet off the heated bed, then tap Next. The toolheads probe the bare bed." en="Take the PEI sheet off the heated bed, then tap Next. The toolheads probe the bare bed."/>
   <translation tag="Takes 3-5 min. Do not interrupt." en="Takes 3-5 min. Do not interrupt."/>
   <translation tag="Tangle prevention active" en="Tangle prevention active"/>
   <translation tag="Tangle prevention boosted" en="Tangle prevention boosted"/>
@@ -3303,6 +3325,7 @@
   <translation tag="The CFS odometer hardware is faulty and needs repair or replacement" en="The CFS odometer hardware is faulty and needs repair or replacement"/>
   <translation tag="The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints." en="The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints."/>
   <translation tag="The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings." en="The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings."/>
+  <translation tag="The PEI sheet is still on the bed. Take it off, then tap Next." en="The PEI sheet is still on the bed. Take it off, then tap Next."/>
   <translation tag="The Spoolman spool currently loaded" en="The Spoolman spool currently loaded"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." en="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display."/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." en="The bed has cooled. Take the spools off the plate, then confirm."/>
@@ -3339,6 +3362,7 @@
   <translation tag="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle." en="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle."/>
   <translation tag="The message your printer&apos;s macros show (M117)" en="The message your printer&apos;s macros show (M117)"/>
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." en="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself."/>
+  <translation tag="The nozzle is hot. Brush it clean with the wire brush that came with the printer and keep the docking position clean, then tap Next." en="The nozzle is hot. Brush it clean with the wire brush that came with the printer and keep the docking position clean, then tap Next."/>
   <translation tag="The plate and the spools are still hot. Use gloves." en="The plate and the spools are still hot. Use gloves."/>
   <translation tag="The plate finishes its current move, but drying will not start." en="The plate finishes its current move, but drying will not start."/>
   <translation tag="The print ended before any layer was printed. Nothing was changed." en="The print ended before any layer was printed. Nothing was changed."/>
@@ -3518,10 +3542,12 @@
   <translation tag="Toolchange purge" en="Toolchange purge"/>
   <translation tag="Toolhead" en="Toolhead"/>
   <translation tag="Toolhead LED" en="Toolhead LED"/>
+  <translation tag="Toolhead Offset Calibration" en="Toolhead Offset Calibration"/>
   <translation tag="Toolhead Sensor" en="Toolhead Sensor"/>
   <translation tag="Toolhead Style" en="Toolhead Style"/>
   <translation tag="Toolhead Y" en="Toolhead Y"/>
   <translation tag="Toolhead jam" en="Toolhead jam"/>
+  <translation tag="Toolhead offset calibration" en="Toolhead offset calibration"/>
   <translation tag="Toolhead position and homing, with a plate view and Home All" en="Toolhead position and homing, with a plate view and Home All"/>
   <translation tag="Toolhead position unknown" en="Toolhead position unknown"/>
   <translation tag="Toolheads" en="Toolheads"/>
@@ -3769,6 +3795,7 @@
   <translation tag="Wifi" en="Wifi"/>
   <translation tag="Will not switch spools on runout" en="Will not switch spools on runout"/>
   <translation tag="Wipe nozzle on silicone cleaning strip" en="Wipe nozzle on silicone cleaning strip"/>
+  <translation tag="Wiping {}..." en="Wiping {}..."/>
   <translation tag="Wizard Error" en="Wizard Error"/>
   <translation tag="Working..." en="Working..."/>
   <translation tag="Write failed at chunk {}" en="Write failed at chunk {}"/>

@@ -3,7 +3,6 @@
 
 #include "ui_settings_hardware.h"
 
-#include "ui_ams_device_operations_overlay.h"
 #include "ui_callback_helpers.h"
 #include "ui_nav.h"
 #include "ui_panel_power.h"
@@ -41,11 +40,6 @@ void HardwareSettingsOverlay::register_callbacks() {
 #else
              spdlog::debug("[HardwareSettingsOverlay] Camera support disabled in this build");
 #endif
-         }},
-        {"on_ams_settings_clicked",
-         [](lv_event_t*) {
-             auto& overlay = helix::ui::get_ams_device_operations_overlay();
-             overlay.show(get_hardware_settings_overlay().parent_screen_);
          }},
         {"on_fans_settings_clicked",
          [](lv_event_t*) {

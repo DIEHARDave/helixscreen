@@ -1242,6 +1242,34 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
                                  std::function<void(const nlohmann::json&)> success_cb,
                                  std::function<void(const MoonrakerError&)> error_cb);
 
+    /**
+     * @brief Simulate the Snapmaker U1's EXTRUDER_OFFSET_ACTION_* steps, when
+     *        @p script is one of them
+     *
+     * Each step blocks like the firmware's: the rpc is answered a beat later on
+     * an lv_timer. The firmware's state gate is modelled too: every step but
+     * PRESTART refuses with its coded fault until PRESTART entered the
+     * calibration state, and EXIT leaves it. A head's PROBE_CALIBRATE writes a
+     * new extruder_offset, which the objects query then reports.
+     *
+     * HELIX_MOCK_NOZZLE_CAL_PLATE_REFUSE=<n> makes the first n plate checks
+     * report the PEI sheet still on the bed; HELIX_MOCK_NOZZLE_CAL_FAIL=<n> makes
+     * head n's probe fail.
+     *
+     * @return true if the script was handled here (the callbacks are owned)
+     */
+    bool simulate_nozzle_offset_calibration(const std::string& script,
+                                            std::function<void(const nlohmann::json&)> success_cb,
+                                            std::function<void(const MoonrakerError&)> error_cb);
+
+    /// The U1 persona's extruder_offset for head @p head (0-3), as the
+    /// objects query reports it.
+    [[nodiscard]] std::array<double, 3> nozzle_offset(int head) const;
+
+    /// Whether the simulated firmware holds the offset calibration state
+    /// (PRESTART ran, EXIT has not). machine_state_manager.main_state reports it.
+    [[nodiscard]] bool nozzle_calibration_active() const;
+
     /// The inverse: which axis a PARAMETER= names, or nullopt for any other
     /// tool parameter (the mock models only the three offsets).
     static std::optional<helix::Axis> tool_offset_axis(const std::string& param);
@@ -1348,6 +1376,17 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// is one of the states the panel handles most visibly.
     std::vector<PendingPaLine> pending_pa_lines_;
     mutable std::mutex pa_cal_mutex_;
+
+    /// U1 offset calibration state: whether PRESTART entered the firmware's
+    /// calibration state, how many plate checks are still to refuse, and each
+    /// head's extruder_offset. Under nozzle_cal_mutex_.
+    bool nozzle_cal_active_ = false;
+    int nozzle_cal_plate_refusals_ = 0;
+    std::array<std::array<double, 3>, 4> nozzle_offsets_{{{0.073, -0.037, 0.0},
+                                                          {0.089, 0.037, 0.099},
+                                                          {0.012, 0.019, 0.272},
+                                                          {-0.089, -0.016, 0.060}}};
+    mutable std::mutex nozzle_cal_mutex_;
     void service_pending_pa_lines();
 
     /**

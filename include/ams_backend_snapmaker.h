@@ -427,8 +427,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// FILAMENT_SUBTYPE is the spool's product line when it names one, else
     /// "Basic". Empty when the slot names no material or one
     /// IMoonrakerAPI::is_safe_material_param() refuses; values with a space are
-    /// quoted by IMoonrakerAPI::gcode_param_value(). @p force appends FORCE=1
-    /// to every line, which a head the firmware calls official requires.
+    /// quoted by IMoonrakerAPI::gcode_param_value(). A soft material adds
+    /// SOFT=1 to the identity line. @p force appends FORCE=1 to every line,
+    /// which a head the firmware calls official requires.
     [[nodiscard]] static std::string
     build_filament_config_gcode(int head, const SlotInfo& slot, bool force = false,
                                 RecordLines lines = RecordLines::Both);
@@ -553,10 +554,15 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
 
     /// The saved unload-at-end list (SettingsManager's end-of-print unload
     /// tools) as one SET_PRINT_PREFERENCES line, sized to the toolheads the
-    /// firmware reports; empty until it has reported them. The firmware clears
-    /// its list when every print ends, so build_preprint_gcode() carries it on
-    /// every start.
+    /// firmware reports, with every soft_heads() head 0; empty until it has
+    /// reported them. The firmware clears its list when every print ends, so
+    /// build_preprint_gcode() carries it on every start.
     [[nodiscard]] std::string end_unload_gcode() const;
+
+    /// Per head, whether it holds soft filament: the firmware's filament_soft
+    /// flag, or a soft material on the slot. Never the flag alone: the
+    /// firmware sets it only for types its own table names.
+    [[nodiscard]] std::vector<bool> soft_heads() const;
 
     /// The command one action produces, or empty when the id is not ours.
     /// Separated from execute_device_action so the mapping is testable without
@@ -644,6 +650,8 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         bool batch_retired = false;
         /// official_flag_repairs_locked() output, sent outside mutex_.
         std::vector<std::pair<int, std::string>> official_repairs;
+        /// record_restores_locked() output, sent outside mutex_.
+        std::vector<std::pair<int, std::string>> record_restores;
         /// Held record writes this frame released.
         std::vector<std::pair<int, PendingRecordWrite>> record_flushes;
     };
@@ -894,6 +902,15 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// mutex_.
     std::array<bool, kNumTools> official_repair_sent_{};
 
+    /// Per head: the lane's declaration has been written back since the
+    /// firmware record last named a type. Under mutex_.
+    std::array<bool, kNumTools> record_restore_sent_{};
+
+    /// Per channel: a spool went into the feeder port after the lane's
+    /// material was declared, so the declaration may name a spool that has
+    /// left. The next user edit declares the spool in the port. Under mutex_.
+    std::array<bool, kNumTools> insert_since_declaration_{};
+
     /// Per channel: the tag reader has shown a real card this session. Under
     /// mutex_.
     std::array<bool, kNumTools> card_seen_{};
@@ -968,8 +985,24 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// neither printing nor paused. Caller holds mutex_.
     [[nodiscard]] bool heads_free_locked() const;
 
-    /// Send official_flag_repairs_locked() output. Main thread, outside mutex_.
-    void dispatch_official_flag_repairs(const std::vector<std::pair<int, std::string>>& repairs);
+    /// The firmware forgets a head's record whenever filament leaves its
+    /// toolhead (an unload, unload-at-end, a runout), though the spool still
+    /// sits in the feeder. One SET_PRINT_FILAMENT_CONFIG script per head whose
+    /// record names no type while its lane declares a material, a spool is in
+    /// the port or at the nozzle, no spool has gone in since the declaration,
+    /// no feed is moving the head, and the heads are free. Marks each head
+    /// returned sent until its record next names a type. Caller holds mutex_.
+    [[nodiscard]] std::vector<std::pair<int, std::string>> record_restores_locked();
+
+    /// The script that refills @p head's record from its slot: empty unless
+    /// the record is known to name no type, a write may reach the head, and
+    /// the slot names a material. Caller holds mutex_.
+    [[nodiscard]] std::string unset_record_restore_locked(int head) const;
+
+    /// Send each script in @p writes as its own request, logging @p why per
+    /// head. Main thread, outside mutex_.
+    void dispatch_record_scripts(const std::vector<std::pair<int, std::string>>& writes,
+                                 const char* why);
 
     /// One SET_PRINT_FILAMENT_CONFIG script per head the paused task uses whose
     /// firmware record names no type while the slot knows its material: the
@@ -1070,6 +1103,11 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// spelling: Klipper preserves the config's case in object keys. All
     /// access under mutex_.
     std::string batch_macro_object_;
+
+    /// The firmware ships the multi-toolhead offset calibration macros
+    /// (snapmaker::nozzle_offset::supported), cached by set_discovery(). All
+    /// access under mutex_.
+    bool nozzle_offset_supported_ = false;
 
     /// The batch do_filament_batch() dispatched, verified head-by-head in
     /// handle_status's channel_state parse. All access under mutex_.

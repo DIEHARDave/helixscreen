@@ -43,6 +43,7 @@ constexpr float kRocketGravity = 110.0f; // px/s^2
 constexpr float kBurstSpeed = 30.0f;     // a shell bursts once it climbs slower than this, px/s
 constexpr float kRocketTailPx = 9.0f;
 constexpr float kPalmTailPx = 22.0f;        // a palm shell climbs on a long burning tail
+constexpr float kPalmCometRisePx = 135.0f;  // a palm's comets climb this far above its burst
 constexpr int32_t kTrailSpacingTenths = 16; // trail points 1.6 px apart
 
 // Where each colour phase of a spark's life ends, as a share of the life.
@@ -353,7 +354,9 @@ void FireworksSim::advance(uint32_t step_ms, std::minstd_rand& rng) {
                 split(spark, rng);
                 continue;
             }
-            spark.flags = static_cast<uint8_t>(spark.flags & ~SPARK_ALIVE);
+            // Only the erase-pending bits survive: take_spark() reuses a spark whose flags are
+            // all clear.
+            spark.flags = static_cast<uint8_t>(spark.flags & (SPARK_DRAWN | SPARK_DRAWN_BIG));
             if (owner.alive > 0) {
                 owner.alive--;
             }
@@ -385,13 +388,20 @@ void FireworksSim::launch(std::minstd_rand& rng) {
     const int32_t x = std::clamp<int32_t>(
         static_cast<int32_t>(static_cast<float>(w_) * (0.1f + 0.8f * unit_random(rng))), 0, w_ - 1);
     const float ground = static_cast<float>(hill_top_[static_cast<size_t>(x)]);
-    const float apex = static_cast<float>(h_) * (0.08f + 0.52f * unit_random(rng));
-    const float rise = std::max(ground - apex, 20.0f * scale_);
+    const float apex_pick = unit_random(rng);
 
     Rocket& rocket = *slot;
     rocket = Rocket{};
     rocket.active = true;
     rocket.kind = pick_kind(rng);
+    // A palm bursts low enough that its comets' climb stays inside the frame.
+    float highest = static_cast<float>(h_) * 0.08f;
+    if (rocket.kind == BurstKind::PALM) {
+        highest = std::max(highest, kPalmCometRisePx * scale_);
+    }
+    const float lowest = std::max(highest, static_cast<float>(h_) * 0.60f);
+    const float apex = highest + (lowest - highest) * apex_pick;
+    const float rise = std::max(ground - apex, 20.0f * scale_);
     switch (rocket.kind) {
     case BurstKind::WILLOW:
         rocket.color = kWillowGold;

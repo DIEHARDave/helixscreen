@@ -365,7 +365,6 @@ Located in the `display` section:
   "display": {
     "animations_enabled": true,
     "time_format": 0,
-    "timezone": "UTC",
     "theme": "helixscreen",
     "rotate": 0,
     "sleep_sec": 1200,
@@ -400,9 +399,9 @@ Located in the `display` section:
 
 ### `timezone`
 **Type:** string
-**Default:** `"UTC"`
+**Default:** absent, which follows the system's timezone (**System** in the list). The BTT K-Touch has no system timezone, so it uses UTC until you pick one; its Wi-Fi setup page picks yours from your phone's.
 **Example:** `"America/New_York"`, `"Europe/London"`
-**Description:** IANA timezone ID used for all displayed clocks and print time estimates. Set this so times shown on screen match your local time instead of UTC. Change via **Settings > Language & Time > Timezone**.
+**Description:** IANA timezone ID used for all displayed clocks and print time estimates. Set this when the system's timezone is not your local time. Change via **Settings > Language & Time > Timezone**.
 
 ### `theme`
 **Type:** string
@@ -1268,7 +1267,7 @@ The remaining AMS settings are **per printer**, so they live under the printer's
 }
 ```
 
-All four have UI equivalents in **Settings > Devices > Multi-Filament System Management** - edit them there rather than by hand.
+All four have UI equivalents in **Settings > Printing > Multi-Filament System Management** - edit them there rather than by hand.
 
 #### `force_bypass_controls`
 **Type:** boolean

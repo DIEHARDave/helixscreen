@@ -86,6 +86,7 @@ translations:
   1 print: '1 stampa'
   1 profile: '1 profilo'
   '1 unit': '1 unità'
+  1. Each nozzle is heated, wiped and parked at the front for you to brush clean: 1. Ogni ugello viene riscaldato, pulito e parcheggiato davanti perché tu lo spazzoli
   1. Printer homes all axes (~1 minute): 1. La stampante azzererà tutti gli assi (~1 minuto)
   1. Printer homes and probes the bed: 1. La stampante esegue homing e sonda il piano
   1. Printer will home and probe each screw: 1. La stampante eseguirà homing e sonderà
@@ -105,6 +106,7 @@ translations:
   2. Place paper between nozzle and bed: 2. Posizionare carta tra ugello e piano
   2. Results show how much to turn each screw: 2. I risultati mostrano quanto girare
     ogni vite
+  2. Take the PEI sheet off the bed when asked: 2. Rimuovi il foglio PEI dal piatto quando richiesto
   20 minutes: 20 minuti
   24 Hour: 24 ore
   24-hour: 24 ore
@@ -114,6 +116,7 @@ translations:
   2D Layers: Strati 2D
   3. Adjust screws, then re-probe to verify: 3. Regolare le viti, poi risondare per
     verificare
+  3. Every toolhead is probed and the offsets are saved: 3. Ogni testina viene sondata e gli offset vengono salvati
   3. Lower nozzle until paper drags slightly: 3. Abbassare l'ugello fino a quando
     la carta striscia leggermente
   3. Save the position: 3. Salva la posizione
@@ -513,6 +516,7 @@ translations:
   Calibrate Gear: 'Calibra l''ingranaggio'
   Calibrate Purge Chute: Calibra condotto di spurgo
   Calibrate Toolhead: 'Calibra testina'
+  Calibrate Toolhead Offsets: Calibra offset testine
   Calibrate X: Calibra X
   Calibrate Y: Calibra Y
   Calibrate All Tools: Calibra tutti gli strumenti
@@ -674,6 +678,7 @@ translations:
   Checking for webcam...: Ricerca webcam in corso...
   Checking plugin: Verifica plugin
   Checking slots...: Controllo slot...
+  Checking the PEI sheet is off...: Verifica che il foglio PEI sia stato rimosso...
   Checking the printer...: "Verifica della stampante..."
   Checking timelapse plugin...: Verifica plugin timelapse...
   Checking webcam: Verifica webcam
@@ -701,6 +706,7 @@ translations:
 
   Clean Brush: 'Pulisci la spazzola'
   Clean Nozzle: Pulisci ugello
+  Clean {}: Pulisci {}
   Cleaning Nozzle...: Pulizia ugello...
   Cleaning nozzle...: Pulizia ugello...
   Clear: Cancella
@@ -859,6 +865,7 @@ translations:
   Cooling Tube Length: 'Lunghezza del tubo di raffreddamento'
   Cooling Tube Retraction: 'Retrazione del tubo di raffreddamento'
   Cooling for probing...: Raffreddamento per il sondaggio...
+  Cooling {}...: Raffreddamento {}...
   Copied to clipboard!: Copiato negli appunti!
   Copy: "Copia"
   Copy Command: Copia comando
@@ -1656,6 +1663,7 @@ translations:
   Heating to {}°C before {}...: Riscaldamento a {}°C prima di {}...
   Heating to {}°C for {}...: Riscaldamento a {}°C per {}...
   Heating to {}°C...: Riscaldamento a {}°C...
+  Heating {}...: Riscaldamento {}...
   Heating...: Riscaldamento...
   'Heating: %d / %d°C': 'Riscaldamento: %d / %d°C'
   Heightmap and flatness of the active bed mesh: 'Mappa delle altezze e planarità della mesh del piano attiva'
@@ -1879,6 +1887,7 @@ translations:
   Keep clear of the printer while the toolhead is moving: Stai lontano dalla stampante mentre la testina si muove
   Keep current: Mantieni attuale
   Keep current ({}): Mantieni attuale ({})
+  Keep hands clear except when asked. The printer moves on its own.: Tieni le mani lontane tranne quando richiesto. La stampante si muove da sola.
   Keep hands clear. The printer moves on its own.: Tenere le mani lontane. La stampante si muove da sola.
 
   Keep its own data on this screen (up to 256 KB).: 'Conserva i propri dati su questo schermo (fino a 256 KB).'
@@ -2141,6 +2150,7 @@ translations:
   Maximum acceleration (mm/s²): Accelerazione massima (mm/s²)
   Maximum toolhead speed (mm/s): Velocità massima testina (mm/s)
   Measure: 'Misura'
+  Measure each toolhead's X, Y and Z offset (about 20 minutes): Misura l'offset X, Y e Z di ogni testina (circa 20 minuti)
   Measure every tool's XYZ offset automatically: Misura automaticamente l'offset XYZ di ogni strumento
   Measure pressure advance automatically: 'Misura automaticamente il Pressure Advance'
   ? Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed.
@@ -2149,6 +2159,7 @@ translations:
   Measured filament diameter: Diametro filamento misurato
   Measured pressure advance: 'Pressure Advance misurato'
   Measurement incomplete. Try again.: Misurazione incompleta. Riprova.
+  Measures each toolhead's X, Y and Z offset so every head prints in the same place. Takes about 20 minutes.: Misura l'offset X, Y e Z di ogni testina perché tutte stampino nello stesso punto. Richiede circa 20 minuti.
   Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen.: 'Misura il piano a ogni vite di regolazione e indica di quanto girarla. Eseguilo nella schermata Inclinazione viti.'
   Measures vibration for input shaping. Run resonance tests on the Input Shaper screen.: 'Misura le vibrazioni per l''input shaping. Esegui i test di risonanza nella schermata Input Shaper.'
   Measuring: 'Misurazione'
@@ -2156,6 +2167,7 @@ translations:
   Measuring accelerometer noise...: 'Misurazione del rumore dell''accelerometro...'
   Measuring vibrations... {}%: 'Misurazione delle vibrazioni... {}%'
   Measuring wheel error: Errore della ruota di misura
+  Measuring {}...: Misurazione {}...
   Memory: Memoria
   Memory (MB): Memoria (MB)
   Memory Snapshot: Istantanea della memoria
@@ -2214,6 +2226,7 @@ translations:
   Moving lane: Spostamento corsia
   Moving the plate...: Spostamento del piano...
 
+  Moving {} to the front...: Spostamento di {} in avanti...
   Multi-Filament: Multi-filamento
   Multi-Filament Overview: Panoramica multi-filamento
   Multi-Filament System: Sistema multi-filamento
@@ -2405,6 +2418,7 @@ translations:
   'Which lane is in the toolhead?': 'Quale corsia è nella testina?'
   'Choose which lane is in the toolhead to unload it': 'Scegli quale corsia è nella testina per scaricarla'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: 'Nulla è stato modificato. Temperatura e materiale restano, riprovare è un tocco.'
+  Nothing was saved and the heaters are off.: Non è stato salvato nulla e i riscaldatori sono spenti.
   Notification: Notifica
   Notifications: Notifiche
   Notify when print finishes: Notifica al termine della stampa
@@ -2450,6 +2464,7 @@ translations:
   'Off:': 'Off:'
   'Off: runs with these values without asking': 'Disattivato: esegue con questi valori senza chiedere'
   Offer to save Z-offset changes to the printer config: 'Proponi di salvare le modifiche allo Z-Offset nella configurazione della stampante'
+  Offsets Saved: Offset salvati
   Offsets saved: Offset salvati
   "Old setting on today's data: {} residual - now: {}": 'Impostazione precedente sui dati di oggi: residuo {} - ora: {}'
   'On': 'On'
@@ -2585,6 +2600,7 @@ translations:
   'Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels.': 'Posiziona
     file immagine (PNG, JPEG, BMP, GIF) in config/custom_images/. Dimensione max:
     2048×2048 pixel.'
+  Place the PEI sheet back onto the heated bed.: Rimetti il foglio PEI sul piano riscaldato.
   Place the spools: Appoggia le bobine
 
   Placed: Inserito
@@ -2640,6 +2656,7 @@ translations:
   'Preheat: all {} tools + bed set': 'Preriscaldamento: tutti i {} utensili + piano
     impostati'
   'Preheat: {} + bed set': 'Preriscaldamento: {} + piano impostati'
+  Preheating and homing...: Preriscaldamento e homing...
   Preload: 'Precarica'
   Preload failed: Precaricamento non riuscito
   Prepared: Preparato
@@ -2755,6 +2772,7 @@ translations:
   Printer hardware detected: Hardware stampante rilevato
   Printer image set to auto-detect: Immagine stampante impostata su rilevamento auto
   Printer is busy - {} stays in the queue: 'La stampante è occupata – {} resta in coda'
+  Printer is busy with a print: La stampante sta stampando
   Printer is busy — try again in a moment: La stampante è occupata — riprova tra poco
   Printer is not paired — pair it first: La stampante non è associata — associala
     prima
@@ -2940,6 +2958,7 @@ translations:
   Remove PIN: Rimuovi PIN
   Remove Spoolman?: Rimuovere Spoolman?
   Remove plugin from printer: Rimuovi plugin dalla stampante
+  Remove the PEI Sheet: Rimuovi il foglio PEI
   'Remove the PEI sheet from the bed, then start again: probing through the sheet gives wrong results': 'Rimuovi il foglio PEI dal piatto, poi riprova: sondare attraverso il foglio dà risultati errati'
   Remove the bypass spool from the toolhead first: 'Rimuovi prima la bobina di bypass dalla testina'
   Remove the spools: Togli le bobine
@@ -3154,6 +3173,7 @@ translations:
     e riavvia il firmware.
   Saving Configuration...: Salvataggio configurazione...
   Saving Z-offset...: Salvataggio Z-offset...
+  Saving and finishing...: Salvataggio e completamento...
   Saving config... Klipper will restart.: Salvataggio config... Klipper si riavvierà.
   Saving offsets...: Salvataggio offset...
   Saving the position and parking the toolhead.: Salvataggio della posizione e parcheggio della testa.
@@ -3484,6 +3504,7 @@ translations:
   Std Deviation: Dev. standard
   Step: Passaggio
   Step 1 of 3: Passaggio 1 di 3
+  Step {} of {}: Passo {} di {}
   Still saving this spool…: 'Salvataggio di questa bobina in corso…'
   Still working... taking longer than usual: Ancora in corso... ci vuole più tempo
     del solito
@@ -3560,6 +3581,7 @@ translations:
   TOOLS: STRUMENTI
   TPU: TPU
   Tag Parts: Contrassegna componenti
+  Take the PEI sheet off the heated bed, then tap Next. The toolheads probe the bare bed.: Rimuovi il foglio PEI dal piano riscaldato, poi tocca Avanti. Le testine sondano il piano nudo.
   Takes 3-5 min. Do not interrupt.: Richiede 3-5 min. Non interrompere.
   Tangle prevention active: Prevenzione grovigli attiva
   Tangle prevention boosted: Prevenzione grovigli potenziata
@@ -3639,6 +3661,7 @@ translations:
   : Il plugin HelixPrint abilita modifiche G-code rapide direttamente sulla stampante,
     come saltare la mesh piano per ristampe veloci.
   The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings.: 'Il plugin timelapse di Moonraker è installato. Imposta come registra nelle impostazioni del timelapse.'
+  The PEI sheet is still on the bed. Take it off, then tap Next.: Il foglio PEI è ancora sul piatto. Rimuovilo, poi tocca Avanti.
   The Spoolman spool currently loaded: La bobina Spoolman caricata
   ? The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
@@ -3684,6 +3707,8 @@ translations:
   : La bobina caricata è {}, ma questo file è stato sezionato per {}. Il filamento con cariche richiede un flusso più basso e un ugello indurito.
   The message your printer's macros show (M117): 'Il messaggio mostrato dalle macro della stampante (M117)'
   The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.: 'L''ugello fa alcuni brevi movimenti di prova in un angolo, lontano dall''area di stampa, e ripete finché i valori convergono.'
+  ? The nozzle is hot. Brush it clean with the wire brush that came with the printer and keep the docking position clean, then tap Next.
+  : L'ugello è caldo. Puliscilo con la spazzola metallica in dotazione, mantieni pulita la posizione di aggancio, poi tocca Avanti.
   The plate and the spools are still hot. Use gloves.: Il piano e le bobine sono ancora caldi. Usa i guanti.
 
   The plate finishes its current move, but drying will not start.: 'Il piano termina lo spostamento in corso, ma l''essiccazione non partirà.'
@@ -3920,10 +3945,12 @@ translations:
   Toolchange purge: 'Spurgo cambio utensile'
   Toolhead: 'Testina'
   Toolhead LED: 'LED della testina'
+  Toolhead Offset Calibration: Calibrazione offset testine
   Toolhead Sensor: Sensore testina
   Toolhead Style: Stile testina
   Toolhead Y: Testina Y
   Toolhead jam: Inceppamento testina
+  Toolhead offset calibration: Calibrazione offset testine
   Toolhead position and homing, with a plate view and Home All: "Posizione e homing della testina, con vista del piatto e Homing tutto"
   Toolhead position unknown: Posizione della testina sconosciuta
   Toolheads: Testine
@@ -4183,6 +4210,7 @@ translations:
   Wifi: Wi-Fi
   Will not switch spools on runout: Non cambierà bobina a filamento esaurito
   Wipe nozzle on silicone cleaning strip: 'Pulisci l''ugello sulla striscia di pulizia in silicone'
+  Wiping {}...: Pulizia {}...
   Wizard Error: Errore procedura guidata
   Working...: Elaborazione...
   Write failed at chunk {}: Scrittura fallita al chunk {}

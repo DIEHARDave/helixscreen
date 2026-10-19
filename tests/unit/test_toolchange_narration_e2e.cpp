@@ -577,3 +577,57 @@ TEST_CASE_METHOD(NarratedSidebarFixture, "AMS sidebar starts its own operation f
     helix::ui::UpdateQueue::instance().drain();
     CHECK(current_step() == 0);
 }
+
+namespace {
+
+// An AFC backend fed real AFC-object status frames, so the action AmsState
+// syncs is the one the backend's own parser derives.
+class FramedAfcBackend : public AmsBackendAfc {
+  public:
+    FramedAfcBackend() : AmsBackendAfc(nullptr, nullptr) {}
+
+    void feed(const nlohmann::json& afc) {
+        nlohmann::json params;
+        params["AFC"] = afc;
+        nlohmann::json notification;
+        notification["params"] = nlohmann::json::array({params, 0.0});
+        handle_status_update(notification);
+        AmsState::instance().sync_from_backend();
+        helix::ui::UpdateQueue::instance().drain();
+    }
+};
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "Toolchange narration survives AFC's Idle between unload and load",
+                 "[ams][afc][narration][stepbar][toolchange_hold]") {
+    reset_step_baseline();
+    auto framed = std::make_unique<FramedAfcBackend>();
+    auto* backend = framed.get();
+    AmsState::instance().set_backend(std::move(framed));
+    AmsState::instance().sync_from_backend();
+    GcodeNarrationRouter router(nullptr, nullptr);
+
+    backend->feed({{"current_state", "Unloading"}, {"next_lane", "lane2"}});
+    GcodeNarrationRouterTestAccess::feed(router, "// Unloading lane1");
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(current_step() == 2);
+
+    // TOOL_UNLOAD's closing Idle, then the heat wait: still one operation.
+    backend->feed({{"current_state", "Idle"}});
+    CHECK(current_step() == 2);
+    CHECK(current_detail() == std::string("Unload filament"));
+
+    backend->feed({{"current_state", "Loading"}});
+    GcodeNarrationRouterTestAccess::feed(router, "// Loading lane2");
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(current_step() == 3);
+
+    // CHANGE_TOOL's finally clears next_lane: the operation really ends.
+    backend->feed({{"current_state", "Idle"}, {"next_lane", nullptr}});
+    CHECK(current_step() == -1);
+
+    AmsState::instance().set_narration_phase(-1, "");
+    install_afc_backend();
+}

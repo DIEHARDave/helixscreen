@@ -201,7 +201,7 @@ Some filament systems do not report a bypass position. On those, the Bypass togg
 
 The Creality CFS no longer appears here — it has a working external spool. See [CFS and the External Spool](#cfs-and-the-external-spool).
 
-To show the controls anyway, turn on **Enable Bypass Controls** in Settings > Devices > Multi-Filament System Management. The setting appears only when your firmware reports no bypass.
+To show the controls anyway, turn on **Enable Bypass Controls** in Settings > Printing > Multi-Filament System Management. The setting appears only when your firmware reports no bypass.
 
 With it on, the external spool appears on the filament path beside your slots. Tap it to set material, color, and brand, or to link a Spoolman spool.
 
@@ -566,6 +566,19 @@ You can still edit spool info manually from the slot context menu for spools wit
 The U1 tracks filament with a motion sensor per tool. When you resume a print that paused for something other than a runout, HelixScreen first checks the printer's filament record for every head the print uses. If a head's record is blank but HelixScreen knows its material, HelixScreen fills the record in before resuming. After a runout it doesn't, because you may have loaded a different spool. If the record stays blank, the resume is refused and HelixScreen explains that the head needs its material set.
 
 After a runout, HelixScreen has the printer refeed the head from its feeder (heating, feeding and purging, which takes about a minute and a half) before it sends Resume, so a plain Resume actually continues the print. If the motion sensor reports a runout but filament is still physically present (a stale sensor reading), HelixScreen recovers silently without prompting you.
+
+### Toolhead Offset Calibration
+
+The U1 measures how far each toolhead's nozzle sits from the others, so every head prints in the same place. Open **AMS Management**, then **Calibration**, then **Calibrate Toolhead Offsets**. It takes about 20 minutes and runs the printer's own calibration, the same one as the stock screen's Multi-toolhead Offset Calibration:
+
+1. The printer preheats and homes, then for each toolhead in turn heats the nozzle, purges and wipes it, and parks it at the front.
+2. For each parked toolhead, HelixScreen asks you to brush the nozzle clean with the wire brush that came with the printer, then tap **Next**. The nozzle is hot.
+3. When all four are clean, take the PEI sheet off the bed and tap **Next**. The printer checks the sheet is off before probing; if it still detects the sheet, it asks again.
+4. Each toolhead is probed and the offsets are saved. The final screen lists every toolhead's X, Y and Z offset. Put the PEI sheet back.
+
+Every toolhead is purged and probed, including one with no filament loaded, exactly as on the stock screen; an empty head just turns its extruder over without pushing anything out.
+
+Tapping **Cancel** or leaving the screen stops the calibration and turns the heaters off. If HelixScreen restarts in the middle of a calibration, it ends the printer's calibration mode and turns the heaters off when it reconnects. A step already running finishes first (a heat-up, for example), except probing, which stops straight away. If a step fails, nothing is saved and the heaters are turned off. The button is greyed out while a print is running or paused.
 
 > **Note:** Because each toolhead is independent, the Snapmaker backend has no Home, Recover, Reset, Bypass, or Endless Spool controls — those apply to shared-path AMS hardware only.
 

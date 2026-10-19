@@ -15,6 +15,7 @@
 #include "ui_spool_canvas.h"
 
 #include "../test_fixtures.h"
+#include "../test_helpers/ams_panel_test_access.h"
 #include "../test_helpers/scoped_geometry.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
@@ -752,4 +753,20 @@ TEST_CASE_METHOD(AmsTrayPanelFixture,
     for (int i = 1; i < 4; ++i)
         CHECK(none_named[i] == none_named[0]);
     CHECK(none_named[0] < all_named[0]);
+}
+
+TEST_CASE_METHOD(AmsTrayPanelFixture,
+                 "AMS panel: an endless-spool backup between lanes past sixteen is shown",
+                 "[ams][slot_ceiling][endless_spool]") {
+    constexpr int kLanes = 20;
+    build("off", kLanes);
+    AmsBackend* backend = AmsState::instance().get_backend();
+    REQUIRE(backend != nullptr);
+    REQUIRE(backend->get_endless_spool_capabilities().available());
+    REQUIRE(backend->set_endless_spool_backup(kLanes - 2, kLanes - 1).success());
+
+    AmsPanelTestAccess::update_endless_arrows(*panel_);
+    lv_obj_t* arrows = lv_obj_find_by_name(panel_obj_, "endless_arrows");
+    REQUIRE(arrows != nullptr);
+    CHECK_FALSE(lv_obj_has_flag(arrows, LV_OBJ_FLAG_HIDDEN));
 }

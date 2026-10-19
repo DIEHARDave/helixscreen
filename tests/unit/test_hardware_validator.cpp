@@ -55,6 +55,26 @@ TEST_CASE("HardwareSnapshot - JSON serialization", "[hardware][validator]") {
         REQUIRE(j["filament_sensors"].size() == 1);
     }
 
+    SECTION("A saved heater that is not a heater object is dropped on load") {
+        // A stored snapshot can list the U1's extruder_offset_calibration as a
+        // heater; it is not one, so it must not read as removed hardware.
+        json j = {{"timestamp", "2025-01-01T12:00:00Z"},
+                  {"heaters",
+                   {"heater_bed", "extruder_offset_calibration", "heater_generic dragonbreath",
+                    "extruder", "extruder1"}},
+                  {"sensors", json::array()},
+                  {"fans", json::array()},
+                  {"leds", json::array()},
+                  {"filament_sensors", json::array()}};
+
+        HardwareSnapshot previous = HardwareSnapshot::from_json(j);
+        REQUIRE(previous.heaters == std::vector<std::string>{"heater_bed",
+                                                             "heater_generic dragonbreath",
+                                                             "extruder", "extruder1"});
+        HardwareSnapshot current = previous;
+        REQUIRE(previous.get_removed(current).empty());
+    }
+
     SECTION("Deserializes from JSON correctly") {
         json j = {{"timestamp", "2025-01-01T12:00:00Z"},
                   {"heaters", {"extruder", "heater_bed"}},
