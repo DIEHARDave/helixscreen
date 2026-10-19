@@ -379,3 +379,27 @@ TEST_CASE_METHOD(GuidedFlowFixture, "a per-tool action names its tool in the app
     REQUIRE(row != nullptr);
     CHECK(text_of(row, "label") == "Unload at end - Tool 2 (T1)");
 }
+
+TEST_CASE_METHOD(GuidedFlowFixture, "an enabled action's row and label read as enabled",
+                 "[ams][device-section]") {
+    DeviceAction off = DeviceAction::toggle("off", "Off", "prefs", false);
+    off.enabled = false;
+    lv_obj_t* root =
+        open_prefs({DeviceAction::toggle("on", "On", "prefs", false),
+                    DeviceAction::slider("len", "Length", "prefs", 5.0f, 0, 10, "mm"), off});
+    const lv_color_t text = theme_manager_get_color("text");
+    for (const char* id : {"on", "len"}) {
+        INFO(id);
+        lv_obj_t* row = lv_obj_find_by_name(root, id);
+        REQUIRE(row != nullptr);
+        // The row itself stays enabled: a disabled root dims every child.
+        CHECK_FALSE(lv_obj_has_state(row, LV_STATE_DISABLED));
+        lv_obj_t* label = lv_obj_find_by_name(row, "label");
+        REQUIRE(label != nullptr);
+        CHECK(lv_color_to_u32(lv_obj_get_style_text_color(label, LV_PART_MAIN)) ==
+              lv_color_to_u32(text));
+    }
+    lv_obj_t* label = lv_obj_find_by_name(lv_obj_find_by_name(root, "off"), "label");
+    CHECK(lv_color_to_u32(lv_obj_get_style_text_color(label, LV_PART_MAIN)) !=
+          lv_color_to_u32(text));
+}

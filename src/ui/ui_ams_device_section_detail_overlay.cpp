@@ -238,7 +238,6 @@ void AmsDeviceSectionDetailOverlay::create_setting_row(lv_obj_t* parent,
                                          : action.description;
     const std::string label = device_action_label(action);
     const std::string description_text = description.empty() ? "" : lv_tr(description.c_str());
-    const char* disabled = action.enabled ? "" : kActionDisabledSubject;
 
     std::vector<std::pair<std::string, std::string>> attrs = {
         {"label", label},
@@ -255,7 +254,6 @@ void AmsDeviceSectionDetailOverlay::create_setting_row(lv_obj_t* parent,
         attrs.insert(attrs.end(), {{"description", description_text},
                                    {"description_tag", description},
                                    {"callback", "on_device_action_toggled"},
-                                   {"disabled", disabled},
                                    {"moves_machine", action.moves_machine ? "true" : "false"}});
         break;
     case helix::printer::ActionType::SLIDER: {
@@ -277,8 +275,7 @@ void AmsDeviceSectionDetailOverlay::create_setting_row(lv_obj_t* parent,
                                    {"value_text", slider_value_text(value, scale, action.unit)},
                                    {"callback", "on_device_action_slider_moved"},
                                    {"commit_callback", "on_device_action_slider_released"},
-                                   {"value_callback", "on_device_action_value_clicked"},
-                                   {"disabled", disabled}});
+                                   {"value_callback", "on_device_action_value_clicked"}});
         break;
     }
     case helix::printer::ActionType::DROPDOWN: {
@@ -293,14 +290,20 @@ void AmsDeviceSectionDetailOverlay::create_setting_row(lv_obj_t* parent,
         attrs.insert(attrs.end(), {{"description", description_text},
                                    {"description_tag", description},
                                    {"options", options},
-                                   {"callback", "on_device_action_dropdown_changed"},
-                                   {"disabled", disabled}});
+                                   {"callback", "on_device_action_dropdown_changed"}});
         break;
     }
     case helix::printer::ActionType::INFO:
         component = "setting_info_row";
         attrs.push_back({"value", info_value_text(action)});
         break;
+    }
+
+    // lv_xml_create applies every attribute to the row's root lv_obj too, where
+    // `disabled` is the state flag and any value but "false" sets it, so an
+    // enabled action must not name the attribute at all.
+    if (!action.enabled && action.type != helix::printer::ActionType::INFO) {
+        attrs.push_back({"disabled", kActionDisabledSubject});
     }
 
     std::vector<const char*> pairs;
