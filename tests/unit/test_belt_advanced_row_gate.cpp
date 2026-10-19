@@ -3,15 +3,15 @@
 
 /**
  * @file test_belt_advanced_row_gate.cpp
- * @brief The Advanced panel's Belt Tension row follows belt-compare support,
- *        and which Advanced rows beta features gate.
+ * @brief The Advanced panel's calibration rows follow printer support, not
+ *        beta features (prestonbrown/helixscreen#1736).
  *
- * Builds the real advanced_panel.xml and drives the two subjects the belt
- * row's visibility binding reads: printer_has_accelerometer and
- * printer_supports_belt_compare (1 only on corexy/limited_corexy). The row is
- * shown when both are 1 and hidden when either is 0, with beta features off.
- * Belt Tension and Pressure Advance Tuning need no beta features; Tool Offsets
- * does (prestonbrown/helixscreen#1736).
+ * Builds the real advanced_panel.xml with beta features off and drives the
+ * subjects each row's visibility binding reads. Belt Tension needs
+ * printer_has_accelerometer and printer_supports_belt_compare (1 only on
+ * corexy/limited_corexy); Tool Offsets needs printer_has_tool_offset_cal;
+ * Z-Offset Calibration needs a probe and steps aside where the tool offset
+ * routine also sets the reference tool's Z.
  */
 
 #include "ui_status_pill.h"
@@ -38,7 +38,6 @@ class AdvancedBeltRowFixture : public XMLTestFixture {
         ui_status_pill_register_widget();
         REQUIRE(register_component("setting_group_header"));
         REQUIRE(register_component("setting_action_row"));
-        REQUIRE(register_component("beta_feature"));
         REQUIRE(register_component("advanced_panel"));
 
         // The XML subject registry is process-global and never forgets an
@@ -49,6 +48,8 @@ class AdvancedBeltRowFixture : public XMLTestFixture {
         ensure_subject("printer_has_accelerometer", 1);
         ensure_subject("printer_supports_belt_compare", 0);
         ensure_subject("printer_has_tool_offset_cal", 0);
+        ensure_subject("printer_has_probe", 1);
+        ensure_subject("hide_manual_z_calibration", 0);
         beta_ = subject("show_beta_features");
         beta_before_ = lv_subject_get_int(beta_);
         lv_subject_set_int(beta_, 0);
@@ -64,8 +65,7 @@ class AdvancedBeltRowFixture : public XMLTestFixture {
         lv_subject_set_int(beta_, beta_before_);
     }
 
-    /// Hidden itself or under a hidden ancestor, up to the panel root. A
-    /// <beta_feature> wrapper hides the wrapper, not the row inside it.
+    /// Hidden itself or under a hidden ancestor, up to the panel root.
     bool hidden_in_panel(lv_obj_t* obj) const {
         for (; obj && obj != panel_; obj = lv_obj_get_parent(obj)) {
             if (lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN)) {
@@ -98,9 +98,9 @@ class AdvancedBeltRowFixture : public XMLTestFixture {
     /// untouched.
     static void ensure_subject(const char* name, int value) {
         if (!lv_xml_get_subject(nullptr, name)) {
-            static lv_subject_t subjects[4];
+            static lv_subject_t subjects[6];
             static size_t next = 0;
-            REQUIRE(next < 4);
+            REQUIRE(next < 6);
             lv_subject_init_int(&subjects[next], value);
             lv_xml_register_subject(nullptr, name, &subjects[next]);
             next++;
@@ -148,17 +148,42 @@ TEST_CASE_METHOD(AdvancedBeltRowFixture,
     CHECK_FALSE(hidden_in_panel(row("row_pa_tuning")));
 }
 
-TEST_CASE_METHOD(AdvancedBeltRowFixture, "Advanced Tool Offsets row stays a beta feature",
-                 "[belt][advanced][xml]") {
-    lv_subject_set_int(subject("printer_has_tool_offset_cal"), 1);
+TEST_CASE_METHOD(AdvancedBeltRowFixture,
+                 "Advanced Tool Offsets row follows tool offset support, not beta features",
+                 "[tool_offsets][advanced][xml]") {
+    REQUIRE(lv_subject_get_int(beta_) == 0);
+    auto* tool_offset_cal = subject("printer_has_tool_offset_cal");
     lv_obj_t* tool_offsets = row("row_tool_offsets");
 
+    lv_subject_set_int(tool_offset_cal, 0);
     process_lvgl(10);
     CHECK(hidden_in_panel(tool_offsets));
 
-    lv_subject_set_int(beta_, 1);
+    lv_subject_set_int(tool_offset_cal, 1);
     process_lvgl(10);
     CHECK_FALSE(hidden_in_panel(tool_offsets));
 
-    lv_subject_set_int(subject("printer_has_tool_offset_cal"), 0);
+    lv_subject_set_int(tool_offset_cal, 0);
+}
+
+TEST_CASE_METHOD(AdvancedBeltRowFixture,
+                 "Advanced Z-Offset row steps aside for a full tool offset routine with beta off",
+                 "[tool_offsets][advanced][xml]") {
+    REQUIRE(lv_subject_get_int(beta_) == 0);
+    auto* tool_offset_cal = subject("printer_has_tool_offset_cal");
+    auto* hide_manual = subject("hide_manual_z_calibration");
+    lv_subject_set_int(subject("printer_has_probe"), 1);
+    lv_obj_t* z_offset = row("row_z_offset");
+
+    lv_subject_set_int(tool_offset_cal, 1);
+    lv_subject_set_int(hide_manual, 0);
+    process_lvgl(10);
+    CHECK_FALSE(hidden_in_panel(z_offset));
+
+    lv_subject_set_int(hide_manual, 1);
+    process_lvgl(10);
+    CHECK(hidden_in_panel(z_offset));
+
+    lv_subject_set_int(tool_offset_cal, 0);
+    lv_subject_set_int(hide_manual, 0);
 }

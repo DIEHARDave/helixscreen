@@ -212,14 +212,12 @@
           <event_cb trigger="clicked" callback="on_pa_tuning_clicked"/>
         </setting_action_row>
         <!-- Tool Offsets (tool changers with the calibration macro only) -->
-        <beta_feature>
-          <setting_action_row name="row_tool_offsets"
-                              label="Tool Offsets" icon="axis_arrow"
-                              description="Measure every tool's XYZ offset automatically">
-            <bind_flag_if_eq subject="printer_has_tool_offset_cal" flag="hidden" ref_value="0"/>
-            <event_cb trigger="clicked" callback="on_tool_offset_row_clicked"/>
-          </setting_action_row>
-        </beta_feature>
+        <setting_action_row name="row_tool_offsets"
+                            label="Tool Offsets" icon="axis_arrow"
+                            description="Measure every tool's XYZ offset automatically">
+          <bind_flag_if_eq subject="printer_has_tool_offset_cal" flag="hidden" ref_value="0"/>
+          <event_cb trigger="clicked" callback="on_tool_offset_row_clicked"/>
+        </setting_action_row>
         <!-- Belt Tension (hidden if no accelerometer) -->
         <setting_action_row name="row_belt_tension"
                             label="Belt Tension" icon="vibrate" description="Compare belt paths with a resonance sweep">
@@ -243,9 +241,8 @@
                needs a probe, and steps aside for automatic tool offset
                calibration only where the database says that routine covers
                the reference tool's Z too (see the same bind in
-               controls_panel.xml), but only while that beta screen is
-               actually shown, or turning beta features off would hide both. -->
-          <bind_flag_if cond="printer_has_probe eq 0 or (printer_has_tool_offset_cal eq 1 and show_beta_features eq 1 and hide_manual_z_calibration eq 1)"
+               controls_panel.xml). -->
+          <bind_flag_if cond="printer_has_probe eq 0 or (printer_has_tool_offset_cal eq 1 and hide_manual_z_calibration eq 1)"
                         flag="hidden"/>
           <event_cb trigger="clicked" callback="on_zoffset_row_clicked"/>
         </setting_action_row>

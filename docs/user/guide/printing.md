@@ -175,9 +175,7 @@ The Print Status panel shows:
 
 **Pause ticks on the progress bar.** Scheduled stops in the file - filament changes (`M600`), `PAUSE`/`M601` commands, and slicer pause-at-layer markers - each draw a small tick on the progress bar where they fall, on both the print screen and the home print card. On a file sliced with `M73` progress markers, the ticks sit at the slicer's own percentages.
 
-### Pausing at a Layer (Beta)
-
-> **Beta feature.** This only appears with [beta features](beta-features.md) turned on.
+### Pausing at a Layer
 
 You can tell a running print to pause at a layer you pick - to drop in a magnet or nut, or swap filament for a color band - even when the file has no pause in it.
 

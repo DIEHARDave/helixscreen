@@ -228,7 +228,7 @@ This is different from `sounds_enabled` — that toggle mutes playback but still
 ### `beta_features`
 **Type:** boolean
 **Default:** `false`
-**Description:** Enable beta features that are still under testing. Gates rows that are still being proven on real hardware (in the Advanced panel: Tool Offsets; on the Controls panel: the Tool Offsets button on tool-changing printers), the prompt that offers to install the HelixPrint Moonraker plugin, and the **Dev** entry in the Update Channel selector (Stable and Beta are offered without it). Always enabled automatically when running in `--test` mode. Can also be toggled by tapping the version button 7 times in **Settings > Help & About > About**. See the [Beta Features](guide/beta-features.md) guide for the full list.
+**Description:** Enable beta features that are still under testing. Gates the prompt that offers to install the HelixPrint Moonraker plugin, and the **Dev** entry in the Update Channel selector (Stable and Beta are offered without it). Always enabled automatically when running in `--test` mode. Can also be toggled by tapping the version button 7 times in **Settings > Help & About > About**. See the [Beta Features](guide/beta-features.md) guide for the full list.
 
 ---
 

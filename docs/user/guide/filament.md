@@ -750,9 +750,7 @@ Three things about the fields are worth knowing:
 
 Left alone, HelixScreen picks the preset that suits the filament in that box - the most conservative one, meaning the lowest drying temperature among the materials loaded there, so a mixed box isn't dried at the temperature its most tolerant spool would take. Type a value yourself and that stops for the rest of the visit; pick a preset by hand and it starts again.
 
-### Choosing Lanes to Dry (Happy Hare 4, beta)
-
-> **Beta feature.** The lane chips and Rotate appear only with [beta features](beta-features.md) turned on. With beta off, Start and Stop dry the whole unit, exactly as they always have. The drying badges on the spools show either way.
+### Choosing Lanes to Dry (Happy Hare 4)
 
 On a Happy Hare 4 unit that has its own heater on every lane (an EMU-style build), the box's screen shows a **Dry** row of lane chips where the lane line would be, one chip per heated lane on that unit. Every chip starts selected each time you open the screen, which dries the whole unit exactly as before.
 

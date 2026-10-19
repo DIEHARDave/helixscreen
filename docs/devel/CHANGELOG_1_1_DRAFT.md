@@ -313,7 +313,7 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Tool Offsets screen with automatic calibration** (#1480) - per-tool X, Y and Z offsets in
   one place, and a one-tap calibration that runs your printer's own routine, follows it
   live, and saves every axis with a single restart. Where that routine calibrates every
-  tool, the manual paper test is hidden. Beta-gated for now. (thanks @Monstrofil)
+  tool, the manual paper test is hidden. (thanks @Monstrofil)
 - **Per-tool Z offset from Print Tune** - Print Tune has a Global / T0..Tn selector, so each
   tool keeps its own first-layer height, and the save button appears whenever any tool's
   offset is unsaved and writes it permanently. It used to vanish after the next Klipper
@@ -365,7 +365,7 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   boxes that can do different things are listed side by side. When the dryer can only heat
   some boxes at a time, the waiting ones say they are queued and which box is using the
   heater.
-- **Happy Hare 4: dry only the lanes you choose** (#1026, beta) - with beta features on, on a unit with a heater per lane,
+- **Happy Hare 4: dry only the lanes you choose** (#1026) - on a unit with a heater per lane,
   the drying screen shows a chip per lane, all selected to start. Clear some to dry just the
   rest, turn on Rotate to have an eSpooler turn the spools while they dry, and Stop with a
   selection stops only those lanes. Each spool on the Filament panel shows a small badge while
@@ -497,12 +497,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Printing**
 
-- **Pause a running print at a layer (beta)** (#1703) - tap the layer count on the print
+- **Pause a running print at a layer** (#1703) - tap the layer count on the print
   screen to pause at the next layer or one you pick, see the scheduled layer beside the count
   and as a tick on the progress bar, and cancel it. Uses the printer's own
   `SET_PAUSE_NEXT_LAYER` / `SET_PAUSE_AT_LAYER` macros (Mainsail and Fluidd client macros,
   Snapmaker U1 stock firmware) and needs a slicer that reports layers; hidden on printers
-  without the macros and while beta features are off.
+  without the macros.
 - **Heater duty on every heater** (#1290) - the Controls and print status screens show how
   hard each heater is working as a percentage beside its status, so a nozzle running flat
   out and falling behind looks different from one holding temperature easily.

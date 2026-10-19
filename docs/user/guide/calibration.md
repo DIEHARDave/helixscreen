@@ -158,11 +158,11 @@ HelixScreen picks the right calibration command for your setup (`PROBE_CALIBRATE
 
 > **Quick access:** A **Z Calibration** button is also available on the Controls panel for one-tap access.
 
-> **Tool changer?** Some printers can also measure Z automatically for every tool, including the reference one, as part of [automatic Tool Offsets calibration](#tool-offsets-beta) — on those, this paper-test flow is hidden. Most tool changers only measure the *other* tools' offsets relative to the reference tool, so the paper test stays available to set the reference tool's own Z.
+> **Tool changer?** Some printers can also measure Z automatically for every tool, including the reference one, as part of [automatic Tool Offsets calibration](#tool-offsets) — on those, this paper-test flow is hidden. Most tool changers only measure the *other* tools' offsets relative to the reference tool, so the paper test stays available to set the reference tool's own Z.
 
 ---
 
-## Tool Offsets *(Beta)*
+## Tool Offsets
 
 > Added in 1.1.
 

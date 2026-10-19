@@ -4,8 +4,8 @@
  * @file test_print_layer_pause_controls.cpp
  * @brief The Pause at Layer modal's status line and commands (#1703).
  *
- * Pause at layer is a beta feature: with beta off nothing may open, and no
- * SET_PAUSE_* may reach the printer.
+ * Every case runs with beta features off: pausing at a layer needs none
+ * (prestonbrown/helixscreen#1736).
  */
 
 #include "ui_modal.h"
@@ -63,6 +63,8 @@ class ScopedBeta {
 
 class LayerPauseControlsFixture : public LVGLTestFixture {
   public:
+    ScopedBeta beta_off{false};
+
     LayerPauseControlsFixture()
         : client(MoonrakerClientMock::PrinterType::VORON_24), api(client, state) {
         state.init_subjects(false);
@@ -82,14 +84,6 @@ class LayerPauseControlsFixture : public LVGLTestFixture {
         controls.deinit_subjects();
         helix::ui::UpdateQueue::instance().drain();
         state.deinit_subjects();
-    }
-
-    void every_action() {
-        controls.schedule_next_layer();
-        controls.schedule_at_layer(8);
-        controls.cancel_pending();
-        controls.choose_layer();
-        controls.open_modal();
     }
 
     MoonrakerClientMock client;
@@ -113,19 +107,9 @@ TEST_CASE("Layer pause status text: one line for where, one for what is pending"
 }
 
 TEST_CASE_METHOD(LayerPauseControlsFixture,
-                 "Layer pause controls: beta off sends nothing and opens nothing",
-                 "[layer_pause][ui][beta]") {
-    ScopedBeta beta(false);
-    REQUIRE_FALSE(helix::ui::layer_pause_beta_enabled());
-    every_action();
-    CHECK(api.sent.empty());
-    CHECK(Modal::get_top() == nullptr);
-}
-
-TEST_CASE_METHOD(LayerPauseControlsFixture, "Layer pause controls: beta on sends each command",
-                 "[layer_pause][ui][beta]") {
-    ScopedBeta beta(true);
-    REQUIRE(helix::ui::layer_pause_beta_enabled());
+                 "Layer pause controls: with beta features off each command sends",
+                 "[layer_pause][ui]") {
+    REQUIRE_FALSE(helix::Config::get_instance()->is_beta_features_enabled());
     controls.schedule_next_layer();
     controls.schedule_at_layer(8);
     controls.cancel_pending();
@@ -138,7 +122,6 @@ TEST_CASE_METHOD(LayerPauseControlsFixture, "Layer pause controls: beta on sends
 TEST_CASE_METHOD(LayerPauseControlsFixture,
                  "Layer pause controls: a layer the file never reports is refused",
                  "[layer_pause][ui]") {
-    ScopedBeta beta(true);
     state.print_state().set_pause_scan(
         std::make_shared<const helix::gcode::PauseScanResult>(
             helix::gcode::PauseScanResult{{}, {{4, 0.4f, 0.4f}, {6, 0.6f, 0.6f}}, {}}),
@@ -153,7 +136,6 @@ TEST_CASE_METHOD(LayerPauseControlsFixture,
 TEST_CASE_METHOD(LayerPauseControlsFixture,
                  "Layer pause controls: a pause never reached is disarmed at print end",
                  "[layer_pause][ui]") {
-    ScopedBeta beta(true);
     const char* end_state = GENERATE("complete", "cancelled", "error");
     CAPTURE(end_state);
     controls.schedule_at_layer(9);
@@ -174,7 +156,6 @@ TEST_CASE_METHOD(LayerPauseControlsFixture,
 TEST_CASE_METHOD(LayerPauseControlsFixture,
                  "Layer pause controls: a print nobody armed sends nothing at its end",
                  "[layer_pause][ui]") {
-    ScopedBeta beta(true);
     state.update_from_status({{"print_stats", {{"state", "complete"}}}});
     helix::ui::UpdateQueue::instance().drain();
     CHECK(api.sent.empty());

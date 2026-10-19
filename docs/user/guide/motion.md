@@ -200,7 +200,7 @@ The Controls panel's **Calibration & Tools** card holds the calibration actions 
 - **Bed Mesh** and **Z Calibration**
 - **QGL** - Quad Gantry Level (shown only when `quad_gantry_level` is configured)
 - **Z-Tilt** - Z-Tilt Adjust (shown only when `z_tilt_adjust` is configured)
-- **Tool Offsets** - tool changers with the offset calibration macro, while beta features are on
+- **Tool Offsets** - tool changers with the offset calibration macro
 - **Pressure Adv.** - printers that can measure pressure advance; see [Pressure Advance](calibration.md#pressure-advance)
 - **Bed Screws** - shown only when `screws_tilt_adjust` is configured
 

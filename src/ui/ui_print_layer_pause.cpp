@@ -7,7 +7,6 @@
 #include "ui_error_reporting.h"
 #include "ui_modal.h"
 
-#include "config.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "observe_language.h"
@@ -41,11 +40,6 @@ void close_layer_pause_modal() {
 }
 
 } // namespace
-
-bool layer_pause_beta_enabled() {
-    Config* config = Config::get_instance();
-    return config && config->is_beta_features_enabled();
-}
 
 std::string layer_pause_status_text(lp::Availability availability, int current_layer,
                                     int total_layers, int pending_layer) {
@@ -165,19 +159,12 @@ void PrintLayerPauseControls::refresh_status_text() {
 }
 
 void PrintLayerPauseControls::open_modal() {
-    if (!layer_pause_beta_enabled()) {
-        return;
-    }
     refresh_status_text();
     Modal::show("layer_pause_modal");
 }
 
 bool PrintLayerPauseControls::send(const std::string& gcode, const char* what,
                                    std::function<void()> on_sent) {
-    if (!layer_pause_beta_enabled()) {
-        spdlog::debug("[LayerPause] Beta features off; not sending: {}", gcode);
-        return false;
-    }
     if (!api_) {
         NOTIFY_ERROR(lv_tr("Cannot schedule a pause: printer not connected"));
         return false;
@@ -237,7 +224,7 @@ void PrintLayerPauseControls::on_print_ended() {
 }
 
 void PrintLayerPauseControls::choose_layer() {
-    if (!printer_state_ || !layer_pause_beta_enabled()) {
+    if (!printer_state_) {
         return;
     }
     auto& print = printer_state_->print_state();
