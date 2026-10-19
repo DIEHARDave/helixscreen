@@ -127,6 +127,26 @@ TEST_CASE("PrinterDiscovery parses heaters - extruders and bed", "[printer_disco
         REQUIRE(std::find(hw.heaters().begin(), hw.heaters().end(), "extruder_stepper filament") ==
                 hw.heaters().end());
     }
+
+    SECTION("Snapmaker U1: a module object sharing the extruder prefix is not a heater") {
+        // The U1's heater-shaped objects, in its objects/list order.
+        json objects = {"heaters",
+                        "heater_bed",
+                        "heater_fan power_fan",
+                        "heater_fan e0_nozzle_fan",
+                        "extruder_offset_calibration",
+                        "heater_fan e1_nozzle_fan",
+                        "heater_generic dragonbreath",
+                        "extruder",
+                        "extruder1",
+                        "extruder2",
+                        "extruder3"};
+        hw.parse_objects(objects);
+
+        REQUIRE(hw.heaters() == std::vector<std::string>{"heater_bed",
+                                                         "heater_generic dragonbreath", "extruder",
+                                                         "extruder1", "extruder2", "extruder3"});
+    }
 }
 
 // ============================================================================

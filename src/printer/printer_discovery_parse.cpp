@@ -140,8 +140,9 @@ void PrinterDiscovery::parse_objects(const nlohmann::json& objects) {
         // ================================================================
         // Heaters: extruders, heater_bed, heater_generic
         // ================================================================
-        // Match "extruder", "extruder1", etc., but NOT "extruder_stepper"
-        else if (name.rfind("extruder", 0) == 0 && name.rfind("extruder_stepper", 0) != 0) {
+        // "extruder" and "extruderN" only: extruder_stepper and module objects
+        // such as the U1's extruder_offset_calibration share the prefix.
+        else if (helix::is_extruder_name(name)) {
             heaters_.push_back(name);
         }
         // Heated bed

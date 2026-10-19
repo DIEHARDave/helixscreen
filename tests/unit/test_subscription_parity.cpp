@@ -220,3 +220,15 @@ TEST_CASE_METHOD(HelixTestFixture, "backend sensor prefixes bucket as filament s
     }
     CHECK_FALSE(subs.contains("zmod_ifs_status"));
 }
+
+TEST_CASE_METHOD(HelixTestFixture,
+                 "an extruder-prefixed module object is not subscribed as a heater",
+                 "[subscription_parity][printer_discovery]") {
+    MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
+    MoonrakerDiscoverySequence discovery(mock);
+    // The Snapmaker U1 lists extruder_offset_calibration beside its four extruders.
+    discovery.parse_objects(json::array({"heater_bed", "extruder_offset_calibration", "extruder",
+                                         "extruder1", "extruder2", "extruder3"}));
+    CHECK(discovery.heaters() == std::vector<std::string>{"heater_bed", "extruder", "extruder1",
+                                                          "extruder2", "extruder3"});
+}
