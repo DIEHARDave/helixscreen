@@ -166,7 +166,7 @@ void CameraWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
                     // open — the stream must keep running for the fullscreen view.
                     if (!self->active_ && !self->fullscreen_overlay_) {
                         self->stop_stream();
-                        self->set_status_key(TR_NOOP("No Camera"));
+                        self->set_status_key(kDefaultCameraStatusKey);
                     }
                 }
             },
@@ -507,7 +507,7 @@ void CameraWidget::resync_source() {
     bool keep_running = fullscreen_overlay_ || (active_ && !compact_);
     stop_stream();
     if (!feed) {
-        set_status_key(TR_NOOP("No Camera"));
+        set_status_key(kDefaultCameraStatusKey);
         return;
     }
     if (keep_running) {
