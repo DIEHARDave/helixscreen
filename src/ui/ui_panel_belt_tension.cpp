@@ -1577,7 +1577,7 @@ void BeltTensionPanel::start_tune_round(bool settle_first) {
             return;
         }
         const int adj = path_index(tune_->adjusted_path());
-        const auto& shown = helix::calibration::tuning_curve(
+        const helix::calibration::BeltCurve shown = helix::calibration::tuning_curve(
             tune_has_curves_
                 ? tune_curves_[adj]
                 : helix::calibration::BeltResponse{runs_[adj].curve, runs_[adj].in_plane});
