@@ -49,6 +49,10 @@ target_include_directories(${COMPONENT_LIB} PRIVATE
 target_include_directories(${COMPONENT_LIB} SYSTEM PRIVATE
     ${REPO_ROOT}/lib)           # libhv/include/hv/json.hpp + spdlog bundled fmt
 
+# server.connection.identify reports the app version to Moonraker.
+idf_build_get_property(helix_version HELIX_VERSION)
+target_compile_definitions(${COMPONENT_LIB} PRIVATE HELIX_VERSION="${helix_version}")
+
 # Repo headers are C++17; nlohmann/fmt trip -Wformat on Xtensa GCC. Match the
 # audit's flags (compile/link viability, not warning hygiene).
 target_compile_options(${COMPONENT_LIB} PRIVATE

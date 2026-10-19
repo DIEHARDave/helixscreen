@@ -2,8 +2,9 @@
 
 // Out-of-line PrinterDiscovery members: the object-list scan and config parsers.
 
-#include "chamber_heater_backend.h"  // chamber::match, chamber::keyword_confidence
-#include "display_numbering.h"       // helix::ui::tool_label
+#include "chamber_heater_backend.h" // chamber::match, chamber::keyword_confidence
+#include "display_numbering.h"      // helix::ui::tool_label
+#include "json_utils.h"
 #include "klipper_extruder_naming.h" // count_extruder_names, is_heater_object_name
 #include "macro_patterns.h"
 #include "printer_discovery.h"
@@ -996,6 +997,13 @@ void PrinterDiscovery::parse_probe_xy_offset(const nlohmann::json& settings) {
         offset.y = y->get<double>();
     }
     probe_xy_offset_ = offset;
+}
+
+void PrinterDiscovery::apply_printer_info(const nlohmann::json& result) {
+    software_version_ = json_util::safe_string(result, "software_version", "unknown");
+    if (json_util::safe_string(result, "app") == "Kalico") {
+        is_kalico_ = true;
+    }
 }
 
 void PrinterDiscovery::clear() {
