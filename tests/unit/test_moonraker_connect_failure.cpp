@@ -126,3 +126,35 @@ TEST_CASE("A peer that accepts TCP and drops the upgrade is not called refused",
 
     CHECK(failure_after_one_attempt(listener.url()) == ConnectFailureKind::Unknown);
 }
+
+TEST_CASE("A new attempt does not report the previous attempt's failure",
+          "[moonraker][client][connect_failure][eventloop][slow]") {
+    LoopbackListener refusing(/*listening=*/false);
+    // Listens but never accepts: the TCP handshake completes from the backlog
+    // and the upgrade waits unanswered, so the attempt stays in flight.
+    LoopbackListener silent(/*listening=*/true);
+
+    auto loop = std::make_shared<hv::EventLoopThread>();
+    loop->start();
+    auto client = std::make_unique<MoonrakerClient>(loop->loop());
+    client->set_initial_connect_failure_timeout(60000);
+
+    std::atomic<bool> closed{false};
+    client->connect(refusing.url().c_str(), []() {}, [&closed]() { closed.store(true); });
+    client->set_auto_reconnect(false);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (!closed.load() && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    REQUIRE(closed.load());
+    REQUIRE(client->last_connect_failure() == ConnectFailureKind::Refused);
+
+    client->connect(silent.url().c_str(), []() {}, []() {});
+    client->set_auto_reconnect(false);
+    CHECK(client->last_connect_failure() == ConnectFailureKind::Unknown);
+
+    client->disconnect();
+    loop->stop();
+    loop->join();
+    client.reset();
+}
