@@ -54,6 +54,7 @@ bool provisioning_run_portal() {
 #include "ui_update_queue.h"
 
 #include "config.h"
+#include "display_settings_manager.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -80,6 +81,7 @@ bool provisioning_run_portal() {
 #include <atomic>
 #include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -360,8 +362,19 @@ std::string render_form_page(const std::string& ap_ssid, const std::vector<std::
             std::to_string(cur_port) +
             "\">"
             "<p class=\"hint\">Leave host blank to keep the current setting.</p>"
+            "<input type=\"hidden\" id=\"tz\" name=\"tz\">"
+            "<input type=\"hidden\" id=\"tz_jan\" name=\"tz_jan\">"
+            "<input type=\"hidden\" id=\"tz_jul\" name=\"tz_jul\">"
             "<button type=\"submit\">Connect</button>"
-            "</form></body></html>";
+            "</form>"
+            // The board has no timezone of its own; the phone's sets it. The
+            // offsets (minutes east of UTC) match a zone the list does not name.
+            "<script>try{var y=new Date().getFullYear(),d=document;"
+            "d.getElementById('tz_jan').value=-new Date(y,0,1).getTimezoneOffset();"
+            "d.getElementById('tz_jul').value=-new Date(y,6,1).getTimezoneOffset();"
+            "d.getElementById('tz').value=Intl.DateTimeFormat().resolvedOptions().timeZone||'';"
+            "}catch(e){}</script>"
+            "</body></html>";
     return html;
 }
 
@@ -418,6 +431,25 @@ std::string current_moonraker_host() {
 int current_moonraker_port() {
     helix::Config* config = helix::Config::get_instance();
     return config->get<int>(config->df() + "moonraker_port", 7125);
+}
+
+// Hands the browser's timezone to DisplaySettingsManager, which keeps any zone
+// the user already picked. Offsets beyond +-14h are not a real zone.
+void adopt_reported_timezone(const std::string& body) {
+    std::string tz, jan_str, jul_str;
+    extract_field(body, "tz", tz);
+    if (!extract_field(body, "tz_jan", jan_str) || !extract_field(body, "tz_jul", jul_str)) {
+        return;
+    }
+    const auto jan = helix::text_io::parse_leading<int>(jan_str);
+    const auto jul = helix::text_io::parse_leading<int>(jul_str);
+    constexpr int kMaxOffsetMinutes = 14 * 60;
+    if (!jan || !jul || std::abs(*jan) > kMaxOffsetMinutes || std::abs(*jul) > kMaxOffsetMinutes) {
+        return;
+    }
+    helix::ui::queue_update("provisioning::timezone", [tz, jan = *jan, jul = *jul]() {
+        helix::DisplaySettingsManager::instance().adopt_timezone_if_unset(tz, jan, jul);
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -491,6 +523,8 @@ esp_err_t save_post_handler(httpd_req_t* req) {
         }
         config->save();
     }
+
+    adopt_reported_timezone(body);
 
     spdlog::info("[provisioning] portal: attempting join to '{}' (password {})",
                  helix::redact::ssid(ssid), password.empty() ? "none" : "provided");

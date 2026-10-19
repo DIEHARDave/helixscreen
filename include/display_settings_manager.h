@@ -274,10 +274,19 @@ class DisplaySettingsManager {
         settings_.set(Key::TimeFormat, static_cast<int>(format));
     }
 
-    /** @brief Get current timezone IANA ID (e.g., "America/New_York") */
+    /// Whether the dropdown offers "System": the host's own zone. The ESP32 has
+    /// none, so an unpicked zone there is UTC.
+#ifdef ESP_PLATFORM
+    static constexpr bool kSystemTimezoneAvailable = false;
+#else
+    static constexpr bool kSystemTimezoneAvailable = true;
+#endif
+
+    /** @brief Current timezone IANA ID (e.g., "America/New_York"), or "" while it follows the
+     * system */
     std::string get_timezone() const;
 
-    /** @brief Set timezone by IANA ID, applies via setenv/tzset, persists */
+    /** @brief Set timezone by IANA ID, applies via setenv/tzset, persists. "" selects System */
     void set_timezone(const std::string& iana_id);
 
     /** @brief Set timezone by dropdown index */
@@ -288,6 +297,32 @@ class DisplaySettingsManager {
 
     /** @brief Get newline-separated dropdown options string */
     static std::string get_timezone_options();
+
+    /**
+     * @brief Apply the persisted /display/timezone to the process
+     *
+     * An absent key follows the system zone where there is one, else UTC.
+     * @return the dropdown index of the applied zone
+     */
+    static int apply_configured_timezone();
+
+    /**
+     * @brief The offered zone a browser-reported zone resolves to
+     *
+     * An offered IANA id matches itself; any other id takes the first offered
+     * zone with the same 1 January and 1 July UTC offsets (minutes east).
+     * @return the offered IANA id, or "" when none matches
+     */
+    static std::string match_timezone(const std::string& iana_id, int jan_minutes_east,
+                                      int jul_minutes_east);
+
+    /**
+     * @brief Adopt a browser-reported zone unless the user has picked one
+     *
+     * Main thread only: it sets the timezone subject.
+     */
+    void adopt_timezone_if_unset(const std::string& iana_id, int jan_minutes_east,
+                                 int jul_minutes_east);
 
     // =========================================================================
     // SCREEN ROTATION
