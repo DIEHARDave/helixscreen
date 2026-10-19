@@ -136,11 +136,12 @@ static constexpr settings::PersistedSetting SETTINGS[] = {
     // MotionLayout: 0=Pad, 1=Arrows, 2=ArrowsHome, 3=AxisRows
     {"settings_motion_layout", "motion/layout", Scope::PerPrinter, false, 0, 0,
      kMotionLayoutCount - 1, "motion_layout"},
-    // QIDI Box eject distance magnitude in mm, negated when assembled into FORCE_MOVE
-    {"settings_qidi_eject_distance", "ams/qidi_eject_distance", Scope::PerPrinter, false, 878, 100,
+    // Lane eject distance magnitude in mm, negated when the backend assembles its
+    // eject move. The stored paths are the ones existing configs already carry.
+    {"settings_ams_eject_distance", "ams/qidi_eject_distance", Scope::PerPrinter, false, 878, 100,
      2000, "qidi_eject_distance"},
     // mm/s
-    {"settings_qidi_eject_velocity", "ams/qidi_eject_velocity", Scope::PerPrinter, false, 100, 10,
+    {"settings_ams_eject_velocity", "ams/qidi_eject_velocity", Scope::PerPrinter, false, 100, 10,
      300, "qidi_eject_velocity"},
     // Per-printer: AUTO resolves from this printer's type, so the manual
     // override follows the same printer.

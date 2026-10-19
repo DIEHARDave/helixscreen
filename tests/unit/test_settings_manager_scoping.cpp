@@ -273,7 +273,7 @@ TEST_CASE_METHOD(SettingsScopeFixture,
                  "SettingsManager: subject-backed settings reload per printer across a switch",
                  "[settings][multi-printer]") {
     sm.set_extrude_speed(17);
-    sm.set_qidi_eject_distance(555);
+    sm.set_ams_eject_distance(555);
     // Globals: both default to true, so setting false proves the value crossed
     // the switch rather than the default being re-applied.
     sm.set_detection_enabled(false);
@@ -283,20 +283,20 @@ TEST_CASE_METHOD(SettingsScopeFixture,
 
     // Per-printer: B falls back to the built-in defaults, NOT A's values.
     CHECK(sm.get_extrude_speed() == 5);
-    CHECK(sm.get_qidi_eject_distance() == 878);
+    CHECK(sm.get_ams_eject_distance() == 878);
     // Global: B inherits what A set.
     CHECK(sm.get_detection_enabled() == false);
     CHECK(sm.get_console_filter_temps() == false);
 
     sm.set_extrude_speed(31);
-    sm.set_qidi_eject_distance(1200);
+    sm.set_ams_eject_distance(1200);
     sm.set_detection_enabled(true);
 
     switch_to(kPrinterA);
 
     // A's values survived B being configured.
     CHECK(sm.get_extrude_speed() == 17);
-    CHECK(sm.get_qidi_eject_distance() == 555);
+    CHECK(sm.get_ams_eject_distance() == 555);
     // The global toggle B flipped is visible from A.
     CHECK(sm.get_detection_enabled() == true);
 
@@ -430,8 +430,8 @@ TEST_CASE_METHOD(SettingsScopeFixture,
     SECTION("per-printer keys") {
         sm.set_z_movement_style(ZMovementStyle::NOZZLE_MOVES);
         sm.set_extrude_speed(12);
-        sm.set_qidi_eject_distance(500);
-        sm.set_qidi_eject_velocity(120);
+        sm.set_ams_eject_distance(500);
+        sm.set_ams_eject_velocity(120);
         sm.set_auto_color_map(true);
         sm.set_afc_unload_after_print(true);
         sm.set_end_of_print_unload_tools(0b0101);

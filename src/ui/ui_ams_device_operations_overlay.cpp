@@ -83,14 +83,6 @@ void AmsDeviceOperationsOverlay::init_subjects() {
         UI_MANAGED_SUBJECT_INT(printer_retains_spool_info_subject_, 0,
                                "ams_device_ops_printer_retains_spool_info", subjects_);
 
-        // QIDI Box gating + eject distance/velocity value displays
-        UI_MANAGED_SUBJECT_INT(has_eject_params_subject_, 0, "ams_device_ops_has_eject_params",
-                               subjects_);
-        UI_MANAGED_SUBJECT_STRING(qidi_eject_distance_display_subject_, qidi_eject_distance_buf_,
-                                  "", "ams_device_ops_qidi_eject_distance_display", subjects_);
-        UI_MANAGED_SUBJECT_STRING(qidi_eject_velocity_display_subject_, qidi_eject_velocity_buf_,
-                                  "", "ams_device_ops_qidi_eject_velocity_display", subjects_);
-
         // "Reset Endless Spool" row visibility. Gates on
         // EndlessSpoolCapabilities::editable() in update_from_backend().
         UI_MANAGED_SUBJECT_INT(can_reset_endless_spool_subject_, 0,
@@ -191,26 +183,6 @@ void AmsDeviceOperationsOverlay::register_callbacks() {
              // drives its own section.
              AmsState::instance().sync_from_backend();
              get_ams_device_operations_overlay().update_from_backend();
-         }},
-        {"on_ams_qidi_eject_distance_changed",
-         [](lv_event_t* e) {
-             auto& self = get_ams_device_operations_overlay();
-             SettingsManager::instance().set_qidi_eject_distance(
-                 lv_slider_get_value(lv_event_get_current_target_obj(e)));
-             snprintf(self.qidi_eject_distance_buf_, sizeof(self.qidi_eject_distance_buf_), "%d mm",
-                      SettingsManager::instance().get_qidi_eject_distance());
-             lv_subject_copy_string(&self.qidi_eject_distance_display_subject_,
-                                    self.qidi_eject_distance_buf_);
-         }},
-        {"on_ams_qidi_eject_velocity_changed",
-         [](lv_event_t* e) {
-             auto& self = get_ams_device_operations_overlay();
-             SettingsManager::instance().set_qidi_eject_velocity(
-                 lv_slider_get_value(lv_event_get_current_target_obj(e)));
-             snprintf(self.qidi_eject_velocity_buf_, sizeof(self.qidi_eject_velocity_buf_),
-                      "%d mm/s", SettingsManager::instance().get_qidi_eject_velocity());
-             lv_subject_copy_string(&self.qidi_eject_velocity_display_subject_,
-                                    self.qidi_eject_velocity_buf_);
          }},
         {"on_ams_reset_endless_spool_clicked",
          [](lv_event_t*) {
@@ -348,7 +320,6 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
         lv_subject_set_int(&bypass_is_virtual_subject_, 0);
         lv_subject_set_int(&reports_spool_ids_subject_, 0);
         lv_subject_set_int(&printer_retains_spool_info_subject_, 0);
-        lv_subject_set_int(&has_eject_params_subject_, 0);
         lv_subject_set_int(&can_reset_endless_spool_subject_, 0);
         lv_subject_set_int(&can_abort_subject_, 0);
         details_buf_[0] = '\0';
@@ -432,33 +403,6 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
     lv_subject_set_int(&printer_retains_spool_info_subject_,
                        backend->printer_retains_spool_info() ? 1 : 0);
 
-    // The eject distance/velocity rows apply only to backends with configurable
-    // eject params (QIDI Box). Sync the sliders + value displays from settings.
-    bool show_eject_params = backend->supports_configurable_eject_params();
-    lv_subject_set_int(&has_eject_params_subject_, show_eject_params ? 1 : 0);
-    if (show_eject_params && overlay_) {
-        int eject_distance = SettingsManager::instance().get_qidi_eject_distance();
-        int eject_velocity = SettingsManager::instance().get_qidi_eject_velocity();
-
-        auto* dist_slider =
-            helix::ui::find_required(overlay_, "qidi_eject_distance_slider", get_name());
-        if (dist_slider) {
-            lv_slider_set_value(dist_slider, eject_distance, LV_ANIM_OFF);
-        }
-        snprintf(qidi_eject_distance_buf_, sizeof(qidi_eject_distance_buf_), "%d mm",
-                 eject_distance);
-        lv_subject_copy_string(&qidi_eject_distance_display_subject_, qidi_eject_distance_buf_);
-
-        auto* vel_slider =
-            helix::ui::find_required(overlay_, "qidi_eject_velocity_slider", get_name());
-        if (vel_slider) {
-            lv_slider_set_value(vel_slider, eject_velocity, LV_ANIM_OFF);
-        }
-        snprintf(qidi_eject_velocity_buf_, sizeof(qidi_eject_velocity_buf_), "%d mm/s",
-                 eject_velocity);
-        lv_subject_copy_string(&qidi_eject_velocity_display_subject_, qidi_eject_velocity_buf_);
-    }
-
     // "Reset Endless Spool" lights up for any backend whose endless-spool
     // mapping the UI may write (editable() = available + not ReadOnly): AFC's
     // per-slot edges, single-unit Happy Hare's groups, and the mock. CFS and
@@ -515,39 +459,15 @@ void AmsDeviceOperationsOverlay::populate_section_list() {
     spdlog::debug("[{}] Populated {} section rows", get_name(), cached_sections_.size());
 }
 
-/// Map section ID to icon name (UI concern — backends don't specify icons)
-static const char* section_icon_for_id(const std::string& id) {
-    // Ordered by expected frequency
-    if (id == "setup")
-        return "cog";
-    if (id == "speed")
-        return "speed_up";
-    if (id == "maintenance")
-        return "wrench";
-    if (id == "hub")
-        return "source_branch";
-    if (id == "tip_forming")
-        return "thermometer";
-    if (id == "purge")
-        return "water";
-    if (id == "toolhead")
-        return "filament";
-    if (id == "config")
-        return "cog";
-    return "cog"; // fallback for unknown sections
-}
-
 void AmsDeviceOperationsOverlay::create_section_row(lv_obj_t* parent,
                                                     const helix::printer::DeviceSection& section) {
-    const char* icon = section_icon_for_id(section.id);
-
     // Reuse the standard setting_action_row XML component
     const char* attrs[] = {"label",
                            lv_tr(section.label.c_str()),
                            "label_tag",
                            section.label.c_str(),
                            "icon",
-                           icon,
+                           section.icon.c_str(),
                            "description",
                            lv_tr(section.description.c_str()),
                            "description_tag",

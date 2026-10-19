@@ -205,17 +205,6 @@ class AmsDeviceOperationsOverlay : public OverlayBase {
     /// so it is shown disabled with a note instead of silently lying.
     lv_subject_t printer_retains_spool_info_subject_{};
 
-    /// 1 when the backend has configurable eject distance/velocity; gates those rows.
-    lv_subject_t has_eject_params_subject_{};
-
-    /// Display string subject for the QIDI eject distance value (e.g. "878 mm")
-    lv_subject_t qidi_eject_distance_display_subject_{};
-    char qidi_eject_distance_buf_[32] = {};
-
-    /// Display string subject for the QIDI eject velocity value (e.g. "100 mm/s")
-    lv_subject_t qidi_eject_velocity_display_subject_{};
-    char qidi_eject_velocity_buf_[32] = {};
-
     /// Subject gating the "Reset Endless Spool" row (0=hidden, 1=shown).
     /// Set from EndlessSpoolCapabilities::editable(), so the row lights up for
     /// any backend whose endless-spool mapping the UI may write — AFC (per-slot

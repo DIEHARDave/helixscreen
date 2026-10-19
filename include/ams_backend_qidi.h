@@ -74,9 +74,6 @@ class AmsBackendQidi : public AmsSubscriptionBackend {
     /// Constant capability answers; see BackendTraits.
     static constexpr BackendTraits kTraits = [] {
         BackendTraits t;
-        // QIDI Box exposes user-tunable per-lane eject distance + velocity, which the
-        // device-operations overlay surfaces as slider rows.
-        t.supports_configurable_eject_params = true;
         // The Box publishes a per-slot state word (save_variables slot<N>, where 2
         // means loaded), which is its own statement about that slot and needs no
         // active-slot pointer to interpret. The aggregate pair by contrast is
@@ -137,7 +134,13 @@ class AmsBackendQidi : public AmsSubscriptionBackend {
     }
     [[nodiscard]] bool is_bypass_active() const override;
 
+    /// The lane eject distance and speed FORCE_MOVE uses, as two sliders.
+    [[nodiscard]] std::vector<helix::printer::DeviceSection> get_device_sections() const override;
+    [[nodiscard]] std::vector<helix::printer::DeviceAction> get_device_actions() const override;
+
   protected:
+    /// Stores an eject slider's value; nothing is sent until the next eject.
+    AmsError do_execute_device_action(const std::string& action_id, const std::any& value) override;
     // The Box's slots are painted SlotInfo state that persists between
     // save_variables polls, not re-read from firmware each pass, so a lane
     // written from outside the parse (a person's edit) names the slot here and
