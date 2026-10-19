@@ -60,6 +60,10 @@ class NetworkSettingsOverlayTestAccess {
         strncpy(o.current_ssid_, ssid.c_str(), sizeof(o.current_ssid_) - 1);
         o.current_ssid_[sizeof(o.current_ssid_) - 1] = '\0';
     }
+    /// The production handler behind the WiFi switch's value_changed.
+    static void wlan_toggle_changed(NetworkSettingsOverlay& o, lv_event_t* e) {
+        o.handle_wlan_toggle_changed(e);
+    }
     /// The production handler behind the password modal's Connect button.
     static void password_connect_clicked(NetworkSettingsOverlay& o) {
         o.handle_password_connect_clicked();

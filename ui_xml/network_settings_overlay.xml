@@ -51,7 +51,7 @@
             <!-- Toggle Switch -->
             <ui_switch name="wlan_toggle" size="small">
               <bind_flag_if_eq subject="wifi_can_toggle_radio" flag="hidden" ref_value="0"/>
-              <bind_state_if_eq subject="wifi_hardware_available" state="disabled" ref_value="0"/>
+              <bind_state_if_eq subject="wifi_toggle_locked" state="disabled" ref_value="1"/>
               <bind_state_if_eq subject="wifi_enabled" state="checked" ref_value="1"/>
               <event_cb trigger="value_changed" callback="on_wlan_toggle_changed"/>
             </ui_switch>
