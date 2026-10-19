@@ -595,7 +595,19 @@ TEST_CASE_METHOD(ControlLaneFixture,
     WiFiManagerTestAccess::fire_init_failed(*wm, /*silent=*/true, "init failed");
     const auto started = std::chrono::steady_clock::now();
     helix::ui::UpdateQueue::instance().drain();
-    CHECK(std::chrono::steady_clock::now() - started < std::chrono::milliseconds(500));
+    CHECK(std::chrono::steady_clock::now() - started < std::chrono::milliseconds(100));
+
+    // The swap keeps retrying while the call is stuck; no retry may wait on it.
+    auto worst = std::chrono::steady_clock::duration::zero();
+    for (int i = 0; i < 4; ++i) {
+        lv_tick_inc(150);
+        const auto t0 = std::chrono::steady_clock::now();
+        lv_timer_handler();
+        worst = std::max(worst, std::chrono::steady_clock::now() - t0);
+    }
+    CHECK(worst < std::chrono::milliseconds(100));
+    REQUIRE(dynamic_cast<WifiBackendWpaSupplicant*>(WiFiManagerTestAccess::backend(*wm)) ==
+            nullptr);
 
     // The swap happens once the call in progress returns; what was queued for
     // the failed backend is answered, not sent.
@@ -707,4 +719,51 @@ TEST_CASE_METHOD(ControlLaneFixture,
     REQUIRE(cached.unresponsive);
     CHECK_FALSE(cached.connected);
     CHECK(cached.ssid.empty());
+}
+
+TEST_CASE_METHOD(ControlLaneFixture, "the wpa_supplicant fallback starts with the breaker closed",
+                 "[wifi][wifi_control_lane][wifi_breaker]") {
+    WiFiManagerTestAccess::set_breaker_config(*wm, {50, 3, 400, 2000});
+    backend->set_status_delay_ms(80);
+    for (int i = 0; i < 3; ++i) {
+        read_status();
+    }
+    REQUIRE(WiFiManagerTestAccess::breaker_open(*wm));
+    backend->set_status_delay_ms(0);
+
+    WiFiManagerTestAccess::fire_init_failed(*wm, /*silent=*/true, "init failed");
+    REQUIRE(wait_until([&] {
+        return dynamic_cast<WifiBackendWpaSupplicant*>(WiFiManagerTestAccess::backend(*wm)) !=
+               nullptr;
+    }));
+    backend = nullptr; // freed by the swap
+    CHECK_FALSE(WiFiManagerTestAccess::breaker_open(*wm));
+}
+
+TEST_CASE_METHOD(ControlLaneFixture,
+                 "a user op that finishes after its deadline still refreshes the UI",
+                 "[wifi][wifi_control_lane]") {
+    WiFiManagerTestAccess::set_user_op_timeouts(*wm, 300, 300, 60000);
+    int notified = 0;
+    WiFiManagerTestAccess::add_observer(*wm, guard.token(), [&] { notified++; });
+
+    // Radio off to start with; turning it on fires no backend event of its
+    // own, so only the manager can tell the UI it moved.
+    backend->set_radio_enabled(false);
+    helix::ui::UpdateQueue::instance().drain();
+    const int radios = backend->radios();
+
+    backend->stall();
+    std::optional<bool> radio_ok;
+    wm->set_enabled_async(true, guard.token(), [&](bool ok, bool) { radio_ok = ok; });
+    REQUIRE(wait_until([&] { return backend->radios() == radios + 1; }));
+    REQUIRE(wait_until([&] { return radio_ok.has_value(); }, 2000));
+    REQUIRE_FALSE(*radio_ok);
+    const int before = notified;
+
+    // The radio call returns after the user was told it failed: it did move.
+    backend->release();
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    CHECK(backend->is_radio_enabled());
+    CHECK(notified > before);
 }

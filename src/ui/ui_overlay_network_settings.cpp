@@ -1447,6 +1447,12 @@ void NetworkSettingsOverlay::handle_network_settings_forget() {
             if (gen != status_generation_) {
                 return;
             }
+            // A stalled lane answers from a cache that may not know the
+            // network's name; say why nothing happens instead of doing nothing.
+            if (status.ssid.empty() && status.unresponsive) {
+                WiFiManager::notify_unresponsive();
+                return;
+            }
             confirm_forget(status.ssid);
         });
 }

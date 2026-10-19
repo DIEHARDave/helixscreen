@@ -284,6 +284,10 @@ class WiFiManager {
     // Regulatory Country
     // ========================================================================
 
+    /// The one toast every WiFi action shows when control is not answering,
+    /// in place of that action's own failure toast. LVGL thread.
+    static void notify_unresponsive();
+
     /// Whether the backend can read and set the radio's regulatory country.
     bool supports_country();
 
@@ -690,7 +694,6 @@ class WiFiManager {
     // that action's own failure toast. LVGL thread for the toast.
     static WiFiError unresponsive_error();
     static bool is_unresponsive_error(const WiFiError& error);
-    static void notify_unresponsive();
     // Runs `fn` on the LVGL thread after `ms`, unless the manager is gone by
     // then. The timer frees itself, so nothing is left for the destructor.
     void after_ms(uint32_t ms, std::function<void()> fn);

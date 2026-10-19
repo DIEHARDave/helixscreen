@@ -314,10 +314,9 @@ void WiFiManager::handle_init_failed(bool silent, const std::string& msg) {
 
 void WiFiManager::swap_to_wpa_supplicant(bool silent) {
 #if !defined(__APPLE__) && !defined(__ANDROID__) && !defined(ESP_PLATFORM)
-    // A call in progress usually returns at once. Waiting longer would hold
-    // the LVGL thread for as long as it takes, which on a wedged daemon is
-    // unbounded, so past a short bound look again later instead.
-    if (!wait_for_radio_ops_for(std::chrono::milliseconds(200))) {
+    // Never wait here: this is the LVGL thread, and a call in progress on a
+    // wedged daemon does not return. Look again later instead.
+    if (!wait_for_radio_ops_for(std::chrono::milliseconds(0))) {
         after_ms(100, [this, silent]() { swap_to_wpa_supplicant(silent); });
         return;
     }
@@ -333,6 +332,12 @@ void WiFiManager::swap_to_wpa_supplicant(bool silent) {
     backend_.reset();
     backend_ = std::make_unique<WifiBackendWpaSupplicant>();
     backend_->set_silent(silent);
+    {
+        // The strikes belong to the backend that failed; the new one starts
+        // trusted, or an open breaker would refuse every user op against it.
+        std::lock_guard<std::mutex> lock(breaker_mutex_);
+        breaker_ = wifi::ControlBreaker(breaker_.config());
+    }
     {
         std::lock_guard<std::mutex> lock(control_mutex_);
         control_paused_ = false;
@@ -1532,16 +1537,23 @@ void WiFiManager::submit_user_op(const char* tag, uint32_t deadline_ms,
     auto tok = async_lifetime_.token();
     submit_control(
         tag, ControlKind::User,
-        [tok, tag, phase, work = std::move(work)]() {
+        [this, tok, tag, phase, work = std::move(work)]() {
             int expected = Queued;
             if (!phase->compare_exchange_strong(expected, Running)) {
                 return; // the caller was already told it failed; do not act now
             }
             std::function<void()> apply = work();
-            tok.defer(tag, [phase, apply = std::move(apply)]() {
-                if (phase->exchange(Answered) != Answered && apply) {
-                    apply();
+            tok.defer(tag, [this, tag, phase, apply = std::move(apply)]() {
+                if (phase->exchange(Answered) != Answered) {
+                    if (apply) {
+                        apply();
+                    }
+                    return;
                 }
+                // The caller was told this failed at its deadline, but it ran:
+                // the radio or link may have moved, so let the UI re-read it.
+                spdlog::info("[WiFiManager] '{}' finished after its deadline — refreshing", tag);
+                notify_state_observers();
             });
         },
         [tok, tag, answer_unanswered]() { tok.defer(tag, answer_unanswered); });
