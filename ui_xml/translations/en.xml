@@ -153,6 +153,7 @@
   <translation tag="A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen." en="A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen."/>
   <translation tag="A spool may be tangled or the drive gear is jammed" en="A spool may be tangled or the drive gear is jammed"/>
   <translation tag="A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen." en="A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen."/>
+  <translation tag="A toolhead offset calibration is in progress, possibly from another screen. End it now?" en="A toolhead offset calibration is in progress, possibly from another screen. End it now?"/>
   <translation tag="A · 1,-1" en="A · 1,-1"/>
   <translation tag="ABS" en="ABS"/>
   <translation tag="ACCELEROMETERS" en="ACCELEROMETERS"/>
@@ -1059,6 +1060,7 @@
   <translation tag="Encoder Error" en="Encoder Error"/>
   <translation tag="End K" en="End K"/>
   <translation tag="End Test" en="End Test"/>
+  <translation tag="End calibration" en="End calibration"/>
   <translation tag="End the test print?" en="End the test print?"/>
   <translation tag="Ended" en="Ended"/>
   <translation tag="Endless Spool" en="Endless Spool"/>
@@ -1783,6 +1785,7 @@
   <translation tag="Layout" en="Layout"/>
   <translation tag="Layout changes are off in safe mode. Restart to edit." en="Layout changes are off in safe mode. Restart to edit."/>
   <translation tag="Learn More" en="Learn More"/>
+  <translation tag="Leave it" en="Leave it"/>
   <translation tag="LedSelect" en="LedSelect"/>
   <translation tag="Left" en="Left"/>
   <translation tag="Length of filament to purge" en="Length of filament to purge"/>
@@ -3541,6 +3544,7 @@
   <translation tag="Tool swap" en="Tool swap"/>
   <translation tag="Toolchange purge" en="Toolchange purge"/>
   <translation tag="Toolhead" en="Toolhead"/>
+  <translation tag="Toolhead Calibration Running" en="Toolhead Calibration Running"/>
   <translation tag="Toolhead LED" en="Toolhead LED"/>
   <translation tag="Toolhead Offset Calibration" en="Toolhead Offset Calibration"/>
   <translation tag="Toolhead Sensor" en="Toolhead Sensor"/>

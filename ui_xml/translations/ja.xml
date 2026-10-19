@@ -153,6 +153,7 @@
   <translation tag="A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen." ja="チャンバー内の空気温度を測るセンサー。チャンバー温度画面で確認できます。"/>
   <translation tag="A spool may be tangled or the drive gear is jammed" ja="スプールが絡まっているか、駆動ギアが詰まっている可能性があります"/>
   <translation tag="A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen." ja="複数のフィラメントをツールヘッドに送るシステムで、スロット数を表示します。スロットはフィラメントシステム画面で管理できます。"/>
+  <translation tag="A toolhead offset calibration is in progress, possibly from another screen. End it now?" ja="ツールヘッドオフセットのキャリブレーションが実行中です（別の画面からの可能性があります）。今すぐ終了しますか?"/>
   <translation tag="A · 1,-1" ja="A · 1,-1"/>
   <translation tag="ABS" ja="ABS"/>
   <translation tag="ACCELEROMETERS" ja="加速度センサー"/>
@@ -1059,6 +1060,7 @@
   <translation tag="Encoder Error" ja="エンコーダーエラー"/>
   <translation tag="End K" ja="終了K"/>
   <translation tag="End Test" ja="テスト終了"/>
+  <translation tag="End calibration" ja="キャリブレーションを終了"/>
   <translation tag="End the test print?" ja="テスト印刷を終了しますか?"/>
   <translation tag="Ended" ja="終了"/>
   <translation tag="Endless Spool" ja="エンドレススプール"/>
@@ -1783,6 +1785,7 @@
   <translation tag="Layout" ja="レイアウト"/>
   <translation tag="Layout changes are off in safe mode. Restart to edit." ja="セーフモードではレイアウトを変更できません。編集するには再起動してください。"/>
   <translation tag="Learn More" ja="詳細を見る"/>
+  <translation tag="Leave it" ja="そのままにする"/>
   <translation tag="LedSelect" ja="LEDを選択"/>
   <translation tag="Left" ja="左"/>
   <translation tag="Length of filament to purge" ja="パージするフィラメントの長さ"/>
@@ -3541,6 +3544,7 @@
   <translation tag="Tool swap" ja="ツール交換"/>
   <translation tag="Toolchange purge" ja="ツール交換パージ"/>
   <translation tag="Toolhead" ja="ツールヘッド"/>
+  <translation tag="Toolhead Calibration Running" ja="ツールヘッドのキャリブレーション実行中"/>
   <translation tag="Toolhead LED" ja="ツールヘッドLED"/>
   <translation tag="Toolhead Offset Calibration" ja="ツールヘッドオフセットのキャリブレーション"/>
   <translation tag="Toolhead Sensor" ja="ツールヘッドセンサー"/>

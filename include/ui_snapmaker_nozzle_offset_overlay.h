@@ -51,6 +51,14 @@ class SnapmakerNozzleOffsetOverlay : public OverlayBase {
     void on_activate() override;
     void on_deactivating(DeactivateReason reason) override;
 
+    /**
+     * @brief Asks whether to end a calibration state no run here owns
+     *
+     * Another screen may be mid-run, so only "End calibration" sends EXIT.
+     * One prompt at a time; repeated reconnects do not stack them.
+     */
+    void prompt_end_held_calibration();
+
     /// The run, for tests that drive the flow without a printer.
     snapmaker::nozzle_offset::Runner& runner() {
         return runner_;
@@ -77,6 +85,7 @@ class SnapmakerNozzleOffsetOverlay : public OverlayBase {
 
     snapmaker::nozzle_offset::Runner runner_;
     SubjectManager subjects_;
+    bool held_prompt_open_ = false;
 };
 
 inline SnapmakerNozzleOffsetOverlay& get_snapmaker_nozzle_offset_overlay() {

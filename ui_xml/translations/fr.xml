@@ -153,6 +153,7 @@
   <translation tag="A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen." fr="Un capteur qui mesure la température de l&apos;air dans l&apos;enceinte. Suivez-la sur l&apos;écran de température de l&apos;enceinte."/>
   <translation tag="A spool may be tangled or the drive gear is jammed" fr="Une bobine est peut-être emmêlée ou l&apos;engrenage d&apos;entraînement est bloqué"/>
   <translation tag="A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen." fr="Un système qui alimente plusieurs filaments vers la tête d&apos;outil, affiché avec son nombre de slots. Gérez les slots sur l&apos;écran du système de filament."/>
+  <translation tag="A toolhead offset calibration is in progress, possibly from another screen. End it now?" fr="Une calibration des offsets des têtes d&apos;outil est en cours, peut-être depuis un autre écran. La terminer maintenant ?"/>
   <translation tag="A · 1,-1" fr="A · 1,-1"/>
   <translation tag="ABS" fr="ABS"/>
   <translation tag="ACCELEROMETERS" fr="ACCÉLÉROMÈTRES"/>
@@ -1059,6 +1060,7 @@
   <translation tag="Encoder Error" fr="Erreur de l&apos;encodeur"/>
   <translation tag="End K" fr="K final"/>
   <translation tag="End Test" fr="Terminer le test"/>
+  <translation tag="End calibration" fr="Terminer la calibration"/>
   <translation tag="End the test print?" fr="Terminer l&apos;impression de test ?"/>
   <translation tag="Ended" fr="Terminé"/>
   <translation tag="Endless Spool" fr="Bobine infinie"/>
@@ -1783,6 +1785,7 @@
   <translation tag="Layout" fr="Disposition"/>
   <translation tag="Layout changes are off in safe mode. Restart to edit." fr="Les modifications de disposition sont désactivées en mode sans échec. Redémarrez pour modifier."/>
   <translation tag="Learn More" fr="En savoir plus"/>
+  <translation tag="Leave it" fr="La laisser"/>
   <translation tag="LedSelect" fr="Sélection de la LED"/>
   <translation tag="Left" fr="Gauche"/>
   <translation tag="Length of filament to purge" fr="Longueur de filament à purger"/>
@@ -3541,6 +3544,7 @@
   <translation tag="Tool swap" fr="Changement d&apos;outil"/>
   <translation tag="Toolchange purge" fr="Purge au changement d&apos;outil"/>
   <translation tag="Toolhead" fr="Tête d&apos;outil"/>
+  <translation tag="Toolhead Calibration Running" fr="Calibration des têtes d&apos;outil en cours"/>
   <translation tag="Toolhead LED" fr="LED de la tête d&apos;outil"/>
   <translation tag="Toolhead Offset Calibration" fr="Calibration des offsets des têtes d&apos;outil"/>
   <translation tag="Toolhead Sensor" fr="Capteur de tête d&apos;outil"/>

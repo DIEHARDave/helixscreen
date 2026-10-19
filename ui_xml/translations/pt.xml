@@ -153,6 +153,7 @@
   <translation tag="A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen." pt="Um sensor que lê a temperatura do ar dentro da câmara. Acompanhe na tela de temperatura da câmara."/>
   <translation tag="A spool may be tangled or the drive gear is jammed" pt="Um carretel pode estar embaraçado ou a engrenagem de tração travada"/>
   <translation tag="A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen." pt="Um sistema que alimenta vários filamentos ao cabeçote, mostrado com o número de slots. Gerencie os slots na tela do sistema de filamento."/>
+  <translation tag="A toolhead offset calibration is in progress, possibly from another screen. End it now?" pt="Uma calibração de offsets dos cabeçotes está em andamento, talvez de outra tela. Encerrar agora?"/>
   <translation tag="A · 1,-1" pt="A · 1,-1"/>
   <translation tag="ABS" pt="ABS"/>
   <translation tag="ACCELEROMETERS" pt="ACELERÔMETROS"/>
@@ -1059,6 +1060,7 @@
   <translation tag="Encoder Error" pt="Erro do encoder"/>
   <translation tag="End K" pt="K final"/>
   <translation tag="End Test" pt="Encerrar teste"/>
+  <translation tag="End calibration" pt="Encerrar calibração"/>
   <translation tag="End the test print?" pt="Encerrar a impressão de teste?"/>
   <translation tag="Ended" pt="Finalizado"/>
   <translation tag="Endless Spool" pt="Carretel infinito"/>
@@ -1783,6 +1785,7 @@
   <translation tag="Layout" pt="Disposição"/>
   <translation tag="Layout changes are off in safe mode. Restart to edit." pt="As alterações de layout estão desativadas no Modo Seguro. Reinicie para editar."/>
   <translation tag="Learn More" pt="Saiba Mais"/>
+  <translation tag="Leave it" pt="Deixar"/>
   <translation tag="LedSelect" pt="Selecionar LED"/>
   <translation tag="Left" pt="Esquerda"/>
   <translation tag="Length of filament to purge" pt="Comprimento de filamento a purgar"/>
@@ -3541,6 +3544,7 @@
   <translation tag="Tool swap" pt="Troca de ferramenta"/>
   <translation tag="Toolchange purge" pt="Purga de troca de ferramenta"/>
   <translation tag="Toolhead" pt="Cabeçote"/>
+  <translation tag="Toolhead Calibration Running" pt="Calibração dos cabeçotes em andamento"/>
   <translation tag="Toolhead LED" pt="LED do cabeçote"/>
   <translation tag="Toolhead Offset Calibration" pt="Calibração de offsets dos cabeçotes"/>
   <translation tag="Toolhead Sensor" pt="Sensor do Cabeçote"/>

@@ -4,6 +4,7 @@
 #include "ams_backend_snapmaker.h"
 
 #include "ui_insert_notice.h"
+#include "ui_snapmaker_nozzle_offset_overlay.h"
 #include "ui_toast_manager.h"
 
 #include "ams_error.h"
@@ -12,6 +13,7 @@
 #include "app_globals.h"
 #include "batch_feed_reconcile.h"
 #include "display_numbering.h"
+#include "filament_database.h"
 #include "filament_slot_override.h"
 #include "filament_slot_override_store.h"
 #include "json_utils.h"
@@ -30,6 +32,7 @@
 #include "snapmaker_channel_state.h"
 #include "snapmaker_nozzle_offset.h"
 #include "snapmaker_resume.h"
+#include "snapmaker_screws_tilt.h"
 #include "snapmaker_status_parse.h"
 #include "text_io.h"
 
@@ -92,18 +95,32 @@ constexpr std::string_view kProductLineVendor = "Snapmaker";
 }
 
 // The filament families the firmware's filament table marks soft (TPU, PEBA,
-// PVA), plus TPE, which is softer than any TPU and has no row there. The
-// firmware's end-of-print macro skips a soft head, and the stock screen
-// refuses to enable unload-at-end on one.
-constexpr std::array<std::string_view, 4> kSoftFamilies = {"TPU", "TPE", "PEBA", "PVA"};
+// PVA), plus TPE, which is softer than any TPU and has no row there, and the
+// generic "Flex" names. The firmware's end-of-print macro skips a soft head,
+// and the stock screen refuses to enable unload-at-end on one.
+constexpr std::array<std::string_view, 6> kSoftFamilies = {"TPU", "TPE",  "PEBA",
+                                                           "PVA", "FLEX", "FLEXIBLE"};
+
+/// The material database's group for flexible filament.
+constexpr std::string_view kSoftCompatGroup = "TPU";
 
 /// Whether @p material is soft filament. The firmware keys its table by the
-/// exact type, so a grade it has no row for ("TPU-85A") reads rigid there;
-/// this judges the family, the text before the first '-', ' ' or '_'.
+/// exact type, so a grade it has no row for ("TPU-85A", "TPU95A") reads rigid
+/// there. This asks the material database first, then judges the family: a
+/// soft family name followed by the end or a non-letter ("PVA+", "TPU95A"),
+/// so a longer word that merely starts with one ("TPUX") stays rigid.
 [[nodiscard]] bool is_soft_material(std::string_view material) {
-    const std::string_view family = material.substr(0, material.find_first_of("- _"));
+    if (const auto info = filament::find_material(material);
+        info && info->compat_group && kSoftCompatGroup == info->compat_group) {
+        return true;
+    }
     return std::any_of(kSoftFamilies.begin(), kSoftFamilies.end(), [&](std::string_view f) {
-        return helix::text_io::equals_ignore_case(family, f);
+        if (material.size() < f.size() ||
+            !helix::text_io::equals_ignore_case(material.substr(0, f.size()), f)) {
+            return false;
+        }
+        return material.size() == f.size() ||
+               !std::isalpha(static_cast<unsigned char>(material[f.size()]));
     });
 }
 
@@ -291,17 +308,32 @@ void AmsBackendSnapmaker::set_discovery(const helix::PrinterDiscovery& discovery
     nozzle_offset_supported_ = snapmaker::nozzle_offset::supported(discovery);
 }
 
+void AmsBackendSnapmaker::before_disconnect() {
+    bool nozzle_offset = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        nozzle_offset = nozzle_offset_supported_;
+    }
+    if (nozzle_offset) {
+        snapmaker::nozzle_offset::leave_live_run(client_);
+    }
+}
+
 void AmsBackendSnapmaker::on_started() {
-    // A session that died mid-calibration leaves the firmware in its offset
-    // calibration state with heaters on. The reconcile leaves a state a run in
-    // this process still owns, which is the reconnect case.
+    // A run whose driver died leaves the firmware in its offset calibration
+    // state with heaters on. One this process owned is ended; one it did not
+    // may be another screen's, so the user decides.
     bool nozzle_offset = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         nozzle_offset = nozzle_offset_supported_;
     }
     if (nozzle_offset && client_) {
-        snapmaker::nozzle_offset::reconcile_on_connect(*client_);
+        snapmaker::nozzle_offset::reconcile_on_connect(*client_, [] {
+            helix::ui::queue_update("AmsBackendSnapmaker::held_nozzle_offset_cal", [] {
+                helix::ui::get_snapmaker_nozzle_offset_overlay().prompt_end_held_calibration();
+            });
+        });
     }
 
     // Load persisted per-slot overrides (brand, spool name, spoolman IDs, etc.)
@@ -327,6 +359,7 @@ void AmsBackendSnapmaker::on_started() {
         tag_has_card_.fill(std::nullopt);
         card_seen_.fill(false);
         print_state_.reset();
+        main_state_.reset();
         // The overrides reload below; a held save belongs to the session that
         // made it.
         pending_record_writes_.fill(std::nullopt);
@@ -2540,6 +2573,12 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
                 print_state_ = state->get<std::string>();
             }
         }
+        if (const auto main_state = snapmaker::screws_tilt::main_state_from_status(status)) {
+            main_state_ = *main_state;
+            if (*main_state != snapmaker::nozzle_offset::kMainStateXyzOffsetCalibrate) {
+                snapmaker::nozzle_offset::clear_exit_pending();
+            }
+        }
 
         apply_extension_locked(status, fx.changed);
 
@@ -2917,7 +2956,10 @@ std::optional<bool> AmsBackendSnapmaker::record_write_needs_force_locked(int hea
 
 bool AmsBackendSnapmaker::record_writes_held_locked() const {
     // Every record write runs FLOW_RESET_K on its head, which must not land
-    // under a running print.
+    // under a running print or between the offset calibration's steps.
+    if (calibration_holds_heads_locked()) {
+        return true;
+    }
     if (print_state_) {
         return *print_state_ == "printing";
     }
@@ -3017,7 +3059,14 @@ void AmsBackendSnapmaker::drop_pending_record_write_locked(int head) {
     }
 }
 
+bool AmsBackendSnapmaker::calibration_holds_heads_locked() const {
+    return main_state_ && *main_state_ == snapmaker::nozzle_offset::kMainStateXyzOffsetCalibrate;
+}
+
 bool AmsBackendSnapmaker::heads_free_locked() const {
+    if (calibration_holds_heads_locked()) {
+        return false;
+    }
     return print_state_ && *print_state_ != "printing" && *print_state_ != "paused";
 }
 
@@ -3082,7 +3131,10 @@ std::vector<std::pair<int, std::string>> AmsBackendSnapmaker::record_restores_lo
             record_restore_sent_[idx] = false;
             continue;
         }
-        if (record_restore_sent_[idx] || insert_since_declaration_[idx]) {
+        // A read still pending may yet name a different spool than the
+        // declaration.
+        if (record_restore_sent_[idx] || insert_since_declaration_[idx] ||
+            pending_insert_passes_[idx] > 0) {
             continue;
         }
         // The firmware's clear does not say the spool left: unload-at-end

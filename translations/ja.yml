@@ -158,6 +158,7 @@ translations:
   A spool may be tangled or the drive gear is jammed: スプールが絡まっているか、駆動ギアが詰まっている可能性があります
   ? A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
   : '複数のフィラメントをツールヘッドに送るシステムで、スロット数を表示します。スロットはフィラメントシステム画面で管理できます。'
+  A toolhead offset calibration is in progress, possibly from another screen. End it now?: 'ツールヘッドオフセットのキャリブレーションが実行中です（別の画面からの可能性があります）。今すぐ終了しますか?'
   A · 1,-1: "A · 1,-1"
   ABS: ABS
   ACCELEROMETERS: 加速度センサー
@@ -1102,6 +1103,7 @@ translations:
   Encoder Error: 'エンコーダーエラー'
   End K: 終了K
   End Test: テスト終了
+  End calibration: 'キャリブレーションを終了'
   End the test print?: テスト印刷を終了しますか?
   Ended: 終了
   Endless Spool: 'エンドレススプール'
@@ -1860,6 +1862,7 @@ translations:
   Layout: レイアウト
   Layout changes are off in safe mode. Restart to edit.: 'セーフモードではレイアウトを変更できません。編集するには再起動してください。'
   Learn More: 詳細を見る
+  Leave it: 'そのままにする'
   LedSelect: LEDを選択
   Left: '左'
   Length of filament to purge: 'パージするフィラメントの長さ'
@@ -3706,6 +3709,7 @@ translations:
   Tool swap: ツール交換
   Toolchange purge: 'ツール交換パージ'
   Toolhead: 'ツールヘッド'
+  Toolhead Calibration Running: 'ツールヘッドのキャリブレーション実行中'
   Toolhead LED: 'ツールヘッドLED'
   Toolhead Offset Calibration: ツールヘッドオフセットのキャリブレーション
   Toolhead Sensor: ツールヘッドセンサー

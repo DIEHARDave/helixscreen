@@ -4,7 +4,7 @@
 
 #include "chamber_heater_backend.h"  // chamber::match, chamber::keyword_confidence
 #include "display_numbering.h"       // helix::ui::tool_label
-#include "klipper_extruder_naming.h" // count_extruder_names
+#include "klipper_extruder_naming.h" // count_extruder_names, is_heater_object_name
 #include "macro_patterns.h"
 #include "printer_discovery.h"
 #include "text_io.h"
@@ -140,21 +140,14 @@ void PrinterDiscovery::parse_objects(const nlohmann::json& objects) {
         // ================================================================
         // Heaters: extruders, heater_bed, heater_generic
         // ================================================================
-        // "extruder" and "extruderN" only: extruder_stepper and module objects
-        // such as the U1's extruder_offset_calibration share the prefix.
-        else if (helix::is_extruder_name(name)) {
+        else if (helix::is_heater_object_name(name)) {
             heaters_.push_back(name);
-        }
-        // Heated bed
-        else if (name == "heater_bed") {
-            heaters_.push_back(name);
-            has_heater_bed_ = true;
-        }
-        // Generic heaters (e.g., "heater_generic chamber")
-        else if (name.rfind("heater_generic ", 0) == 0) {
-            heaters_.push_back(name);
-            std::string heater_name = name.substr(15); // Remove "heater_generic " prefix
-            try_set_chamber_heater(name, heater_name, kChamberHeaterGenericWeight);
+            if (name == "heater_bed") {
+                has_heater_bed_ = true;
+            } else if (name.rfind("heater_generic ", 0) == 0) {
+                std::string heater_name = name.substr(15); // Remove "heater_generic " prefix
+                try_set_chamber_heater(name, heater_name, kChamberHeaterGenericWeight);
+            }
         }
         // ================================================================
         // Load cells: load_cell

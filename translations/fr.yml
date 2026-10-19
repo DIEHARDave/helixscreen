@@ -164,6 +164,7 @@ translations:
   A spool may be tangled or the drive gear is jammed: Une bobine est peut-être emmêlée ou l'engrenage d'entraînement est bloqué
   ? A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
   : 'Un système qui alimente plusieurs filaments vers la tête d''outil, affiché avec son nombre de slots. Gérez les slots sur l''écran du système de filament.'
+  A toolhead offset calibration is in progress, possibly from another screen. End it now?: 'Une calibration des offsets des têtes d''outil est en cours, peut-être depuis un autre écran. La terminer maintenant ?'
   A · 1,-1: "A · 1,-1"
   ABS: ABS
   ACCELEROMETERS: ACCÉLÉROMÈTRES
@@ -1180,6 +1181,7 @@ translations:
   Encoder Error: 'Erreur de l''encodeur'
   End K: K final
   End Test: Terminer le test
+  End calibration: 'Terminer la calibration'
   End the test print?: Terminer l'impression de test ?
   Ended: Terminé
   Endless Spool: 'Bobine infinie'
@@ -1991,6 +1993,7 @@ translations:
   Layout: Disposition
   Layout changes are off in safe mode. Restart to edit.: 'Les modifications de disposition sont désactivées en mode sans échec. Redémarrez pour modifier.'
   Learn More: En savoir plus
+  Leave it: 'La laisser'
   LedSelect: Sélection de la LED
   Left: 'Gauche'
   Length of filament to purge: 'Longueur de filament à purger'
@@ -3975,6 +3978,7 @@ translations:
   Tool swap: Changement d'outil
   Toolchange purge: 'Purge au changement d''outil'
   Toolhead: 'Tête d''outil'
+  Toolhead Calibration Running: 'Calibration des têtes d''outil en cours'
   Toolhead LED: 'LED de la tête d''outil'
   Toolhead Offset Calibration: Calibration des offsets des têtes d'outil
   Toolhead Sensor: Capteur de tête d'outil

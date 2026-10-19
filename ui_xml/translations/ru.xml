@@ -186,6 +186,7 @@
   <translation tag="A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen." ru="Датчик, измеряющий температуру воздуха внутри камеры. Следите за ней на экране температуры камеры."/>
   <translation tag="A spool may be tangled or the drive gear is jammed" ru="Катушка может быть запутана или заклинило приводную шестерню"/>
   <translation tag="A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen." ru="Система, подающая несколько филаментов на печатающую головку, отображается с числом слотов. Слотами можно управлять на экране системы филамента."/>
+  <translation tag="A toolhead offset calibration is in progress, possibly from another screen. End it now?" ru="Идёт калибровка смещений головок, возможно, с другого экрана. Завершить её сейчас?"/>
   <translation tag="A · 1,-1" ru="A · 1,-1"/>
   <translation tag="ABS" ru="ABS"/>
   <translation tag="ACCELEROMETERS" ru="АКСЕЛЕРОМЕТРЫ"/>
@@ -1101,6 +1102,7 @@
   <translation tag="Encoder Error" ru="Ошибка энкодера"/>
   <translation tag="End K" ru="Конечный K"/>
   <translation tag="End Test" ru="Завершить тест"/>
+  <translation tag="End calibration" ru="Завершить калибровку"/>
   <translation tag="End the test print?" ru="Завершить тестовую печать?"/>
   <translation tag="Ended" ru="Завершено"/>
   <translation tag="Endless Spool" ru="Бесконечная катушка"/>
@@ -1828,6 +1830,7 @@
   <translation tag="Layout" ru="Раскладка"/>
   <translation tag="Layout changes are off in safe mode. Restart to edit." ru="Изменение раскладки отключено в безопасном режиме. Перезапустите, чтобы редактировать."/>
   <translation tag="Learn More" ru="Подробнее"/>
+  <translation tag="Leave it" ru="Оставить"/>
   <translation tag="LedSelect" ru="Выбрать LED"/>
   <translation tag="Left" ru="Слева"/>
   <translation tag="Length of filament to purge" ru="Длина продуваемого филамента"/>
@@ -3601,6 +3604,7 @@
   <translation tag="Tool swap" ru="Смена инструмента"/>
   <translation tag="Toolchange purge" ru="Продувка при смене инструмента"/>
   <translation tag="Toolhead" ru="Печатающая головка"/>
+  <translation tag="Toolhead Calibration Running" ru="Идёт калибровка головок"/>
   <translation tag="Toolhead LED" ru="LED печатающей головки"/>
   <translation tag="Toolhead Offset Calibration" ru="Калибровка смещений головок"/>
   <translation tag="Toolhead Sensor" ru="Датчик печатающей головки"/>

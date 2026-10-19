@@ -620,7 +620,7 @@ void plan_multi_tool(const SystemPathData& data, const SysLayout& L, PathPlan& p
             } else {
                 int32_t horiz_y = par_bot_y - parallel_idx * par_step;
                 parallel_idx++;
-                horiz_y = LV_CLAMP(route.start_y + arc_r + 2, horiz_y, end_y - arc_r - 2);
+                horiz_y = clamp_span(route.start_y + arc_r + 2, horiz_y, end_y - arc_r - 2);
                 append_harness(*r, route.start_x, route.start_y, route.end_x, end_y, horiz_y, s);
             }
             if (route.via_box) {
@@ -892,6 +892,10 @@ int32_t small_tool_scale(const SystemPathData& data) {
     return LV_MAX(6, data.extruder_scale * 3 / 4);
 }
 
+int32_t clamp_span(int32_t lo, int32_t v, int32_t hi) {
+    return lo <= hi ? LV_CLAMP(lo, v, hi) : lo + (hi - lo) / 2;
+}
+
 BypassGeometry compute_bypass_geometry(const SystemPathData& data, const lv_area_t& obj_coords) {
     int32_t width = lv_area_get_width(&obj_coords);
     int32_t height = lv_area_get_height(&obj_coords);
@@ -912,6 +916,7 @@ BypassGeometry compute_bypass_geometry(const SystemPathData& data, const lv_area
     // Right boundary the spool centre must stay inside (leave room for its half
     // width + a small margin from the canvas edge).
     int32_t right_limit = x_off + width - kBypassSpoolHalf - 4;
+    int32_t left_limit = x_off + kBypassSpoolHalf + 4;
 
     // Default horizontal position (single-tool / no toolhead row): a long
     // visible tube run from the hub.
@@ -934,13 +939,13 @@ BypassGeometry compute_bypass_geometry(const SystemPathData& data, const lv_area
             // No horizontal room even at the canvas edge — drop the spool below
             // the toolhead row, centred over the rightmost toolhead, clamped so
             // its lower edge stays on the canvas.
-            bypass_x = LV_CLAMP(x_off + kBypassSpoolHalf + 4, rightmost_tool_x, right_limit);
+            bypass_x = clamp_span(left_limit, rightmost_tool_x, right_limit);
             merge_y = nozzle_y + scale * 4 + kBypassSpoolHalf + comfort;
             merge_y = LV_MIN(merge_y, y_off + height - kBypassSpoolHalf - 4);
         }
     }
 
-    bypass_x = LV_MIN(bypass_x, right_limit);
+    bypass_x = clamp_span(left_limit, bypass_x, right_limit);
     return {bypass_x, merge_y, center_x};
 }
 

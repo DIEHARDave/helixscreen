@@ -1922,18 +1922,8 @@ void MoonrakerDiscoverySequence::parse_objects(const json& objects) {
         if (name.rfind("stepper_", 0) == 0) {
             steppers_.push_back(name);
         }
-        // Extruders (controllable heaters)
-        // "extruder" and "extruderN" only: extruder_stepper and module objects
-        // such as the U1's extruder_offset_calibration share the prefix.
-        else if (helix::is_extruder_name(name)) {
-            heaters_.push_back(name);
-        }
-        // Heated bed
-        else if (name == "heater_bed") {
-            heaters_.push_back(name);
-        }
-        // Generic heaters (e.g., "heater_generic chamber")
-        else if (name.rfind("heater_generic ", 0) == 0) {
+        // Heaters: extruders, heater_bed, heater_generic
+        else if (helix::is_heater_object_name(name)) {
             heaters_.push_back(name);
         }
         // Load cells

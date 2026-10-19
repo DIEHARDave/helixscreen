@@ -153,6 +153,7 @@
   <translation tag="A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen." de="Ein Sensor, der die Lufttemperatur im Gehäuse misst. Beobachte sie im Kammertemperatur-Bildschirm."/>
   <translation tag="A spool may be tangled or the drive gear is jammed" de="Eine Spule ist möglicherweise verheddert oder das Antriebsrad blockiert"/>
   <translation tag="A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen." de="Ein System, das mehrere Filamente zum Werkzeugkopf führt, angezeigt mit der Slot-Anzahl. Verwalte die Slots im Filamentsystem-Bildschirm."/>
+  <translation tag="A toolhead offset calibration is in progress, possibly from another screen. End it now?" de="Eine Werkzeugkopf-Offset-Kalibrierung läuft, möglicherweise von einem anderen Bildschirm. Jetzt beenden?"/>
   <translation tag="A · 1,-1" de="A · 1,-1"/>
   <translation tag="ABS" de="ABS"/>
   <translation tag="ACCELEROMETERS" de="BESCHLEUNIGUNGSSENSOREN"/>
@@ -1059,6 +1060,7 @@
   <translation tag="Encoder Error" de="Encoder-Fehler"/>
   <translation tag="End K" de="End-K"/>
   <translation tag="End Test" de="Test beenden"/>
+  <translation tag="End calibration" de="Kalibrierung beenden"/>
   <translation tag="End the test print?" de="Testdruck beenden?"/>
   <translation tag="Ended" de="Beendet"/>
   <translation tag="Endless Spool" de="Endlosspule"/>
@@ -1783,6 +1785,7 @@
   <translation tag="Layout" de="Layout"/>
   <translation tag="Layout changes are off in safe mode. Restart to edit." de="Layout-Änderungen sind im abgesicherten Modus deaktiviert. Starten Sie neu, um zu bearbeiten."/>
   <translation tag="Learn More" de="Mehr erfahren"/>
+  <translation tag="Leave it" de="So lassen"/>
   <translation tag="LedSelect" de="LED auswählen"/>
   <translation tag="Left" de="Links"/>
   <translation tag="Length of filament to purge" de="Zu entlüftende Filamentlänge"/>
@@ -3541,6 +3544,7 @@
   <translation tag="Tool swap" de="Werkzeugwechsel"/>
   <translation tag="Toolchange purge" de="Werkzeugwechsel-Entlüftung"/>
   <translation tag="Toolhead" de="Werkzeugkopf"/>
+  <translation tag="Toolhead Calibration Running" de="Werkzeugkopf-Kalibrierung läuft"/>
   <translation tag="Toolhead LED" de="Werkzeugkopf-LED"/>
   <translation tag="Toolhead Offset Calibration" de="Werkzeugkopf-Offset-Kalibrierung"/>
   <translation tag="Toolhead Sensor" de="Werkzeugkopfsensor"/>

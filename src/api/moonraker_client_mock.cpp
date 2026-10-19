@@ -174,6 +174,8 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
     }
     panda_breath_offline_ = helix::env_flag("HELIX_MOCK_PANDA_BREATH_OFFLINE");
     panda_breath_auto_ = helix::env_flag("HELIX_MOCK_PANDA_BREATH_AUTO");
+    // Another screen's toolhead offset calibration, already holding the state at connect.
+    nozzle_cal_active_ = helix::env_flag("HELIX_MOCK_NOZZLE_CAL_HELD");
 
     // HELIX_MOCK_HOME_LAYOUT=<json file> pre-seeds the database record the
     // printer's own screen publishes its home layout to.

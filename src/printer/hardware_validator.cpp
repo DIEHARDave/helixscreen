@@ -137,8 +137,8 @@ HardwareSnapshot HardwareSnapshot::from_json(const json& j) {
         return HardwareSnapshot{};
     }
 
-    // A stored list can name an object discovery no longer counts as a heater;
-    // it would read as removed hardware on the next comparison.
+    // A stored list can name an object discovery does not count as a heater;
+    // kept, it would read as removed hardware on the next comparison.
     snapshot.heaters.erase(
         std::remove_if(snapshot.heaters.begin(), snapshot.heaters.end(),
                        [](const std::string& name) { return !helix::is_heater_object_name(name); }),

@@ -1530,6 +1530,12 @@ void AmsBackendAfc::apply_state_string(const std::string& raw, const char* sourc
 
 void AmsBackendAfc::apply_toolchange_hold_locked(AmsAction action_at_frame_start,
                                                  const std::string& detail_at_frame_start) {
+    if (error_state_) {
+        // The change is over: AFC's CHANGE_TOOL returns on an error, and one
+        // older than v1.2.0 leaves next_lane set behind it.
+        toolchange_in_progress_ = false;
+    }
+
     const bool afc_reports_idle = ams_action_from_string(last_raw_state_) == AmsAction::IDLE;
     if (!afc_reports_idle) {
         // AFC's own busy state drives the action again.
@@ -1537,7 +1543,7 @@ void AmsBackendAfc::apply_toolchange_hold_locked(AmsAction action_at_frame_start
         return;
     }
 
-    if (!toolchange_in_progress_ || error_state_) {
+    if (!toolchange_in_progress_) {
         if (toolchange_hold_.has_value()) {
             release_toolchange_hold_locked();
         }
@@ -1614,6 +1620,9 @@ void AmsBackendAfc::check_action_timeout() {
             spdlog::warn("[AMS AFC] Toolchange hold on {} outlived {}s; showing AFC's Idle",
                          ams_action_to_string(*toolchange_hold_), kHeatingTimeoutSeconds);
             release_toolchange_hold_locked();
+            // A next_lane left set behind a change that ended must not hold the
+            // next plain load or unload too.
+            toolchange_in_progress_ = false;
         }
         return;
     }
@@ -2244,11 +2253,20 @@ void AmsBackendAfc::parse_afc_state(const nlohmann::json& afc_data,
             std::string next = afc_data["next_lane"].get<std::string>();
             int next_idx = next.empty() ? -1 : slots_.index_of(next);
             system_info_.next_slot = next_idx;
-            toolchange_in_progress_ = !next.empty();
-            spdlog::trace("[AMS AFC] Next lane: '{}' (slot {})", next, next_idx);
+            if (next.empty()) {
+                toolchange_in_progress_ = false;
+            } else if (next != next_lane_) {
+                // Before AFC v1.2.0 a CHANGE_TOOL that failed or found its lane
+                // already loaded left next_lane set, so only a lane newly named,
+                // and not the one already in the toolhead, starts a change.
+                toolchange_in_progress_ = next != toolhead_lane_;
+            }
+            next_lane_ = std::move(next);
+            spdlog::trace("[AMS AFC] Next lane: '{}' (slot {})", next_lane_, next_idx);
         } else if (afc_data["next_lane"].is_null()) {
             system_info_.next_slot = -1;
             toolchange_in_progress_ = false;
+            next_lane_.clear();
         }
     }
 

@@ -120,24 +120,75 @@ inline constexpr int kMainStateXyzOffsetCalibrate = 2;
 /// Finishing). A held firmware state is then ours, not stale.
 [[nodiscard]] bool run_live();
 
+/// What a connect-time read of main_state calls for.
+enum class HeldState {
+    None,    ///< the state is not held, or a run in this process owns it
+    Exit,    ///< held for a run this process owned whose EXIT never landed: end it
+    AskUser, ///< held with no run here behind it, possibly another screen's: ask first
+};
+
 /**
- * @brief True when an objects.query response (or its status map) shows the
- *        firmware holding the calibration state with no run here to own it
+ * @brief Classifies an objects.query response (or its status map) for the
+ *        connect-time reconcile
  *
  * Every step but PRESTART refuses outside the state and EXIT is the only way
  * out, so a run whose driver died leaves the heaters at the run's targets and
- * the idle timeout at the pause value until something sends EXIT.
+ * the idle timeout at the pause value until something sends EXIT. Another
+ * client (the stock screen, a second HelixScreen) drives its own run through
+ * the same state, so only a run this process owned is ended unasked.
  */
-[[nodiscard]] bool stale_calibration_state(const nlohmann::json& response, bool run_live);
+[[nodiscard]] HeldState held_state_action(const nlohmann::json& response, bool run_live,
+                                          bool exit_pending);
+
+/// A run in this process ended without its EXIT ever sent: the firmware still
+/// holds the state on our behalf, so the next reconcile ends it unasked.
+/// Recorded against the printer the last reconcile_on_connect() named, so
+/// another printer's held state never reads as ours. In memory only; a
+/// restart forgets it.
+void mark_exit_pending();
+/// True when an unsent exit belongs to the printer last connected.
+[[nodiscard]] bool exit_pending();
+/// EXIT went out but no reply confirmed it. The firmware may have ended the
+/// state and another screen started its own since, so a held state then is
+/// asked about, never ended unasked. Same printer keying as mark_exit_pending().
+void mark_exit_unconfirmed();
+/// True when an unconfirmed exit belongs to the printer last connected.
+[[nodiscard]] bool exit_unconfirmed();
+/// Called wherever the state is seen not held: nothing is left to end.
+void clear_exit_pending();
+
+/// Sends EXIT and forgets the reply beyond the pending-exit flag: cleared when
+/// it lands, set when it fails. @p client must outlive the round trip.
+void send_exit(helix::IMoonrakerClient& client);
+
+/// Stops a probe pass in progress (kProbeAbortMethod), fire-and-forget.
+void send_probe_abort(helix::IMoonrakerClient& client);
 
 /**
- * @brief Connect-time cleanup of a calibration state a previous session left
+ * @brief Connect-time cleanup of a calibration state a previous run left
  *
  * Reads main_state fresh (the discovery subscription does not always carry
- * machine_state_manager) and sends EXIT once when stale_calibration_state()
- * says so. @p client must outlive the round trip.
+ * machine_state_manager). A state this process owned gets EXIT at once; one it
+ * did not own calls @p ask_user, on the thread the response arrives on, and
+ * sends nothing. @p client must outlive the round trip.
  */
-void reconcile_on_connect(helix::IMoonrakerClient& client);
+void reconcile_on_connect(helix::IMoonrakerClient& client, std::function<void()> ask_user);
+
+/// How long leave_live_run() waits for EXIT's reply before teardown goes on.
+inline constexpr uint32_t kTeardownExitWaitMs = 1000;
+
+/**
+ * @brief Ends the run in progress before the client disconnects
+ *
+ * A run left behind holds the heaters on. With @p client connected this aborts
+ * a probe pass in progress, sends EXIT and waits up to kTeardownExitWaitMs for
+ * the reply, marking it unconfirmed when none comes; otherwise it marks the
+ * exit pending. Either way the run ends here (its changed hook refreshes the
+ * overlay's subjects),
+ * without sending anything further. No-op when no run is live. Main thread;
+ * replies must arrive on another thread for the wait to see them.
+ */
+void leave_live_run(helix::IMoonrakerClient* client);
 
 /**
  * @brief Walks build_sequence() one command at a time
@@ -167,6 +218,7 @@ class Runner {
 
     struct Hooks {
         /// Run one gcode command; call the completion once when it finishes.
+        /// EXIT's completion feeds the pending-exit flag (mark_exit_pending()).
         std::function<void(const std::string& gcode, uint32_t timeout_ms, Completion done)> send;
         /// Stop a probe pass in progress (kProbeAbortMethod). Optional.
         std::function<void()> abort_probe;
@@ -188,10 +240,15 @@ class Runner {
     void cancel();
     /// Forgets a run that ended (Done, Failed, Cancelled), back to Idle.
     void reset();
+    /// Ends a live run as Cancelled without sending anything: the caller has
+    /// dealt with the firmware state itself. Late completions are dropped.
+    void abandon();
 
     [[nodiscard]] Phase phase() const {
         return phase_;
     }
+    /// True while a probe pass is the command in flight.
+    [[nodiscard]] bool probing() const;
     /// The step running or waiting, or nullptr outside a run.
     [[nodiscard]] const Step* current_step() const;
     /// 0-based index of current_step() in steps().

@@ -678,6 +678,8 @@ step but PRESTART is refused with the firmware's coded fault until PRESTART has 
 head's PROBE_CALIBRATE moves its `extruder_offset`, which `printer.objects.query` reports.
 `HELIX_MOCK_NOZZLE_CAL_PLATE_REFUSE=<n>` makes the first `n` plate checks report the PEI sheet
 still on the bed; `HELIX_MOCK_NOZZLE_CAL_FAIL=<n>` fails head `n`'s probe.
+`HELIX_MOCK_NOZZLE_CAL_HELD=1` starts with the state already held, as another screen's run
+would leave it, so the connect-time "End it now?" prompt shows.
 `tests/unit/test_mock_nozzle_offset_calibration.cpp` pins it.
 
 ### `HELIX_MOCK_AMS_STATE`
