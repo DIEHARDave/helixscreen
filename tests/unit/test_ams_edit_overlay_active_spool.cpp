@@ -88,6 +88,11 @@ class AmsEditOverlayTestAccess {
     bool lane_dirty() const {
         return overlay_.lane_settings_dirty();
     }
+    /// A stored More-section value; with no detail widgets built, Save reads
+    /// it back as cleared, which is a logistics edit.
+    void set_detail_original_location(const std::string& location) {
+        overlay_.detail_original_.location = location;
+    }
 
     // Forward the private static create-gate predicate (friend access).
     static bool should_create_new_spool(const SlotInfo& working_info, bool save_to_spoolman) {
@@ -761,4 +766,34 @@ TEST_CASE_METHOD(OverlayCommitFixture,
     CHECK(lanes->tool_writes == 1);
     CHECK_FALSE(access.lane_dirty());
     CHECK(completion_fired);
+}
+
+TEST_CASE_METHOD(OverlayCommitFixture,
+                 "with Spoolman unreachable and More edits pending, Save still writes the lane",
+                 "[ams_edit_overlay][lane_settings]") {
+    auto owned = std::make_unique<RefusingLaneBackend>(4);
+    RefusingLaneBackend* lanes = owned.get();
+    AmsState::instance().set_backend(std::move(owned));
+
+    AmsEditOverlay overlay;
+    AmsEditOverlayTestAccess access(overlay);
+    access.init_subjects();
+    SlotInfo slot = lanes->get_slot_info(1);
+    slot.spoolman_id = 7; // linked, but its record never loaded
+    access.set_original_info(slot);
+    access.set_working_info(slot);
+    access.set_api(nullptr); // Spoolman unreachable
+    access.set_slot_index(1);
+    access.set_detail_original_location("Shelf A");
+    access.set_completion_callback([](const AmsEditOverlay::EditResult&) {});
+
+    const int backup_before = lane_settings::backup_of(*lanes, 1);
+    REQUIRE(backup_before != 3);
+    access.set_lane_settings(-1, backup_before, -1, 3);
+
+    access.call_handle_save();
+    UpdateQueue::instance().drain();
+
+    CHECK(lane_settings::backup_of(*lanes, 1) == 3);
+    CHECK_FALSE(access.lane_dirty());
 }

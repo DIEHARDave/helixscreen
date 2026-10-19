@@ -131,6 +131,60 @@ TEST_CASE_METHOD(CapabilityFixture,
     CHECK(std::string(lv_dropdown_get_text(dropdown)) == "DE");
 }
 
+TEST_CASE_METHOD(CapabilityFixture, "Picking a country in the dropdown sets it on the radio",
+                 "[network_settings][wifi_country]") {
+    helix::SystemSettingsManager::instance().set_wifi_country("");
+    auto owned = std::make_unique<WifiBackendMock>();
+    WifiBackendMock* backend = owned.get();
+    // The dropdown's XML callback routes through the process-wide overlay, so
+    // this path can only be driven on that instance.
+    auto& overlay = get_network_settings_overlay();
+    auto previous = Access::wifi_manager(overlay);
+    lv_obj_t* root = open_overlay(overlay, std::move(owned));
+    lv_obj_t* dropdown = lv_obj_find_by_name(root, "wifi_country_dropdown");
+    REQUIRE(dropdown != nullptr);
+
+    lv_dropdown_set_selected(dropdown,
+                             static_cast<uint32_t>(helix::wifi::country::dropdown_index("NZ")));
+    lv_obj_send_event(dropdown, LV_EVENT_VALUE_CHANGED, nullptr);
+    // Saved once the radio accepts it.
+    REQUIRE(wait_until(
+        [] { return helix::SystemSettingsManager::instance().get_wifi_country() == "NZ"; }));
+    std::string code;
+    REQUIRE(backend->get_country(code).success());
+    CHECK(code == "NZ");
+    helix::SystemSettingsManager::instance().set_wifi_country("");
+    overlay.cleanup();
+    Access::wifi_manager(overlay) = previous;
+}
+
+TEST_CASE_METHOD(CapabilityFixture, "Network settings forgets its country dropdown on cleanup",
+                 "[network_settings][wifi_country]") {
+    NetworkSettingsOverlay overlay;
+    open_overlay(overlay, std::make_unique<WifiBackendMock>());
+    REQUIRE(Access::country_dropdown(overlay) != nullptr);
+    overlay.cleanup();
+    CHECK(Access::country_dropdown(overlay) == nullptr);
+}
+
+TEST_CASE_METHOD(CapabilityFixture, "Micro screens give the Ethernet MAC line up",
+                 "[network_settings]") {
+    NetworkSettingsOverlay overlay;
+    lv_obj_t* root = open_overlay(overlay, std::make_unique<WifiBackendMock>());
+    lv_obj_t* mac = lv_obj_find_by_name(root, "eth_mac_label");
+    REQUIRE(mac != nullptr);
+    lv_obj_t* row = lv_obj_get_parent(mac);
+    lv_subject_t* bp = lv_xml_get_subject(nullptr, "ui_breakpoint");
+    REQUIRE(bp != nullptr);
+    const int32_t saved = lv_subject_get_int(bp);
+
+    lv_subject_set_int(bp, 0);
+    CHECK(lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN));
+    lv_subject_set_int(bp, 1);
+    CHECK_FALSE(lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN));
+    lv_subject_set_int(bp, saved);
+}
+
 TEST_CASE_METHOD(CapabilityFixture,
                  "Network settings hides the country row when the backend cannot set it",
                  "[network_settings][wifi_country]") {

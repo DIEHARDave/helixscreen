@@ -277,6 +277,27 @@ TEST_CASE("wpa REGDOM-CHANGE reaches the manager as REGDOM_CHANGE",
 // beacon-based scan selection: the join only completes when the backend asks
 // for a directed probe via scan_ssid=1. The visible join must not ask, or
 // every ordinary connect pays a full-channel probe sweep.
+// Vendor firmwares relocate the control interface (-O); the backend finds it
+// from the daemon's command line in the process table it was pointed at.
+TEST_CASE("wpa finds a relocated control directory from the daemon's -O", "[network][wpa]") {
+    WpaFakeFixture fx;
+    fx.env_guard.reset(); // no HELIX_WPA_SOCKET_DIR: the -O path is the only route
+    const std::string pid_dir = fx.dir + "/proc/4242";
+    REQUIRE(std::filesystem::create_directories(pid_dir));
+    {
+        std::FILE* f = std::fopen((pid_dir + "/cmdline").c_str(), "wb");
+        REQUIRE(f != nullptr);
+        const std::string argv = std::string("/usr/sbin/wpa_supplicant") + '\0' + "-B" + '\0' +
+                                 "-O" + '\0' + fx.dir + '\0';
+        std::fwrite(argv.data(), 1, argv.size(), f);
+        std::fclose(f);
+    }
+
+    WifiBackendWpaSupplicant backend(kWatchdogMs);
+    CHECK(backend.start().success());
+    backend.stop();
+}
+
 TEST_CASE("wpa hidden join sends scan_ssid 1; a visible join omits it", "[network][wpa][hidden]") {
     WpaFakeFixture fx;
 

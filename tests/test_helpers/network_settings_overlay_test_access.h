@@ -46,6 +46,10 @@ class NetworkSettingsOverlayTestAccess {
                                   const WifiBackend::ConnectionStatus& status) {
         o.apply_wifi_status(status);
     }
+    /// The cached country dropdown, which async country reads write to.
+    static lv_obj_t* country_dropdown(NetworkSettingsOverlay& o) {
+        return o.country_dropdown_;
+    }
     /// The country dropdown's selection subject (0 = not set).
     static lv_subject_t& wifi_country_index(NetworkSettingsOverlay& o) {
         return o.wifi_country_index_;
