@@ -750,12 +750,19 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
     // through the next extruder's heat wait, and between a toolchanger's dock
     // and pickup. Published as-is, that Idle ends the operation mid change:
     // AmsState clears the narration and the step bar restarts for the load.
-    // AFC.next_lane is set for exactly the CHANGE_TOOL span (assigned at its
-    // top, cleared in its finally block, so an exception clears it too), and
-    // while it is set an Idle keeps the busy action the change was already in.
+    // From AFC v1.2.0 next_lane is set for exactly the CHANGE_TOOL span
+    // (assigned at its top, cleared in its finally block); earlier releases
+    // clear it only after a successful load, so a change that failed or found
+    // its lane already loaded leaves it set. A change therefore begins when
+    // next_lane newly names a lane other than the one in the toolhead, and
+    // ends when next_lane clears, AFC raises an error, or the hold's budget
+    // runs out. While one is in progress an Idle keeps the busy action the
+    // change was already in.
 
-    /// AFC.next_lane names a lane: a CHANGE_TOOL is in progress.
+    /// A CHANGE_TOOL this backend saw begin is in progress.
     bool toolchange_in_progress_{false};
+    /// AFC.next_lane as last reported; empty while unset.
+    std::string next_lane_;
     /// The busy action held over AFC's mid-change Idle, and the detail shown
     /// with it. Empty while nothing is held.
     std::optional<AmsAction> toolchange_hold_;
@@ -765,9 +772,8 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
     std::chrono::steady_clock::time_point toolchange_hold_since_{};
 
     /// Hold, keep or release the toolchange hold once the frame's fields are
-    /// all parsed. Released by next_lane clearing, by AFC's error_state, by
-    /// AFC reporting a busy state of its own, and by the budget above. Caller
-    /// holds mutex_.
+    /// all parsed. Released by the change ending (see above) and by AFC
+    /// reporting a busy state of its own. Caller holds mutex_.
     void apply_toolchange_hold_locked(AmsAction action_at_frame_start,
                                       const std::string& detail_at_frame_start);
 
