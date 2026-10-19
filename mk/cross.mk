@@ -1748,6 +1748,13 @@ DEPLOY_NO_TRACKER := --exclude='*.mod'
 DEPLOY_TAR_NO_TRACKER := --exclude='*.mod'
 DEPLOY_ASSET_DIRS := ui_xml assets config moonraker-plugin
 
+# Binaries helix-screen now carries itself: the EGL rung and the fbdev rung.
+# An older deploy's copies would otherwise sit in bin/ as dead weight.
+# $(1) = SSH target, $(2) = install dir.
+define deploy-remove-retired-binaries
+	@ssh $(1) "rm -f $(2)/bin/helix-screen-egl $(2)/bin/helix-screen-fbdev"
+endef
+
 # Common deploy recipe (called with: $(call deploy-common,SSH_TARGET,DEPLOY_DIR,BIN_DIR))
 # Usage: $(call deploy-common,$(PI_SSH_TARGET),$(PI_DEPLOY_DIR),build/pi/bin)
 # Turn on the runtime switches that match what the binary being deployed
@@ -1846,9 +1853,7 @@ define deploy-common
 	@# Sync binaries and launcher to bin/
 	rsync -avzz --progress $(3)/helix-screen $(3)/helix-splash $(1):$(2)/bin/
 	@if [ -f $(3)/helix-watchdog ]; then rsync -avzz $(3)/helix-watchdog $(1):$(2)/bin/; fi
-	@# The EGL rung lives inside helix-screen; a separate helix-screen-egl left
-	@# on the device by an older deploy is dead weight.
-	@ssh $(1) "rm -f $(2)/bin/helix-screen-egl"
+	$(call deploy-remove-retired-binaries,$(1),$(2))
 	@# Sync Bluetooth plugin if built (runtime-loaded via dlopen, same dir as binary)
 	@if [ -f $(3)/libhelix-bluetooth.so ]; then \
 		echo "$(DIM)Deploying Bluetooth plugin...$(RESET)"; \
