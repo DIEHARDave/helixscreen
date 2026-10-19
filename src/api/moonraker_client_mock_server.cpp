@@ -412,7 +412,8 @@ void register_server_handlers(std::unordered_map<std::string, MethodHandler>& re
     // server.helix.status - HelixPrint plugin presence.
     // Absent by default, which is the state a fresh printer is in and the one
     // the Advanced panel's Install row is bound to. HELIX_MOCK_HELIX_PLUGIN=1
-    // reports it installed. Leaving this method unregistered is not the same
+    // reports it installed, =disabled installed with `enabled: False`. Leaving
+    // this method unregistered is not the same
     // thing: an unimplemented method invokes NEITHER callback, so the plugin
     // subject stays at its -1 unknown and every surface gated on it is
     // unreachable in a mock run.
@@ -420,7 +421,9 @@ void register_server_handlers(std::unordered_map<std::string, MethodHandler>& re
         [](MoonrakerClientMock* /*self*/, const json& /*params*/,
            std::function<void(const json&)> success_cb,
            std::function<void(const MoonrakerError&)> error_cb) -> bool {
-        const bool installed = helix::env_flag("HELIX_MOCK_HELIX_PLUGIN");
+        const char* mode = std::getenv("HELIX_MOCK_HELIX_PLUGIN");
+        const bool disabled = mode && std::string(mode) == "disabled";
+        const bool installed = disabled || helix::env_flag("HELIX_MOCK_HELIX_PLUGIN");
         if (!installed) {
             // Moonraker answers an unknown endpoint with a JSON-RPC error, and
             // that error is what tells the app the plugin is absent rather than
@@ -436,7 +439,7 @@ void register_server_handlers(std::unordered_map<std::string, MethodHandler>& re
         const char* link_dir = std::getenv("HELIX_MOCK_HELIX_PLUGIN_LINK_DIR");
         json response = {{"jsonrpc", "2.0"},
                          {"result",
-                          {{"enabled", true},
+                          {{"enabled", !disabled},
                            {"version", "1.0.1"},
                            {"symlink_dir", link_dir && *link_dir ? link_dir : ".helix_print"}}}};
         if (success_cb) {

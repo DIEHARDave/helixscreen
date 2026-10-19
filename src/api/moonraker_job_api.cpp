@@ -98,6 +98,7 @@ void MoonrakerJobAPI::check_helix_plugin(PluginInfoCallback on_result, ErrorCall
         [on_result](const json& response) {
             // Plugin is available
             helix::HelixPluginInfo info;
+            info.present = true;
             info.available = true;
             std::string version = "unknown";
             if (response.contains("result")) {

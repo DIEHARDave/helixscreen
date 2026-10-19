@@ -26,7 +26,9 @@
 #include "../test_helpers/print_select_panel_fixture.h"
 #include "../test_helpers/print_select_panel_test_access.h"
 #include "../test_helpers/print_state_test_drivers.h"
+#include "../test_helpers/scoped_env.h"
 #include "config.h"
+#include "discovery_steps.h"
 #include "observer_factory.h"
 #include "printer_state.h"
 
@@ -104,6 +106,28 @@ struct PromptFixture : PrintSelectGlobalStateReset, PrintSelectPanelFixture {
 
     int moonraker_restarts() const {
         return mock_client_.call_count("server.restart");
+    }
+
+    /// Discovery's own plugin probe, run against the mock client.
+    void run_plugin_probe() {
+        PrinterDiscovery snapshot;
+        const json status = json::object();
+        DiscoveryContext ctx{*api_,   mock_client_, api_->hardware(), snapshot, status,
+                             nullptr, nullptr,      nullptr,          1,        false,
+                             false};
+        bool ran = false;
+        for (const DiscoveryStep& step : discovery_core_steps()) {
+            if (std::string(step.name) == "helix_plugin_check") {
+                step.run(ctx);
+                ran = true;
+            }
+        }
+        REQUIRE(ran);
+        drain();
+    }
+
+    int plugin_state() {
+        return get_printer_state().plugin_status_state().helix_plugin_state();
     }
 };
 
@@ -238,4 +262,27 @@ TEST_CASE_METHOD(PromptFixture, "a repeated absent report does not notify plugin
     set_plugin_installed(false);
 
     CHECK(counter.notifications == at_attach + 1);
+}
+
+TEST_CASE_METHOD(PromptFixture, "a plugin set to enabled: False is not offered for install",
+                 "[plugin_installer][print_select]") {
+    // The component and its [helix_print] section are both in place, so the
+    // installer has nothing to add, and an install would end where it began.
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", "disabled");
+
+    run_plugin_probe();
+
+    CHECK(plugin_state() == kHelixPluginDisabled);
+    CHECK_FALSE(get_printer_state().plugin_status_state().service_has_helix_plugin());
+    CHECK(prompt() == nullptr);
+}
+
+TEST_CASE_METHOD(PromptFixture, "discovery's probe still reads an absent plugin as absent",
+                 "[plugin_installer][print_select]") {
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", nullptr);
+
+    run_plugin_probe();
+
+    CHECK(plugin_state() == kHelixPluginAbsent);
+    CHECK(prompt() != nullptr);
 }

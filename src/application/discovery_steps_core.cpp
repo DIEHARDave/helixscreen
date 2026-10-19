@@ -169,7 +169,8 @@ void helix_plugin_check_step(DiscoveryContext& ctx) {
     ctx.api.job().check_helix_plugin(
         [](const helix::HelixPluginInfo& info) {
             get_printer_state().set_helix_plugin_link_dir(info.symlink_dir);
-            get_printer_state().set_helix_plugin_installed(info.available);
+            get_printer_state().set_helix_plugin_presence(
+                helix_plugin_presence(info.present, info.available));
         },
         [](const MoonrakerError&) {
             // Silently treat errors as "plugin not installed"

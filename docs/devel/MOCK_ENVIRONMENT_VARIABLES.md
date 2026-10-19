@@ -395,13 +395,16 @@ Report the HelixPrint Moonraker plugin as installed.
 
 | Property | Value |
 |----------|-------|
-| Values | `1` = installed, anything else = absent |
+| Values | `1` = installed, `disabled` = installed with `enabled: False`, anything else = absent |
 | Default | absent |
 | Affects | `server.helix.status`, and every surface gated on it |
 
 Absent is the default because it is the state a fresh printer is in, and it is
 what shows the Advanced panel's **Install HelixPrint Plugin** row. Set it to `1`
-to get the **Uninstall** row instead.
+to get the **Uninstall** row instead. `disabled` is a plugin whose
+`[helix_print]` section sets `enabled: False`: it reads as present but unusable,
+so the Uninstall row shows, the install prompt does not, and modified prints
+still need the plugin.
 
 The mock answers the absent case with a JSON-RPC error, which is what Moonraker
 does for an endpoint it has no component for. That distinction is the point: a
@@ -412,6 +415,7 @@ in a mock run, including the pre-print options and the G-code rewrite remap.
 ```bash
 ./build/bin/helix-screen --test -vv                          # Install row
 HELIX_MOCK_HELIX_PLUGIN=1 ./build/bin/helix-screen --test -vv # Uninstall row
+HELIX_MOCK_HELIX_PLUGIN=disabled ./build/bin/helix-screen --test -vv # Uninstall row, no prompt
 ```
 
 ### `HELIX_MOCK_SKIP_WRAPPERS`

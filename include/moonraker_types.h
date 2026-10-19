@@ -448,6 +448,7 @@ struct PowerDevice {
 namespace helix {
 /// What the HelixPrint plugin's status says about itself (server.helix.status).
 struct HelixPluginInfo {
+    bool present = false;    ///< the component answered, enabled or not
     bool available = false;  ///< installed and enabled
     std::string symlink_dir; ///< where it links a modified print; empty when not reported
 };
