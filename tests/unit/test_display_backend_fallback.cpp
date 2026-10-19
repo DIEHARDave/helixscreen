@@ -395,13 +395,22 @@ TEST_CASE("HELIX_DISPLAY_BACKEND names a display path", "[display][fallback]") {
     CHECK(helix::parse_forced_display_backend("drm ") == helix::ForcedDisplayBackend::Unknown);
 }
 
-TEST_CASE("A forced EGL rung owns the panel through DRM", "[display][fallback]") {
-    // The watchdog skips the fbdev splash for both DRM presentation paths.
-    CHECK(helix::forced_backend_uses_drm(helix::ForcedDisplayBackend::Drm));
-    CHECK(helix::forced_backend_uses_drm(helix::ForcedDisplayBackend::DrmEgl));
-    CHECK_FALSE(helix::forced_backend_uses_drm(helix::ForcedDisplayBackend::Fbdev));
-    CHECK_FALSE(helix::forced_backend_uses_drm(helix::ForcedDisplayBackend::Sdl));
-    CHECK_FALSE(helix::forced_backend_uses_drm(helix::ForcedDisplayBackend::Unknown));
+TEST_CASE("The watchdog's splash decision: DRM owns the panel only when it is available",
+          "[display][fallback]") {
+    using helix::drm_will_own_panel;
+    using helix::ForcedDisplayBackend;
+    // Both DRM presentation paths skip the fbdev splash when DRM is usable.
+    CHECK(drm_will_own_panel(ForcedDisplayBackend::Drm, true));
+    CHECK(drm_will_own_panel(ForcedDisplayBackend::DrmEgl, true));
+    CHECK(drm_will_own_panel(ForcedDisplayBackend::None, true));
+    CHECK(drm_will_own_panel(ForcedDisplayBackend::Unknown, true));
+    // A forced drm or egl rung without DRM falls back to fbdev, which needs the splash.
+    CHECK_FALSE(drm_will_own_panel(ForcedDisplayBackend::Drm, false));
+    CHECK_FALSE(drm_will_own_panel(ForcedDisplayBackend::DrmEgl, false));
+    CHECK_FALSE(drm_will_own_panel(ForcedDisplayBackend::None, false));
+    // fbdev and SDL never present through DRM.
+    CHECK_FALSE(drm_will_own_panel(ForcedDisplayBackend::Fbdev, true));
+    CHECK_FALSE(drm_will_own_panel(ForcedDisplayBackend::Sdl, true));
 }
 
 TEST_CASE("Backend fallback: all backends exhausted returns failure",

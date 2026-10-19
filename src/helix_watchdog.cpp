@@ -271,15 +271,14 @@ static volatile pid_t g_splash_pid = 0;
  */
 static bool would_use_drm() {
     const auto forced = helix::parse_forced_display_backend(std::getenv("HELIX_DISPLAY_BACKEND"));
-    if (forced != helix::ForcedDisplayBackend::None) {
-        return helix::forced_backend_uses_drm(forced);
-    }
-    // Auto mode: DRM is tried first in create_auto(), check if it's available
 #ifdef HELIX_DISPLAY_DRM
+    // Asked even for a forced drm or egl rung: without libdrm or a usable card
+    // the app falls back to fbdev, and skipping the splash would leave the
+    // screen black while it loads.
     DisplayBackendDRM drm;
-    return drm.is_available();
+    return helix::drm_will_own_panel(forced, drm.is_available());
 #else
-    return false;
+    return helix::drm_will_own_panel(forced, false);
 #endif
 }
 

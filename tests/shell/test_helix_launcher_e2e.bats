@@ -206,6 +206,14 @@ run_launcher_once() {
     [ "$output" = "helix-screen drm" ]
 }
 
+@test "e2e: a DRM card without libdrm starts helix-screen with fbdev" {
+    with_dri_card
+    export MOCK_PROBE_RC=3
+
+    run launcher_backend
+    [ "$output" = "helix-screen fbdev" ]
+}
+
 @test "e2e: a binary without rungs, or a board without a DRM card, auto-detects" {
     with_dri_card
     export MOCK_PROBE_RC=2

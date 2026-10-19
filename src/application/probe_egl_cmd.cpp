@@ -222,15 +222,19 @@ int run_probe_egl() {
     printf("built without display rungs\n");
     return kProbeNoRungs;
 #endif
+    using helix::gpu_libs::Lib;
+    if (!helix::gpu_libs::available(Lib::Drm)) {
+        printf("%s is not installed\n", helix::gpu_libs::soname(Lib::Drm));
+        return kProbeNoDrm;
+    }
+
     // GLES for the 3D viewer alone compiles this probe in, but only a binary
     // linked with the EGL presentation path can act on a yes.
     if (helix::make_drm_egl_backend == nullptr) {
         printf("built without EGL presentation\n");
         return kProbeDeclined;
     }
-
-    using helix::gpu_libs::Lib;
-    for (Lib lib : {Lib::Drm, Lib::Gbm, Lib::Egl, Lib::Gles2}) {
+    for (Lib lib : {Lib::Gbm, Lib::Egl, Lib::Gles2}) {
         if (!helix::gpu_libs::available(lib)) {
             printf("%s is not installed\n", helix::gpu_libs::soname(lib));
             return kProbeDeclined;

@@ -853,7 +853,8 @@ for arg in "$@"; do
 done
 
 # Ask a binary whether EGL comes up on a real GPU here. Exit 0 means yes, 2
-# that the binary has no display rungs to choose between, anything else no.
+# that the binary has no display rungs to choose between, 3 that libdrm does
+# not load so only fbdev can run, anything else no.
 # Run as a separate process so a GPU bring-up that aborts cannot take the UI
 # down with it, and under a deadline so a wedged driver cannot hold up boot.
 # A binary that carries no EGL presentation path, or a system missing a GPU
@@ -905,6 +906,9 @@ app_display_backend() {
             echo egl
             ;;
         2) ;;
+        3)
+            echo fbdev
+            ;;
         *)
             log "EGL unavailable here — using DRM dumb buffers"
             echo drm

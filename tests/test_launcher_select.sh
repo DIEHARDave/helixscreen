@@ -156,6 +156,17 @@ test_probe_no_rungs_leaves_auto() {
     cleanup_mock_bindir "$bindir"
 }
 
+# A DRM card without libdrm: the app falls back to fbdev in-process, and the
+# watchdog must see fbdev to keep the splash up while it loads.
+test_probe_no_drm_tells_app_fbdev() {
+    print_test "No libdrm → app is told fbdev"
+    local bindir result
+    bindir=$(setup_mock_bindir)
+    result=$(backend_for "$bindir" 3 yes "")
+    assert "[ '$result' = 'fbdev' ]" "fbdev when the probe reports libdrm missing"
+    cleanup_mock_bindir "$bindir"
+}
+
 test_no_dri_card_skips_probe() {
     print_test "No DRM card → app auto-detects, no probe"
     local bindir result
@@ -203,6 +214,7 @@ main() {
     test_probe_ok_tells_app_egl
     test_probe_declines_tells_app_drm_not_fbdev
     test_probe_no_rungs_leaves_auto
+    test_probe_no_drm_tells_app_fbdev
     test_no_dri_card_skips_probe
     test_env_forced_egl_skips_probe
     test_env_forced_drm_skips_probe

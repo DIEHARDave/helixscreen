@@ -15,6 +15,8 @@ inline constexpr int kProbeDeclined = 1;
 /// A build with no display rungs to choose between: leave the backend to the
 /// app's own auto-detection.
 inline constexpr int kProbeNoRungs = 2;
+/// libdrm does not load here, so neither DRM rung can run: take fbdev.
+inline constexpr int kProbeNoDrm = 3;
 
 /// Bring EGL up on this board's scanout node, report what answered, and tear it
 /// down again. Implements the `--probe-egl` one-shot.

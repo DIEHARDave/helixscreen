@@ -64,9 +64,15 @@ inline ForcedDisplayBackend parse_forced_display_backend(const char* value) {
     return ForcedDisplayBackend::Unknown;
 }
 
-/// Whether a forced backend owns the panel through DRM: dumb buffers or EGL.
-inline bool forced_backend_uses_drm(ForcedDisplayBackend forced) {
-    return forced == ForcedDisplayBackend::Drm || forced == ForcedDisplayBackend::DrmEgl;
+/// Whether the app will own the panel through DRM (dumb buffers or EGL), given
+/// what HELIX_DISPLAY_BACKEND forces and whether DisplayBackendDRM is available.
+/// A forced drm or egl rung still falls back to fbdev in-process when DRM or its
+/// libraries are missing, and an unset or unknown value auto-detects DRM first.
+inline bool drm_will_own_panel(ForcedDisplayBackend forced, bool drm_available) {
+    if (forced == ForcedDisplayBackend::Fbdev || forced == ForcedDisplayBackend::Sdl) {
+        return false;
+    }
+    return drm_available;
 }
 
 } // namespace helix
