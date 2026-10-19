@@ -5,13 +5,17 @@
 #include "ui_wizard.h"
 #include "ui_wizard_connection.h"
 
+#include "../fake_moonraker_client.h"
 #include "../lvgl_ui_test_fixture.h"
 #include "../mocks/mock_mdns_discovery.h"
+#include "../test_helpers/scoped_moonraker_client.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
 #include "lvgl/lvgl.h"
 #include "misc/lv_timer_private.h" // timer_cb — assert the cancel neutered it
 #include "moonraker_client.h"
+#include "platform_info.h"
+#include "utils/network_validation.h"
 
 #include <spdlog/spdlog.h>
 
@@ -534,5 +538,42 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     REQUIRE(lv_obj_has_flag(section, LV_OBJ_FLAG_HIDDEN));
 
     CHECK_FALSE(mdns->is_discovering());
+    step->cleanup();
+}
+
+// ============================================================================
+// Failed connection test names what to check
+// ============================================================================
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "Connection step: a failed test shows the hint for the failure kind",
+                 "[wizard][connection][connect_failure]") {
+    const auto kind = GENERATE(ConnectFailureKind::Timeout, ConnectFailureKind::Refused,
+                               ConnectFailureKind::Unknown);
+
+    helix::test::FakeMoonrakerClient client;
+    client.connect_failure = kind;
+    ScopedMoonrakerClient installed(&client);
+
+    WizardConnectionStep* step = get_wizard_connection_step();
+    step->init_subjects();
+    step->set_mdns_discovery(std::make_unique<MockMdnsDiscovery>());
+    lv_obj_t* root = step->create(test_screen());
+    REQUIRE(root != nullptr);
+
+    lv_subject_copy_string(lv_xml_get_subject(nullptr, "connection_ip"), "10.9.9.9");
+    lv_obj_t* btn = lv_obj_find_by_name(root, "btn_test_connection");
+    REQUIRE(btn != nullptr);
+    lv_obj_send_event(btn, LV_EVENT_CLICKED, nullptr);
+    helix::ui::UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
+    REQUIRE(client.get_last_url() == "ws://10.9.9.9:7125/websocket");
+
+    REQUIRE(client.fire_disconnected());
+    helix::ui::UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
+
+    lv_obj_t* status = lv_obj_find_by_name(root, "connection_status_text");
+    REQUIRE(status != nullptr);
+    CHECK(std::string(lv_label_get_text(status)) ==
+          lv_tr(connect_failure_hint(kind, is_android_platform())));
     step->cleanup();
 }
