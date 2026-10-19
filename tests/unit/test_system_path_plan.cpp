@@ -239,6 +239,54 @@ TEST_CASE("Overview plan: an active bypass joins the trunk at the merge",
     CHECK(lv_color_eq(bypass.style[bypass.path.count - 1].bore, lv_color_hex(kOwl)));
 }
 
+TEST_CASE("Overview plan: a span too short to clamp into yields its midpoint",
+          "[system_path][filament_path]") {
+    CHECK(clamp_span(10, 5, 20) == 10);
+    CHECK(clamp_span(10, 15, 20) == 15);
+    CHECK(clamp_span(10, 25, 20) == 20);
+    CHECK(clamp_span(30, 0, 10) == 20);
+    CHECK(clamp_span(30, 50, 10) == 20);
+}
+
+TEST_CASE("Overview plan: a bypass spool on a canvas too narrow for it stays centred",
+          "[system_path][filament_path]") {
+    auto d = multi();
+    d->unit_count = 1;
+    d->unit_x_positions[0] = 20;
+    d->has_bypass = true;
+    constexpr lv_area_t kNarrow = {0, 0, 39, 399};
+    const BypassGeometry g = compute_bypass_geometry(*d, kNarrow);
+    CHECK(g.bypass_x == 20);
+}
+
+TEST_CASE("Overview plan: tool routes on a short canvas stay between their ends",
+          "[system_path][filament_path]") {
+    auto d = multi();
+    d->unit_count = 1;
+    d->unit_x_positions[0] = 200;
+    d->unit_topology[0] = 2;
+    d->unit_tool_count[0] = 3;
+    d->total_tools = 3;
+    d->active_tool = 1;
+    constexpr lv_area_t kShort = {0, 0, 399, 59};
+    PathPlan plan;
+    OverviewBoxes boxes;
+    plan_overview(*d, compute_sys_layout(*d, kShort), plan, boxes);
+    REQUIRE(plan.route_count == 3);
+    for (int i = 0; i < plan.route_count; i++) {
+        CAPTURE(i);
+        const Route& r = plan.routes[i];
+        CHECK(contiguous(r.path));
+        const float top = seg_start(r.path.segs[0]).y;
+        const float bottom = seg_end(r.path.segs[r.path.count - 1]).y;
+        for (int k = 0; k < r.path.count; k++) {
+            CAPTURE(k);
+            CHECK(seg_end(r.path.segs[k]).y >= top - 0.5f);
+            CHECK(seg_end(r.path.segs[k]).y <= bottom + 0.5f);
+        }
+    }
+}
+
 TEST_CASE("Overview plan: toolchanger tools each get a continuous route to their nozzle",
           "[system_path][filament_path]") {
     auto d = multi();

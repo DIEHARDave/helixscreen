@@ -139,6 +139,10 @@ struct BypassGeometry {
 };
 BypassGeometry compute_bypass_geometry(const SystemPathData& data, const lv_area_t& obj_coords);
 
+/// @p v clamped into [@p lo, @p hi]. A span too short to hold anything
+/// (@p lo > @p hi) yields its midpoint, never a bound lying past the other.
+int32_t clamp_span(int32_t lo, int32_t v, int32_t hi);
+
 int32_t calc_tool_x(int tool_index, int total_tools, int32_t x_off, int32_t width);
 /// Scale of the toolhead glyphs in the multi-tool row.
 int32_t small_tool_scale(const SystemPathData& data);
