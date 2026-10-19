@@ -79,7 +79,7 @@ The reference screw is labeled **base** (it is the one everything else is measur
 
 ## Input Shaper
 
-![Input Shaper Panel](../../images/user/advanced-shaper.png)
+![Input Shaper results: the X axis chart with shaper chips, the legend and the top of the comparison table](../../images/user/advanced-shaper.png)
 
 Tune vibration compensation for smoother, faster prints:
 
@@ -87,15 +87,15 @@ Tune vibration compensation for smoother, faster prints:
 2. Review your current shaper configuration displayed at the top
 3. Pre-flight check verifies accelerometer is connected
 4. Select axis to test (X or Y)
-5. Tap **Calibrate** to run the resonance test. While the printer sweeps, a progress bar fills from 0 to 100%; the sweep covers the frequency range your printer's own resonance-tester config specifies, so progress tracks the real sweep rather than a fixed span. Below the bar, a chart draws the measured vibration live as the sweep climbs through the frequencies (see [The live chart](#the-live-chart) below). Once the sweep finishes the bar is replaced by a spinner with an "Analyzing data... Ns" counter while the printer's host crunches the samples. On slower printers the analysis alone can take a few minutes per axis; that wait is why the whole run gets a 10-minute timeout
+5. Tap **Calibrate** to run the resonance test. While the printer sweeps, a compact header shows a progress bar and the **Stop** button, and below it a chart draws the measured vibration live as the sweep climbs through the frequencies (see [The live chart](#the-live-chart) below). The sweep covers the frequency range your printer's own resonance-tester config specifies, so progress tracks the real sweep rather than a fixed span. Once the sweep finishes, the progress bar gives way to a spinner with an "Analyzing data... Ns" counter while the printer's host crunches the samples, and the chart stays on screen with the full curve. On slower printers the analysis alone can take a few minutes per axis; that wait is why the whole run gets a 10-minute timeout
    **Stop** (the red button with an octagon icon, also shown in the setup wizard's Input Shaper step) ends a running test. It is an emergency stop followed by a firmware restart, because the printer cannot cancel a resonance test partway through. Use it only when something is wrong.
 6. View the **frequency response chart**; tap a shaper's chip to select it - the chart highlights what that shaper would leave behind
 7. Review the **comparison table** showing recommended shaper and alternatives (frequency, vibration reduction, smoothing)
 8. Check the **change summary** under the table: it shows what was active before the run ("ei @ 69.8 Hz -> mzv @ 53.8 Hz") and, when the chart has data, how much vibration the old setting would leave on today's measurements versus the new one ("Old setting on today's data: 8.4% residual - now: 7.8%")
 9. Tap **Save**. One button does both jobs: it writes your selected shaper for each axis to the Klipper config and restarts the printer's firmware, so the new setting is active immediately and persists across reboots.
 
-![Mid-sweep: the progress bar fills as frequencies are tested (step 5)](../../images/screenshot-shaper-sweep.png)
-![After the sweep: the spinner counts analysis seconds (step 5)](../../images/screenshot-shaper-analysis.png)
+![Mid-sweep: the compact header shows progress and Stop, and the live chart draws the vibration as the frequencies climb (step 5)](../../images/screenshot-shaper-sweep.png)
+![After the sweep: the header counts analysis seconds while the finished live chart stays on screen (step 5)](../../images/screenshot-shaper-analysis.png)
 ![The change summary under the comparison table (step 8)](../../images/screenshot-shaper-delta.png)
 
 **Chart features:**
@@ -192,7 +192,7 @@ A tool that has never been calibrated shows `--` on each axis instead of a numbe
 
 1. Navigate to **Advanced > Tool Offsets** —
 
-   ![Tool Offsets row in the Advanced panel](../../images/user/advanced-beta-tool-offsets-row.png)
+   ![Tool Offsets row in the Advanced panel](../../images/user/advanced-tool-offsets-row.png)
 
    — or tap **Tool Offsets** on the Controls panel:
 
@@ -204,7 +204,7 @@ A tool that has never been calibrated shows `--` on each axis instead of a numbe
 
 3. Tap **Calibrate all tools**, then confirm. The printer measures each tool in turn against its sensor; the row for whichever tool is currently being probed gets a highlighted border so it's clear which one is changing, while the rest keep showing their last known values
 
-![Tool Offsets Panel while running](../../images/user/advanced-tool-offsets-running.png)
+![Tool Offsets mid-run: the tool being probed has a highlighted border, and the red Stop button ends the run](../../images/user/advanced-tool-offsets-running.png)
 
 4. When the status line reads **Calibration complete**, tap **Save offsets** to write the results to your Klipper config (this briefly restarts Klipper, same as any other offset save)
 
