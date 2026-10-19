@@ -456,11 +456,11 @@ void ChamberStallPrompt::refresh_content() {
     std::string hint;
     switch (chamber_cancel_path(wait.kind)) {
     case ChamberCancelPath::ClearTargetThenCancel:
-        hint = lv_tr("Cancelling turns the chamber target off so the wait ends, then stops the "
+        hint = lv_tr("Canceling turns the chamber target off so the wait ends, then stops the "
                      "print.");
         break;
     case ChamberCancelPath::EmergencyStop:
-        hint = lv_tr("This wait ends only at its temperature: cancelling takes an emergency stop "
+        hint = lv_tr("This wait ends only at its temperature: canceling takes an emergency stop "
                      "and a firmware restart.");
         break;
     }

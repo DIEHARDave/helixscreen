@@ -502,7 +502,7 @@
   <translation tag="Calibration Failed" it="Calibrazione fallita"/>
   <translation tag="Calibration Saved" it="Calibrazione salvata"/>
   <translation tag="Calibration and system configuration" it="Calibrazione e configurazione di sistema"/>
-  <translation tag="Calibration cancelled." it="Calibrazione annullata."/>
+  <translation tag="Calibration canceled." it="Calibrazione annullata."/>
   <translation tag="Calibration complete" it="Calibrazione completata"/>
   <translation tag="Calibration complete - save to keep the offsets" it="Calibrazione completata - salva per conservare gli offset"/>
   <translation tag="Calibration complete!" it="Calibrazione completata!"/>
@@ -532,8 +532,8 @@
   <translation tag="Cancel Scheduled Pause" it="Annulla pausa programmata"/>
   <translation tag="Cancel macro not configured" it="Macro annullamento non configurata"/>
   <translation tag="Cancel print" it="Annulla stampa"/>
-  <translation tag="Cancelled" it="Annullato"/>
-  <translation tag="Cancelling turns the chamber target off so the wait ends, then stops the print." it="L&apos;annullamento spegne il target della camera per terminare l&apos;attesa, poi ferma la stampa."/>
+  <translation tag="Canceled" it="Annullato"/>
+  <translation tag="Canceling turns the chamber target off so the wait ends, then stops the print." it="L&apos;annullamento spegne il target della camera per terminare l&apos;attesa, poi ferma la stampa."/>
   <translation tag="Cannot add to queue: internal error" it="Impossibile aggiungere alla coda: errore interno"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" it="Non modificabile da qui su un MMU multi-unità"/>
   <translation tag="Cannot control timelapse: printer not connected" it="Impossibile controllare timelapse: stampante non connessa"/>
@@ -644,7 +644,7 @@
   <translation tag="Choose rendering mode for G-code visualization" it="Scegli modalità di rendering per visualizzazione G-code"/>
   <translation tag="Choose rendering mode for bed mesh visualization" it="Scegli modalità di rendering per visualizzazione mesh piano"/>
   <translation tag="Choose sound style" it="Scegli stile sonoro"/>
-  <translation tag="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses." it="Scegli il modello corrispondente alla tua stampante. Questo imposta le macro di stampa, i ruoli delle ventole e il comportamento di calibrazione usati da HelixScreen."/>
+  <translation tag="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses." it="Scegli il modello corrispondente alla tua stampante. Questo imposta le macro di stampa, i ruoli delle ventole e il comportamento di calibrazione usati da HelixScreen."/>
   <translation tag="Choose what to power off or restart." it="Scegli cosa spegnere o riavviare."/>
   <translation tag="Choose which lane is in the toolhead to unload it" it="Scegli quale corsia è nella testina per scaricarla"/>
   <translation tag="Chute position: X {:.1f}, Y {:.1f}" it="Posizione del condotto di spurgo: X {:.1f}, Y {:.1f}"/>
@@ -1139,7 +1139,7 @@
   <translation tag="Exclude Objects" it="Escludi oggetti"/>
   <translation tag="Excluded" it="Escluso"/>
   <translation tag="Excluding &quot;{}&quot;..." it="Esclusione di &quot;{}&quot;..."/>
-  <translation tag="Exclusion cancelled" it="Esclusione annullata"/>
+  <translation tag="Exclusion canceled" it="Esclusione annullata"/>
   <translation tag="Execute printer macros" it="Esegui macro stampante"/>
   <translation tag="Exhaust Fan" it="Ventola scarico"/>
   <translation tag="Exit Code" it="Codice di uscita"/>
@@ -1790,7 +1790,7 @@
   <translation tag="Last 30 days" it="Ultimi 30 giorni"/>
   <translation tag="Last 7 days" it="Ultimi 7 giorni"/>
   <translation tag="Last measured" it="Ultima misurazione"/>
-  <translation tag="Last print cancelled" it="Ultima stampa annullata"/>
+  <translation tag="Last print canceled" it="Ultima stampa annullata"/>
   <translation tag="Last print failed" it="Ultima stampa fallita"/>
   <translation tag="Later" it="Dopo"/>
   <translation tag="Layer" it="Strato"/>
@@ -1837,7 +1837,7 @@
   <translation tag="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one" it="Caricare una nuova bobina in questo slot, oppure attivare il rifornimento automatico per passare a una compatibile"/>
   <translation tag="Load all stopped" it="Caricamento di tutti interrotto"/>
   <translation tag="Load and unload filament at the tool by hand" it="Carica e scarica il filamento a mano sullo strumento"/>
-  <translation tag="Load cancelled: nozzle target dropped" it="Caricamento annullato: il target dell&apos;ugello è sceso"/>
+  <translation tag="Load canceled: nozzle target dropped" it="Caricamento annullato: il target dell&apos;ugello è sceso"/>
   <translation tag="Load complete" it="Caricamento completato"/>
   <translation tag="Load failed" it="Caricamento non riuscito"/>
   <translation tag="Load filament" it="Carica il filamento"/>
@@ -2247,7 +2247,7 @@
   <translation tag="Nozzle Temps" it="Temp. ugelli"/>
   <translation tag="Nozzle clean complete" it="Pulizia ugello completata"/>
   <translation tag="Nozzle clog detected" it="Rilevata ostruzione dell&apos;ugello"/>
-  <translation tag="Nozzle did not reach {}°C — {} cancelled" it="L&apos;ugello non ha raggiunto {}°C — {} annullato"/>
+  <translation tag="Nozzle did not reach {}°C — {} canceled" it="L&apos;ugello non ha raggiunto {}°C — {} annullato"/>
   <translation tag="Nozzle interval" it="Intervallo ugello"/>
   <translation tag="Nozzle min cannot exceed max" it="Il minimo dell’ugello non può superare il massimo"/>
   <translation tag="Nozzle target set to {}°C" it="Obiettivo ugello impostato a {}°C"/>
@@ -2442,7 +2442,7 @@
   <translation tag="Preheat %s (%d/%d)" it="Preriscaldamento %s (%d/%d)"/>
   <translation tag="Preheat Macro" it="Macro preriscaldamento"/>
   <translation tag="Preheat PLA" it="Preriscalda PLA"/>
-  <translation tag="Preheat cancelled" it="Preriscaldamento annullato"/>
+  <translation tag="Preheat canceled" it="Preriscaldamento annullato"/>
   <translation tag="Preheat: all {} tools + bed set" it="Preriscaldamento: tutti i {} utensili + piano impostati"/>
   <translation tag="Preheat: {} + bed set" it="Preriscaldamento: {} + piano impostati"/>
   <translation tag="Preheating and homing..." it="Preriscaldamento e homing..."/>
@@ -2478,8 +2478,7 @@
   <translation tag="Print" it="Stampa"/>
   <translation tag="Print Anyway" it="Stampa comunque"/>
   <translation tag="Print Behavior" it="Comportamento di stampa"/>
-  <translation tag="Print Behaviour" it="Comportamento di stampa"/>
-  <translation tag="Print Cancelled" it="Stampa annullata"/>
+  <translation tag="Print Canceled" it="Stampa annullata"/>
   <translation tag="Print Complete!" it="Stampa completata!"/>
   <translation tag="Print Completion Alert" it="Avviso completamento stampa"/>
   <translation tag="Print Controls" it="Controlli di stampa"/>
@@ -2503,7 +2502,7 @@
   <translation tag="Print Tuning" it="Regolazione stampa"/>
   <translation tag="Print Was Terminated" it="Stampa interrotta"/>
   <translation tag="Print a test tower and tune K by eye" it="Stampa una torre di prova e regola K a occhio"/>
-  <translation tag="Print cancelled" it="Stampa annullata"/>
+  <translation tag="Print canceled" it="Stampa annullata"/>
   <translation tag="Print complete" it="Stampa completata"/>
   <translation tag="Print details" it="Dettagli di stampa"/>
   <translation tag="Print did not start" it="La stampa non è iniziata"/>
@@ -3402,7 +3401,7 @@
   <translation tag="The plate and the spools are still hot. Use gloves." it="Il piano e le bobine sono ancora caldi. Usa i guanti."/>
   <translation tag="The plate finishes its current move, but drying will not start." it="Il piano termina lo spostamento in corso, ma l&apos;essiccazione non partirà."/>
   <translation tag="The print ended before any layer was printed. Nothing was changed." it="La stampa è terminata prima di stampare uno strato. Non è stato cambiato nulla."/>
-  <translation tag="The print is cancelled and you pick the best band from what has printed so far." it="La stampa viene annullata e scegli la fascia migliore tra quanto stampato finora."/>
+  <translation tag="The print is canceled and you pick the best band from what has printed so far." it="La stampa viene annullata e scegli la fascia migliore tra quanto stampato finora."/>
   <translation tag="The print is on its last layer." it="La stampa è all&apos;ultimo strato."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." it="La stampa è in pausa. Cambiare utensile ora muove la testina e sostituisce il filamento all&apos;ugello. Riprendi la stampa al termine del cambio."/>
   <translation tag="The print is waiting for the chamber to reach {}°C, but the heater is not heating." it="La stampa attende che la camera raggiunga {}°C, ma il riscaldatore non sta scaldando."/>
@@ -3514,7 +3513,7 @@
   <translation tag="This system does not support bypass mode" it="Questo sistema non supporta la modalità bypass"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." it="Questo strumento sonda ogni vite del piano e indica quanto regolare."/>
   <translation tag="This update asks for new permissions:" it="Questo aggiornamento richiede nuovi permessi:"/>
-  <translation tag="This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart." it="Questa attesa termina solo alla sua temperatura: l&apos;annullamento richiede un arresto di emergenza e un riavvio del firmware."/>
+  <translation tag="This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart." it="Questa attesa termina solo alla sua temperatura: l&apos;annullamento richiede un arresto di emergenza e un riavvio del firmware."/>
   <translation tag="This will apply the Z-offset to your endstop and restart Klipper to save the configuration. The printer will briefly disconnect." it="Questo applicherà lo Z-offset al tuo endstop e riavvierà Klipper per salvare la configurazione. La stampante si disconnetterà brevemente."/>
   <translation tag="This will apply the Z-offset to your probe and restart Klipper to save the configuration. The printer will briefly disconnect." it="Questo applicherà lo Z-offset alla tua sonda e riavvierà Klipper per salvare la configurazione. La stampante si disconnetterà brevemente."/>
   <translation tag="This will collect system info, logs, settings, and printer data to help diagnose issues. No passwords or sensitive data will be included." it="Verranno raccolte info di sistema, log, impostazioni e dati stampante per diagnosticare i problemi. Nessuna password o dato sensibile sarà incluso."/>

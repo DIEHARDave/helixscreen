@@ -205,7 +205,7 @@ A tool that has never been calibrated shows `--` on each axis instead of a numbe
 
 5. If the run fails partway through, the status line explains why and the run stops there — clean the affected tool's nozzle and try again
 
-Tapping **Stop** during a run performs an emergency stop, since the calibration macro can't be paused partway through — only cancelled outright.
+Tapping **Stop** during a run performs an emergency stop, since the calibration macro can't be paused partway through — only canceled outright.
 
 ---
 
@@ -234,7 +234,7 @@ The row appears under **Advanced > Calibration** once [beta features are enabled
 
 The check always uses Klipper's plain pulse test, even on printers set up for the newer sweeping test: the sweeping test smooths over exactly the kind of mechanical difference a belt comparison looks for.
 
-**Stop** aborts the run with an emergency stop followed by a firmware restart: a sweep cannot be paused or cancelled partway. Use it only when something is actually wrong.
+**Stop** aborts the run with an emergency stop followed by a firmware restart: a sweep cannot be paused or canceled partway. Use it only when something is actually wrong.
 
 ### Reading the Results
 

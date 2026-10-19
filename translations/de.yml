@@ -546,7 +546,7 @@ translations:
   Calibration Failed: Kalibrierung fehlgeschlagen
   Calibration Saved: Kalibrierung gespeichert
   Calibration and system configuration: 'Kalibrierung und Systemkonfiguration'
-  Calibration cancelled.: Kalibrierung abgebrochen.
+  Calibration canceled.: Kalibrierung abgebrochen.
   Calibration complete: Kalibrierung abgeschlossen
   Calibration complete - save to keep the offsets: Kalibrierung abgeschlossen - speichern, um die Offsets zu behalten
   Calibration complete!: Kalibrierung abgeschlossen!
@@ -583,8 +583,8 @@ translations:
   Cancel Scheduled Pause: 'Geplante Pause abbrechen'
   Cancel macro not configured: Abbruch-Makro nicht konfiguriert
   Cancel print: 'Druck abbrechen'
-  Cancelled: Abgebrochen
-  Cancelling turns the chamber target off so the wait ends, then stops the print.: 'Beim Abbrechen wird das Kammerziel ausgeschaltet, damit das Warten endet; dann wird der Druck gestoppt.'
+  Canceled: Abgebrochen
+  Canceling turns the chamber target off so the wait ends, then stops the print.: 'Beim Abbrechen wird das Kammerziel ausgeschaltet, damit das Warten endet; dann wird der Druck gestoppt.'
   'Cannot add to queue: internal error': 'Zur Warteschlange hinzufügen nicht möglich: interner Fehler'
   Cannot be changed from here on a multi-unit MMU: Bei einer MMU mit mehreren Einheiten hier nicht änderbar
   'Cannot control timelapse: printer not connected': 'Timelapse nicht steuerbar: Drucker
@@ -713,7 +713,7 @@ translations:
   Choose rendering mode for bed mesh visualization: Darstellungsmodus für Bettnetz-Visualisierung
     wählen
   Choose sound style: Klangstil auswählen
-  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses.
+  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses.
   : Wählen Sie das Modell, das zu Ihrem Drucker passt. Dies legt fest, welche Druckmakros, Lüfterrollen und welches Kalibrierungsverhalten HelixScreen verwendet.
   Choose what to power off or restart.: Wählen Sie, was ausgeschaltet oder neu gestartet
     werden soll.
@@ -1264,7 +1264,7 @@ translations:
   Exclude Objects: 'Objekte ausschließen'
   Excluded: Ausgeschlossen
   Excluding "{}"...: '„{}“ wird ausgeschlossen...'
-  Exclusion cancelled: Ausschluss abgebrochen
+  Exclusion canceled: Ausschluss abgebrochen
   Execute printer macros: Drucker-Makros ausführen
   Exhaust Fan: Abluftlüfter
   Exit Code: Exit-Code
@@ -1992,7 +1992,7 @@ translations:
   Last 30 days: 'Letzte 30 Tage'
   Last 7 days: 'Letzte 7 Tage'
   Last measured: 'Zuletzt gemessen'
-  Last print cancelled: Letzter Druck abgebrochen
+  Last print canceled: Letzter Druck abgebrochen
   Last print failed: Letzter Druck fehlgeschlagen
   Later: Später
   Layer: Schicht
@@ -2041,7 +2041,7 @@ translations:
   Load a filament first before trying to unload: Laden Sie zuerst Filament, bevor Sie entladen
   Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: Neue Spule in diesen Slot einlegen oder das automatische Nachfüllen aktivieren, um auf eine passende zu wechseln
   Load and unload filament at the tool by hand: 'Filament am Werkzeug von Hand laden und entladen'
-  'Load cancelled: nozzle target dropped': 'Laden abgebrochen: Düsen-Zieltemperatur gesunken'
+  'Load canceled: nozzle target dropped': 'Laden abgebrochen: Düsen-Zieltemperatur gesunken'
   Load complete: 'Laden abgeschlossen'
   Load failed: Laden fehlgeschlagen
   Load filament: 'Filament laden'
@@ -2478,7 +2478,7 @@ translations:
   Nozzle Temps: Düsentemperaturen
   Nozzle clean complete: Düsenreinigung abgeschlossen
   Nozzle clog detected: Verstopfte Düse erkannt
-  Nozzle did not reach {}°C — {} cancelled: Düse erreichte {}°C nicht — {} abgebrochen
+  Nozzle did not reach {}°C — {} canceled: Düse erreichte {}°C nicht — {} abgebrochen
   Nozzle interval: 'Intervall Düse'
   Nozzle min cannot exceed max: Düse min darf max nicht überschreiten
   Nozzle target set to {}°C: Düsen-Zieltemperatur auf {}°C gesetzt
@@ -2692,7 +2692,7 @@ translations:
   Preheat %s (%d/%d): 'Vorheizen %s (%d/%d)'
   Preheat Macro: Vorheiz-Makro
   Preheat PLA: PLA vorheizen
-  Preheat cancelled: Vorheizen abgebrochen
+  Preheat canceled: Vorheizen abgebrochen
   'Preheat: all {} tools + bed set': 'Vorheizen: alle {} Werkzeuge + Bett gesetzt'
   'Preheat: {} + bed set': 'Vorheizen: {} + Bett gesetzt'
   Preheating and homing...: Vorheizen und Referenzfahrt...
@@ -2728,8 +2728,7 @@ translations:
   Print: Drucken
   Print Anyway: Trotzdem drucken
   Print Behavior: "Druckverhalten"
-  'Print Behaviour': 'Druckverhalten'
-  Print Cancelled: Druck abgebrochen
+  Print Canceled: Druck abgebrochen
   Print Complete!: Druck abgeschlossen!
   Print Completion Alert: Druckabschluss-Benachrichtigung
   Print Controls: 'Drucksteuerung'
@@ -2753,9 +2752,9 @@ translations:
   Print Tuning: Druck-Feinabstimmung
   Print Was Terminated: Druck wurde abgebrochen
   Print a test tower and tune K by eye: Testturm drucken und K nach Augenmaß einstellen
-  Print cancelled: Druck abgebrochen
   Print details: 'Druckdetails'
   Print did not start: Druck wurde nicht gestartet
+  Print canceled: Druck abgebrochen
   Print complete: Druck abgeschlossen
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): Druck
     nicht gestartet – Drucker ist möglicherweise beschäftigt oder offline (B3 polls={},
@@ -3757,7 +3756,7 @@ translations:
 
   The plate finishes its current move, but drying will not start.: 'Das Heizbett beendet die laufende Bewegung, aber die Trocknung startet nicht.'
   The print ended before any layer was printed. Nothing was changed.: Der Druck endete, bevor eine Schicht gedruckt wurde. Nichts wurde geändert.
-  The print is cancelled and you pick the best band from what has printed so far.: Der Druck wird abgebrochen und du wählst den besten Bereich aus dem bisher Gedruckten.
+  The print is canceled and you pick the best band from what has printed so far.: Der Druck wird abgebrochen und du wählst den besten Bereich aus dem bisher Gedruckten.
   The print is on its last layer.: 'Der Druck ist bei der letzten Schicht.'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : Der Druck ist pausiert. Ein Werkzeugwechsel bewegt jetzt den Werkzeugkopf und
@@ -3904,7 +3903,7 @@ translations:
   This tool probes each bed screw and tells you how much to adjust.: Dieses Werkzeug
     tastet jede Bettschraube ab und zeigt Ihnen, wie viel Sie einstellen müssen.
   'This update asks for new permissions:': 'Dieses Update fragt nach neuen Berechtigungen:'
-  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': 'Dieses Warten endet erst bei seiner Temperatur: Abbrechen erfordert einen Notaus und einen Firmware-Neustart.'
+  'This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart.': 'Dieses Warten endet erst bei seiner Temperatur: Abbrechen erfordert einen Notaus und einen Firmware-Neustart.'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : Dies wendet den Z-offset auf Ihren Endschalter an und startet Klipper neu, um

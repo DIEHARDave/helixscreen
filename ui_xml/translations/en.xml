@@ -502,7 +502,7 @@
   <translation tag="Calibration Failed" en="Calibration Failed"/>
   <translation tag="Calibration Saved" en="Calibration Saved"/>
   <translation tag="Calibration and system configuration" en="Calibration and system configuration"/>
-  <translation tag="Calibration cancelled." en="Calibration cancelled."/>
+  <translation tag="Calibration canceled." en="Calibration canceled."/>
   <translation tag="Calibration complete" en="Calibration complete"/>
   <translation tag="Calibration complete - save to keep the offsets" en="Calibration complete - save to keep the offsets"/>
   <translation tag="Calibration complete!" en="Calibration complete!"/>
@@ -532,8 +532,8 @@
   <translation tag="Cancel Scheduled Pause" en="Cancel Scheduled Pause"/>
   <translation tag="Cancel macro not configured" en="Cancel macro not configured"/>
   <translation tag="Cancel print" en="Cancel print"/>
-  <translation tag="Cancelled" en="Cancelled"/>
-  <translation tag="Cancelling turns the chamber target off so the wait ends, then stops the print." en="Cancelling turns the chamber target off so the wait ends, then stops the print."/>
+  <translation tag="Canceled" en="Canceled"/>
+  <translation tag="Canceling turns the chamber target off so the wait ends, then stops the print." en="Canceling turns the chamber target off so the wait ends, then stops the print."/>
   <translation tag="Cannot add to queue: internal error" en="Cannot add to queue: internal error"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" en="Cannot be changed from here on a multi-unit MMU"/>
   <translation tag="Cannot control timelapse: printer not connected" en="Cannot control timelapse: printer not connected"/>
@@ -644,7 +644,7 @@
   <translation tag="Choose rendering mode for G-code visualization" en="Choose rendering mode for G-code visualization"/>
   <translation tag="Choose rendering mode for bed mesh visualization" en="Choose rendering mode for bed mesh visualization"/>
   <translation tag="Choose sound style" en="Choose sound style"/>
-  <translation tag="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses." en="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses."/>
+  <translation tag="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses." en="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses."/>
   <translation tag="Choose what to power off or restart." en="Choose what to power off or restart."/>
   <translation tag="Choose which lane is in the toolhead to unload it" en="Choose which lane is in the toolhead to unload it"/>
   <translation tag="Chute position: X {:.1f}, Y {:.1f}" en="Chute position: X {:.1f}, Y {:.1f}"/>
@@ -1139,7 +1139,7 @@
   <translation tag="Exclude Objects" en="Exclude Objects"/>
   <translation tag="Excluded" en="Excluded"/>
   <translation tag="Excluding &quot;{}&quot;..." en="Excluding &quot;{}&quot;..."/>
-  <translation tag="Exclusion cancelled" en="Exclusion cancelled"/>
+  <translation tag="Exclusion canceled" en="Exclusion canceled"/>
   <translation tag="Execute printer macros" en="Execute printer macros"/>
   <translation tag="Exhaust Fan" en="Exhaust Fan"/>
   <translation tag="Exit Code" en="Exit Code"/>
@@ -1790,7 +1790,7 @@
   <translation tag="Last 30 days" en="Last 30 days"/>
   <translation tag="Last 7 days" en="Last 7 days"/>
   <translation tag="Last measured" en="Last measured"/>
-  <translation tag="Last print cancelled" en="Last print cancelled"/>
+  <translation tag="Last print canceled" en="Last print canceled"/>
   <translation tag="Last print failed" en="Last print failed"/>
   <translation tag="Later" en="Later"/>
   <translation tag="Layer" en="Layer"/>
@@ -1837,7 +1837,7 @@
   <translation tag="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one" en="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one"/>
   <translation tag="Load all stopped" en="Load all stopped"/>
   <translation tag="Load and unload filament at the tool by hand" en="Load and unload filament at the tool by hand"/>
-  <translation tag="Load cancelled: nozzle target dropped" en="Load cancelled: nozzle target dropped"/>
+  <translation tag="Load canceled: nozzle target dropped" en="Load canceled: nozzle target dropped"/>
   <translation tag="Load complete" en="Load complete"/>
   <translation tag="Load failed" en="Load failed"/>
   <translation tag="Load filament" en="Load filament"/>
@@ -2247,7 +2247,7 @@
   <translation tag="Nozzle Temps" en="Nozzle Temps"/>
   <translation tag="Nozzle clean complete" en="Nozzle clean complete"/>
   <translation tag="Nozzle clog detected" en="Nozzle clog detected"/>
-  <translation tag="Nozzle did not reach {}°C — {} cancelled" en="Nozzle did not reach {}°C — {} cancelled"/>
+  <translation tag="Nozzle did not reach {}°C — {} canceled" en="Nozzle did not reach {}°C — {} canceled"/>
   <translation tag="Nozzle interval" en="Nozzle interval"/>
   <translation tag="Nozzle min cannot exceed max" en="Nozzle min cannot exceed max"/>
   <translation tag="Nozzle target set to {}°C" en="Nozzle target set to {}°C"/>
@@ -2442,7 +2442,7 @@
   <translation tag="Preheat %s (%d/%d)" en="Preheat %s (%d/%d)"/>
   <translation tag="Preheat Macro" en="Preheat Macro"/>
   <translation tag="Preheat PLA" en="Preheat PLA"/>
-  <translation tag="Preheat cancelled" en="Preheat cancelled"/>
+  <translation tag="Preheat canceled" en="Preheat canceled"/>
   <translation tag="Preheat: all {} tools + bed set" en="Preheat: all {} tools + bed set"/>
   <translation tag="Preheat: {} + bed set" en="Preheat: {} + bed set"/>
   <translation tag="Preheating and homing..." en="Preheating and homing..."/>
@@ -2478,8 +2478,7 @@
   <translation tag="Print" en="Print"/>
   <translation tag="Print Anyway" en="Print Anyway"/>
   <translation tag="Print Behavior" en="Print Behavior"/>
-  <translation tag="Print Behaviour" en="Print Behaviour"/>
-  <translation tag="Print Cancelled" en="Print Cancelled"/>
+  <translation tag="Print Canceled" en="Print Canceled"/>
   <translation tag="Print Complete!" en="Print Complete!"/>
   <translation tag="Print Completion Alert" en="Print Completion Alert"/>
   <translation tag="Print Controls" en="Print Controls"/>
@@ -2503,7 +2502,7 @@
   <translation tag="Print Tuning" en="Print Tuning"/>
   <translation tag="Print Was Terminated" en="Print Was Terminated"/>
   <translation tag="Print a test tower and tune K by eye" en="Print a test tower and tune K by eye"/>
-  <translation tag="Print cancelled" en="Print cancelled"/>
+  <translation tag="Print canceled" en="Print canceled"/>
   <translation tag="Print complete" en="Print complete"/>
   <translation tag="Print details" en="Print details"/>
   <translation tag="Print did not start" en="Print did not start"/>
@@ -3402,7 +3401,7 @@
   <translation tag="The plate and the spools are still hot. Use gloves." en="The plate and the spools are still hot. Use gloves."/>
   <translation tag="The plate finishes its current move, but drying will not start." en="The plate finishes its current move, but drying will not start."/>
   <translation tag="The print ended before any layer was printed. Nothing was changed." en="The print ended before any layer was printed. Nothing was changed."/>
-  <translation tag="The print is cancelled and you pick the best band from what has printed so far." en="The print is cancelled and you pick the best band from what has printed so far."/>
+  <translation tag="The print is canceled and you pick the best band from what has printed so far." en="The print is canceled and you pick the best band from what has printed so far."/>
   <translation tag="The print is on its last layer." en="The print is on its last layer."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." en="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes."/>
   <translation tag="The print is waiting for the chamber to reach {}°C, but the heater is not heating." en="The print is waiting for the chamber to reach {}°C, but the heater is not heating."/>
@@ -3514,7 +3513,7 @@
   <translation tag="This system does not support bypass mode" en="This system does not support bypass mode"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." en="This tool probes each bed screw and tells you how much to adjust."/>
   <translation tag="This update asks for new permissions:" en="This update asks for new permissions:"/>
-  <translation tag="This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart." en="This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart."/>
+  <translation tag="This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart." en="This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart."/>
   <translation tag="This will apply the Z-offset to your endstop and restart Klipper to save the configuration. The printer will briefly disconnect." en="This will apply the Z-offset to your endstop and restart Klipper to save the configuration. The printer will briefly disconnect."/>
   <translation tag="This will apply the Z-offset to your probe and restart Klipper to save the configuration. The printer will briefly disconnect." en="This will apply the Z-offset to your probe and restart Klipper to save the configuration. The printer will briefly disconnect."/>
   <translation tag="This will collect system info, logs, settings, and printer data to help diagnose issues. No passwords or sensitive data will be included." en="This will collect system info, logs, settings, and printer data to help diagnose issues. No passwords or sensitive data will be included."/>

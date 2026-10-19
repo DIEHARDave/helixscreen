@@ -568,7 +568,7 @@ void TouchCalibrationOverlay::handle_hold_abort() {
     }
     hold_repeat_count_ = 0;
     spdlog::info("[{}] Press-and-hold abort", get_name());
-    abort_session(lv_tr("Calibration cancelled."));
+    abort_session(lv_tr("Calibration canceled."));
 }
 
 // Reached from three places that all run inside an LVGL dispatch: the Cancel

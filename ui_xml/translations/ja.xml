@@ -502,7 +502,7 @@
   <translation tag="Calibration Failed" ja="キャリブレーション失敗"/>
   <translation tag="Calibration Saved" ja="キャリブレーションを保存しました"/>
   <translation tag="Calibration and system configuration" ja="キャリブレーションとシステム設定"/>
-  <translation tag="Calibration cancelled." ja="キャリブレーションをキャンセルしました。"/>
+  <translation tag="Calibration canceled." ja="キャリブレーションをキャンセルしました。"/>
   <translation tag="Calibration complete" ja="キャリブレーション完了"/>
   <translation tag="Calibration complete - save to keep the offsets" ja="キャリブレーション完了 - 保存してオフセットを保持してください"/>
   <translation tag="Calibration complete!" ja="キャリブレーション完了！"/>
@@ -532,8 +532,8 @@
   <translation tag="Cancel Scheduled Pause" ja="予約した一時停止を取り消す"/>
   <translation tag="Cancel macro not configured" ja="キャンセルマクロが未設定です"/>
   <translation tag="Cancel print" ja="印刷をキャンセル"/>
-  <translation tag="Cancelled" ja="キャンセル済み"/>
-  <translation tag="Cancelling turns the chamber target off so the wait ends, then stops the print." ja="キャンセルするとチャンバーの目標温度をオフにして待機を終了し、その後印刷を停止します。"/>
+  <translation tag="Canceled" ja="キャンセル済み"/>
+  <translation tag="Canceling turns the chamber target off so the wait ends, then stops the print." ja="キャンセルするとチャンバーの目標温度をオフにして待機を終了し、その後印刷を停止します。"/>
   <translation tag="Cannot add to queue: internal error" ja="キューに追加できません: 内部エラー"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" ja="マルチユニット MMU ではここから変更できません"/>
   <translation tag="Cannot control timelapse: printer not connected" ja="タイムラプスを制御できません: プリンター未接続"/>
@@ -644,7 +644,7 @@
   <translation tag="Choose rendering mode for G-code visualization" ja="G-codeの視覚化レンダリングモードを選択"/>
   <translation tag="Choose rendering mode for bed mesh visualization" ja="ベッドメッシュの視覚化レンダリングモードを選択"/>
   <translation tag="Choose sound style" ja="サウンドスタイルを選択"/>
-  <translation tag="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses." ja="お使いのプリンターに一致するモデルを選択してください。これにより、HelixScreenが使用する印刷マクロ、ファンの役割、キャリブレーション動作が設定されます。"/>
+  <translation tag="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses." ja="お使いのプリンターに一致するモデルを選択してください。これにより、HelixScreenが使用する印刷マクロ、ファンの役割、キャリブレーション動作が設定されます。"/>
   <translation tag="Choose what to power off or restart." ja="電源オフまたは再起動する対象を選択してください。"/>
   <translation tag="Choose which lane is in the toolhead to unload it" ja="取り出すには、ツールヘッドに入っているレーンを選んでください"/>
   <translation tag="Chute position: X {:.1f}, Y {:.1f}" ja="パージシュート位置: X {:.1f}, Y {:.1f}"/>
@@ -1139,7 +1139,7 @@
   <translation tag="Exclude Objects" ja="オブジェクトの除外"/>
   <translation tag="Excluded" ja="除外"/>
   <translation tag="Excluding &quot;{}&quot;..." ja="「{}」を除外中..."/>
-  <translation tag="Exclusion cancelled" ja="除外がキャンセルされました"/>
+  <translation tag="Exclusion canceled" ja="除外がキャンセルされました"/>
   <translation tag="Execute printer macros" ja="プリンターマクロを実行"/>
   <translation tag="Exhaust Fan" ja="排気ファン"/>
   <translation tag="Exit Code" ja="終了コード"/>
@@ -1790,7 +1790,7 @@
   <translation tag="Last 30 days" ja="過去30日間"/>
   <translation tag="Last 7 days" ja="過去7日間"/>
   <translation tag="Last measured" ja="前回の測定値"/>
-  <translation tag="Last print cancelled" ja="前回の印刷がキャンセルされました"/>
+  <translation tag="Last print canceled" ja="前回の印刷がキャンセルされました"/>
   <translation tag="Last print failed" ja="前回の印刷が失敗しました"/>
   <translation tag="Later" ja="後で"/>
   <translation tag="Layer" ja="レイヤー"/>
@@ -1837,7 +1837,7 @@
   <translation tag="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one" ja="このスロットに新しいスプールをセットするか、自動補充を有効にして一致するスプールに切り替えてください"/>
   <translation tag="Load all stopped" ja="すべてのロードを停止しました"/>
   <translation tag="Load and unload filament at the tool by hand" ja="フィラメントはツールで手動でロード・アンロードしてください"/>
-  <translation tag="Load cancelled: nozzle target dropped" ja="装填をキャンセル: ノズルの目標温度が下がりました"/>
+  <translation tag="Load canceled: nozzle target dropped" ja="装填をキャンセル: ノズルの目標温度が下がりました"/>
   <translation tag="Load complete" ja="ロード完了"/>
   <translation tag="Load failed" ja="装填に失敗しました"/>
   <translation tag="Load filament" ja="フィラメントをロード"/>
@@ -2247,7 +2247,7 @@
   <translation tag="Nozzle Temps" ja="ノズル温度"/>
   <translation tag="Nozzle clean complete" ja="ノズル清掃完了"/>
   <translation tag="Nozzle clog detected" ja="ノズルの詰まりを検出しました"/>
-  <translation tag="Nozzle did not reach {}°C — {} cancelled" ja="ノズルが{}°Cに達しませんでした — {}を中止しました"/>
+  <translation tag="Nozzle did not reach {}°C — {} canceled" ja="ノズルが{}°Cに達しませんでした — {}を中止しました"/>
   <translation tag="Nozzle interval" ja="ノズルの間隔"/>
   <translation tag="Nozzle min cannot exceed max" ja="ノズル温度の最小値は最大値を超えられません"/>
   <translation tag="Nozzle target set to {}°C" ja="ノズル目標温度を {}°C に設定しました"/>
@@ -2442,7 +2442,7 @@
   <translation tag="Preheat %s (%d/%d)" ja="予熱 %s (%d/%d)"/>
   <translation tag="Preheat Macro" ja="予熱マクロ"/>
   <translation tag="Preheat PLA" ja="PLA 予熱"/>
-  <translation tag="Preheat cancelled" ja="予熱がキャンセルされました"/>
+  <translation tag="Preheat canceled" ja="予熱がキャンセルされました"/>
   <translation tag="Preheat: all {} tools + bed set" ja="予熱: 全 {} ツール + ベッド設定済み"/>
   <translation tag="Preheat: {} + bed set" ja="予熱: {} + ベッド設定済み"/>
   <translation tag="Preheating and homing..." ja="予熱とホーミング中..."/>
@@ -2478,8 +2478,7 @@
   <translation tag="Print" ja="印刷"/>
   <translation tag="Print Anyway" ja="それでも印刷"/>
   <translation tag="Print Behavior" ja="印刷時の動作"/>
-  <translation tag="Print Behaviour" ja="印刷の動作"/>
-  <translation tag="Print Cancelled" ja="印刷キャンセル"/>
+  <translation tag="Print Canceled" ja="印刷キャンセル"/>
   <translation tag="Print Complete!" ja="印刷完了！"/>
   <translation tag="Print Completion Alert" ja="印刷完了通知"/>
   <translation tag="Print Controls" ja="印刷コントロール"/>
@@ -2503,7 +2502,7 @@
   <translation tag="Print Tuning" ja="印刷チューニング"/>
   <translation tag="Print Was Terminated" ja="印刷が中止されました"/>
   <translation tag="Print a test tower and tune K by eye" ja="テストタワーを印刷して目視でKを調整"/>
-  <translation tag="Print cancelled" ja="印刷がキャンセルされました"/>
+  <translation tag="Print canceled" ja="印刷がキャンセルされました"/>
   <translation tag="Print complete" ja="印刷完了"/>
   <translation tag="Print details" ja="印刷の詳細"/>
   <translation tag="Print did not start" ja="印刷は開始されませんでした"/>
@@ -3402,7 +3401,7 @@
   <translation tag="The plate and the spools are still hot. Use gloves." ja="ベッドとスプールはまだ熱いです。手袋を使ってください。"/>
   <translation tag="The plate finishes its current move, but drying will not start." ja="ベッドは現在の移動を完了しますが、乾燥は開始しません。"/>
   <translation tag="The print ended before any layer was printed. Nothing was changed." ja="レイヤーが印刷される前に印刷が終了しました。何も変更されていません。"/>
-  <translation tag="The print is cancelled and you pick the best band from what has printed so far." ja="印刷をキャンセルし、ここまで印刷された中から最適な区間を選びます。"/>
+  <translation tag="The print is canceled and you pick the best band from what has printed so far." ja="印刷をキャンセルし、ここまで印刷された中から最適な区間を選びます。"/>
   <translation tag="The print is on its last layer." ja="最後のレイヤーを印刷中です。"/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." ja="印刷は一時停止中です。ここでツールを交換すると、ツールヘッドが移動してノズルのフィラメントが入れ替わります。交換が完了したら印刷を再開してください。"/>
   <translation tag="The print is waiting for the chamber to reach {}°C, but the heater is not heating." ja="印刷はチャンバーが{}°Cに達するのを待っていますが、ヒーターが加熱していません。"/>
@@ -3514,7 +3513,7 @@
   <translation tag="This system does not support bypass mode" ja="このシステムはバイパスモードに対応していません"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." ja="このツールは各ベッドネジをプローブし、どのくらい調整が必要かを教えます。"/>
   <translation tag="This update asks for new permissions:" ja="この更新は新しい権限を要求します："/>
-  <translation tag="This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart." ja="この待機は温度に達するまで終わりません。キャンセルには緊急停止とファームウェアの再起動が必要です。"/>
+  <translation tag="This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart." ja="この待機は温度に達するまで終わりません。キャンセルには緊急停止とファームウェアの再起動が必要です。"/>
   <translation tag="This will apply the Z-offset to your endstop and restart Klipper to save the configuration. The printer will briefly disconnect." ja="Z-offset をエンドストップに適用し、設定を保存するために Klipper を再起動します。プリンターは一時的に切断されます。"/>
   <translation tag="This will apply the Z-offset to your probe and restart Klipper to save the configuration. The printer will briefly disconnect." ja="Z-offset をプローブに適用し、設定を保存するために Klipper を再起動します。プリンターは一時的に切断されます。"/>
   <translation tag="This will collect system info, logs, settings, and printer data to help diagnose issues. No passwords or sensitive data will be included." ja="システム情報、ログ、設定、プリンターデータを収集して問題の診断に役立てます。パスワードや個人情報は含まれません。"/>

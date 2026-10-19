@@ -511,7 +511,7 @@ translations:
   Calibration Failed: キャリブレーション失敗
   Calibration Saved: キャリブレーションを保存しました
   Calibration and system configuration: 'キャリブレーションとシステム設定'
-  Calibration cancelled.: キャリブレーションをキャンセルしました。
+  Calibration canceled.: キャリブレーションをキャンセルしました。
   Calibration complete: キャリブレーション完了
   Calibration complete - save to keep the offsets: キャリブレーション完了 - 保存してオフセットを保持してください
   Calibration complete!: キャリブレーション完了！
@@ -541,8 +541,8 @@ translations:
   Cancel Scheduled Pause: '予約した一時停止を取り消す'
   Cancel macro not configured: キャンセルマクロが未設定です
   Cancel print: '印刷をキャンセル'
-  Cancelled: キャンセル済み
-  Cancelling turns the chamber target off so the wait ends, then stops the print.: 'キャンセルするとチャンバーの目標温度をオフにして待機を終了し、その後印刷を停止します。'
+  Canceled: キャンセル済み
+  Canceling turns the chamber target off so the wait ends, then stops the print.: 'キャンセルするとチャンバーの目標温度をオフにして待機を終了し、その後印刷を停止します。'
   'Cannot add to queue: internal error': 'キューに追加できません: 内部エラー'
   Cannot be changed from here on a multi-unit MMU: マルチユニット MMU ではここから変更できません
   'Cannot control timelapse: printer not connected': 'タイムラプスを制御できません: プリンター未接続'
@@ -655,7 +655,7 @@ translations:
   Choose rendering mode for G-code visualization: G-codeの視覚化レンダリングモードを選択
   Choose rendering mode for bed mesh visualization: ベッドメッシュの視覚化レンダリングモードを選択
   Choose sound style: サウンドスタイルを選択
-  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses.
+  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses.
   : お使いのプリンターに一致するモデルを選択してください。これにより、HelixScreenが使用する印刷マクロ、ファンの役割、キャリブレーション動作が設定されます。
   Choose what to power off or restart.: 電源オフまたは再起動する対象を選択してください。
   'Chute position: X {:.1f}, Y {:.1f}': 'パージシュート位置: X {:.1f}, Y {:.1f}'
@@ -1183,7 +1183,7 @@ translations:
   Exclude Objects: 'オブジェクトの除外'
   Excluded: 除外
   Excluding "{}"...: '「{}」を除外中...'
-  Exclusion cancelled: 除外がキャンセルされました
+  Exclusion canceled: 除外がキャンセルされました
   Execute printer macros: プリンターマクロを実行
   Exhaust Fan: 排気ファン
   Exit Code: 終了コード
@@ -1867,7 +1867,7 @@ translations:
   Last 30 days: '過去30日間'
   Last 7 days: '過去7日間'
   Last measured: '前回の測定値'
-  Last print cancelled: 前回の印刷がキャンセルされました
+  Last print canceled: 前回の印刷がキャンセルされました
   Last print failed: 前回の印刷が失敗しました
   Later: 後で
   Layer: レイヤー
@@ -1914,7 +1914,7 @@ translations:
   Load a filament first before trying to unload: 排出する前にまずフィラメントを装填してください
   Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: このスロットに新しいスプールをセットするか、自動補充を有効にして一致するスプールに切り替えてください
   Load and unload filament at the tool by hand: 'フィラメントはツールで手動でロード・アンロードしてください'
-  'Load cancelled: nozzle target dropped': '装填をキャンセル: ノズルの目標温度が下がりました'
+  'Load canceled: nozzle target dropped': '装填をキャンセル: ノズルの目標温度が下がりました'
   Load complete: 'ロード完了'
   Load failed: 装填に失敗しました
   Load filament: 'フィラメントをロード'
@@ -2336,7 +2336,7 @@ translations:
   Nozzle Temps: ノズル温度
   Nozzle clean complete: ノズル清掃完了
   Nozzle clog detected: ノズルの詰まりを検出しました
-  Nozzle did not reach {}°C — {} cancelled: ノズルが{}°Cに達しませんでした — {}を中止しました
+  Nozzle did not reach {}°C — {} canceled: ノズルが{}°Cに達しませんでした — {}を中止しました
   Nozzle interval: 'ノズルの間隔'
   Nozzle min cannot exceed max: ノズル温度の最小値は最大値を超えられません
   Nozzle target set to {}°C: ノズル目標温度を {}°C に設定しました
@@ -2542,7 +2542,7 @@ translations:
   Preheat %s (%d/%d): '予熱 %s (%d/%d)'
   Preheat Macro: 予熱マクロ
   Preheat PLA: PLA 予熱
-  Preheat cancelled: 予熱がキャンセルされました
+  Preheat canceled: 予熱がキャンセルされました
   'Preheat: all {} tools + bed set': '予熱: 全 {} ツール + ベッド設定済み'
   'Preheat: {} + bed set': '予熱: {} + ベッド設定済み'
   Preheating and homing...: 予熱とホーミング中...
@@ -2578,8 +2578,7 @@ translations:
   Print: 印刷
   Print Anyway: それでも印刷
   Print Behavior: "印刷時の動作"
-  'Print Behaviour': '印刷の動作'
-  Print Cancelled: 印刷キャンセル
+  Print Canceled: 印刷キャンセル
   Print Complete!: 印刷完了！
   Print Completion Alert: 印刷完了通知
   Print Controls: '印刷コントロール'
@@ -2603,9 +2602,9 @@ translations:
   Print Tuning: 印刷チューニング
   Print Was Terminated: 印刷が中止されました
   Print a test tower and tune K by eye: テストタワーを印刷して目視でKを調整
-  Print cancelled: 印刷がキャンセルされました
   Print details: '印刷の詳細'
   Print did not start: 印刷は開始されませんでした
+  Print canceled: 印刷がキャンセルされました
   Print complete: 印刷完了
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): 印刷が開始されませんでした
     — プリンターがビジー状態またはオフラインの可能性があります (B3 polls={}, status=0x{:02X}, error=0x{:02X})
@@ -3542,7 +3541,7 @@ translations:
 
   The plate finishes its current move, but drying will not start.: 'ベッドは現在の移動を完了しますが、乾燥は開始しません。'
   The print ended before any layer was printed. Nothing was changed.: レイヤーが印刷される前に印刷が終了しました。何も変更されていません。
-  The print is cancelled and you pick the best band from what has printed so far.: 印刷をキャンセルし、ここまで印刷された中から最適な区間を選びます。
+  The print is canceled and you pick the best band from what has printed so far.: 印刷をキャンセルし、ここまで印刷された中から最適な区間を選びます。
   The print is on its last layer.: '最後のレイヤーを印刷中です。'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : 印刷は一時停止中です。ここでツールを交換すると、ツールヘッドが移動してノズルのフィラメントが入れ替わります。交換が完了したら印刷を再開してください。
@@ -3670,7 +3669,7 @@ translations:
   This system does not support bypass mode: 'このシステムはバイパスモードに対応していません'
   This tool probes each bed screw and tells you how much to adjust.: このツールは各ベッドネジをプローブし、どのくらい調整が必要かを教えます。
   'This update asks for new permissions:': 'この更新は新しい権限を要求します：'
-  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': 'この待機は温度に達するまで終わりません。キャンセルには緊急停止とファームウェアの再起動が必要です。'
+  'This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart.': 'この待機は温度に達するまで終わりません。キャンセルには緊急停止とファームウェアの再起動が必要です。'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : Z-offset をエンドストップに適用し、設定を保存するために Klipper を再起動します。プリンターは一時的に切断されます。

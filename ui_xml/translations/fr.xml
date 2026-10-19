@@ -502,7 +502,7 @@
   <translation tag="Calibration Failed" fr="Calibration échouée"/>
   <translation tag="Calibration Saved" fr="Calibration enregistrée"/>
   <translation tag="Calibration and system configuration" fr="Calibration et configuration système"/>
-  <translation tag="Calibration cancelled." fr="Calibration annulée."/>
+  <translation tag="Calibration canceled." fr="Calibration annulée."/>
   <translation tag="Calibration complete" fr="Calibration terminée"/>
   <translation tag="Calibration complete - save to keep the offsets" fr="Calibration terminée - enregistrez pour conserver les offsets"/>
   <translation tag="Calibration complete!" fr="Calibration terminée !"/>
@@ -532,8 +532,8 @@
   <translation tag="Cancel Scheduled Pause" fr="Annuler la pause prévue"/>
   <translation tag="Cancel macro not configured" fr="Macro d&apos;annulation non configurée"/>
   <translation tag="Cancel print" fr="Annuler l&apos;impression"/>
-  <translation tag="Cancelled" fr="Annulé"/>
-  <translation tag="Cancelling turns the chamber target off so the wait ends, then stops the print." fr="L&apos;annulation coupe la consigne de la chambre pour mettre fin à l&apos;attente, puis arrête l&apos;impression."/>
+  <translation tag="Canceled" fr="Annulé"/>
+  <translation tag="Canceling turns the chamber target off so the wait ends, then stops the print." fr="L&apos;annulation coupe la consigne de la chambre pour mettre fin à l&apos;attente, puis arrête l&apos;impression."/>
   <translation tag="Cannot add to queue: internal error" fr="Impossible d&apos;ajouter à la file : erreur interne"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" fr="Non modifiable ici sur un MMU multi-unités"/>
   <translation tag="Cannot control timelapse: printer not connected" fr="Impossible de contrôler le timelapse : imprimante non connectée"/>
@@ -644,7 +644,7 @@
   <translation tag="Choose rendering mode for G-code visualization" fr="Choisir le mode de rendu pour la visualisation du G-code"/>
   <translation tag="Choose rendering mode for bed mesh visualization" fr="Choisir le mode de rendu pour la visualisation du maillage du plateau"/>
   <translation tag="Choose sound style" fr="Choisir le style de son"/>
-  <translation tag="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses." fr="Choisissez le modèle correspondant à votre imprimante. Cela définit les macros d&apos;impression, les rôles des ventilateurs et le comportement de calibration qu&apos;utilise HelixScreen."/>
+  <translation tag="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses." fr="Choisissez le modèle correspondant à votre imprimante. Cela définit les macros d&apos;impression, les rôles des ventilateurs et le comportement de calibration qu&apos;utilise HelixScreen."/>
   <translation tag="Choose what to power off or restart." fr="Choisissez ce qu&apos;il faut éteindre ou redémarrer."/>
   <translation tag="Choose which lane is in the toolhead to unload it" fr="Choisissez quelle voie est dans la tête pour la décharger"/>
   <translation tag="Chute position: X {:.1f}, Y {:.1f}" fr="Position de la goulotte de purge : X {:.1f}, Y {:.1f}"/>
@@ -1139,7 +1139,7 @@
   <translation tag="Exclude Objects" fr="Exclure des objets"/>
   <translation tag="Excluded" fr="Exclu"/>
   <translation tag="Excluding &quot;{}&quot;..." fr="Exclusion de « {} »..."/>
-  <translation tag="Exclusion cancelled" fr="Exclusion annulée"/>
+  <translation tag="Exclusion canceled" fr="Exclusion annulée"/>
   <translation tag="Execute printer macros" fr="Exécuter les macros de l&apos;imprimante"/>
   <translation tag="Exhaust Fan" fr="Ventilateur d&apos;extraction"/>
   <translation tag="Exit Code" fr="Code de sortie"/>
@@ -1790,7 +1790,7 @@
   <translation tag="Last 30 days" fr="30 derniers jours"/>
   <translation tag="Last 7 days" fr="7 derniers jours"/>
   <translation tag="Last measured" fr="Dernière mesure"/>
-  <translation tag="Last print cancelled" fr="Dernière impression annulée"/>
+  <translation tag="Last print canceled" fr="Dernière impression annulée"/>
   <translation tag="Last print failed" fr="Dernière impression échouée"/>
   <translation tag="Later" fr="Plus tard"/>
   <translation tag="Layer" fr="Couche"/>
@@ -1837,7 +1837,7 @@
   <translation tag="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one" fr="Chargez une nouvelle bobine dans ce slot, ou activez le réapprovisionnement automatique pour basculer sur une bobine équivalente"/>
   <translation tag="Load all stopped" fr="Chargement global arrêté"/>
   <translation tag="Load and unload filament at the tool by hand" fr="Chargez et déchargez le filament à la main sur l&apos;outil"/>
-  <translation tag="Load cancelled: nozzle target dropped" fr="Chargement annulé : la cible de la buse a baissé"/>
+  <translation tag="Load canceled: nozzle target dropped" fr="Chargement annulé : la cible de la buse a baissé"/>
   <translation tag="Load complete" fr="Chargement terminé"/>
   <translation tag="Load failed" fr="Échec du chargement"/>
   <translation tag="Load filament" fr="Charger le filament"/>
@@ -2247,7 +2247,7 @@
   <translation tag="Nozzle Temps" fr="Temp. des buses"/>
   <translation tag="Nozzle clean complete" fr="Nettoyage de la buse terminé"/>
   <translation tag="Nozzle clog detected" fr="Buse bouchée détectée"/>
-  <translation tag="Nozzle did not reach {}°C — {} cancelled" fr="La buse n&apos;a pas atteint {}°C — {} annulé"/>
+  <translation tag="Nozzle did not reach {}°C — {} canceled" fr="La buse n&apos;a pas atteint {}°C — {} annulé"/>
   <translation tag="Nozzle interval" fr="Intervalle de la buse"/>
   <translation tag="Nozzle min cannot exceed max" fr="Le minimum de la buse ne peut pas dépasser le maximum"/>
   <translation tag="Nozzle target set to {}°C" fr="Cible buse réglée à {}°C"/>
@@ -2442,7 +2442,7 @@
   <translation tag="Preheat %s (%d/%d)" fr="Préchauffage %s (%d/%d)"/>
   <translation tag="Preheat Macro" fr="Macro de préchauffage"/>
   <translation tag="Preheat PLA" fr="Préchauffer PLA"/>
-  <translation tag="Preheat cancelled" fr="Préchauffage annulé"/>
+  <translation tag="Preheat canceled" fr="Préchauffage annulé"/>
   <translation tag="Preheat: all {} tools + bed set" fr="Préchauffage : tous les {} outils + plateau réglé"/>
   <translation tag="Preheat: {} + bed set" fr="Préchauffage : {} + plateau réglé"/>
   <translation tag="Preheating and homing..." fr="Préchauffage et mise à l&apos;origine..."/>
@@ -2478,8 +2478,7 @@
   <translation tag="Print" fr="Imprimer"/>
   <translation tag="Print Anyway" fr="Imprimer quand même"/>
   <translation tag="Print Behavior" fr="Comportement d&apos;impression"/>
-  <translation tag="Print Behaviour" fr="Comportement d&apos;impression"/>
-  <translation tag="Print Cancelled" fr="Impression annulée"/>
+  <translation tag="Print Canceled" fr="Impression annulée"/>
   <translation tag="Print Complete!" fr="Impression terminée !"/>
   <translation tag="Print Completion Alert" fr="Alerte de fin d&apos;impression"/>
   <translation tag="Print Controls" fr="Commandes d&apos;impression"/>
@@ -2503,7 +2502,7 @@
   <translation tag="Print Tuning" fr="Réglage de l&apos;impression"/>
   <translation tag="Print Was Terminated" fr="L&apos;impression a été interrompue"/>
   <translation tag="Print a test tower and tune K by eye" fr="Imprimer une tour de test et régler K à l&apos;œil"/>
-  <translation tag="Print cancelled" fr="Impression annulée"/>
+  <translation tag="Print canceled" fr="Impression annulée"/>
   <translation tag="Print complete" fr="Impression terminée"/>
   <translation tag="Print details" fr="Détails d&apos;impression"/>
   <translation tag="Print did not start" fr="L&apos;impression n&apos;a pas démarré"/>
@@ -3402,7 +3401,7 @@
   <translation tag="The plate and the spools are still hot. Use gloves." fr="Le plateau et les bobines sont encore chauds. Portez des gants."/>
   <translation tag="The plate finishes its current move, but drying will not start." fr="Le plateau termine son déplacement en cours, mais le séchage ne démarrera pas."/>
   <translation tag="The print ended before any layer was printed. Nothing was changed." fr="L&apos;impression s&apos;est terminée avant la première couche. Rien n&apos;a été modifié."/>
-  <translation tag="The print is cancelled and you pick the best band from what has printed so far." fr="L&apos;impression est annulée et vous choisissez la meilleure bande parmi ce qui a été imprimé."/>
+  <translation tag="The print is canceled and you pick the best band from what has printed so far." fr="L&apos;impression est annulée et vous choisissez la meilleure bande parmi ce qui a été imprimé."/>
   <translation tag="The print is on its last layer." fr="L&apos;impression en est à sa dernière couche."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." fr="L&apos;impression est en pause. Changer d&apos;outil maintenant déplace la tête d&apos;impression et remplace le filament au niveau de la buse. Reprenez l&apos;impression une fois le changement terminé."/>
   <translation tag="The print is waiting for the chamber to reach {}°C, but the heater is not heating." fr="L&apos;impression attend que la chambre atteigne {}°C, mais le chauffage ne chauffe pas."/>
@@ -3514,7 +3513,7 @@
   <translation tag="This system does not support bypass mode" fr="Ce système ne prend pas en charge le mode bypass"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." fr="Cet outil palpe chaque vis du plateau et vous indique combien ajuster."/>
   <translation tag="This update asks for new permissions:" fr="Cette mise à jour demande de nouvelles autorisations :"/>
-  <translation tag="This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart." fr="Cette attente ne se termine qu&apos;à sa température : l&apos;annulation nécessite un arrêt d&apos;urgence et un redémarrage du firmware."/>
+  <translation tag="This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart." fr="Cette attente ne se termine qu&apos;à sa température : l&apos;annulation nécessite un arrêt d&apos;urgence et un redémarrage du firmware."/>
   <translation tag="This will apply the Z-offset to your endstop and restart Klipper to save the configuration. The printer will briefly disconnect." fr="Cela appliquera le Z-offset à votre butée et redémarrera Klipper pour enregistrer la configuration. L&apos;imprimante se déconnectera brièvement."/>
   <translation tag="This will apply the Z-offset to your probe and restart Klipper to save the configuration. The printer will briefly disconnect." fr="Cela appliquera le Z-offset à votre sonde et redémarrera Klipper pour enregistrer la configuration. L&apos;imprimante se déconnectera brièvement."/>
   <translation tag="This will collect system info, logs, settings, and printer data to help diagnose issues. No passwords or sensitive data will be included." fr="Cela collectera les infos système, journaux, paramètres et données de l&apos;imprimante pour aider à diagnostiquer les problèmes. Aucun mot de passe ni donnée sensible ne sera inclus."/>

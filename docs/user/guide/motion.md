@@ -15,7 +15,7 @@ The current **X**, **Y**, and **Z** coordinates sit in the header of the Motion 
 - **Tap a coordinate** to open a number pad and send the toolhead straight to that position. Values outside the printer's range are refused with "Value must be between A and B" - nothing moves. If the axis isn't homed yet, the printer homes it first and then makes the move; no extra confirmation is needed.
 - **Tap the Target / Actual chip** next to the coordinates to switch what they show: **Target** (the position you asked for) or **Actual** (where the nozzle really is, with z-offset, tool offsets and bed mesh correction applied, updating while it moves). The chip names the mode on screen and lights up while Actual is shown. The choice is remembered separately for each printer.
 
-The coordinates are greyed out whenever the printer isn't ready - not connected, or still starting up.
+The coordinates are grayed out whenever the printer isn't ready - not connected, or still starting up.
 
 The [Toolhead widget](home-panel.md#available-widgets) on the home screen shows the same X, Y and Z, draws where the nozzle sits on the plate, and opens this screen when tapped.
 
@@ -103,7 +103,7 @@ Jog moves stop at the axis limits, and the limits include any G-code offset your
 - **A fresh press** that can't move at all shows "X is at its limit (235.00mm)" (with the axis and limit that apply) so you know why nothing happened.
 - A press that can only make a **partial** move does so silently.
 
-The Z buttons behave a little differently: a button that would move past a Z limit is greyed out, so you can see the edge before you press. Which pair greys out depends on what moves in Z on your printer (see below).
+The Z buttons behave a little differently: a button that would move past a Z limit is grayed out, so you can see the edge before you press. Which pair grays out depends on what moves in Z on your printer (see below).
 
 ---
 
@@ -119,7 +119,7 @@ The right column has four Z buttons (two large steps and two small steps, up and
 
 The **Move** tab replaces the jog pad with a 3x3 grid of named bed positions, laid out like the bed seen from above: the **Rear** row is at the top, the **Front** row at the bottom, and the columns are **Left**, **Center**, and **Right**. The positions cover the print plate, taken from the probing area in your `[bed_mesh]` config, not the full axis travel: many printers can travel past the plate to reach a purge bucket, a wiper or parked tools, and a named position never sends the head there. The center position is the middle of the plate; the other eight sit about 10% in from its edges. Printers with no `[bed_mesh]` section use the axis travel instead. On delta printers the eight outer positions are spread around a circle instead of a rectangle, matching the round bed.
 
-Tap any position and the toolhead moves there in X and Y only - Z is never changed from this grid. If X or Y isn't homed yet, the printer homes first and then makes the move. The positions and **Park** grey out while the toolhead is moving and come back once it stops, so a second tap can't land mid-move; the Z buttons stay live.
+Tap any position and the toolhead moves there in X and Y only - Z is never changed from this grid. If X or Y isn't homed yet, the printer homes first and then makes the move. The positions and **Park** gray out while the toolhead is moving and come back once it stops, so a second tap can't land mid-move; the Z buttons stay live.
 
 Below the grid are two buttons:
 
@@ -141,8 +141,8 @@ The map is deliberately coarse. For an exact position, tap a coordinate in the h
 The plate is the same area the Move tab uses: the probing area from your `[bed_mesh]` config (or the axis travel when there is none), so a tap never sends the head off the plate into a purge bucket or tool dock.
 
 - **Z clearance.** A move keeps the current Z, unless the nozzle is below the **Bed Map Clearance** height ([Motion Settings](#motion-settings), 5 mm by default). Then it first lifts to that height and only then travels, so it never drags across the plate. A drag lifts once, before its first move. The readout warns you before you tap, for example "Z 0.20, will lift to 5mm".
-- **Not homed.** If any axis is not homed, Z included (the lift needs a known height), the plate greys out and the dot is hidden rather than drawn at a guessed spot. The readout says to home first, and the same home button the jog pad has (a house in a yellow ring) sits in the middle of the plate; tap it to home all axes. Tapping the plate instead homes first and then moves.
-- **Printing.** The Bed tab is disabled while a print is running or paused. The plate also greys out while the toolhead is busy and while the printer isn't ready.
+- **Not homed.** If any axis is not homed, Z included (the lift needs a known height), the plate grays out and the dot is hidden rather than drawn at a guessed spot. The readout says to home first, and the same home button the jog pad has (a house in a yellow ring) sits in the middle of the plate; tap it to home all axes. Tapping the plate instead homes first and then moves.
+- **Printing.** The Bed tab is disabled while a print is running or paused. The plate also grays out while the toolhead is busy and while the printer isn't ready.
 
 ---
 
@@ -210,7 +210,7 @@ QGL and Z-Tilt are disabled during an active print and while another operation i
 
 ## Motors Off
 
-The **Motors Off** button appears both on the Move tab and beside **Motion** on the Controls panel's **Position** card. It releases all stepper motors, letting you move the gantry and bed by hand. On the Controls panel the button shows a lit motor icon when steppers are energized and a dimmed one when they're already off; when the motors are already disabled, the button is greyed out and does nothing.
+The **Motors Off** button appears both on the Move tab and beside **Motion** on the Controls panel's **Position** card. It releases all stepper motors, letting you move the gantry and bed by hand. On the Controls panel the button shows a lit motor icon when steppers are energized and a dimmed one when they're already off; when the motors are already disabled, the button is grayed out and does nothing.
 
 Tapping it asks for confirmation ("Release all stepper motors. Position will be lost.") before disabling the steppers. The button is disabled while a print is running or paused - and if a print starts while the confirmation is open, confirming then only tells you "Motors stay on while a print is active" and leaves the motors alone.
 

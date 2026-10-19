@@ -420,8 +420,8 @@ TEST_CASE_METHOD(XMLTestFixture, "cancelled and error end a running print, nothi
     answer_http(rig, next, 200);
     edge("cancelled");
     REQUIRE(http_count(rig) == 2);
-    CHECK(last_http(rig)->c == "Cancelled: benchy.gcode (43%)");
-    CHECK(last_http(rig)->params.value("X-Title", "") == "Cancelled");
+    CHECK(last_http(rig)->c == "Canceled: benchy.gcode (43%)");
+    CHECK(last_http(rig)->params.value("X-Title", "") == "Canceled");
     answer_http(rig, next, 200);
 
     edge("printing");

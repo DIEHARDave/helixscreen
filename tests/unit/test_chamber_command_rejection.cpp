@@ -762,7 +762,7 @@ TEST_CASE_METHOD(PromptFixture, "a wait the device reports as its own M191 is ca
     CHECK(message.find("45") != std::string::npos);
     CHECK(std::string(
               lv_subject_get_string(lv_xml_get_subject(nullptr, "chamber_stall_cancel_hint"))) ==
-          lv_tr("Cancelling turns the chamber target off so the wait ends, then stops the print."));
+          lv_tr("Canceling turns the chamber target off so the wait ends, then stops the print."));
 }
 
 namespace helix::ui {

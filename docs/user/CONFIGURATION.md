@@ -189,7 +189,7 @@ Each printer entry contains all printer-specific settings (connection details, h
 **Type:** integer
 **Default:** `2`
 **Values:** `0` (Off), `1` (Notification), `2` (Alert)
-**Description:** How HelixScreen notifies you when a print completes or is cancelled (while you're on a different screen):
+**Description:** How HelixScreen notifies you when a print completes or is canceled (while you're on a different screen):
 - `0` — **Off**: No notification (sound still plays if sounds are enabled)
 - `1` — **Notification**: Brief toast message at the top of the screen
 - `2` — **Alert**: Full-screen modal with print stats (duration, layers, filament used) and confetti for successful prints
@@ -484,7 +484,7 @@ The K2 build default applies only when the backlight is a sysfs device (`/sys/cl
 **Type:** integer
 **Default:** `-1` (automatic)
 **Values:** `-1` = automatic, `0` = never, `1` = always
-**Description:** Whether display sleep powers the screen panel down or just turns its backlight off. Automatic powers the panel down only when the screen has no brightness control; on every other screen, sleep turns the backlight off. Set `1` if your screen goes black at sleep but the backlight stays lit. Set `0` if at sleep your screen flashes colours, glows at the edges, or does not come back on when you wake it. Takes effect after a restart. See [Troubleshooting](TROUBLESHOOTING.md#screen-goes-dark-at-sleep-but-the-backlight-stays-on).
+**Description:** Whether display sleep powers the screen panel down or just turns its backlight off. Automatic powers the panel down only when the screen has no brightness control; on every other screen, sleep turns the backlight off. Set `1` if your screen goes black at sleep but the backlight stays lit. Set `0` if at sleep your screen flashes colors, glows at the edges, or does not come back on when you wake it. Takes effect after a restart. See [Troubleshooting](TROUBLESHOOTING.md#screen-goes-dark-at-sleep-but-the-backlight-stays-on).
 
 ### `screensaver_type`
 **Type:** string
@@ -650,7 +650,7 @@ Located in the `input` section:
 **Type:** integer
 **Default:** `10`
 **Range:** `1` - `20` (UI-clamped)
-**Description:** Pixels of finger movement required before a gesture is treated as a scroll instead of a tap. Below this threshold LVGL still thinks you're pressing a widget, and releasing will fire a click. Above it, the press is cancelled and scroll engages.
+**Description:** Pixels of finger movement required before a gesture is treated as a scroll instead of a tap. Below this threshold LVGL still thinks you're pressing a widget, and releasing will fire a click. Above it, the press is canceled and scroll engages.
 
 - **Lower** = scroll engages sooner. Fixes phantom clicks that fire when scrolling a list with a short, slow swipe.
 - **Higher** = more deliberate gesture required. Reduces accidental scrolls when you meant to tap, but makes short-travel scrolls feel unresponsive.
@@ -934,7 +934,7 @@ Located in the `printer.leds` section. Startup and Automatic LED Control are con
 ### `leds.led_on_at_start`
 **Type:** boolean
 **Default:** `false`
-**Description:** Automatically turn on your lights when Klipper becomes ready — every light your Home Panel Light buttons control, or the chamber light if you haven't placed one. A WLED strip gets up to 5 seconds to answer before HelixScreen falls back to the chamber light. A copy of this key under `output` is also honoured if you have one; `printer.leds` is where HelixScreen writes it.
+**Description:** Automatically turn on your lights when Klipper becomes ready — every light your Home Panel Light buttons control, or the chamber light if you haven't placed one. A WLED strip gets up to 5 seconds to answer before HelixScreen falls back to the chamber light. A copy of this key under `output` is also honored if you have one; `printer.leds` is where HelixScreen writes it.
 
 ### `leds.startup_brightness`
 **Type:** integer
@@ -1445,7 +1445,7 @@ For what each widget does and how big it can get, see the [Home Panel guide](gui
 - Widget grid positions (`col`, `row`, `colspan`, `rowspan`) determine where each widget appears on its page, in half cells
 - Hardware-gated widgets are hidden on the Home Panel if their hardware isn't detected, even when enabled
 - New widgets are appended automatically with their default enabled state
-- Widget IDs that HelixScreen doesn't recognise are ignored
+- Widget IDs that HelixScreen doesn't recognize are ignored
 - Up to 8 pages are supported
 
 This is best configured via **Edit Mode** on the Home Panel (long-press the widget grid) rather than editing the JSON directly. See the [Home Panel guide](guide/home-panel.md) for details on adding pages and arranging widgets.

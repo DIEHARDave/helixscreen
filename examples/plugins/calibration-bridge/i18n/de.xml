@@ -24,7 +24,7 @@
   <translation tag="Use this" de="Dieses verwenden"/>
   <translation tag="sent to the companion" de="an den Begleitprozess gesendet"/>
   <translation tag="(no companion URL set)" de="(keine Begleitprozess-URL gesetzt)"/>
-  <translation tag="print cancelled" de="Druck abgebrochen"/>
+  <translation tag="print canceled" de="Druck abgebrochen"/>
   <translation tag="print failed" de="Druck fehlgeschlagen"/>
   <translation tag="no print file in the event" de="keine Druckdatei im Ereignis"/>
   <translation tag="bad event" de="fehlerhaftes Ereignis"/>

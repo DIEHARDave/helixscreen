@@ -587,7 +587,7 @@ translations:
   Calibration Failed: Ошибка калибровки
   Calibration Saved: Калибровка сохранена
   Calibration and system configuration: 'Калибровка и настройка системы'
-  Calibration cancelled.: Калибровка отменена.
+  Calibration canceled.: Калибровка отменена.
   Calibration complete: Калибровка завершена
   Calibration complete - save to keep the offsets: Калибровка завершена - сохраните, чтобы оставить смещения
   Calibration complete!: Калибровка завершена!
@@ -623,8 +623,8 @@ translations:
   Cancel Scheduled Pause: 'Отменить запланированную паузу'
   Cancel macro not configured: Макрос отмены не настроен
   Cancel print: 'Отменить печать'
-  Cancelled: Отменено
-  Cancelling turns the chamber target off so the wait ends, then stops the print.: 'Отмена выключит целевую температуру камеры, чтобы ожидание закончилось, затем остановит печать.'
+  Canceled: Отменено
+  Canceling turns the chamber target off so the wait ends, then stops the print.: 'Отмена выключит целевую температуру камеры, чтобы ожидание закончилось, затем остановит печать.'
   'Cannot add to queue: internal error': 'Не удалось добавить в очередь: внутренняя ошибка'
   Cannot be changed from here on a multi-unit MMU: Нельзя изменить здесь на MMU с несколькими блоками
   'Cannot control timelapse: printer not connected': 'Невозможно управлять таймлапсом:
@@ -752,7 +752,7 @@ translations:
   Choose rendering mode for bed mesh visualization: Выберите режим рендеринга для
     визуализации сетки стола
   Choose sound style: Выберите стиль звука
-  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses.
+  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses.
   : Выберите модель, соответствующую вашему принтеру. Это задаёт используемые HelixScreen макросы печати, роли вентиляторов и поведение калибровки.
   Choose what to power off or restart.: Выберите, что выключить или перезагрузить.
   'Chute position: X {:.1f}, Y {:.1f}': 'Позиция жёлоба продувки: X {:.1f}, Y {:.1f}'
@@ -1300,7 +1300,7 @@ translations:
   Exclude Objects: 'Исключение объектов'
   Excluded: Исключён
   Excluding "{}"...: 'Исключение «{}»...'
-  Exclusion cancelled: Исключение отменено
+  Exclusion canceled: Исключение отменено
   Execute printer macros: Выполнить макросы принтера
   Exhaust Fan: Вытяжной вентилятор
   Exit Code: Код выхода
@@ -2023,7 +2023,7 @@ translations:
   Last 30 days: 'Последние 30 дней'
   Last 7 days: 'Последние 7 дней'
   Last measured: 'Последний замер'
-  Last print cancelled: Последняя печать отменена
+  Last print canceled: Последняя печать отменена
   Last print failed: Последняя печать не удалась
   Later: Позже
   Layer: Слой
@@ -2073,7 +2073,7 @@ translations:
   Load a filament first before trying to unload: Сначала загрузите филамент, прежде чем пытаться его выгрузить
   Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: Установите новую катушку в этот слот или включите автопополнение для переключения на подходящую
   Load and unload filament at the tool by hand: 'Загружайте и выгружайте филамент вручную на инструменте'
-  'Load cancelled: nozzle target dropped': 'Загрузка отменена: цель сопла снижена'
+  'Load canceled: nozzle target dropped': 'Загрузка отменена: цель сопла снижена'
   Load complete: 'Загрузка завершена'
   Load failed: Ошибка загрузки
   Load filament: 'Загрузка филамента'
@@ -2509,7 +2509,7 @@ translations:
   Nozzle Temps: Темп. сопел
   Nozzle clean complete: Очистка сопла завершена
   Nozzle clog detected: Обнаружено засорение сопла
-  Nozzle did not reach {}°C — {} cancelled: Сопло не нагрелось до {}°C — «{}» отменено
+  Nozzle did not reach {}°C — {} canceled: Сопло не нагрелось до {}°C — «{}» отменено
   Nozzle interval: 'Интервал сопла'
   Nozzle min cannot exceed max: Минимум сопла не может превышать максимум
   Nozzle target set to {}°C: Целевая температура сопла {}°C
@@ -2720,7 +2720,7 @@ translations:
   Preheat %s (%d/%d): 'Преднагрев %s (%d/%d)'
   Preheat Macro: Макрос преднагрева
   Preheat PLA: Преднагрев PLA
-  Preheat cancelled: Предварительный нагрев отменён
+  Preheat canceled: Предварительный нагрев отменён
   'Preheat: all {} tools + bed set':
     one: 'Преднагрев: все {} инструмент + стол заданы'
     few: 'Преднагрев: все {} инструмента + стол заданы'
@@ -2760,8 +2760,7 @@ translations:
   Print: Печать
   Print Anyway: Всё равно печатать
   Print Behavior: "Поведение при печати"
-  'Print Behaviour': 'Поведение печати'
-  Print Cancelled: Печать отменена
+  Print Canceled: Печать отменена
   Print Complete!: Печать завершена!
   Print Completion Alert: Уведомление о завершении печати
   Print Controls: 'Управление печатью'
@@ -2785,9 +2784,9 @@ translations:
   Print Tuning: Настройка печати
   Print Was Terminated: Печать была прекращена
   Print a test tower and tune K by eye: Напечатать тестовую башню и подобрать K на глаз
-  Print cancelled: Печать отменена
   Print details: 'Сведения о печати'
   Print did not start: Печать не началась
+  Print canceled: Печать отменена
   Print complete: Печать завершена
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): Печать
     не началась — принтер может быть занят или не в сети (опросы B3={}, статус=0x{:02X},
@@ -3800,7 +3799,7 @@ translations:
 
   The plate finishes its current move, but drying will not start.: 'Стол завершит текущее перемещение, но сушка не начнётся.'
   The print ended before any layer was printed. Nothing was changed.: Печать завершилась до первого слоя. Ничего не изменено.
-  The print is cancelled and you pick the best band from what has printed so far.: Печать будет отменена, и вы выберете лучшую полосу из уже напечатанного.
+  The print is canceled and you pick the best band from what has printed so far.: Печать будет отменена, и вы выберете лучшую полосу из уже напечатанного.
   The print is on its last layer.: 'Печатается последний слой.'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : Печать на паузе. Смена инструмента сейчас переместит печатающую головку и заменит филамент в сопле. Возобновите печать после завершения смены.
@@ -3940,7 +3939,7 @@ translations:
   This tool probes each bed screw and tells you how much to adjust.: Этот инструмент
     проверяет каждый винт стола и показывает, насколько его нужно отрегулировать.
   'This update asks for new permissions:': 'Это обновление запрашивает новые разрешения:'
-  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': 'Это ожидание заканчивается только по достижении температуры: для отмены нужны аварийная остановка и перезапуск прошивки.'
+  'This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart.': 'Это ожидание заканчивается только по достижении температуры: для отмены нужны аварийная остановка и перезапуск прошивки.'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : Z-offset будет применён к вашему концевику, и Klipper перезапустится для сохранения

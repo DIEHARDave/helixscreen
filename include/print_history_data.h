@@ -159,7 +159,7 @@ struct FilamentUsageByType {
     case PrintJobStatus::COMPLETED:
         return "Completed";
     case PrintJobStatus::CANCELLED:
-        return "Cancelled";
+        return "Canceled";
     case PrintJobStatus::ERROR:
         return "Failed";
     case PrintJobStatus::IN_PROGRESS:

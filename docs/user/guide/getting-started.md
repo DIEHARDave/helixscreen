@@ -171,7 +171,7 @@ The keyboard appears automatically for text input:
 
 ### Long-press characters
 
-Every letter key has a second character on it, shown as a small grey glyph in the key's top-right corner. **Hold the key** to type it — you don't need to switch to the symbol layers.
+Every letter key has a second character on it, shown as a small gray glyph in the key's top-right corner. **Hold the key** to type it — you don't need to switch to the symbol layers.
 
 | Hold | Get | Hold | Get | Hold | Get |
 |------|-----|------|-----|------|-----|
@@ -193,7 +193,7 @@ The two punctuation keys beside the spacebar carry **three** characters each:
 | `,` | `=` | `<` and `>` |
 | `.` | `/` | `[` and `]` |
 
-If you write Klipper macros, the ones worth memorising are **hold `f` for `_`**, **hold `h` for `-`**, **hold `j` for `+`**, and **hold `,` for `=`**. Those four cover most of what macro names and parameters need, and each is much faster than switching to `?123` and then `#+=`.
+If you write Klipper macros, the ones worth memorizing are **hold `f` for `_`**, **hold `h` for `-`**, **hold `j` for `+`**, and **hold `,` for `=`**. Those four cover most of what macro names and parameters need, and each is much faster than switching to `?123` and then `#+=`.
 
 While you're holding a key, its alternate characters pop up above it. You can **slide your finger onto one** to pick it, or just lift your finger where it is to get the first one. Slide well away from the key before lifting to cancel without typing anything.
 

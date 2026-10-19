@@ -510,7 +510,7 @@ translations:
   Calibration Failed: 校准失败
   Calibration Saved: 校准已保存
   Calibration and system configuration: '校准与系统配置'
-  Calibration cancelled.: 校准已取消。
+  Calibration canceled.: 校准已取消。
   Calibration complete: 校准完成
   Calibration complete - save to keep the offsets: 校准完成 - 保存以保留偏移
   Calibration complete!: 校准完成！
@@ -540,8 +540,8 @@ translations:
   Cancel Scheduled Pause: '取消已设置的暂停'
   Cancel macro not configured: 取消宏未配置
   Cancel print: '取消打印'
-  Cancelled: 已取消
-  Cancelling turns the chamber target off so the wait ends, then stops the print.: '取消会关闭腔体目标温度以结束等待，然后停止打印。'
+  Canceled: 已取消
+  Canceling turns the chamber target off so the wait ends, then stops the print.: '取消会关闭腔体目标温度以结束等待，然后停止打印。'
   'Cannot add to queue: internal error': '无法添加到队列：内部错误'
   Cannot be changed from here on a multi-unit MMU: 多单元 MMU 无法在此处更改
   'Cannot control timelapse: printer not connected': '无法控制延时摄影: 打印机未连接'
@@ -654,7 +654,7 @@ translations:
   Choose rendering mode for G-code visualization: 选择 G-code 可视化的渲染模式
   Choose rendering mode for bed mesh visualization: 选择热床网格可视化的渲染模式
   Choose sound style: 选择声音风格
-  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses.
+  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses.
   : 选择与您的打印机相符的型号。这将决定 HelixScreen 使用的打印宏、风扇角色和校准行为。
   Choose what to power off or restart.: 选择要关闭或重启的对象。
   'Chute position: X {:.1f}, Y {:.1f}': '排料口位置: X {:.1f}, Y {:.1f}'
@@ -1179,7 +1179,7 @@ translations:
   Exclude Objects: '排除对象'
   Excluded: 已排除
   Excluding "{}"...: '正在排除"{}"...'
-  Exclusion cancelled: 排除已取消
+  Exclusion canceled: 排除已取消
   Execute printer macros: 执行打印机宏
   Exhaust Fan: 排气扇
   Exit Code: 退出代码
@@ -1862,7 +1862,7 @@ translations:
   Last 30 days: '最近 30 天'
   Last 7 days: '最近 7 天'
   Last measured: '上次测量'
-  Last print cancelled: 上次打印已取消
+  Last print canceled: 上次打印已取消
   Last print failed: 上次打印失败
   Later: 稍后
   Layer: 层
@@ -1908,7 +1908,7 @@ translations:
   Load a filament first before trying to unload: 请先装载耗材，再尝试卸载
   Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: 请在此槽位装入新料盘，或开启自动续料以切换到匹配的料盘
   Load and unload filament at the tool by hand: '请在工具上手动装入和卸载耗材'
-  'Load cancelled: nozzle target dropped': '加载已取消：喷嘴目标温度已降低'
+  'Load canceled: nozzle target dropped': '加载已取消：喷嘴目标温度已降低'
   Load complete: '装载完成'
   Load failed: 装载失败
   Load filament: '装载耗材'
@@ -2329,7 +2329,7 @@ translations:
   Nozzle Temps: 喷嘴温度
   Nozzle clean complete: 喷嘴清洁完成
   Nozzle clog detected: 检测到喷嘴堵塞
-  Nozzle did not reach {}°C — {} cancelled: 喷嘴未达到 {}°C — {} 已取消
+  Nozzle did not reach {}°C — {} canceled: 喷嘴未达到 {}°C — {} 已取消
   Nozzle interval: '喷嘴间隔'
   Nozzle min cannot exceed max: 喷嘴最低温度不能超过最高温度
   Nozzle target set to {}°C: 喷嘴目标已设为 {}°C
@@ -2534,7 +2534,7 @@ translations:
   Preheat %s (%d/%d): '预热 %s (%d/%d)'
   Preheat Macro: 预热宏
   Preheat PLA: 预热 PLA
-  Preheat cancelled: 预热已取消
+  Preheat canceled: 预热已取消
   'Preheat: all {} tools + bed set': '预热: 全部 {} 工具 + 热床已设置'
   'Preheat: {} + bed set': '预热: {} + 热床已设置'
   Preheating and homing...: 正在预热并归零...
@@ -2570,8 +2570,7 @@ translations:
   Print: 打印
   Print Anyway: 仍要打印
   Print Behavior: "打印行为"
-  'Print Behaviour': '打印行为'
-  Print Cancelled: 打印已取消
+  Print Canceled: 打印已取消
   Print Complete!: 打印完成！
   Print Completion Alert: 打印完成提醒
   Print Controls: '打印控制'
@@ -2595,9 +2594,9 @@ translations:
   Print Tuning: 打印调优
   Print Was Terminated: 打印已终止
   Print a test tower and tune K by eye: 打印测试塔并目测调整K值
-  Print cancelled: 打印已取消
   Print details: '打印详情'
   Print did not start: 打印未启动
+  Print canceled: 打印已取消
   Print complete: 打印完成
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): 打印未开始
     — 打印机可能繁忙或离线 (B3 polls={}, status=0x{:02X}, error=0x{:02X})
@@ -3533,7 +3532,7 @@ translations:
 
   The plate finishes its current move, but drying will not start.: '热床会完成当前移动,但烘干不会开始。'
   The print ended before any layer was printed. Nothing was changed.: 打印在任何一层完成前就结束了。未做任何更改。
-  The print is cancelled and you pick the best band from what has printed so far.: 打印将被取消,你可以从已打印的部分中选择最佳区段。
+  The print is canceled and you pick the best band from what has printed so far.: 打印将被取消,你可以从已打印的部分中选择最佳区段。
   The print is on its last layer.: '正在打印最后一层。'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : 打印已暂停。现在切换工具会移动工具头并更换喷嘴处的耗材。切换完成后请恢复打印。
@@ -3661,7 +3660,7 @@ translations:
   This system does not support bypass mode: '此系统不支持旁通模式'
   This tool probes each bed screw and tells you how much to adjust.: 此工具探测每个热床螺丝并告诉您需要调整多少。
   'This update asks for new permissions:': '此更新请求新的权限：'
-  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': '此等待只有达到其温度才会结束：取消需要紧急停止并重启固件。'
+  'This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart.': '此等待只有达到其温度才会结束：取消需要紧急停止并重启固件。'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : 这将把 Z-offset 应用到限位开关并重启 Klipper 以保存配置。打印机将短暂断开连接。
