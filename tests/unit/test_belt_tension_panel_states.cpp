@@ -179,6 +179,10 @@ class BeltPanelFixture : public XMLTestFixture {
                               const std::vector<helix::calibration::SweepPoint>& points) {
         panel_->on_preview_points(path, points);
     }
+    /// One "Testing frequency" line, as the collector reports it.
+    void panel_sweep_progress(float freq_hz) {
+        panel_->on_sweep_progress(0, freq_hz);
+    }
     void panel_set_socket_reachable(bool reachable) {
         panel_->klippy_socket_reachable_ = reachable;
     }
@@ -3468,6 +3472,28 @@ bool series_visible(BeltPanelFixture& fx, int series_id) {
     return ui_frequency_response_chart_is_series_visible(fx.panel_chart(), series_id);
 }
 
+/// A chip at rest: gravity on z and nothing else, so no drive ever locks.
+class QuietStream {
+  public:
+    /// Push `seconds` of samples into the attached source, then drain.
+    void push(helix::calibration::test::SourceLog& log, double seconds) {
+        constexpr float kRate = 3053.0f;
+        const double until = t_ + seconds;
+        while (log.last != nullptr && t_ < until) {
+            helix::calibration::AccelBatch batch;
+            for (int i = 0; i < 300; ++i) {
+                batch.samples.push_back({static_cast<float>(t_), 0.0f, 0.0f, 9810.0f});
+                t_ += 1.0 / kRate;
+            }
+            log.last->push(batch);
+            UpdateQueue::instance().drain();
+        }
+    }
+
+  private:
+    double t_ = 0.0;
+};
+
 } // namespace
 
 TEST_CASE("a full check draws each path live until its CSV lands", "[belt][panel][preview]") {
@@ -3613,6 +3639,36 @@ TEST_CASE("a tuning round keeps each preview until the round is in",
     CHECK(series_visible(fx, fx.panel_series_id(0)));
     CHECK(series_visible(fx, fx.panel_series_id(1)));
     CHECK(log.stopped == log.created);
+}
+
+TEST_CASE("the sweep's last console line ends a stream that never locks",
+          "[belt][panel][preview]") {
+    using helix::calibration::kPreviewFinishGraceS;
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    auto& log = fx.source_log();
+    fx.panel().handle_start_clicked();
+    REQUIRE(pump_until_created(fx, 1));
+    REQUIRE(log.last != nullptr);
+    REQUIRE(fx.panel_preview().state() == LiveSweepPreview::State::STREAMING);
+    const float end = log.plan.freq_end_hz;
+
+    // Mid-sweep, a stream with nothing to place keeps running.
+    QuietStream quiet;
+    fx.panel_sweep_progress(end - 10.0f);
+    quiet.push(log, kPreviewFinishGraceS + 1.0);
+    CHECK(fx.panel_preview().state() == LiveSweepPreview::State::STREAMING);
+
+    // Klipper's last line can read one below the plan's end. The stream ends
+    // a grace later, long before the CSV line that stops it otherwise.
+    fx.panel_sweep_progress(end - 1.0f);
+    quiet.push(log, kPreviewFinishGraceS - 0.5);
+    CHECK(fx.panel_preview().state() == LiveSweepPreview::State::STREAMING);
+    quiet.push(log, 1.0);
+    CHECK(fx.panel_preview().state() == LiveSweepPreview::State::DONE);
+    CHECK(log.stopped == log.created);
+    CHECK(fx.state_int("belt_tension_state") ==
+          static_cast<int>(BeltTensionPanel::ViewState::RUNNING));
 }
 
 TEST_CASE("Stop mid-sweep drops the preview and its stream", "[belt][panel][preview]") {

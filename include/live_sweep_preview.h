@@ -57,6 +57,12 @@ inline constexpr int kPreviewLoopNice = 10;
 /// Stream seconds finish() waits for the last point before it stops the stream.
 inline constexpr double kPreviewFinishGraceS = 2.0;
 
+/// How far below the plan's end the sweep's last console line can read.
+/// Klipper prints a line each time the drive passes a whole Hz, so the last one
+/// is floor(max_freq), or one below when the sweep's float steps stop just
+/// short; the plan ends at ceil(max_freq).
+inline constexpr float kPreviewLastLineSlackHz = 2.0f;
+
 /// Stream seconds without a lock after which one debug line says so.
 inline constexpr double kPreviewNoLockLogS = 10.0;
 
@@ -188,8 +194,10 @@ class LiveSweepPreview {
 
     /// The console's "Testing frequency" value. In ARMED it starts the stream,
     /// so the tester's own client is already running the chip; in STREAMING it
-    /// updates the drive search hint. Ignored in IDLE and DONE, and when hz is
-    /// not finite and positive.
+    /// updates the drive search hint. A value within kPreviewLastLineSlackHz of
+    /// the plan's end means the motion is ending: a stream that never locked
+    /// then finishes as finish() does, and a locked one runs on to its last
+    /// point. Ignored in IDLE and DONE, and when hz is not finite and positive.
     void note_console_frequency(float hz);
 
     /// The sweep's motion is over: keep streaming until the last point or
@@ -228,6 +236,8 @@ class LiveSweepPreview {
 
     std::atomic<float> hint_hz_{0.0f};
     std::atomic<bool> finishing_{false};
+    /// The console reported the sweep's last line.
+    std::atomic<bool> console_ended_{false};
     /// Loop thread only.
     double finish_deadline_s_ = 0.0;
     bool stop_requested_ = false;

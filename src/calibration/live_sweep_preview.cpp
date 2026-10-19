@@ -279,12 +279,16 @@ void LiveSweepPreview::note_console_frequency(float hz) {
         attach();
     } else if (state_ == State::STREAMING) {
         hint_hz_.store(hz);
+        if (hz >= target_->plan.freq_end_hz - kPreviewLastLineSlackHz) {
+            console_ended_.store(true);
+        }
     }
 }
 
 void LiveSweepPreview::attach() {
     accumulator_ = std::make_unique<SweepResponseAccumulator>(target_->plan);
     finishing_.store(false);
+    console_ended_.store(false);
     finish_deadline_s_ = 0.0;
     stop_requested_ = false;
     no_lock_logged_ = false;
@@ -358,7 +362,10 @@ void LiveSweepPreview::on_batch(const AccelBatch& batch) {
     }
 
     bool done = accumulator_->complete();
-    if (finishing_.load()) {
+    // Points are placed only once the drive has locked, so when the motion ends
+    // without one there is no last point to wait for.
+    const bool never_locked = std::isnan(accumulator_->drive_start_s());
+    if (finishing_.load() || (console_ended_.load() && never_locked)) {
         if (finish_deadline_s_ <= 0.0) {
             finish_deadline_s_ = stream_s + kPreviewFinishGraceS;
         } else if (stream_s >= finish_deadline_s_) {
