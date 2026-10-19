@@ -100,16 +100,16 @@ std::optional<int> read_slot_id(const nlohmann::json& val, const std::string& ke
     return std::nullopt;
 }
 
-constexpr int QIDI_SLOTS_PER_BOX = 4;
-constexpr int QIDI_MAX_BOXES = 4;
+constexpr int kQidiSlotsPerBox = 4;
+constexpr int kQidiMaxBoxes = 4;
 
 AmsUnit make_qidi_unit(int unit_index) {
     AmsUnit unit;
     unit.unit_index = unit_index;
     unit.name = fmt::format("QIDI Box {}", helix::ui::lane_number(unit_index));
     unit.display_name = unit.name;
-    unit.slot_count = QIDI_SLOTS_PER_BOX;
-    unit.first_slot_global_index = unit_index * QIDI_SLOTS_PER_BOX;
+    unit.slot_count = kQidiSlotsPerBox;
+    unit.first_slot_global_index = unit_index * kQidiSlotsPerBox;
     // Connected until enable_box says otherwise: a box that has not reported
     // yet must not read as switched off.
     unit.connected = true;
@@ -118,7 +118,7 @@ AmsUnit make_qidi_unit(int unit_index) {
     // The box publishes no toolhead filament sensor, and none is subscribed.
     unit.has_toolhead_sensor = false;
 
-    for (int local = 0; local < QIDI_SLOTS_PER_BOX; ++local) {
+    for (int local = 0; local < kQidiSlotsPerBox; ++local) {
         const int global = unit.first_slot_global_index + local;
         SlotInfo slot;
         slot.slot_index = local;
@@ -165,7 +165,7 @@ const AmsUnit* find_old_unit(const std::vector<AmsUnit>& units, int unit_index) 
 }
 
 void resize_qidi_units(AmsSystemInfo& info, int box_count) {
-    box_count = std::clamp(box_count, 0, QIDI_MAX_BOXES);
+    box_count = std::clamp(box_count, 0, kQidiMaxBoxes);
     const auto old_units = info.units;
 
     std::vector<AmsUnit> units;
@@ -191,7 +191,7 @@ void resize_qidi_units(AmsSystemInfo& info, int box_count) {
     }
 
     info.units = std::move(units);
-    info.total_slots = box_count * QIDI_SLOTS_PER_BOX;
+    info.total_slots = box_count * kQidiSlotsPerBox;
 }
 
 std::optional<int> parse_box_unit_index(const std::string& key) {
@@ -200,7 +200,7 @@ std::optional<int> parse_box_unit_index(const std::string& key) {
         return std::nullopt;
     }
     const auto box = tio::parse_leading<int>(key.substr(pos + 3));
-    if (box && *box >= 1 && *box <= QIDI_MAX_BOXES) {
+    if (box && *box >= 1 && *box <= kQidiMaxBoxes) {
         return *box - 1;
     }
     return std::nullopt;
@@ -212,7 +212,7 @@ std::optional<int> parse_box_unit_index(const std::string& key) {
 // material's upper bound (matches the stock QIDI flow Camden verified — ABS at
 // 280) and fall back to a safe universal load temperature when no profile is
 // known.
-constexpr int QIDI_DEFAULT_LOAD_TEMP_C = 250;
+constexpr int kQidiDefaultLoadTempC = 250;
 
 // Task 15 R2: cap for the officiall_filas_list.cfg fetch below. The file is a
 // small generated INI (fila<N>/colordict/vendor_list sections); this is
@@ -220,7 +220,7 @@ constexpr int QIDI_DEFAULT_LOAD_TEMP_C = 250;
 // fails loud on an over-cap response rather than silently truncating (see
 // esp_http_lane.cpp on ESP32), so an oversized file degrades exactly like any
 // other fetch failure here — non-fatal, temps stay at defaults.
-constexpr size_t QIDI_FILAS_LIST_CAP_BYTES = 32 * 1024;
+constexpr size_t kQidiFilasListCapBytes = 32 * 1024;
 
 // Manual lane-eject via FORCE_MOVE on the box_stepper (#1041). Distance/velocity
 // from the QIDI Discord (xenon) + Camden's Q2 measurement: 878 mm fully ejects,
@@ -235,7 +235,7 @@ int load_temp_for_slot(const SlotInfo& slot) {
     if (slot.nozzle_temp_min > 0) {
         return slot.nozzle_temp_min;
     }
-    return QIDI_DEFAULT_LOAD_TEMP_C;
+    return kQidiDefaultLoadTempC;
 }
 } // namespace
 
@@ -257,7 +257,7 @@ AmsBackendQidi::AmsBackendQidi(IMoonrakerAPI* api, helix::IMoonrakerClient* clie
     // empty-but-initialised snapshot even before any status update arrives.
     system_info_.type = AmsType::QIDI_BOX;
     system_info_.type_name = "QIDI Box"; // i18n: do not translate - product name
-    system_info_.total_slots = NUM_SLOTS;
+    system_info_.total_slots = kNumSlots;
     system_info_.supports_bypass = false;
     system_info_.supports_purge = false;
     system_info_.tip_method = TipMethod::CUT;
@@ -268,7 +268,7 @@ AmsBackendQidi::AmsBackendQidi(IMoonrakerAPI* api, helix::IMoonrakerClient* clie
     // self-consistent in both directions. No lock: nothing else can observe
     // this instance until the constructor returns.
     rebuild_tool_map_locked();
-    slot_rfid_.resize(NUM_SLOTS);
+    slot_rfid_.resize(kNumSlots);
 
     // Box PTC dryer capabilities (issue #1019). max_temp_c is the settable ceiling
     // (target_max_temp_heater_generic=90); refined from configfile in on_started().
@@ -277,7 +277,7 @@ AmsBackendQidi::AmsBackendQidi(IMoonrakerAPI* api, helix::IMoonrakerClient* clie
     dry_end_epoch_.assign(system_info_.units.size(), 0);
 
     spdlog::debug("{} Backend constructed ({} slots, write-path always on)", backend_log_tag(),
-                  NUM_SLOTS);
+                  kNumSlots);
 }
 
 AmsBackendQidi::~AmsBackendQidi() = default;
@@ -343,7 +343,7 @@ void AmsBackendQidi::on_started() {
     // harmless in Moonraker's query response, and save_variables.box_count gates
     // which units are actually modeled.
     auto objects = nlohmann::json::object({{"save_variables", nullptr}, {"box_extras", nullptr}});
-    for (int box = 1; box <= QIDI_MAX_BOXES; ++box) {
+    for (int box = 1; box <= kQidiMaxBoxes; ++box) {
         objects[fmt::format("heater_generic heater_box{}", box)] = nullptr;
         objects[fmt::format("aht20_f heater_box{}", box)] = nullptr;
         objects[fmt::format("temperature_sensor heater_temp_a_box{}", box)] = nullptr;
@@ -406,7 +406,7 @@ void AmsBackendQidi::on_started() {
     if (api_) {
         auto fila_token = lifetime_.token();
         api_->transfers().download_file_partial(
-            "config", "officiall_filas_list.cfg", QIDI_FILAS_LIST_CAP_BYTES,
+            "config", "officiall_filas_list.cfg", kQidiFilasListCapBytes,
             [this, fila_token](const std::string& body) {
                 // [L081] Defer apply onto main thread — apply_filas_list
                 // touches member state under mutex_.
@@ -554,26 +554,26 @@ void AmsBackendQidi::apply_config_settings(const nlohmann::json& settings) {
 }
 
 void AmsBackendQidi::apply_heater_status(const nlohmann::json& notification) {
-    constexpr std::string_view HEATER_PREFIX = "heater_generic heater_box";
-    constexpr std::string_view AHT20_PREFIX = "aht20_f heater_box";
-    constexpr std::string_view BOX_TEMP_SENSOR_PREFIX = "temperature_sensor heater_temp_";
+    constexpr std::string_view kHeaterPrefix = "heater_generic heater_box";
+    constexpr std::string_view kAht20Prefix = "aht20_f heater_box";
+    constexpr std::string_view kBoxTempSensorPrefix = "temperature_sensor heater_temp_";
 
     struct BoxReading {
         std::optional<float> temp;
         std::optional<float> humidity;
         std::optional<float> target;
     };
-    std::array<BoxReading, QIDI_MAX_BOXES> readings;
+    std::array<BoxReading, kQidiMaxBoxes> readings;
 
     for (auto it = notification.begin(); it != notification.end(); ++it) {
         if (!it->is_object()) {
             continue;
         }
         const std::string& key = it.key();
-        const bool is_heater = key.rfind(HEATER_PREFIX, 0) == 0;
-        const bool is_aht = key.rfind(AHT20_PREFIX, 0) == 0;
+        const bool is_heater = key.rfind(kHeaterPrefix, 0) == 0;
+        const bool is_aht = key.rfind(kAht20Prefix, 0) == 0;
         const bool is_box_temp_sensor =
-            key.rfind(BOX_TEMP_SENSOR_PREFIX, 0) == 0 && key.find("_box") != std::string::npos;
+            key.rfind(kBoxTempSensorPrefix, 0) == 0 && key.find("_box") != std::string::npos;
         if (!is_heater && !is_aht && !is_box_temp_sensor) {
             continue;
         }
@@ -726,7 +726,7 @@ void AmsBackendQidi::parse_save_variables(const nlohmann::json& variables) {
     auto box_count_it = variables.find("box_count");
     if (box_count_it != variables.end() && box_count_it->is_number_integer()) {
         const int box_count = box_count_it->get<int>();
-        if (box_count >= 0 && box_count <= QIDI_MAX_BOXES) {
+        if (box_count >= 0 && box_count <= kQidiMaxBoxes) {
             resize_qidi_units(system_info_, box_count);
             slot_rfid_.resize(static_cast<size_t>(system_info_.total_slots));
             // Keep the per-unit dryer vectors sized to the box count, preserving
@@ -775,11 +775,11 @@ void AmsBackendQidi::parse_save_variables(const nlohmann::json& variables) {
     // resizes the slot vector and the map has to follow it.
     rebuild_tool_map_locked();
 
-    bool stated_slot[QIDI_MAX_BOXES * QIDI_SLOTS_PER_BOX] = {};
+    bool stated_slot[kQidiMaxBoxes * kQidiSlotsPerBox] = {};
     // Captured before the loop below rewrites them: a slot whose standing
     // status was EMPTY and whose state word now reports filament just
     // received a spool, which is the insert edge the notice below keys on.
-    bool was_empty[QIDI_MAX_BOXES * QIDI_SLOTS_PER_BOX] = {};
+    bool was_empty[kQidiMaxBoxes * kQidiSlotsPerBox] = {};
     for (int i = 0; i < slot_count; ++i) {
         if (const auto* standing = system_info_.get_slot_global(i)) {
             was_empty[i] = standing->status == SlotStatus::EMPTY;
@@ -1282,9 +1282,9 @@ std::string AmsBackendQidi::build_unload_gcode(int slot_index, int temp) const {
 
 AmsError AmsBackendQidi::do_load_filament(int slot_index) {
     spdlog::info("{} load_filament(slot={})", backend_log_tag(), slot_index);
-    int load_temp = QIDI_DEFAULT_LOAD_TEMP_C;
+    int load_temp = kQidiDefaultLoadTempC;
     int loaded_other = -1; // slot in the extruder that must be retracted first
-    int unload_temp = QIDI_DEFAULT_LOAD_TEMP_C;
+    int unload_temp = kQidiDefaultLoadTempC;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (auto err = validate_slot_index_locked(slot_index); !err.success()) {
@@ -1343,7 +1343,7 @@ AmsError AmsBackendQidi::do_load_filament(int slot_index) {
 
 AmsError AmsBackendQidi::do_unload_filament(int slot_index) {
     spdlog::info("{} unload_filament(slot={})", backend_log_tag(), slot_index);
-    int unload_temp = QIDI_DEFAULT_LOAD_TEMP_C;
+    int unload_temp = kQidiDefaultLoadTempC;
     int target_slot = slot_index; // for the EXTRUDER_UNLOAD fallback
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -1844,7 +1844,7 @@ void AmsBackendQidi::clear_slot_override(int slot_index) {
         rfid_tracker_.forget_expected(slot_index, staged_echoes);
     }
 
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
 }
 
 bool AmsBackendQidi::check_hardware_event_clear(SlotInfo& slot, int slot_index,

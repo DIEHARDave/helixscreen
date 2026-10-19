@@ -48,7 +48,7 @@ class EspHttpLane {
     // starting past 0 with the whole file (200) fails the job: the lane keeps
     // no more than cap bytes, so it cannot skip to the offset. Returns false immediately — queuing
     // nothing, calling neither callback — if the queue is already at
-    // QUEUE_DEPTH or the worker pthread failed to start. Callers MUST NOT
+    // kQueueDepth or the worker pthread failed to start. Callers MUST NOT
     // block or retry-loop on a false return; a full queue means "try again
     // later" (e.g. next scroll tick), never a caller-side spin.
     // A job whose @p cancelled flag is set by the time the worker takes it is
@@ -57,7 +57,7 @@ class EspHttpLane {
                     FetchErrorCb on_error, FetchCancelFlag cancelled = nullptr,
                     uint64_t offset = 0);
 
-    static constexpr size_t QUEUE_DEPTH = 8;
+    static constexpr size_t kQueueDepth = 8;
 
     // Called on the lane's worker thread with each response's Date header
     // value. One hook, set once at boot; nullptr clears it.
@@ -95,7 +95,7 @@ class EspHttpLane {
     std::mutex mutex_;
     std::condition_variable cv_;
     std::deque<Job> queue_;                 // guarded by mutex_
-    BoundedSlotCounter slots_{QUEUE_DEPTH}; // guarded by mutex_
+    BoundedSlotCounter slots_{kQueueDepth}; // guarded by mutex_
     bool worker_started_ = false;           // guarded by mutex_
 };
 

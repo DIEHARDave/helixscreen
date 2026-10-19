@@ -16,7 +16,8 @@ companion, which (once Orca plugins can write) lands it in the profile.
 This is the screen half of that story: no home tile, because calibration is
 episodic. An overlay holds the flow and a dialog asks the question when the
 print completes. The companion event is the front door; a settings action
-row is the manual one.
+row is the manual one, and **Calibrate with this file** on the print details
+screen points a waiting calibration at a different sliced file.
 
 The author guide is [docs/devel/PLUGIN_DEVELOPMENT.md](../../docs/devel/PLUGIN_DEVELOPMENT.md).
 
@@ -86,6 +87,13 @@ companion listening on the printer itself cannot receive the answer.
 - **No home tile**: `widgets: []` in the manifest. The overlay holds the
   flow; entry points are the agent event (auto-open), the settings action
   row, and a toast when nothing is running.
+- **A menu item with a check** (`menu_items` in the manifest): "Calibrate
+  with this file" on the print details "more" menu. Its check
+  (`can_calibrate_file`) only reads - the file's `source` and `path`, the
+  state subject - and returns `{visible, enabled, reason}`, so a USB file or
+  an idle bridge shows the item greyed with why. The handler
+  (`calibrate_file`) makes the file the waiting calibration's print and opens
+  the overlay.
 - **A question asked at print completion**: `helix.ui.dialog` opens
   `calibration-bridge__result` when the print completes. It waits behind the
   app's own print-complete dialog, so it never covers it, and `on_close(how)`

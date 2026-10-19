@@ -37,7 +37,7 @@ gate holds however the panel was reached (row click, `ctl navigate`, a demo entr
 accelerometer that drops out after entry).
 
 Start and Re-test also pass through `BeltTensionPanel::run_after_ram_check`: on a host with
-less than `RESONANCE_LOW_RAM_WARN_MB` (200 MB) it shows input shaper's shared
+less than `kResonanceLowRamWarnMb` (200 MB) it shows input shaper's shared
 `show_low_ram_resonance_warning` first. Klipper analyses each sweep on the printer's own
 host, which is this one (the co-location gate), and on a 128 MB board that analysis can be
 OOM-killed, leaving klippy wedged until it is restarted.
@@ -107,7 +107,7 @@ the collector holds progress lines until `set_config` lands so the first percent
 computed against the 5-135 Hz default when the printer sweeps something else. The config
 query always answers (defaults on error), so the hold is finite.
 
-The panel owns stall detection: `BeltTensionPanel::STALL_TIMEOUT_MS` (120 s, an
+The panel owns stall detection: `BeltTensionPanel::kStallTimeoutMs` (120 s, an
 `OperationTimeoutGuard`) fires when no progress line arrived, because Klipper prints one
 every second. `BeltResonanceCollector` carries no deadline of its own. The stall message
 names the likeliest cause on a small board, Klipper's analysis running out of memory, and
@@ -116,7 +116,7 @@ klippy wedged, the Moonraker firmware-restart RPC cannot reach it, and on the CC
 Moonraker's service manager does not list Klipper at all.
 
 Start refuses outright when `MemAvailable + SwapFree` is under
-`RESONANCE_MIN_HEADROOM_MB` (64 MB), and asks first on a board under 200 MB total
+`kResonanceMinHeadroomMb` (64 MB), and asks first on a board under 200 MB total
 (`include/memory_utils.h#resonance_memory_check`, shared with input shaper). On the CC1
 the OOM killer takes HelixScreen before the analysis, so the stall error never shows
 there: the check has to happen before Start.
@@ -229,20 +229,20 @@ is the baseline chained straight onto a registered calibration sweep, since no b
 between.
 
 `include/belt_settle.h#plan_belt_settle` (pure) plans the laps and emits one script:
-`SAVE_GCODE_STATE`, `G90`, Z to the `[resonance_tester]` probe point's height, `LAPS` (3)
+`SAVE_GCODE_STATE`, `G90`, Z to the `[resonance_tester]` probe point's height, `kLaps` (3)
 rectangles, back to the probe point's X/Y, `M400`, `RESTORE_GCODE_STATE`.
 
 | Rule | Value |
 |------|-------|
-| Inset from `axis_minimum` / `axis_maximum` | max(`INSET_MIN_MM` 20 mm, `INSET_SPAN_FRACTION` 7% of the span) |
-| Inset with several toolheads | `MULTI_TOOL_INSET_SPAN_FRACTION`: the laps keep to the central half of each axis, because parked tools and their docks sit inside the travel. `BeltSettleInputs::tool_count` comes from `ToolState::has_multiple_toolheads()` |
-| Speed | min(`SPEED_MAX_MM_S` 300, 0.6 x `max_velocity`); acceleration untouched |
+| Inset from `axis_minimum` / `axis_maximum` | max(`kInsetMinMm` 20 mm, `kInsetSpanFraction` 7% of the span) |
+| Inset with several toolheads | `kMultiToolInsetSpanFraction`: the laps keep to the central half of each axis, because parked tools and their docks sit inside the travel. `BeltSettleInputs::tool_count` comes from `ToolState::has_multiple_toolheads()` |
+| Speed | min(`kSpeedMaxMmS` 300, 0.6 x `max_velocity`); acceleration untouched |
 | Timeout | max(60 s, 4 x the planned duration) |
 
 `src/calibration/belt_tension_calibrator.cpp#settle` plans before it homes, so a refusal sends nothing, then homes
 (`ensure_homed_then`) and runs the script. A refusal lands on ERROR with its reason
 (`settle_refusal_message` in the panel): no axis limits yet, no `probe_points` (no safe
-height), no `max_velocity` yet, or a lap side under `MIN_SIDE_MM`. A print in progress never
+height), no `max_velocity` yet, or a lap side under `kMinSideMm`. A print in progress never
 gets this far: the Start gate refuses it. The panel re-reads `[resonance_tester]` for its
 probe point before every settle (`src/ui/ui_panel_belt_tension.cpp#start_settle`), the run title reads
 "Settling belts" while they run, and every duration estimate counts them (`settle_seconds`).
@@ -278,7 +278,7 @@ ALREADY_MATCHED --Good Enough--> RESULTS (no sweep)
   | Calibrate Anyway
   v
 CALIBRATE  "Tighten B one full turn" -> Measure: settle + full sweep of A and B
-  |  not registered -> CALIBRATE again ("didn't register yet"), up to CALIBRATION_MAX_STEPS
+  |  not registered -> CALIBRATE again ("didn't register yet"), up to kCalibrationMaxSteps
   |  gave up        -> NO_ZONE ("Turn B back 2 turns, then check the mechanics")
   v registered
 BASELINE   the zone's narrow sweep twice (A, B, A, B), no laps when chained from calibration
@@ -312,25 +312,25 @@ sweeps whatever window that round left (`src/ui/ui_panel_belt_tension.cpp#on_swe
 ### Zone candidates
 
 `src/calibration/belt_tune_session.cpp#tune_zone_candidates` builds the zones a calibration turn tests from round 0's in-plane
-comparison over the band, strongest first, at most `MAX_ZONE_CANDIDATES` (4):
+comparison over the band, strongest first, at most `kMaxZoneCandidates` (4):
 
-- every pair whose two peaks reach `ZONE_MIN_AMPLITUDE_FRACTION` (20%) of the in-band
-  in-plane maximum and an in-plane share of at least `IN_PLANE_MIN_FRACTION` (50%,
+- every pair whose two peaks reach `kZoneMinAmplitudeFraction` (20%) of the in-band
+  in-plane maximum and an in-plane share of at least `kInPlaneMinFraction` (50%,
   `in_plane_fraction`). A matched pair is still a candidate: the turn tests movement, not
   the gap;
 - an unpaired tallest peak meeting both rules, steered against the other path's nearest such
-  peak within `ZONE_FALLBACK_MAX_HZ` (30 Hz, three times the pairing ceiling)
+  peak within `kZoneFallbackMaxHz` (30 Hz, three times the pairing ceiling)
   (`BeltZoneSource::TALLEST_UNPAIRED`). The mock's default printer needs it.
 
-A candidate centred within `ZONE_HALF_MIN_HZ` of a stronger one is dropped. Each window is the
-two peaks' midpoint +- max(`ZONE_HALF_MIN_HZ` 10, gap / 2 + `ZONE_MARGIN_HZ` 5), clamped to
+A candidate centred within `kZoneHalfMinHz` of a stronger one is dropped. Each window is the
+two peaks' midpoint +- max(`kZoneHalfMinHz` 10, gap / 2 + `kZoneMarginHz` 5), clamped to
 the band. The "Curves differ in shape" hint is latched from round 0
 (`tallest_peak_unpaired`), whatever the candidates turn out to be.
 
 ### Already matched
 
 At construction the strongest candidate's in-plane centroid gap is compared with
-max(`tolerance_hz()`, `CALIBRATION_MIN_MOVE_HZ`): the calibration's own measure of run-to-run
+max(`tolerance_hz()`, `kCalibrationMinMoveHz`): the calibration's own measure of run-to-run
 wander, so a smaller gap cannot be told from a match. Within it the stage is ALREADY_MATCHED
 for every tensioner kind, and the panel offers **Good Enough** (back to RESULTS, no sweep) and
 **Calibrate Anyway** (`calibrate_anyway()`, then on as an unmatched session would). The last
@@ -341,12 +341,12 @@ line reads "Within N Hz of each other at F Hz". The K1C's settled captures (gaps
 
 The zone is chosen by what moves, not by height: on the Voron the tallest pair is the 25-45 Hz
 frame mode, which tension barely moves. The user tightens the adjusted path (the looser one by
-the strongest candidate's centroid gap) by `CALIBRATION_TURNS` (one full turn) on SCREW
+the strongest candidate's centroid gap) by `kCalibrationTurns` (one full turn) on SCREW
 printers, "noticeably" on UNKNOWN ones, and **Measure** runs the laps and a full sweep of both
 paths. `src/calibration/belt_tune_session.cpp#add_calibration_sweep` compares every candidate's gap with round 0's, over all
 calibration turns so far, and counts only a move the advised way (the turned belt's side of
 the gap rising for a tightening turn, falling for a loosening one) of at least
-`CALIBRATION_MIN_MOVE_HZ` (1.5 Hz).
+`kCalibrationMinMoveHz` (1.5 Hz).
 
 **Adjust X instead** at CALIBRATE is offered only before the first step
 (`can_swap_adjusted_path`, `bt_tune_can_swap`): every step is measured against round 0 on the
@@ -360,7 +360,7 @@ closes the gap from the other side.
   (`start_tune_round(false)`);
 - **not registered**: "That turn didn't register yet. Tighten B one more full turn." (UNKNOWN:
   "a little more"; after a swap, "Loosen A ...");
-- **gave up** after `CALIBRATION_MAX_STEPS` (2) steps: NO_ZONE, "Nothing followed 2 turns of B.
+- **gave up** after `kCalibrationMaxSteps` (2) steps: NO_ZONE, "Nothing followed 2 turns of B.
   Turn B back 2 turns, then check the mechanics." (UNKNOWN: "Undo them"). That line is the
   whole message: the "gap is not closing" warning does not show, since nothing was tuned.
 
@@ -370,8 +370,8 @@ hardware section below).
 
 ### Narrow sweeps and the range clamp
 
-A round sweeps `sweep_window()`, `src/calibration/belt_tune_session.cpp#zone_sweep_window` of the zone: `ZONE_SWEEP_MARGIN_HZ` (10)
-below the zone and `ZONE_SWEEP_TOP_MARGIN_HZ` (20) above it. The bottom margin keeps the start
+A round sweeps `sweep_window()`, `src/calibration/belt_tune_session.cpp#zone_sweep_window` of the zone: `kZoneSweepMarginHz` (10)
+below the zone and `kZoneSweepTopMarginHz` (20) above it. The bottom margin keeps the start
 transient (the 10-15 narrow sweeps bump at 97-104 Hz on a 95 Hz start) out of the analysed
 bins; the top one keeps a narrow sweep's last 15 Hz, which in all 22 narrow Voron CSVs rose to
 up to 15x the zone's own power, 6 Hz clear of the zone's top bin. The analysis reads the zone
@@ -391,8 +391,8 @@ band cuts the top margin short, the margin is whatever remains. **Tune Belts** s
 A round takes about `2 x window / hz_per_sec` plus the laps, twice that for a baseline pair;
 the Re-measure and Next Zone labels count both (`round_minutes`). Klipper writes the CSV across
 the whole configured range, and the in-band bins outside the swept range read the belt
-unexcited: `unexcited_floor_psd` is their median (at least `UNEXCITED_MIN_BINS`), and
-`window_holds_peak` requires the zone's maximum to stand `PEAK_MIN_PROMINENCE` (1.5x) over it
+unexcited: `unexcited_floor_psd` is their median (at least `kUnexcitedMinBins`), and
+`window_holds_peak` requires the zone's maximum to stand `kPeakMinProminence` (1.5x) over it
 (over the zone's own minimum when there are too few such bins). A zone failing it is `NO_PEAK`.
 
 ### Baseline pair and repeatability
@@ -401,8 +401,8 @@ Every zone opens with a BASELINE: the zone swept twice on both paths with no tur
 every verdict compares narrow against narrow (narrow against full differed by 2.9 Hz on the
 Voron). Neither round of the pair gives a verdict. The pair's second round is judged for
 repeatability before anything else, including the edge rules: when the in-plane centroid gap
-of the two differs by more than `REPEAT_MAX_GAP_HZ` (1.5 Hz), or either path's in-plane zone
-power differs by more than `REPEAT_MAX_POWER_RATIO` (2x), the stage is UNREPEATABLE. No turn
+of the two differs by more than `kRepeatMaxGapHz` (1.5 Hz), or either path's in-plane zone
+power differs by more than `kRepeatMaxPowerRatio` (2x), the stage is UNREPEATABLE. No turn
 is advised then: the panel shows "Readings don't repeat", the line "These readings aren't
 repeatable, so tuning can't be steered. Check the mechanics first." with the Why modal, no
 arrow, amount or stepper, and offers Re-measure (a fresh pair) and Good Enough. The session's
@@ -428,18 +428,18 @@ widens it once until a round measures again. Chart rings mark the centroids
 
 | `BeltTuneOutcome` | Condition | Line |
 |-------------------|-----------|------|
-| `MATCHED` | `|gap|` within the matched tolerance (`matched_tolerance_hz`: the mean bin spacing, at least `MATCHED_MIN_HZ`) | "Matched at N Hz" (instruction) |
+| `MATCHED` | `|gap|` within the matched tolerance (`matched_tolerance_hz`: the mean bin spacing, at least `kMatchedMinHz`) | "Matched at N Hz" (instruction) |
 | `CLOSER` | the gap shrank and kept its sign | "last turn: N Hz closer" |
 | `OVERSHOT` | the gap changed sign | "Went past X by N Hz. Back it off a little." |
-| `WRONG_WAY` | the gap moved against the advice by `MIN_MOVE_HZ` (0.8 Hz) or more | "The gap grew after tightening X. Check you turned Path X's tensioner." |
-| `NO_MOVEMENT` | the gap moved under `MIN_MOVE_HZ`, or nothing was turned | "The gap didn't close (moved N Hz). Try a bigger turn.", or for a no-turn round "No turn: the gap moved N Hz" |
+| `WRONG_WAY` | the gap moved against the advice by `kMinMoveHz` (0.8 Hz) or more | "The gap grew after tightening X. Check you turned Path X's tensioner." |
+| `NO_MOVEMENT` | the gap moved under `kMinMoveHz`, or nothing was turned | "The gap didn't close (moved N Hz). Try a bigger turn.", or for a no-turn round "No turn: the gap moved N Hz" |
 | `NO_PEAK` | a path's zone holds no clear peak, the reference left the zone, or the adjusted peak is still past the edge after one widening | "No clear peak in this zone", or with `reference_lost` "Path R's peak left the zone. Check that only Path X's tensioner was turned." |
 | `OUT_OF_WINDOW` | the adjusted path's maximum sits on the zone edge | "X's peak moved out of the zone. Widening it." |
 | `IMPLAUSIBLE` | the gap moved past the sanity bound | "That reading jumped too far to trust. Re-measure without turning." |
 | `BASELINE` / `UNREPEATABLE` | a round of the baseline pair | none / the repeatability line |
 
-**Sanity bound.** A gap move above max(`IMPLAUSIBLE_MIN_HZ` 6, `IMPLAUSIBLE_RATE_FACTOR` 3 x
-turns x Hz per turn), or `IMPLAUSIBLE_MIN_HZ` x max(1, turns) without a rate, is a measurement
+**Sanity bound.** A gap move above max(`kImplausibleMinHz` 6, `kImplausibleRateFactor` 3 x
+turns x Hz per turn), or `kImplausibleMinHz` x max(1, turns) without a rate, is a measurement
 fault: the reading is dropped (gap, previous gap, gauge and rate unchanged) and the round's
 turns stay pending into the next round's rate sample. `NO_PEAK`, `OUT_OF_WINDOW` and
 `IMPLAUSIBLE` all carry their turns forward.
@@ -448,9 +448,9 @@ turns stay pending into the next round's rate sample. `NO_PEAK`, `OUT_OF_WINDOW`
 
 On SCREW printers each measured round after recorded turns yields `|gap move| / turns` Hz per
 turn (`hz_per_turn` is the median; the calibration seeds the first). The advice is
-`|gap| / rate` in `TURN_STEP` quarters, clamped to `TURN_MIN` (½) .. `TURN_MAX` (2), with
-`TURN_MIN_NEAR` (¼) allowed once `|gap|` is under `NEAR_MATCH_FACTOR` (1.5) x tolerance.
-Without a rate the first advice is `FIRST_TURN` (1), and after a `NO_MOVEMENT` round it
+`|gap| / rate` in `kTurnStep` quarters, clamped to `kTurnMin` (½) .. `kTurnMax` (2), with
+`kTurnMinNear` (¼) allowed once `|gap|` is under `kNearMatchFactor` (1.5) x tolerance.
+Without a rate the first advice is `kFirstTurn` (1), and after a `NO_MOVEMENT` round it
 doubles the turn that did nothing. The rate line shows one decimal ("~1.7 Hz / turn"); on the
 Voron one full turn moved the gap 2-3 Hz once settled, so ⅛ and ¼ steps (0.3-0.7 Hz) cannot
 be seen.
@@ -465,7 +465,7 @@ Amounts are formatted by `format_belt_turns`, rounded to quarters.
 
 ### Power hint
 
-When the zone's in-plane power differs by more than `POWER_HINT_RATIO` (3x) between the paths
+When the zone's in-plane power differs by more than `kPowerHintRatio` (3x) between the paths
 (`power_hint`, over the latest curves measured across the zone), TUNING shows a second warning
 row under the shape warning: "Path B resonates much more than A at N Hz. That points at a
 mechanical difference (pulley grub screws, idler bearings, belt tracking), not tension." It
@@ -502,10 +502,10 @@ sweep is still running.
 | Kind | Printers | Advice |
 |------|----------|--------|
 | `SCREW` | Voron 2.4 and Trident (`belt_tensioner: "screw"` in `assets/config/printer_database.json`) | Calibration by one full turn; then direction plus an amount in turns, the stepper, the learned Hz per turn |
-| `SPRING` | none in the database yet | No calibration: the strongest candidate is the zone. Direction only: "Release X's tensioner, let the spring settle, lock it". Two rounds without improvement (`SPRING_STALL_ROUNDS`) show the mechanical hint |
+| `SPRING` | none in the database yet | No calibration: the strongest candidate is the zone. Direction only: "Release X's tensioner, let the spring settle, lock it". Two rounds without improvement (`kSpringStallRounds`) show the mechanical hint |
 | `UNKNOWN` | everything else | Calibration in words ("Tighten X noticeably"); then direction only, "Tighten X" / "Loosen X" |
 
-SCREW printers show the mechanical hint after `STALL_ROUNDS` (8) unmatched rounds in a zone.
+SCREW printers show the mechanical hint after `kStallRounds` (8) unmatched rounds in a zone.
 Add `"belt_tensioner": "screw"` to a database entry only once the printer is known to have a
 screw tensioner with a repeatable relation between turns and frequency.
 
@@ -515,10 +515,10 @@ screw tensioner with a repeatable relation between turns and frequency.
 a matched band of +- tolerance around the centre, a filled needle at this round's gap, a
 hollow needle at the previous round's and an arrow between them, and no text. The track's
 half-span is `tune_gauge_range_hz_`, set at the zone's first measurement
-(`reset_tune_gauge_range`) to the larger of `2 * GAUGE_WARN_HZ` and 1.25 x the first gap, so
+(`reset_tune_gauge_range`) to the larger of `2 * kGaugeWarnHz` and 1.25 x the first gap, so
 the needle stays on the track while it closes. `belt_gap_gauge_x` maps a gap to a pixel
 (centred at zero, clamped to the ends); `belt_gap_severity` classifies it as `MATCHED`,
-`NEAR` (up to `GAUGE_WARN_HZ`, 3 Hz) or `FAR`, and the panel maps that to colour through
+`NEAR` (up to `kGaugeWarnHz`, 3 Hz) or `FAR`, and the panel maps that to colour through
 `bt_tune_severity`.
 
 ### Compact layouts
@@ -579,25 +579,25 @@ sessions below and remain provisional until more printers have run the loop
 
 | Constant | Value | Role |
 |----------|-------|------|
-| `ZONE_MIN_AMPLITUDE_FRACTION` | 0.20 | peaks under this fraction of the stronger path's in-band in-plane maximum never define a zone |
-| `IN_PLANE_MIN_FRACTION` | 0.5 | a peak defines a zone only where psd_x + psd_y is at least this share of psd_xyz |
-| `ZONE_HALF_MIN_HZ` / `ZONE_MARGIN_HZ` | 10 / 5 Hz | narrowest zone half-width / reach beyond the zone's peaks |
-| `ZONE_FALLBACK_MAX_HZ` | 30 Hz | how close the other path's peak must be to steer an unpaired tallest peak |
-| `MAX_ZONE_CANDIDATES` | 4 | zones a calibration turn tests |
-| `ZONE_SWEEP_MARGIN_HZ` / `ZONE_SWEEP_TOP_MARGIN_HZ` | 10 / 20 Hz | narrow sweep reach below / above the zone, inside the printer's range |
-| `CALIBRATION_TURNS` / `CALIBRATION_MAX_STEPS` | 1 turn / 2 | one calibration step / steps before NO_ZONE |
-| `CALIBRATION_MIN_MOVE_HZ` | 1.5 Hz | a calibration move under this is run-to-run wander; also the already-matched threshold's floor |
-| `MATCHED_MIN_HZ` | 1 Hz | matched tolerance floor (the tolerance is at least the mean bin spacing) |
-| `MIN_MOVE_HZ` | 0.8 Hz | smaller gap moves are noise |
-| `FIRST_TURN` / `TURN_STEP` / `TURN_MIN` / `TURN_MIN_NEAR` / `TURN_MAX` | 1 / ¼ / ½ / ¼ / 2 turns | SCREW amounts |
-| `NEAR_MATCH_FACTOR` | 1.5 | below this multiple of the tolerance, `TURN_MIN_NEAR` is allowed |
-| `IMPLAUSIBLE_MIN_HZ` / `IMPLAUSIBLE_RATE_FACTOR` | 6 Hz / 3 | the sanity bound |
-| `POWER_HINT_RATIO` | 3 | zone power ratio that shows the power hint |
-| `REPEAT_MAX_GAP_HZ` / `REPEAT_MAX_POWER_RATIO` | 1.5 Hz / 2 | a baseline pair disagreeing by more is UNREPEATABLE |
-| `STALL_ROUNDS` / `SPRING_STALL_ROUNDS` | 8 / 2 | unmatched rounds before the mechanical hint (screw / spring) |
-| `PEAK_MIN_PROMINENCE` | 1.5x | a zone's maximum must stand this far over the unexcited floor |
-| `UNEXCITED_MIN_BINS` | 8 | in-band bins outside the swept range needed to measure the floor |
-| `GAUGE_WARN_HZ` | 3 Hz | gap gauge: warning colour up to here |
+| `kZoneMinAmplitudeFraction` | 0.20 | peaks under this fraction of the stronger path's in-band in-plane maximum never define a zone |
+| `kInPlaneMinFraction` | 0.5 | a peak defines a zone only where psd_x + psd_y is at least this share of psd_xyz |
+| `kZoneHalfMinHz` / `kZoneMarginHz` | 10 / 5 Hz | narrowest zone half-width / reach beyond the zone's peaks |
+| `kZoneFallbackMaxHz` | 30 Hz | how close the other path's peak must be to steer an unpaired tallest peak |
+| `kMaxZoneCandidates` | 4 | zones a calibration turn tests |
+| `kZoneSweepMarginHz` / `kZoneSweepTopMarginHz` | 10 / 20 Hz | narrow sweep reach below / above the zone, inside the printer's range |
+| `kCalibrationTurns` / `kCalibrationMaxSteps` | 1 turn / 2 | one calibration step / steps before NO_ZONE |
+| `kCalibrationMinMoveHz` | 1.5 Hz | a calibration move under this is run-to-run wander; also the already-matched threshold's floor |
+| `kMatchedMinHz` | 1 Hz | matched tolerance floor (the tolerance is at least the mean bin spacing) |
+| `kMinMoveHz` | 0.8 Hz | smaller gap moves are noise |
+| `kFirstTurn` / `kTurnStep` / `kTurnMin` / `kTurnMinNear` / `kTurnMax` | 1 / ¼ / ½ / ¼ / 2 turns | SCREW amounts |
+| `kNearMatchFactor` | 1.5 | below this multiple of the tolerance, `kTurnMinNear` is allowed |
+| `kImplausibleMinHz` / `kImplausibleRateFactor` | 6 Hz / 3 | the sanity bound |
+| `kPowerHintRatio` | 3 | zone power ratio that shows the power hint |
+| `kRepeatMaxGapHz` / `kRepeatMaxPowerRatio` | 1.5 Hz / 2 | a baseline pair disagreeing by more is UNREPEATABLE |
+| `kStallRounds` / `kSpringStallRounds` | 8 / 2 | unmatched rounds before the mechanical hint (screw / spring) |
+| `kPeakMinProminence` | 1.5x | a zone's maximum must stand this far over the unexcited floor |
+| `kUnexcitedMinBins` | 8 | in-band bins outside the swept range needed to measure the floor |
+| `kGaugeWarnHz` | 3 Hz | gap gauge: warning colour up to here |
 
 ### What the hardware data says
 
@@ -622,7 +622,7 @@ Read this before tuning any threshold. The captures are fixtures in
 
 One turn did not register on the Voron, and a no-turn repeat moved the same zone's gap almost
 2 Hz, so on that printer the first calibration turn will often report "didn't register". That
-is the rule working; do not lower `CALIBRATION_MIN_MOVE_HZ` to make it register. After the
+is the rule working; do not lower `kCalibrationMinMoveHz` to make it register. After the
 Voron's mechanical fix, a full turn of A moved nothing in 120-133 Hz, and NO_ZONE after two
 steps is the honest answer there. A rigid-toolhead K1C gives one clean, repeatable peak per
 belt.

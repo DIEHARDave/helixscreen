@@ -586,6 +586,7 @@ TEST_CASE("WiFiManager::connect threads the hidden-network flag to the backend",
             reported_success = success;
         },
         /*is_hidden=*/true);
+    REQUIRE(WiFiManagerTestAccess::settle(manager));
     REQUIRE(refused);
     REQUIRE_FALSE(reported_success);
     CHECK(raw->last_connect_hidden());
@@ -593,6 +594,7 @@ TEST_CASE("WiFiManager::connect threads the hidden-network flag to the backend",
     // The default stays "visible": a scan-list connect must not ask for a
     // hidden association.
     manager.connect("NotInScanList", "pw", [](bool, const std::string&, WiFiResult) {});
+    REQUIRE(WiFiManagerTestAccess::settle(manager));
     CHECK_FALSE(raw->last_connect_hidden());
 
     helix::ui::UpdateQueue::instance().drain();
@@ -1040,9 +1042,9 @@ TEST_CASE("READY reasserts a stored WiFi-off setting onto the backend when a wir
     WiFiManager manager(std::move(backend));
 
     // start_async() (called from the constructor) fires READY synchronously
-    // for the mock backend, but the reassert itself is only queued, not run —
-    // drain to let it land.
-    helix::ui::UpdateQueue::instance().drain();
+    // for the mock backend, but the reassert itself is only queued, and its
+    // radio change runs on the control lane — settle to let both land.
+    REQUIRE(WiFiManagerTestAccess::settle(manager));
 
     CHECK_FALSE(raw->is_radio_enabled());
     // A wired fallback exists, so the stored "off" choice is honoured as-is —
@@ -1080,7 +1082,7 @@ TEST_CASE("READY refuses to disable the radio with no wired fallback, and correc
     REQUIRE(raw->is_radio_enabled());
 
     WiFiManager manager(std::move(backend));
-    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(WiFiManagerTestAccess::settle(manager));
 
     CHECK(raw->is_radio_enabled());
     CHECK(SystemSettingsManager::instance().get_wifi_enabled());
@@ -1113,7 +1115,7 @@ TEST_CASE("READY refuses to disable the radio when interface resolution is incon
     REQUIRE(raw->is_radio_enabled());
 
     WiFiManager manager(std::move(backend));
-    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(WiFiManagerTestAccess::settle(manager));
 
     CHECK(raw->is_radio_enabled());
     CHECK(SystemSettingsManager::instance().get_wifi_enabled());
@@ -1153,9 +1155,9 @@ TEST_CASE("READY clears a stale soft radio block when the stored setting is WiFi
     WiFiManager manager(std::move(backend));
 
     // start_async() (called from the constructor) fires READY synchronously
-    // for the mock backend, but the reassert itself is only queued, not run —
-    // drain to let it land.
-    helix::ui::UpdateQueue::instance().drain();
+    // for the mock backend, but the reassert itself is only queued, and its
+    // radio change runs on the control lane — settle to let both land.
+    REQUIRE(WiFiManagerTestAccess::settle(manager));
 
     CHECK(raw->is_radio_enabled());
     CHECK(SystemSettingsManager::instance().get_wifi_enabled());
@@ -1183,7 +1185,7 @@ TEST_CASE("READY leaves an already-enabled radio alone when the stored setting i
     REQUIRE(raw->is_radio_enabled());
 
     WiFiManager manager(std::move(backend));
-    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(WiFiManagerTestAccess::settle(manager));
 
     CHECK(raw->is_radio_enabled());
     CHECK(SystemSettingsManager::instance().get_wifi_enabled());
@@ -1269,7 +1271,7 @@ TEST_CASE("READY refusal path also clears a stale radio block, not just the stor
     REQUIRE_FALSE(raw->is_radio_enabled());
 
     WiFiManager manager(std::move(backend));
-    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(WiFiManagerTestAccess::settle(manager));
 
     CHECK(raw->is_radio_enabled());
     CHECK(SystemSettingsManager::instance().get_wifi_enabled());
@@ -1373,6 +1375,7 @@ TEST_CASE("forget on a backend that cannot forget informs, and never blames the 
             called = true;
             reported_success = ok;
         });
+        REQUIRE(WiFiManagerTestAccess::settle(manager));
 
         CHECK(called);
         // Still not a success — nothing was forgotten, and saying otherwise is
@@ -1393,6 +1396,7 @@ TEST_CASE("forget on a backend that cannot forget informs, and never blames the 
 
         ToastCounter toasts;
         manager.forget("Anything", nullptr);
+        REQUIRE(WiFiManagerTestAccess::settle(manager));
         CHECK(toasts.errors == 1);
         CHECK(toasts.infos == 0);
     }

@@ -377,11 +377,11 @@ auto slow_loader(std::chrono::milliseconds delay, size_t segments_per_layer,
     };
 }
 
-constexpr auto SLOW_LOAD = std::chrono::milliseconds(400);
+constexpr auto kSlowLoad = std::chrono::milliseconds(400);
 
 // Generous enough to absorb CI scheduling noise while still being far below
-// SLOW_LOAD — the bug produces ~SLOW_LOAD, the fix produces ~0.
-constexpr auto MUST_NOT_BLOCK = std::chrono::milliseconds(150);
+// kSlowLoad — the bug produces ~kSlowLoad, the fix produces ~0.
+constexpr auto kMustNotBlock = std::chrono::milliseconds(150);
 
 } // namespace
 
@@ -396,7 +396,7 @@ TEST_CASE("GCodeLayerCache does not serialise independent layers",
 
         std::atomic<bool> slow_started{false};
         std::thread loader_thread(
-            [&] { cache.get_or_load(0, slow_loader(SLOW_LOAD, 10, &slow_started)); });
+            [&] { cache.get_or_load(0, slow_loader(kSlowLoad, 10, &slow_started)); });
 
         while (!slow_started.load()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -410,27 +410,27 @@ TEST_CASE("GCodeLayerCache does not serialise independent layers",
 
         REQUIRE(hit.was_hit);
         REQUIRE(hit.segments != nullptr);
-        CHECK(elapsed < MUST_NOT_BLOCK);
+        CHECK(elapsed < kMustNotBlock);
     }
 
     SECTION("two different layers load concurrently, not back to back") {
         std::atomic<bool> first_started{false};
 
         const auto start = std::chrono::steady_clock::now();
-        std::thread a([&] { cache.get_or_load(0, slow_loader(SLOW_LOAD, 10, &first_started)); });
+        std::thread a([&] { cache.get_or_load(0, slow_loader(kSlowLoad, 10, &first_started)); });
 
         while (!first_started.load()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
-        std::thread b([&] { cache.get_or_load(1, slow_loader(SLOW_LOAD, 10)); });
+        std::thread b([&] { cache.get_or_load(1, slow_loader(kSlowLoad, 10)); });
         a.join();
         b.join();
         const auto elapsed = std::chrono::steady_clock::now() - start;
 
-        // Serialised: ~2x SLOW_LOAD. Overlapped: ~1x. Anything under 1.5x proves
+        // Serialised: ~2x kSlowLoad. Overlapped: ~1x. Anything under 1.5x proves
         // the second load was not waiting on the first one's lock.
-        CHECK(elapsed < SLOW_LOAD * 3 / 2);
+        CHECK(elapsed < kSlowLoad * 3 / 2);
         REQUIRE(cache.is_cached(0));
         REQUIRE(cache.is_cached(1));
     }
@@ -459,7 +459,7 @@ TEST_CASE("GCodeLayerCache try_get never loads", "[gcode][cache][threading][slow
 
         std::atomic<bool> slow_started{false};
         std::thread loader_thread(
-            [&] { cache.get_or_load(0, slow_loader(SLOW_LOAD, 10, &slow_started)); });
+            [&] { cache.get_or_load(0, slow_loader(kSlowLoad, 10, &slow_started)); });
 
         while (!slow_started.load()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -472,7 +472,7 @@ TEST_CASE("GCodeLayerCache try_get never loads", "[gcode][cache][threading][slow
         loader_thread.join();
 
         REQUIRE(segments != nullptr);
-        CHECK(elapsed < MUST_NOT_BLOCK);
+        CHECK(elapsed < kMustNotBlock);
     }
 }
 

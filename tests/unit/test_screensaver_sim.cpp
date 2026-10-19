@@ -1,7 +1,7 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/screensaver_sim_kit.h"
@@ -23,12 +23,12 @@ using StarAccess = StarfieldScreensaverTestAccess;
 
 namespace {
 
-constexpr uint32_t FRAME_W = 320;
-constexpr uint32_t FRAME_H = 200;
+constexpr uint32_t kFrameW = 320;
+constexpr uint32_t kFrameH = 200;
 
 /// A frame painted opaque black, as the canvas hands one to a saver.
 struct Frame : helix::test::TestFrame {
-    Frame() : TestFrame(FRAME_W, FRAME_H, helix::ui::PixelFormat::XRGB8888) {
+    Frame() : TestFrame(kFrameW, kFrameH, helix::ui::PixelFormat::XRGB8888) {
         helix::ui::PixelWriter(target).fill(helix::ui::Rgb{0, 0, 0});
     }
 };
@@ -63,7 +63,7 @@ TEST_CASE("StarfieldSim dirties only around stars near the centre",
     }
     REQUIRE_FALSE(span.empty());
     const int64_t area = static_cast<int64_t>(span.x2 - span.x1 + 1) * (span.y2 - span.y1 + 1);
-    CHECK(area < static_cast<int64_t>(FRAME_W) * FRAME_H / 100);
+    CHECK(area < static_cast<int64_t>(kFrameW) * kFrameH / 100);
 }
 
 TEST_CASE("init places a full population whatever count the last run flew",
@@ -78,7 +78,7 @@ TEST_CASE("init places a full population whatever count the last run flew",
     // A saver re-initialises on every start, and the level it last ran at must not
     // survive into the new run.
     sim.init(frame.target, rng, 0);
-    CHECK(sim.active_count() == StarfieldSim::NUM_STARS);
+    CHECK(sim.active_count() == StarfieldSim::kNumStars);
 
     std::vector<DirtyRect> dirty;
     sim.step(33, frame.target, rng, dirty);
@@ -98,17 +98,17 @@ TEST_CASE("a scattered sky reports one small rect per star", "[screensaver][star
     // A spread population pushes many rects, each clipped to the frame, whose summed
     // area is a small fraction of it - not one box spanning the screen.
     REQUIRE(dirty.size() > 32);
-    CHECK(dirty.size() <= helix::ui::SAVER_MAX_DIRTY_AREAS);
+    CHECK(dirty.size() <= helix::ui::kSaverMaxDirtyAreas);
     int64_t covered = 0;
     for (const DirtyRect& r : dirty) {
         CAPTURE(r.x1, r.y1, r.x2, r.y2);
         CHECK(r.x1 >= 0);
         CHECK(r.y1 >= 0);
-        CHECK(r.x2 < static_cast<int32_t>(FRAME_W));
-        CHECK(r.y2 < static_cast<int32_t>(FRAME_H));
+        CHECK(r.x2 < static_cast<int32_t>(kFrameW));
+        CHECK(r.y2 < static_cast<int32_t>(kFrameH));
         covered += r.area();
     }
-    CHECK(covered * 20 < static_cast<int64_t>(FRAME_W) * FRAME_H);
+    CHECK(covered * 20 < static_cast<int64_t>(kFrameW) * kFrameH);
 }
 
 TEST_CASE("a star's size spans the full 1..3 pixels of its depth range",
@@ -152,14 +152,14 @@ TEST_CASE("the active star count sets how many rects a frame pushes",
     }
     std::vector<DirtyRect> dirty;
 
-    for (const int count : {StarfieldSim::NUM_STARS, 96, 64, 32}) {
+    for (const int count : {StarfieldSim::kNumStars, 96, 64, 32}) {
         CAPTURE(count);
         sim.set_active_count(count);
         sim.step(33, frame.target, rng, dirty); // stars parked by the change erase here
         sim.step(33, frame.target, rng, dirty);
         CHECK(sim.active_count() == count);
         CHECK(dirty.size() == static_cast<size_t>(count));
-        CHECK(dirty.size() <= helix::ui::SAVER_MAX_DIRTY_AREAS);
+        CHECK(dirty.size() <= helix::ui::kSaverMaxDirtyAreas);
     }
 
     sim.set_active_count(0);
@@ -219,7 +219,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     step_frame();
     // One area per star, never the single spanning box a scattered sky would force.
     CHECK(invalidated.areas.size() == 150);
-    CHECK(invalidated.areas.size() <= helix::ui::SAVER_MAX_DIRTY_AREAS);
+    CHECK(invalidated.areas.size() <= helix::ui::kSaverMaxDirtyAreas);
 
     const int level_stars[] = {150, 96, 64, 32};
     for (size_t level = 1; level < ss.level_count(); level++) {
@@ -229,7 +229,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
         step_frame(); // the stars the rung parks erase here
         step_frame();
         CHECK(invalidated.areas.size() == static_cast<size_t>(level_stars[level]));
-        CHECK(invalidated.areas.size() <= helix::ui::SAVER_MAX_DIRTY_AREAS);
+        CHECK(invalidated.areas.size() <= helix::ui::kSaverMaxDirtyAreas);
     }
     CHECK(ss.level() == 3);
 }

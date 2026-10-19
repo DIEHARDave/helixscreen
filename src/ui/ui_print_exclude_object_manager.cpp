@@ -25,7 +25,7 @@ namespace helix::ui {
 // ============================================================================
 
 /// Undo window duration in milliseconds
-constexpr uint32_t EXCLUDE_UNDO_WINDOW_MS = 5000;
+constexpr uint32_t kExcludeUndoWindowMs = 5000;
 
 // ============================================================================
 // PrintExcludeObjectManager Implementation
@@ -230,7 +230,7 @@ void PrintExcludeObjectManager::handle_exclude_confirmed() {
     if (exclude_undo_timer_) {
         lv_timer_delete(exclude_undo_timer_);
     }
-    exclude_undo_timer_ = lv_timer_create(exclude_undo_timer_cb, EXCLUDE_UNDO_WINDOW_MS, this);
+    exclude_undo_timer_ = lv_timer_create(exclude_undo_timer_cb, kExcludeUndoWindowMs, this);
     lv_timer_set_repeat_count(exclude_undo_timer_, 1);
 
     // Show toast with "Undo" action button
@@ -246,10 +246,10 @@ void PrintExcludeObjectManager::handle_exclude_confirmed() {
                 self->handle_exclude_undo();
             }
         },
-        this, EXCLUDE_UNDO_WINDOW_MS);
+        this, kExcludeUndoWindowMs);
 
     spdlog::info("[PrintExcludeObjectManager] Started {}ms undo window for '{}'",
-                 EXCLUDE_UNDO_WINDOW_MS, pending_exclude_object_);
+                 kExcludeUndoWindowMs, pending_exclude_object_);
 }
 
 void PrintExcludeObjectManager::handle_exclude_cancelled() {

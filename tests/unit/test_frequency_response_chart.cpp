@@ -190,7 +190,7 @@ TEST_CASE_METHOD(FrequencyResponseChartTestFixture, "Remove series cleans up",
     }
 
     SECTION("Every series the results card needs fits without exhaustion") {
-        // Raw PSD + up to MAX_SHAPERS (11) fitted curves + the live-before
+        // Raw PSD + up to kMaxShapers (11) fitted curves + the live-before
         // overlay: a Kalico CSV with 11 fitted columns must not silently drop
         // the last-added series.
         int last_id = -1;
@@ -387,7 +387,7 @@ TEST_CASE_METHOD(FrequencyResponseChartTestFixture,
         // We verify this indirectly - if get_max_points returns 200, the chart
         // should have limited the data to that
         size_t max_points = ui_frequency_response_chart_get_max_points(chart);
-        REQUIRE(max_points == PlatformCapabilities::STANDARD_CHART_POINTS);
+        REQUIRE(max_points == PlatformCapabilities::kStandardChartPoints);
     }
 
     SECTION("Data with 100 points on STANDARD tier keeps all points (no downsampling)") {
@@ -406,7 +406,7 @@ TEST_CASE_METHOD(FrequencyResponseChartTestFixture,
                                                              input_count));
         // No downsampling needed - 100 < 200; max_points still reflects tier
         REQUIRE(ui_frequency_response_chart_get_max_points(chart) ==
-                PlatformCapabilities::STANDARD_CHART_POINTS);
+                PlatformCapabilities::kStandardChartPoints);
     }
 
     ui_frequency_response_chart_destroy(chart);
@@ -632,7 +632,7 @@ TEST_CASE_METHOD(FrequencyResponseChartTestFixture,
 
     REQUIRE(ui_frequency_response_chart_is_chart_mode(chart) == true);
     REQUIRE(ui_frequency_response_chart_get_max_points(chart) ==
-            PlatformCapabilities::STANDARD_CHART_POINTS);
+            PlatformCapabilities::kStandardChartPoints);
 
     ui_frequency_response_chart_destroy(chart);
 }
@@ -646,7 +646,7 @@ TEST_CASE_METHOD(FrequencyResponseChartTestFixture, "Configure for BASIC tier li
 
     REQUIRE(ui_frequency_response_chart_is_chart_mode(chart) == true);
     REQUIRE(ui_frequency_response_chart_get_max_points(chart) ==
-            PlatformCapabilities::BASIC_CHART_POINTS);
+            PlatformCapabilities::kBasicChartPoints);
 
     ui_frequency_response_chart_destroy(chart);
 }
@@ -662,7 +662,7 @@ TEST_CASE_METHOD(FrequencyResponseChartTestFixture,
     // EMBEDDED tier now uses chart mode with same limits as BASIC
     REQUIRE(ui_frequency_response_chart_is_chart_mode(chart) == true);
     REQUIRE(ui_frequency_response_chart_get_max_points(chart) ==
-            PlatformCapabilities::BASIC_CHART_POINTS);
+            PlatformCapabilities::kBasicChartPoints);
 
     ui_frequency_response_chart_destroy(chart);
 }
@@ -685,7 +685,7 @@ TEST_CASE_METHOD(FrequencyResponseChartTestFixture, "Get max points returns tier
     SECTION("EMBEDDED tier returns 50 points (same as BASIC)") {
         ui_frequency_response_chart_configure_for_platform(chart, PlatformTier::EMBEDDED);
         REQUIRE(ui_frequency_response_chart_get_max_points(chart) ==
-                PlatformCapabilities::BASIC_CHART_POINTS);
+                PlatformCapabilities::kBasicChartPoints);
     }
 
     SECTION("Get max points from NULL chart returns 0") {
@@ -784,7 +784,7 @@ TEST_CASE_METHOD(FrequencyResponseChartTestFixture, "EMBEDDED tier downsamples l
 
         // EMBEDDED tier now uses chart mode with same limits as BASIC
         REQUIRE(ui_frequency_response_chart_get_max_points(chart) ==
-                PlatformCapabilities::BASIC_CHART_POINTS);
+                PlatformCapabilities::kBasicChartPoints);
         REQUIRE(ui_frequency_response_chart_is_chart_mode(chart) == true);
     }
 
@@ -1021,7 +1021,7 @@ TEST_CASE_METHOD(FrequencyResponseChartTestFixture, "Stress tests",
         // After 150 tier switches, final state is EMBEDDED (last configured)
         REQUIRE(ui_frequency_response_chart_is_chart_mode(chart) == true);
         REQUIRE(ui_frequency_response_chart_get_max_points(chart) ==
-                PlatformCapabilities::BASIC_CHART_POINTS);
+                PlatformCapabilities::kBasicChartPoints);
     }
 
     ui_frequency_response_chart_destroy(chart);

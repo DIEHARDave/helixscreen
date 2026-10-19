@@ -36,7 +36,7 @@
 // what made this widget show/apply PLA while the filament panel — which reads
 // the user's configured presets — showed the material the user actually
 // assigned to the slot.
-static constexpr int PRESET_COUNT = helix::presets::PRESET_COUNT;
+static constexpr int kPresetCount = helix::presets::kPresetCount;
 
 // Static instance for callback dispatch (one preheat widget at a time)
 static helix::PreheatWidget* s_active_instance = nullptr;
@@ -67,7 +67,7 @@ void PreheatWidget::set_config(const nlohmann::json& config) {
     config_ = config;
     if (config_.contains("material_index") && config_["material_index"].is_number_integer()) {
         selected_material_ = config_["material_index"].get<int>();
-        if (selected_material_ < 0 || selected_material_ >= PRESET_COUNT) {
+        if (selected_material_ < 0 || selected_material_ >= kPresetCount) {
             selected_material_ = 0;
         }
     }
@@ -273,7 +273,7 @@ void PreheatWidget::handle_selection_changed() {
         return;
 
     uint32_t idx = ui_split_button_get_selected(split_btn_);
-    if (idx < static_cast<uint32_t>(PRESET_COUNT)) {
+    if (idx < static_cast<uint32_t>(kPresetCount)) {
         selected_material_ = static_cast<int>(idx);
         update_button_label();
 

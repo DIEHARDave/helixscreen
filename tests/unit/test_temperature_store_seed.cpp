@@ -8,7 +8,7 @@
  * Covers:
  * - TemperatureHistoryManager::seed_from_store: fill-empty, decidegree
  *   conversion, 1 Hz backfill timestamps, sensor-only (target 0), and the
- *   HISTORY_SIZE cap.
+ *   kHistorySize cap.
  * - The two properties the seed merge must hold at the SAME time (#1245):
  *   no near-duplicate timestamps where the store and live samples overlap, and
  *   no loss of local history older than the store window. Seeding re-runs on
@@ -171,10 +171,10 @@ TEST_CASE_METHOD(TempStoreSeedTestFixture,
                  "seed_from_store keeps local history older than the store window",
                  "[temp][seed][1245]") {
     // Ten minutes of local history, recorded at 1 Hz, ending 10 minutes ago.
-    // add_sample_internal throttles to SAMPLE_INTERVAL_MS, so space them.
-    constexpr int LOCAL_COUNT = 20;
+    // add_sample_internal throttles to kSampleIntervalMs, so space them.
+    constexpr int kLocalCount = 20;
     const int64_t local_start = NOW - 600000; // 10 min back
-    for (int i = 0; i < LOCAL_COUNT; ++i) {
+    for (int i = 0; i < kLocalCount; ++i) {
         REQUIRE(TemperatureHistoryManagerTestAccess::add_sample(
             *manager_, "extruder", 2000 + i, 2100, local_start + static_cast<int64_t>(i) * 1000));
     }
@@ -187,14 +187,14 @@ TEST_CASE_METHOD(TempStoreSeedTestFixture,
     auto s = manager_->get_samples_since("extruder", 0);
 
     // Nothing older than the store window was thrown away.
-    REQUIRE(s.size() == static_cast<size_t>(LOCAL_COUNT) + 3);
+    REQUIRE(s.size() == static_cast<size_t>(kLocalCount) + 3);
     REQUIRE(s.front().timestamp_ms == local_start);
     REQUIRE(s.front().temp_deci == 2000);
-    REQUIRE(s[LOCAL_COUNT - 1].timestamp_ms == local_start + (LOCAL_COUNT - 1) * 1000);
+    REQUIRE(s[kLocalCount - 1].timestamp_ms == local_start + (kLocalCount - 1) * 1000);
 
     // The store's three samples are appended at the live edge.
-    REQUIRE(s[LOCAL_COUNT].timestamp_ms == NOW - 2000);
-    REQUIRE(s[LOCAL_COUNT].temp_deci == 250);
+    REQUIRE(s[kLocalCount].timestamp_ms == NOW - 2000);
+    REQUIRE(s[kLocalCount].temp_deci == 250);
     REQUIRE(s.back().timestamp_ms == NOW);
     REQUIRE(s.back().temp_deci == 260);
 
@@ -233,7 +233,7 @@ TEST_CASE_METHOD(TempStoreSeedTestFixture, "seed_from_store leaves no near-dupli
         INFO("pair " << i << ": " << s[i - 1].timestamp_ms << " -> " << s[i].timestamp_ms);
         REQUIRE(s[i].timestamp_ms > s[i - 1].timestamp_ms);
         REQUIRE((s[i].timestamp_ms - s[i - 1].timestamp_ms) >=
-                TemperatureHistoryManager::SAMPLE_INTERVAL_MS);
+                TemperatureHistoryManager::kSampleIntervalMs);
     }
 
     // The mid-flight live sample specifically is gone — no 50.0°C dip survives
@@ -287,11 +287,11 @@ TEST_CASE_METHOD(TempStoreSeedTestFixture, "seed_from_store leaves history alone
 }
 
 // ============================================================================
-// seed_from_store — HISTORY_SIZE cap keeps the newest samples
+// seed_from_store — kHistorySize cap keeps the newest samples
 // ============================================================================
 
 TEST_CASE_METHOD(TempStoreSeedTestFixture, "seed_from_store caps at HISTORY_SIZE", "[temp][seed]") {
-    const size_t n = TemperatureHistoryManager::HISTORY_SIZE + 100; // 1300
+    const size_t n = TemperatureHistoryManager::kHistorySize + 100; // 1300
     std::vector<float> temps;
     temps.reserve(n);
     for (size_t i = 0; i < n; ++i) {
@@ -302,22 +302,22 @@ TEST_CASE_METHOD(TempStoreSeedTestFixture, "seed_from_store caps at HISTORY_SIZE
     store["extruder"].temperatures = temps;
     manager_->seed_from_store(store, NOW);
 
-    REQUIRE(manager_->get_sample_count("extruder") == TemperatureHistoryManager::HISTORY_SIZE);
+    REQUIRE(manager_->get_sample_count("extruder") == TemperatureHistoryManager::kHistorySize);
 
     auto s = manager_->get_samples("extruder");
-    REQUIRE(s.size() == static_cast<size_t>(TemperatureHistoryManager::HISTORY_SIZE));
+    REQUIRE(s.size() == static_cast<size_t>(TemperatureHistoryManager::kHistorySize));
 
     // Newest kept == NOW; oldest kept dropped the first 100 synthesized points.
     REQUIRE(s.back().timestamp_ms == NOW);
     REQUIRE(s.front().timestamp_ms ==
-            NOW - static_cast<int64_t>(TemperatureHistoryManager::HISTORY_SIZE - 1) * 1000);
+            NOW - static_cast<int64_t>(TemperatureHistoryManager::kHistorySize - 1) * 1000);
 
     // Value identity of the retained window: newest is temps.back(), oldest
-    // kept is the original index (n - HISTORY_SIZE) == 100.
+    // kept is the original index (n - kHistorySize) == 100.
     REQUIRE(s.back().temp_deci == static_cast<int>(std::lround(temps.back() * 10.0f)));
     REQUIRE(
         s.front().temp_deci ==
-        static_cast<int>(std::lround(temps[n - TemperatureHistoryManager::HISTORY_SIZE] * 10.0f)));
+        static_cast<int>(std::lround(temps[n - TemperatureHistoryManager::kHistorySize] * 10.0f)));
 }
 
 // ============================================================================

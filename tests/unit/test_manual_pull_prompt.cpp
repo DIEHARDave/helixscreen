@@ -36,7 +36,7 @@ namespace {
 /// Substring of the prompt copy. Matching on a fragment rather than the whole
 /// string keeps this from failing on a wording tweak while still proving it is
 /// THIS notification and not some unrelated toast the fixture produced.
-constexpr const char* PROMPT_FRAGMENT = "clear of the toolhead";
+constexpr const char* kPromptFragment = "clear of the toolhead";
 
 class ManualPullFixture : public LVGLTestFixture {
   public:
@@ -48,7 +48,7 @@ class ManualPullFixture : public LVGLTestFixture {
         // pre-init startup queue — same idiom the WiFi warning tests use via
         // set_test_notification_warning_hook().
         helix::ui::set_test_notification_info_hook([this](const std::string& msg) {
-            if (msg.find(PROMPT_FRAGMENT) != std::string::npos) {
+            if (msg.find(kPromptFragment) != std::string::npos) {
                 ++prompts_;
             }
         });

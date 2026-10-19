@@ -837,7 +837,10 @@ void PrinterSession::teardown_printer_scope(TeardownScope scope, DisplayManager*
     // lv_deinit(). lv_subject_deinit() calls lv_observer_remove() for each observer, which
     // removes unsubscribe_on_delete_cb from widget event lists, so widgets then delete
     // without firing stale unsubscribe callbacks on corrupted linked lists.
-    StaticSubjectRegistry::instance().deinit_all();
+    // A switch spares the entries whose init the rebuild below does not re-run.
+    StaticSubjectRegistry::instance().deinit_all(exiting
+                                                     ? StaticSubjectRegistry::Scope::ProcessExit
+                                                     : StaticSubjectRegistry::Scope::PrinterSwitch);
 
     // Sweep any panel singleton a deinit callback lazily re-created on its way out (a
     // callback reaching through an auto-creating get_global_*_panel() getter builds a

@@ -25,7 +25,7 @@ struct PairHash {
 // Direct mappings for well-known Klipper object names
 // These take priority over all heuristics
 const std::unordered_map<std::pair<std::string, DeviceType>, std::string, PairHash>
-    DIRECT_MAPPINGS = {
+    kDirectMappings = {
         // Fans
         {{"fan", DeviceType::FAN}, "Part Cooling Fan"},
 
@@ -39,7 +39,7 @@ const std::unordered_map<std::pair<std::string, DeviceType>, std::string, PairHa
 };
 
 // Prefixes to strip from object names (the part before the space)
-const std::unordered_set<std::string> STRIP_PREFIXES = {
+const std::unordered_set<std::string> kStripPrefixes = {
     // Fans
     "heater_fan",
     "controller_fan",
@@ -62,7 +62,7 @@ const std::unordered_set<std::string> STRIP_PREFIXES = {
 };
 
 // Type suffixes to add (if not already present in the name)
-const std::unordered_map<DeviceType, std::string> TYPE_SUFFIXES = {
+const std::unordered_map<DeviceType, std::string> kTypeSuffixes = {
     {DeviceType::FAN, "Fan"},
     {DeviceType::HEATER, "Heater"},
     {DeviceType::TEMP_SENSOR, "Temperature"},
@@ -73,7 +73,7 @@ const std::unordered_map<DeviceType, std::string> TYPE_SUFFIXES = {
 
 // Words that indicate the type is already present (case-insensitive)
 // If any of these appear in the prettified name, don't add suffix
-const std::unordered_map<DeviceType, std::unordered_set<std::string>> SUFFIX_SKIP_WORDS = {
+const std::unordered_map<DeviceType, std::unordered_set<std::string>> kSuffixSkipWords = {
     {DeviceType::FAN, {"fan", "fans", "cooling", "exhaust", "blower"}},
     {DeviceType::HEATER, {"heater", "heat", "heating"}},
     {DeviceType::TEMP_SENSOR, {"temp", "temperature", "thermistor"}},
@@ -83,7 +83,7 @@ const std::unordered_map<DeviceType, std::unordered_set<std::string>> SUFFIX_SKI
 };
 
 // Special word replacements (case-insensitive input -> exact output)
-const std::unordered_map<std::string, std::string> SPECIAL_WORDS = {
+const std::unordered_map<std::string, std::string> kSpecialWords = {
     {"led", "LED"},
     {"leds", "LEDs"},
     {"psu", "PSU"},
@@ -117,8 +117,8 @@ const std::unordered_map<std::string, std::string> SPECIAL_WORDS = {
 
 // Check if the prettified name contains any of the skip words for this type
 bool contains_type_word(const std::string& pretty_name, DeviceType type) {
-    auto it = SUFFIX_SKIP_WORDS.find(type);
-    if (it == SUFFIX_SKIP_WORDS.end()) {
+    auto it = kSuffixSkipWords.find(type);
+    if (it == kSuffixSkipWords.end()) {
         return false;
     }
 
@@ -155,7 +155,7 @@ std::string extract_device_suffix(const std::string& object_name) {
     if (space_pos != std::string::npos && space_pos + 1 < object_name.length()) {
         // Check if prefix is one we should strip
         std::string prefix = object_name.substr(0, space_pos);
-        if (STRIP_PREFIXES.count(prefix) > 0) {
+        if (kStripPrefixes.count(prefix) > 0) {
             return object_name.substr(space_pos + 1);
         }
     }
@@ -177,9 +177,9 @@ std::string prettify_name(const std::string& snake_case_name) {
 
         // Check for special word replacement
         std::string lower_word = helix::text_io::to_lower(current_word);
-        auto it = SPECIAL_WORDS.find(lower_word);
+        auto it = kSpecialWords.find(lower_word);
 
-        if (it != SPECIAL_WORDS.end()) {
+        if (it != kSpecialWords.end()) {
             current_word = it->second;
         } else if (current_word.size() >= 2 &&
                    std::all_of(current_word.begin(), current_word.end(), [](unsigned char c) {
@@ -230,8 +230,8 @@ std::string get_display_name(const std::string& technical_name, DeviceType type)
     }
 
     // 1. Check direct mappings first (highest priority)
-    auto direct_it = DIRECT_MAPPINGS.find({technical_name, type});
-    if (direct_it != DIRECT_MAPPINGS.end()) {
+    auto direct_it = kDirectMappings.find({technical_name, type});
+    if (direct_it != kDirectMappings.end()) {
         return direct_it->second;
     }
 
@@ -239,8 +239,8 @@ std::string get_display_name(const std::string& technical_name, DeviceType type)
     std::string suffix = extract_device_suffix(technical_name);
 
     // 3. Check direct mappings again with just the suffix
-    direct_it = DIRECT_MAPPINGS.find({suffix, type});
-    if (direct_it != DIRECT_MAPPINGS.end()) {
+    direct_it = kDirectMappings.find({suffix, type});
+    if (direct_it != kDirectMappings.end()) {
         return direct_it->second;
     }
 
@@ -248,8 +248,8 @@ std::string get_display_name(const std::string& technical_name, DeviceType type)
     std::string pretty = prettify_name(suffix);
 
     // 5. Add type suffix if appropriate
-    auto suffix_it = TYPE_SUFFIXES.find(type);
-    if (suffix_it != TYPE_SUFFIXES.end() && !contains_type_word(pretty, type)) {
+    auto suffix_it = kTypeSuffixes.find(type);
+    if (suffix_it != kTypeSuffixes.end() && !contains_type_word(pretty, type)) {
         pretty += ' ';
         pretty += suffix_it->second;
     }

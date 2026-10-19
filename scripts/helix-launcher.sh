@@ -1315,7 +1315,7 @@ fi
 # Only retry on genuine crashes, NOT on signal-based exits (SIGTERM=143 from systemctl stop,
 # SIGKILL=137, SIGINT=130, SIGHUP=129). Crash signals: SIGABRT=134, SIGFPE=136, SIGBUS=138, SIGSEGV=139.
 #
-# 42 is helix-watchdog's RESTART_LOOP_EXIT_CODE: the supervisor already retried
+# 42 is helix-watchdog's kRestartLoopExitCode: the supervisor already retried
 # and concluded the failure will not resolve itself. Re-running the whole
 # watchdog against the fbdev binary just reproduces it, so it is excluded even
 # though it falls inside the 1..127 "worth retrying" range.

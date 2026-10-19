@@ -11,6 +11,7 @@
 #include "ui_temperature_utils.h"
 #include "ui_timer_guard.h"
 
+#include "ams_state.h"
 #include "app_globals.h"
 #include "callout_chip.h"
 #include "config.h"
@@ -83,9 +84,9 @@ constexpr const char* kLineNames[] = {"callout_line_nozzle", "callout_line_bed",
                                       "callout_line_chamber", "callout_line_fan",
                                       "callout_line_light"};
 
-constexpr lv_opa_t GLOW_OPA_LOW = 30;
-constexpr lv_opa_t GLOW_OPA_HIGH = 70;
-constexpr uint32_t GLOW_PULSE_MS = 900;
+constexpr lv_opa_t kGlowOpaLow = 30;
+constexpr lv_opa_t kGlowOpaHigh = 70;
+constexpr uint32_t kGlowPulseMs = 900;
 
 void glow_opa_anim_cb(void* glow, int32_t opa) {
     lv_obj_set_style_bg_opa(static_cast<lv_obj_t*>(glow), static_cast<lv_opa_t>(opa), 0);
@@ -256,6 +257,18 @@ void PrinterImageWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
         [](PrinterImageWidget* w, const char* /*type*/) { w->schedule_image_refresh(); },
         get_printer_state().get_subjects_lifetime());
 
+    hardware_observers_.clear();
+    AmsState& ams = AmsState::instance();
+    // Units report in after their backend registers, so the data revision is
+    // watched too: the image can only change once a unit is present.
+    for (lv_subject_t* s : {ams.get_backend_count_subject(), ams.get_ams_type_subject(),
+                            ams.get_ams_data_revision_subject()}) {
+        hardware_observers_.push_back(helix::ui::observe<int>(
+            s, this,
+            [](PrinterImageWidget* w, int /*value*/) { w->refresh_if_detected_image_changed(); },
+            ams.get_subjects_lifetime()));
+    }
+
     // A recycled instance's mode is the last tree's; hide the layer until the
     // timer has positioned this tree's chips.
     lv_subject_set_int(&s_printer_callout_mode, static_cast<int>(CalloutMode::ImageOnly));
@@ -270,6 +283,7 @@ void PrinterImageWidget::detach() {
     // UpdateQueue holds a weak alive token that this reset expires, so a
     // deferred refresh can't land on a detached tree.
     printer_type_observer_.reset();
+    hardware_observers_.clear();
     callout_observers_.clear();
     bed_temp_lt_.reset();
     bed_target_lt_.reset();
@@ -418,6 +432,15 @@ void PrinterImageWidget::refresh_printer_image() {
 
     // Schedule cache check after layout resolves
     schedule_cache_check();
+}
+
+void PrinterImageWidget::refresh_if_detected_image_changed() {
+    // Hardware subjects change on every connect; redrawing an unchanged image
+    // would drop its decoded copy for nothing.
+    if (!widget_obj_ || helix::PrinterImageManager::instance().get_displayed_image_path(
+                            printer_images::current_screen_width()) == current_source_path_)
+        return;
+    schedule_image_refresh();
 }
 
 void PrinterImageWidget::schedule_image_refresh() {
@@ -1211,9 +1234,9 @@ void PrinterImageWidget::set_glow_pulse(bool on) {
     lv_anim_t a;
     lv_anim_init(&a);
     lv_anim_set_var(&a, glow);
-    lv_anim_set_values(&a, GLOW_OPA_LOW, GLOW_OPA_HIGH);
-    lv_anim_set_duration(&a, GLOW_PULSE_MS);
-    lv_anim_set_playback_duration(&a, GLOW_PULSE_MS);
+    lv_anim_set_values(&a, kGlowOpaLow, kGlowOpaHigh);
+    lv_anim_set_duration(&a, kGlowPulseMs);
+    lv_anim_set_playback_duration(&a, kGlowPulseMs);
     lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
     lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
     lv_anim_set_exec_cb(&a, glow_opa_anim_cb);

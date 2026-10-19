@@ -53,8 +53,13 @@ class PrinterImageManager {
     /// screen_width determines 300px vs 150px variant.
     std::string get_active_image_path(int screen_width);
 
-    /// The image the home printer widget shows: the active image, else the one
-    /// auto-detected from the configured printer type.
+    /// The auto-detected image: the configured printer type's database image,
+    /// or the first of its `image_variants` the detected hardware matches.
+    /// Main thread only (reads AmsState's backends).
+    std::string get_detected_image_path(int screen_width);
+
+    /// The image the home printer widget shows: the active image, else
+    /// get_detected_image_path().
     std::string get_displayed_image_path(int screen_width);
 
     /// Set active image ID and persist to config.

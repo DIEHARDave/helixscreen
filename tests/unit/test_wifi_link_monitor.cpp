@@ -12,7 +12,7 @@ using namespace helix;
 
 namespace {
 
-constexpr const char* PROC_SAMPLE =
+constexpr const char* kProcSample =
     "Inter-| sta-|   Quality        |   Discarded packets               | Missed | WE\n"
     " face | tstat| link level noise |  nwid  crypt   frag  retry   misc | beacon | 22\n"
     " wlan0: 0000   58.  -52.  -256        0      0      0     17      3        4\n";
@@ -29,7 +29,7 @@ LinkSample sample(int64_t t, bool connected, int freq, std::optional<int> rssi) 
 } // namespace
 
 TEST_CASE("/proc/net/wireless parses quality, level and counters", "[wifi][link]") {
-    auto st = parse_proc_net_wireless(PROC_SAMPLE);
+    auto st = parse_proc_net_wireless(kProcSample);
     REQUIRE(st);
     CHECK(*st->link_quality == 58);
     CHECK(*st->rssi_dbm == -52);
@@ -79,9 +79,8 @@ TEST_CASE("link change classification", "[wifi][link]") {
 
 TEST_CASE("INFO rate limit", "[wifi][link]") {
     CHECK(link_info_allowed(LinkEvent::Disconnected, 100, std::nullopt));
-    CHECK_FALSE(
-        link_info_allowed(LinkEvent::Disconnected, 100 + LINK_INFO_MIN_INTERVAL_S - 1, 100));
-    CHECK(link_info_allowed(LinkEvent::Disconnected, 100 + LINK_INFO_MIN_INTERVAL_S, 100));
+    CHECK_FALSE(link_info_allowed(LinkEvent::Disconnected, 100 + kLinkInfoMinIntervalS - 1, 100));
+    CHECK(link_info_allowed(LinkEvent::Disconnected, 100 + kLinkInfoMinIntervalS, 100));
     // A restore is exempt so a logged drop always has its recovery.
     CHECK(link_info_allowed(LinkEvent::Reconnected, 101, 100));
 }

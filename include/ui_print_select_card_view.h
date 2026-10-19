@@ -134,14 +134,14 @@ class PrintSelectCardView : public ContainerDeleteNet {
 
     // === Configuration ===
 
-    static constexpr int BUFFER_ROWS = 0;        ///< Extra rows above/below viewport
-    static constexpr int MIN_WIDTH = 150;        ///< Minimum card width
-    static constexpr int MAX_WIDTH = 230;        ///< Maximum card width
-    static constexpr int DEFAULT_HEIGHT = 245;   ///< Default card height
-    static constexpr int ROW_3_MIN_HEIGHT = 520; ///< Min height for 3-row layout
+    static constexpr int kBufferRows = 0;      ///< Extra rows above/below viewport
+    static constexpr int MIN_WIDTH = 150;      ///< Minimum card width
+    static constexpr int MAX_WIDTH = 230;      ///< Maximum card width
+    static constexpr int kDefaultHeight = 245; ///< Default card height
+    static constexpr int kRow3MinHeight = 520; ///< Min height for 3-row layout
 
-    static constexpr const char* COMPONENT_NAME = "print_file_card";
-    static constexpr const char* FOLDER_ICON = "A:assets/images/folder.png";
+    static constexpr const char* kComponentName = "print_file_card";
+    static constexpr const char* kFolderIcon = "A:assets/images/folder.png";
 
     /**
      * @brief Sentinel thumbnail path for files without an embedded thumbnail

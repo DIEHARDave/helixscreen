@@ -42,7 +42,7 @@
 
 using helix::DisplaySettingsManager;
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 #include "screensaver.h"
 #endif
 
@@ -72,7 +72,7 @@ class CountingPanel : public PanelBase {
     int deactivates = 0;
 };
 
-constexpr helix::PanelId TEST_PANEL = helix::PanelId::Home;
+constexpr helix::PanelId kTestPanel = helix::PanelId::Home;
 
 /// Available backlight so the screensaver-off idle path dims instead, which
 /// marks the display dimmed without suspending any lifecycle.
@@ -119,8 +119,8 @@ class SleepWakeFixture : public LVGLTestFixture {
             p = lv_obj_create(lv_screen_active());
         }
         nav.set_panels(root_panels_.data());
-        nav.register_panel_instance(TEST_PANEL, &panel_);
-        nav.set_active(TEST_PANEL);
+        nav.register_panel_instance(kTestPanel, &panel_);
+        nav.set_active(kTestPanel);
         helix::ui::UpdateQueue::instance().drain();
 
         // NavigationManager is a process singleton and suspend/resume latches on
@@ -135,14 +135,14 @@ class SleepWakeFixture : public LVGLTestFixture {
     }
 
     ~SleepWakeFixture() override {
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
         ScreensaverManager::instance().stop();
 #endif
         display_->inv_en_cnt = saved_inv_en_cnt_;
         auto& nav = NavigationManager::instance();
         // Leave the suspend latch cleared for the next test, whatever this one did.
         nav.resume_active();
-        nav.register_panel_instance(TEST_PANEL, nullptr);
+        nav.register_panel_instance(kTestPanel, nullptr);
         helix::ui::UpdateQueue::instance().drain();
         nav.deinit_subjects();
         // Leave DisplaySettingsManager initialized for the next fixture. A
@@ -163,7 +163,7 @@ class SleepWakeFixture : public LVGLTestFixture {
     }
 
     CountingPanel panel_;
-    std::array<lv_obj_t*, UI_PANEL_COUNT> root_panels_{};
+    std::array<lv_obj_t*, kUiPanelCount> root_panels_{};
     lv_display_t* display_ = nullptr;
     decltype(lv_display_t::inv_en_cnt) saved_inv_en_cnt_ = 0;
 
@@ -181,7 +181,7 @@ class SleepWakeFixture : public LVGLTestFixture {
 
 } // namespace
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 TEST_CASE_METHOD(SleepWakeFixture, "waking from sleep resumes the panel the screensaver suspended",
                  "[application][display][sleep][screensaver][wake]") {

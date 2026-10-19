@@ -1787,11 +1787,11 @@ helix::gcode::ReprintTarget PrintStatusPanel::reprint_target() const {
 
 void PrintStatusPanel::handle_reprint_button() {
     // Startup grace period: reject phantom clicks during early boot
-    auto elapsed = std::chrono::steady_clock::now() - app_constants::startup::PROCESS_START_TIME;
-    if (elapsed < app_constants::startup::PRINT_START_GRACE_PERIOD) {
+    auto elapsed = std::chrono::steady_clock::now() - app_constants::startup::kProcessStartTime;
+    if (elapsed < app_constants::startup::kPrintStartGracePeriod) {
         auto secs = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
         spdlog::warn("[{}] Rejected reprint during startup grace period ({}s < {}s)", get_name(),
-                     secs, app_constants::startup::PRINT_START_GRACE_PERIOD.count());
+                     secs, app_constants::startup::kPrintStartGracePeriod.count());
         return;
     }
 
@@ -2645,7 +2645,7 @@ void PrintStatusPanel::on_print_start_phase_changed(int phase) {
                     lv_subject_set_int(&self->preparing_visible_subject_, 1);
                 }
             },
-            PREPARING_SHOW_DELAY_MS, this);
+            kPreparingShowDelayMs, this);
         lv_timer_set_repeat_count(preparing_show_timer_, 1);
     }
 
@@ -2831,32 +2831,32 @@ void PrintStatusPanel::animate_badge_pop_in(lv_obj_t* badge, const char* label) 
         return;
     }
 
-    constexpr int32_t SCALE_FINAL = 256; // 100% scale
+    constexpr int32_t kScaleFinal = 256; // 100% scale
 
     // Skip animation if disabled - show badge in final state
     if (!DisplaySettingsManager::instance().get_animations_enabled()) {
-        lv_obj_set_style_transform_scale(badge, SCALE_FINAL, LV_PART_MAIN);
+        lv_obj_set_style_transform_scale(badge, kScaleFinal, LV_PART_MAIN);
         lv_obj_set_style_opa(badge, LV_OPA_COVER, LV_PART_MAIN);
         spdlog::debug("[{}] Animations disabled - showing {} badge instantly", get_name(), label);
         return;
     }
 
     // Pop-in animation: quick scale-up with overshoot, then settle
-    constexpr int32_t POP_DURATION_MS = 300;
-    constexpr int32_t SETTLE_DURATION_MS = 150;
-    constexpr int32_t SCALE_START = 128;     // 50% scale (128/256)
-    constexpr int32_t SCALE_OVERSHOOT = 282; // ~110% scale
+    constexpr int32_t kPopDurationMs = 300;
+    constexpr int32_t kSettleDurationMs = 150;
+    constexpr int32_t kScaleStart = 128;     // 50% scale (128/256)
+    constexpr int32_t kScaleOvershoot = 282; // ~110% scale
 
     // Start badge small and transparent
-    lv_obj_set_style_transform_scale(badge, SCALE_START, LV_PART_MAIN);
+    lv_obj_set_style_transform_scale(badge, kScaleStart, LV_PART_MAIN);
     lv_obj_set_style_opa(badge, LV_OPA_TRANSP, LV_PART_MAIN);
 
     // Stage 1: Scale up with overshoot + fade in
     lv_anim_t scale_anim;
     lv_anim_init(&scale_anim);
     lv_anim_set_var(&scale_anim, badge);
-    lv_anim_set_values(&scale_anim, SCALE_START, SCALE_OVERSHOOT);
-    lv_anim_set_duration(&scale_anim, POP_DURATION_MS);
+    lv_anim_set_values(&scale_anim, kScaleStart, kScaleOvershoot);
+    lv_anim_set_duration(&scale_anim, kPopDurationMs);
     lv_anim_set_path_cb(&scale_anim, lv_anim_path_overshoot);
     lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
         lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
@@ -2867,7 +2867,7 @@ void PrintStatusPanel::animate_badge_pop_in(lv_obj_t* badge, const char* label) 
     lv_anim_init(&fade_anim);
     lv_anim_set_var(&fade_anim, badge);
     lv_anim_set_values(&fade_anim, LV_OPA_TRANSP, LV_OPA_COVER);
-    lv_anim_set_duration(&fade_anim, POP_DURATION_MS);
+    lv_anim_set_duration(&fade_anim, kPopDurationMs);
     lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_out);
     lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
         lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
@@ -2879,9 +2879,9 @@ void PrintStatusPanel::animate_badge_pop_in(lv_obj_t* badge, const char* label) 
     lv_anim_t settle_anim;
     lv_anim_init(&settle_anim);
     lv_anim_set_var(&settle_anim, badge);
-    lv_anim_set_values(&settle_anim, SCALE_OVERSHOOT, SCALE_FINAL);
-    lv_anim_set_duration(&settle_anim, SETTLE_DURATION_MS);
-    lv_anim_set_delay(&settle_anim, POP_DURATION_MS);
+    lv_anim_set_values(&settle_anim, kScaleOvershoot, kScaleFinal);
+    lv_anim_set_duration(&settle_anim, kSettleDurationMs);
+    lv_anim_set_delay(&settle_anim, kPopDurationMs);
     lv_anim_set_path_cb(&settle_anim, lv_anim_path_ease_in_out);
     lv_anim_set_exec_cb(&settle_anim, [](void* obj, int32_t value) {
         lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);

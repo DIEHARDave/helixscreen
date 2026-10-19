@@ -258,7 +258,7 @@ TEST_CASE_METHOD(PrintStatsTileFixture, "print stats tile: day labels only at Fu
 TEST_CASE_METHOD(PrintStatsTileFixture, "print stats tile: tap opens the history dashboard",
                  "[widget_size][print_stats]") {
     helix::ui::destroy_static_panels();
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& p : panels)
         p = lv_obj_create(test_screen());
     NavigationManager::instance().set_panels(panels.data());

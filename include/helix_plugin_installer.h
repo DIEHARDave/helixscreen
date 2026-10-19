@@ -211,10 +211,10 @@ class HelixPluginInstaller {
     int script_timeout_seconds_ = 60;
 
     // Config key for "don't ask again" preference
-    static constexpr const char* PREF_INSTALL_DECLINED = "/plugin_install_declined";
+    static constexpr const char* kPrefInstallDeclined = "/plugin_install_declined";
 
     // Remote install URL
-    static constexpr const char* REMOTE_INSTALL_URL =
+    static constexpr const char* kRemoteInstallUrl =
         "https://raw.githubusercontent.com/prestonbrown/helixscreen/main/moonraker-plugin/"
         "remote-install.sh";
 };

@@ -47,7 +47,7 @@ void register_power_device_widget() {
 namespace {
 
 // Power-related icons for the picker grid
-static const char* const POWER_ICONS[] = {
+static const char* const kPowerIcons[] = {
     // clang-format off
     // Power symbols
     "power_cycle",       "power",              "power_on",            "power_off",
@@ -63,8 +63,8 @@ static const char* const POWER_ICONS[] = {
     "radiator",          "flash",              "electric_switch",
     // clang-format on
 };
-static constexpr size_t POWER_ICON_COUNT = std::size(POWER_ICONS);
-static constexpr const char* DEFAULT_ICON = "power_cycle";
+static constexpr size_t kPowerIconCount = std::size(kPowerIcons);
+static constexpr const char* kDefaultIcon = "power_cycle";
 
 } // namespace
 
@@ -104,7 +104,7 @@ void PowerDeviceWidget::set_config(const nlohmann::json& config) {
     }
     spdlog::debug("[PowerDeviceWidget] Config: {}={} icon={}", instance_id_,
                   device_name_.empty() ? "(unconfigured)" : device_name_,
-                  icon_name_.empty() ? DEFAULT_ICON : icon_name_);
+                  icon_name_.empty() ? kDefaultIcon : icon_name_);
     apply_status_presence();
 }
 
@@ -228,7 +228,7 @@ void PowerDeviceWidget::update_display(int status) {
 
     if (icon_obj_) {
         // Apply icon — for paired icons, toggle between on/off variants
-        const char* base_icon = icon_name_.empty() ? DEFAULT_ICON : icon_name_.c_str();
+        const char* base_icon = icon_name_.empty() ? kDefaultIcon : icon_name_.c_str();
         const char* effective_icon = power_resolve_icon_for_state(base_icon, status);
         helix::ui::icon::set_source(icon_obj_, effective_icon);
 
@@ -445,8 +445,8 @@ void PowerDeviceWidget::DevicePicker::on_created(lv_obj_t* backdrop) {
                 name == owner_.device_name_, pick_device);
     }
 
-    std::string effective_icon = owner_.icon_name_.empty() ? DEFAULT_ICON : owner_.icon_name_;
-    helix::ui::populate_icon_grid(icon_grid, POWER_ICONS, POWER_ICON_COUNT, effective_icon,
+    std::string effective_icon = owner_.icon_name_.empty() ? kDefaultIcon : owner_.icon_name_;
+    helix::ui::populate_icon_grid(icon_grid, kPowerIcons, kPowerIconCount, effective_icon,
                                   [this](const char* name) { owner_.select_icon(name); });
 
     lv_obj_t* sensor_section =
@@ -482,7 +482,7 @@ void PowerDeviceWidget::DevicePicker::refresh_icon_highlights() {
         return;
     }
     helix::ui::refresh_icon_grid(icon_grid,
-                                 owner_.icon_name_.empty() ? DEFAULT_ICON : owner_.icon_name_);
+                                 owner_.icon_name_.empty() ? kDefaultIcon : owner_.icon_name_);
 }
 
 void PowerDeviceWidget::select_sensor(const std::string& sensor_id) {
@@ -551,12 +551,12 @@ void PowerDeviceWidget::select_device(const std::string& name) {
 void PowerDeviceWidget::select_icon(const std::string& name) {
     // Store the ON variant so update_display can derive the OFF icon from the pair table
     std::string canonical(power_icon_to_on_variant(name.c_str()));
-    icon_name_ = (canonical == DEFAULT_ICON) ? "" : canonical;
+    icon_name_ = (canonical == kDefaultIcon) ? "" : canonical;
     save_config();
 
     // Update the widget icon immediately
     if (icon_obj_) {
-        const char* effective = icon_name_.empty() ? DEFAULT_ICON : icon_name_.c_str();
+        const char* effective = icon_name_.empty() ? kDefaultIcon : icon_name_.c_str();
         helix::ui::icon::set_source(icon_obj_, effective);
     }
 
@@ -575,7 +575,7 @@ void PowerDeviceWidget::save_config() {
         config["sensor"] = sensor_id_;
     save_widget_config(config);
     spdlog::debug("[PowerDeviceWidget] Saved config: {}={} icon={} sensor={}", instance_id_,
-                  device_name_, icon_name_.empty() ? DEFAULT_ICON : icon_name_,
+                  device_name_, icon_name_.empty() ? kDefaultIcon : icon_name_,
                   sensor_id_.empty() ? "(none)" : sensor_id_);
 }
 
@@ -675,7 +675,7 @@ void PowerDeviceWidget::update_all_devices_display(bool any_on) {
     }
 
     if (icon_obj_) {
-        const char* base_icon = icon_name_.empty() ? DEFAULT_ICON : icon_name_.c_str();
+        const char* base_icon = icon_name_.empty() ? kDefaultIcon : icon_name_.c_str();
         const char* effective_icon = power_resolve_icon_for_state(base_icon, any_on ? 1 : 0);
         helix::ui::icon::set_source(icon_obj_, effective_icon);
         helix::ui::icon::set_variant(icon_obj_, any_on ? "danger" : "muted");

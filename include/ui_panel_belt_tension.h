@@ -101,14 +101,14 @@ class BeltTensionPanel : public OverlayBase {
     /// A sweep that goes this long without a progress line is treated as
     /// dead: Klipper prints a "Testing frequency" line every second, so two
     /// minutes of silence means the run is not coming back.
-    static constexpr uint32_t STALL_TIMEOUT_MS = 120000;
+    static constexpr uint32_t kStallTimeoutMs = 120000;
 
     /// Pairs and unpaired peaks named in the results facts and marked on the
     /// chart, strongest first.
-    static constexpr size_t MAX_LISTED_PEAKS = 3;
+    static constexpr size_t kMaxListedPeaks = 3;
 
     /// How often RESULTS refreshes the notes' ages.
-    static constexpr uint32_t NOTE_AGE_REFRESH_MS = 30000;
+    static constexpr uint32_t kNoteAgeRefreshMs = 30000;
 
     BeltTensionPanel() = default;
     ~BeltTensionPanel() override;
@@ -168,8 +168,8 @@ class BeltTensionPanel : public OverlayBase {
     /// "Good Enough": back to RESULTS as last shown, no sweep.
     void handle_tune_done_clicked();
     void handle_tune_swap_clicked();
-    /// The turn stepper: +1 / -1 steps of belt_tune::TURN_STEP, clamped to
-    /// [0, TURN_MAX]. Zero re-measures without a turn.
+    /// The turn stepper: +1 / -1 steps of belt_tune::kTurnStep, clamped to
+    /// [0, kTurnMax]. Zero re-measures without a turn.
     void handle_tune_amount_step(int direction);
     void handle_tune_next_zone_clicked();
     /// A full A+B check against the round-0 similarity, landing on RESULTS.
@@ -221,7 +221,7 @@ class BeltTensionPanel : public OverlayBase {
     void on_sweep_complete(helix::calibration::BeltPath path,
                            helix::calibration::BeltResponse response);
     void on_sweep_error(const std::string& message);
-    /// The stall guard fired: no progress line for STALL_TIMEOUT_MS.
+    /// The stall guard fired: no progress line for kStallTimeoutMs.
     void on_stall();
     /// Queue empty: compare the runs and populate RESULTS, or error when a
     /// sweep returned too little in-band frequency data to compare.
@@ -543,7 +543,7 @@ class BeltTensionPanel : public OverlayBase {
     /// How far the gap moved in the last round, Hz.
     float tune_last_move_hz_ = 0.0f;
     float tune_turns_ = 0.0f; ///< the stepper; zero is "not turned"
-    float tune_gauge_range_hz_ = 2.0f * helix::calibration::belt_tune::GAUGE_WARN_HZ;
+    float tune_gauge_range_hz_ = 2.0f * helix::calibration::belt_tune::kGaugeWarnHz;
     bool tune_shape_differs_ = false; ///< round 0's tallest peaks are unpaired
     float tune_round0_similarity_ = 0.0f;
     /// Appended to the facts line by the Confirm run's RESULTS.
@@ -556,6 +556,11 @@ class BeltTensionPanel : public OverlayBase {
 inline BeltTensionPanel& get_global_belt_tension_panel() {
     return helix::lazy_global<BeltTensionPanel>("BeltTensionPanel");
 }
+
+/// Open the Belt Tension panel over @p parent_screen, wired to the active API.
+namespace helix::ui {
+void open_belt_tension_panel(lv_obj_t* parent_screen);
+} // namespace helix::ui
 
 /**
  * @brief Register XML event callbacks for belt tension panel

@@ -118,7 +118,7 @@ class PrintTuneZOffsetFixture : public LVGLUITestFixture {
 
     MoonrakerClientMock mock_client;
     std::unique_ptr<MoonrakerAPI> capture_api;
-    std::array<lv_obj_t*, UI_PANEL_COUNT> root_panels_{};
+    std::array<lv_obj_t*, kUiPanelCount> root_panels_{};
 };
 
 } // namespace

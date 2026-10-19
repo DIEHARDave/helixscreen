@@ -37,8 +37,8 @@
 
 // Grid templates are stored by pointer (not copied) by LVGL, so they must
 // outlive the container — keep them at static storage duration.
-static const int32_t TWO_FR_DSC[] = {LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
-static const int32_t ONE_FR_DSC[] = {LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+static const int32_t kTwoFrDsc[] = {LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+static const int32_t kOneFrDsc[] = {LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
 
 namespace {
 
@@ -61,8 +61,8 @@ void ensure_lvgl_init() {
 class GridCellOutOfRangeFixture {
   public:
     // An odd size no track of the 400x300 grid stretches a child to.
-    static constexpr int32_t CHILD_W = 37;
-    static constexpr int32_t CHILD_H = 23;
+    static constexpr int32_t kChildW = 37;
+    static constexpr int32_t kChildH = 23;
 
     lv_obj_t* screen = nullptr;
 
@@ -78,16 +78,16 @@ class GridCellOutOfRangeFixture {
         }
     }
 
-    // Build a 2x1 grid holding one CHILD_W x CHILD_H child at the given cell;
+    // Build a 2x1 grid holding one kChildW x kChildH child at the given cell;
     // lv_obj_update_layout() then runs item_repos() over it.
     lv_obj_t* make_grid_with_cell(int32_t col, int32_t col_span, int32_t row, int32_t row_span) {
         lv_obj_t* grid = lv_obj_create(screen);
         lv_obj_set_size(grid, 400, 300);
-        lv_obj_set_grid_dsc_array(grid, TWO_FR_DSC, ONE_FR_DSC); // 2 columns, 1 row
+        lv_obj_set_grid_dsc_array(grid, kTwoFrDsc, kOneFrDsc); // 2 columns, 1 row
         lv_obj_set_layout(grid, LV_LAYOUT_GRID);
 
         lv_obj_t* child = lv_obj_create(grid);
-        lv_obj_set_size(child, CHILD_W, CHILD_H);
+        lv_obj_set_size(child, kChildW, kChildH);
         lv_obj_set_grid_cell(child, LV_GRID_ALIGN_STRETCH, col, col_span, LV_GRID_ALIGN_STRETCH,
                              row, row_span);
         return grid;
@@ -95,8 +95,8 @@ class GridCellOutOfRangeFixture {
 
     // item_repos() skipped the child: no track stretched or moved it.
     static void expect_skipped(lv_obj_t* child) {
-        REQUIRE(lv_obj_get_width(child) == CHILD_W);
-        REQUIRE(lv_obj_get_height(child) == CHILD_H);
+        REQUIRE(lv_obj_get_width(child) == kChildW);
+        REQUIRE(lv_obj_get_height(child) == kChildH);
     }
 };
 
@@ -132,7 +132,7 @@ TEST_CASE_METHOD(GridCellOutOfRangeFixture, "In-range grid child still lays out"
     lv_obj_t* grid = lv_obj_create(screen);
     lv_obj_set_size(grid, 400, 300);
     lv_obj_set_style_pad_all(grid, 0, 0);
-    lv_obj_set_grid_dsc_array(grid, TWO_FR_DSC, ONE_FR_DSC);
+    lv_obj_set_grid_dsc_array(grid, kTwoFrDsc, kOneFrDsc);
     lv_obj_set_layout(grid, LV_LAYOUT_GRID);
 
     lv_obj_t* child = lv_obj_create(grid);

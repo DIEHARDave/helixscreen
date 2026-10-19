@@ -330,12 +330,24 @@ void MoonrakerAPI::execute_gcode(const std::string& gcode, SuccessCallback on_su
         // latch stays armed and a genuinely external op later in the same
         // episode can still announce itself.
         //
-        // The blocking-op predicates deliberately do not read app_macro_activity():
-        // narrowing them would let a late jog through during a filament op (#1108).
-        if (!silent && !state_.app_macro_activity().recently_active() &&
+        // The same goes for an episode the user's own commands began: light taps
+        // 0.2 s apart each read "Printing" for most of a second, which holds a
+        // settled busy episode up on an idle printer for as long as the burst
+        // lasts. Ownership is decided on the first ask, from the sends before
+        // this one, so it is asked before this send is stamped and on every
+        // pass, never behind a short-circuit.
+        //
+        // The blocking-op predicates deliberately read neither app_macro_activity()
+        // nor app_command_episode(): narrowing them would let a late jog through
+        // during a filament op or an external bed mesh (#1108).
+        const bool app_episode = state_.is_busy_episode_app_initiated();
+        if (!silent && !app_episode && !state_.app_macro_activity().recently_active() &&
             state_.calibration_state().claim_busy_queue_toast()) {
             NOTIFY_INFO("Printer is busy — your {} will run when it's ready.",
                         helix::discretionary_gcode_noun(gcode));
+        }
+        if (!silent) {
+            state_.app_command_episode().note_sent();
         }
         json queued_params = {{"script", gcode}};
         // "Sending", not "queuing": the command goes to Klipper NOW and Klipper runs
@@ -390,6 +402,12 @@ void MoonrakerAPI::execute_gcode(const std::string& gcode, SuccessCallback on_su
     helix::PrinterState* ps = &state_;
     if (stamp) {
         ps->app_macro_activity().note_sent();
+    }
+    // A silent send is the app's own housekeeping (LedAutoState reacting to a
+    // printer state change), so it may follow an external op's start closely
+    // and must not claim that episode for the user.
+    if (!silent) {
+        ps->app_command_episode().note_sent();
     }
 
     // Guard: only wrap on_success in lambda if non-null, otherwise pass nullptr.
@@ -464,8 +482,8 @@ void MoonrakerAPI::exclude_object(const std::string& object_name, SuccessCallbac
     // the object. Pass silent=true so any late timeout does not emit a user-facing event;
     // truth comes from the `exclude_object.excluded_objects` status subscription. A 15-minute
     // ceiling still catches genuinely stuck requests without aborting legitimate pre-prints.
-    constexpr uint32_t EXCLUDE_OBJECT_TIMEOUT_MS = 15 * 60 * 1000;
-    execute_gcode(gcode, on_success, on_error, EXCLUDE_OBJECT_TIMEOUT_MS, /*silent=*/true);
+    constexpr uint32_t kExcludeObjectTimeoutMs = 15 * 60 * 1000;
+    execute_gcode(gcode, on_success, on_error, kExcludeObjectTimeoutMs, /*silent=*/true);
 }
 
 void MoonrakerAPI::emergency_stop(SuccessCallback on_success, ErrorCallback on_error) {

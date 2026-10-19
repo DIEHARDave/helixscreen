@@ -28,6 +28,8 @@ Printing (or queueing) a file from the **USB** tab first copies it to the printe
 
 List view shows filename, print status, file size, modification date, and estimated print time in a sortable table. Tap any column header to sort.
 
+Once HelixScreen has timed at least one print start, the estimated time in both views adds how long the printer usually takes to get ready (heating, homing, leveling) to the slicer's print time.
+
 **Sort columns** (tap a column header to sort):
 
 - Filename (A-Z or Z-A)
@@ -97,7 +99,14 @@ These options modify the G-code on-the-fly — if you disable "Auto Bed Mesh" bu
 2. Review and set pre-print options
 3. Tap **Start Print**
 
-On larger screens, a line above the Print button estimates how long the pre-print steps you have switched on will take. Small screens (480x320 and below) leave it out to make room for the options.
+On larger screens, a line above the Print button (for example "~6 min prep time") estimates how long the printer will take to get ready before the first layer. It counts heating from the current temperatures up to the file's first-layer temperatures, plus homing and the other pre-print steps. After your first print it is based on how long your own printer actually took to get ready, and it keeps separate timings for a cold bed and an already-warm one.
+
+Changing a pre-print option updates the estimate straight away:
+
+- Turning an option off takes that step's time off the estimate.
+- Turning an option on adds time only when your recent prints skipped that step. If they ran it, its time is already in the estimate.
+
+The line appears once the file's details have loaded. It is not shown for files on a USB stick, and small screens (480x320 and below) leave it out to make room for the options.
 
 The UI switches to the Print Status panel automatically.
 

@@ -283,6 +283,10 @@ void XMLTestFixture::setup_global_xml_registrations_once() {
     // <context_menu_card> is the card they all nest inside it, so it has to be
     // here for the same reason.
     lv_xml_register_component_from_file("A:ui_xml/components/context_menu_card.xml");
+    // The rows plugin menu items add to any context menu.
+    lv_xml_register_component_from_file("A:ui_xml/components/plugin_menu_heading.xml");
+    lv_xml_register_component_from_file("A:ui_xml/components/plugin_menu_row.xml");
+    lv_xml_register_component_from_file("A:ui_xml/components/plugin_menu_empty.xml");
 
     s_global_registered = true;
 }

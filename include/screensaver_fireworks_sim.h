@@ -32,14 +32,14 @@ struct FireworksLevel {
 };
 
 /// The ladder, most expensive level first. A requested level applies when the next shell launches.
-inline constexpr FireworksLevel FIREWORKS_LEVELS[] = {
-    {SAVER_FAST_PERIOD, 150, 5, 6},
+inline constexpr FireworksLevel kFireworksLevels[] = {
+    {kSaverFastPeriod, 150, 5, 6},
     {33, 150, 5, 6},
     {33, 90, 3, 4},
     {50, 50, 0, 3},
 };
 
-inline constexpr size_t FIREWORKS_LEVEL_COUNT = std::size(FIREWORKS_LEVELS);
+inline constexpr size_t kFireworksLevelCount = std::size(kFireworksLevels);
 
 /// When shells launch. The defaults are the show's pacing; tests shorten them.
 struct FireworksPacing {
@@ -54,12 +54,12 @@ struct FireworksPacing {
 
 class FireworksSim {
   public:
-    static constexpr const auto& LEVELS = FIREWORKS_LEVELS;
+    static constexpr const auto& kLevels = kFireworksLevels;
 
     /// Most shells in flight plus bursts burning, at any level.
-    static constexpr size_t MAX_BURSTS = 6;
+    static constexpr size_t kMaxBursts = 6;
     /// Faint fixed stars in the sky.
-    static constexpr int STAR_COUNT = 80;
+    static constexpr int kStarCount = 80;
 
     /// PALM throws a few heavy gold comets that arc and droop like fronds; CROSSETTE's stars
     /// each split into a cross of four; STROBE's stars hang and blink white.
@@ -72,8 +72,8 @@ class FireworksSim {
         CROSSETTE,
         STROBE,
     };
-    static constexpr uint8_t BURST_KIND_COUNT = 7;
-    static constexpr uint8_t ALL_KINDS = (1u << BURST_KIND_COUNT) - 1;
+    static constexpr uint8_t kBurstKindCount = 7;
+    static constexpr uint8_t kAllKinds = (1u << kBurstKindCount) - 1;
 
     /**
      * @brief Lays out the sky for `frame`, sizes the spark pool for `level`, and paints the sky
@@ -99,7 +99,7 @@ class FireworksSim {
     /// Shells launch only as kinds whose bit (1 << BurstKind) is set in `mask`; an empty mask
     /// means every kind.
     void set_kinds(uint8_t mask) {
-        kinds_ = (mask & ALL_KINDS) != 0 ? static_cast<uint8_t>(mask & ALL_KINDS) : ALL_KINDS;
+        kinds_ = (mask & kAllKinds) != 0 ? static_cast<uint8_t>(mask & kAllKinds) : kAllKinds;
     }
 
     /// Level the show runs at now.
@@ -199,7 +199,7 @@ class FireworksSim {
     FireworksPacing pacing_{};
     size_t level_ = 0;
     size_t pending_level_ = 0;
-    uint8_t kinds_ = ALL_KINDS;
+    uint8_t kinds_ = kAllKinds;
     int32_t w_ = 0;
     int32_t h_ = 0;
     float scale_ = 1.0f;
@@ -213,8 +213,8 @@ class FireworksSim {
 
     std::vector<Spark> sparks_;
     size_t next_spark_ = 0;
-    Burst bursts_[MAX_BURSTS]{};
-    Rocket rockets_[MAX_BURSTS]{};
+    Burst bursts_[kMaxBursts]{};
+    Rocket rockets_[kMaxBursts]{};
 
     int32_t launch_in_ms_ = 0;
     int32_t finale_in_ms_ = 0;

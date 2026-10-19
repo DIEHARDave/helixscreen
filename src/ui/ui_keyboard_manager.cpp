@@ -68,8 +68,8 @@ bool buttonmatrix_button_area(lv_obj_t* obj, uint32_t btn_id, lv_area_t* out) {
 #define LV_KB_BTN(width) static_cast<lv_buttonmatrix_ctrl_t>(LV_BUTTONMATRIX_CTRL_POPOVER | (width))
 
 // Animation timing constants
-static constexpr int32_t KEYBOARD_SLIDE_DURATION_MS = 200;
-static constexpr int32_t KEYBOARD_EXIT_DURATION_MS = 150;
+static constexpr int32_t kKeyboardSlideDurationMs = 200;
+static constexpr int32_t kKeyboardExitDurationMs = 150;
 
 // ============================================================================
 // STATIC DATA
@@ -808,7 +808,7 @@ namespace {
 /// Largest share of a key's height an alternate-character hint may occupy. Above
 /// roughly a third the glyph starts crowding the key's own centred letter on small
 /// panels; well below it the hint looks lost on a large one.
-constexpr float HINT_MAX_KEY_FRACTION = 0.32f;
+constexpr float kHintMaxKeyFraction = 0.32f;
 
 /// Pick the largest theme font whose glyph fits comfortably on a key of this size.
 ///
@@ -816,13 +816,13 @@ constexpr float HINT_MAX_KEY_FRACTION = 0.32f;
 /// when even the smallest is too big, in which case the caller draws no hint rather
 /// than one that overlaps the key's letter.
 const lv_font_t* pick_hint_font(int32_t btn_h, int32_t btn_w) {
-    static const char* const CANDIDATES[] = {"font_xs", "font_small", "font_body", "font_heading"};
+    static const char* const kCandidates[] = {"font_xs", "font_small", "font_body", "font_heading"};
 
-    const int32_t max_h = static_cast<int32_t>(static_cast<float>(btn_h) * HINT_MAX_KEY_FRACTION);
+    const int32_t max_h = static_cast<int32_t>(static_cast<float>(btn_h) * kHintMaxKeyFraction);
     const lv_font_t* chosen = nullptr;
     const lv_font_t* smallest = nullptr;
 
-    for (const char* token : CANDIDATES) {
+    for (const char* token : kCandidates) {
         const lv_font_t* font = theme_manager_get_font(token);
         if (!font) {
             continue;
@@ -944,7 +944,7 @@ void KeyboardManager::keyboard_draw_alternative_chars(lv_event_t* e) {
                 // from roughly 48x34 at micro to 128x96 at xlarge, so any single font
                 // choice is wrong at one end: font_xs is illegible on a large panel,
                 // while font_small crowds the key's own centred letter on a small one.
-                // Picking the largest font that stays within HINT_MAX_KEY_FRACTION of
+                // Picking the largest font that stays within kHintMaxKeyFraction of
                 // the key height keeps the glyph visually proportional everywhere.
                 const lv_font_t* hint_font =
                     pick_hint_font(lv_area_get_height(&btn_area), lv_area_get_width(&btn_area));
@@ -1237,9 +1237,9 @@ void KeyboardManager::init(lv_obj_t* parent) {
     // transition anims. Passing nullptr instead is a crash: update_obj_state
     // dereferences the descriptor without a NULL check (LoadProhibited on the
     // first key press, on-device).
-    static const lv_style_prop_t NO_TRANSITION_PROPS[] = {LV_STYLE_PROP_INV};
+    static const lv_style_prop_t kNoTransitionProps[] = {LV_STYLE_PROP_INV};
     static lv_style_transition_dsc_t s_no_transition;
-    lv_style_transition_dsc_init(&s_no_transition, NO_TRANSITION_PROPS, lv_anim_path_linear, 0, 0,
+    lv_style_transition_dsc_init(&s_no_transition, kNoTransitionProps, lv_anim_path_linear, 0, 0,
                                  nullptr);
     lv_obj_set_style_transition(keyboard_, &s_no_transition, LV_PART_MAIN);
     lv_obj_set_style_transition(keyboard_, &s_no_transition, LV_PART_MAIN | LV_STATE_PRESSED);
@@ -1458,7 +1458,7 @@ void KeyboardManager::show(lv_obj_t* textarea) {
         lv_anim_init(&slide_anim);
         lv_anim_set_var(&slide_anim, keyboard_);
         lv_anim_set_values(&slide_anim, keyboard_height, 0);
-        lv_anim_set_time(&slide_anim, KEYBOARD_SLIDE_DURATION_MS);
+        lv_anim_set_time(&slide_anim, kKeyboardSlideDurationMs);
         lv_anim_set_path_cb(&slide_anim, lv_anim_path_ease_out);
         lv_anim_set_exec_cb(&slide_anim, [](void* obj, int32_t value) {
             lv_obj_set_style_translate_y(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
@@ -1539,7 +1539,7 @@ void KeyboardManager::hide() {
         lv_anim_init(&slide_anim);
         lv_anim_set_var(&slide_anim, keyboard_);
         lv_anim_set_values(&slide_anim, 0, keyboard_height);
-        lv_anim_set_time(&slide_anim, KEYBOARD_EXIT_DURATION_MS);
+        lv_anim_set_time(&slide_anim, kKeyboardExitDurationMs);
         lv_anim_set_path_cb(&slide_anim, lv_anim_path_ease_in);
         lv_anim_set_exec_cb(&slide_anim, [](void* obj, int32_t value) {
             lv_obj_set_style_translate_y(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);

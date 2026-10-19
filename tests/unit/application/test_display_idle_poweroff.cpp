@@ -637,7 +637,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
 #include "refresh_timing_env.h"
 #include "test_helpers/refresh_period_hold_test_access.h"
 #include "test_helpers/scoped_env.h"
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 #include "screensaver.h"
 #endif
 
@@ -666,7 +666,7 @@ class IndevBackend : public FakePowerOffBackend {
 
 } // namespace
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 TEST_CASE_METHOD(LVGLTestFixture,
                  "entering sleep gives back a running screensaver's refresh period",
                  "[application][display][sleep][refresh_period]") {

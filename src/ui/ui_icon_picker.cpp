@@ -15,7 +15,7 @@ namespace helix::ui {
 
 namespace {
 
-constexpr int ICON_CELL_SIZE = 36;
+constexpr int kIconCellSize = 36;
 
 /// What each cell carries: which icon it is and what a tap does.
 struct IconCell {
@@ -50,7 +50,7 @@ void populate_icon_grid(lv_obj_t* grid, const char* const* icons, size_t count,
     }
     for (size_t i = 0; i < count; ++i) {
         lv_obj_t* cell = lv_obj_create(grid);
-        lv_obj_set_size(cell, ICON_CELL_SIZE, ICON_CELL_SIZE);
+        lv_obj_set_size(cell, kIconCellSize, kIconCellSize);
         lv_obj_remove_flag(cell, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_add_flag(cell, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_set_style_bg_opa(cell, 0, 0);

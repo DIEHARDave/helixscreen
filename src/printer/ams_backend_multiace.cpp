@@ -368,7 +368,7 @@ AmsError AmsBackendMultiAce::apply_user_edit(int slot_index, const SlotInfo& inf
                                             backend_log_tag(), "Override");
     }
 
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     return AmsErrorHelper::success();
 }
 
@@ -392,7 +392,7 @@ AmsError AmsBackendMultiAce::sync_external_identity(int slot_index, const SlotIn
         slot->assign_filament_fields(info);
     }
 
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     return AmsErrorHelper::success();
 }
 
@@ -418,7 +418,7 @@ void AmsBackendMultiAce::clear_slot_override(int slot_index) {
         clear_override_locked(slot_index, slot);
     }
 
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
 }
 
 // ============================================================================
@@ -671,7 +671,7 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
         }
         if (!ace_head) {
             AmsError err =
-                dispatch_feed(multiace::load_gcode(head, std::nullopt), EVENT_LOAD_COMPLETE);
+                dispatch_feed(multiace::load_gcode(head, std::nullopt), kEventLoadComplete);
             if (err.success()) {
                 cancel_pending_load("a new load");
             }
@@ -686,14 +686,14 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
                                     " has no recorded bay to load from",
                                 lv_tr("Select a filament slot to load"), "", slot_index);
             }
-            AmsError err = dispatch_feed(multiace::load_gcode(head, recorded), EVENT_LOAD_COMPLETE);
+            AmsError err = dispatch_feed(multiace::load_gcode(head, recorded), kEventLoadComplete);
             if (err.success()) {
                 cancel_pending_load("a new load");
             }
             return err;
         }
         // Head mode defaults to the wired unit and the head's last bay.
-        AmsError err = dispatch_feed(multiace::load_gcode(head, std::nullopt), EVENT_LOAD_COMPLETE);
+        AmsError err = dispatch_feed(multiace::load_gcode(head, std::nullopt), kEventLoadComplete);
         if (err.success()) {
             cancel_pending_load("a new load");
         }
@@ -722,7 +722,7 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
                         "", slot_index);
     }
     if (!head_loaded && !head_has_source) {
-        AmsError err = dispatch_feed(multiace::load_gcode(head, bay), EVENT_LOAD_COMPLETE);
+        AmsError err = dispatch_feed(multiace::load_gcode(head, bay), kEventLoadComplete);
         if (err.success()) {
             cancel_pending_load("a new load");
         }
@@ -762,7 +762,7 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
                                          pending_load_.reset();
                                      }
                                  }
-                                 emit_event(EVENT_ERROR, e.message);
+                                 emit_event(kEventError, e.message);
                              });
     if (!err.success()) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -781,7 +781,7 @@ void AmsBackendMultiAce::handle_status(const nlohmann::json& status) {
         load_failed.swap(pending_load_failed_errors_);
     }
     for (const std::string& message : load_failed) {
-        emit_event(EVENT_ERROR, message);
+        emit_event(kEventError, message);
     }
     advance_pending_load();
 }
@@ -844,14 +844,14 @@ void AmsBackendMultiAce::advance_pending_load() {
     if (!dropped.empty()) {
         spdlog::warn("{} Not loading ACE {} bay {} into head {}: {}", backend_log_tag(),
                      pending.bay.first + 1, pending.bay.second + 1, pending.head + 1, dropped);
-        emit_event(EVENT_ERROR,
+        emit_event(kEventError,
                    fmt::format("ACE {} bay {} was not loaded: {}", pending.bay.first + 1,
                                pending.bay.second + 1, dropped));
         return;
     }
     spdlog::info("{} Head {} is empty; loading ACE {} bay {}", backend_log_tag(), pending.head + 1,
                  pending.bay.first + 1, pending.bay.second + 1);
-    dispatch_feed(multiace::load_gcode(pending.head, pending.bay), EVENT_LOAD_COMPLETE);
+    dispatch_feed(multiace::load_gcode(pending.head, pending.bay), kEventLoadComplete);
 }
 
 AmsError AmsBackendMultiAce::do_unload_filament(int slot_index) {
@@ -880,7 +880,7 @@ AmsError AmsBackendMultiAce::do_unload_filament(int slot_index) {
         return AmsErrorHelper::not_loaded();
     }
     // Every head, ACE-fed or not: the engine owns the feed state machine.
-    AmsError err = dispatch_feed(multiace::unload_gcode(head), EVENT_UNLOAD_COMPLETE);
+    AmsError err = dispatch_feed(multiace::unload_gcode(head), kEventUnloadComplete);
     if (err.success()) {
         cancel_pending_load("an unload");
     }
@@ -989,7 +989,7 @@ AmsError AmsBackendMultiAce::do_filament_batch(const std::vector<int>& slots, bo
             // The engine's own unload-all: its loop walks all four heads and
             // unloads every one whose motion sensor sees filament, ACE-fed,
             // feeder and manual alike (its _unload_all_heads).
-            AmsError err = dispatch_feed(multiace::unload_all_gcode(), EVENT_UNLOAD_COMPLETE);
+            AmsError err = dispatch_feed(multiace::unload_all_gcode(), kEventUnloadComplete);
             if (err.success()) {
                 cancel_pending_load("a batch operation");
             }
@@ -1007,7 +1007,7 @@ AmsError AmsBackendMultiAce::do_filament_batch(const std::vector<int>& slots, bo
         script += load ? multiace::load_gcode(h, std::nullopt) : multiace::unload_gcode(h);
     }
     AmsError err =
-        dispatch_feed(std::move(script), load ? EVENT_LOAD_COMPLETE : EVENT_UNLOAD_COMPLETE);
+        dispatch_feed(std::move(script), load ? kEventLoadComplete : kEventUnloadComplete);
     if (err.success()) {
         cancel_pending_load("a batch operation");
     }

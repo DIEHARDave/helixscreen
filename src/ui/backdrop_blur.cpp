@@ -243,7 +243,7 @@ struct GpuBlurState {
 
 static GpuBlurState s_gpu;
 
-static const char* BLUR_VERTEX_SHADER = R"(
+static const char* kBlurVertexShader = R"(
     attribute vec2 a_position;
     varying vec2 v_uv;
     void main() {
@@ -252,7 +252,7 @@ static const char* BLUR_VERTEX_SHADER = R"(
     }
 )";
 
-static const char* BLUR_FRAGMENT_SHADER = R"(
+static const char* kBlurFragmentShader = R"(
     precision mediump float;
     uniform sampler2D u_texture;
     uniform vec2 u_texel_size;
@@ -368,7 +368,7 @@ static bool init_gpu_blur(EGLDisplay current_display) {
     }
 
     // DRM device paths to try
-    static constexpr const char* DRM_DEVICES[] = {"/dev/dri/renderD128", "/dev/dri/card1",
+    static constexpr const char* kDrmDevices[] = {"/dev/dri/renderD128", "/dev/dri/card1",
                                                   "/dev/dri/card0"};
 
     // Crash-loop guard around the risky Mali/EGL init. A graceful failure (no
@@ -396,7 +396,7 @@ static bool init_gpu_blur(EGLDisplay current_display) {
         }
     }
 
-    for (const char* path : DRM_DEVICES) {
+    for (const char* path : kDrmDevices) {
         if (s_gpu.context != EGL_NO_CONTEXT)
             break;
         int fd = open(path, O_RDWR | O_CLOEXEC);
@@ -471,8 +471,8 @@ static bool init_gpu_blur(EGLDisplay current_display) {
     };
 
     // Compile shaders
-    GLuint vs = compile_shader(GL_VERTEX_SHADER, BLUR_VERTEX_SHADER);
-    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, BLUR_FRAGMENT_SHADER);
+    GLuint vs = compile_shader(GL_VERTEX_SHADER, kBlurVertexShader);
+    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, kBlurFragmentShader);
     if (!vs || !fs) {
         if (vs)
             glDeleteShader(vs);

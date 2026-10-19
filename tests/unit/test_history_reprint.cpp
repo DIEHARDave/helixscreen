@@ -85,7 +85,7 @@ class HistoryReprintFixture : public LVGLUITestFixture {
 
         auto& nav = NavigationManager::instance();
         home_widget_ = lv_obj_create(test_screen());
-        lv_obj_t* panels[UI_PANEL_COUNT] = {nullptr};
+        lv_obj_t* panels[kUiPanelCount] = {nullptr};
         panels[static_cast<int>(PanelId::Home)] = home_widget_;
         nav.set_panels(panels);
         nav.register_panel_instance(PanelId::PrintSelect, &print_select_);

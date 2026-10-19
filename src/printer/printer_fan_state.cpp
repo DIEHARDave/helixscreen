@@ -175,11 +175,28 @@ void PrinterFanState::update_from_status(const nlohmann::json& status) {
 }
 
 FanType PrinterFanState::classify_fan_type(const std::string& object_name) const {
+    return classify_fan_type(object_name, roles_.part_fan);
+}
+
+int PrinterFanState::count_extra_controllable_fans(const std::vector<std::string>& fan_objects,
+                                                   const std::string& configured_part_fan) {
+    int count = 0;
+    for (const auto& name : fan_objects) {
+        const FanType type = classify_fan_type(name, configured_part_fan);
+        if (type != FanType::PART_COOLING && is_fan_controllable(type)) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+FanType PrinterFanState::classify_fan_type(const std::string& object_name,
+                                           const std::string& configured_part_fan) {
     if (object_name == "fan") {
         return FanType::PART_COOLING;
     }
     // Check if this fan is the wizard-configured part cooling fan
-    if (!roles_.part_fan.empty() && object_name == roles_.part_fan) {
+    if (!configured_part_fan.empty() && object_name == configured_part_fan) {
         return FanType::PART_COOLING;
     }
     if (object_name.rfind("heater_fan ", 0) == 0) {

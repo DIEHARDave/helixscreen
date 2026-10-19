@@ -2,7 +2,7 @@
 
 #pragma once
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_canvas.h"
 #include "screensaver_pipes_sim.h"
@@ -27,7 +27,7 @@ class PipesScreensaver : public helix::ui::SimSaver<helix::ui::PipesSim> {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return helix::ui::SAVER_BUILD_CANVAS_FORMAT;
+        return helix::ui::kSaverBuildCanvasFormat;
     }
 
   private:

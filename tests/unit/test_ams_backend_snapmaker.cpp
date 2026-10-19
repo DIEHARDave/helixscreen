@@ -2074,7 +2074,7 @@ TEST_CASE_METHOD(SnapmakerFixture,
     CHECK(info.brand.empty());
     CHECK(info.spool_name.empty());
     CHECK(info.product_name.empty());
-    CHECK(info.color_rgb == AMS_DEFAULT_SLOT_COLOR);
+    CHECK(info.color_rgb == kAmsDefaultSlotColor);
 
     // The same silence on the next frame has nothing left to drop.
     int events = 0;

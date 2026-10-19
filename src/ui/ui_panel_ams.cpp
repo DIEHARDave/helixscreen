@@ -62,7 +62,7 @@
 using namespace helix;
 
 // Default slot width for endless arrows canvas (when layout not yet computed)
-static constexpr int32_t DEFAULT_SLOT_WIDTH = 80;
+static constexpr int32_t kDefaultSlotWidth = 80;
 
 // Unit index handed to the shared ams_detail_* helpers, which take a unit to
 // scope to or -1 for "every unit". This panel is always the whole-system view:
@@ -655,7 +655,7 @@ void AmsPanel::clear_panel_reference() {
     endless_arrows_ = nullptr;
     current_slot_count_ = 0;
 
-    for (int i = 0; i < MAX_VISIBLE_SLOTS; ++i) {
+    for (int i = 0; i < kMaxVisibleSlots; ++i) {
         slot_widgets_[i] = nullptr;
         label_widgets_[i] = nullptr;
     }
@@ -811,7 +811,7 @@ void AmsPanel::create_slots(int count) {
     ams_detail_pre_show_env_indicator(detail_widgets_, ALL_UNITS);
 
     // Create new slots
-    auto result = ams_detail_create_slots(detail_widgets_, slot_widgets_, MAX_VISIBLE_SLOTS,
+    auto result = ams_detail_create_slots(detail_widgets_, slot_widgets_, kMaxVisibleSlots,
                                           ALL_UNITS, on_slot_clicked, this);
 
     current_slot_count_ = result.slot_count;
@@ -1026,9 +1026,8 @@ void AmsPanel::update_endless_arrows_from_backend() {
 
     // The widget receives the whole group relation and decides per group
     // whether it is a bracket (unordered) or arrows (ordered).
-    static constexpr int MAX_ARROW_SLOTS = 16;
     const auto config = backend->get_endless_spool_config();
-    int slot_count = std::min(backend->get_system_info().total_slots, MAX_ARROW_SLOTS);
+    int slot_count = std::min(backend->get_system_info().total_slots, helix::kAmsMaxSlots);
     if (config.empty() || slot_count <= 0 ||
         helix::ui::endless_spool_marks(config, slot_count).empty()) {
         spdlog::trace("[{}] No endless spool backups configured - hiding arrows", get_name());
@@ -1040,7 +1039,7 @@ void AmsPanel::update_endless_arrows_from_backend() {
                   config.groups.size(), slot_count);
 
     // Get slot width and overlap from current layout
-    int32_t slot_width = DEFAULT_SLOT_WIDTH;
+    int32_t slot_width = kDefaultSlotWidth;
     int32_t overlap = 0;
     int32_t offset = 0;
     if (slot_grid_) {
@@ -1049,7 +1048,7 @@ void AmsPanel::update_endless_arrows_from_backend() {
             lv_obj_update_layout(slot_area);
             int32_t available_width = lv_obj_get_content_width(slot_area);
             auto layout = helix::ui::ams_detail_slot_layout(available_width, slot_count);
-            slot_width = layout.slot_width > 0 ? layout.slot_width : DEFAULT_SLOT_WIDTH;
+            slot_width = layout.slot_width > 0 ? layout.slot_width : kDefaultSlotWidth;
             overlap = layout.overlap;
             offset = layout.centering_offset;
         }
@@ -1107,7 +1106,7 @@ void AmsPanel::refresh_slots() {
 void AmsPanel::update_slot_colors() {
     int slot_count = lv_subject_get_int(AmsState::instance().get_slot_count_subject());
 
-    for (int i = 0; i < MAX_VISIBLE_SLOTS; ++i) {
+    for (int i = 0; i < kMaxVisibleSlots; ++i) {
         if (!slot_widgets_[i]) {
             continue;
         }
@@ -1136,7 +1135,7 @@ void AmsPanel::update_slot_colors() {
 }
 
 void AmsPanel::update_slot_status(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_VISIBLE_SLOTS || !slot_widgets_[slot_index]) {
+    if (slot_index < 0 || slot_index >= kMaxVisibleSlots || !slot_widgets_[slot_index]) {
         return;
     }
 
@@ -1359,7 +1358,7 @@ void AmsPanel::handle_slot_tap(int slot_index, lv_point_t click_pt) {
     }
 
     // Show context menu near the tapped slot
-    if (slot_index >= 0 && slot_index < MAX_VISIBLE_SLOTS && slot_widgets_[slot_index]) {
+    if (slot_index >= 0 && slot_index < kMaxVisibleSlots && slot_widgets_[slot_index]) {
         show_context_menu(slot_index, slot_widgets_[slot_index], click_pt);
     }
 }

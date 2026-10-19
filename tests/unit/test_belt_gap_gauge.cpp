@@ -16,7 +16,7 @@
 #include "../catch_amalgamated.hpp"
 
 using namespace helix::ui;
-using helix::calibration::belt_tune::GAUGE_WARN_HZ;
+using helix::calibration::belt_tune::kGaugeWarnHz;
 
 TEST_CASE("belt gap gauge x mapping", "[belt][gauge]") {
     constexpr int TRACK = 201;
@@ -49,9 +49,9 @@ TEST_CASE("belt gap severity bands", "[belt][gauge]") {
     CHECK(belt_gap_severity(TOL, TOL) == GapSeverity::MATCHED);
     CHECK(belt_gap_severity(-TOL, TOL) == GapSeverity::MATCHED);
     CHECK(belt_gap_severity(TOL + 0.01f, TOL) == GapSeverity::NEAR);
-    CHECK(belt_gap_severity(GAUGE_WARN_HZ, TOL) == GapSeverity::NEAR);
-    CHECK(belt_gap_severity(-GAUGE_WARN_HZ, TOL) == GapSeverity::NEAR);
-    CHECK(belt_gap_severity(GAUGE_WARN_HZ + 0.01f, TOL) == GapSeverity::FAR);
+    CHECK(belt_gap_severity(kGaugeWarnHz, TOL) == GapSeverity::NEAR);
+    CHECK(belt_gap_severity(-kGaugeWarnHz, TOL) == GapSeverity::NEAR);
+    CHECK(belt_gap_severity(kGaugeWarnHz + 0.01f, TOL) == GapSeverity::FAR);
     CHECK(belt_gap_severity(-8.0f, TOL) == GapSeverity::FAR);
     // A tolerance wider than the warning band still reads matched inside it.
     CHECK(belt_gap_severity(3.5f, 4.0f) == GapSeverity::MATCHED);

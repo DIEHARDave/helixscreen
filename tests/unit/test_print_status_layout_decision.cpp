@@ -64,7 +64,7 @@ TEST_CASE("fan_row_budget: the preview floor is what portrait actually protects"
           "[print-status][portrait][layout-decision]") {
     // With nothing else in the column, the budget is exactly the complement of
     // the reserve — the preview keeps its share no matter how empty the controls.
-    CHECK(fan_row_budget(true, 0, 1000, 0) == 1000 - (1000 * PORTRAIT_PREVIEW_RESERVE_PCT / 100));
+    CHECK(fan_row_budget(true, 0, 1000, 0) == 1000 - (1000 * kPortraitPreviewReservePct / 100));
     CHECK(fan_row_budget(true, 0, 1000, 0) == 600);
 }
 
@@ -115,7 +115,7 @@ TEST_CASE("portrait_side_list_height: unmeasured yields 0, not a collapsed list"
 
     const auto g = exclude_side_list_geometry(/*portrait=*/true, 0, 0, 0);
     CHECK(g.height_px == 0);
-    CHECK(g.height_pct == PORTRAIT_SIDE_LIST_FALLBACK_PCT);
+    CHECK(g.height_pct == kPortraitSideListFallbackPct);
 }
 
 TEST_CASE("portrait_side_list_height: a short control stack still gets a usable list",
@@ -123,7 +123,7 @@ TEST_CASE("portrait_side_list_height: a short control stack still gets a usable 
     // 320x1480: controls are ~14% of the column. Sized naively that is a list
     // too short to show a row; the floor catches it.
     CHECK(portrait_side_list_height(/*controls_h=*/60, /*content_h=*/1300, /*gap=*/12) ==
-          MIN_SIDE_LIST_HEIGHT_PX);
+          kMinSideListHeightPx);
 }
 
 TEST_CASE("portrait_side_list_height: a tall control stack never buries the map",
@@ -131,7 +131,7 @@ TEST_CASE("portrait_side_list_height: a tall control stack never buries the map"
     // The list accompanies the object map; it must not become the reason the
     // map cannot be tapped.
     const int32_t content_h = 1000;
-    const int32_t ceiling = content_h * MAX_SIDE_LIST_COVERAGE_PCT / 100;
+    const int32_t ceiling = content_h * kMaxSideListCoveragePct / 100;
     CHECK(portrait_side_list_height(/*controls_h=*/900, content_h, /*gap=*/12) == ceiling);
     CHECK(ceiling < content_h); // something is always left for the map
 }
@@ -153,15 +153,15 @@ TEST_CASE("portrait_side_list_height: an extremely short column prefers a list o
           "[print-status][portrait][layout-decision]") {
     // When the ceiling is below the floor the two clamps disagree. The ceiling
     // wins: covering more of a tiny map beats a list that cannot show a row.
-    const int32_t content_h = 200; // ceiling = 110, below MIN_SIDE_LIST_HEIGHT_PX
-    const int32_t ceiling = content_h * MAX_SIDE_LIST_COVERAGE_PCT / 100;
-    REQUIRE(ceiling < MIN_SIDE_LIST_HEIGHT_PX);
+    const int32_t content_h = 200; // ceiling = 110, below kMinSideListHeightPx
+    const int32_t ceiling = content_h * kMaxSideListCoveragePct / 100;
+    REQUIRE(ceiling < kMinSideListHeightPx);
     CHECK(portrait_side_list_height(/*controls_h=*/10, content_h, /*gap=*/0) == ceiling);
 }
 
 TEST_CASE("the side list does not move when the preview reserve is retuned",
           "[print-status][portrait][layout-decision]") {
-    // The inverse of the rule this file used to assert. PORTRAIT_PREVIEW_RESERVE_PCT
+    // The inverse of the rule this file used to assert. kPortraitPreviewReservePct
     // answers "how much of the column is preview" — it says nothing about how tall
     // a list of objects should be. Borrowing it coupled the list to a number that
     // meant "the controls are ~55% of the column"; when the controls fell to
@@ -176,11 +176,11 @@ TEST_CASE("the side list does not move when the preview reserve is retuned",
     CHECK(h == controls_h + gap);
 
     // And it is NOT the old complement-of-the-reserve answer.
-    const int32_t old_rule = content_h * (100 - PORTRAIT_PREVIEW_RESERVE_PCT) / 100;
+    const int32_t old_rule = content_h * (100 - kPortraitPreviewReservePct) / 100;
     CHECK(h != old_rule);
 
     // The reserve still drives the fan-row budget — that consumer is unchanged.
-    const int32_t preview_floor = content_h * PORTRAIT_PREVIEW_RESERVE_PCT / 100;
+    const int32_t preview_floor = content_h * kPortraitPreviewReservePct / 100;
     CHECK(fan_row_budget(true, 0, content_h, 0) == content_h - preview_floor);
 }
 
@@ -193,8 +193,8 @@ TEST_CASE("portrait_preview_card_max_height: the ceiling is the band's own width
     // band_w is the card's CONTENT width, i.e. the art band itself. The ceiling
     // is that width times the aspect cap, plus the strip and card chrome under it.
     CHECK(portrait_preview_card_max_height(/*band_w=*/300, /*chrome_h=*/0) ==
-          300 * MAX_PREVIEW_ASPECT_PCT / 100);
-    CHECK(portrait_preview_card_max_height(300, 100) == 300 * MAX_PREVIEW_ASPECT_PCT / 100 + 100);
+          300 * kMaxPreviewAspectPct / 100);
+    CHECK(portrait_preview_card_max_height(300, 100) == 300 * kMaxPreviewAspectPct / 100 + 100);
 
     // 320x1480 ultratall — the case this exists for. 302px band, ~1090 available.
     const int32_t band_only = portrait_preview_card_max_height(302, 0);
@@ -307,17 +307,17 @@ TEST_CASE("portrait_graph_fits: only the ultratall slack is worth a graph",
 
 TEST_CASE("portrait_graph_fits: the dead band is asymmetric and cannot oscillate",
           "[print-status][portrait][layout-decision][temp-graph]") {
-    const int32_t on = MIN_TEMP_GRAPH_HEIGHT_PX + TEMP_GRAPH_FIT_HYSTERESIS_PX;
+    const int32_t on = kMinTempGraphHeightPx + kTempGraphFitHysteresisPx;
 
     // Cheaper to keep showing than to start showing — that asymmetry IS the
     // anti-oscillation guarantee.
-    CHECK(TEMP_GRAPH_FIT_HYSTERESIS_PX > 0);
-    CHECK_FALSE(portrait_graph_fits(MIN_TEMP_GRAPH_HEIGHT_PX, /*shown=*/false));
-    CHECK(portrait_graph_fits(MIN_TEMP_GRAPH_HEIGHT_PX, /*shown=*/true));
+    CHECK(kTempGraphFitHysteresisPx > 0);
+    CHECK_FALSE(portrait_graph_fits(kMinTempGraphHeightPx, /*shown=*/false));
+    CHECK(portrait_graph_fits(kMinTempGraphHeightPx, /*shown=*/true));
 
     // Just under the floor drops it no matter what state we were in.
-    CHECK_FALSE(portrait_graph_fits(MIN_TEMP_GRAPH_HEIGHT_PX - 1, /*shown=*/true));
-    CHECK_FALSE(portrait_graph_fits(MIN_TEMP_GRAPH_HEIGHT_PX - 1, /*shown=*/false));
+    CHECK_FALSE(portrait_graph_fits(kMinTempGraphHeightPx - 1, /*shown=*/true));
+    CHECK_FALSE(portrait_graph_fits(kMinTempGraphHeightPx - 1, /*shown=*/false));
 
     // Just over the turn-on threshold shows it, and staying there keeps it.
     CHECK(portrait_graph_fits(on, /*shown=*/false));
@@ -326,7 +326,7 @@ TEST_CASE("portrait_graph_fits: the dead band is asymmetric and cannot oscillate
     // The real test: a slack parked anywhere inside the dead band must be a
     // FIXED POINT for both states. If either flipped, feeding the result back in
     // would flip it again forever — that is the oscillation this guards.
-    for (int32_t h = MIN_TEMP_GRAPH_HEIGHT_PX; h < on; ++h) {
+    for (int32_t h = kMinTempGraphHeightPx; h < on; ++h) {
         INFO("slack=" << h);
         CHECK(portrait_graph_fits(h, /*shown=*/true) == true);
         CHECK(portrait_graph_fits(h, /*shown=*/false) == false);
@@ -335,16 +335,16 @@ TEST_CASE("portrait_graph_fits: the dead band is asymmetric and cannot oscillate
 
 TEST_CASE("portrait_graph_fits: the floor is one constant and it is a real floor",
           "[print-status][portrait][layout-decision][temp-graph]") {
-    // Retuning MIN_TEMP_GRAPH_HEIGHT_PX must move the whole gate; nothing else may
+    // Retuning kMinTempGraphHeightPx must move the whole gate; nothing else may
     // encode the threshold. Derive expectations from the constants.
-    CHECK(MIN_TEMP_GRAPH_HEIGHT_PX > 0);
+    CHECK(kMinTempGraphHeightPx > 0);
     // A graph shorter than the fan row it shares a column with is a smear.
-    CHECK(MIN_TEMP_GRAPH_HEIGHT_PX >= 48);
+    CHECK(kMinTempGraphHeightPx >= 48);
     // ...and the floor must not be so tall that the one size this exists for
     // fails it. 320x1480 is the whole point of the feature.
     const int32_t ultratall =
         portrait_preview_slack(portrait_preview_card_max_height(302, 174), 1090, 8);
-    CHECK(ultratall >= MIN_TEMP_GRAPH_HEIGHT_PX + TEMP_GRAPH_FIT_HYSTERESIS_PX);
+    CHECK(ultratall >= kMinTempGraphHeightPx + kTempGraphFitHysteresisPx);
 }
 
 // ---------------------------------------------------------------------------
@@ -370,7 +370,7 @@ TEST_CASE("portrait_graph_height: a slack under the cap is taken whole",
     // A band shorter than it is wide is a perfectly good strip chart, so the cap
     // must not pad it out to square — it is a ceiling, never a floor.
     CHECK(portrait_graph_height(/*graph_w=*/302, /*slack_h=*/200) == 200);
-    CHECK(portrait_graph_height(302, MIN_TEMP_GRAPH_HEIGHT_PX) == MIN_TEMP_GRAPH_HEIGHT_PX);
+    CHECK(portrait_graph_height(302, kMinTempGraphHeightPx) == kMinTempGraphHeightPx);
     // Narrow screens cap sooner because the ceiling follows the width.
     CHECK(portrait_graph_height(/*graph_w=*/254, /*slack_h=*/600) == 254);
 }
@@ -378,7 +378,7 @@ TEST_CASE("portrait_graph_height: a slack under the cap is taken whole",
 TEST_CASE("portrait_graph_height: exactly at the ceiling, and either side of it",
           "[print-status][portrait][layout-decision][temp-graph]") {
     const int32_t w = 302;
-    const int32_t cap = w * MAX_GRAPH_ASPECT_PCT / 100;
+    const int32_t cap = w * kMaxGraphAspectPct / 100;
     CHECK(portrait_graph_height(w, cap - 1) == cap - 1); // just under: take it all
     CHECK(portrait_graph_height(w, cap) == cap);         // exactly on: unchanged
     CHECK(portrait_graph_height(w, cap + 1) == cap);     // just over: clamped
@@ -407,7 +407,7 @@ TEST_CASE("portrait_graph_height: capped is not the same question as fits",
     CHECK(portrait_graph_fits(slack, /*shown=*/false));
     CHECK(portrait_graph_height(302, slack) < slack); // fits AND capped
 
-    const int32_t too_short = MIN_TEMP_GRAPH_HEIGHT_PX - 1;
+    const int32_t too_short = kMinTempGraphHeightPx - 1;
     CHECK_FALSE(portrait_graph_fits(too_short, /*shown=*/false));
     CHECK_FALSE(portrait_graph_fits(too_short, /*shown=*/true));
 
@@ -416,34 +416,34 @@ TEST_CASE("portrait_graph_height: capped is not the same question as fits",
     // above the width and the width is far over the floor at every portrait size.
     for (int32_t w : {254, 302, 446}) {
         INFO("graph_w=" << w);
-        CHECK(portrait_graph_height(w, MIN_TEMP_GRAPH_HEIGHT_PX) >= MIN_TEMP_GRAPH_HEIGHT_PX);
+        CHECK(portrait_graph_height(w, kMinTempGraphHeightPx) >= kMinTempGraphHeightPx);
     }
 }
 
 TEST_CASE("the graph aspect cap is one constant, and it actually caps",
           "[print-status][portrait][layout-decision][temp-graph]") {
-    // Retuning MAX_GRAPH_ASPECT_PCT must move the whole behaviour — nothing else
+    // Retuning kMaxGraphAspectPct must move the whole behaviour — nothing else
     // may encode the number. Derive the expectation from the constant.
-    CHECK(MAX_GRAPH_ASPECT_PCT > 0);
+    CHECK(kMaxGraphAspectPct > 0);
     // A time-series plot taller than square distorts the value axis against an
     // already-compressed time axis; that is the whole rationale for the cap.
-    CHECK(MAX_GRAPH_ASPECT_PCT <= 100);
+    CHECK(kMaxGraphAspectPct <= 100);
     for (int32_t w : {254, 302, 446}) {
         INFO("graph_w=" << w);
-        CHECK(portrait_graph_height(w, /*slack_h=*/9999) == w * MAX_GRAPH_ASPECT_PCT / 100);
+        CHECK(portrait_graph_height(w, /*slack_h=*/9999) == w * kMaxGraphAspectPct / 100);
     }
 }
 
 TEST_CASE("the aspect cap is one constant, and it actually caps",
           "[print-status][portrait][layout-decision]") {
-    // Retuning MAX_PREVIEW_ASPECT_PCT must move the whole behaviour with it —
+    // Retuning kMaxPreviewAspectPct must move the whole behaviour with it —
     // nothing else may encode the number. Derive the expectation from the
     // constant rather than restating 130.
-    CHECK(MAX_PREVIEW_ASPECT_PCT > 100); // a band taller than wide is still allowed
-    CHECK(MAX_PREVIEW_ASPECT_PCT < 400); // ...but not the ultratall free-for-all
+    CHECK(kMaxPreviewAspectPct > 100); // a band taller than wide is still allowed
+    CHECK(kMaxPreviewAspectPct < 400); // ...but not the ultratall free-for-all
     for (int32_t w : {254, 302, 380, 446, 592}) {
         INFO("card_w=" << w);
-        CHECK(portrait_preview_card_max_height(w, 0) == w * MAX_PREVIEW_ASPECT_PCT / 100);
+        CHECK(portrait_preview_card_max_height(w, 0) == w * kMaxPreviewAspectPct / 100);
     }
 }
 

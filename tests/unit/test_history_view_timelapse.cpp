@@ -56,7 +56,7 @@ class HistoryTimelapseFixture : public LVGLUITestFixture {
         // Slot 0 of the navigation stack is the active main panel; an overlay
         // pushed over nothing would sit there and read as the base.
         home_widget_ = lv_obj_create(test_screen());
-        lv_obj_t* panels[UI_PANEL_COUNT] = {nullptr};
+        lv_obj_t* panels[kUiPanelCount] = {nullptr};
         panels[static_cast<int>(helix::PanelId::Home)] = home_widget_;
         NavigationManager::instance().set_panels(panels);
 

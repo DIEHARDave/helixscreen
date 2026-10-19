@@ -140,7 +140,7 @@ class DisplaySettingsManager {
     /**
      * @brief Whether a screensaver is enabled (type != OFF).
      *
-     * Always false when HELIX_ENABLE_SCREENSAVER is not compiled in.
+     * Always false when HELIX_ENABLE_SCREENSAVER is undefined or 0, where the type is Off.
      */
     bool screensaver_enabled() const;
 
@@ -340,10 +340,14 @@ class DisplaySettingsManager {
     // SCREENSAVER
     // =========================================================================
 
-#ifdef HELIX_ENABLE_SCREENSAVER
-    /** @brief Get screensaver type (a ScreensaverType value, include/screensaver_registry.h) */
+    /**
+     * @brief Get screensaver type (a ScreensaverType value, include/screensaver_registry.h)
+     *
+     * Always Off (0) when HELIX_ENABLE_SCREENSAVER is undefined or 0.
+     */
     int get_screensaver_type() const;
 
+#if HELIX_ENABLE_SCREENSAVER
     /** @brief Set screensaver type (updates subject, persists its stable name) */
     void set_screensaver_type(int type);
 #endif
@@ -370,6 +374,13 @@ class DisplaySettingsManager {
 
     /** @brief Convert dropdown index to dim seconds */
     static int index_to_dim_seconds(int index);
+
+    /// The form the dim-timeout row takes in Display settings. Without a dimmable
+    /// backlight the same timeout starts the screensaver, so the row is offered
+    /// under that name while one is enabled, and hidden when nothing would happen.
+    /// should_couple_sleep_to_dim() holds exactly when this is not Hidden.
+    enum class DimRowKind { Hidden = 0, ScreenDim = 1, ScreensaverAfter = 2 };
+    static DimRowKind dim_row_kind(bool has_dimming, bool screensaver_enabled);
 
     // =========================================================================
     // DISPLAY SLEEP OPTIONS (for dropdown population)
@@ -523,12 +534,15 @@ class DisplaySettingsManager {
         return &timezone_subject_;
     }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
-    /** @brief Screensaver type subject (a ScreensaverType value, include/screensaver_registry.h) */
+    /**
+     * @brief Screensaver type subject (a ScreensaverType value, include/screensaver_registry.h)
+     *
+     * Registered in every build, as Off without screensaver support, so XML that binds
+     * `settings_screensaver_type` resolves and hides saver-only controls.
+     */
     lv_subject_t* subject_screensaver_type() {
         return &screensaver_type_subject_;
     }
-#endif
 
   private:
     DisplaySettingsManager();
@@ -562,15 +576,15 @@ class DisplaySettingsManager {
     lv_subject_t display_sleep_subject_{};
     lv_subject_t has_backlight_subject_{};
     lv_subject_t has_dimming_subject_{};
+    lv_subject_t dim_row_kind_subject_{};
     lv_subject_t animations_enabled_subject_{};
     lv_subject_t hardware_keyboard_present_subject_{};
     lv_subject_t is_android_subject_{};
     lv_subject_t rotation_available_subject_{};
     lv_subject_t timezone_subject_{};
 
-#ifdef HELIX_ENABLE_SCREENSAVER
     lv_subject_t screensaver_type_subject_{};
-#endif
+    lv_subject_t has_screensaver_subject_{};
 
     bool subjects_initialized_ = false;
     bool hardware_keyboard_present_ = false;

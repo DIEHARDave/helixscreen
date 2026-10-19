@@ -468,7 +468,7 @@ TEST_CASE_METHOD(HelixTestFixture, "OpenAMS load dispatches the advertised comma
     CHECK(backend.get_current_action() == AmsAction::IDLE);
     CHECK(backend.get_system_info().pending_target_slot == -1);
     CHECK(std::find(backend.events.begin(), backend.events.end(),
-                    helix::AmsBackend::EVENT_LOAD_COMPLETE) != backend.events.end());
+                    helix::AmsBackend::kEventLoadComplete) != backend.events.end());
 }
 
 TEST_CASE_METHOD(HelixTestFixture, "OpenAMS load failure unwinds and keeps the reason",
@@ -485,7 +485,7 @@ TEST_CASE_METHOD(HelixTestFixture, "OpenAMS load failure unwinds and keeps the r
     CHECK(info.pending_target_slot == -1);
     CHECK(info.operation_detail == "OpenAMS slot 2 is not ready");
     CHECK(std::find(backend.events.begin(), backend.events.end(),
-                    helix::AmsBackend::EVENT_LOAD_COMPLETE) == backend.events.end());
+                    helix::AmsBackend::kEventLoadComplete) == backend.events.end());
 
     // The reason survives the next frame, and clear_fault() retires it.
     backend.feed(json{{"ready", true}});
@@ -589,7 +589,7 @@ TEST_CASE_METHOD(HelixTestFixture, "OpenAMS without load macros still shows stat
     CHECK(backend.operations == std::vector<std::string>{"OPENAMS_UNLOAD FPS=fps"});
     backend.complete_operation();
     CHECK(std::find(backend.events.begin(), backend.events.end(),
-                    helix::AmsBackend::EVENT_UNLOAD_COMPLETE) != backend.events.end());
+                    helix::AmsBackend::kEventUnloadComplete) != backend.events.end());
 
     REQUIRE(backend.reset().success());
     CHECK(backend.commands == std::vector<std::string>{"OAMSM_CLEAR_ERRORS"});
@@ -746,7 +746,7 @@ TEST_CASE_METHOD(HelixTestFixture, "OpenAMS persists metered weight and clears s
     CHECK(info.brand.empty());
     CHECK(info.material.empty());
     CHECK(info.spoolman_id == 0);
-    CHECK(info.color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    CHECK(info.color_rgb == helix::kAmsDefaultSlotColor);
     CHECK(info.remaining_weight_g < 0.0f);
 }
 

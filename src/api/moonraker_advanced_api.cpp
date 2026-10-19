@@ -1094,10 +1094,10 @@ class MPCCalibrateCollector : public std::enable_shared_from_this<MPCCalibrateCo
   private:
     void report_progress(int phase, const std::string& description) {
         // Total phases: 1=settle, 2=heatup, 3=fan measurements
-        static constexpr int TOTAL_PHASES = 3;
+        static constexpr int kTotalPhases = 3;
         spdlog::debug("[MPCCalibrateCollector] Progress: phase={} desc={}", phase, description);
         if (on_progress_)
-            on_progress_(phase, TOTAL_PHASES, description);
+            on_progress_(phase, kTotalPhases, description);
     }
 
     void parse_result_line(const std::string& line) {
@@ -1431,8 +1431,8 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
     /// range answers. Klipper defaults to 133.33 Hz and Kalico to 135 Hz; the
     /// higher value is the safer guess because underestimating the ceiling
     /// pins the sweep bar at its maximum for the remainder of the test.
-    static constexpr float DEFAULT_MIN_FREQ = 5.0f;
-    static constexpr float DEFAULT_MAX_FREQ = 135.0f;
+    static constexpr float kDefaultMinFreq = 5.0f;
+    static constexpr float kDefaultMaxFreq = 135.0f;
 
     /// Sweep progress spans the whole 0..100 bar. The analysis phase that
     /// follows has no percent at all - the UI swaps the bar for an indeterminate
@@ -1443,7 +1443,7 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
     /// How close to max_freq a sweep line must land to count as the last one.
     /// Klipper stops one step short of the configured ceiling (a 135 Hz
     /// max_freq ends at 134 Hz), so an equality test would never fire.
-    static constexpr float SWEEP_END_TOLERANCE_HZ = 1.5f;
+    static constexpr float kSweepEndToleranceHz = 1.5f;
 
     /// Gaps in Klipper's output that are worth a log line. Measured on a CB1
     /// running a 5-135 Hz sweep: lines arrive ~1/sec while sweeping, and the
@@ -1452,8 +1452,8 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
     /// host CPU, so its threshold is deliberately loose — a memory-constrained
     /// board can take far longer than a Pi. These only log; nothing aborts on
     /// them, so erring generous costs nothing.
-    static constexpr int64_t SWEEP_STALL_WARN_MS = 30000;
-    static constexpr int64_t ANALYZE_STALL_WARN_MS = 120000;
+    static constexpr int64_t kSweepStallWarnMs = 30000;
+    static constexpr int64_t kAnalyzeStallWarnMs = 120000;
 
     InputShaperCollector(IMoonrakerClient& client, char axis, ShaperProgressCallback on_progress,
                          InputShaperCallback on_success,
@@ -1668,8 +1668,8 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
     void note_activity() {
         const int64_t gap = ms_since_last_activity();
         const int64_t threshold = (collector_state_ == CollectorState::CALCULATING)
-                                      ? ANALYZE_STALL_WARN_MS
-                                      : SWEEP_STALL_WARN_MS;
+                                      ? kAnalyzeStallWarnMs
+                                      : kSweepStallWarnMs;
         if (gap > threshold) {
             spdlog::warn("[InputShaperCollector] {:.1f}s gap in SHAPER_CALIBRATE output on axis {} "
                          "(phase={}, last sweep freq={:.1f} Hz)",
@@ -1736,7 +1736,7 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
             // ceiling this check would re-create the very bug it backs up —
             // a printer sweeping past our guess would trip it mid-sweep and
             // claim to be analyzing while still moving.
-            if (range_from_config_.load() && freq >= max_freq_.load() - SWEEP_END_TOLERANCE_HZ) {
+            if (range_from_config_.load() && freq >= max_freq_.load() - kSweepEndToleranceHz) {
                 enter_analyzing();
             }
         }
@@ -1950,8 +1950,8 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
     CollectorState collector_state_ = CollectorState::WAITING_FOR_OUTPUT;
     // Atomic because the configfile query answers on the RPC path while the
     // sweep lines arrive on the notification path.
-    std::atomic<float> min_freq_{DEFAULT_MIN_FREQ};
-    std::atomic<float> max_freq_{DEFAULT_MAX_FREQ};
+    std::atomic<float> min_freq_{kDefaultMinFreq};
+    std::atomic<float> max_freq_{kDefaultMaxFreq};
     /// True once the printer's own [resonance_tester] range has been read.
     /// The sweep-end fallback is only trustworthy when this is set.
     std::atomic<bool> range_from_config_{false};
@@ -2224,12 +2224,12 @@ class NoiseCheckCollector : public std::enable_shared_from_this<NoiseCheckCollec
                          *noise_y, *noise_z);
 
             // Zero reading on X or Y means accelerometer isn't working on that axis
-            constexpr float MIN_NOISE = 0.001f;
-            if (*noise_x < MIN_NOISE || *noise_y < MIN_NOISE) {
+            constexpr float kMinNoise = 0.001f;
+            if (*noise_x < kMinNoise || *noise_y < kMinNoise) {
                 std::string dead_axes;
-                if (*noise_x < MIN_NOISE)
+                if (*noise_x < kMinNoise)
                     dead_axes += "X";
-                if (*noise_y < MIN_NOISE) {
+                if (*noise_y < kMinNoise) {
                     if (!dead_axes.empty())
                         dead_axes += " and ";
                     dead_axes += "Y";
@@ -2551,11 +2551,11 @@ void MoonrakerAdvancedAPI::start_bed_mesh_calibrate(const BedMeshCommand& comman
         [collector, on_error, command, prep_timeout_ms](const MoonrakerError& err) {
             report_collector_rpc_error(
                 "BED_MESH_CALIBRATE", get_printer_state(), collector, on_error, err,
-                command.self_prepares ? SELF_PREPARED_CALIBRATION_TIMEOUT_MS
-                                      : CALIBRATION_TIMEOUT_MS + prep_timeout_ms);
+                command.self_prepares ? kSelfPreparedCalibrationTimeoutMs
+                                      : kCalibrationTimeoutMs + prep_timeout_ms);
         },
-        command.self_prepares ? SELF_PREPARED_CALIBRATION_TIMEOUT_MS
-                              : CALIBRATION_TIMEOUT_MS + prep_timeout_ms);
+        command.self_prepares ? kSelfPreparedCalibrationTimeoutMs
+                              : kCalibrationTimeoutMs + prep_timeout_ms);
 }
 
 void MoonrakerAdvancedAPI::calculate_screws_tilt(ScrewTiltCallback on_success,
@@ -2605,9 +2605,9 @@ void MoonrakerAdvancedAPI::calculate_screws_tilt(ScrewTiltCallback on_success,
         },
         [collector, on_error, prep_timeout_ms](const MoonrakerError& err) {
             report_collector_rpc_error("SCREWS_TILT_CALCULATE", get_printer_state(), collector,
-                                       on_error, err, CALIBRATION_TIMEOUT_MS + prep_timeout_ms);
+                                       on_error, err, kCalibrationTimeoutMs + prep_timeout_ms);
         },
-        CALIBRATION_TIMEOUT_MS + prep_timeout_ms);
+        kCalibrationTimeoutMs + prep_timeout_ms);
 }
 
 void MoonrakerAdvancedAPI::run_qgl(SuccessCallback /*on_success*/, ErrorCallback on_error) {
@@ -2658,11 +2658,10 @@ void MoonrakerAdvancedAPI::start_resonance_test(char axis, ShaperProgressCallbac
         cmd, []() { spdlog::debug("[Moonraker API] SHAPER_CALIBRATE command accepted"); },
         [collector, on_error](const MoonrakerError& err) {
             report_collector_rpc_error(
-                "SHAPER_CALIBRATE", get_printer_state(), collector, on_error, err,
-                SHAPER_TIMEOUT_MS,
+                "SHAPER_CALIBRATE", get_printer_state(), collector, on_error, err, kShaperTimeoutMs,
                 [collector]() { collector->log_stall_diagnostics("SHAPER_CALIBRATE RPC lost"); });
         },
-        SHAPER_TIMEOUT_MS);
+        kShaperTimeoutMs);
 }
 
 void MoonrakerAdvancedAPI::start_klippain_shaper_calibration(const std::string& /*axis*/,
@@ -2702,9 +2701,9 @@ void MoonrakerAdvancedAPI::measure_axes_noise(NoiseCheckCallback on_complete,
         []() { spdlog::debug("[Moonraker API] MEASURE_AXES_NOISE command accepted"); },
         [collector, on_error](const MoonrakerError& err) {
             report_collector_rpc_error("MEASURE_AXES_NOISE", get_printer_state(), collector,
-                                       on_error, err, SHAPER_TIMEOUT_MS);
+                                       on_error, err, kShaperTimeoutMs);
         },
-        SHAPER_TIMEOUT_MS);
+        kShaperTimeoutMs);
 }
 
 void MoonrakerAdvancedAPI::get_input_shaper_config(InputShaperConfigCallback on_success,
@@ -2953,8 +2952,8 @@ void MoonrakerAdvancedAPI::execute_macro(const std::string& name,
     std::string gcode_str = std::move(gcode);
     spdlog::debug("[Moonraker API] Executing macro: {}", gcode_str);
 
-    // Default to MACRO_TIMEOUT_MS (5 min) — user macros can do anything
-    uint32_t effective_timeout = timeout_ms > 0 ? timeout_ms : MoonrakerAPI::MACRO_TIMEOUT_MS;
+    // Default to kMacroTimeoutMs (5 min) — user macros can do anything
+    uint32_t effective_timeout = timeout_ms > 0 ? timeout_ms : MoonrakerAPI::kMacroTimeoutMs;
     // suppress_auto_toast is CallerIntent::silent: it opts out of the tracker's
     // generic fallback toast and nothing else. Whether the `!!` broadcast dedups
     // follows from on_error being a real user-facing report, which is the
@@ -3113,9 +3112,9 @@ void MoonrakerAdvancedAPI::start_pid_calibrate(
             // A genuine RPC
             // error (heater misconfigured) is still terminal.
             report_collector_rpc_error("PID_CALIBRATE", get_printer_state(), collector, on_error,
-                                       err, PID_TIMEOUT_MS);
+                                       err, kPidTimeoutMs);
         },
-        PID_TIMEOUT_MS, true);
+        kPidTimeoutMs, true);
 }
 
 std::function<void()>
@@ -3189,9 +3188,9 @@ void MoonrakerAdvancedAPI::start_mpc_calibrate(
             // the busy->idle follow-up as the terminal backstop. A genuine RPC error
             // is still terminal.
             report_collector_rpc_error("MPC_CALIBRATE", get_printer_state(), collector, on_error,
-                                       err, MPC_TIMEOUT_MS);
+                                       err, kMpcTimeoutMs);
         },
-        MPC_TIMEOUT_MS, true);
+        kMpcTimeoutMs, true);
 }
 
 // ============================================================================
@@ -3326,7 +3325,7 @@ MoonrakerAdvancedAPI::BeltRunCancel MoonrakerAdvancedAPI::test_belt_resonance(
             }
             collector->complete_error(err.message);
         },
-        IAdvancedAPI::SHAPER_TIMEOUT_MS, /*silent=*/false, /*on_queued=*/nullptr,
+        IAdvancedAPI::kShaperTimeoutMs, /*silent=*/false, /*on_queued=*/nullptr,
         /*caller_surfaces_errors=*/true);
 
     return [weak = std::weak_ptr(collector)]() {

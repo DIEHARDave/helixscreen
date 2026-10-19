@@ -55,7 +55,7 @@ class AsyncLifetimeGuard;
  *
  * If `toolhead_is_homed()` is already true, `then()` runs synchronously,
  * on the caller's thread, before this function returns. Otherwise a `G28`
- * is sent at `IMoonrakerAPI::HOMING_TIMEOUT_MS`; `then()` on success or
+ * is sent at `IMoonrakerAPI::kHomingTimeoutMs`; `then()` on success or
  * `on_error()` on failure is marshalled onto the main thread through
  * `guard` (via `AsyncLifetimeGuard::bg_cb()`), so both fire safely even if
  * the owning object has since been destroyed.

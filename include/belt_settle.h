@@ -18,19 +18,18 @@
 namespace helix::calibration {
 
 namespace belt_settle {
-inline constexpr int LAPS = 3;
-inline constexpr float INSET_MIN_MM = 20.0f; ///< laps stay at least this far inside the limits
-inline constexpr float INSET_SPAN_FRACTION =
-    0.07f; ///< ...or this share of the axis span, if larger
+inline constexpr int kLaps = 3;
+inline constexpr float kInsetMinMm = 20.0f; ///< laps stay at least this far inside the limits
+inline constexpr float kInsetSpanFraction = 0.07f; ///< ...or this share of the axis span, if larger
 /// With several tools, the laps keep to the central half of each axis: parked
 /// tools and their docks sit inside the travel.
-inline constexpr float MULTI_TOOL_INSET_SPAN_FRACTION = 0.25f;
-inline constexpr float SPEED_MAX_MM_S = 300.0f;
-inline constexpr float SPEED_VELOCITY_FRACTION = 0.6f; ///< of toolhead max_velocity
-inline constexpr float MIN_SIDE_MM = 20.0f; ///< a shorter lap side cannot run the belt loop
-inline constexpr uint32_t MIN_TIMEOUT_MS = 60000;
-inline constexpr float TIMEOUT_FACTOR = 4.0f;                  ///< of the planned duration
-inline constexpr const char* STATE_NAME = "helix_belt_settle"; ///< SAVE_GCODE_STATE NAME=
+inline constexpr float kMultiToolInsetSpanFraction = 0.25f;
+inline constexpr float kSpeedMaxMmS = 300.0f;
+inline constexpr float kSpeedVelocityFraction = 0.6f; ///< of toolhead max_velocity
+inline constexpr float kMinSideMm = 20.0f; ///< a shorter lap side cannot run the belt loop
+inline constexpr uint32_t kMinTimeoutMs = 60000;
+inline constexpr float kTimeoutFactor = 4.0f;                  ///< of the planned duration
+inline constexpr const char* kStateName = "helix_belt_settle"; ///< SAVE_GCODE_STATE NAME=
 } // namespace belt_settle
 
 struct BeltSettleInputs {
@@ -55,12 +54,12 @@ enum class BeltSettleRefusal {
     NO_AXIS_LIMITS,
     NO_PROBE_POINT,
     NO_VELOCITY,
-    SPAN_TOO_SMALL, ///< a lap side would be under belt_settle::MIN_SIDE_MM
+    SPAN_TOO_SMALL, ///< a lap side would be under belt_settle::kMinSideMm
 };
 
 struct BeltSettlePlan {
     BeltSettleRefusal refusal = BeltSettleRefusal::NONE;
-    /// One script: SAVE_GCODE_STATE, G90, Z to the probe height, LAPS
+    /// One script: SAVE_GCODE_STATE, G90, Z to the probe height, kLaps
     /// rectangles, back to the probe point's X/Y, M400, RESTORE_GCODE_STATE.
     /// Empty when refused.
     std::string gcode;
@@ -68,7 +67,7 @@ struct BeltSettlePlan {
     float inset_x_mm = 0.0f;
     float inset_y_mm = 0.0f;
     float seconds = 0.0f;    ///< XY path length over speed; the approach move is not counted
-    uint32_t timeout_ms = 0; ///< max(MIN_TIMEOUT_MS, TIMEOUT_FACTOR x seconds)
+    uint32_t timeout_ms = 0; ///< max(kMinTimeoutMs, kTimeoutFactor x seconds)
 };
 
 [[nodiscard]] BeltSettlePlan plan_belt_settle(const BeltSettleInputs& in);

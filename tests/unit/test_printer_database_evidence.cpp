@@ -1,6 +1,7 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "printer_detector.h"
+#include "printer_image_variants.h"
 
 #include <algorithm>
 #include <cctype>
@@ -144,4 +145,39 @@ TEST_CASE("every bundled printer entry is well-formed and uniquely named",
         CHECK(ids.insert(id).second);
         CHECK(names.insert(lower(printer["name"].get<std::string>())).second);
     }
+}
+
+// An image variant whose condition this build does not know never matches, so a
+// misspelt key would ship a variant that silently never shows. That its image
+// exists is scripts/check_printer_images.py's job.
+TEST_CASE("every bundled image variant names a known condition and an image",
+          "[printer_database][schema][printer_image_variants]") {
+    const nlohmann::json db = load_database();
+    int variants_seen = 0;
+    for (const auto& printer : db["printers"]) {
+        if (!printer.contains("image_variants"))
+            continue;
+        INFO("printer id: '" << printer.value("id", "") << "'");
+        const auto& variants = printer["image_variants"];
+        REQUIRE(variants.is_array());
+        for (const auto& variant : variants) {
+            ++variants_seen;
+            INFO("variant: " << variant.dump());
+            REQUIRE(variant.is_object());
+            REQUIRE(variant.contains("image"));
+            REQUIRE(variant["image"].is_string());
+            CHECK_FALSE(variant["image"].get<std::string>().empty());
+            REQUIRE(variant.contains("when"));
+            REQUIRE(variant["when"].is_object());
+            CHECK_FALSE(variant["when"].empty());
+            for (auto it = variant["when"].begin(); it != variant["when"].end(); ++it) {
+                INFO("condition: " << it.key());
+                CHECK(helix::printer_images::is_known_variant_condition(it.key()));
+                CHECK(
+                    helix::printer_images::is_valid_variant_condition_value(it.key(), it.value()));
+            }
+        }
+    }
+    // The bundled K2 entry carries one, so a walk that finds none is reading the wrong file.
+    CHECK(variants_seen > 0);
 }

@@ -35,7 +35,7 @@ namespace {
 /// One complete response line from the real printer, captured verbatim:
 /// seven materials, all vendor generic, hyphenated main types (PETG-CF,
 /// PA6-CF) and one space-bearing sub type (TPU 95A HF).
-const char* REAL_RESPONSE_LINE =
+const char* kRealResponseLine =
     "// {'version': '1.0.0', 'hard_filaments_max_flow_k': 0.4, 'soft_filaments_max_flow_k': 0.6, "
     "'generic_PLA_generic_load_temp': 250, 'generic_PLA_generic_unload_temp': 250, "
     "'generic_PETG_generic_load_temp': 270, 'generic_PETG_generic_unload_temp': 270, "
@@ -63,7 +63,7 @@ struct FilamentTempsFixture {
     }
 
     void store_captured_table() const {
-        auto table = filament_temps::parse_filament_temperatures(REAL_RESPONSE_LINE);
+        auto table = filament_temps::parse_filament_temperatures(kRealResponseLine);
         REQUIRE(!table.empty());
         filament_temps::store_filament_temperatures(table);
     }
@@ -85,7 +85,7 @@ SlotInfo slot(const char* brand, const char* material, const char* sub_type) {
 
 TEST_CASE("filament-temps parse: the captured response yields the table",
           "[snapmaker][filament-temps]") {
-    auto table = filament_temps::parse_filament_temperatures(REAL_RESPONSE_LINE);
+    auto table = filament_temps::parse_filament_temperatures(kRealResponseLine);
 
     // Seven materials; version and the two flow ceilings ride along in the
     // same dict and must not become leaves.
@@ -101,7 +101,7 @@ TEST_CASE("filament-temps parse: the captured response yields the table",
 
 TEST_CASE("filament-temps parse: hyphenated main types and spaced sub types round-trip",
           "[snapmaker][filament-temps]") {
-    auto table = filament_temps::parse_filament_temperatures(REAL_RESPONSE_LINE);
+    auto table = filament_temps::parse_filament_temperatures(kRealResponseLine);
 
     auto pa6 = table.find(FilamentKey{"generic", "pa6-cf", "generic"});
     REQUIRE(pa6 != table.end());
@@ -169,7 +169,7 @@ TEST_CASE("filament-temps parse: banner and malformed lines yield an empty map, 
 
 TEST_CASE("filament-temps merge: two response lines yield the union",
           "[snapmaker][filament-temps]") {
-    auto table = filament_temps::parse_filament_temperatures(REAL_RESPONSE_LINE);
+    auto table = filament_temps::parse_filament_temperatures(kRealResponseLine);
     REQUIRE(table.size() == 7);
 
     // A second nozzle config's dict: PLA again (load only this time) plus a

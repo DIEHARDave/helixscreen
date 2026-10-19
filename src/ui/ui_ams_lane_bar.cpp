@@ -112,9 +112,9 @@ static void unregister_lane_bar_data(lv_obj_t* obj) {
 }
 
 /**
- * @brief Pre-deinit cleanup: release all lane bar data while widgets are still alive.
+ * @brief Teardown cleanup: drop all lane bar data while widgets are still alive.
  *
- * Called via StaticSubjectRegistry BEFORE lv_deinit(), mirroring
+ * Runs at every printer switch and before lv_deinit(); same rule as
  * cleanup_all_slot_data() in ui_ams_slot.cpp.
  */
 static void cleanup_all_lane_bar_data() {
@@ -122,12 +122,12 @@ static void cleanup_all_lane_bar_data() {
         if (!data)
             continue;
         data->active_loaded_lifetime.reset();
-        data->lane_state_observer.release();
-        data->color_observer.release();
-        data->fill_observer.release();
-        data->active_loaded_observer.release();
-        data->has_error_observer.release();
-        data->severity_observer.release();
+        data->lane_state_observer.reset();
+        data->color_observer.reset();
+        data->fill_observer.reset();
+        data->active_loaded_observer.reset();
+        data->has_error_observer.reset();
+        data->severity_observer.reset();
         delete data;
     }
     s_lane_bar_registry.clear();
@@ -265,8 +265,14 @@ static void ams_lane_bar_event_cb(lv_event_t* e) {
  * lifetime, since deinit_subjects() frees their observer nodes.
  */
 static void setup_lane_bar_observers(LaneBarData* data) {
-    if (data->slot_index < 0 || data->slot_index >= AmsState::MAX_SLOTS) {
+    if (data->slot_index < 0) {
         spdlog::warn("[AmsLaneBar] Invalid slot index {}, skipping observers", data->slot_index);
+        return;
+    }
+    if (data->slot_index >= AmsState::kMaxSlots) {
+        // AmsState warns once for the whole overflow; this slot stays unbound.
+        spdlog::debug("[AmsLaneBar] Slot {} is past the subject ceiling, left unbound",
+                      data->slot_index);
         return;
     }
 
@@ -516,8 +522,7 @@ void ams_lane_bar_resize(lv_obj_t* bar, int32_t bar_width, int32_t bar_height) {
     if (!bar)
         return;
     lv_obj_set_width(bar, bar_width);
-    lv_obj_set_height(bar,
-                      bar_height + ams_draw::STATUS_LINE_HEIGHT_PX + ams_draw::STATUS_LINE_GAP_PX);
+    lv_obj_set_height(bar, bar_height + ams_draw::kStatusLineHeightPx + ams_draw::kStatusLineGapPx);
     if (lv_obj_t* bg = lv_obj_find_by_name(bar, "bar_bg")) {
         lv_obj_set_size(bg, bar_width, bar_height);
     }
@@ -533,8 +538,9 @@ void ui_ams_lane_bar_register(void) {
     // Self-register cleanup — ensures lane bar data is released before
     // lv_deinit() so that lv_subject_deinit() can safely remove observers
     // from live widgets (mirrors ui_ams_slot_register()).
-    StaticSubjectRegistry::instance().register_deinit("AmsLaneBarWidgets",
-                                                      cleanup_all_lane_bar_data);
+    StaticSubjectRegistry::instance().register_deinit(
+        "AmsLaneBarWidgets", cleanup_all_lane_bar_data,
+        StaticSubjectRegistry::Lifetime::ProcessRunOnSwitch);
 
     spdlog::info("[AmsLaneBar] Registered ams_lane_bar widget with XML system");
 }

@@ -28,8 +28,8 @@ using namespace helix;
 namespace {
 
 struct SplitButtonData {
-    static constexpr uint32_t MAGIC = 0x53504C54; // "SPLT"
-    uint32_t magic{MAGIC};
+    static constexpr uint32_t kMagic = 0x53504C54; // "SPLT"
+    uint32_t magic{kMagic};
     lv_obj_t* main_btn{nullptr};
     lv_obj_t* arrow_btn{nullptr};
     lv_obj_t* dropdown{nullptr};
@@ -49,7 +49,7 @@ SplitButtonData* get_data(lv_obj_t* sb) {
     if (!first_child)
         return nullptr;
     auto* data = static_cast<SplitButtonData*>(lv_obj_get_user_data(first_child));
-    if (!data || data->magic != SplitButtonData::MAGIC)
+    if (!data || data->magic != SplitButtonData::kMagic)
         return nullptr;
     return data;
 }
@@ -304,7 +304,7 @@ void split_button_delete_cb(lv_event_t* e) {
     // main_btn: a closing modal nulls every user_data in its tree to stop
     // dispatch, and reading ownership back from that slot would strand it.
     auto* data = static_cast<SplitButtonData*>(lv_event_get_user_data(e));
-    if (!data || data->magic != SplitButtonData::MAGIC)
+    if (!data || data->magic != SplitButtonData::kMagic)
         return;
 
     if (data->click_overlay) {

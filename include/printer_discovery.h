@@ -14,7 +14,7 @@
  */
 
 #include "ams_types.h"
-#include "filament_database.h" // filament::DEFAULT_DIAMETER_MM
+#include "filament_database.h" // filament::kDefaultDiameterMm
 #include "leveling_probe_points.h"
 #include "openams_api.h" // OpenAMS claims only a manager speaking its API
 #include "preprint_skip_wrappers.h"
@@ -385,6 +385,11 @@ class PrinterDiscovery {
      */
     void set_is_kalico(bool kalico) {
         is_kalico_ = kalico;
+    }
+
+    /// The firmware's own name, as people know it: "Kalico" for that fork, else "Klipper".
+    [[nodiscard]] const char* firmware_name() const {
+        return is_kalico_ ? "Kalico" : "Klipper";
     }
 
     [[nodiscard]] bool supports_leveling() const {
@@ -1027,9 +1032,9 @@ class PrinterDiscovery {
                                              ///< independent of the heater pick: in COOLING mode
                                              ///< the K2 M141 macro parks the setpoint on this fan's
                                              ///< target, not the heater's.
-    float filament_diameter_mm_ = filament::DEFAULT_DIAMETER_MM; ///< [extruder] filament_diameter
-    static constexpr float DEFAULT_NOZZLE_DIAMETER_MM = 0.4f;
-    float nozzle_diameter_mm_ = DEFAULT_NOZZLE_DIAMETER_MM; ///< [extruder] nozzle_diameter
+    float filament_diameter_mm_ = filament::kDefaultDiameterMm; ///< [extruder] filament_diameter
+    static constexpr float kDefaultNozzleDiameterMm = 0.4f;
+    float nozzle_diameter_mm_ = kDefaultNozzleDiameterMm;   ///< [extruder] nozzle_diameter
     std::vector<LevelingProbePoint> leveling_probe_points_; ///< [quad_gantry_level]/[z_tilt] points
     std::optional<ProbeXYOffset> probe_xy_offset_;          ///< Z probe x_offset/y_offset
     int chamber_fan_resting_deci_ = 0; ///< Cooling fan's configured resting/off target

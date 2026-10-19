@@ -294,7 +294,7 @@ MacroParam only_param(const std::string& gcode) {
 TEST_CASE("parse_macro_params - a default read from printer state is an expression",
           "[macro_params][macro_defaults]") {
     lv_init_safe();
-    auto result = parse_macro_params(helix::test::LOAD_FILAMENT_EXPRESSION_DEFAULT);
+    auto result = parse_macro_params(helix::test::kLoadFilamentExpressionDefault);
 
     REQUIRE(result.size() == 1);
     const MacroParam& param = result[0];

@@ -35,11 +35,11 @@
 #include "../catch_amalgamated.hpp"
 #include "hv/json.hpp"
 
-using helix::AMS_DEFAULT_SLOT_COLOR;
 using helix::AmsAction;
 using helix::AmsBackendQidi;
 using helix::AmsType;
 using helix::DryerInfo;
+using helix::kAmsDefaultSlotColor;
 using helix::PathTopology;
 using helix::QidiBoxTestAccess;
 using helix::SlotInfo;
@@ -1318,7 +1318,7 @@ TEST_CASE("QIDI Box stop_drying falls back to TARGET=0", "[ams][qidi_box][dryer]
 // A trimmed-but-real excerpt of the stock file: a few fila sections plus
 // the colordict and vendor_list tail. Mirrors the real ConfigParser
 // alignment (key/value separated by a run of spaces around `=`).
-static const char* STOCK_FILAS_EXCERPT = R"INI(
+static const char* kStockFilasExcerpt = R"INI(
 [fila1]
 filament                       = PLA Rapido
 min_temp                       = 190
@@ -1357,7 +1357,7 @@ type                           = PETG-CF
 
 TEST_CASE("QIDI Box apply_filas_list captures filament name and type", "[ams][qidi_box]") {
     AmsBackendQidi backend(nullptr, nullptr);
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
 
     auto p1 = QidiBoxTestAccess::get_profile(backend, 1);
     REQUIRE(p1.has_value());
@@ -1380,7 +1380,7 @@ TEST_CASE("QIDI Box apply_filas_list captures filament name and type", "[ams][qi
 
 TEST_CASE("QIDI Box apply_filas_list parses colordict to packed RGB", "[ams][qidi_box]") {
     AmsBackendQidi backend(nullptr, nullptr);
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
 
     REQUIRE(QidiBoxTestAccess::get_color(backend, 1) == 0xFAFAFA);
     REQUIRE(QidiBoxTestAccess::get_color(backend, 2) == 0x060606);
@@ -1391,7 +1391,7 @@ TEST_CASE("QIDI Box apply_filas_list parses colordict to packed RGB", "[ams][qid
 
 TEST_CASE("QIDI Box apply_filas_list parses vendor_list", "[ams][qidi_box]") {
     AmsBackendQidi backend(nullptr, nullptr);
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
 
     REQUIRE(QidiBoxTestAccess::get_vendor(backend, 0) == "Generic");
     REQUIRE(QidiBoxTestAccess::get_vendor(backend, 1) == "QIDI");
@@ -1410,7 +1410,7 @@ TEST_CASE("QIDI Box apply_filas_list ignores bad sections and atomically swaps",
           "[ams][qidi_box]") {
     AmsBackendQidi backend(nullptr, nullptr);
     // First load populates all three maps.
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     REQUIRE(QidiBoxTestAccess::get_color(backend, 1).has_value());
 
     // Reload with only fila data + a typo'd section — colordict/vendor should
@@ -1435,7 +1435,7 @@ max_temp = 240
 
 TEST_CASE("QIDI Box apply_filas_list still parses temps (regression)", "[ams][qidi_box]") {
     AmsBackendQidi backend(nullptr, nullptr);
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     auto p11 = QidiBoxTestAccess::get_profile(backend, 11);
     REQUIRE(p11.has_value());
     REQUIRE(p11->nozzle_min == 240);
@@ -1454,7 +1454,7 @@ TEST_CASE("QIDI Box apply_filas_list still parses temps (regression)", "[ams][qi
 
 TEST_CASE("QIDI Box read-path resolves material/color/brand from filas list", "[ams][qidi_box]") {
     AmsBackendQidi backend(nullptr, nullptr);
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
 
     QidiBoxTestAccess::parse_vars(backend, json{
                                                {"filament_slot0", 11}, // ABS Rapido / ABS
@@ -1474,7 +1474,7 @@ TEST_CASE("QIDI Box read-path resolves material/color/brand from filas list", "[
 
 TEST_CASE("QIDI Box read-path leaves fields unchanged when ids miss", "[ams][qidi_box]") {
     AmsBackendQidi backend(nullptr, nullptr);
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
 
     // Unknown filament id (not in the cfg) + unknown color/vendor ids.
     QidiBoxTestAccess::parse_vars(backend, json{
@@ -1488,7 +1488,7 @@ TEST_CASE("QIDI Box read-path leaves fields unchanged when ids miss", "[ams][qid
     // Material/brand untouched (empty defaults), color stays at default.
     REQUIRE(s.material.empty());
     REQUIRE(s.brand.empty());
-    REQUIRE(s.color_rgb == AMS_DEFAULT_SLOT_COLOR);
+    REQUIRE(s.color_rgb == kAmsDefaultSlotColor);
 }
 
 TEST_CASE("QIDI Box read-path resolution survives before filas list loads", "[ams][qidi_box]") {
@@ -1501,7 +1501,7 @@ TEST_CASE("QIDI Box read-path resolution survives before filas list loads", "[am
                                            });
     auto info = backend.get_system_info();
     REQUIRE(info.units[0].slots[0].material.empty());
-    REQUIRE(info.units[0].slots[0].color_rgb == AMS_DEFAULT_SLOT_COLOR);
+    REQUIRE(info.units[0].slots[0].color_rgb == kAmsDefaultSlotColor);
     REQUIRE(QidiBoxTestAccess::filament_id(backend, 0) == 1);
 }
 
@@ -1561,7 +1561,7 @@ TEST_CASE("QIDI Box resolve_vendor_id matches name, falls back to Generic", "[am
 TEST_CASE("QIDI Box apply_user_edit emits SAVE_VARIABLE for all three ids",
           "[ams][qidi_box][write_path]") {
     RecordingQidiBackend backend;
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
 
     SlotInfo info;
     info.material = "ABS";
@@ -1592,7 +1592,7 @@ TEST_CASE("QIDI Box apply_user_edit emits SAVE_VARIABLE for all three ids",
 TEST_CASE("QIDI Box weight update writes none of the box's identity variables",
           "[ams][qidi_box][write_path][1652]") {
     RecordingQidiBackend backend;
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     // A loaded vendor table makes apply_user_edit write vendor_slot for any slot,
     // so a weight that reached it would show up in what was sent.
     REQUIRE(QidiBoxTestAccess::vendor_count(backend) > 0);
@@ -1606,7 +1606,7 @@ TEST_CASE("QIDI Box weight update writes none of the box's identity variables",
 TEST_CASE("QIDI Box identity sync writes none of the box's identity variables",
           "[ams][qidi_box][write_path][1652]") {
     RecordingQidiBackend backend;
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     // Values that resolve to all three ids, so a sync that reached the write
     // path would show up in what was sent.
     REQUIRE(QidiBoxTestAccess::vendor_count(backend) > 0);
@@ -1623,7 +1623,7 @@ TEST_CASE("QIDI Box identity sync writes none of the box's identity variables",
 
 TEST_CASE("QIDI Box apply_user_edit skips fields with no mapping", "[ams][qidi_box][write_path]") {
     RecordingQidiBackend backend;
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
 
     // Material that doesn't map to any fila; valid color + vendor.
     SlotInfo info;
@@ -1651,7 +1651,7 @@ TEST_CASE("QIDI Box apply_user_edit skips fields with no mapping", "[ams][qidi_b
 TEST_CASE("QIDI Box apply_user_edit rejects out-of-range slot index",
           "[ams][qidi_box][write_path]") {
     RecordingQidiBackend backend;
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
 
     SlotInfo info;
     info.material = "PLA";
@@ -1664,7 +1664,7 @@ TEST_CASE("QIDI Box apply_user_edit accepts global slots from later boxes",
           "[ams][qidi_box][write_path]") {
     RecordingQidiBackend backend;
     QidiBoxTestAccess::parse_vars(backend, json{{"box_count", 2}});
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
 
     SlotInfo info;
     info.material = "ABS";
@@ -1702,7 +1702,7 @@ TEST_CASE("QIDI Box apply_user_edit with no palette/vendor data still writes fil
 TEST_CASE("QIDI Box apply_user_edit carries an explicit zero for a cleared field",
           "[ams][qidi_box][write_path][1633]") {
     RecordingQidiBackend backend;
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     // The Box states a full identity for slot 0, so the edit has an id to
     // clear and the fingerprint baseline the echo is judged against.
     QidiBoxTestAccess::parse_vars(
@@ -1748,7 +1748,7 @@ TEST_CASE("QIDI Box apply_user_edit carries an explicit zero for a cleared field
 
     SECTION("colour cleared alone writes color zero") {
         SlotInfo info = backend.get_slot_info(0);
-        info.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+        info.color_rgb = kAmsDefaultSlotColor;
 
         REQUIRE(helix::test::apply_edit(backend, 0, info).success());
         REQUIRE(sent_color() == "SAVE_VARIABLE VARIABLE=color_slot0 VALUE=0");
@@ -2095,7 +2095,7 @@ TEST_CASE("QIDI Box tag fingerprint change clears a prior user edit", "[ams][qid
     FilamentSlotOverrideStoreTestAccess::set_cache_directory(*store, tmp.path);
     QidiBoxTestAccess::inject_override_store(backend, std::move(store));
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     mock_printer.client.mock_db_set(
         "lane_data", "lane1",
         json{{"vendor", "Polymaker"}, {"spool_id", 42}, {"material", "PLA"}, {"color", "#FF362D"}});
@@ -2137,7 +2137,7 @@ TEST_CASE("QIDI Box unchanged tag fingerprint keeps a user edit", "[ams][qidi_bo
     helix::test::RegisteredBackend<AmsBackendQidi> harness(&api, nullptr);
     AmsBackendQidi& backend = *harness;
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     helix::ams::FilamentSlotOverride ovr;
     ovr.brand = "Polymaker";
     ovr.spoolman_id = 42;
@@ -2160,7 +2160,7 @@ TEST_CASE("QIDI Box first tag observation is a baseline, not a clear", "[ams][qi
     helix::test::RegisteredBackend<AmsBackendQidi> harness(&api, nullptr);
     AmsBackendQidi& backend = *harness;
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     helix::ams::FilamentSlotOverride ovr;
     ovr.brand = "Polymaker";
     ovr.spoolman_id = 42;
@@ -2182,7 +2182,7 @@ TEST_CASE("QIDI Box own identity push echo does not clear the edit", "[ams][qidi
     helix::test::RegisteredBackend<RecordingQidiBackend> harness;
     RecordingQidiBackend& backend = *harness;
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     QidiBoxTestAccess::parse_vars(
         backend, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
     REQUIRE(QidiBoxTestAccess::last_fingerprint(backend, 0) == "1|18");
@@ -2219,7 +2219,7 @@ TEST_CASE("QIDI Box keeps the tag's reading under its own write's echo",
     helix::test::RegisteredBackend<RecordingQidiBackend> harness;
     RecordingQidiBackend& backend = *harness;
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     QidiBoxTestAccess::parse_vars(
         backend, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
     const auto tag = backend.tag_reading(0);
@@ -2257,7 +2257,7 @@ TEST_CASE("QIDI Box colour and vendor writes keep the echo expectation alive", "
     helix::test::RegisteredBackend<RecordingQidiBackend> harness;
     RecordingQidiBackend& backend = *harness;
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     QidiBoxTestAccess::parse_vars(
         backend, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
     REQUIRE(QidiBoxTestAccess::last_fingerprint(backend, 0) == "1|18");
@@ -2292,7 +2292,7 @@ TEST_CASE("QIDI Box a write that never dispatched leaves no echo expectation", "
     helix::test::RegisteredBackend<AmsBackendQidi> harness(nullptr, nullptr);
     AmsBackendQidi& backend = *harness;
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     QidiBoxTestAccess::parse_vars(
         backend, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
     REQUIRE(QidiBoxTestAccess::last_fingerprint(backend, 0) == "1|18");
@@ -2319,7 +2319,7 @@ TEST_CASE("QIDI Box a failed dispatch drops only its own echo expectations", "[a
     helix::test::RegisteredBackend<RecordingQidiBackend> harness;
     RecordingQidiBackend& backend = *harness;
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     QidiBoxTestAccess::parse_vars(
         backend, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
     REQUIRE(QidiBoxTestAccess::last_fingerprint(backend, 0) == "1|18");
@@ -2371,7 +2371,7 @@ TEST_CASE("QIDI Box a user edit persists its override to the lane_data record", 
     FilamentSlotOverrideStoreTestAccess::set_cache_directory(*store, tmp.path);
     QidiBoxTestAccess::inject_override_store(backend, std::move(store));
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     QidiBoxTestAccess::parse_vars(
         backend, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
 
@@ -2422,7 +2422,7 @@ TEST_CASE("QIDI Box clear_slot_override erases the edit, its lane record and the
     FilamentSlotOverrideStoreTestAccess::set_cache_directory(*store, tmp.path);
     QidiBoxTestAccess::inject_override_store(backend, std::move(store));
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     QidiBoxTestAccess::parse_vars(backend, json{{"vendor_slot0", 2}});
     mock_printer.client.mock_db_set("lane_data", "lane1",
                                     json{{"vendor", "Polymaker"}, {"spool_id", 42}});
@@ -2450,7 +2450,7 @@ TEST_CASE("QIDI Box a poll between the edit and its echo keeps the edit on scree
     helix::test::RegisteredBackend<RecordingQidiBackend> harness;
     RecordingQidiBackend& backend = *harness;
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     QidiBoxTestAccess::parse_vars(
         backend, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
     REQUIRE(QidiBoxTestAccess::last_fingerprint(backend, 0) == "1|18");
@@ -2487,7 +2487,7 @@ TEST_CASE("QIDI Box a stored edit shows again after a restart", "[ams][qidi_box]
         FilamentSlotOverrideStoreTestAccess::set_cache_directory(*store, tmp.path);
         QidiBoxTestAccess::inject_override_store(first, std::move(store));
 
-        QidiBoxTestAccess::apply_filas_list(first, STOCK_FILAS_EXCERPT);
+        QidiBoxTestAccess::apply_filas_list(first, kStockFilasExcerpt);
         QidiBoxTestAccess::parse_vars(
             first, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
 
@@ -2506,7 +2506,7 @@ TEST_CASE("QIDI Box a stored edit shows again after a restart", "[ams][qidi_box]
     auto store = std::make_unique<helix::ams::FilamentSlotOverrideStore>(&api, "qidi");
     FilamentSlotOverrideStoreTestAccess::set_cache_directory(*store, tmp.path);
     QidiBoxTestAccess::inject_override_store(backend, std::move(store));
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     QidiBoxTestAccess::start_load(backend);
     REQUIRE(QidiBoxTestAccess::get_override(backend, 0).has_value());
 
@@ -2529,7 +2529,7 @@ TEST_CASE("QIDI Box clearing a spool writes the three identity zeros", "[ams][qi
     helix::test::RegisteredBackend<RecordingQidiBackend> harness;
     RecordingQidiBackend& backend = *harness;
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     QidiBoxTestAccess::parse_vars(
         backend, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
     REQUIRE(QidiBoxTestAccess::last_fingerprint(backend, 0) == "1|18");
@@ -2550,7 +2550,7 @@ TEST_CASE("QIDI Box a cleared slot reads as no identity once the zero echo lands
     helix::test::RegisteredBackend<RecordingQidiBackend> harness;
     RecordingQidiBackend& backend = *harness;
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     QidiBoxTestAccess::parse_vars(
         backend, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
     REQUIRE(backend.get_slot_info(0).material == "PLA");
@@ -2584,7 +2584,7 @@ TEST_CASE("QIDI Box an edit racing the clear's zero echoes survives them", "[ams
     helix::test::RegisteredBackend<RecordingQidiBackend> harness;
     RecordingQidiBackend& backend = *harness;
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     QidiBoxTestAccess::parse_vars(
         backend, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
     REQUIRE(QidiBoxTestAccess::last_fingerprint(backend, 0) == "1|18");
@@ -2618,7 +2618,7 @@ TEST_CASE("QIDI Box clear writes the firmware zeros while a print is active", "[
     helix::test::RegisteredBackend<RecordingQidiBackend> harness(&api);
     RecordingQidiBackend& backend = *harness;
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     QidiBoxTestAccess::parse_vars(
         backend, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
 
@@ -2650,7 +2650,7 @@ TEST_CASE("QIDI Box a quoted SAVE_VARIABLE value paints the slot", "[ams][qidi_b
     helix::test::RegisteredBackend<RecordingQidiBackend> harness;
     RecordingQidiBackend& backend = *harness;
 
-    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::apply_filas_list(backend, kStockFilasExcerpt);
     // Qidi Studio writes VALUE="5"; save_variables.py evaluates the literal,
     // so the id arrives as a JSON string rather than an int.
     QidiBoxTestAccess::parse_vars(
@@ -2701,7 +2701,7 @@ TEST_CASE("QIDI Box a restart compares against the fingerprint the record carrie
                                     helix::ams::to_lane_data_record(0, saved));
     {
         helix::test::RegisteredBackend<AmsBackendQidi> session1(&api, nullptr);
-        QidiBoxTestAccess::apply_filas_list(*session1, STOCK_FILAS_EXCERPT);
+        QidiBoxTestAccess::apply_filas_list(*session1, kStockFilasExcerpt);
         QidiBoxTestAccess::start_load(*session1);
         REQUIRE(QidiBoxTestAccess::get_override(*session1, 0).has_value());
         QidiBoxTestAccess::parse_vars(
@@ -2714,7 +2714,7 @@ TEST_CASE("QIDI Box a restart compares against the fingerprint the record carrie
 
     SECTION("a swap made while the app was down clears the override") {
         helix::test::RegisteredBackend<AmsBackendQidi> session2(&api, nullptr);
-        QidiBoxTestAccess::apply_filas_list(*session2, STOCK_FILAS_EXCERPT);
+        QidiBoxTestAccess::apply_filas_list(*session2, kStockFilasExcerpt);
         QidiBoxTestAccess::start_load(*session2);
         // The loaded record's fingerprint is the baseline, so the first frame
         // after restart is a comparison, not a first observation.
@@ -2730,7 +2730,7 @@ TEST_CASE("QIDI Box a restart compares against the fingerprint the record carrie
 
     SECTION("the same spool across a restart keeps the override") {
         helix::test::RegisteredBackend<AmsBackendQidi> session2(&api, nullptr);
-        QidiBoxTestAccess::apply_filas_list(*session2, STOCK_FILAS_EXCERPT);
+        QidiBoxTestAccess::apply_filas_list(*session2, kStockFilasExcerpt);
         QidiBoxTestAccess::start_load(*session2);
         QidiBoxTestAccess::parse_vars(
             *session2, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
@@ -2766,7 +2766,7 @@ TEST_CASE("clearing a QIDI Box slot takes the linked spool's brand off it",
     // restates either - so only the repaint's clear takes them off.
     SlotInfo cleared = backend.get_slot_info(0);
     cleared.material.clear();
-    cleared.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    cleared.color_rgb = kAmsDefaultSlotColor;
     cleared.color_name.clear();
     cleared.multi_color_hexes.clear();
     cleared.brand.clear();

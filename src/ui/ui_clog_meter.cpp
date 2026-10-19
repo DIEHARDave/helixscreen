@@ -17,8 +17,8 @@ namespace helix::ui {
 
 // Arc size = percentage of card width. The stroke comes from the shared
 // helix_progress_arc helper's diameter tier, not from here.
-constexpr int32_t ARC_WIDTH_PCT = 18; // arc is 18% of card width
-constexpr int32_t MIN_ARC_SIZE = 24;
+constexpr int32_t kArcWidthPct = 18; // arc is 18% of card width
+constexpr int32_t kMinArcSize = 24;
 
 namespace {
 /// The loaded card the meter sizes against: clog_meter sits in the card's
@@ -192,10 +192,10 @@ void UiClogMeter::resize_arc() {
     // panel) keeps a small arc
     const int32_t card_w = lv_obj_get_content_width(card);
     const int32_t arc_max = theme_manager_get_spacing("ams_clog_arc_max");
-    int32_t arc_size = card_w * ARC_WIDTH_PCT / 100;
+    int32_t arc_size = card_w * kArcWidthPct / 100;
     if (arc_max > 0)
         arc_size = LV_MIN(arc_size, arc_max);
-    arc_size = LV_MAX(arc_size, MIN_ARC_SIZE);
+    arc_size = LV_MAX(arc_size, kMinArcSize);
 
     // Skip if already at target size
     if (lv_obj_get_width(arc_) == arc_size && lv_obj_get_height(arc_) == arc_size) {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_fireflies.h"
 
@@ -35,12 +35,12 @@ const char* mode_name(helix::ui::FirefliesMode mode) {
 } // namespace
 
 void helix::ui::FirefliesScreensaver::on_frame(uint32_t dt_ms, std::vector<DirtyRect>& dirty) {
-    uint32_t begun[FIREFLIES_MODE_COUNT];
-    for (size_t m = 0; m < FIREFLIES_MODE_COUNT; m++) {
+    uint32_t begun[kFirefliesModeCount];
+    for (size_t m = 0; m < kFirefliesModeCount; m++) {
         begun[m] = sim_.modes_begun(static_cast<FirefliesMode>(m));
     }
     step_sim(dt_ms, dirty);
-    for (size_t m = 0; m < FIREFLIES_MODE_COUNT; m++) {
+    for (size_t m = 0; m < kFirefliesModeCount; m++) {
         if (sim_.modes_begun(static_cast<FirefliesMode>(m)) != begun[m]) {
             spdlog::debug("[Screensaver] Fireflies mode: {}",
                           mode_name(static_cast<FirefliesMode>(m)));

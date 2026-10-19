@@ -93,22 +93,22 @@ class ThumbnailCache {
 
   public:
     /// Default cache subdirectory name (appended to base cache dir)
-    static constexpr const char* CACHE_SUBDIR = "helix_thumbs";
+    static constexpr const char* kCacheSubdir = "helix_thumbs";
 
     /// Minimum cache size (5 MB) - floor for very constrained systems
-    static constexpr size_t MIN_CACHE_SIZE = 5 * 1024 * 1024;
+    static constexpr size_t kMinCacheSize = 5 * 1024 * 1024;
 
     /// Default maximum cache size (20 MB) - conservative for AD5M, override via config
-    static constexpr size_t DEFAULT_MAX_CACHE_SIZE = 20 * 1024 * 1024;
+    static constexpr size_t kDefaultMaxCacheSize = 20 * 1024 * 1024;
 
     /// Default percentage of available disk space to use for cache
-    static constexpr double DEFAULT_DISK_PERCENT = 0.05; // 5%
+    static constexpr double kDefaultDiskPercent = 0.05; // 5%
 
     /// Default critical disk threshold (5 MB) - conservative for AD5M
-    static constexpr size_t DEFAULT_DISK_CRITICAL = 5 * 1024 * 1024;
+    static constexpr size_t kDefaultDiskCritical = 5 * 1024 * 1024;
 
     /// Default low disk threshold (20 MB) - conservative for AD5M
-    static constexpr size_t DEFAULT_DISK_LOW = 20 * 1024 * 1024;
+    static constexpr size_t kDefaultDiskLow = 20 * 1024 * 1024;
 
     /// Callback for successful thumbnail fetch (receives LVGL-ready path with "A:" prefix)
     ///
@@ -127,7 +127,7 @@ class ThumbnailCache {
      *
      * Creates cache directory if it doesn't exist.
      * Cache size is calculated as:
-     *   clamp(available_space * 5%, MIN_CACHE_SIZE, MAX_CACHE_SIZE)
+     *   clamp(available_space * 5%, kMinCacheSize, MAX_CACHE_SIZE)
      */
     ThumbnailCache();
 
@@ -496,7 +496,7 @@ class ThumbnailCache {
     /// Rate limit for the free-space syscall. Reached twice per fetch_optimized()
     /// on the main thread; free space does not change fast enough to warrant a
     /// statfs per thumbnail.
-    static constexpr int64_t DISK_PROBE_INTERVAL_MS = 2000;
+    static constexpr int64_t kDiskProbeIntervalMs = 2000;
 
     /// Guards the disk-probe cache only. Deliberately NOT mutex_: get_disk_pressure()
     /// is called from inside evict_locked(), which already holds mutex_.
@@ -585,7 +585,7 @@ class ThumbnailCache {
     /// may disagree with the directory, at a cost of one walk per this many
     /// checks instead of one per check. Ordered map, so a rescan is also what
     /// re-establishes exact totals after any anomaly.
-    static constexpr size_t INDEX_RECONCILE_INTERVAL = 64;
+    static constexpr size_t kIndexReconcileInterval = 64;
 
     /// Rebuild the index from the filesystem. The only O(cache) path left.
     /// @pre mutex_ is held.
@@ -667,7 +667,7 @@ class ThumbnailCache {
      * 3. $HOME/.cache/helix (if HOME is set and writable)
      * 4. /tmp/helix_cache (fallback for systems without home dir)
      *
-     * @return Absolute path to the cache base directory (not including CACHE_SUBDIR)
+     * @return Absolute path to the cache base directory (not including kCacheSubdir)
      */
     static std::string determine_cache_dir();
 
@@ -721,7 +721,7 @@ ThumbnailCache& get_thumbnail_cache();
 namespace helix {
 
 /// Header size that covers every slicer's embedded-thumbnail comment block.
-constexpr size_t GCODE_THUMBNAIL_HEADER_BYTES = 100 * 1024;
+constexpr size_t kGcodeThumbnailHeaderBytes = 100 * 1024;
 
 /// Error-text prefix marking a PERMANENT extraction verdict: the gcode header
 /// was read and contains no embedded thumbnails. Every other failure flavor
@@ -729,7 +729,7 @@ constexpr size_t GCODE_THUMBNAIL_HEADER_BYTES = 100 * 1024;
 /// so consumers keying a negative cache off extraction errors match THIS
 /// prefix, nothing else. Compared by prefix so the message still carries the
 /// path.
-inline constexpr const char* GCODE_THUMBNAIL_NONE_EMBEDDED = "no embedded thumbnails in ";
+inline constexpr const char* kGcodeThumbnailNoneEmbedded = "no embedded thumbnails in ";
 
 /// Whether a gcode-header extraction can deliver a thumbnail on this platform.
 /// The ESP32 keeps no disk thumbnail cache (save_raw_png() refuses to write), so

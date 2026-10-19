@@ -84,7 +84,7 @@ TEST_CASE("keypad params seed the commanded value and bound by the envelope", "[
 
 TEST_CASE_METHOD(LVGLUITestFixture, "coordinate readouts follow the commanded/actual preference",
                  "[motion][coords][xml]") {
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& p : panels)
         p = lv_obj_create(lv_screen_active());
     NavigationManager::instance().set_panels(panels.data());
@@ -157,7 +157,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "coordinate readouts follow the commanded/ac
 
 TEST_CASE_METHOD(LVGLUITestFixture, "motion bounds follow the gcode origin, not the machine",
                  "[motion][coords][xml]") {
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& p : panels)
         p = lv_obj_create(lv_screen_active());
     NavigationManager::instance().set_panels(panels.data());

@@ -123,14 +123,22 @@ BeltTensionPanel::~BeltTensionPanel() {
     chart_host_wide_ = nullptr;
 }
 
+namespace helix::ui {
+
+void open_belt_tension_panel(lv_obj_t* parent_screen) {
+    auto& panel = get_global_belt_tension_panel();
+    panel.set_api(get_moonraker_client(), get_moonraker_api());
+    panel.show(parent_screen);
+}
+
+} // namespace helix::ui
+
 void init_belt_tension_row_handler() {
     register_xml_callbacks({
         {"on_belt_tension_row_clicked",
          [](lv_event_t*) {
              spdlog::debug("[BeltTension] Belt Tension row clicked");
-             auto& panel = get_global_belt_tension_panel();
-             panel.set_api(get_moonraker_client(), get_moonraker_api());
-             panel.show(lv_display_get_screen_active(nullptr));
+             helix::ui::open_belt_tension_panel(lv_display_get_screen_active(nullptr));
          }},
     });
     spdlog::trace("[BeltTension] Row click callback registered");
@@ -716,9 +724,9 @@ void BeltTensionPanel::handle_retest_menu_clicked(lv_obj_t* anchor) {
         return;
     }
     retest_menu_.set_action_callback([this](int action, int /*item*/) {
-        if (action == helix::ui::BeltRetestMenu::ACTION_PATH_A) {
+        if (action == helix::ui::BeltRetestMenu::kActionPathA) {
             handle_retest_clicked(BeltPath::PATH_A);
-        } else if (action == helix::ui::BeltRetestMenu::ACTION_PATH_B) {
+        } else if (action == helix::ui::BeltRetestMenu::kActionPathB) {
             handle_retest_clicked(BeltPath::PATH_B);
         }
     });
@@ -995,7 +1003,7 @@ void BeltTensionPanel::start_next_measurement() {
 
     // One guard spans the whole queue: every progress line re-arms it, so it
     // measures silence, not sweep length.
-    stall_guard_.begin(STALL_TIMEOUT_MS, [this]() { on_stall(); });
+    stall_guard_.begin(kStallTimeoutMs, [this]() { on_stall(); });
 
     if (!calibrator_) {
         on_error(lv_tr("No printer connection"));
@@ -1016,7 +1024,7 @@ void BeltTensionPanel::on_sweep_progress(int /*percent*/, float freq_hz) {
     }
     // Re-arm on every line: the guard fires only on true silence.
     stall_guard_.end();
-    stall_guard_.begin(STALL_TIMEOUT_MS, [this]() { on_stall(); });
+    stall_guard_.begin(kStallTimeoutMs, [this]() { on_stall(); });
 
     if (chart_) {
         ui_frequency_response_chart_set_cursor(chart_, freq_hz, path_color(queue_.front()));
@@ -1076,7 +1084,7 @@ void BeltTensionPanel::on_sweep_error(const std::string& message) {
 }
 
 void BeltTensionPanel::on_stall() {
-    spdlog::warn("[BeltTension] Stall guard fired: no progress for {} ms", STALL_TIMEOUT_MS);
+    spdlog::warn("[BeltTension] Stall guard fired: no progress for {} ms", kStallTimeoutMs);
     on_error(lv_tr("Klipper stopped reporting progress. Its analysis can run out of memory on "
                    "small printers and leave Klipper stuck, where a firmware restart cannot "
                    "reach it. Power-cycle the printer (or restart Klipper over SSH), then try "
@@ -1144,7 +1152,7 @@ void BeltTensionPanel::populate_results(const helix::calibration::BeltComparison
     // Paired peaks, strongest first: "Peaks 35/36 · 133/132 Hz" (A/B).
     const auto& pairs = cmp.peaks.pairs;
     std::string pair_list;
-    for (size_t i = 0; i < pairs.size() && i < MAX_LISTED_PEAKS; ++i) {
+    for (size_t i = 0; i < pairs.size() && i < kMaxListedPeaks; ++i) {
         pair_list += fmt::format("{}{:.0f}/{:.0f}", i == 0 ? "" : " · ", pairs[i].a.freq_hz,
                                  pairs[i].b.freq_hz);
     }
@@ -1160,8 +1168,8 @@ void BeltTensionPanel::populate_results(const helix::calibration::BeltComparison
     const auto listed = [](std::vector<helix::calibration::BeltPeak> peaks) {
         std::sort(peaks.begin(), peaks.end(),
                   [](const auto& l, const auto& r) { return l.amplitude > r.amplitude; });
-        if (peaks.size() > MAX_LISTED_PEAKS) {
-            peaks.resize(MAX_LISTED_PEAKS);
+        if (peaks.size() > kMaxListedPeaks) {
+            peaks.resize(kMaxListedPeaks);
         }
         std::sort(peaks.begin(), peaks.end(),
                   [](const auto& l, const auto& r) { return l.freq_hz < r.freq_hz; });
@@ -1207,7 +1215,7 @@ void BeltTensionPanel::push_chart_markers(const helix::calibration::BeltComparis
     // hollow rings on the listed unpaired peaks.
     std::vector<FrChartMarker> markers[2];
     const auto& pairs = cmp.peaks.pairs;
-    for (size_t i = 0; i < pairs.size() && i < MAX_LISTED_PEAKS; ++i) {
+    for (size_t i = 0; i < pairs.size() && i < kMaxListedPeaks; ++i) {
         const int number = static_cast<int>(i) + 1;
         markers[0].push_back({pairs[i].a.freq_hz, number});
         markers[1].push_back({pairs[i].b.freq_hz, number});
@@ -1216,7 +1224,7 @@ void BeltTensionPanel::push_chart_markers(const helix::calibration::BeltComparis
                                  std::vector<FrChartMarker>& out) {
         std::sort(peaks.begin(), peaks.end(),
                   [](const auto& l, const auto& r) { return l.amplitude > r.amplitude; });
-        for (size_t i = 0; i < peaks.size() && i < MAX_LISTED_PEAKS; ++i) {
+        for (size_t i = 0; i < peaks.size() && i < kMaxListedPeaks; ++i) {
             out.push_back({peaks[i].freq_hz, 0});
         }
     };
@@ -1306,7 +1314,7 @@ void BeltTensionPanel::start_note_age_timer() {
             auto* self = static_cast<BeltTensionPanel*>(lv_timer_get_user_data(t));
             self->refresh_notes();
         },
-        NOTE_AGE_REFRESH_MS, this));
+        kNoteAgeRefreshMs, this));
 }
 
 void BeltTensionPanel::refresh_run_detail() {
@@ -1470,8 +1478,8 @@ void BeltTensionPanel::handle_tune_amount_step(int direction) {
         return;
     }
     namespace bt = helix::calibration::belt_tune;
-    tune_turns_ = std::clamp(tune_turns_ + (direction > 0 ? bt::TURN_STEP : -bt::TURN_STEP), 0.0f,
-                             bt::TURN_MAX);
+    tune_turns_ = std::clamp(tune_turns_ + (direction > 0 ? bt::kTurnStep : -bt::kTurnStep), 0.0f,
+                             bt::kTurnMax);
     refresh_tune();
 }
 
@@ -1510,7 +1518,7 @@ void BeltTensionPanel::handle_tune_confirm_clicked() {
     if (t.tensioner() == helix::calibration::BeltTensionerKind::SCREW) {
         for (const auto path : {BeltPath::PATH_A, BeltPath::PATH_B}) {
             const float turns = t.total_turns(path);
-            if (std::abs(turns) < helix::calibration::belt_tune::TURN_STEP / 2.0f) {
+            if (std::abs(turns) < helix::calibration::belt_tune::kTurnStep / 2.0f) {
                 continue;
             }
             summary += fmt::format(fmt::runtime(turns > 0.0f ? lv_tr(" · {} tightened about {}")
@@ -1647,7 +1655,7 @@ void BeltTensionPanel::reset_tune_turns() {
 }
 
 void BeltTensionPanel::reset_tune_gauge_range() {
-    const float floor_hz = 2.0f * helix::calibration::belt_tune::GAUGE_WARN_HZ;
+    const float floor_hz = 2.0f * helix::calibration::belt_tune::kGaugeWarnHz;
     tune_gauge_range_hz_ = tune_ ? std::max(floor_hz, 1.25f * std::abs(tune_->gap_hz())) : floor_hz;
 }
 

@@ -35,14 +35,14 @@ namespace pg = pathgeo;
 
 // Centerline fillet radius for orthogonal lane routing (route_orthogonal clamps
 // internally, so tight layouts degrade gracefully to jogs / straight runs).
-inline constexpr float FILLET_RADIUS = 12.0f;
+inline constexpr float kFilletRadius = 12.0f;
 
 // Halo around the active route: two opaque bands pre-blended from the background
 // toward the wall color, so overlapping chords and bends never double-blend.
-inline constexpr int32_t HALO_WIDTH_EXTRA = 6; // outer band: gauge + 6
-inline constexpr int32_t HALO_INNER_EXTRA = 3; // inner band: gauge + 3
-inline constexpr float HALO_OUTER_MIX = 0.25f; // wall share, outer band
-inline constexpr float HALO_INNER_MIX = 0.55f; // wall share, inner band
+inline constexpr int32_t kHaloWidthExtra = 6; // outer band: gauge + 6
+inline constexpr int32_t kHaloInnerExtra = 3; // inner band: gauge + 3
+inline constexpr float kHaloOuterMix = 0.25f; // wall share, outer band
+inline constexpr float kHaloInnerMix = 0.55f; // wall share, inner band
 
 /// Whether a board's row or its memory size calls for reduced effects. Pure: the
 /// decision behind reduced_effects(), separate from its cached evaluation.

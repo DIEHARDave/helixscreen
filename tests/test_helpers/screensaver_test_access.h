@@ -10,7 +10,7 @@
 #include "screensaver_sim_saver.h"
 #include "screensaver_starfield.h"
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "misc/lv_timer_private.h"
 
@@ -286,7 +286,7 @@ class PipesScreensaverTestAccess {
         return ss.sim_;
     }
 
-    static std::array<helix::ui::PipeState, helix::ui::PIPES_MAX_ACTIVE>
+    static std::array<helix::ui::PipeState, helix::ui::kPipesMaxActive>
     pipes(const PipesScreensaver& ss) {
         return ss.sim_.screen().pipes();
     }

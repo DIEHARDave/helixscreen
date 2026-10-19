@@ -136,6 +136,13 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Navigation buttons read by shape, not just colour** - inactive buttons use outline icons
   and the active one is larger and filled, which survives washed-out panels and colour-blind
   eyes. (thanks @just-trey)
+- **Printer Manager lists everything HelixScreen detected** - the Capabilities section grows
+  from 18 chips to over 40, grouped as Motion & Leveling, Thermal & Air, Filament & Toolhead,
+  Printing, Electronics & Accessories and Add-ons. Chips carry details so you can confirm
+  detection at a glance (Probe · Beacon, CoreXY, 350×350×340, Tool Changer · 4 Tools, 2 MCUs),
+  capabilities forced on in settings say "set manually", and every chip is tappable: it opens
+  the screen that uses it, or a short note on what it is. A Kalico printer's software row
+  says Kalico.
 
 **Home screen widgets**
 
@@ -156,6 +163,9 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   both front corners of the bed, a spot inside the enclosure, the light), shows the chips
   where they will sit, and saves. That works for your own photo too, and re-tags a shipped
   picture you disagree with; Reset tags puts it back.
+- **The printer picture shows an attached CFS** - a Creality K2 with a CFS connected shows
+  the K2 with the CFS on top, switching on its own when the CFS reports in or drops out. A
+  picture you picked yourself stays in place.
 - **Icon tiles resize** - the single-icon tiles (power, lock, shutdown, firmware restart,
   LED, network and the rest) scale with their tile instead of staying one fixed size, and
   can be resized for the first time. On most panels they take half-cell steps in width; on
@@ -410,6 +420,36 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   automatic unload, so Unload shows a notice telling you to cut and pull the filament at the
   head, and sends nothing; to mount a head without feeding it, use Select slot in the slot
   menu. A fault from Z-Mod opens a dialog in the firmware's own words.
+- **A new Edit Spool editor** - tap a slot and choose Edit Spool for one screen that shows
+  the filament in words with its colour and remaining weight, the temperatures for what you
+  picked, and Material, Variant, Brand and Product lists that narrow each other down, with
+  the full filament catalog one tap away. Colour swatches are at least 7 mm across on every
+  screen. The full colour view puts the presets and a custom colour picker side by side where
+  both fit, and on small screens they take turns. On systems that read a spool's tag, a
+  "from tag" pill marks each value the tag supplied, and Reset to tag puts them all back.
+  Spoolman's spool list and QR scan are round buttons in the header, and a linked spool's
+  price, location, lot and notes sit under More. A save still talking to Spoolman finishes
+  even if you leave the screen, and a save that only partly succeeds says which part did
+  not: with Spoolman offline, the slot saves and price, location, lot and notes wait in the
+  editor. Which tool a slot feeds is picked from Assigned Tool in the slot's menu.
+- **Creality CFS on the K2 Plus community firmware** - on the Kalico-based K2 Plus port and
+  its own CFS module, loads use the module's slot selection, and each CFS unit shows its own
+  temperature and humidity. With a recent module, the Filament Mapping you choose when
+  starting a print is sent to the CFS just before the print and applies to that print only;
+  a mapping that points at a slot the CFS cannot feed, or at a unit that has stopped
+  answering, stops the print from starting and says why. A unit that stops answering is
+  marked Disconnected until it comes back.
+
+- **AFC: Calibrate Toolhead** - on an AFC version that has the guided toolhead calibration,
+  the Toolhead section of the filament system's settings starts with a Calibrate Toolhead
+  button. AFC then walks you through measuring the sensor-to-nozzle and unload distances and
+  the cutter retract, asking each question on screen.
+- **The spool editor is now Edit Spool** - a slot's Spool Info is renamed Edit Spool and
+  opens straight into the editor. Material, variant, brand and product are dropdowns that
+  narrow each other, with Browse catalog... at the end for searching or typing your own, and
+  the colour grid sits beside or below them depending on the screen. Tap the weight to type
+  the grams left. Price, location, lot and notes sit under More. Save is in the header, and
+  Back with unsaved changes asks whether to save or discard them.
 
 **Drying filament**
 
@@ -699,6 +739,11 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   every other board with a 16-bit display. Each saver draws less on a slower board rather
   than stalling it, and the starfield redraws only what moved, so it costs a small fraction
   of what it did.
+- **Screensaver after, on screens without a dimmable backlight** - a phone or tablet running
+  the Android app, and any screen whose brightness HelixScreen can't change, has nothing to
+  dim, so the dim timer is what starts the screensaver. Settings > Display now offers it there
+  as Screensaver after, with the same choices as Screen Dim, instead of hiding it and always
+  waiting 10 minutes. The row is hidden while the screensaver is Off.
 - **The AD5X buzzer plays chords and music** - UI sounds play as chords, tracker music plays
   in four voices, and `M300` beeps from your macros take the buzzer when Klipper holds it.
 - **On-screen keyboard keys look like keys** - each key has a raised edge in its own colour
@@ -723,6 +768,9 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   the print when one is running, and refuses to touch anything mid-print.
 - **Hardware Health shows its status** - the Settings row carries the live result with a
   severity-coloured icon, and critical problems get their own alert icon.
+- **Settings > Printer opens the Printer Manager** - the printer's name, picture, model,
+  software versions and detected hardware are one tap away in Settings, so they are reachable
+  without the home screen's printer picture.
 
 **Plugins**
 
@@ -754,6 +802,14 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Plugins can drive their own settings** - a plugin's own screen can act as the control
   surface for the settings it declares (`helix.settings.set`). The generated settings page
   stays in step, and setting a value it already holds saves nothing.
+- **Plugins can add actions to the app's menus** - an enabled plugin can put its own items on
+  the print details screen's menu (the dots button), in a column of their own in a filament
+  slot's menu, in the Spoolman spool menu, and behind the gear on its own home tile in edit
+  mode. Each item gets the file, slot or spool the menu was opened on, and can hide itself or
+  show greyed out with a reason when it does not apply. A plugin can only add rows: the app's
+  own items stay as they are, and a menu never grows long enough to scroll. Settings >
+  Plugins lists which menus a plugin adds to, before you enable it and on its row. A plugin
+  can also build up to 32 widgets.
 
 **Files, USB and installing**
 
@@ -1023,11 +1079,43 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Network**
 
+- **A stuck WiFi service froze the screen** - when the printer's WiFi service stopped
+  answering, every scan, status check or tap on a network held the whole screen for up to
+  15 seconds. WiFi is now handled in the background, so the screen stays responsive. After a
+  few slow answers HelixScreen shows "WiFi isn't responding", keeps the last network list and
+  status on screen, stops piling on requests, and checks again after about 15 seconds, then
+  less often up to every 2 minutes; the message clears on its own when the service answers.
+  Connecting, disconnecting, forgetting a network and the WiFi switch each show that message
+  once instead of a failure of their own.
 - **A printer whose address changed was retried at the old one forever** - the Android app
   hanging mid-print until a restart. The printer's name is looked up again before every
   reconnect.
 - **Joining Wi-Fi while Ethernet is connected** (#1542) says so immediately, instead of timing
   out after 45 seconds.
+
+- **A Klipper that failed to start looked shut down forever** - Moonraker never says when
+  Klipper's startup fails, so after a restart the screen kept showing the old shutdown. It now
+  asks until Klipper is ready or reports its startup error, and the recovery dialog shows
+  Klipper's own message. A Firmware Restart from the recovery dialog is checked the same way,
+  and where HelixScreen installed a recovery script for the platform (such as the Creality K2
+  and the Snapmaker U1) it runs once if the restart does not bring Klipper back, with a time
+  limit so it can never hang.
+
+**Android app**
+
+- **Settings were never backed up** - the app had nowhere to keep its rolling settings
+  backups, and Android's own backup tried to save the whole app, far over its limit, so it
+  saved nothing. The app now keeps its backups in its own storage, and Android's backup takes
+  just your settings, so a phone restored from a backup gets them back.
+- **An update could overwrite your own files** - installing a new APK rewrote files you had
+  changed, such as a printer database override. An update now only adds files that are
+  missing and leaves yours alone.
+- **Telemetry never sent from Android** - with telemetry turned on, nothing left the device.
+  It now sends, the same as on every other platform. Telemetry is still off unless you turn
+  it on.
+- **The app took over 200 MB more storage than it needed** - test prints for the simulated
+  printer and font source files came along with every install. They are left out of the APK,
+  so the download is smaller, and an update removes the copies an older version unpacked.
 
 **Filament systems**
 
@@ -1126,8 +1214,37 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   36px arc that was drawing it clipped, and the material name wraps instead of marquee-ing
   forever.
 
+- **AFC toolhead sensors showed up as runout switches** - the toolhead sensors of each AFC
+  extruder were listed in sensor settings and the setup wizard as standalone runout sensors.
+  On AFC builds where the toolhead sensor is a virtual switch, turning it off there would
+  have told AFC the tool was unloaded. They are now left to AFC, like its other sensors.
+- **Filament systems with more than 16 lanes greyed out the extra lanes** - a large AFC or
+  Happy Hare setup now shows every lane up to 64, and a lane past that still counts for the
+  loaded spool and tool tracking.
+- **The load step list skipped its first steps after an outside operation** - when a tool
+  change started from a macro or the console ended, the next load could start with its
+  heating and early steps already passed, or keep showing the last operation's "Load
+  complete". A tool change started from a macro also no longer jumps back to its first step
+  when the step list appears.
+- **Long printer prompts pushed their buttons off the screen** - a prompt with many buttons,
+  such as AFC's calibration asking which of six units to calibrate, now scrolls its text and
+  buttons while the bottom row (Cancel, Back) stays on screen. Five or more buttons line up
+  in a grid of two or three columns instead of one long wrapped list. The AFC fault diagram
+  in a prompt no longer showed every stop point at once after switching printers, and names
+  the fault in one line (Stopped, or Jammed at the toolhead).
+
+- **AD5M: the Spoolman spool editor showed a Print Label button that did nothing** - the
+  AD5M build has no label printing, and the button is hidden there now.
+
 **Printing and preview**
 
+- **The prep time estimate on print details** - the "~6 min prep time" line counts heating
+  from the current temperatures up to the file's own first-layer temperatures, and matches
+  the countdown shown once the print starts. It learns from how long your printer actually
+  took, with separate timings for a cold bed and a warm one. Turning a pre-print option off
+  takes its time off the estimate; turning one on adds time only when your recent prints
+  skipped that step. The line waits for the file's details to load, and is not shown for
+  files on a USB stick.
 - **A heater wait names the heater it waits on** - during print preparation the label reads
   the waiting command (M109, M190, M191 or TEMPERATURE_WAIT) instead of guessing from which
   heater is short, so a nozzle settling at its target, a cool-down before probing, or the
@@ -1196,6 +1313,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Home screen**
 
+- **Tapping the lights quickly said the printer was busy** - each command keeps the printer
+  briefly busy, so a few quick taps on an idle printer brought up "Printer is busy - your
+  change will run when it's ready". The message now appears only when something other than
+  your own commands is keeping the printer busy, such as a bed mesh started from elsewhere.
 - **The printer picture** showed a generic silhouette until restart when detection finished
   late (#1552), and on the K1 family drew blank for up to a second on first show.
 - **Widgets did not adapt to the panel they were on** - the size bands were flat pixel values
@@ -1249,6 +1370,14 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Display and touch**
 
+- **Picking a theme froze the screen for about two seconds** - every pick in the theme
+  explorer, and Apply, drew the theme twice. Each now draws it once.
+- **Backing out of the theme explorer kept the previewed light or dark mode** - flipping Dark
+  Mode while browsing and then leaving without Apply kept the flipped mode. Leaving now puts
+  back the theme and mode you had.
+- **The Nord theme looked out of date and lost your edits on update** - every install carried
+  an old copy of Nord that hid the current one and was rewritten on each update. That copy is
+  removed on the next start; a Nord you edited yourself is kept.
 - **The touch that wakes the screen pressed whatever was under it** - from a dimmed screen
   the waking tap went straight through (a tap meant to wake it could press Back), and from
   sleep or a screensaver a slightly long touch could too. The waking touch now does nothing
@@ -1266,8 +1395,15 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   decimal point would be. The unit (°C, mm) now sits inside the value field, which spans the
   keys. Prefer 7 8 9 on top? Settings > Touch & Input > Number Pad Layout > Calculator.
 
+- **Colour swatches were small targets** - every colour you can pick (the filament colour
+  grids, the colour picker, the LED colour rows, the theme editor) now has a full fingertip-sized
+  touch area, and neighbouring swatches no longer steal each other's taps. The LED preset row
+  wraps to a second line in portrait instead of running off the edge.
+
 **Printer identification**
 
+- **Fans in the Printer Manager** - the Fans capability chip never appeared on any printer.
+  It now shows when the printer has controllable fans besides part cooling, with their count.
 - **Extra heaters counted as tools** - a heater named like `extruder_mixing` could turn a
   three-tool machine into a four-tool AD5X.
 - **Creality CFS machines** (#1498) - plain and CFS K1 variants, and the K2 Plus and Pro, are
@@ -1315,6 +1451,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   it can't be installed here. Pick a channel with a newer release." and never offers Install.
   On every printer the same message replaces the old "No update available" failure for a
   release that has no download for it.
+
+- **`HELIX_SCREEN_SIZE` left no trace in the log** - the line saying which size was applied,
+  and the warning for a value it could not read, were written before logging started, so the
+  `journalctl` check in Troubleshooting found nothing. Both are logged now.
 
 **Translations**
 
@@ -1388,6 +1528,9 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   healthy, warning, blocked, the three FlowGuard positions, buffer armed and counting down,
   and no-hardware. `SAVE_CONFIG` also returned failure from every gcode script call, which
   meant no test could drive a probe calibration through to a save.
+- BTT K-Touch firmware: the theme, tool switcher, filament sidebar and slot menu values and
+  the settings store moved from the ESP32's scarce internal RAM to PSRAM, keeping internal RAM
+  under the ceiling the WiFi driver's receive buffers need.
 - 306 test files were missing their copyright header.
 - A content-fit sweep now measures every widget against its authored minimum on all eight
   shipping geometries, and the user guide, configuration reference and FAQ were corrected:

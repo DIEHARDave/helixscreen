@@ -15,6 +15,7 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "print_start_analyzer.h"
 #include "printer_discovery.h"
+#include "printer_image_variants.h"
 #include "printer_state.h"
 #include "probe_preparation.h"
 #include "probe_sensor_manager.h"
@@ -515,7 +516,7 @@ bool check_build_volume_range(const BuildVolume& volume, const json& heuristic) 
 
 namespace {
 // Special return value: -1 means "exclude this printer entirely"
-constexpr int HEURISTIC_EXCLUDE = -1;
+constexpr int kHeuristicExclude = -1;
 
 // Execute a single heuristic and return confidence (0 = no match, -1 = exclude)
 int execute_heuristic(const json& heuristic, const PrinterHardwareData& hardware) {
@@ -548,7 +549,7 @@ int execute_heuristic(const json& heuristic, const PrinterHardwareData& hardware
         if (!has_pattern(field_data, pattern)) {
             spdlog::debug("[PrinterDetector] Excluded by {}: '{}' absent from {}", type, pattern,
                           field);
-            return HEURISTIC_EXCLUDE;
+            return kHeuristicExclude;
         }
     } else if (type == "led_exclude" || type == "sensor_exclude" || type == "fan_exclude" ||
                type == "object_exclude") {
@@ -560,7 +561,7 @@ int execute_heuristic(const json& heuristic, const PrinterHardwareData& hardware
         if (has_pattern(field_data, pattern)) {
             spdlog::debug("[PrinterDetector] Excluded by {}: '{}' present in {}", type, pattern,
                           field);
-            return HEURISTIC_EXCLUDE;
+            return kHeuristicExclude;
         }
     } else if (type == "hostname_exclude") {
         // If hostname matches this pattern, exclude this printer entirely
@@ -568,7 +569,7 @@ int execute_heuristic(const json& heuristic, const PrinterHardwareData& hardware
         std::string pattern = helix::json_util::safe_string(heuristic, "pattern");
         if (has_pattern(field_data, pattern)) {
             spdlog::debug("[PrinterDetector] Excluded by {} pattern '{}'", type, pattern);
-            return HEURISTIC_EXCLUDE;
+            return kHeuristicExclude;
         }
     } else if (type == "fan_combo") {
         // Multiple patterns must all be present
@@ -603,7 +604,7 @@ int execute_heuristic(const json& heuristic, const PrinterHardwareData& hardware
             std::string pattern_lower = helix::text_io::to_lower(pattern);
             if (kinematics_lower.find(pattern_lower) != std::string::npos) {
                 spdlog::debug("[PrinterDetector] Excluded by kinematics '{}'", pattern);
-                return HEURISTIC_EXCLUDE;
+                return kHeuristicExclude;
             }
         }
     } else if (type == "object_exists") {
@@ -738,7 +739,7 @@ int execute_heuristic(const json& heuristic, const PrinterHardwareData& hardware
                 if (macro_lower.find(pattern_lower) != std::string::npos) {
                     if (type == "macro_exclude") {
                         spdlog::debug("[PrinterDetector] Excluded by macro '{}' ", macro_name);
-                        return HEURISTIC_EXCLUDE;
+                        return kHeuristicExclude;
                     }
                     spdlog::debug("[PrinterDetector] Matched macro '{}' (confidence: {})",
                                   macro_name, confidence);
@@ -781,7 +782,7 @@ PrinterDetectionResult execute_printer_heuristics(const json& printer,
         declares_kinematics = declares_kinematics || is_kinematics;
 
         int confidence = execute_heuristic(heuristic, hardware);
-        if (confidence == HEURISTIC_EXCLUDE) {
+        if (confidence == kHeuristicExclude) {
             spdlog::debug("[PrinterDetector] {} excluded by heuristic: {}", printer_name,
                           helix::json_util::safe_string(heuristic, "reason"));
             return {"", 0, "", 0};
@@ -835,8 +836,8 @@ PrinterDetectionResult execute_printer_heuristics(const json& printer,
 
     // Combined scoring: base + bonus for additional matches
     // 3 points per extra match, capped at 12 (4 extra matches worth)
-    constexpr int BONUS_PER_EXTRA_MATCH = 3;
-    constexpr int MAX_BONUS = 12;
+    constexpr int kBonusPerExtraMatch = 3;
+    constexpr int kMaxBonus = 12;
 
     int base_confidence = identifying->confidence;
     // The bonus stacks identifying evidence only. Corroborating evidence
@@ -846,7 +847,7 @@ PrinterDetectionResult execute_printer_heuristics(const json& printer,
     // tiebreak in another form.
     const int identifying_matches = static_cast<int>(std::count_if(
         matches.begin(), matches.end(), [](const auto& m) { return !m.corroborating; }));
-    const int bonus = std::min((identifying_matches - 1) * BONUS_PER_EXTRA_MATCH, MAX_BONUS);
+    const int bonus = std::min((identifying_matches - 1) * kBonusPerExtraMatch, kMaxBonus);
     int combined = std::min(base_confidence + bonus, 100);
 
     // A separator volume names the model inside a family the entry's other
@@ -859,7 +860,7 @@ PrinterDetectionResult execute_printer_heuristics(const json& printer,
     // did not earn (prestonbrown/helixscreen#1606). A window leading as
     // identifying evidence already carries its weight and adds nothing here.
     int separation = 0;
-    if (!identifying->volume_based && base_confidence >= PrinterDetector::AUTOSAVE_MIN_CONFIDENCE) {
+    if (!identifying->volume_based && base_confidence >= PrinterDetector::kAutosaveMinConfidence) {
         for (const auto& m : matches) {
             if (m.separator) {
                 separation = m.confidence;
@@ -998,7 +999,7 @@ PrinterDetectionResult PrinterDetector::detect(const PrinterHardwareData& hardwa
             for (auto it = candidates.begin() + 1; it != candidates.end(); ++it) {
                 const bool separated =
                     best_match.lead_over(it->result.confidence, it->result.uncapped_confidence) >=
-                    DETECT_MIN_MARGIN;
+                    kDetectMinMargin;
                 const bool same_machine =
                     std::any_of(listed.begin(), listed.end(),
                                 [&](const ScoredCandidate* c) { return it->same_outcome_as(*c); });
@@ -1073,7 +1074,17 @@ std::string printer_field(const std::string& printer_name, const char* field) {
 // ============================================================================
 
 std::string PrinterDetector::get_image_for_printer(const std::string& printer_name) {
-    return printer_field(printer_name, "image");
+    return get_image_for_printer(printer_name, helix::printer_images::HardwareFacts{});
+}
+
+std::string
+PrinterDetector::get_image_for_printer(const std::string& printer_name,
+                                       const helix::printer_images::HardwareFacts& facts) {
+    const json* printer = find_printer_entry(printer_name);
+    std::string image = printer ? helix::printer_images::select_image(*printer, facts) : "";
+    spdlog::debug("[PrinterDetector] image for '{}' ({} filament system(s)): '{}'", printer_name,
+                  facts.filament_systems.size(), image);
+    return image;
 }
 
 namespace {
@@ -1220,11 +1231,11 @@ std::string PrinterDetector::apply_preset_with_variants(helix::Config* config,
     // Match the variant suffix exactly (preset name ends with `_forgex`) rather
     // than substring — a future preset whose name happens to contain "_forgex"
     // for unrelated reasons should not silently disable ZMOD detection.
-    static constexpr const char* FORGE_X_SUFFIX = "_forgex";
-    constexpr size_t FORGE_X_LEN = 7; // strlen("_forgex")
+    static constexpr const char* kForgeXSuffix = "_forgex";
+    constexpr size_t kForgeXLen = 7; // strlen("_forgex")
     bool preset_is_forgex =
-        preset.size() >= FORGE_X_LEN &&
-        preset.compare(preset.size() - FORGE_X_LEN, FORGE_X_LEN, FORGE_X_SUFFIX) == 0;
+        preset.size() >= kForgeXLen &&
+        preset.compare(preset.size() - kForgeXLen, kForgeXLen, kForgeXSuffix) == 0;
     auto has_object = [&objects](const char* name) {
         return std::find(objects.begin(), objects.end(), name) != objects.end();
     };
@@ -1655,7 +1666,7 @@ std::map<std::string, float> PrinterDetector::get_thermal_rates(const std::strin
     if (configured == nullptr || !configured->is_object()) {
         return rates;
     }
-    const auto& persisted = ThermalRateManager::PERSISTED_HEATERS;
+    const auto& persisted = ThermalRateManager::kPersistedHeaters;
     for (const auto& [heater, rate] : configured->items()) {
         if (std::find(persisted.begin(), persisted.end(), heater) == persisted.end()) {
             spdlog::warn("[PrinterDetector] Ignoring thermal rate for '{}' on '{}': not a heater "
@@ -1857,7 +1868,7 @@ bool PrinterDetector::auto_detect_and_save(const helix::PrinterDiscovery& discov
                      "runner-up '{}' at {}%, margin {}, {} tied; need >={}% and margin >={})",
                      result.type_name, result.confidence, result.runner_up_type_name,
                      result.runner_up_confidence, result.margin(), result.tied_count,
-                     AUTOSAVE_MIN_CONFIDENCE, DETECT_MIN_MARGIN);
+                     kAutosaveMinConfidence, kDetectMinMargin);
 
         // Handing an ambiguous field back to the user assumes a step that asks.
         // A platform package seeds its preset into settings.json, and the wizard
@@ -1991,7 +2002,7 @@ std::string PrinterDetector::screws_tilt_direction_override() {
 bool PrinterDetector::meets_autosave_threshold(const PrinterDetectionResult& result) {
     if (result.type_name.empty() || !result.detected())
         return false;
-    return result.confidence >= AUTOSAVE_MIN_CONFIDENCE && !result.ambiguous();
+    return result.confidence >= kAutosaveMinConfidence && !result.ambiguous();
 }
 
 const char* PrinterDetector::mismatch_decision_name(MismatchDecision decision) {
@@ -2061,12 +2072,12 @@ PrinterDetector::classify_type_mismatch(const std::string& saved_type,
     // distinguishable in the log from a real candidate that scored short.
     if (detected_type.empty())
         return MismatchDecision::NoDetection;
-    if (detected_confidence < MISMATCH_MIN_CONFIDENCE)
+    if (detected_confidence < kMismatchMinConfidence)
         return MismatchDecision::ConfidenceTooLow;
     // Ordered after the confidence test and before everything else: "scored 92
     // and so did four other models" is a different diagnosis from "scored 68",
     // and a debug bundle has to be able to tell them apart.
-    if (detected_margin < DETECT_MIN_MARGIN)
+    if (detected_margin < kDetectMinMargin)
         return MismatchDecision::Ambiguous;
     if (detected_type == saved_type)
         return MismatchDecision::MatchesSavedType;

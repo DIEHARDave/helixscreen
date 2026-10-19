@@ -49,7 +49,7 @@ std::optional<AxisKeypadParams> keypad_params_for_axis(const AxisBounds& bounds,
 /// Whether a Z button driving G-code direction `direction_mm` (after the
 /// bed_moves inversion) can still move: true only when Z is homed with known
 /// bounds and the commanded `z` already
-/// sits at the bound that direction drives toward, within AxisMove::EPSILON_MM.
+/// sits at the bound that direction drives toward, within AxisMove::kEpsilonMm.
 /// A partial move is possible anywhere else, so the button stays enabled.
 bool z_direction_blocked(bool z_homed, bool bounds_known, double z, double z_min, double z_max,
                          double direction_mm);
@@ -91,7 +91,7 @@ JogLayoutFit jog_layout_fit(MotionLayout layout, bool portrait, int box_w, int b
 enum class BedTouch { Pressed, Pressing, Released, Lost };
 
 enum class JogMode { Fine = 0, Coarse = 1, Turbo = 2 };
-constexpr int JOG_MODE_COUNT = 3;
+constexpr int kJogModeCount = 3;
 
 // Inner/outer distance pair for each mode. Labels are owned buffers so the
 // struct can travel by value out of the settings lookup.
@@ -107,7 +107,7 @@ struct JogModeDistances {
 JogModeDistances get_jog_mode_distances(JogMode mode);
 
 /// Most steps an arrow layout's selector offers: each mode's two rings.
-constexpr int JOG_STEP_MAX = 2 * JOG_MODE_COUNT;
+constexpr int kJogStepMax = 2 * kJogModeCount;
 
 /// The step list the arrow layouts offer: @p distances ascending, with a value
 /// within 0.001mm of a smaller one merged into it.
@@ -142,7 +142,7 @@ std::optional<JogButton> parse_jog_button(const char* name);
 inline const char* jog_mode_name(JogMode mode) {
     static const char* names[] = {"Fine", "Coarse", "Turbo"};
     int idx = static_cast<int>(mode);
-    if (idx < 0 || idx >= JOG_MODE_COUNT)
+    if (idx < 0 || idx >= kJogModeCount)
         return "Unknown";
     return names[idx];
 }
@@ -259,7 +259,7 @@ class MotionPanel : public OverlayBase {
     void handle_park();
 
     /// Park with no macro: over the rear of the plate, after lifting Z by
-    /// PARK_Z_LIFT_MM (capped at travel) when @p lift_z. Every axis must
+    /// kParkZLiftMm (capped at travel) when @p lift_z. Every axis must
     /// already be homed.
     void park_over_plate(bool lift_z);
 
@@ -294,7 +294,7 @@ class MotionPanel : public OverlayBase {
     double clamp_axis_delta(helix::Axis axis, double current, double uncommitted, double delta,
                             float min, float max, bool fresh_press);
     /// The G-code envelope the clamps and the Z-button state use: the nominal
-    /// one inset by GCODE_EDGE_MARGIN_MM. The keypad offers the nominal limits.
+    /// one inset by kGcodeEdgeMarginMm. The keypad offers the nominal limits.
     helix::AxisBounds clamp_bounds();
 
     /// Raise the "at its limit" warning for an axis refused at the clamp bound
@@ -352,9 +352,9 @@ class MotionPanel : public OverlayBase {
     // Arrow layouts' step selector: how many steps show, each one's label and
     // whether it is the selected one.
     lv_subject_t step_count_subject_{};
-    lv_subject_t step_label_subject_[helix::JOG_STEP_MAX]{};
-    lv_subject_t step_active_subject_[helix::JOG_STEP_MAX]{};
-    char step_label_buf_[helix::JOG_STEP_MAX][16];
+    lv_subject_t step_label_subject_[helix::kJogStepMax]{};
+    lv_subject_t step_active_subject_[helix::kJogStepMax]{};
+    char step_label_buf_[helix::kJogStepMax][16];
     std::vector<float> steps_;
     size_t step_index_ = 0;
     /// The selected step as persisted; survives a distance edit that drops it

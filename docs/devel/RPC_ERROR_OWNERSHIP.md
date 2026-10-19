@@ -135,7 +135,7 @@ api->execute_gcode("G28",
                                    spdlog::warn("[ensure_homed_then] G28 failed: {}", err.message);
                                    if (on_error) { on_error(err); }
                                }),
-                   IMoonrakerAPI::HOMING_TIMEOUT_MS, /*silent=*/false,
+                   IMoonrakerAPI::kHomingTimeoutMs, /*silent=*/false,
                    /*on_queued=*/nullptr,
                    /*caller_surfaces_errors=*/caller_surfaces);
 ```
@@ -188,7 +188,7 @@ matching `!!` line arrives, `already_reported_via_rpc()`
 
 Details that matter when reading that code:
 
-- **Exact-string match, 1.5 s window** (`src/api/rpc_error_correlation.cpp#CAUSAL_WINDOW`). The two
+- **Exact-string match, 1.5 s window** (`src/api/rpc_error_correlation.cpp#kCausalWindow`). The two
   channels are causally tied — the window absorbs network jitter, nothing more. Substring
   matching would mask unrelated errors sharing a phrase.
 - **The recorded identity is Klipper's raw wording**, before `clean_error_text()` rewrites it.
@@ -214,7 +214,7 @@ wins and the caller's report becomes the fallback.
   instead of toasting directly. `GcodeErrorRouter` installs itself as the broadcast
   claimant (`set_broadcast_claimant()`); `explains_rpc_error()` classifies `"!! " + message`
   against the active backend, and when that is a command refusal the router presents, it
-  takes `report` and arms a one-shot `RPC_REPORT_CLAIM_MS` (1500 ms) timer
+  takes `report` and arms a one-shot `kRpcReportClaimMs` (1500 ms) timer
   (`src/application/gcode_error_router.cpp#claim_rpc_report`). With no router, or a message
   no backend explains, `report` runs at once.
 - When the timer fires, `report` runs unless `fault_surface_correlation` shows the

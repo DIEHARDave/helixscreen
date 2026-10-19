@@ -298,7 +298,7 @@ before shlex ever runs. `plr_is_safe_recovery_filename()` enforces that;
 rejects whitespace. `IMoonrakerAPI::is_safe_material_param()` allows whitespace
 but is the wrong helper too, and in the other direction: it is an **allowlist**
 (alphanumerics plus `+ - _ . ( ) /`), while a slicer filename legitimately
-carries commas, brackets, percent signs and non-ASCII. `GCODE_PARAM_BREAKERS`
+carries commas, brackets, percent signs and non-ASCII. `kGcodeParamBreakers`
 is the **blocklist** form of the same idea - `\n\r;#*="\` - which is what a
 free-form filename needs. Same shlex mechanism, three call-site-specific
 charsets; the material one is in `FILAMENT_MANAGEMENT.md` § "Material names as

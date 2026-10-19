@@ -220,7 +220,7 @@ class WifiBackendNetworkManager : public WifiBackend {
     // Result of one nmcli connect attempt (fork/exec, captures stderr).
     struct ConnectAttempt {
         int exit_code = -1;     // -1 = internal failure (fork/pipe/timeout)
-        bool timed_out = false; // true => killed after CONNECT_TIMEOUT_SECONDS
+        bool timed_out = false; // true => killed after kConnectTimeoutSeconds
         std::string stderr_out;
     };
 

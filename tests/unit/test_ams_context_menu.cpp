@@ -2,9 +2,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "ui_ams_context_menu.h"
+#include "ui_button.h"
+#include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/backend_user_edit.h"
+#include "helix/ui/text_metrics.h"
+#if HELIX_HAS_PLUGINS
+#include "../test_helpers/plugin_host_test_support.h"
+#endif
 #include "../test_helpers/print_state_test_drivers.h"
 #include "../test_helpers/registered_backend.h"
 #include "../test_helpers/snapmaker_test_access.h"
@@ -19,9 +25,14 @@
 #include "filament_op_execute.h"
 #include "filament_op_slot_resolver.h"
 #include "filament_variants.h"
+#include "plugin_menu.h"
 #include "printer_discovery.h"
+#include "theme_manager.h"
 #include "toolchanger_addon.h"
 
+#include <filesystem>
+#include <fstream>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -1440,4 +1451,256 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the context menu shows a backend's eject re
         REQUIRE(label != nullptr);
         CHECK(lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN));
     }
+}
+
+// ============================================================================
+// Plugin items for the slot
+// ============================================================================
+
+#if HELIX_HAS_PLUGINS
+namespace {
+
+/// One enabled plugin declaring a filament_slot item whose handler records its context.
+struct SlotMenuPlugin {
+    helix::plugin::test::TempDir tmp;
+    std::unique_ptr<helix::plugin::test::HostRig> rig;
+
+    SlotMenuPlugin() {
+        std::filesystem::create_directories(tmp.path / "slot-plug");
+        std::ofstream(tmp.path / "slot-plug" / "manifest.json")
+            << R"({"id":"slot-plug","name":"Slot Plug","version":"1.0.0","menu_items":[
+                 {"id":"look","menu":"filament_slot","label":"Look up","handler":"look"}]})";
+        std::ofstream(tmp.path / "slot-plug" / "main.lua") << R"(
+            helix.ui.on("look", function(ctx)
+                seen = string.format("%s|%s|%s|%s", tostring(ctx.unit), tostring(ctx.slot),
+                                     tostring(ctx.label), tostring(ctx.material))
+            end)
+        )";
+        rig = std::make_unique<helix::plugin::test::HostRig>(
+            helix::plugin::test::enabled("slot-plug", {}));
+        rig->host->load_from(tmp.path.string());
+    }
+
+    std::string seen() {
+        lua_State* L = rig->host->runtime("slot-plug")->state();
+        lua_getglobal(L, "seen");
+        std::string s = lua_isnil(L, -1) ? "nil" : lua_tostring(L, -1);
+        lua_pop(L, 1);
+        return s;
+    }
+};
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: plugin rows get their own column",
+                 "[ui][ams][context_menu][plugin]") {
+    SlotMenuPlugin plugin;
+    auto backend = std::make_unique<AmsBackendMock>(4);
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+
+    AmsContextMenu menu;
+    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+    lv_obj_t* col = lv_obj_find_by_name(test_screen(), "col_plugins");
+    REQUIRE(col);
+    CHECK(lv_obj_get_parent(col) == lv_obj_find_by_name(test_screen(), "menu_columns"));
+    CHECK_FALSE(lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN));
+    lv_obj_t* heading = lv_obj_find_by_name(col, "plugin_name");
+    REQUIRE(heading);
+    CHECK(std::string(lv_label_get_text(heading)) == "Slot Plug");
+    lv_obj_t* label = lv_obj_find_by_name(col, "item_label");
+    REQUIRE(label);
+    CHECK(std::string(lv_label_get_text(label)) == "Look up");
+
+    const std::string material = backend->get_slot_info(2).material;
+    lv_obj_send_event(lv_obj_get_parent(lv_obj_get_parent(label)), LV_EVENT_CLICKED, nullptr);
+    CHECK_FALSE(menu.is_visible());
+    CHECK(plugin.seen() == "0|2|Gate 3|" + (material.empty() ? std::string("nil") : material));
+    process_lvgl(20);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AmsContextMenu: the plugin column fits a typical label at 800x480",
+                 "[ui][ams][context_menu][plugin]") {
+    lv_display_t* disp = lv_display_get_default();
+    ScopedResolution res(disp, 800, 480);
+    theme_manager_refresh_layout_constants(disp);
+
+    helix::plugin::test::TempDir tmp;
+    std::filesystem::create_directories(tmp.path / "inspect");
+    std::ofstream(tmp.path / "inspect" / "manifest.json")
+        << R"({"id":"inspect","name":"Slot Demo","version":"1.0.0","menu_items":[
+             {"id":"i","menu":"filament_slot","label":"Inspect this slot","icon":"tune",
+              "handler":"go"}]})";
+    std::ofstream(tmp.path / "inspect" / "main.lua") << R"(helix.ui.on("go", function() end))";
+    helix::plugin::test::HostRig rig(helix::plugin::test::enabled("inspect", {}));
+    rig.host->load_from(tmp.path.string());
+
+    auto backend = std::make_unique<AmsBackendMock>(4);
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    AmsContextMenu menu;
+    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+    lv_obj_t* col = lv_obj_find_by_name(test_screen(), "col_plugins");
+    REQUIRE(col);
+    lv_obj_update_layout(lv_obj_get_screen(col));
+    lv_obj_t* label = lv_obj_find_by_name(col, "item_label");
+    REQUIRE(label);
+    const int32_t need =
+        helix::ui::text_width("Inspect this slot", lv_obj_get_style_text_font(label, LV_PART_MAIN),
+                              lv_obj_get_style_text_letter_space(label, LV_PART_MAIN));
+    CAPTURE(lv_obj_get_width(col), lv_obj_get_width(label), need);
+    CHECK(lv_obj_get_width(label) >= need);
+    lv_obj_t* card = lv_obj_find_by_name(test_screen(), "context_menu");
+    REQUIRE(card);
+    CHECK(lv_obj_get_width(card) <= 800);
+    menu.hide();
+    process_lvgl(20);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AmsContextMenu: at the cap the plugin column adds no height at 480x272",
+                 "[ui][ams][context_menu][plugin]") {
+    lv_display_t* disp = lv_display_get_default();
+    ScopedResolution res(disp, 480, 272);
+    theme_manager_refresh_layout_constants(disp);
+
+    // Two plugins with more filament_slot items between them than the cap allows,
+    // so the column holds its most: the cap's rows under two headings.
+    helix::plugin::test::TempDir tmp;
+    std::string four;
+    for (int i = 0; i < 4; ++i)
+        four += std::string(i ? "," : "") + R"({"id":"i)" + std::to_string(i) +
+                R"(","menu":"filament_slot","label":"Slot action )" + std::to_string(i) +
+                R"(","handler":"go"})";
+    for (const char* id : {"cap-a", "cap-b"}) {
+        std::filesystem::create_directories(tmp.path / id);
+        std::ofstream(tmp.path / id / "manifest.json")
+            << R"({"id":")" << id << R"(","name":")" << id
+            << R"(","version":"1.0.0","menu_items":[)" << four << "]}";
+        std::ofstream(tmp.path / id / "main.lua") << R"(helix.ui.on("go", function() end))";
+    }
+    helix::plugin::test::HostRig rig(
+        helix::plugin::test::enabled_all({{"cap-a", {}}, {"cap-b", {}}}));
+    rig.host->load_from(tmp.path.string());
+
+    auto backend = std::make_unique<AmsBackendMock>(4);
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    AmsContextMenu menu;
+    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+    lv_obj_t* col = lv_obj_find_by_name(test_screen(), "col_plugins");
+    lv_obj_t* filament = lv_obj_find_by_name(test_screen(), "col_filament");
+    REQUIRE(col);
+    REQUIRE(filament);
+    lv_obj_update_layout(lv_obj_get_screen(col));
+
+    uint32_t rows = 0;
+    for (uint32_t i = 0; i < lv_obj_get_child_count(col); ++i)
+        rows += lv_obj_find_by_name(lv_obj_get_child(col, static_cast<int32_t>(i)), "item_label") !=
+                nullptr;
+    CHECK(rows == static_cast<uint32_t>(
+                      helix::plugin_menu::row_cap(helix::plugin_menu::MenuKind::FilamentSlot)));
+    CAPTURE(lv_obj_get_height(col), lv_obj_get_height(filament));
+    CHECK_FALSE(lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN));
+    // Side by side, the tallest column sets the card's height: the plugin column
+    // at the cap must not be it.
+    CHECK(lv_obj_get_height(col) <= lv_obj_get_height(filament));
+    menu.hide();
+    process_lvgl(20);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: the plugin column hides without plugin items",
+                 "[ui][ams][context_menu][plugin]") {
+    auto backend = std::make_unique<AmsBackendMock>(4);
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    AmsContextMenu menu;
+    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+    lv_obj_t* col = lv_obj_find_by_name(test_screen(), "col_plugins");
+    REQUIRE(col);
+    CHECK(lv_obj_get_child_count(col) == 0);
+    CHECK(lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN));
+    menu.hide();
+    process_lvgl(20);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: the external spool takes no plugin rows",
+                 "[ui][ams][context_menu][plugin]") {
+    SlotMenuPlugin plugin;
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    AmsContextMenu menu;
+    REQUIRE(menu.show_for_external_spool(test_screen(), test_screen()));
+    lv_obj_t* col = lv_obj_find_by_name(test_screen(), "col_plugins");
+    REQUIRE(col);
+    CHECK(lv_obj_get_child_count(col) == 0);
+    CHECK(lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN));
+    menu.hide();
+    process_lvgl(20);
+}
+#endif // HELIX_HAS_PLUGINS
+
+// ============================================================================
+// Edit Spool + Assigned Tool
+// ============================================================================
+
+TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: Edit Spool opens the editor",
+                 "[ui][ams][context_menu][edit_spool]") {
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    auto backend = std::make_unique<AmsBackendMock>(4);
+
+    AmsContextMenu menu;
+    std::optional<AmsContextMenu::MenuAction> fired;
+    menu.set_action_callback(
+        [&](AmsContextMenu::MenuAction action, int /*slot*/) { fired = action; });
+    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/1, test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+
+    lv_obj_t* btn = lv_obj_find_by_name(test_screen(), "btn_edit");
+    REQUIRE(btn != nullptr);
+    lv_obj_t* label = ui_button_get_label(btn);
+    REQUIRE(label != nullptr);
+    CHECK(std::string(lv_label_get_text(label)) == "Edit Spool");
+
+    lv_obj_send_event(btn, LV_EVENT_CLICKED, nullptr);
+    UpdateQueue::instance().drain();
+    REQUIRE(fired.has_value());
+    CHECK(*fired == AmsContextMenu::MenuAction::EDIT);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AmsContextMenu: Assigned Tool shows only where a mapping write lands",
+                 "[ui][ams][context_menu][edit_spool]") {
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+
+    const auto row_shown = [this](AmsBackendMock& backend) {
+        AmsContextMenu menu;
+        REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/1, test_screen(),
+                                      /*is_loaded=*/false, &backend));
+        lv_obj_t* row = lv_obj_find_by_name(test_screen(), "tool_dropdown_row");
+        REQUIRE(row != nullptr);
+        lv_obj_t* label = lv_obj_find_by_name(row, "tool_label");
+        REQUIRE(label != nullptr);
+        CHECK(std::string(lv_label_get_text(label)) == "Assigned Tool");
+        const bool shown = !lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN);
+        menu.hide();
+        return shown;
+    };
+
+    AmsBackendMock writable(4);
+    writable.set_remap_strategy(AmsBackend::RemapStrategy::Native);
+    writable.set_remap_ready(true);
+    CHECK(row_shown(writable));
+
+    AmsBackendMock not_ready(4);
+    not_ready.set_remap_strategy(AmsBackend::RemapStrategy::Native);
+    not_ready.set_remap_ready(false);
+    CHECK_FALSE(row_shown(not_ready));
+
+    AmsBackendMock pre_print(4);
+    pre_print.set_remap_strategy(AmsBackend::RemapStrategy::PrePrintSend);
+    CHECK_FALSE(row_shown(pre_print));
+
+    // A writable backend after a refused one: the row comes back.
+    CHECK(row_shown(writable));
 }

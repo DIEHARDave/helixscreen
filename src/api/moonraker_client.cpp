@@ -41,7 +41,7 @@ std::atomic<bool> g_already_notified_disconnect{false};
 // How long disconnect() waits for in-flight callbacks to drain before giving up.
 // Generous enough that a merely slow callback still wins the race, short enough
 // that a wedged one costs a visible stutter instead of a dead touchscreen.
-constexpr std::chrono::milliseconds CALLBACK_DRAIN_TIMEOUT{3000};
+constexpr std::chrono::milliseconds kCallbackDrainTimeout{3000};
 
 // "ws://192.168.1.171:7125/websocket" -> "192.168.1.171:7125". The bare
 // host:port is what a user can act on: compare it against the printer, or find
@@ -105,7 +105,7 @@ void MoonrakerClient::start_health_timer() {
     if (!l) {
         return;
     }
-    health_timer_id_ = l->setInterval(HEALTH_CHECK_INTERVAL_MS, [this](hv::TimerID) {
+    health_timer_id_ = l->setInterval(kHealthCheckIntervalMs, [this](hv::TimerID) {
         // Acquire shared lock to prevent destructor from proceeding while we execute.
         // try_to_lock ensures we never block if destructor holds the exclusive lock.
         // Without this lock, the destructor can destroy members (logger, tracker_)
@@ -118,7 +118,7 @@ void MoonrakerClient::start_health_timer() {
         on_health_tick();
     });
     spdlog::debug("[Moonraker Client] Health check timer started ({}ms interval)",
-                  HEALTH_CHECK_INTERVAL_MS);
+                  kHealthCheckIntervalMs);
 }
 
 void MoonrakerClient::on_health_tick() {
@@ -131,7 +131,7 @@ void MoonrakerClient::on_health_tick() {
     ConnectionState state = connection_state_.load();
     if (state == ConnectionState::RECONNECTING) {
         auto elapsed = steady_ms_since(reconnect_started_at_.load(std::memory_order_relaxed));
-        if (elapsed > MAX_RECONNECT_STALL_MS) {
+        if (elapsed > kMaxReconnectStallMs) {
             spdlog::error("[Moonraker Client] Reconnection stalled for {}ms, giving up", elapsed);
             set_connection_state(ConnectionState::FAILED);
             emit_event(moonraker_event::reconnect_stalled());
@@ -172,7 +172,7 @@ void MoonrakerClient::poll_klippy_state() {
     if (started == 0) {
         return;
     }
-    if (const long long elapsed = steady_ms_since(started); elapsed > KLIPPY_STATE_POLL_MAX_MS) {
+    if (const long long elapsed = steady_ms_since(started); elapsed > kKlippyStatePollMaxMs) {
         spdlog::warn("[Moonraker Client] Klippy state still unsettled {}ms after disconnect — "
                      "no longer polling printer.info",
                      elapsed);
@@ -391,10 +391,10 @@ void MoonrakerClient::disconnect() {
     // outlasts the drain keeps running straight through the close() below and a
     // dispatch arriving afterwards is admitted as usual. The error log is the only
     // signal that happened, which is why it is an error rather than a silent carry-on.
-    if (!helix::drain_shared_holders(callback_lifecycle_mutex_, CALLBACK_DRAIN_TIMEOUT)) {
+    if (!helix::drain_shared_holders(callback_lifecycle_mutex_, kCallbackDrainTimeout)) {
         spdlog::error("[Moonraker Client] In-flight callbacks still running after {}ms — "
                       "proceeding with disconnect anyway",
-                      CALLBACK_DRAIN_TIMEOUT.count());
+                      kCallbackDrainTimeout.count());
     }
 
     // Stop the timer and close. A successful drain means no callback is running at
@@ -649,10 +649,10 @@ void MoonrakerClient::on_ws_message(const std::string& msg) {
 
     try {
         // Validate message size to prevent memory exhaustion
-        static constexpr size_t MAX_MESSAGE_SIZE = 5 * 1024 * 1024; // 5 MB
-        if (msg.size() > MAX_MESSAGE_SIZE) {
+        static constexpr size_t kMaxMessageSize = 5 * 1024 * 1024; // 5 MB
+        if (msg.size() > kMaxMessageSize) {
             spdlog::error("[Moonraker Client] Message too large: {} bytes (max: {})", msg.size(),
-                          MAX_MESSAGE_SIZE);
+                          kMaxMessageSize);
 
             // Emit event - this indicates a protocol problem
             emit_event(MoonrakerEvent::translatable(
@@ -1012,7 +1012,7 @@ void MoonrakerClient::on_ws_close() {
 SubscriptionId MoonrakerClient::register_notify_update(std::function<void(const json&)> cb) {
     if (!cb) {
         spdlog::warn("[Moonraker Client] register_notify_update called with null callback");
-        return INVALID_SUBSCRIPTION_ID;
+        return kInvalidSubscriptionId;
     }
 
     SubscriptionId id = next_subscription_id_.fetch_add(1);
@@ -1025,7 +1025,7 @@ SubscriptionId MoonrakerClient::register_notify_update(std::function<void(const 
 }
 
 bool MoonrakerClient::unsubscribe_notify_update(SubscriptionId id) {
-    if (id == INVALID_SUBSCRIPTION_ID) {
+    if (id == kInvalidSubscriptionId) {
         return false;
     }
 
@@ -1263,7 +1263,7 @@ RequestId MoonrakerClient::send_jsonrpc(const std::string& method, const json& p
                               e.what());
             }
         }
-        return INVALID_REQUEST_ID;
+        return kInvalidRequestId;
     }
     return tracker_.send(*this, method, params, success_cb, error_cb, timeout_ms, silent, intent);
 }

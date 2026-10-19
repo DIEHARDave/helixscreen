@@ -90,13 +90,13 @@ const char* phase_signal_message(helix::PrintStartPhase phase) {
 } // namespace
 
 bool PrintStartCollector::heater_climbed(int temp, int target, HeaterHighWater& mark) {
-    constexpr int CLIMB_DECIDEGREES = 10;
+    constexpr int kClimbDecidegrees = 10;
     if (target <= 0 || mark.high < 0 || target != mark.target) {
         mark.high = temp;
         mark.target = target;
         return false;
     }
-    if (temp < mark.high + CLIMB_DECIDEGREES) {
+    if (temp < mark.high + kClimbDecidegrees) {
         return false;
     }
     mark.high = temp;
@@ -320,9 +320,9 @@ void PrintStartCollector::start() {
                     collector->flush_deferred_start_block_step();
                 }
             },
-            ETA_UPDATE_INTERVAL_MS, this);
+            kEtaUpdateIntervalMs, this);
         spdlog::debug("[PrintStartCollector] ETA timer created ({}ms interval)",
-                      ETA_UPDATE_INTERVAL_MS);
+                      kEtaUpdateIntervalMs);
     }
     query_phase_object();
 
@@ -408,6 +408,11 @@ void PrintStartCollector::note_host_side_pre_start(const std::string& dispatched
     load_prediction_history();
 }
 
+void PrintStartCollector::note_skipped_phases(std::set<int> phases) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    skipped_phases_ = std::move(phases);
+}
+
 void PrintStartCollector::reset_run_locked() {
     printing_state_start_ = helix::sim::SimulatedClock::now();
     last_signal_time_ = printing_state_start_;
@@ -417,6 +422,7 @@ void PrintStartCollector::reset_run_locked() {
     // Assume the narrower window until something says otherwise.
     window_ = helix::PreprintWindow::PrinterEdge;
     host_pre_start_echo_lines_.clear();
+    skipped_phases_.reset();
     detected_phases_.clear();
     current_phase_ = PrintStartPhase::INITIALIZING;
     print_start_detected_ = false;
@@ -737,23 +743,23 @@ void PrintStartCollector::check_fallback_completion() {
         note_inferred_activity();
     }
 
-    // The ceiling this pre-print is measured against: ABSOLUTE_MAX_TIMEOUT,
+    // The ceiling this pre-print is measured against: kAbsoluteMaxTimeout,
     // stretched for a long prediction. The backstop, a multiple of it, runs
     // before any branch below can return, so nothing the heaters or the
     // console do holds Preparing open forever. Time a declared hold covered is
     // the printer doing what it said it would: the ceiling leaves it out, and
     // the backstop leaves out at most one ceiling of it.
-    std::chrono::seconds ceiling = ABSOLUTE_MAX_TIMEOUT;
+    std::chrono::seconds ceiling = kAbsoluteMaxTimeout;
     if (predicted_total > 0) {
-        ceiling = std::max(ceiling, std::chrono::seconds(static_cast<int>(
-                                        predicted_total * ABSOLUTE_TIMEOUT_MARGIN)));
+        ceiling = std::max(ceiling, std::chrono::seconds(static_cast<int>(predicted_total *
+                                                                          kAbsoluteTimeoutMargin)));
     }
     const auto elapsed = helix::sim::SimulatedClock::now() - start_time;
     const auto elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
     const auto unheld = elapsed - held_for;
     const auto backstop_unheld =
         elapsed - std::min(held_for, helix::sim::SimulatedClock::duration(ceiling));
-    if (backstop_unheld > ceiling * BACKSTOP_CEILING_MULTIPLE) {
+    if (backstop_unheld > ceiling * kBackstopCeilingMultiple) {
         spdlog::warn("[PrintStartCollector] Fallback: backstop ({} sec, ceiling={}s)", elapsed_sec,
                      ceiling.count());
         fallback_completion_ = true;
@@ -773,11 +779,11 @@ void PrintStartCollector::check_fallback_completion() {
     {
         int new_ext = helix::ui::temperature::deci_to_degrees(ext_target);
         int new_bed = helix::ui::temperature::deci_to_degrees(bed_target);
-        constexpr int TARGET_RISE_RECOMPUTE_DEGREES = 15;
+        constexpr int kTargetRiseRecomputeDegrees = 15;
         bool ext_newly_set = (weights_ext_target_ == 0 && new_ext > 0);
         bool bed_newly_set = (weights_bed_target_ == 0 && new_bed > 0);
-        bool ext_rose = new_ext > weights_ext_target_ + TARGET_RISE_RECOMPUTE_DEGREES;
-        bool bed_rose = new_bed > weights_bed_target_ + TARGET_RISE_RECOMPUTE_DEGREES;
+        bool ext_rose = new_ext > weights_ext_target_ + kTargetRiseRecomputeDegrees;
+        bool bed_rose = new_bed > weights_bed_target_ + kTargetRiseRecomputeDegrees;
         auto& rates = ThermalRateManager::instance();
         const bool ext_first_rate =
             !weights_ext_measured_ && rates.get_model("extruder").measured_rate().has_value();
@@ -800,8 +806,8 @@ void PrintStartCollector::check_fallback_completion() {
     }
 
     // Temps are in decidegrees (value * 10), targets may be 0 if not set
-    bool bed_heating = bed_target > 0 && bed_temp < bed_target - TEMP_TOLERANCE_DECIDEGREES;
-    bool nozzle_heating = ext_target > 0 && ext_temp < ext_target - TEMP_TOLERANCE_DECIDEGREES;
+    bool bed_heating = bed_target > 0 && bed_temp < bed_target - kTempToleranceDecidegrees;
+    bool nozzle_heating = ext_target > 0 && ext_temp < ext_target - kTempToleranceDecidegrees;
     bool temps_ready = !bed_heating && !nozzle_heating;
 
     // =========================================================================
@@ -921,8 +927,8 @@ void PrintStartCollector::check_fallback_completion() {
         bool bed_short;
         {
             std::lock_guard<std::mutex> lock(state_mutex_);
-            waiting = heater_wait_report_time_ + HEATER_WAIT_REPORT_GAP >
-                      helix::sim::SimulatedClock::now();
+            waiting =
+                heater_wait_report_time_ + kHeaterWaitReportGap > helix::sim::SimulatedClock::now();
             nozzle_short = !heating_target_reached_locked(PrintStartPhase::HEATING_NOZZLE);
             bed_short = !heating_target_reached_locked(PrintStartPhase::HEATING_BED);
         }
@@ -941,7 +947,7 @@ void PrintStartCollector::check_fallback_completion() {
             const auto& temps = state_.temperature_state();
             const bool heaters_ready = !nozzle_short && !bed_short;
             const bool chamber_heating = heaters_ready && chamber_target > 0 &&
-                                         chamber_temp < chamber_target - TEMP_TOLERANCE_DECIDEGREES;
+                                         chamber_temp < chamber_target - kTempToleranceDecidegrees;
             // The chamber device reporting its own wait (M191) settles it.
             const bool device_wait = heaters_ready && temps.chamber_wait_active();
             // A wait that goes on with the nozzle and bed ready while the
@@ -969,7 +975,7 @@ void PrintStartCollector::check_fallback_completion() {
                 const bool settled =
                     heaters_ready &&
                     heaters_ready_wait_since_ != helix::sim::SimulatedClock::time_point::min() &&
-                    now - heaters_ready_wait_since_ >= CHAMBER_WAIT_SETTLE;
+                    now - heaters_ready_wait_since_ >= kChamberWaitSettle;
                 chamber_unheated =
                     settled && chamber_target <= 0 && !chamber_heater.empty() && heater_refused;
                 if (wait_line_read_) {
@@ -1099,9 +1105,8 @@ void PrintStartCollector::check_fallback_completion() {
     // A heater far above its target is cooling toward it (a nozzle cooled for
     // probing), which a wait blocks on as surely as a climb.
     const bool nozzle_target_set = ext_target > 0;
-    const bool bed_cooling = bed_target > 0 && bed_temp > bed_target + TEMP_TOLERANCE_DECIDEGREES;
-    const bool nozzle_cooling =
-        ext_target > 0 && ext_temp > ext_target + TEMP_TOLERANCE_DECIDEGREES;
+    const bool bed_cooling = bed_target > 0 && bed_temp > bed_target + kTempToleranceDecidegrees;
+    const bool nozzle_cooling = ext_target > 0 && ext_temp > ext_target + kTempToleranceDecidegrees;
     bool temps_at_target;
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
@@ -1114,7 +1119,7 @@ void PrintStartCollector::check_fallback_completion() {
     // A pre-print that is still narrating itself is not stuck, however long it
     // runs, and a timeout that ends it saves no phase timings, so a deadline
     // set by a short prediction could not grow. Every timeout therefore waits
-    // for PREPRINT_QUIET_TIMEOUT without activity as well as for the clock. The
+    // for kPreprintQuietTimeout without activity as well as for the clock. The
     // ceiling ignores temperatures and inferred activity, since a heater that
     // never settles must not hold Preparing open, but still waits that long
     // without a matched line or probe line. A pre-print step the printer
@@ -1129,14 +1134,14 @@ void PrintStartCollector::check_fallback_completion() {
         signal_quiet_for = now - last_signal;
         quiet_for = now - std::max(last_signal, last_inferred_activity_time_);
     }
-    const bool quiet = quiet_for >= PREPRINT_QUIET_TIMEOUT;
+    const bool quiet = quiet_for >= kPreprintQuietTimeout;
     const auto quiet_sec = std::chrono::duration_cast<std::chrono::seconds>(quiet_for).count();
 
-    // A prediction sets the deadline; FALLBACK_TIMEOUT stands in without one.
+    // A prediction sets the deadline; kFallbackTimeout stands in without one.
     const std::chrono::seconds deadline =
         predicted_total > 0
-            ? std::chrono::seconds(static_cast<int>(predicted_total * ADAPTIVE_TIMEOUT_MARGIN))
-            : FALLBACK_TIMEOUT;
+            ? std::chrono::seconds(static_cast<int>(predicted_total * kAdaptiveTimeoutMargin))
+            : kFallbackTimeout;
     if (elapsed > deadline && temps_at_target && quiet && !in_live_step) {
         spdlog::info("[PrintStartCollector] Fallback: timeout ({} sec, predicted={:.0f}s, "
                      "quiet={}s)",
@@ -1146,7 +1151,7 @@ void PrintStartCollector::check_fallback_completion() {
         return;
     }
 
-    if (unheld > ceiling && signal_quiet_for >= PREPRINT_QUIET_TIMEOUT) {
+    if (unheld > ceiling && signal_quiet_for >= kPreprintQuietTimeout) {
         spdlog::warn("[PrintStartCollector] Fallback: ceiling ({} sec, ceiling={}s, "
                      "nozzle_target_set={})",
                      elapsed_sec, ceiling.count(), nozzle_target_set);
@@ -1219,7 +1224,7 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
         {
             std::lock_guard<std::mutex> lock(state_mutex_);
             const auto now = helix::sim::SimulatedClock::now();
-            wait_starts = heater_wait_report_time_ + HEATER_WAIT_REPORT_GAP <= now;
+            wait_starts = heater_wait_report_time_ + kHeaterWaitReportGap <= now;
             heater_wait_report_time_ = now;
         }
         note_inferred_activity();
@@ -1349,7 +1354,7 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
         // If we see a probe line but aren't in BED_MESH yet, buffer probes
         // before entering the phase. Some printers (e.g. AD5M Klipper mod)
         // emit 1-2 PROBE commands for nozzle wipe before mesh calibration.
-        // Require MESH_PROBE_ENTRY_THRESHOLD distinct probe POINTS to confirm
+        // Require kMeshProbeEntryThreshold distinct probe POINTS to confirm
         // this is actual mesh probing, not an isolated operation.
         if (is_probe_line) {
             bool should_enter = false;
@@ -1359,7 +1364,7 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
 
                 // Gap reset for pre-mesh buffer
                 if (pre_mesh_points_.points() > 0 &&
-                    (now - pre_mesh_last_probe_time_) > MESH_PROBE_GAP_RESET) {
+                    (now - pre_mesh_last_probe_time_) > kMeshProbeGapReset) {
                     spdlog::debug("[PrintStartCollector] Pre-mesh probe gap reset "
                                   "({}s since last probe)",
                                   std::chrono::duration_cast<std::chrono::seconds>(
@@ -1371,11 +1376,11 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
                 pre_mesh_points_.feed(line);
                 pre_mesh_last_probe_time_ = now;
 
-                if (pre_mesh_points_.points() >= MESH_PROBE_ENTRY_THRESHOLD) {
+                if (pre_mesh_points_.points() >= kMeshProbeEntryThreshold) {
                     should_enter = true;
                 } else {
                     spdlog::debug("[PrintStartCollector] Pre-mesh probe point {}/{} (buffering)",
-                                  pre_mesh_points_.points(), MESH_PROBE_ENTRY_THRESHOLD);
+                                  pre_mesh_points_.points(), kMeshProbeEntryThreshold);
                 }
             }
 
@@ -1411,7 +1416,7 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
                     // Gap reset: if >30s since last probe, earlier probes were
                     // from a different operation (e.g. nozzle wipe)
                     if (mesh_probe_current_ > 0 &&
-                        (now - mesh_last_probe_time_) > MESH_PROBE_GAP_RESET) {
+                        (now - mesh_last_probe_time_) > kMeshProbeGapReset) {
                         spdlog::info("[PrintStartCollector] Mesh probe gap reset "
                                      "({}s since last probe)",
                                      std::chrono::duration_cast<std::chrono::seconds>(
@@ -1466,7 +1471,7 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
                     // Gap reset: if >30s since last probe, earlier probes were
                     // from a different operation (e.g. nozzle wipe on AD5M)
                     if (mesh_points_.points() > 0 &&
-                        (now - mesh_last_probe_time_) > MESH_PROBE_GAP_RESET) {
+                        (now - mesh_last_probe_time_) > kMeshProbeGapReset) {
                         spdlog::info("[PrintStartCollector] Mesh probe gap reset "
                                      "({}s since last probe)",
                                      std::chrono::duration_cast<std::chrono::seconds>(
@@ -1871,11 +1876,11 @@ void PrintStartCollector::handle_status_signals(const json& status) {
 
 bool PrintStartCollector::check_helix_phase_signal(const std::string& line) {
     // Check for HELIX:PHASE:* signals (definitive markers from plugin/macros)
-    static const char* HELIX_PHASE_PREFIX = "HELIX:PHASE:";
+    static const char* kHelixPhasePrefix = "HELIX:PHASE:";
     constexpr size_t PREFIX_LEN = 12; // strlen("HELIX:PHASE:")
 
     // Find the prefix in the line (may have quotes or other wrappers)
-    size_t pos = line.find(HELIX_PHASE_PREFIX);
+    size_t pos = line.find(kHelixPhasePrefix);
     if (pos == std::string::npos) {
         return false;
     }
@@ -2407,7 +2412,7 @@ void PrintStartCollector::apply_start_block_step(const helix::StartBlockStep& st
             current_phase_ == PrintStartPhase::COMPLETE) {
             return;
         }
-        if (console_phase_time_ + START_BLOCK_CONSOLE_GRACE > helix::sim::SimulatedClock::now()) {
+        if (console_phase_time_ + kStartBlockConsoleGrace > helix::sim::SimulatedClock::now()) {
             if (profile_ && profile_->start_block_step_owns(step.command, console_phase_line_)) {
                 spdlog::debug("[PrintStartCollector] Start-block step at {} left to its own "
                               "console line",
@@ -2451,7 +2456,7 @@ void PrintStartCollector::flush_deferred_start_block_step() {
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
         if (!deferred_step_ ||
-            console_phase_time_ + START_BLOCK_CONSOLE_GRACE > helix::sim::SimulatedClock::now()) {
+            console_phase_time_ + kStartBlockConsoleGrace > helix::sim::SimulatedClock::now()) {
             return;
         }
         step = std::move(deferred_step_);
@@ -2601,7 +2606,7 @@ void PrintStartCollector::publish_switched_phase(PrintStartPhase phase, const st
 bool PrintStartCollector::mesh_probing_locked() const {
     return current_phase_ == PrintStartPhase::BED_MESH &&
            (mesh_probe_current_ > 0 || mesh_points_.points() > 0) &&
-           helix::sim::SimulatedClock::now() - mesh_last_probe_time_ < MESH_PROBE_GAP_RESET;
+           helix::sim::SimulatedClock::now() - mesh_last_probe_time_ < kMeshProbeGapReset;
 }
 
 void PrintStartCollector::set_profile(std::shared_ptr<PrintStartProfile> profile) {
@@ -2977,7 +2982,7 @@ void PrintStartCollector::load_prediction_history() {
     // Cold (1) vs Warm (2) based on current bed temp
     int bed_temp = helix::ui::temperature::deci_to_degrees(
         lv_subject_get_int(state_.temperature_state().get_bed_temp_subject()));
-    int temp_bucket = (bed_temp >= 40) ? 2 : 1;
+    int temp_bucket = helix::PreprintPredictor::temp_bucket_for(static_cast<float>(bed_temp));
 
     std::lock_guard<std::mutex> lock(state_mutex_);
     predictor_.load_entries(entries, temp_bucket, window_);
@@ -3030,70 +3035,31 @@ void PrintStartCollector::compute_predicted_weights() {
     int bed_target = helix::ui::temperature::deci_to_degrees(
         lv_subject_get_int(state_.temperature_state().get_bed_target_subject()));
 
-    std::map<int, float> durations;
+    helix::PreprintHeating heating;
+    heating.nozzle_seconds = mgr.estimate_heating_seconds(
+        "extruder", static_cast<float>(start_ext_temp_), static_cast<float>(ext_target));
+    heating.bed_seconds = mgr.estimate_heating_seconds(
+        "heater_bed", static_cast<float>(start_bed_temp_), static_cast<float>(bed_target));
+    heating.nozzle_target_known = ext_target > 0;
 
-    // Heating phases from thermal model
-    float ext_heat = mgr.estimate_heating_seconds("extruder", static_cast<float>(start_ext_temp_),
-                                                  static_cast<float>(ext_target));
-    float bed_heat = mgr.estimate_heating_seconds("heater_bed", static_cast<float>(start_bed_temp_),
-                                                  static_cast<float>(bed_target));
-    if (ext_heat > 0)
-        durations[static_cast<int>(PrintStartPhase::HEATING_NOZZLE)] = ext_heat;
-    if (bed_heat > 0)
-        durations[static_cast<int>(PrintStartPhase::HEATING_BED)] = bed_heat;
-
-    // Non-heating phases from predictor + write predicted weights under lock
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        auto pred_phases = predictor_.predicted_phases();
-
-        for (const auto& [phase, secs] : pred_phases) {
-            if (phase != static_cast<int>(PrintStartPhase::HEATING_BED) &&
-                phase != static_cast<int>(PrintStartPhase::HEATING_NOZZLE)) {
-                durations[phase] = static_cast<float>(secs);
-            }
-        }
-
-        durations[static_cast<int>(PrintStartPhase::HOMING)] =
-            static_cast<float>(predictor_.predicted_homing_seconds());
-
-        // When nozzle target is unknown (common with bed-first macros that
-        // issue M109 after homing/mesh), include a placeholder so progress
-        // doesn't over-inflate by assigning all weight to known phases.
-        int nozzle_phase = static_cast<int>(PrintStartPhase::HEATING_NOZZLE);
-        if (ext_target == 0 && durations.find(nozzle_phase) == durations.end()) {
-            durations[nozzle_phase] = 60.0f; // Conservative placeholder
-        }
+        const helix::PreprintEstimate estimate = predictor_.estimate(heating);
 
         float durations_sum = 0.0f;
-        for (const auto& [_, dur] : durations) {
+        for (const auto& [_, dur] : estimate.durations) {
             durations_sum += dur;
         }
 
-        // Phase weights are fractions of durations_sum so they always sum
-        // to 1.0, regardless of the total used for display.
+        // Phase weights are fractions of the durations' sum so they always
+        // sum to 1.0, whatever total the display uses.
         predicted_phase_weights_.clear();
         if (durations_sum > 0.0f) {
-            for (const auto& [phase, dur] : durations) {
+            for (const auto& [phase, dur] : estimate.durations) {
                 predicted_phase_weights_[phase] = dur / durations_sum;
             }
         }
-
-        // Absolute total: prefer the recorded wall-clock history whenever we
-        // have it. The recorded total_seconds is the honest empirical
-        // end-to-end duration (it captures heating + any gcode the phase
-        // regexes never mapped). durations_sum is a *theoretical* estimate that
-        // swings in BOTH directions: it under-counts when regexes miss phases,
-        // but it also grossly OVER-counts when the thermal model overshoots
-        // heating time — on the Snapmaker U1 it computed ~900s against a true
-        // ~300s pre-print whose clean history sits at 295-375s. The old max()
-        // assumed only under-counting and so latched onto the 900s overshoot.
-        // durations_sum still drives the per-phase WEIGHTS (relative shape)
-        // above; only the absolute total comes from history. No history → fall
-        // back to the theoretical sum.
-        int wall_clock_estimate = predictor_.predicted_total();
-        predicted_total_seconds_ =
-            predictor_.has_predictions() ? static_cast<float>(wall_clock_estimate) : durations_sum;
+        predicted_total_seconds_ = estimate.total_seconds;
     }
 
     // Track targets and rates used so we can detect changes and recompute
@@ -3137,10 +3103,10 @@ float PrintStartCollector::compute_heating_fraction_for_locked(helix::PrintStart
 }
 
 bool PrintStartCollector::at_target(int temp, int target) {
-    constexpr int WITHIN_DEGREES = 2;
+    constexpr int kWithinDegrees = 2;
     // Target unknown (never observed): we cannot judge, so fall back to
     // the marker-pass completion semantics rather than stalling the phase.
-    return target <= 0 || temp >= target - WITHIN_DEGREES;
+    return target <= 0 || temp >= target - kWithinDegrees;
 }
 
 bool PrintStartCollector::heating_target_reached_locked(helix::PrintStartPhase phase) const {
@@ -3308,11 +3274,13 @@ void PrintStartCollector::save_prediction_entry() {
     entry.total_seconds = wall_clock_total;
     entry.timestamp = static_cast<int64_t>(std::time(nullptr));
     entry.phase_durations = std::move(phase_durations);
-    entry.temp_bucket = (start_bed_temp_ >= 40) ? 2 : 1;
+    entry.temp_bucket =
+        helix::PreprintPredictor::temp_bucket_for(static_cast<float>(start_bed_temp_));
     entry.window = window_;
 
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
+        entry.skipped_phases = skipped_phases_;
         predictor_.add_entry(entry);
     }
 

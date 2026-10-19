@@ -9,14 +9,14 @@ namespace helix::zip {
 
 namespace {
 
-constexpr uint32_t EOCD_SIG = 0x06054b50;
-constexpr uint32_t ZIP64_LOCATOR_SIG = 0x07064b50;
-constexpr uint32_t CENTRAL_SIG = 0x02014b50;
-constexpr uint32_t LOCAL_SIG = 0x04034b50;
-constexpr size_t EOCD_BYTES = 22;
-constexpr size_t ZIP64_LOCATOR_BYTES = 20;
-constexpr size_t CENTRAL_BYTES = 46;
-constexpr size_t MAX_COMMENT = 0xFFFF;
+constexpr uint32_t kEocdSig = 0x06054b50;
+constexpr uint32_t kZip64LocatorSig = 0x07064b50;
+constexpr uint32_t kCentralSig = 0x02014b50;
+constexpr uint32_t kLocalSig = 0x04034b50;
+constexpr size_t kEocdBytes = 22;
+constexpr size_t kZip64LocatorBytes = 20;
+constexpr size_t kCentralBytes = 46;
+constexpr size_t kMaxComment = 0xFFFF;
 
 uint16_t le16(const uint8_t* p) {
     return static_cast<uint16_t>(p[0] | (p[1] << 8));
@@ -29,12 +29,12 @@ uint32_t le32(const uint8_t* p) {
 // The end record, searched from the back: the last signature whose comment
 // length reaches exactly to the end of the archive.
 std::optional<size_t> find_eocd(const uint8_t* tail, size_t n) {
-    if (n < EOCD_BYTES) {
+    if (n < kEocdBytes) {
         return std::nullopt;
     }
-    const size_t lowest = n - EOCD_BYTES > MAX_COMMENT ? n - EOCD_BYTES - MAX_COMMENT : 0;
-    for (size_t at = n - EOCD_BYTES + 1; at-- > lowest;) {
-        if (le32(tail + at) == EOCD_SIG && at + EOCD_BYTES + le16(tail + at + 20) == n) {
+    const size_t lowest = n - kEocdBytes > kMaxComment ? n - kEocdBytes - kMaxComment : 0;
+    for (size_t at = n - kEocdBytes + 1; at-- > lowest;) {
+        if (le32(tail + at) == kEocdSig && at + kEocdBytes + le16(tail + at + 20) == n) {
             return at;
         }
     }
@@ -97,7 +97,7 @@ bool parse_central_directory(const uint8_t* tail, size_t n, uint64_t file_size,
     const uint32_t cd_offset = le32(e + 16);
 
     const bool zip64_locator =
-        *eocd >= ZIP64_LOCATOR_BYTES && le32(e - ZIP64_LOCATOR_BYTES) == ZIP64_LOCATOR_SIG;
+        *eocd >= kZip64LocatorBytes && le32(e - kZip64LocatorBytes) == kZip64LocatorSig;
     if (zip64_locator || count == 0xFFFF || cd_size == 0xFFFFFFFFu || cd_offset == 0xFFFFFFFFu) {
         error = ZipError::Zip64;
         return false;
@@ -126,7 +126,7 @@ bool parse_central_directory(const uint8_t* tail, size_t n, uint64_t file_size,
     const uint8_t* const end = p + cd_size;
     entries.reserve(count);
     for (uint16_t i = 0; i < count; ++i) {
-        if (static_cast<size_t>(end - p) < CENTRAL_BYTES || le32(p) != CENTRAL_SIG) {
+        if (static_cast<size_t>(end - p) < kCentralBytes || le32(p) != kCentralSig) {
             error = ZipError::NotZip;
             entries.clear();
             return false;
@@ -135,7 +135,7 @@ bool parse_central_directory(const uint8_t* tail, size_t n, uint64_t file_size,
         const size_t name_len = le16(p + 28);
         const size_t extra_len = le16(p + 30);
         const size_t comment_len = le16(p + 32);
-        const size_t record = CENTRAL_BYTES + name_len + extra_len + comment_len;
+        const size_t record = kCentralBytes + name_len + extra_len + comment_len;
         if (static_cast<size_t>(end - p) < record) {
             error = ZipError::NotZip;
             entries.clear();
@@ -160,12 +160,12 @@ bool parse_central_directory(const uint8_t* tail, size_t n, uint64_t file_size,
         }
         // Its local header and data must end before the central directory
         // starts; a record claiming more is a lie that would size reads.
-        if (entry.lh_offset + ZIP_LOCAL_HEADER_BYTES + name_len + entry.csize > cd_offset) {
+        if (entry.lh_offset + kZipLocalHeaderBytes + name_len + entry.csize > cd_offset) {
             error = ZipError::NotZip;
             entries.clear();
             return false;
         }
-        entry.name.assign(reinterpret_cast<const char*>(p + CENTRAL_BYTES), name_len);
+        entry.name.assign(reinterpret_cast<const char*>(p + kCentralBytes), name_len);
         entries.push_back(std::move(entry));
         p += record;
     }
@@ -196,27 +196,27 @@ bool entry_fits(const ZipEntry& entry, size_t max_bytes) {
 }
 
 uint64_t entry_read_span(const ZipEntry& entry) {
-    return ZIP_LOCAL_HEADER_BYTES + entry.name.size() + ZIP_LOCAL_EXTRA_SLACK + entry.csize;
+    return kZipLocalHeaderBytes + entry.name.size() + kZipLocalExtraSlack + entry.csize;
 }
 
 std::optional<uint64_t> entry_data_offset(const uint8_t* lh, size_t n, const ZipEntry& entry) {
-    if (n < ZIP_LOCAL_HEADER_BYTES || le32(lh) != LOCAL_SIG) {
+    if (n < kZipLocalHeaderBytes || le32(lh) != kLocalSig) {
         return std::nullopt;
     }
     const size_t name_len = le16(lh + 26);
     const size_t extra_len = le16(lh + 28);
-    if (n < ZIP_LOCAL_HEADER_BYTES + name_len || name_len != entry.name.size() ||
+    if (n < kZipLocalHeaderBytes + name_len || name_len != entry.name.size() ||
         !std::equal(entry.name.begin(), entry.name.end(),
-                    reinterpret_cast<const char*>(lh + ZIP_LOCAL_HEADER_BYTES))) {
+                    reinterpret_cast<const char*>(lh + kZipLocalHeaderBytes))) {
         return std::nullopt;
     }
-    return entry.lh_offset + ZIP_LOCAL_HEADER_BYTES + name_len + extra_len;
+    return entry.lh_offset + kZipLocalHeaderBytes + name_len + extra_len;
 }
 
 std::string_view entry_bytes(const uint8_t* lh, size_t n, const ZipEntry& entry, ZipError& error) {
     const std::optional<uint64_t> data = entry_data_offset(lh, n, entry);
     if (!data) {
-        error = n < ZIP_LOCAL_HEADER_BYTES ? ZipError::Truncated : ZipError::BadLocalHeader;
+        error = n < kZipLocalHeaderBytes ? ZipError::Truncated : ZipError::BadLocalHeader;
         return {};
     }
     const uint64_t start = *data - entry.lh_offset;

@@ -169,12 +169,12 @@ TEST_CASE("write_file_atomic concurrent writers of one path never tear it", "[te
     ScratchDir dir;
     const std::string target = dir.file("contended");
     constexpr size_t SIZE = 1024 * 1024;
-    constexpr int WRITERS = 8;
+    constexpr int kWriters = 8;
     REQUIRE(tio::write_file_atomic(target, std::string(SIZE, 'a')));
 
     auto whole = [](const std::string& data) {
         return data.size() == SIZE && data[0] >= 'a' &&
-               data[0] < static_cast<char>('a' + WRITERS) &&
+               data[0] < static_cast<char>('a' + kWriters) &&
                data.find_first_not_of(data[0]) == std::string::npos;
     };
 
@@ -190,7 +190,7 @@ TEST_CASE("write_file_atomic concurrent writers of one path never tear it", "[te
         }
     });
     std::vector<std::thread> writers;
-    for (int w = 0; w < WRITERS; ++w) {
+    for (int w = 0; w < kWriters; ++w) {
         writers.emplace_back([&, w] {
             const std::string payload(SIZE, static_cast<char>('a' + w));
             for (int rep = 0; rep < 30; ++rep) {

@@ -353,7 +353,7 @@ void ConsolePanel::fetch_history() {
     // CRITICAL: Callbacks run on libhv background thread - defer LVGL work to main thread
     // and guard with lifetime_ token to prevent use-after-free if panel is destroyed
     api->get_gcode_store(
-        FETCH_COUNT,
+        kFetchCount,
         [this, token = lifetime_.token()](const std::vector<GcodeStoreEntry>& entries) {
             spdlog::info("[Console] Received {} gcode entries", entries.size());
 
@@ -715,7 +715,7 @@ void ConsolePanel::send_gcode_command() {
 
     // Add to command history (newest first) and reset browsing state
     command_history_.push_front(command);
-    if (command_history_.size() > MAX_HISTORY) {
+    if (command_history_.size() > kMaxHistory) {
         command_history_.pop_back();
     }
     history_index_ = -1;

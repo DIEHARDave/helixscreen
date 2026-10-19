@@ -79,7 +79,7 @@ std::string guess_hotend_heater(const std::vector<std::string>& heaters) {
 }
 
 const std::vector<HardwareRoleDescriptor>& registry() {
-    static const std::vector<HardwareRoleDescriptor> REG = {
+    static const std::vector<HardwareRoleDescriptor> kReg = {
         {HardwareRoleId::HotendHeater, helix::wizard::HOTEND_HEATER, "extruder",
          HardwareCategory::Heater, helix::wizard::StepId::HeaterSelect, true,
          &is_hotend_heater_candidate, &guess_hotend_heater},
@@ -94,10 +94,10 @@ const std::vector<HardwareRoleDescriptor>& registry() {
          helix::wizard::StepId::FanSelect, true, &is_chamber_fan_candidate, &guess_chamber_fan},
         {HardwareRoleId::ExhaustFan, helix::wizard::EXHAUST_FAN, "", HardwareCategory::Fan,
          helix::wizard::StepId::FanSelect, true, &is_exhaust_fan_candidate, &guess_exhaust_fan},
-        {HardwareRoleId::AuxFan, helix::wizard::AUX_FAN, "", HardwareCategory::Fan,
+        {HardwareRoleId::AuxFan, helix::wizard::kAuxFan, "", HardwareCategory::Fan,
          helix::wizard::StepId::FanSelect, true, &is_aux_fan_candidate, &guess_aux_fan},
     };
-    return REG;
+    return kReg;
 }
 
 } // namespace

@@ -175,8 +175,8 @@ inline bool is_safe_object_name(const std::string& str) {
             }
             cp = (cp << 6) | (cont & 0x3F);
         }
-        static constexpr uint32_t MIN_FOR_LENGTH[] = {0, 0, 0x80, 0x800, 0x10000};
-        const bool overlong = cp < MIN_FOR_LENGTH[length];
+        static constexpr uint32_t kMinForLength[] = {0, 0, 0x80, 0x800, 0x10000};
+        const bool overlong = cp < kMinForLength[length];
         const bool surrogate = cp >= 0xD800 && cp <= 0xDFFF;
         // U+0080..U+009F are C1 controls; U+00A0 opens the printable range.
         if (overlong || surrogate || cp > 0x10FFFF || cp < 0xA0 || helix::is_unicode_space(cp)) {

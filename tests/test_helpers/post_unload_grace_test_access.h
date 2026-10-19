@@ -32,7 +32,7 @@ class PostUnloadGraceTestAccess {
     }
 
     /// Backdate every outstanding removal dwell, so a test can reach the far side
-    /// of helix::RUNOUT_TOAST_DWELL without waiting it out.
+    /// of helix::kRunoutToastDwell without waiting it out.
     static void age_removal_dwell(helix::FilamentSensorManager& mgr,
                                   std::chrono::steady_clock::duration by) {
         std::lock_guard<std::recursive_mutex> lock(mgr.mutex_);

@@ -81,13 +81,13 @@ class PidProgressTracker {
         return kalico_sample_;
     }
 
-    static constexpr int EXPECTED_CYCLES = 5;
+    static constexpr int kExpectedCycles = 5;
 
     // Smart defaults (used when no history exists)
-    static constexpr float DEFAULT_EXTRUDER_HEAT_RATE = 0.5f;     // s/°C
-    static constexpr float DEFAULT_BED_HEAT_RATE = 1.5f;          // s/°C
-    static constexpr float DEFAULT_EXTRUDER_OSCILLATION = 120.0f; // seconds
-    static constexpr float DEFAULT_BED_OSCILLATION = 360.0f;      // seconds
+    static constexpr float kDefaultExtruderHeatRate = 0.5f;      // s/°C
+    static constexpr float kDefaultBedHeatRate = 1.5f;           // s/°C
+    static constexpr float kDefaultExtruderOscillation = 120.0f; // seconds
+    static constexpr float kDefaultBedOscillation = 360.0f;      // seconds
 
   private:
     Phase phase_ = Phase::IDLE;

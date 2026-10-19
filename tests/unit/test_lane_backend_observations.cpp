@@ -1005,7 +1005,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "clearing the colour keeps the guard the write
     // its own - yet firmware still holds the green it was given and restates
     // it on every frame, which is still the echo of our earlier write.
     auto cleared = harness->get_slot_info(0);
-    cleared.color_rgb = helix::AMS_DEFAULT_SLOT_COLOR;
+    cleared.color_rgb = helix::kAmsDefaultSlotColor;
     helix::test::edit_slot_as_user(*harness, 0, cleared);
 
     feed_afc_lane(*harness, "lane1", {{"color", "#00FF00"}});
@@ -1147,7 +1147,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     const auto info = harness->get_slot_info(0);
     CHECK(info.material.empty());
-    CHECK(info.color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    CHECK(info.color_rgb == helix::kAmsDefaultSlotColor);
     CHECK(info.remaining_weight_g == -1.0F);
     CHECK(info.total_weight_g == -1.0F);
     CHECK(info.brand.empty());
@@ -1518,7 +1518,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "an unreadable colour leaves AFC's record stan
     const auto cleared = lane_sources(harness.lane(1));
     REQUIRE(cleared.vendor_cache.has_value());
     CHECK_FALSE(cleared.vendor_cache->color_rgb.has_value());
-    CHECK(harness->get_slot_info(1).color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    CHECK(harness->get_slot_info(1).color_rgb == helix::kAmsDefaultSlotColor);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "Happy Hare splits gate status from gate metadata",
@@ -1768,7 +1768,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "an unreadable Happy Hare colour leaves the re
     const auto cleared = lane_sources(harness.lane(0));
     REQUIRE(cleared.vendor_cache.has_value());
     CHECK_FALSE(cleared.vendor_cache->color_rgb.has_value());
-    CHECK(harness->get_slot_info(0).color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    CHECK(harness->get_slot_info(0).color_rgb == helix::kAmsDefaultSlotColor);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "Happy Hare files the colour its numeric gate map states",
@@ -2957,7 +2957,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Snapmaker files no colour for a tag that carr
     SnapmakerHarness harness(nullptr, nullptr);
 
     // A tag with an identity but no ARGB_COLOR. SnapmakerRfidInfo::color_rgb
-    // rests on AMS_DEFAULT_SLOT_COLOR, which is that struct's "no reading" and
+    // rests on kAmsDefaultSlotColor, which is that struct's "no reading" and
     // not a grey a vendor printed on a spool.
     feed_filament_detect(*harness, nlohmann::json{
                                        {"state", nlohmann::json::array({1, 1})},
@@ -2983,7 +2983,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Snapmaker files no colour for a tag that carr
     CHECK_FALSE(lane.vendor_cache->brand.has_value());
     // The sentinel still reaches SlotInfo, so the record's silence is the only
     // place the difference between "grey" and "no reading" survives.
-    CHECK(harness->get_slot_info(0).color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    CHECK(harness->get_slot_info(0).color_rgb == helix::kAmsDefaultSlotColor);
 
     const auto silent = lane_sources(harness.lane(1));
     REQUIRE(silent.vendor_cache.has_value());
@@ -3079,7 +3079,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "a tool changer senses docking and declares no
     // asserted here because they are what a read-back of the merged struct
     // would have filed.
     CHECK(harness->get_slot_info(0).spool_name == "T0");
-    CHECK(harness->get_slot_info(0).color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    CHECK(harness->get_slot_info(0).color_rgb == helix::kAmsDefaultSlotColor);
     CHECK_FALSE(lane.vendor_cache.has_value());
 
     const auto second = lane_sources(harness.lane(1));
@@ -3951,7 +3951,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "a Qidi palette grey is the no-colour sentinel
         *harness, nlohmann::json{{"box_count", 1}, {"color_slot0", 1}, {"color_slot1", 2}});
 
     // The palette row reaches the slot, because the Box did name a colour id.
-    REQUIRE(harness->get_slot_info(0).color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    REQUIRE(harness->get_slot_info(0).color_rgb == helix::kAmsDefaultSlotColor);
 
     const auto grey = lane_sources(harness.lane(0));
     REQUIRE(grey.vendor_cache.has_value());
@@ -4179,7 +4179,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "the mock's colour sentinel is not a grey anyb
     REQUIRE(harness->sync_external_identity(0, black).success());
 
     auto colourless = harness->get_slot_info(1);
-    colourless.color_rgb = helix::AMS_DEFAULT_SLOT_COLOR;
+    colourless.color_rgb = helix::kAmsDefaultSlotColor;
     colourless.material = "Grey-PLA";
     REQUIRE(harness->sync_external_identity(1, colourless).success());
 
@@ -4215,7 +4215,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "the factory mock is registered before it star
 
     REQUIRE(ams.backend_count() == 1);
 
-    // A backend answers INVALID_LANE_ID for every slot until registration
+    // A backend answers kInvalidLaneId for every slot until registration
     // stamps its index, so a population published before that lands on no lane
     // and every record here reads empty.
     const auto lane = lane_sources(helix::ams::lane_id_for(0, 0));
@@ -4912,7 +4912,7 @@ const CachedSlotBackend kCachedSlotBackends[] = {
          harness->set_discovered_tools({"T0", "T1"});
          feed_toolchanger(
              *harness, nlohmann::json{{"toolchanger", {{"status", "ready"}, {"tool_number", 0}}}});
-         expect_repaint_shows_filing(*harness, harness.lane(0), helix::AMS_DEFAULT_SLOT_COLOR);
+         expect_repaint_shows_filing(*harness, harness.lane(0), helix::kAmsDefaultSlotColor);
      }},
 };
 
@@ -4939,7 +4939,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     filed.spoolman_id = 7;
     filed.color_rgb = kFiledColor;
     helix::ams::ingest(harness.lane(0), filed);
-    REQUIRE(harness->get_slot_info(0).color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    REQUIRE(harness->get_slot_info(0).color_rgb == helix::kAmsDefaultSlotColor);
 
     feed_toolchanger(*harness,
                      nlohmann::json{{"toolchanger", {{"status", "ready"}, {"tool_number", 0}}}});

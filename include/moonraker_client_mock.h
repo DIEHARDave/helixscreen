@@ -2210,15 +2210,15 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     std::unordered_map<std::string, mock_internal::MethodHandler> method_handlers_;
 
     // Simulation parameters (realistic heating rates)
-    static constexpr double ROOM_TEMP = 25.0;
-    static constexpr double EXTRUDER_HEAT_RATE = 3.0;     // °C/sec when heating
-    static constexpr double EXTRUDER_COOL_RATE = 1.5;     // °C/sec when cooling
-    static constexpr double BED_HEAT_RATE = 1.0;          // °C/sec when heating
-    static constexpr double BED_COOL_RATE = 0.3;          // °C/sec when cooling
-    static constexpr double CHAMBER_HEAT_RATE = 0.3;      // °C/sec when heating (slower than bed)
-    static constexpr double CHAMBER_COOL_RATE = 0.1;      // °C/sec when cooling
-    static constexpr int SIMULATION_INTERVAL_MS = 250;    // Physics tick interval
-    static constexpr int NOTIFICATION_INTERVAL_TICKS = 4; // Dispatch every 4 ticks (~1s)
+    static constexpr double kRoomTemp = 25.0;
+    static constexpr double kExtruderHeatRate = 3.0;     // °C/sec when heating
+    static constexpr double kExtruderCoolRate = 1.5;     // °C/sec when cooling
+    static constexpr double kBedHeatRate = 1.0;          // °C/sec when heating
+    static constexpr double kBedCoolRate = 0.3;          // °C/sec when cooling
+    static constexpr double kChamberHeatRate = 0.3;      // °C/sec when heating (slower than bed)
+    static constexpr double kChamberCoolRate = 0.1;      // °C/sec when cooling
+    static constexpr int kSimulationIntervalMs = 250;    // Physics tick interval
+    static constexpr int kNotificationIntervalTicks = 4; // Dispatch every 4 ticks (~1s)
 
     // Mock service availability flags (initialized from env vars in constructor)
     bool mock_spoolman_enabled_{true};     ///< Controlled by HELIX_MOCK_SPOOLMAN env var
@@ -2298,10 +2298,10 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     // status parse sees the same transitions a real U1 sends. State starts at
     // the rig's resting mix (heads 0/2 loaded, 1/3 preloaded) so the sibling
     // channel each frame carries alongside the touched one reads plausibly.
-    static constexpr int U1_CHANNELS = 4;
-    std::array<std::string, static_cast<size_t>(U1_CHANNELS)> u1_channel_state_{
+    static constexpr int kU1Channels = 4;
+    std::array<std::string, static_cast<size_t>(kU1Channels)> u1_channel_state_{
         "load_finish", "preload_finish", "load_finish", "preload_finish"};
-    std::array<bool, static_cast<size_t>(U1_CHANNELS)> u1_filament_detected_{true, true, true,
+    std::array<bool, static_cast<size_t>(kU1Channels)> u1_filament_detected_{true, true, true,
                                                                              true};
     /// defect_detection main_enable and clean_bed.enable, switched by
     /// DEFECT_DETECTION_CONFIG.

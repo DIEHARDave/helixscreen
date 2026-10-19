@@ -165,7 +165,7 @@ single mutex that serializes all RFCOMM prints ([`src/system/bt_print_utils.cpp#
 is default, and the selected label size live in `LabelPrinterSettingsManager`
 ([`include/label_printer_settings.h`](../../../include/label_printer_settings.h)); the dispatch also reads detected media length at print time and falls back
 to the user-selected size when the printer reports none (`src/system/label_printer_utils.cpp#print_spool_label`). Device-name
-prefixes map to protocol families through the `KNOWN_BRANDS` table ([`include/bt_discovery_utils.h`](../../../include/bt_discovery_utils.h)), which is
+prefixes map to protocol families through the `kKnownBrands` table ([`include/bt_discovery_utils.h`](../../../include/bt_discovery_utils.h)), which is
 also how discovery decides whether a new printer needs BLE or RFCOMM. The two facts most likely to bite: RFCOMM
 channel resolution caches SDP results per MAC (`resolve_label_printer_channel`, [`include/bt_print_utils.h#resolve_label_printer_channel`](../../../include/bt_print_utils.h)),
 and BLE connections are deliberately *persistent* - Niimbot printers print blank if reconnected without
@@ -192,8 +192,8 @@ the APK) with stb_image as fallback. Three load-bearing details:
 The widget also throttles: `set_max_fps(0)` when an overlay covers it, `2` in edit mode, the configured cap
 otherwise (`src/ui/panel_widgets/camera_widget.cpp#update_stream_fps`). Flip, rotation, target size, and fps cap are all
 atomics, so the widget can retune a running stream without touching the decode thread. After 3 stream failures
-(`MAX_STREAM_FAILURES`) the streamer falls back to polling the snapshot URL every 2 seconds
-(`SNAPSHOT_INTERVAL_MS`) and reconnects the stream opportunistically; libhv callbacks carry `AsyncLifetimeGuard`
+(`kMaxStreamFailures`) the streamer falls back to polling the snapshot URL every 2 seconds
+(`kSnapshotIntervalMs`) and reconnects the stream opportunistically; libhv callbacks carry `AsyncLifetimeGuard`
 tokens so a late HTTP event after destruction bails out before touching members.
 
 **Scanners** come in two hardware shapes, and `QrScannerOverlay` runs both simultaneously - whichever fires

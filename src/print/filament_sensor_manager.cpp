@@ -961,7 +961,7 @@ void FilamentSensorManager::update_from_status(const json& status) {
     // (similar to USB manager - users don't need to be told filament is present)
     auto now = std::chrono::steady_clock::now();
     bool within_grace_period =
-        (now - startup_time_) < app_constants::startup::SENSOR_STABILIZATION_PERIOD;
+        (now - startup_time_) < app_constants::startup::kSensorStabilizationPeriod;
 
     // Collect notifications to send after releasing lock (avoid deadlock)
     struct Notification {
@@ -1184,7 +1184,7 @@ void FilamentSensorManager::update_from_status(const json& status) {
                     notif.should_toast = false;
                     spdlog::debug("[FilamentSensorManager] Holding removal toast for {} - {}s "
                                   "dwell, a tool change refills before it expires",
-                                  sensor.sensor_name, RUNOUT_TOAST_DWELL.count());
+                                  sensor.sensor_name, kRunoutToastDwell.count());
                 } else if (state.filament_detected &&
                            pending_removal_toast_.erase(sensor.klipper_name) > 0) {
                     notif.should_toast = false;
@@ -1247,7 +1247,7 @@ void FilamentSensorManager::update_from_status(const json& status) {
                 it = pending_removal_toast_.erase(it);
                 continue;
             }
-            if (now - it->second < RUNOUT_TOAST_DWELL) {
+            if (now - it->second < kRunoutToastDwell) {
                 ++it;
                 continue;
             }
@@ -1275,7 +1275,7 @@ void FilamentSensorManager::update_from_status(const json& status) {
                 spdlog::warn("[FilamentSensorManager] RUNOUT CONFIRMED: {} ({}) still clear "
                              "after {}s",
                              cfg->sensor_name, role_to_config_string(cfg->role),
-                             RUNOUT_TOAST_DWELL.count());
+                             kRunoutToastDwell.count());
             }
             it = pending_removal_toast_.erase(it);
         }
@@ -1410,7 +1410,7 @@ bool FilamentSensorManager::is_probe_triggered() const {
 
 bool FilamentSensorManager::is_in_startup_grace_period() const {
     auto now = std::chrono::steady_clock::now();
-    return (now - startup_time_) < app_constants::startup::SENSOR_STABILIZATION_PERIOD;
+    return (now - startup_time_) < app_constants::startup::kSensorStabilizationPeriod;
 }
 
 // ============================================================================

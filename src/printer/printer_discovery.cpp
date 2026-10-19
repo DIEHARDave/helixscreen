@@ -42,7 +42,7 @@ void remember_printer_hostname(const std::string& hostname) {
         return;
     }
     Config* config = Config::get_instance();
-    const std::string path = config->df() + helix::wizard::HOSTNAME;
+    const std::string path = config->df() + helix::wizard::kHostname;
     if (config->get<std::string>(path, "") != hostname) {
         config->set<std::string>(path, hostname);
         config->save();

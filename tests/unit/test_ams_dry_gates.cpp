@@ -170,7 +170,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AmsState publishes each slot's drying state
     CHECK(lv_subject_get_int(ams.get_slot_drying_subject(1)) ==
           static_cast<int>(ZoneDryingState::Idle));
     CHECK(ams.get_slot_drying_subject(-1) == nullptr);
-    CHECK(ams.get_slot_drying_subject(AmsState::MAX_SLOTS) == nullptr);
+    CHECK(ams.get_slot_drying_subject(AmsState::kMaxSlots) == nullptr);
 
     REQUIRE(mock->stop_drying(0).success());
     ams.clear_backends();

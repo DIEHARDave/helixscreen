@@ -274,8 +274,8 @@ class SpoolmanOverlay : public OverlayBase {
     helix::diag::LocalIncludePlan local_plan_;
 
     /// Default values
-    static constexpr bool DEFAULT_SYNC_ENABLED = true;
-    static constexpr int DEFAULT_REFRESH_INTERVAL_SECONDS = 30;
+    static constexpr bool kDefaultSyncEnabled = true;
+    static constexpr int kDefaultRefreshIntervalSeconds = 30;
 
     // === Barcode Scanner Picker ===
     lv_subject_t scanner_device_status_subject_{};

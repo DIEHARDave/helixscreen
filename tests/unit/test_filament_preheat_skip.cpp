@@ -311,7 +311,7 @@ TEST_CASE_METHOD(PreheatSkipFixture, "preheat_skip_reason: an unload claim is pe
 
     // No CFS unload script we send heats; the bypass one ends in a raw retract.
     helix::printer::AmsBackendCfs cfs(nullptr, nullptr);
-    unload.ams_arg = helix::ui::EXTERNAL_SPOOL_SLOT;
+    unload.ams_arg = helix::ui::kExternalSpoolSlot;
     CHECK(helix::ui::preheat_skip_reason(unload, StandardMacroSlot::UnloadFilament, &cfs) ==
           PreheatSkip::None);
     unload.ams_arg = 0;

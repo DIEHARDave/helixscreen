@@ -71,14 +71,14 @@ constexpr int kSnapPendingInsertPasses = 8;
 // stores SUB_TYPE into SlotInfo::spool_name (see apply_rfid_entry_locked), but
 // a user can edit spool_name to a free-form string ("My Custom Spool"), so a
 // spool_name is only a product line when it matches one of these.
-constexpr std::array<std::string_view, 8> KNOWN_SUB_TYPES = {
+constexpr std::array<std::string_view, 8> kKnownSubTypes = {
     "Basic", "Matte", "SnapSpeed", "Silk", "Support", "HF", "95A", "95A HF"};
 
 // The vendor whose spools the product lines above name.
-constexpr std::string_view PRODUCT_LINE_VENDOR = "Snapmaker";
+constexpr std::string_view kProductLineVendor = "Snapmaker";
 
 [[nodiscard]] bool is_known_subtype(const std::string& s) {
-    for (const auto& st : KNOWN_SUB_TYPES) {
+    for (const auto& st : kKnownSubTypes) {
         if (s == st) {
             return true;
         }
@@ -87,7 +87,7 @@ constexpr std::string_view PRODUCT_LINE_VENDOR = "Snapmaker";
 }
 
 [[nodiscard]] bool is_product_line_vendor(const std::string& brand) {
-    return helix::text_io::equals_ignore_case(brand, PRODUCT_LINE_VENDOR);
+    return helix::text_io::equals_ignore_case(brand, kProductLineVendor);
 }
 
 /// True when @p spool_name is a product line that @p brand cannot carry: the
@@ -218,12 +218,12 @@ AmsBackendSnapmaker::AmsBackendSnapmaker(IMoonrakerAPI* api, helix::IMoonrakerCl
     unit.unit_index = 0;
     unit.name = "SnapSwap";
     unit.display_name = "SnapSwap";
-    unit.slot_count = NUM_TOOLS;
+    unit.slot_count = kNumTools;
     unit.first_slot_global_index = 0;
     unit.connected = true;
     unit.topology = PathTopology::PARALLEL;
 
-    for (int i = 0; i < NUM_TOOLS; i++) {
+    for (int i = 0; i < kNumTools; i++) {
         SlotInfo slot;
         slot.slot_index = i;
         slot.global_index = i;
@@ -235,7 +235,7 @@ AmsBackendSnapmaker::AmsBackendSnapmaker(IMoonrakerAPI* api, helix::IMoonrakerCl
     }
 
     system_info_.units.push_back(std::move(unit));
-    system_info_.total_slots = NUM_TOOLS;
+    system_info_.total_slots = kNumTools;
 
     // Snapmaker U1 has a fixed 1:1 tool↔slot mapping (4 extruders, 4 slots):
     // every head permanently holds its own spool, so the PHYSICAL routing really
@@ -250,12 +250,12 @@ AmsBackendSnapmaker::AmsBackendSnapmaker(IMoonrakerAPI* api, helix::IMoonrakerCl
     // i.e. a safety valve was fed data to keep it from tripping, and the "fix"
     // made every tool render in head-index order. That consumer now resolves
     // through the routing table instead, so this map has no display job.
-    system_info_.tool_to_slot_map.reserve(NUM_TOOLS);
-    for (int i = 0; i < NUM_TOOLS; i++) {
+    system_info_.tool_to_slot_map.reserve(kNumTools);
+    for (int i = 0; i < kNumTools; i++) {
         system_info_.tool_to_slot_map.push_back(i);
     }
 
-    spdlog::debug("[AMS Snapmaker] Backend created with {} tools", NUM_TOOLS);
+    spdlog::debug("[AMS Snapmaker] Backend created with {} tools", kNumTools);
 }
 
 // ============================================================================
@@ -463,7 +463,7 @@ PathSegment AmsBackendSnapmaker::get_slot_filament_segment(int slot_index) const
 }
 
 PathSegment AmsBackendSnapmaker::slot_segment_locked(int i) const {
-    if (i < 0 || i >= NUM_TOOLS || !system_info_.get_slot_global(i))
+    if (i < 0 || i >= kNumTools || !system_info_.get_slot_global(i))
         return PathSegment::NONE;
 
     // Filament in THIS tool's toolhead draws to its own nozzle (PARALLEL: each
@@ -489,12 +489,12 @@ PathSegment AmsBackendSnapmaker::slot_segment_locked(int i) const {
 
 bool AmsBackendSnapmaker::slot_has_prep_sensor(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return slot_index >= 0 && slot_index < NUM_TOOLS && !head_is_upstream_fed_locked(slot_index);
+    return slot_index >= 0 && slot_index < kNumTools && !head_is_upstream_fed_locked(slot_index);
 }
 
 std::optional<bool> AmsBackendSnapmaker::slot_insert_presence(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (slot_index < 0 || slot_index >= NUM_TOOLS || !feed_presence_seen_[slot_index] ||
+    if (slot_index < 0 || slot_index >= kNumTools || !feed_presence_seen_[slot_index] ||
         head_is_upstream_fed_locked(slot_index))
         return std::nullopt;
     return port_sensor_filament_present_[slot_index];
@@ -502,7 +502,7 @@ std::optional<bool> AmsBackendSnapmaker::slot_insert_presence(int slot_index) co
 
 InsertIdentity AmsBackendSnapmaker::slot_insert_identity(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (slot_index < 0 || slot_index >= NUM_TOOLS)
+    if (slot_index < 0 || slot_index >= kNumTools)
         return InsertIdentity::NotRead;
     if (pending_insert_passes_[slot_index] > 0)
         return InsertIdentity::Pending;
@@ -557,7 +557,7 @@ AmsError AmsBackendSnapmaker::do_load_filament(int slot_index) {
         break;
     }
     return dispatch_feed(fmt::format("AUTO_FEEDING EXTRUDER={} LOAD=1", slot_index),
-                         EVENT_LOAD_COMPLETE);
+                         kEventLoadComplete);
 }
 
 bool AmsBackendSnapmaker::unload_heats_hotend(int slot_index) const {
@@ -594,7 +594,7 @@ AmsError AmsBackendSnapmaker::do_unload_filament(int slot_index) {
         extruder = system_info_.current_slot;
     }
     if (extruder < 0) {
-        return dispatch_feed("INNER_FILAMENT_UNLOAD", EVENT_UNLOAD_COMPLETE);
+        return dispatch_feed("INNER_FILAMENT_UNLOAD", kEventUnloadComplete);
     }
 
     auto err = validate_slot_index(extruder);
@@ -602,7 +602,7 @@ AmsError AmsBackendSnapmaker::do_unload_filament(int slot_index) {
         return err;
 
     return dispatch_feed(fmt::format("AUTO_FEEDING EXTRUDER={} UNLOAD=1", extruder),
-                         EVENT_UNLOAD_COMPLETE);
+                         kEventUnloadComplete);
 }
 
 AmsError AmsBackendSnapmaker::dispatch_feed(std::string gcode, const char* complete_event) {
@@ -610,7 +610,7 @@ AmsError AmsBackendSnapmaker::dispatch_feed(std::string gcode, const char* compl
         std::move(gcode), [this, complete_event] { emit_event(complete_event); },
         [this](const MoonrakerError& err) {
             if (err.type != MoonrakerErrorType::TIMEOUT) {
-                emit_event(EVENT_ERROR, err.message);
+                emit_event(kEventError, err.message);
             }
         });
 }
@@ -619,7 +619,7 @@ AmsError AmsBackendSnapmaker::dispatch_feed(std::string gcode, std::function<voi
                                             std::function<void(const MoonrakerError&)> on_failed) {
     // FEED_AUTO homes itself, and both callbacks run on the main thread.
     return ensure_homed_then(std::move(gcode), std::move(on_ok), std::move(on_failed),
-                             IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS, /*skip_homing=*/true,
+                             IMoonrakerAPI::kAmsOperationTimeoutMs, /*skip_homing=*/true,
                              /*silent=*/true,
                              // The error callback only ends the operation, so
                              // Klipper's `!!` broadcast stays the thing that
@@ -666,7 +666,7 @@ AmsError AmsBackendSnapmaker::do_filament_batch(const std::vector<int>& slots, b
     const char* tag = backend_log_tag();
     spdlog::info("{} Executing G-code: {}", tag, chain);
     // Sent through api_ rather than the shared execute_gcode() so the timeout
-    // can scale per op — the shared overloads pin AMS_OPERATION_TIMEOUT_MS
+    // can scale per op — the shared overloads pin kAmsOperationTimeoutMs
     // (300s), which a 4-head cold batch can outlast. The operation's
     // completion is owned by the firmware phase the sidebar tracks, not by
     // this RPC's return; the error path reaches `this` only through the
@@ -714,7 +714,7 @@ AmsError AmsBackendSnapmaker::do_filament_batch(const std::vector<int>& slots, b
                           end_firmware_batch();
                       });
         },
-        static_cast<uint32_t>(slots.size()) * BATCH_FEED_OP_TIMEOUT_MS,
+        static_cast<uint32_t>(slots.size()) * kBatchFeedOpTimeoutMs,
         /*silent=*/true, /*on_queued=*/nullptr,
         // The callbacks above log and schedule the interlock clear; neither
         // claims the error report, so Klipper's `!!` broadcast still surfaces
@@ -750,7 +750,7 @@ std::string AmsBackendSnapmaker::batch_feed_gcode(const std::vector<int>& slots,
         }
     }
     chain += '\n';
-    chain += batch_feeding::END_GCODE;
+    chain += batch_feeding::kEndGcode;
     return chain;
 }
 
@@ -768,12 +768,12 @@ void AmsBackendSnapmaker::end_firmware_batch() {
     if (!use_batch_macro) {
         return; // no interlock exists on this firmware
     }
-    execute_gcode(batch_feeding::END_GCODE);
+    execute_gcode(batch_feeding::kEndGcode);
 }
 
 bool AmsBackendSnapmaker::can_unload_from_toolhead(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (slot_index < 0 || slot_index >= NUM_TOOLS) {
+    if (slot_index < 0 || slot_index >= kNumTools) {
         return false;
     }
     const auto* slot = system_info_.get_slot_global(slot_index);
@@ -786,7 +786,7 @@ bool AmsBackendSnapmaker::can_unload_from_toolhead(int slot_index) const {
 
 bool AmsBackendSnapmaker::slot_has_filament_at_toolhead(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (slot_index < 0 || slot_index >= NUM_TOOLS) {
+    if (slot_index < 0 || slot_index >= kNumTools) {
         return false;
     }
     // channel_state latch, NOT the toolhead switch; see the header note.
@@ -794,7 +794,7 @@ bool AmsBackendSnapmaker::slot_has_filament_at_toolhead(int slot_index) const {
 }
 
 std::optional<bool> AmsBackendSnapmaker::head_has_filament(int head) const {
-    if (head < 0 || head >= NUM_TOOLS) {
+    if (head < 0 || head >= kNumTools) {
         return std::nullopt;
     }
     return can_unload_from_toolhead(head) || slot_filament_parked_in_toolhead(head);
@@ -802,7 +802,7 @@ std::optional<bool> AmsBackendSnapmaker::head_has_filament(int head) const {
 
 bool AmsBackendSnapmaker::slot_filament_parked_in_toolhead(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (slot_index < 0 || slot_index >= NUM_TOOLS) {
+    if (slot_index < 0 || slot_index >= kNumTools) {
         return false;
     }
     return parked_in_toolhead_locked(slot_index);
@@ -810,7 +810,7 @@ bool AmsBackendSnapmaker::slot_filament_parked_in_toolhead(int slot_index) const
 
 bool AmsBackendSnapmaker::slot_is_actively_loaded(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (slot_index < 0 || slot_index >= NUM_TOOLS) {
+    if (slot_index < 0 || slot_index >= kNumTools) {
         return false;
     }
     const auto* slot = system_info_.get_slot_global(slot_index);
@@ -819,7 +819,7 @@ bool AmsBackendSnapmaker::slot_is_actively_loaded(int slot_index) const {
 
 AmsBackendSnapmaker::ChannelSnapshot AmsBackendSnapmaker::channel_snapshot(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (slot_index < 0 || slot_index >= NUM_TOOLS) {
+    if (slot_index < 0 || slot_index >= kNumTools) {
         return {};
     }
     return channel_snapshots_[slot_index];
@@ -828,7 +828,7 @@ AmsBackendSnapmaker::ChannelSnapshot AmsBackendSnapmaker::channel_snapshot(int s
 AmsBackend::FilamentOpEligibility AmsBackendSnapmaker::slot_op_eligibility(int slot_index,
                                                                            bool load) const {
     using E = FilamentOpEligibility;
-    if (slot_index < 0 || slot_index >= NUM_TOOLS) {
+    if (slot_index < 0 || slot_index >= kNumTools) {
         return E::Busy;
     }
     const ChannelSnapshot snap = channel_snapshot(slot_index);
@@ -945,7 +945,7 @@ bool AmsBackendSnapmaker::is_stuck_motion_sensor_runout(int slot_index) const {
         // convention used by other AmsBackend methods that take slot_index.
         slot = system_info_.current_slot;
     }
-    if (slot < 0 || slot >= NUM_TOOLS) {
+    if (slot < 0 || slot >= kNumTools) {
         return false;
     }
     // Motion (encoder) sensor latched false, port (buffer) sensor still
@@ -969,7 +969,7 @@ void AmsBackendSnapmaker::prepare_for_resume(int slot_index, ResumeReadyCallback
             // slot_index convention used by other AmsBackend methods.
             slot = system_info_.current_slot;
         }
-        if (slot >= 0 && slot < NUM_TOOLS) {
+        if (slot >= 0 && slot < kNumTools) {
             sensor_present = sensor_filament_present_[slot];
         }
     }
@@ -1006,7 +1006,7 @@ void AmsBackendSnapmaker::prepare_for_resume(int slot_index, ResumeReadyCallback
         return;
     }
 
-    if (slot >= 0 && slot < NUM_TOOLS && !sensor_present) {
+    if (slot >= 0 && slot < kNumTools && !sensor_present) {
         // A runout leaves no record repair: the user may have loaded a
         // different spool, and the material remembered for the old one would
         // be recorded against it. The firmware's refusal and classify_error's
@@ -1015,7 +1015,7 @@ void AmsBackendSnapmaker::prepare_for_resume(int slot_index, ResumeReadyCallback
         return;
     }
 
-    if (slot < 0 || slot >= NUM_TOOLS) {
+    if (slot < 0 || slot >= kNumTools) {
         spdlog::debug("{} prepare_for_resume: no active tool", backend_log_tag());
     } else {
         // Klipper's motion sensor reads filament — RESUME can clear its own
@@ -1133,7 +1133,7 @@ AmsError AmsBackendSnapmaker::apply_user_edit(int slot_index, const SlotInfo& in
         std::lock_guard<std::mutex> lock(mutex_);
         auto* slot = system_info_.units[0].get_slot(slot_index);
         if (!slot)
-            return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, NUM_TOOLS - 1);
+            return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, kNumTools - 1);
 
         slot->assign_filament_fields(info);
 
@@ -1176,7 +1176,7 @@ AmsError AmsBackendSnapmaker::apply_user_edit(int slot_index, const SlotInfo& in
     // Without it, AmsState::on_event silently skips the refresh and the AMS
     // panel never re-reads the edited slot — the UI shows stale data until
     // the next firmware status notification triggers a full refresh.
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     return AmsErrorHelper::success();
 }
 
@@ -1189,7 +1189,7 @@ AmsError AmsBackendSnapmaker::sync_external_identity(int slot_index, const SlotI
         std::lock_guard<std::mutex> lock(mutex_);
         auto* slot = system_info_.units[0].get_slot(slot_index);
         if (!slot)
-            return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, NUM_TOOLS - 1);
+            return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, kNumTools - 1);
 
         // overrides_ is left alone and nothing reaches firmware: the next
         // Klipper status update overwrites a synced value.
@@ -1197,7 +1197,7 @@ AmsError AmsBackendSnapmaker::sync_external_identity(int slot_index, const SlotI
     }
 
     // Pass slot_index as event data so AmsState can do a targeted slot sync.
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     return AmsErrorHelper::success();
 }
 
@@ -1300,7 +1300,7 @@ std::optional<helix::ams::SpoolEvidence> evidence_from_fingerprint(const std::st
 
 void AmsBackendSnapmaker::apply_extruders_locked(const snapmaker::StatusDelta& delta,
                                                  FrameEffects& fx) {
-    for (int i = 0; i < NUM_TOOLS; i++) {
+    for (int i = 0; i < kNumTools; i++) {
         const auto& extruder = delta.extruders[i];
         if (!extruder) {
             continue;
@@ -1334,7 +1334,7 @@ void AmsBackendSnapmaker::apply_active_tool_locked(const snapmaker::StatusDelta&
     // data is present (prevents oscillation between valid and -1).
     bool has_extruder_data = false;
     int active = -1;
-    for (int i = 0; i < NUM_TOOLS; i++) {
+    for (int i = 0; i < kNumTools; i++) {
         if (extruder_states_[i].active_pin ||
             (!extruder_states_[i].state.empty() && extruder_states_[i].state != "PARKED")) {
             active = i;
@@ -1349,7 +1349,7 @@ void AmsBackendSnapmaker::apply_active_tool_locked(const snapmaker::StatusDelta&
         // its dock, so the per-extruder answer stands, -1 when every head is
         // parked (prestonbrown/helixscreen#1784).
         if (const auto tool_number = helix::tool_number_for_extruder(*delta.toolhead_extruder)) {
-            const bool named_head_parked = *tool_number >= 0 && *tool_number < NUM_TOOLS &&
+            const bool named_head_parked = *tool_number >= 0 && *tool_number < kNumTools &&
                                            extruder_states_[*tool_number].state == "PARKED";
             if (!named_head_parked) {
                 active = *tool_number;
@@ -1364,7 +1364,7 @@ void AmsBackendSnapmaker::apply_active_tool_locked(const snapmaker::StatusDelta&
         const bool frame_has_head_data = std::any_of(delta.extruders.begin(), delta.extruders.end(),
                                                      [](const auto& e) { return e.has_value(); });
         const int current = system_info_.current_tool;
-        if (frame_has_head_data && current >= 0 && current < NUM_TOOLS &&
+        if (frame_has_head_data && current >= 0 && current < kNumTools &&
             extruder_states_[current].state == "PARKED" && !extruder_states_[current].active_pin) {
             has_extruder_data = true;
         }
@@ -1379,7 +1379,7 @@ void AmsBackendSnapmaker::apply_active_tool_locked(const snapmaker::StatusDelta&
     }
     if (has_extruder_data && active != system_info_.current_tool) {
         // Demote previous active tool from LOADED to AVAILABLE
-        if (system_info_.current_tool >= 0 && system_info_.current_tool < NUM_TOOLS) {
+        if (system_info_.current_tool >= 0 && system_info_.current_tool < kNumTools) {
             auto* prev_slot = system_info_.units[0].get_slot(system_info_.current_tool);
             if (prev_slot && prev_slot->status == SlotStatus::LOADED) {
                 prev_slot->status = SlotStatus::AVAILABLE;
@@ -1404,7 +1404,7 @@ void AmsBackendSnapmaker::apply_filament_detect_locked(const snapmaker::StatusDe
     // RFID info per channel. Only apply it when it carries real values (not
     // "NONE"): print_task_config is the authoritative source, and RFID
     // supplements it when tags are present.
-    for (int i = 0; i < NUM_TOOLS; i++) {
+    for (int i = 0; i < kNumTools; i++) {
         if (detect.info[i]) {
             apply_rfid_entry_locked(i, *detect.info[i], fx);
         }
@@ -1416,7 +1416,7 @@ void AmsBackendSnapmaker::apply_filament_detect_locked(const snapmaker::StatusDe
     // parse convergence point from the port sensor and the loaded-at-toolhead
     // latch, and this array only seeds a status for slots nothing better has
     // spoken for.
-    for (int i = 0; i < NUM_TOOLS; i++) {
+    for (int i = 0; i < kNumTools; i++) {
         if (!detect.state[i]) {
             continue;
         }
@@ -1539,7 +1539,7 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
         if (!brand.empty() && brand != "NONE")
             cache.brand = brand;
         // SnapmakerRfidInfo::color_rgb rests on
-        // AMS_DEFAULT_SLOT_COLOR when the tag carried no
+        // kAmsDefaultSlotColor when the tag carried no
         // ARGB_COLOR, which is that struct's "no reading" and
         // not a grey anybody chose.
         if (helix::ams::is_declarable_color(rfid.color_rgb))
@@ -1678,7 +1678,7 @@ void AmsBackendSnapmaker::apply_port_presence_locked(int i, bool detected, Frame
     // independent of slot->status because slot status flips
     // to AVAILABLE/LOADED based on extruder pin state which
     // is orthogonal to the port sensor reading.
-    if (i >= 0 && i < NUM_TOOLS) {
+    if (i >= 0 && i < kNumTools) {
         // The port flag's false -> true edge is an
         // insert into the channel; the first sighting
         // is the baseline, not an edge. The tag
@@ -2016,7 +2016,7 @@ void AmsBackendSnapmaker::apply_task_routing_locked(const snapmaker::PrintTaskCo
 void AmsBackendSnapmaker::apply_task_slot_identity_locked(
     const snapmaker::PrintTaskConfigDelta& ptc, FrameEffects& fx) {
     // filament_exist: whether filament is loaded per slot
-    for (int i = 0; i < NUM_TOOLS; i++) {
+    for (int i = 0; i < kNumTools; i++) {
         if (!ptc.filament_exist[i]) {
             continue;
         }
@@ -2052,7 +2052,7 @@ void AmsBackendSnapmaker::apply_task_slot_identity_locked(
     //
     // A user's declaration reaches the lane model through commit_slot_edit, which
     // is the funnel that records authorship.
-    for (int i = 0; i < NUM_TOOLS; i++) {
+    for (int i = 0; i < kNumTools; i++) {
         auto* slot = system_info_.units[0].get_slot(i);
         if (!slot) {
             continue;
@@ -2128,7 +2128,7 @@ void AmsBackendSnapmaker::derive_active_tool_loaded_locked(FrameEffects& fx) {
     // reported toolhead switch, which also breaks the canvas line on a
     // mid-print runout, and falls back to the latch. LOADED status (loaded
     // to the nozzle, the Load gate) needs the latch and no runout.
-    if (system_info_.current_tool >= 0 && system_info_.current_tool < NUM_TOOLS) {
+    if (system_info_.current_tool >= 0 && system_info_.current_tool < kNumTools) {
         const int t = system_info_.current_tool;
         const bool switch_known = toolhead_switch_reported_[t];
         const bool in_toolhead =
@@ -2163,7 +2163,7 @@ void AmsBackendSnapmaker::demote_runout_slots_locked(FrameEffects& fx) {
     // EMPTY is wrong here because the slot's RFID/print_task_config still
     // reports a spool present; AVAILABLE accurately captures "spool yes,
     // filament-at-toolhead no".
-    for (int i = 0; i < NUM_TOOLS; ++i) {
+    for (int i = 0; i < kNumTools; ++i) {
         if (sensor_filament_present_[i])
             continue;
         auto* slot = system_info_.units[0].get_slot(i);
@@ -2190,7 +2190,7 @@ void AmsBackendSnapmaker::converge_lanes_locked(FrameEffects& fx) {
     // get_slot_info during a partial parse would observe uncleared overrides,
     // but since everything runs under mutex_ and handle_status is the
     // only writer, there's no observable window.
-    for (int i = 0; i < NUM_TOOLS; ++i) {
+    for (int i = 0; i < kNumTools; ++i) {
         auto* slot = system_info_.units[0].get_slot(i);
         if (!slot)
             continue;
@@ -2290,7 +2290,7 @@ void AmsBackendSnapmaker::record_tag_reading_locked(int slot_index, const Snapma
 }
 
 std::optional<helix::ams::TagReading> AmsBackendSnapmaker::tag_reading(int slot_index) const {
-    if (slot_index < 0 || slot_index >= NUM_TOOLS) {
+    if (slot_index < 0 || slot_index >= kNumTools) {
         return std::nullopt;
     }
     std::lock_guard<std::mutex> lock(mutex_);
@@ -2319,7 +2319,7 @@ bool AmsBackendSnapmaker::retract_tag_reading_locked(int slot_index, SlotInfo& s
         slot.brand = task_field_value(task_vendor_[i]);
     }
     if (cache->color_rgb.has_value() && slot.color_rgb == *cache->color_rgb) {
-        slot.color_rgb = task_color_[i].value_or(AMS_DEFAULT_SLOT_COLOR);
+        slot.color_rgb = task_color_[i].value_or(kAmsDefaultSlotColor);
     }
     // No lane record carries temperatures or weight, so a user's own values
     // are told apart only by the lane holding a declaration or a bound spool.
@@ -2471,7 +2471,7 @@ void AmsBackendSnapmaker::track_active_port_present_locked(FrameEffects& fx) {
     // mutex is released. Only publish on an actual change to avoid spamming
     // the UpdateQueue on every incremental notify.
     int active_tool = system_info_.current_tool;
-    bool active_port_present = !(active_tool >= 0 && active_tool < NUM_TOOLS) ||
+    bool active_port_present = !(active_tool >= 0 && active_tool < kNumTools) ||
                                port_sensor_filament_present_[active_tool];
     int port_val = active_port_present ? 1 : 0;
     if (port_val != last_published_port_present_) {
@@ -2530,7 +2530,7 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
         // the print raised (a runout, an M600) is no moment to reset a head's
         // flow calibration behind the user's back.
         if (heads_free_locked()) {
-            for (int head = 0; head < NUM_TOOLS; ++head) {
+            for (int head = 0; head < kNumTools; ++head) {
                 auto& pending = pending_record_writes_[static_cast<size_t>(head)];
                 if (pending) {
                     fx.record_flushes.emplace_back(head, std::move(*pending));
@@ -2683,7 +2683,7 @@ void AmsBackendSnapmaker::clear_slot_override(int slot_index) {
         slot->spool_name = tag_product_line(lane_id(slot_index));
     }
 
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
 }
 
 // ============================================================================
@@ -2821,7 +2821,7 @@ namespace {
 /// store verbatim, and other Snapmaker tooling compares it.
 std::pair<std::string, std::string> record_vendor_subtype(const SlotInfo& slot) {
     std::string vendor =
-        is_product_line_vendor(slot.brand) ? std::string(PRODUCT_LINE_VENDOR) : "Generic";
+        is_product_line_vendor(slot.brand) ? std::string(kProductLineVendor) : "Generic";
     std::string subtype = is_known_subtype(slot.spool_name) ? slot.spool_name : "Basic";
     return {std::move(vendor), std::move(subtype)};
 }
@@ -2891,7 +2891,7 @@ bool AmsBackendSnapmaker::record_writes_held_locked() const {
 
 void AmsBackendSnapmaker::write_task_filament_record(int head, const SlotInfo& info,
                                                      bool material_declared) {
-    if (head < 0 || head >= NUM_TOOLS || !api_) {
+    if (head < 0 || head >= kNumTools || !api_) {
         return;
     }
     const auto idx = static_cast<size_t>(head);
@@ -2968,7 +2968,7 @@ void AmsBackendSnapmaker::write_task_filament_record(int head, const SlotInfo& i
 }
 
 void AmsBackendSnapmaker::drop_pending_record_write_locked(int head) {
-    if (head >= 0 && head < NUM_TOOLS) {
+    if (head >= 0 && head < kNumTools) {
         pending_record_writes_[static_cast<size_t>(head)].reset();
     }
 }
@@ -2984,7 +2984,7 @@ std::vector<std::pair<int, std::string>> AmsBackendSnapmaker::official_flag_repa
     if (system_info_.units.empty() || !heads_free_locked()) {
         return out;
     }
-    for (int head = 0; head < NUM_TOOLS; ++head) {
+    for (int head = 0; head < kNumTools; ++head) {
         const auto idx = static_cast<size_t>(head);
         if (official_repair_sent_[idx]) {
             continue;
@@ -3047,20 +3047,20 @@ std::vector<std::pair<int, std::string>>
 AmsBackendSnapmaker::resume_record_repairs_locked(int active_slot) const {
     // extruders_used can read all false mid-print, so the heads the task
     // routes to are taken from its map as well, alongside the head paused on.
-    std::array<bool, NUM_TOOLS> used{};
+    std::array<bool, kNumTools> used{};
     for (size_t i = 0; i < extruders_used_.size() && i < used.size(); ++i) {
         used[i] = extruders_used_[i];
     }
     for (const int head : last_task_extruder_map_) {
-        if (head >= 0 && head < NUM_TOOLS) {
+        if (head >= 0 && head < kNumTools) {
             used[static_cast<size_t>(head)] = true;
         }
     }
-    if (active_slot >= 0 && active_slot < NUM_TOOLS) {
+    if (active_slot >= 0 && active_slot < kNumTools) {
         used[static_cast<size_t>(active_slot)] = true;
     }
     std::vector<std::pair<int, std::string>> out;
-    for (int head = 0; head < NUM_TOOLS; ++head) {
+    for (int head = 0; head < kNumTools; ++head) {
         const auto idx = static_cast<size_t>(head);
         if (!used[idx] || !task_type_[idx].has_value() || !is_unset_task_field(*task_type_[idx])) {
             continue;

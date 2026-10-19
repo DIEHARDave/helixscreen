@@ -73,13 +73,13 @@ struct RuntimeConfig {
     static constexpr const char* TEST_GCODE_DIR = "assets/test_gcodes";
 
     /// Default test file used when auto-starting prints or generating mock history
-    static constexpr const char* DEFAULT_TEST_FILE = "3DBenchy.gcode";
+    static constexpr const char* kDefaultTestFile = "3DBenchy.gcode";
 
     /// Production config file path
-    static constexpr const char* PROD_CONFIG_PATH = "config/settings.json";
+    static constexpr const char* kProdConfigPath = "config/settings.json";
 
     /// Test mode config file path (separate from production to avoid conflicts)
-    static constexpr const char* TEST_CONFIG_PATH = "config/settings-test.json";
+    static constexpr const char* kTestConfigPath = "config/settings-test.json";
 
     /**
      * @brief Get full path to default test G-code file
@@ -89,7 +89,7 @@ struct RuntimeConfig {
         // Static buffer to hold the constructed path
         static char path_buf[256] = {};
         if (path_buf[0] == '\0') {
-            snprintf(path_buf, sizeof(path_buf), "%s/%s", TEST_GCODE_DIR, DEFAULT_TEST_FILE);
+            snprintf(path_buf, sizeof(path_buf), "%s/%s", TEST_GCODE_DIR, kDefaultTestFile);
         }
         return path_buf;
     }

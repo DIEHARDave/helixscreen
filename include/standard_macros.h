@@ -205,7 +205,7 @@ struct MacroScriptValues {
     std::string profile_arg;
 
     /// Replaces `{bed_temp}`, in whole degrees C: the bed temperature to probe at.
-    int bed_temp_c = bed_mesh::DEFAULT_PROBE_BED_TEMP_C;
+    int bed_temp_c = bed_mesh::kDefaultProbeBedTempC;
 };
 
 /// A slot resolved into something runnable.

@@ -994,7 +994,7 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: TelemetryManager enqueues crash event
 
             // Verify crash event schema
             REQUIRE(event.contains("schema_version"));
-            REQUIRE(event["schema_version"] == TelemetryManager::SCHEMA_VERSION);
+            REQUIRE(event["schema_version"] == TelemetryManager::kSchemaVersion);
             REQUIRE(event.contains("device_id"));
             REQUIRE(event["device_id"].is_string());
             REQUIRE(event.contains("timestamp"));
@@ -1293,7 +1293,7 @@ TEST_CASE("Crash: breadcrumb ring keeps the newest 256 entries on wraparound",
           "[telemetry][crash]") {
     // Drain the ring first — static state leaks across test cases. Writing
     // ring-size drain entries pushes any residual application breadcrumbs out.
-    // Ring size: src/system/crash_handler.cpp BREADCRUMB_RING_SIZE = 256.
+    // Ring size: src/system/crash_handler.cpp kBreadcrumbRingSize = 256.
     for (int i = 0; i < 256; ++i) {
         crash_handler::breadcrumb::note("drain", "drain");
     }
@@ -1327,7 +1327,7 @@ TEST_CASE("Crash: breadcrumb ring keeps the newest 256 entries on wraparound",
 
 TEST_CASE("Crash: breadcrumb category/subject are truncated with null terminator",
           "[telemetry][crash]") {
-    // Ring size: src/system/crash_handler.cpp BREADCRUMB_RING_SIZE = 256.
+    // Ring size: src/system/crash_handler.cpp kBreadcrumbRingSize = 256.
     for (int i = 0; i < 256; ++i) {
         crash_handler::breadcrumb::note("drain", "drain");
     }

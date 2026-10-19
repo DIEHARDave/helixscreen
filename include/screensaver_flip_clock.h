@@ -2,7 +2,7 @@
 
 #pragma once
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver.h"
 #include "screensaver_clock.h"
@@ -23,7 +23,7 @@ namespace helix::ui {
  * helix::ui::FlipClockState decides what to show and helix::ui::FlipClockSim draws the cards;
  * this class draws the caption and AM/PM marker in the user's language and time format. The
  * cards are written pixel by pixel, but the text is drawn with lv_draw_label, so the canvas
- * takes LV_DRAW_CANVAS_FORMAT for the reason it gives.
+ * takes kLvDrawCanvasFormat for the reason it gives.
  */
 class FlipClockScreensaver : public ClockSaver<FlipClockSim, FlipClockState> {
   public:
@@ -33,7 +33,7 @@ class FlipClockScreensaver : public ClockSaver<FlipClockSim, FlipClockState> {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return LV_DRAW_CANVAS_FORMAT;
+        return kLvDrawCanvasFormat;
     }
     void draw_clock_text(const std::vector<DirtyRect>& under,
                          std::vector<DirtyRect>& dirty) override;

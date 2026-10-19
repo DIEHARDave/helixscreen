@@ -204,7 +204,7 @@ setup() {
 #
 # Compile-time-only exceptions NOT covered by this lint (by design, not by
 # gap): a consumer references a concrete-class static constexpr timeout
-# (MoonrakerJobAPI::CANCEL_TIMEOUT_MS) and the MoonrakerAdvancedAPI::MPCResult
+# (MoonrakerJobAPI::kCancelTimeoutMs) and the MoonrakerAdvancedAPI::MPCResult
 # qualified-name alias. These aren't runtime polymorphism — MPCResult and the
 # calibration timeouts are defined on IAdvancedAPI and reach the concrete class
 # by inheritance or a `using` alias, so old qualified references keep resolving
@@ -708,6 +708,65 @@ SHAPES
     lacks "make_thread" "$output"
 }
 
+# --- WiFiManager is built only by get_wifi_manager() ---
+#
+# ~WiFiManager waits, unbounded, for the WiFi control call in progress: the
+# lane worker dereferences the manager for the whole call, so a bounded wait
+# would free it under the worker. That wait is safe only because no production
+# code destroys a WiFiManager: get_wifi_manager()'s instance is never freed.
+# Any other owner in app code would put a wedged wpa_supplicant on its
+# destructor's path. Unavoidable? // WIFI_MANAGER_OWNER_OK: <reason>
+wifi_manager_owner_pattern() {
+    printf '%s' '(make_shared|make_unique)<(helix::)?WiFiManager>|new[[:space:]]+(helix::)?WiFiManager[[:space:]]*[({]|(^|[^_[:alnum:]:])(helix::)?WiFiManager[[:space:]]+[_[:alpha:]][_[:alnum:]]*[[:space:]]*[({;]'
+}
+
+wifi_manager_owner_lint_files() {
+    git ls-files --cached --others --exclude-standard src include firmware |
+        grep -E '\.(cpp|h)$'
+}
+
+check_wifi_manager_single_owner() {
+    local offenders
+    # shellcheck disable=SC2046  # paths have no spaces; word splitting is intended
+    offenders=$(code_offenders "$(wifi_manager_owner_pattern)" WIFI_MANAGER_OWNER_OK $(wifi_manager_owner_lint_files))
+    [ -z "$offenders" ] && return 0
+    echo "WiFiManager built outside get_wifi_manager() (its destructor can wait forever on a wedged daemon):"
+    printf '%s\n' "$offenders"
+    echo "Use helix::get_wifi_manager(). Unavoidable? // WIFI_MANAGER_OWNER_OK: <reason>"
+    return 1
+}
+
+@test "app code builds WiFiManager only through get_wifi_manager()" {
+    run check_wifi_manager_single_owner
+    [ "$status" -eq 0 ]
+}
+
+@test "the WiFiManager owner gate catches constructions and stays quiet on uses and opt-outs" {
+    local f="${BATS_TEST_TMPDIR}/wifi_owner_shapes.cpp"
+    cat > "$f" <<'SHAPES'
+auto wm = std::make_shared<WiFiManager>(true);
+auto wm = std::make_unique<helix::WiFiManager>(std::move(b));
+auto* wm = new WiFiManager(true);
+WiFiManager wm(std::move(b));
+helix::WiFiManager wm;
+std::shared_ptr<WiFiManager> get_wifi_manager();
+explicit WiFiManager(bool silent = false);
+WiFiManager::~WiFiManager() {
+friend class WiFiManagerTestAccess;
+WiFiManager* manager = static_cast<WiFiManager*>(p);
+// std::make_shared<WiFiManager>() in a comment
+auto wm = std::make_shared<WiFiManager>(true); // WIFI_MANAGER_OWNER_OK: the one owner
+SHAPES
+    run code_offenders "$(wifi_manager_owner_pattern)" WIFI_MANAGER_OWNER_OK "$f"
+    [ "$status" -eq 0 ]
+    [ "${#lines[@]}" -eq 5 ]
+    lacks "get_wifi_manager" "$output"
+    lacks "explicit" "$output"
+    lacks "TestAccess" "$output"
+    lacks "static_cast" "$output"
+    lacks "OWNER_OK" "$output"
+}
+
 # --- lv_subject_t declarations are value-initialized ---
 #
 # A subject that has not been through lv_subject_init_*() must read as
@@ -754,7 +813,7 @@ check_subjects_value_initialized() {
     local f="${BATS_TEST_TMPDIR}/subject_shapes.h"
     cat > "$f" <<'SHAPES'
     lv_subject_t bare_;
-    lv_subject_t slots_[MAX_SLOTS];
+    lv_subject_t slots_[kMaxSlots];
     std::array<lv_subject_t, 4> rows_;
     lv_subject_t
         split_bare_; ///< clang-format moved the name
@@ -765,7 +824,7 @@ check_subjects_value_initialized() {
     lv_subject_t grid_[2][3];
     std::array<lv_subject_t, static_cast<size_t>(Kind::Count)> cast_rows_;
     lv_subject_t braced_{};
-    lv_subject_t braced_slots_[MAX_SLOTS]{};
+    lv_subject_t braced_slots_[kMaxSlots]{};
     std::array<lv_subject_t, 4> braced_rows_{};
     std::array<lv_subject_t, static_cast<size_t>(Kind::Count)> braced_cast_rows_{};
     lv_subject_t
@@ -3211,10 +3270,10 @@ own_endpoint_http_offenders() {
             echo "${f#"$root"/}: names one of our hosts but sends without tls::trusted_*"
         fi
     done
-    awk '/= worker_url\(\);|= WORKER_URL;/ { on = 1; seen = 1 }
+    awk '/= worker_url\(\);|= kWorkerUrl;/ { on = 1; seen = 1 }
          on && /^[^\/]*(requests::|HttpClient)/ { print "debug_bundle_collector.cpp:" FNR ": " $0 }
          on && /^}/ { on = 0 }
-         END { if (!seen) print "debug_bundle_collector.cpp: upload to WORKER_URL not found" }' \
+         END { if (!seen) print "debug_bundle_collector.cpp: upload to kWorkerUrl not found" }' \
         "$root/src/system/debug_bundle_collector.cpp"
     grep -rnF '["X-API-Key"]' "$root/src" | grep -v '^[^:]*/src/system/ingest_client\.cpp:' |
         sed 's|$| (ingest uploads go through helix::ingest::post)|'
@@ -3232,7 +3291,7 @@ own_endpoint_http_offenders() {
     printf '    // requests::request is fine in a comment\n' > "$d/update_checker.cpp"
     printf '    auto r = requests::request(req);\n' > "$d/telemetry_manager.cpp"
     printf '    hv::HttpClient cli;\n' > "$d/crash_reporter.cpp"
-    printf '    req->headers["X-API-Key"] = API_KEY;\n' > "$d/ingest_client.cpp"
+    printf '    req->headers["X-API-Key"] = kApiKey;\n' > "$d/ingest_client.cpp"
     mkdir -p "$d/../ui"
     printf 'auto u = "https://api.github.com/x";\nauto r = requests::get(u);\n' > "$d/../ui/rogue.cpp"
     printf 'auto u = "https://helixscreen.org/x";\nauto r = helix::tls::trusted_request(q);\n' \

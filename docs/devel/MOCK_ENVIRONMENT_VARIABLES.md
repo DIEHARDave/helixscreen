@@ -55,7 +55,7 @@ Force a hard ceiling on the thumbnail cache so eviction is reachable on demand.
 | **Default** | unset (config `/cache/thumbnail_max_mb`, default 20 MB) |
 | **File** | `src/print/thumbnail_cache.cpp` (`ThumbnailCache` constructor) |
 
-Applied **after** `calculate_dynamic_max_size()` and deliberately not through it: that function clamps its result up to `MIN_CACHE_SIZE` (5 MB), so a small value fed in via config gets raised straight back and eviction still never fires. Setting it below the cache's real usage (~1.7 MB for the mock's file list) makes eviction run every pass.
+Applied **after** `calculate_dynamic_max_size()` and deliberately not through it: that function clamps its result up to `kMinCacheSize` (5 MB), so a small value fed in via config gets raised straight back and eviction still never fires. Setting it below the cache's real usage (~1.7 MB for the mock's file list) makes eviction run every pass.
 
 ```bash
 # Cold fetch with eviction live — the decode-vs-evict interaction from #960
@@ -453,7 +453,7 @@ Override the Moonraker version the mock reports in `server.info`.
 | Default | `v0.9.3-mock` |
 | Affects | `server.info` -> `moonraker_version`, Settings -> Help & About -> About, and the startup too-old warning |
 
-The default is deliberately above `Application::MIN_MOONRAKER_VERSION` so no
+The default is deliberately above `Application::kMinMoonrakerVersion` so no
 `--test` run trips the warning. Set an older version to reach the warning, which
 is otherwise unreachable in mock:
 

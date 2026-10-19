@@ -59,3 +59,23 @@ CMAKE="android/app/jni/CMakeLists.txt"
   [ -n "$make_excl" ]
   [ "$make_excl" = "$cmake_excl" ]
 }
+
+@test "the APK leaves out the same mock-only asset trees as the Linux packages" {
+  # Two hand-kept lists of one rule: mk/cross.mk RELEASE_ASSETS_EXCLUDE and
+  # build.gradle mockOnlyAssets (which both copyAssets and MANIFEST.txt honour).
+  make_excl=$(sed -nE 's/^RELEASE_ASSETS_EXCLUDE := //p' mk/cross.mk | tr ' ' '\n' | sed 's|^assets/||' | sort)
+  gradle_excl=$(sed -nE "s/^def mockOnlyAssets = \[(.*)\]$/\1/p" android/app/build.gradle | tr -d "' " | tr ',' '\n' | sort)
+  [ -n "$make_excl" ]
+  [ "$make_excl" = "$gradle_excl" ]
+}
+
+@test "the APK leaves out every compiled font source" {
+  # The fonts/*.c arrays are linked into libmain.so through CMake's FONT_SOURCES
+  # glob; the glob exclusion in copyAssets keeps any new one out of the APK too.
+  grep -qE '^file\(GLOB FONT_SOURCES "\$\{PROJECT_ROOT\}/assets/fonts/\*\.c"\)$' "$CMAKE"
+  grep -qE "^def compiledFontSources = 'fonts/\*\.c'$" android/app/build.gradle
+  sed -n "/^task copyAssets/,/^}/p" android/app/build.gradle | grep -qE '^[[:space:]]+exclude compiledFontSources$'
+  # Nothing reads a font C source at runtime: the only runtime font loader takes
+  # the binary faces under fonts/cjk/.
+  ! grep -rnE '"[^"]*fonts/[^"]*\.c"' src include
+}

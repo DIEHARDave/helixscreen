@@ -30,7 +30,7 @@ class RunoutGrace {
     /// Same 30s as the AD5X IFS runout suppression.
     static constexpr std::chrono::seconds WINDOW{30};
     /// One stamp per AmsState slot subject.
-    static constexpr int MAX_SLOTS = 20;
+    static constexpr int kMaxSlots = kAmsMaxSlots;
 
     /// Feed one action sample. Arms the one-shot when an operation that passed
     /// through UNLOADING ends; tracked across the whole operation because a
@@ -64,7 +64,7 @@ class RunoutGrace {
     Clock::time_point armed_at_{};
     bool saw_unload_in_op_{false};
     /// time_point{} means never unloaded and is always outside WINDOW.
-    std::array<Clock::time_point, MAX_SLOTS> last_unload_{};
+    std::array<Clock::time_point, kMaxSlots> last_unload_{};
 };
 
 } // namespace helix

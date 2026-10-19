@@ -262,7 +262,7 @@ TEST_CASE_METHOD(PrintHistoryTestFixture, "delete_history_job calls success call
 // ============================================================================
 
 // Real Moonraker response with null values (captured from actual Voron printer)
-static const char* REAL_MOONRAKER_HISTORY_RESPONSE = R"({
+static const char* kRealMoonrakerHistoryResponse = R"({
     "result": {
         "count": 796,
         "jobs": [
@@ -344,7 +344,7 @@ TEST_CASE("Parse real Moonraker history response with nulls", "[history][parsing
     // This tests that our JSON parsing handles real-world responses
     // including null values in auxiliary_data
 
-    auto j = nlohmann::json::parse(REAL_MOONRAKER_HISTORY_RESPONSE);
+    auto j = nlohmann::json::parse(kRealMoonrakerHistoryResponse);
 
     REQUIRE(j.contains("result"));
     REQUIRE(j["result"].contains("count"));
@@ -355,7 +355,7 @@ TEST_CASE("Parse real Moonraker history response with nulls", "[history][parsing
 }
 
 TEST_CASE("Parse history job with null auxiliary_data values", "[history][parsing]") {
-    auto j = nlohmann::json::parse(REAL_MOONRAKER_HISTORY_RESPONSE);
+    auto j = nlohmann::json::parse(kRealMoonrakerHistoryResponse);
     const auto& jobs = j["result"]["jobs"];
 
     // First job has null in auxiliary_data.value array
@@ -372,7 +372,7 @@ TEST_CASE("Parse history job with null auxiliary_data values", "[history][parsin
 }
 
 TEST_CASE("Parse history job with empty metadata", "[history][parsing]") {
-    auto j = nlohmann::json::parse(REAL_MOONRAKER_HISTORY_RESPONSE);
+    auto j = nlohmann::json::parse(kRealMoonrakerHistoryResponse);
     const auto& jobs = j["result"]["jobs"];
 
     // Second job has empty metadata
@@ -385,7 +385,7 @@ TEST_CASE("Parse history job with empty metadata", "[history][parsing]") {
 }
 
 TEST_CASE("Parse history job with klippy_shutdown status", "[history][parsing]") {
-    auto j = nlohmann::json::parse(REAL_MOONRAKER_HISTORY_RESPONSE);
+    auto j = nlohmann::json::parse(kRealMoonrakerHistoryResponse);
     const auto& jobs = j["result"]["jobs"];
 
     // Third job has klippy_shutdown status and zero print_duration
@@ -852,7 +852,7 @@ TEST_CASE("Parse mixed filament types with whitespace", "[history][parsing]") {
 // ============================================================================
 
 // Exact JSON response from curl to real Voron printer
-static const char* REAL_VORON_HISTORY_5_JOBS = R"({
+static const char* kRealVoronHistory5Jobs = R"({
     "result": {
         "count": 5,
         "jobs": [
@@ -925,7 +925,7 @@ static const char* REAL_VORON_HISTORY_5_JOBS = R"({
 })";
 
 TEST_CASE("Parse real Voron printer history data", "[history][parsing][voron]") {
-    auto j = nlohmann::json::parse(REAL_VORON_HISTORY_5_JOBS);
+    auto j = nlohmann::json::parse(kRealVoronHistory5Jobs);
 
     REQUIRE(j["result"]["count"].get<int>() == 5);
     REQUIRE(j["result"]["jobs"].size() == 5);
@@ -965,7 +965,7 @@ TEST_CASE("Parse real Voron printer history data", "[history][parsing][voron]") 
 }
 
 TEST_CASE("Calculate stats from real Voron data", "[history][stats][voron]") {
-    auto j = nlohmann::json::parse(REAL_VORON_HISTORY_5_JOBS);
+    auto j = nlohmann::json::parse(kRealVoronHistory5Jobs);
 
     std::vector<PrintHistoryJob> jobs;
     for (const auto& job_json : j["result"]["jobs"]) {

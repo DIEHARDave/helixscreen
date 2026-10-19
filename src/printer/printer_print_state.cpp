@@ -149,7 +149,7 @@ void PrinterPrintState::init_subjects(bool register_xml) {
     // here eliminates the BG-thread emplace vs UI-thread read rehash race
     // (see header). update_from_status and the accessor both do direct
     // lookups and never mutate the map after this point.
-    for (int idx = 0; idx < MAX_EXTRUDER_SCAN; ++idx) {
+    for (int idx = 0; idx < kMaxExtruderScan; ++idx) {
         create_extruder_filament_entry(idx);
     }
 
@@ -211,7 +211,7 @@ lv_subject_t* PrinterPrintState::get_extruder_filament_used_subject(int extruder
     if (it == extruder_filament_used_.end()) {
         spdlog::warn("[PrinterPrintState] get_extruder_filament_used_subject({}) out of range or "
                      "subjects not initialized (MAX_EXTRUDER_SCAN={})",
-                     extruder_idx, MAX_EXTRUDER_SCAN);
+                     extruder_idx, kMaxExtruderScan);
         return nullptr;
     }
     lifetime = it->second.lifetime;
@@ -803,7 +803,7 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
             eta_in.preprint_remaining_s = lv_subject_get_int(&preprint_remaining_);
 
             const int remaining = eta_estimator_.remaining_seconds(eta_in);
-            if (remaining != PrintEtaEstimator::NO_ESTIMATE &&
+            if (remaining != PrintEtaEstimator::kNoEstimate &&
                 lv_subject_get_int(&print_time_left_) != remaining) {
                 lv_subject_set_int(&print_time_left_, remaining);
             }
@@ -860,14 +860,14 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
 
     // Per-extruder filament_used (from Klipper's extruder/extruder1/... objects).
     // Keys live at the top level of the status payload, NOT under print_stats.
-    // We scan a small fixed range (0..MAX_EXTRUDER_SCAN-1) — Klipper toolchanger
+    // We scan a small fixed range (0..kMaxExtruderScan-1) — Klipper toolchanger
     // setups max out well below that. Missing keys are silently skipped.
     //
     // All map entries are pre-populated by init_subjects(). We do a direct
     // lookup and only mutate the int value inside the subject, so this runs
     // safely on the WebSocket background thread without racing the UI
     // accessor (no rehash, lv_subject_set_int is atomic on the int).
-    for (int idx = 0; idx < MAX_EXTRUDER_SCAN; ++idx) {
+    for (int idx = 0; idx < kMaxExtruderScan; ++idx) {
         std::string key = (idx == 0) ? "extruder" : "extruder" + std::to_string(idx);
         auto json_it = status.find(key);
         if (json_it == status.end() || !json_it->is_object()) {
@@ -1560,7 +1560,7 @@ PrinterPrintState::~PrinterPrintState() {
 
 void PrinterPrintState::arm_preparing_watchdog() {
     cancel_preparing_watchdog();
-    preparing_watchdog_ = lv_timer_create(preparing_watchdog_cb, PREPARING_WATCHDOG_MS, this);
+    preparing_watchdog_ = lv_timer_create(preparing_watchdog_cb, kPreparingWatchdogMs, this);
     if (preparing_watchdog_) {
         lv_timer_set_repeat_count(preparing_watchdog_, 1); // one-shot
     }

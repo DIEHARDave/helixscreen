@@ -56,7 +56,7 @@
 
 namespace helix {
 
-static_assert(RunoutGrace::MAX_SLOTS == AmsState::MAX_SLOTS, "one unload stamp per slot subject");
+static_assert(RunoutGrace::kMaxSlots == AmsState::kMaxSlots, "one unload stamp per slot subject");
 
 namespace ams_state_detail {
 
@@ -443,7 +443,7 @@ void AmsState::reset_backend_subjects() {
     units_drying_signature_.clear();
 
     // Per-unit environment and its indicator.
-    for (int i = 0; i < MAX_UNITS; ++i) {
+    for (int i = 0; i < kMaxUnits; ++i) {
         lv_subject_set_int(&unit_temp_[i], 0);
         lv_subject_set_int(&unit_humidity_[i], 0);
         lv_subject_set_int(&unit_absent_[i], 0);
@@ -604,6 +604,7 @@ void AmsState::sync_from_backend() {
     sync_bypass(backend, info);
     sync_feeder(backend);
     lv_subject_set_int(&ams_slot_count_, info.total_slots);
+    warn_if_slots_exceed_subjects(info.total_slots);
 
     // Update tool change progress raw data (text formatting in UI layer)
     if (info.number_of_toolchanges > 0) {
@@ -627,7 +628,7 @@ void AmsState::sync_from_backend() {
 
     // Update per-slot subjects, only firing when values actually change
     bool any_slot_changed = false;
-    for (int i = 0; i < std::min(info.total_slots, MAX_SLOTS); ++i) {
+    for (int i = 0; i < std::min(info.total_slots, kMaxSlots); ++i) {
         const SlotInfo* slot = info.get_slot_global(i);
         if (slot && write_slot_subjects(*backend, i, *slot)) {
             any_slot_changed = true;
@@ -709,8 +710,7 @@ void AmsState::sync_system_subjects(const AmsSystemInfo& info) {
     if (lv_subject_get_int(&ams_action_) != new_action) {
         spdlog::debug("[AmsState] sync_from_backend: action changed to {} ({})", new_action,
                       ams_action_to_string(static_cast<AmsAction>(new_action)));
-        lv_subject_set_int(&ams_action_, new_action);
-        action_mirror_.store(static_cast<AmsAction>(new_action), std::memory_order_relaxed);
+        publish_action(static_cast<AmsAction>(new_action));
     }
     // Granular firmware sub-phase (Snapmaker U1: Home/Select/Heat/Move). Most
     // backends leave operation_phase at -1, so this is a no-op for them.
@@ -946,7 +946,7 @@ bool AmsState::sync_tool_spools(AmsBackend* backend, const AmsSystemInfo& info) 
     // tool_spools.json plus a Moonraker DB key, so the stale spool outlived
     // restarts. Observed on the .112 BoxTurtle: "Assigned spool 86 () to tool 0"
     // fired during an EJECT, and ToolState::clear_spool() had no callers at all.
-    for (int i = 0; i < std::min(info.total_slots, MAX_SLOTS); ++i) {
+    for (int i = 0; i < info.total_slots; ++i) {
         const SlotInfo* slot = info.get_slot_global(i);
         if (!slot || slot->mapped_tool < 0) {
             continue;
@@ -986,7 +986,7 @@ bool AmsState::sync_tool_spools(AmsBackend* backend, const AmsSystemInfo& info) 
     if (backend->supports_per_tool_spool_assignment()) {
         auto& tool_state = ToolState::instance();
         const auto& tools = tool_state.tools();
-        for (int i = 0; i < std::min(info.total_slots, MAX_SLOTS); ++i) {
+        for (int i = 0; i < info.total_slots; ++i) {
             const SlotInfo* slot = info.get_slot_global(i);
             if (slot && slot->mapped_tool >= 0 && slot->spoolman_id == 0) {
                 int ti = slot->mapped_tool;
@@ -1097,7 +1097,7 @@ void AmsState::sync_unit_environment(AmsBackend* backend, const AmsSystemInfo& i
     // Update per-unit environment subjects (CFS temperature/humidity)
     for (const auto& unit : info.units) {
         int idx = unit.unit_index;
-        if (idx >= 0 && idx < MAX_UNITS) {
+        if (idx >= 0 && idx < kMaxUnits) {
             lv_subject_set_int(&unit_absent_[idx], unit.absent ? 1 : 0);
             set_int_if_changed(&unit_logo_color_[idx], get_unit_logo(unit, info).color ? 1 : 0);
             lv_subject_set_int(&unit_disconnected_[idx], (!unit.absent && !unit.connected) ? 1 : 0);
@@ -1114,7 +1114,7 @@ void AmsState::sync_unit_environment(AmsBackend* backend, const AmsSystemInfo& i
     }
 
     // Clear environment subjects for units beyond what backend reports
-    for (int i = static_cast<int>(info.units.size()); i < MAX_UNITS; ++i) {
+    for (int i = static_cast<int>(info.units.size()); i < kMaxUnits; ++i) {
         lv_subject_set_int(&unit_temp_[i], 0);
         lv_subject_set_int(&unit_humidity_[i], 0);
         lv_subject_set_int(&unit_absent_[i], 0);
@@ -1143,12 +1143,12 @@ void AmsState::sync_unit_environment(AmsBackend* backend, const AmsSystemInfo& i
     for (size_t k = 0; k < info.units.size(); ++k) {
         indicators[k] = compute_unit_env_indicator(backend, info.units[k]);
         const int idx = info.units[k].unit_index;
-        if (idx >= 0 && idx < MAX_UNITS)
+        if (idx >= 0 && idx < kMaxUnits)
             publish_unit_env_indicator(idx, indicators[k]);
     }
 
     // Clear indicator for units beyond what backend reports
-    for (int i = static_cast<int>(info.units.size()); i < MAX_UNITS; ++i) {
+    for (int i = static_cast<int>(info.units.size()); i < kMaxUnits; ++i) {
         lv_subject_set_int(&env_ind_visible_[i], 0);
         lv_subject_set_int(&env_ind_humidity_visible_[i], 0);
         lv_subject_set_int(&env_ind_drying_active_[i], 0);
@@ -1161,7 +1161,7 @@ AmsState::UnitEnvIndicator AmsState::compute_unit_env_indicator(AmsBackend* back
                                                                 const AmsUnit& unit) {
     UnitEnvIndicator out;
     const bool has_env = unit.environment.has_value();
-    char buf[ENV_IND_TEXT_BUF_SIZE];
+    char buf[kEnvIndTextBufSize];
     if (has_env) {
         // Format temperature text (e.g., "24°C")
         snprintf(buf, sizeof(buf),
@@ -1215,7 +1215,7 @@ AmsState::UnitEnvIndicator AmsState::compute_unit_env_indicator(AmsBackend* back
         // Compact countdown for the small indicator
         const int hrs = dryer.remaining_min / 60;
         const int mins = dryer.remaining_min % 60;
-        char drying_buf[ENV_IND_DRYING_BUF_SIZE];
+        char drying_buf[kEnvIndDryingBufSize];
         if (hrs > 0)
             snprintf(drying_buf, sizeof(drying_buf), "%d:%02d", hrs, mins);
         else
@@ -1244,11 +1244,21 @@ void AmsState::publish_unit_env_indicator(int idx, const UnitEnvIndicator& e) {
         set_string_if_changed(&env_ind_drying_text_[idx], e.drying_text);
 }
 
+void AmsState::warn_if_slots_exceed_subjects(int total_slots) {
+    if (total_slots <= kMaxSlots || total_slots == slot_overflow_warned_total_) {
+        return;
+    }
+    slot_overflow_warned_total_ = total_slots;
+    spdlog::warn("[AMS State] Backend reports {} slots but per-slot subjects cover {}; "
+                 "slots {}-{} show unbound",
+                 total_slots, kMaxSlots, kMaxSlots + 1, total_slots);
+}
+
 bool AmsState::clear_unused_slot_subjects(int total_slots) {
     // Clear remaining slot subjects, only firing when values actually change
     bool any_slot_changed = false;
-    for (int i = total_slots; i < MAX_SLOTS; ++i) {
-        int default_color = static_cast<int>(AMS_DEFAULT_SLOT_COLOR);
+    for (int i = total_slots; i < kMaxSlots; ++i) {
+        int default_color = static_cast<int>(kAmsDefaultSlotColor);
         if (lv_subject_get_int(&slot_colors_[i]) != default_color) {
             lv_subject_set_int(&slot_colors_[i], default_color);
             any_slot_changed = true;
@@ -1328,7 +1338,7 @@ void AmsState::refresh_slot_names() {
     bool changed = false;
     if (auto* backend = get_backend(0)) {
         const AmsSystemInfo info = backend->get_system_info();
-        for (int i = 0; i < std::min(info.total_slots, MAX_SLOTS); ++i) {
+        for (int i = 0; i < std::min(info.total_slots, kMaxSlots); ++i) {
             const SlotInfo* slot = info.get_slot_global(i);
             if (slot && write_slot_name(&slot_names_[i], sizeof(slot_names_buf_[i]), *slot)) {
                 changed = true;
@@ -1344,7 +1354,7 @@ void AmsState::refresh_slot_names() {
         const AmsSystemInfo info = backend->get_system_info();
         for (int i = 0; i < std::min(info.total_slots, subs.slot_count); ++i) {
             const SlotInfo* slot = info.get_slot_global(i);
-            if (slot && write_slot_name(&subs.names[i], SLOT_NAME_BUF_SIZE, *slot)) {
+            if (slot && write_slot_name(&subs.names[i], kSlotNameBufSize, *slot)) {
                 changed = true;
             }
         }
@@ -1355,6 +1365,9 @@ void AmsState::refresh_slot_names() {
 }
 
 bool AmsState::write_slot_subjects(AmsBackend& backend, int slot_index, const SlotInfo& slot) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
+        return false;
+    }
     bool changed = false;
 
     int new_color = static_cast<int>(slot.color_rgb);
@@ -1457,10 +1470,12 @@ void AmsState::update_slot(int slot_index) {
     assert_main_thread();
 
     auto* backend = get_backend(0);
-    if (!backend || slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (!backend || slot_index < 0) {
         return;
     }
 
+    // A slot past kMaxSlots has no subjects of its own, but it can still be
+    // the loaded one and still map to a tool.
     SlotInfo slot = backend->get_slot_info(slot_index);
     if (slot.slot_index >= 0) {
         if (write_slot_subjects(*backend, slot_index, slot)) {
@@ -1524,7 +1539,7 @@ void AmsState::on_backend_event(int backend_index, const std::string& event,
 
     if (event == AmsBackend::EVENT_STATE_CHANGED) {
         queue_sync(true, -1);
-    } else if (event == AmsBackend::EVENT_SLOT_CHANGED) {
+    } else if (event == AmsBackend::kEventSlotChanged) {
         // Parse slot index from data. Fall back to a full sync for ANY case
         // where we can't parse a specific slot — empty data OR non-numeric.
         // Dropping the event silently (the old behavior) left the UI stale
@@ -1539,20 +1554,20 @@ void AmsState::on_backend_event(int backend_index, const std::string& event,
                 queue_sync(true, -1);
             }
         }
-    } else if (event == AmsBackend::EVENT_LOAD_COMPLETE ||
-               event == AmsBackend::EVENT_UNLOAD_COMPLETE) {
+    } else if (event == AmsBackend::kEventLoadComplete ||
+               event == AmsBackend::kEventUnloadComplete) {
         // The operation is over, so an optimistic action held over the
         // backend's silence ends with it; a busy action the backend still
         // reports keeps the display until its own last frame.
         queue_sync(true, -1, /*ends_operation=*/true);
-    } else if (event == AmsBackend::EVENT_TOOL_CHANGED) {
+    } else if (event == AmsBackend::kEventToolChanged) {
         queue_sync(true, -1);
-    } else if (event == AmsBackend::EVENT_ERROR) {
+    } else if (event == AmsBackend::kEventError) {
         // Error occurred, sync to get error state. An error ends the operation,
         // so an optimistic action held over the backend's silence ends with it.
         queue_sync(true, -1, /*ends_operation=*/true);
         spdlog::warn("[AMS State] Backend error - {}", data);
-    } else if (event == AmsBackend::EVENT_ATTENTION_REQUIRED) {
+    } else if (event == AmsBackend::kEventAttentionRequired) {
         // User intervention needed
         queue_sync(true, -1);
         spdlog::warn("[AMS State] Attention required - {}", data);
@@ -1746,23 +1761,26 @@ void AmsState::set_action(AmsAction action) {
     assert_main_thread();
     int val = static_cast<int>(action);
     if (lv_subject_get_int(&ams_action_) != val) {
-        lv_subject_set_int(&ams_action_, val);
-        action_mirror_.store(action, std::memory_order_relaxed);
+        publish_action(action);
         spdlog::debug("[AMS State] Action set: {}", ams_action_to_string(action));
-        // Operation ended: clear the narration label + phase index BEFORE the
-        // recompute so the cleared state is reflected in the detail string. The
-        // next swap then restarts from a clean step bar. set_action writes
-        // subjects directly (main-thread contract), so write toolchange_step_
-        // directly too.
-        if (action == AmsAction::IDLE) {
-            last_narration_label_.clear();
-            narration_phase_high_water_ = -1;
-            lv_subject_set_int(&toolchange_step_, -1);
-        }
         // Action change must propagate to the displayed detail string (e.g.
         // LOADING → IDLE while still printing should flip "Loading" → "Printing").
         recompute_action_detail();
     }
+}
+
+void AmsState::publish_action(AmsAction action) {
+    // Operation ended: clear the narration label + phase index before the
+    // action observers run, so they and the next recompute see the cleared
+    // state, and the next operation starts from a clean step bar.
+    if (action == AmsAction::IDLE) {
+        last_narration_label_.clear();
+        narration_phase_id_.clear();
+        narration_phase_high_water_ = -1;
+        lv_subject_set_int(&toolchange_step_, -1);
+    }
+    lv_subject_set_int(&ams_action_, static_cast<int>(action));
+    action_mirror_.store(action, std::memory_order_relaxed);
 }
 
 void AmsState::hold_optimistic_action(std::chrono::milliseconds budget) {
@@ -1783,18 +1801,55 @@ bool AmsState::optimistic_action_held() const {
 void AmsState::set_active_step_operation(StepOperationType op) {
     assert_main_thread();
     const StepOperationType prev = active_step_operation_.exchange(op, std::memory_order_relaxed);
-    if (prev != op) {
-        // Each operation kind has its own phase template, so an index carried
-        // over from the previous one is not comparable with the new one's.
-        // (The sidebar re-derives the operation whenever it (re)builds the step
-        // bar, so this is also the mid-operation UNLOAD -> LOAD_SWAP upgrade.)
-        narration_phase_high_water_ = -1;
+    if (prev == op) {
+        return;
     }
+    // Each operation kind has its own phase template, so an index carried
+    // over from the previous one is not comparable with the new one's.
+    // (The sidebar re-derives the operation whenever it (re)builds the step
+    // bar, so this is also the mid-operation UNLOAD -> LOAD_SWAP upgrade, and
+    // the first build of a bar for an operation that narrated before it.)
+    narration_phase_high_water_ = -1;
+    if (lv_subject_get_int(&toolchange_step_) >= 0) {
+        lv_subject_set_int(&toolchange_step_, -1);
+    }
+    if (!narration_phase_id_.empty()) {
+        apply_narration_phase_id(std::string(narration_phase_id_));
+    }
+}
+
+void AmsState::apply_narration_phase_id(const std::string& id) {
+    assert_main_thread();
+    auto* backend = get_backend();
+    if (!backend) {
+        return;
+    }
+    const auto op = get_active_step_operation();
+    const auto tmpl = backend->toolchange_phase_template(op);
+    for (size_t k = 0; k < tmpl.size(); ++k) {
+        if (tmpl[k].id == id) {
+            spdlog::debug("[AMS State] Narration phase '{}' -> step {} ({})", id, k, tmpl[k].label);
+            if (publish_narration_phase(static_cast<int>(k), tmpl[k].label)) {
+                narration_phase_id_ = id;
+            }
+            return;
+        }
+    }
+    // No index in this template: hold the id for the operation the step bar
+    // settles on.
+    spdlog::debug("[AMS State] Narration phase '{}' is not in op {}'s template; held", id,
+                  static_cast<int>(op));
+    narration_phase_id_ = id;
 }
 
 void AmsState::set_narration_phase(int index, const std::string& label) {
     assert_main_thread();
+    if (publish_narration_phase(index, label)) {
+        narration_phase_id_.clear();
+    }
+}
 
+bool AmsState::publish_narration_phase(int index, const std::string& label) {
     // Firmware narration is not monotonic. AFC runs its wipe macro twice per
     // toolchange, once before and once after the kick (AFC.py
     // do_poop_kick_wipe(), v1.2.0:1390-1413; inline in TOOL_LOAD at
@@ -1802,13 +1857,14 @@ void AmsState::set_narration_phase(int index, const std::string& label) {
     // second one resolves to the same "brush" phase as the first, which sits
     // BEFORE "kick" in the template — publishing it verbatim rewinds the bar.
     //
-    // Latch the highest index instead. Reset points are the three places an
-    // index stops being comparable with its predecessor:
+    // Latch the highest index instead. Reset points are the places an index
+    // stops being comparable with its predecessor:
     //   - index < 0        explicit clear (operation over / test baseline)
     //   - index == 0       the template's first phase narrated again, i.e. the
     //                      operation restarted from the top (an AFC retry after
     //                      a resumed error re-runs TOOL_LOAD from the heat)
-    //   - set_action(IDLE) operation ended
+    //   - action -> IDLE   operation ended (publish_action, from either the UI
+    //                      or a backend sync)
     //   - set_active_step_operation() the template itself changed
     //
     // A retry that resumes PAST the first phase (nozzle already hot, so no heat
@@ -1823,7 +1879,7 @@ void AmsState::set_narration_phase(int index, const std::string& label) {
     } else if (index < narration_phase_high_water_) {
         spdlog::trace("[AMS State] Narration phase {} ('{}') ignored — already past step {}", index,
                       label, narration_phase_high_water_);
-        return;
+        return false;
     } else {
         narration_phase_high_water_ = index;
     }
@@ -1831,6 +1887,7 @@ void AmsState::set_narration_phase(int index, const std::string& label) {
     lv_subject_set_int(&toolchange_step_, index);
     last_narration_label_ = label;
     recompute_action_detail();
+    return true;
 }
 
 void AmsState::set_pending_target_slot(int slot) {

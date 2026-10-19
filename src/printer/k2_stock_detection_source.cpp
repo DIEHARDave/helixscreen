@@ -41,11 +41,10 @@ namespace {
 
 // Stock paths on the K2 (Tina rootfs). Everything Creality-specific about this
 // source lives in this file.
-constexpr const char* DETECTION_BIN = "/usr/bin/detection";
-constexpr const char* USER_PRINT_REFER =
-    "/mnt/UDISK/creality/userdata/config/user_print_refer.json";
-constexpr const char* SNAPSHOT_IN = "/tmp/helix_spaghetti_in.jpg";
-constexpr const char* SNAPSHOT_OUT = "/tmp/helix_spaghetti_out.jpg";
+constexpr const char* kDetectionBin = "/usr/bin/detection";
+constexpr const char* kUserPrintRefer = "/mnt/UDISK/creality/userdata/config/user_print_refer.json";
+constexpr const char* kSnapshotIn = "/tmp/helix_spaghetti_in.jpg";
+constexpr const char* kSnapshotOut = "/tmp/helix_spaghetti_out.jpg";
 
 bool fetch_snapshot_default(const std::string& url, const std::string& dest_path) {
     auto req = std::make_shared<HttpRequest>();
@@ -158,7 +157,7 @@ std::optional<float> max_spaghetti_probability(const std::string& detection_stdo
 }
 
 K2StockDetectionSource::K2StockDetectionSource(helix::PrinterState* state) : state_(state) {
-    config_path_ = USER_PRINT_REFER;
+    config_path_ = kUserPrintRefer;
     if (!fetcher_)
         fetcher_ = fetch_snapshot_default;
     if (!runner_)
@@ -176,7 +175,7 @@ void K2StockDetectionSource::refresh_capability() {
     if (const char* force = std::getenv("HELIX_MOCK_DETECTION_CAPABLE")) {
         capable_ = helix::env_truthy(force);
     } else {
-        capable_ = PrinterDetector::is_creality_k2() && access(DETECTION_BIN, X_OK) == 0;
+        capable_ = PrinterDetector::is_creality_k2() && access(kDetectionBin, X_OK) == 0;
     }
     if (capable_) {
         spdlog::info("[K2StockSource] capable: poll every {} s at prob >= {:.3}", period_s_,
@@ -260,12 +259,12 @@ void K2StockDetectionSource::poll_tick() {
     const auto fetch = fetcher_;
     const auto run = runner_;
     const auto url = snapshot_url_;
-    const std::vector<std::string> argv{DETECTION_BIN, SNAPSHOT_IN, SNAPSHOT_OUT, "0"};
+    const std::vector<std::string> argv{kDetectionBin, kSnapshotIn, kSnapshotOut, "0"};
     const auto tok = lifetime_.token();
     const float threshold = threshold_;
     submitter_([this, fetch, run, url, argv, tok, threshold] {
         PollResult r;
-        if (fetch(url, SNAPSHOT_IN)) {
+        if (fetch(url, kSnapshotIn)) {
             std::string out;
             if (run(argv, out) == 0) {
                 if (const auto prob = max_spaghetti_probability(out)) {

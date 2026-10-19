@@ -74,11 +74,11 @@ TEST_CASE_METHOD(HelixTestFixture, "catalog products inherit non-zero physical d
 // Reverting the Generic products in assets/filaments.json fails this test.
 TEST_CASE_METHOD(HelixTestFixture, "previously-unreachable material types have products",
                  "[filament_data]") {
-    static const char* MUST_BE_SELECTABLE[] = {
+    static const char* kMustBeSelectable[] = {
         "ASA-GF", "ABS-CF", "PC-CF", "PC-GF", "PET-GF", "PLA-GF",
     };
     auto cat = FilamentCatalog::load_from_file("assets/filaments.json", false, "");
-    for (const auto* type : MUST_BE_SELECTABLE) {
+    for (const auto* type : kMustBeSelectable) {
         INFO("type: " << type);
         CHECK(!cat.products_for_type(type).empty());
     }

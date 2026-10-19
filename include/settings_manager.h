@@ -32,7 +32,7 @@ enum class ZMovementStyle { AUTO = 0, BED_MOVES = 1, NOZZLE_MOVES = 2 };
 /// AxisRows gives each axis a row of minus/plus buttons at the jog mode's two
 /// distances.
 enum class MotionLayout { Pad = 0, Arrows = 1, ArrowsHome = 2, AxisRows = 3 };
-inline constexpr int MOTION_LAYOUT_COUNT = 4;
+inline constexpr int kMotionLayoutCount = 4;
 
 /** @brief Toolhead rendering style (Auto=detect from printer type, or force) */
 enum class ToolheadStyle {
@@ -60,8 +60,8 @@ enum class ConsoleFilterScope {
 
 /// Range of the Bed-tab clearance setting, in whole mm; shared by the
 /// persisted table and the settings keypad.
-inline constexpr int BED_MAP_CLEARANCE_MIN_MM = 1;
-inline constexpr int BED_MAP_CLEARANCE_MAX_MM = 50;
+inline constexpr int kBedMapClearanceMinMm = 1;
+inline constexpr int kBedMapClearanceMaxMm = 50;
 
 /**
  * @brief Application settings manager with reactive UI binding
@@ -312,7 +312,7 @@ class SettingsManager {
     }
 
     /** @brief Height in mm below which a Bed-tab move lifts Z before it
-     *  travels (default 5, range BED_MAP_CLEARANCE_MIN_MM-BED_MAP_CLEARANCE_MAX_MM) */
+     *  travels (default 5, range kBedMapClearanceMinMm-kBedMapClearanceMaxMm) */
     int get_bed_map_clearance_mm() const {
         return settings_.get(Key::BedMapClearance);
     }
@@ -536,13 +536,13 @@ class SettingsManager {
 
     /** @brief Whether @p tool unloads when a print ends; false outside the mask's range */
     bool get_end_of_print_unload_tool(int tool) const {
-        return tool >= 0 && tool < END_OF_PRINT_UNLOAD_MAX_TOOLS &&
+        return tool >= 0 && tool < kEndOfPrintUnloadMaxTools &&
                (get_end_of_print_unload_tools() & (1 << tool)) != 0;
     }
 
     /** @brief Set one tool's bit, leaving the others as stored; ignores a tool out of range */
     void set_end_of_print_unload_tool(int tool, bool unload) {
-        if (tool < 0 || tool >= END_OF_PRINT_UNLOAD_MAX_TOOLS) {
+        if (tool < 0 || tool >= kEndOfPrintUnloadMaxTools) {
             return;
         }
         const int mask = get_end_of_print_unload_tools();
@@ -555,7 +555,7 @@ class SettingsManager {
     }
 
     /// Tools the end-of-print unload mask can name (its row's maximum is 255).
-    static constexpr int END_OF_PRINT_UNLOAD_MAX_TOOLS = 8;
+    static constexpr int kEndOfPrintUnloadMaxTools = 8;
 
     /**
      * @brief Whether to show the bypass spool even when bypass is disengaged.

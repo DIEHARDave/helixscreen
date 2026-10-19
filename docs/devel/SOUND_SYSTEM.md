@@ -232,12 +232,12 @@ Tracker builds are the Pi family, x86, native and unified MIPS (`mips k1 ad5x`, 
 
 The PCM render path stays compiled and unit-tested for hardware that can actually demodulate duty-modulated PWM (a filtered speaker circuit) -- on the AD5M's piezo it is unreachable because nothing installs a render source. The render loop is built to be printer-safe above all (`src/system/pwm_sound_backend.cpp#render_loop`):
 
-- **8 kHz sample rate** -- the piezo's response rolls off around 3-4 kHz, so rendering faster adds no audible content (`PCM_SAMPLE_RATE`, `include/pwm_sound_backend.h#PCM_SAMPLE_RATE`).
-- **62.5 kHz carrier**, above the audible range; each sample becomes a duty-cycle value within that period (`PCM_CARRIER_HZ`).
+- **8 kHz sample rate** -- the piezo's response rolls off around 3-4 kHz, so rendering faster adds no audible content (`kPcmSampleRate`, `include/pwm_sound_backend.h#kPcmSampleRate`).
+- **62.5 kHz carrier**, above the audible range; each sample becomes a duty-cycle value within that period (`kPcmCarrierHz`).
 - **Render thread at SCHED_IDLE + 1 ns timerslack** (`apply_render_thread_priority()`). SCHED_IDLE means the thread runs only when nothing else wants the CPU, so its pacing can never starve klippy, and setting it needs no privileges. Timerslack affects the relative polls only (the 1 ms no-source poll, the 10 ms park poll) -- the sample loop paces with `TIMER_ABSTIME`, which timerslack does not touch.
-- **Absolute pacing with a 20 µs spin budget** -- sleep (`TIMER_ABSTIME`) to each sample deadline minus 20 µs, then spin the final stretch. This absorbs hrtimer wake lateness without burning real CPU (`PCM_SPIN_BUDGET_NS`).
-- **Bounded catch-up** -- more than 2 samples late snaps the sample clock forward (resync) instead of bursting the missed writes. The burst is what starved klippy under the old loop (`PCM_CATCHUP_MAX_SAMPLES`).
-- **Silence auto-park** -- 8 consecutive exactly-silent buffers (~512 ms at 64 ms/buffer) park the channel (duty 0, enable 0) and drop to a 10 ms poll. Each poll pulls an 80-frame probe (10 ms @ 8 kHz) from the render source at 1x real time and resumes the moment real audio shows up (`PCM_PARK_SILENT_BUFFERS`, `park_probe_frames()`).
+- **Absolute pacing with a 20 µs spin budget** -- sleep (`TIMER_ABSTIME`) to each sample deadline minus 20 µs, then spin the final stretch. This absorbs hrtimer wake lateness without burning real CPU (`kPcmSpinBudgetNs`).
+- **Bounded catch-up** -- more than 2 samples late snaps the sample clock forward (resync) instead of bursting the missed writes. The burst is what starved klippy under the old loop (`kPcmCatchupMaxSamples`).
+- **Silence auto-park** -- 8 consecutive exactly-silent buffers (~512 ms at 64 ms/buffer) park the channel (duty 0, enable 0) and drop to a 10 ms poll. Each poll pulls an 80-frame probe (10 ms @ 8 kHz) from the render source at 1x real time and resumes the moment real audio shows up (`kPcmParkSilentBuffers`, `park_probe_frames()`).
 - **Channel auto-export** -- the stock AD5M kernel ships the beeper channel unexported; nothing materializes pwm6 until `initialize()` writes the channel number to `pwmchip0/export` (`HELIX_PWM_AUTO_EXPORT`, ad5m/ad5m-br only). This one is live for tone mode too: without it the backend never initializes and the AD5M has no audio at all after boot.
 
 The PCM path stays dormant behind the transducer verdict above (nothing installs a render source on the AD5M's piezo), and the render loop's printer-safe shape (SCHED_IDLE, bounded catch-up, silence auto-park) is what keeps it harmless to leave compiled and unit-tested for hardware that can demodulate it.
@@ -633,8 +633,8 @@ if (SoundManager::instance().is_available()) {
 | `include/sound_theme.h` | Theme structs (`SoundTheme`, `SoundStep`, `ADSREnvelope`, etc.) + parser class |
 | `include/sound_sequencer.h` | Playback engine (`SoundPriority` enum, sequencer thread) |
 | `include/sound_manager.h` | Singleton public API |
-| `include/sdl_sound_backend.h` | SDL2 audio backend; owns `VoiceSlot voice_slots_[MAX_VOICES]` (desktop, `#ifdef HELIX_DISPLAY_SDL`) |
-| `include/alsa_sound_backend.h` | ALSA PCM audio backend; owns `VoiceSlot voice_slots_[MAX_VOICES]` (Linux SBCs, `#ifdef HELIX_HAS_ALSA`) |
+| `include/sdl_sound_backend.h` | SDL2 audio backend; owns `VoiceSlot voice_slots_[kMaxVoices]` (desktop, `#ifdef HELIX_DISPLAY_SDL`) |
+| `include/alsa_sound_backend.h` | ALSA PCM audio backend; owns `VoiceSlot voice_slots_[kMaxVoices]` (Linux SBCs, `#ifdef HELIX_HAS_ALSA`) |
 | `include/sound_synthesis.h` | Shared synthesis: waveform generation, biquad filter, `BiquadFilter` struct |
 | `include/jz_pwm_sound_backend.h` | AD5X jz_pwm DMA backend (one-shot duty-encoded buffers) |
 | `include/pwm_sound_backend.h` | PWM sysfs backend (AD5M buzzer) |

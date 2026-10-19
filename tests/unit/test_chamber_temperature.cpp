@@ -1216,7 +1216,7 @@ TEST_CASE("chamber Heating mode and Off classify plainly",
 TEST_CASE("every heater duty string fits the buffer its surfaces render from",
           "[chamber][temperature]") {
     using helix::ui::temperature::classify_heater_status;
-    using helix::ui::temperature::HEATER_STATUS_BUF_BYTES;
+    using helix::ui::temperature::kHeaterStatusBufBytes;
 
     // The status area renders the duty text and, for a read-only chamber, the
     // translated "Monitoring" word. A surface whose buffer cannot hold the
@@ -1239,7 +1239,7 @@ TEST_CASE("every heater duty string fits the buffer its surfaces render from",
     // this test would hold for any size at all.
     REQUIRE(longest.size() >= 8);
 
-    std::array<char, HEATER_STATUS_BUF_BYTES> buf{};
+    std::array<char, kHeaterStatusBufBytes> buf{};
     std::snprintf(buf.data(), buf.size(), "%s", longest.c_str());
     CHECK(std::string(buf.data()) == longest);
 }

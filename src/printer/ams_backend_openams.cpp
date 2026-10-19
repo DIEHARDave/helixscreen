@@ -969,7 +969,7 @@ AmsError
 AmsBackendOpenAms::send_operation_gcode(const std::string& gcode, std::function<void()> on_complete,
                                         std::function<void(const MoonrakerError&)> on_error) {
     return ensure_homed_then(gcode, std::move(on_complete), std::move(on_error),
-                             IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS,
+                             IMoonrakerAPI::kAmsOperationTimeoutMs,
                              /*skip_homing=*/true, /*silent=*/false,
                              /*caller_surfaces_errors=*/false);
 }
@@ -1063,7 +1063,7 @@ AmsError AmsBackendOpenAms::do_load_filament(int slot_index) {
             return ready;
         }
     }
-    return begin_operation(AmsAction::LOADING, slot_index, gcode, EVENT_LOAD_COMPLETE);
+    return begin_operation(AmsAction::LOADING, slot_index, gcode, kEventLoadComplete);
 }
 
 AmsError AmsBackendOpenAms::do_unload_filament(int slot_index) {
@@ -1102,7 +1102,7 @@ AmsError AmsBackendOpenAms::do_unload_filament(int slot_index) {
         }
         command += " FPS=" + IMoonrakerAPI::gcode_param_value(lane);
     }
-    return begin_operation(AmsAction::UNLOADING, unload_slot, command, EVENT_UNLOAD_COMPLETE);
+    return begin_operation(AmsAction::UNLOADING, unload_slot, command, kEventUnloadComplete);
 }
 
 AmsError AmsBackendOpenAms::do_select_slot(int slot_index) {
@@ -1132,7 +1132,7 @@ AmsError AmsBackendOpenAms::do_change_tool(int tool_number) {
             return ready;
         }
     }
-    return begin_operation(AmsAction::LOADING, slot, gcode, EVENT_LOAD_COMPLETE);
+    return begin_operation(AmsAction::LOADING, slot, gcode, kEventLoadComplete);
 }
 
 // ============================================================================
@@ -1349,7 +1349,7 @@ AmsError AmsBackendOpenAms::apply_user_edit(int slot_index, const SlotInfo& info
         helix::ams::persist_staged_override(override_store_.get(), mutex_, overrides_, slot_index,
                                             backend_log_tag(), "Override");
     }
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     return AmsErrorHelper::success();
 }
 
@@ -1363,7 +1363,7 @@ AmsError AmsBackendOpenAms::sync_external_identity(int slot_index, const SlotInf
         }
         write_filament_fields(*slot, info);
     }
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     return AmsErrorHelper::success();
 }
 
@@ -1388,13 +1388,13 @@ void AmsBackendOpenAms::clear_slot_override(int slot_index) {
         std::lock_guard<std::mutex> lock(mutex_);
         clear_override_locked(slot_index, system_info_.get_slot_global(slot_index));
     }
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
 }
 
 void AmsBackendOpenAms::clear_override_fields(SlotInfo& slot) const {
     AmsSubscriptionBackend::clear_override_fields(slot);
     slot.material.clear();
-    slot.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    slot.color_rgb = kAmsDefaultSlotColor;
     slot.multi_color_hexes.clear();
 }
 

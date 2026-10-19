@@ -11,9 +11,11 @@
  *   - AmsPanel -> AmsLoadingErrorModal              (the AmsAction::ERROR path)
  *
  * Both hand their text through helix::ui::afc_fault_path_apply(), which publishes
- * the stop point to `afc_fault_segment`. `<afc_fault_path/>` in each modal's XML
- * binds `hidden` to 0, so the safety property — an unrecognised message renders
- * exactly as it did before — is one assertion away.
+ * the stop point to `afc_fault_segment`, and ActionPromptModal publishes from its
+ * own text again before it builds, so any action:prompt shows the strip only for
+ * the fault its text names. `<afc_fault_path/>` in each modal's XML binds
+ * `hidden` to 0, so the safety property (an unrecognised message renders
+ * exactly as it would with no diagram at all) is one assertion away.
  *
  * Mutation checks (each must break the listed test):
  *   - drop the afc_fault_path_apply() call from RecoveryModalPresenter::present()
@@ -24,17 +26,23 @@
  *     -> "the loading-error modal carries the graphic" fails
  *   - drop a caption's bind_flag_if_not_eq, or point it at the wrong ref_value
  *     -> "the fault position is named in words, not only in colour" fails
+ *   - drop publish_fault_path() from ActionPromptModal::show_prompt()
+ *     -> "a prompt that names no fault shows no diagram after one that did" fails
+ *   - register AfcFaultPath with the default (printer) lifetime
+ *     -> "the diagram still binds after a printer switch" fails
  */
 
 #include "ui_afc_fault_path.h"
 #include "ui_ams_loading_error_modal.h"
 
 #include "../lvgl_ui_test_fixture.h"
+#include "action_prompt_modal.h"
 #include "ams_types.h"
 #include "error_event.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "lvgl/lvgl.h"
 #include "recovery_modal_presenter.h"
+#include "static_subject_registry.h"
 
 #include <string>
 
@@ -43,16 +51,16 @@
 namespace {
 
 /// AFC.py:1345, exactly as it arrives — lane prefix, sentence, art, labels.
-const std::string PRE_GEAR_FAULT =
+const std::string kPreGearFault =
     "lane1 filament failed to trigger pre extruder gear toolhead sensor, CHECK FILAMENT PATH\n"
     "||=====||====||==>--||\n"
     "TRG   LOAD   HUB   TOOL";
 
-const std::string PRE_GEAR_SENTENCE =
+const std::string kPreGearSentence =
     "lane1 filament failed to trigger pre extruder gear toolhead sensor, CHECK FILAMENT PATH";
 
 /// Not one of AFC's five diagram-bearing faults.
-const std::string UNKNOWN_FAULT = "!! Move out of range: 300.000 0.000 10.000 [0.000]";
+const std::string kUnknownFault = "!! Move out of range: 300.000 0.000 10.000 [0.000]";
 
 int fault_segment() {
     lv_subject_t* s = lv_xml_get_subject(nullptr, "afc_fault_segment");
@@ -67,7 +75,7 @@ bool graphic_visible(lv_obj_t* root) {
 }
 
 /// Every caption in afc_fault_path.xml, so "exactly one is visible" is checkable.
-const char* const ALL_CAPTIONS[] = {
+const char* const kAllCaptions[] = {
     "afc_stop_caption_spool",
     "afc_stop_caption_hub",
     "afc_stop_caption_output",
@@ -103,15 +111,15 @@ std::string prompt_body_text(lv_obj_t* screen) {
 TEST_CASE_METHOD(LVGLUITestFixture, "afc_fault_path_apply publishes and clears the stop point",
                  "[afc][fault][modal]") {
     // OUTPUT (5) — past the hub, short of the toolhead.
-    const std::string shown = helix::ui::afc_fault_path_apply(PRE_GEAR_FAULT);
+    const std::string shown = helix::ui::afc_fault_path_apply(kPreGearFault);
     CHECK(fault_segment() == static_cast<int>(helix::PathSegment::OUTPUT));
-    CHECK(shown == PRE_GEAR_SENTENCE);
+    CHECK(shown == kPreGearSentence);
 
     // An unrecognised message must CLEAR the previous marker, not inherit it,
     // and must come back byte-for-byte.
-    const std::string passthrough = helix::ui::afc_fault_path_apply(UNKNOWN_FAULT);
+    const std::string passthrough = helix::ui::afc_fault_path_apply(kUnknownFault);
     CHECK(fault_segment() == 0);
-    CHECK(passthrough == UNKNOWN_FAULT);
+    CHECK(passthrough == kUnknownFault);
 }
 
 // ============================================================================
@@ -134,13 +142,13 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the fault position is named in words, not o
     // One per AFC fault position, message text as afc_fault_position() sees it.
     const Case cases[] = {
         {"lane1 FAILED TO LOAD, CHECK FILAMENT AT TRIGGER", helix::PathSegment::SPOOL,
-         "afc_stop_caption_spool", "Stopped between Spool and Lane"},
+         "afc_stop_caption_spool", "Stopped"},
         {"lane1 filament did not trigger hub sensor, CHECK FILAMENT PATH", helix::PathSegment::HUB,
-         "afc_stop_caption_hub", "Stopped between Lane and Hub"},
+         "afc_stop_caption_hub", "Stopped"},
         {"lane1 filament failed to trigger pre extruder gear toolhead sensor, CHECK FILAMENT PATH",
-         helix::PathSegment::OUTPUT, "afc_stop_caption_output", "Stopped between Hub and Toolhead"},
+         helix::PathSegment::OUTPUT, "afc_stop_caption_output", "Stopped"},
         {"lane1 filament failed to trigger post extruder gear toolhead sensor, CHECK FILAMENT PATH",
-         helix::PathSegment::TOOLHEAD, "afc_stop_caption_toolhead", "Jammed at the Toolhead"},
+         helix::PathSegment::TOOLHEAD, "afc_stop_caption_toolhead", "Jammed"},
     };
 
     for (const auto& c : cases) {
@@ -151,7 +159,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the fault position is named in words, not o
         REQUIRE_FALSE(lv_obj_has_flag(graphic, LV_OBJ_FLAG_HIDDEN));
 
         int visible = 0;
-        for (const char* name : ALL_CAPTIONS) {
+        for (const char* name : kAllCaptions) {
             lv_obj_t* caption = lv_obj_find_by_name(graphic, name);
             REQUIRE(caption != nullptr);
             if (lv_obj_has_flag(caption, LV_OBJ_FLAG_HIDDEN)) {
@@ -164,11 +172,17 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the fault position is named in words, not o
         // Two visible captions would contradict each other; none leaves the fault
         // legible in colour alone, which is the whole complaint.
         CHECK(visible == 1);
+        // "Jammed" stands in the toolhead's own label slot; every other fault
+        // keeps the toolhead named.
+        lv_obj_t* toolhead_label = lv_obj_find_by_name(graphic, "afc_stop_label_toolhead");
+        REQUIRE(toolhead_label != nullptr);
+        CHECK(lv_obj_has_flag(toolhead_label, LV_OBJ_FLAG_HIDDEN) ==
+              (c.segment == helix::PathSegment::TOOLHEAD));
     }
 
     // Unrecognised message: the component hides, so no caption speaks for a fault
     // whose position we could not place.
-    helix::ui::afc_fault_path_apply(UNKNOWN_FAULT);
+    helix::ui::afc_fault_path_apply(kUnknownFault);
     process_lvgl(10);
     CHECK(lv_obj_has_flag(graphic, LV_OBJ_FLAG_HIDDEN));
 
@@ -185,7 +199,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                  "[afc][fault][modal]") {
     helix::ui::RecoveryModalPresenter presenter(api());
 
-    presenter.present(make_event(PRE_GEAR_FAULT));
+    presenter.present(make_event(kPreGearFault));
     process_lvgl(20);
     REQUIRE(presenter.is_visible());
 
@@ -193,7 +207,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     CHECK(graphic_visible(screen));
     CHECK(fault_segment() == static_cast<int>(helix::PathSegment::OUTPUT));
     // The art rows are gone; the sentence survives.
-    CHECK(prompt_body_text(screen) == PRE_GEAR_SENTENCE);
+    CHECK(prompt_body_text(screen) == kPreGearSentence);
 
     presenter.dismiss();
     process_lvgl(20);
@@ -204,20 +218,20 @@ TEST_CASE_METHOD(LVGLUITestFixture, "an unrecognised fault leaves no graphic beh
     helix::ui::RecoveryModalPresenter presenter(api());
 
     // Show a recognised fault first, so "hidden" cannot pass vacuously.
-    presenter.present(make_event(PRE_GEAR_FAULT));
+    presenter.present(make_event(kPreGearFault));
     process_lvgl(20);
     REQUIRE(graphic_visible(lv_screen_active()));
     presenter.dismiss();
     process_lvgl(20);
 
-    presenter.present(make_event(UNKNOWN_FAULT));
+    presenter.present(make_event(kUnknownFault));
     process_lvgl(20);
     REQUIRE(presenter.is_visible());
 
     lv_obj_t* screen = lv_screen_active();
     CHECK_FALSE(graphic_visible(screen));
     // ...and the message is rendered exactly as it always was.
-    CHECK(prompt_body_text(screen) == UNKNOWN_FAULT);
+    CHECK(prompt_body_text(screen) == kUnknownFault);
 
     presenter.dismiss();
     process_lvgl(20);
@@ -235,23 +249,139 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the loading-error modal carries the graphic
 
     // AmsPanel::show_loading_error_modal() runs the backend's operation_detail
     // through afc_fault_path_apply() before handing it to show().
-    const std::string shown = helix::ui::afc_fault_path_apply(PRE_GEAR_FAULT);
+    const std::string shown = helix::ui::afc_fault_path_apply(kPreGearFault);
     REQUIRE(modal.show(lv_screen_active(), shown, []() {}));
     process_lvgl(20);
     REQUIRE(modal.is_visible());
 
     CHECK(graphic_visible(modal.dialog()));
-    CHECK(shown == PRE_GEAR_SENTENCE);
+    CHECK(shown == kPreGearSentence);
 
     modal.hide();
     process_lvgl(20);
 
     // Same modal, unrecognised message: the graphic stays down.
-    const std::string plain = helix::ui::afc_fault_path_apply(UNKNOWN_FAULT);
+    const std::string plain = helix::ui::afc_fault_path_apply(kUnknownFault);
     REQUIRE(modal.show(lv_screen_active(), plain, []() {}));
     process_lvgl(20);
     CHECK_FALSE(graphic_visible(modal.dialog()));
 
     modal.hide();
     process_lvgl(20);
+}
+
+// ============================================================================
+// ActionPromptModal owns the diagram's state
+// ============================================================================
+
+namespace {
+
+helix::PromptData make_prompt(const std::string& text) {
+    helix::PromptData data;
+    data.title = "AFC Calibration";
+    data.text_lines = {text};
+    data.buttons = {{"Turtle_1", "UNIT_CALIBRATION UNIT=Turtle_1", "primary", "", false, -1}};
+    return data;
+}
+
+int visible_captions(lv_obj_t* root) {
+    int visible = 0;
+    for (const char* name : kAllCaptions) {
+        lv_obj_t* caption = lv_obj_find_by_name(root, name);
+        REQUIRE(caption != nullptr);
+        visible += lv_obj_has_flag(caption, LV_OBJ_FLAG_HIDDEN) ? 0 : 1;
+    }
+    return visible;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "a prompt that names no fault shows no diagram after one that did",
+                 "[afc][fault][modal][action_prompt]") {
+    helix::ui::RecoveryModalPresenter presenter(api());
+    presenter.present(make_event(kPreGearFault));
+    process_lvgl(20);
+    REQUIRE(graphic_visible(lv_screen_active()));
+    presenter.dismiss();
+    process_lvgl(20);
+
+    // AFC_CALIBRATION's picker arrives as a plain action:prompt.
+    helix::ui::ActionPromptModal prompt;
+    REQUIRE(prompt.show_prompt(lv_screen_active(), make_prompt("Select a unit to calibrate.")));
+    process_lvgl(20);
+    CHECK_FALSE(graphic_visible(prompt.dialog()));
+    prompt.hide();
+    process_lvgl(20);
+
+    // A wire prompt carrying AFC's fault sentence gets the diagram from its text.
+    REQUIRE(prompt.show_prompt(lv_screen_active(), make_prompt(kPreGearSentence)));
+    process_lvgl(20);
+    CHECK(graphic_visible(prompt.dialog()));
+    CHECK(visible_captions(prompt.dialog()) == 1);
+    prompt.hide();
+    process_lvgl(20);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "the diagram still binds after a printer switch",
+                 "[afc][fault][modal][action_prompt]") {
+    // The subject backs a component registered once at boot, and a printer switch
+    // never re-runs component registration.
+    REQUIRE(StaticSubjectRegistry::instance().deinit_one(
+        "AfcFaultPath", StaticSubjectRegistry::Scope::PrinterSwitch));
+    REQUIRE(lv_xml_get_subject(nullptr, "afc_fault_segment") != nullptr);
+
+    helix::ui::ActionPromptModal prompt;
+    REQUIRE(prompt.show_prompt(lv_screen_active(), make_prompt("Select a unit to calibrate.")));
+    process_lvgl(20);
+    // Unbound, the diagram would show with every caption at once.
+    CHECK_FALSE(graphic_visible(prompt.dialog()));
+    prompt.hide();
+    process_lvgl(20);
+
+    REQUIRE(prompt.show_prompt(lv_screen_active(), make_prompt(kPreGearSentence)));
+    process_lvgl(20);
+    CHECK(graphic_visible(prompt.dialog()));
+    CHECK(visible_captions(prompt.dialog()) == 1);
+    CHECK(fault_segment() == static_cast<int>(helix::PathSegment::OUTPUT));
+    prompt.hide();
+    process_lvgl(20);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "a prompt over the loading-error modal leaves its diagram up when it closes",
+                 "[afc][fault][modal][action_prompt]") {
+    lv_xml_register_component_from_file("A:ui_xml/ams_loading_error_modal.xml");
+    helix::ui::AmsLoadingErrorModal error_modal;
+    REQUIRE(error_modal.show(lv_screen_active(), helix::ui::afc_fault_path_apply(kPreGearFault),
+                             []() {}));
+    process_lvgl(20);
+    REQUIRE(graphic_visible(error_modal.dialog()));
+
+    helix::ui::ActionPromptModal prompt;
+    REQUIRE(prompt.show_prompt(lv_screen_active(), make_prompt("Select a unit to calibrate.")));
+    process_lvgl(20);
+    CHECK_FALSE(graphic_visible(prompt.dialog()));
+    prompt.hide();
+    process_lvgl(20);
+
+    CHECK(fault_segment() == static_cast<int>(helix::PathSegment::OUTPUT));
+    CHECK(graphic_visible(error_modal.dialog()));
+    error_modal.hide();
+    process_lvgl(20);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "a prompt closing does not overwrite a fault published while it was open",
+                 "[afc][fault][modal][action_prompt]") {
+    helix::ui::afc_fault_path_publish(kUnknownFault);
+    helix::ui::ActionPromptModal prompt;
+    REQUIRE(prompt.show_prompt(lv_screen_active(), make_prompt("Select a unit to calibrate.")));
+    process_lvgl(20);
+
+    // A later modal publishes its own fault over the open prompt.
+    helix::ui::afc_fault_path_publish(kPreGearFault);
+    prompt.hide();
+    process_lvgl(20);
+    CHECK(fault_segment() == static_cast<int>(helix::PathSegment::OUTPUT));
 }

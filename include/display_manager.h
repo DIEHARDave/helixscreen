@@ -56,7 +56,7 @@
  * display_mgr.shutdown();
  * @endcode
  */
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 namespace helix::ui {
 struct SaverHost;
 }
@@ -243,7 +243,7 @@ class DisplayManager : public helix::ICalibrationSink {
      */
     void restore_display_on_shutdown();
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     /**
      * @brief Start a screensaver immediately for preview/testing
      *
@@ -634,10 +634,10 @@ class DisplayManager : public helix::ICalibrationSink {
     // Resize handler state
     std::vector<ResizeCallback> m_resize_callbacks;
     bool m_resize_fanout_suspended = false;
-    static constexpr uint32_t RESIZE_DEBOUNCE_MS = 250;
-    // Trailing-edge: every SIZE_CHANGED pushes the fan-out RESIZE_DEBOUNCE_MS past it.
+    static constexpr uint32_t kResizeDebounceMs = 250;
+    // Trailing-edge: every SIZE_CHANGED pushes the fan-out kResizeDebounceMs past it.
     // Its callback dereferences this manager; the member cancels it on destruction.
-    helix::ui::CoalescedTimer m_resize_debounce{RESIZE_DEBOUNCE_MS};
+    helix::ui::CoalescedTimer m_resize_debounce{kResizeDebounceMs};
     // The object carrying resize_event_cb with this manager as its user data;
     // cleared when that object is deleted.
     lv_obj_t* m_resize_screen = nullptr;

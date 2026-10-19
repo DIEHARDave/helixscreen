@@ -187,7 +187,7 @@ class BeltPanelFixture : public XMLTestFixture {
             return 0;
         }
         return static_cast<int>(
-            std::lround(*t->advice().turns / helix::calibration::belt_tune::TURN_STEP));
+            std::lround(*t->advice().turns / helix::calibration::belt_tune::kTurnStep));
     }
     const auto& panel_run(int path_index) {
         return panel_->runs_[path_index];
@@ -541,7 +541,7 @@ TEST_CASE("a stall trips the stall guard", "[belt][panel]") {
     // over the mock's 5-135 Hz range), then wait out a full silent
     // STALL_TIMEOUT from that point.
     fx.pump_ms(15000);
-    fx.pump_ms(BeltTensionPanel::STALL_TIMEOUT_MS + 2000);
+    fx.pump_ms(BeltTensionPanel::kStallTimeoutMs + 2000);
     CHECK(fx.state_int("belt_tension_state") ==
           static_cast<int>(BeltTensionPanel::ViewState::ERROR));
     CHECK(fx.text("bt_error_message").find("stopped reporting progress") != std::string::npos);
@@ -827,11 +827,11 @@ namespace {
 
 constexpr int TUNING = static_cast<int>(BeltTensionPanel::ViewState::TUNING);
 constexpr int RESULTS = static_cast<int>(BeltTensionPanel::ViewState::RESULTS);
-constexpr int PHASE_ADJUST = 0;
-constexpr int PHASE_SWEEPING = 1;
-constexpr int PHASE_MATCHED = 2;
-constexpr int PHASE_CALIBRATE = 3;
-constexpr int PHASE_ALREADY_MATCHED = 4;
+constexpr int kPhaseAdjust = 0;
+constexpr int kPhaseSweeping = 1;
+constexpr int kPhaseMatched = 2;
+constexpr int kPhaseCalibrate = 3;
+constexpr int kPhaseAlreadyMatched = 4;
 
 /// Start, wait for RESULTS, then Tune.
 void enter_tuning(BeltPanelFixture& fx) {
@@ -847,21 +847,21 @@ void enter_tuning(BeltPanelFixture& fx) {
 void tune_round(BeltPanelFixture& fx) {
     fx.panel().handle_tune_measure_clicked();
     REQUIRE(fx.state_int("belt_tension_state") == TUNING);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
-    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING; t += 100) {
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseSweeping);
+    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping; t += 100) {
         fx.pump_ms(100);
     }
-    REQUIRE(fx.state_int("bt_tune_phase") != PHASE_SWEEPING);
+    REQUIRE(fx.state_int("bt_tune_phase") != kPhaseSweeping);
 }
 
 /// From CALIBRATE, measure until a turn registers and the zone's baseline is in.
 void calibrate(BeltPanelFixture& fx) {
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
-    for (int i = 0; i < 2 && fx.state_int("bt_tune_phase") == PHASE_CALIBRATE; ++i) {
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
+    for (int i = 0; i < 2 && fx.state_int("bt_tune_phase") == kPhaseCalibrate; ++i) {
         tune_round(fx);
     }
     INFO("instruction: " << fx.text("bt_tune_instruction") << " last: " << fx.text("bt_tune_last"));
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseAdjust);
 }
 
 /// Start, Tune, then calibrate: the loop is advising on a zone.
@@ -917,14 +917,14 @@ std::pair<int, int> freq_window(const std::string& line) {
     return {std::atoi(line.c_str() + start + 11), std::atoi(line.c_str() + end + 9)};
 }
 
-constexpr const char* SETTLE_START = "SAVE_GCODE_STATE NAME=helix_belt_settle";
+constexpr const char* kSettleStart = "SAVE_GCODE_STATE NAME=helix_belt_settle";
 
 /// What the run sent, in order: "settle" per lap script, "full" or "narrow"
 /// per resonance test.
 std::vector<std::string> run_steps(BeltPanelFixture& fx) {
     std::vector<std::string> out;
     for (const auto& g : std::vector<std::string>(fx.mock().gcode_script_history())) {
-        if (g == SETTLE_START) {
+        if (g == kSettleStart) {
             out.push_back("settle");
         } else if (g.find("TEST_RESONANCES") != std::string::npos) {
             out.push_back(g.find("FREQ_START=") == std::string::npos ? "full" : "narrow");
@@ -1016,7 +1016,7 @@ class ReplayBelts {
 /// and the baseline pair repeats it, a -4 Hz gap.
 void replay_to_adjust(BeltPanelFixture& fx, ReplayBelts& belts) {
     enter_tuning(fx);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
     belts.set_b({106.0f});
     calibrate(fx);
     REQUIRE(fx.panel_session() != nullptr);
@@ -1054,7 +1054,7 @@ TEST_CASE("Tune opens on the calibration turn", "[belt][panel][tune]") {
     get_printer_state().set_printer_type_sync("Voron 2.4");
     enter_tuning(fx);
 
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
     CHECK(fx.text("bt_tune_instruction") == "Tighten B one full turn");
     CHECK(fx.state_int("bt_tune_path") == 1);
     CHECK(fx.state_int("bt_tune_dir") == 0);
@@ -1091,7 +1091,7 @@ TEST_CASE("matched belts open on Good Enough", "[belt][panel][tune]") {
     fx.mock().set_belt_peaks_hz(100.0f, 100.0f);
     enter_tuning(fx);
 
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_ALREADY_MATCHED);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseAlreadyMatched);
     CHECK(fx.text("bt_tune_instruction") == "Belts already match");
     const std::string last = fx.text("bt_tune_last");
     INFO("last: " << last);
@@ -1128,10 +1128,10 @@ TEST_CASE("matched belts open on Good Enough", "[belt][panel][tune]") {
 
     // Calibrate Anyway: on to the calibration turn, nothing turned yet.
     fx.panel().handle_tune_clicked();
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ALREADY_MATCHED);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseAlreadyMatched);
     // Through the button's XML callback, as a tap does.
     lv_obj_send_event(named(fx, "btn_tune_calibrate_anyway"), LV_EVENT_CLICKED, nullptr);
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
     const std::string instruction = fx.text("bt_tune_instruction");
     INFO("instruction: " << instruction);
     CHECK((instruction == "Tighten A one full turn" || instruction == "Tighten B one full turn"));
@@ -1211,7 +1211,7 @@ TEST_CASE("a calibration turn that doesn't register asks for another", "[belt][p
     fx.mock().clear_gcode_script_history();
 
     tune_round(fx);
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
     CHECK(fx.text("bt_tune_last") ==
           "That turn didn't register yet. Tighten B one more full turn.");
     CHECK(fx.text("bt_tune_instruction") == "Tighten B one full turn");
@@ -1229,11 +1229,11 @@ TEST_CASE("the second turn registers and chains a narrow baseline without settli
     fx.mock().set_belt_tune_script('B', {98.3f, 104.0f});
     enter_tuning(fx);
     tune_round(fx);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
     fx.mock().clear_gcode_script_history();
 
     tune_round(fx);
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
     CHECK(fx.text("bt_tune_last").empty());
     // The laps once, both full sweeps, then the baseline pair twice over with
     // no laps between: no belt changed since the calibration sweep.
@@ -1271,10 +1271,10 @@ TEST_CASE("a calibration that gives up says to turn back", "[belt][panel][tune]"
     fx.mock().set_belt_tune_script('B', {98.2f, 98.4f});
     enter_tuning(fx);
     tune_round(fx);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
     tune_round(fx);
 
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseMatched);
     CHECK(fx.text("bt_tune_instruction") == "Nothing to tune here");
     CHECK(fx.text("bt_tune_last") ==
           "Nothing followed 2 turns of B. Turn B back 2 turns, then check the mechanics.");
@@ -1311,7 +1311,7 @@ TEST_CASE("three Re-measures walk CLOSER, CLOSER, MATCHED", "[belt][panel][tune]
         tune_round(fx);
         CHECK(windowed_both(resonance_lines(fx)));
         CHECK(run_steps(fx).front() == "settle");
-        CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+        CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
         INFO("last: " << fx.text("bt_tune_last"));
         CHECK(fx.text("bt_tune_last").rfind("last turn: ", 0) == 0);
         CHECK(fx.text("bt_tune_last").find(expect) != std::string::npos);
@@ -1322,7 +1322,7 @@ TEST_CASE("three Re-measures walk CLOSER, CLOSER, MATCHED", "[belt][panel][tune]
     step_as_advised(fx);
     tune_round(fx);
     CHECK(windowed_both(resonance_lines(fx)));
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseMatched);
     INFO("instruction: " << fx.text("bt_tune_instruction"));
     CHECK(fx.text("bt_tune_instruction").rfind("Matched at 1", 0) == 0);
     CHECK(fx.text("bt_tune_last").empty());
@@ -1378,7 +1378,7 @@ TEST_CASE("Adjust A instead swaps the instruction", "[belt][panel][tune]") {
         enter_tuning(fx);
         REQUIRE(fx.text("bt_tune_instruction") == "Tighten B noticeably");
         fx.panel().handle_tune_swap_clicked();
-        CHECK(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+        CHECK(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
         CHECK(fx.text("bt_tune_instruction") == "Loosen A noticeably");
         CHECK(fx.state_int("bt_tune_path") == 0);
         CHECK(fx.state_int("bt_tune_dir") == 1);
@@ -1414,14 +1414,14 @@ TEST_CASE("the calibration belt can be swapped only before the first step", "[be
         CHECK_FALSE(lv_hidden(named(fx, "bt_tune_icon_ccw")));
         CHECK(lv_hidden(named(fx, "bt_tune_icon_cw")));
         tune_round(fx);
-        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+        REQUIRE(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
         CHECK(fx.text("bt_tune_last") ==
               "That turn didn't register yet. Loosen A one more full turn.");
         CHECK(fx.state_int("bt_tune_can_swap") == 0);
     }
     SECTION("after a step: refused, and the button is gone") {
         tune_round(fx);
-        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+        REQUIRE(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
         CHECK(fx.state_int("bt_tune_can_swap") == 0);
         CHECK(lv_hidden(named(fx, "btn_tune_swap")));
         fx.panel().handle_tune_swap_clicked();
@@ -1527,14 +1527,14 @@ TEST_CASE("Confirm runs one full pair and reports the tuning", "[belt][panel][tu
     const std::string round0 = fx.text("bt_similarity");
     calibrate(fx);
     // Two calibration turns, then what each round's stepper recorded.
-    float turned = 2.0f * helix::calibration::belt_tune::CALIBRATION_TURNS;
+    float turned = 2.0f * helix::calibration::belt_tune::kCalibrationTurns;
     for (int i = 0; i < 3; ++i) {
         turned +=
-            static_cast<float>(fx.panel_advised_steps()) * helix::calibration::belt_tune::TURN_STEP;
+            static_cast<float>(fx.panel_advised_steps()) * helix::calibration::belt_tune::kTurnStep;
         step_as_advised(fx);
         tune_round(fx);
     }
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseMatched);
     const int rounds = fx.panel_session()->total_rounds();
 
     fx.mock().clear_gcode_script_history();
@@ -1564,7 +1564,7 @@ namespace {
 /// Starts a sweep, confirms Stop's dialog, and checks the panel lands on
 /// START and stays there.
 void stop_lands_on_start(BeltPanelFixture& fx) {
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseSweeping);
     fx.panel().handle_stop_clicked();
     fx.pump_ms(200);
     lv_obj_t* dialog = ModalStack::instance().top_dialog();
@@ -1583,7 +1583,7 @@ void stop_lands_on_start(BeltPanelFixture& fx) {
 
 /// Rebuilds with a sweep in flight and checks its late callbacks change nothing.
 void rebuild_drops_late_callbacks(BeltPanelFixture& fx) {
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseSweeping);
     // Past the laps: a sweep is running on the printer.
     REQUIRE(fx.pump_until_text("bt_run_title", "Measuring Path A"));
     fx.pump_ms(300);
@@ -1607,7 +1607,7 @@ TEST_CASE("a zone matched at its baseline reports no round count", "[belt][panel
     fx.mock().set_belt_tune_script('B', {110.0f});
     enter_tuning(fx);
     tune_round(fx);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseMatched);
     REQUIRE(fx.panel_session()->total_rounds() == 0);
 
     fx.panel().handle_tune_confirm_clicked();
@@ -1632,7 +1632,7 @@ TEST_CASE("Stop during a calibration run lands on START", "[belt][panel][tune]")
     helix::ui::modal_init_subjects();
     REQUIRE(fx.register_component("modal_dialog"));
     enter_tuning(fx);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
     fx.panel().handle_tune_measure_clicked();
     stop_lands_on_start(fx);
 }
@@ -1647,7 +1647,7 @@ TEST_CASE("a rebuild mid tuning sweep drops the late callbacks", "[belt][panel][
 TEST_CASE("a rebuild mid calibration run drops the late callbacks", "[belt][panel][tune]") {
     BeltPanelFixture fx;
     enter_tuning(fx);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
     const auto before = fx.panel_run(1).curve;
     fx.panel().handle_tune_measure_clicked();
     rebuild_drops_late_callbacks(fx);
@@ -1663,7 +1663,7 @@ TEST_CASE("a round with no peak says so and can be re-measured", "[belt][panel][
     belts.set_b({});
     tune_round(fx);
 
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
     CHECK(fx.text("bt_tune_last") == "No clear peak in this zone");
     CHECK(fx.text("bt_tune_gap") == gap);
     lv_obj_t* measure = named(fx, "btn_tune_measure");
@@ -1728,15 +1728,15 @@ TEST_CASE("a spring printer skips calibration", "[belt][panel][tune]") {
     // The strongest zone at once: its baseline pair sweeps straight from Tune.
     fx.panel().handle_tune_clicked();
     REQUIRE(fx.state_int("belt_tension_state") == TUNING);
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseSweeping);
     CHECK(fx.text("bt_tune_instruction") == "Measure this zone first");
-    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING; t += 100) {
+    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping; t += 100) {
         fx.pump_ms(100);
     }
     CHECK(run_steps(fx) ==
           std::vector<std::string>{"settle", "narrow", "narrow", "narrow", "narrow"});
 
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
     CHECK(fx.state_int("bt_tune_kind") == 2);
     CHECK(fx.text("bt_tune_instruction") ==
           "Release B's tensioner, let the spring settle, lock it");
@@ -1766,13 +1766,13 @@ TEST_CASE("Next Zone walks only registered zones", "[belt][panel][tune]") {
         // B's upper peak meets A's: this zone matches, the lower pair is next.
         belts.set_b({58.0f, 100.0f});
         tune_round(fx);
-        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+        REQUIRE(fx.state_int("bt_tune_phase") == kPhaseMatched);
         REQUIRE(fx.state_int("bt_tune_has_next_zone") == 1);
 
         fx.mock().clear_gcode_script_history();
         fx.panel().handle_tune_next_zone_clicked();
         // The baseline pair starts at once, with no advice on screen.
-        CHECK(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+        CHECK(fx.state_int("bt_tune_phase") == kPhaseSweeping);
         CHECK(fx.state_int("bt_tune_baseline") == 1);
         CHECK(fx.text("bt_tune_instruction") == "Measure this zone first");
         CHECK(fx.text("bt_tune_amount").empty());
@@ -1782,14 +1782,14 @@ TEST_CASE("Next Zone walks only registered zones", "[belt][panel][tune]") {
         CHECK(hi2 >= 60);
         CHECK(hi2 < 90);
 
-        for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING;
+        for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping;
              t += 100) {
             fx.pump_ms(100);
         }
         // Turns on the earlier zone moved this one: laps first, then the pair twice.
         CHECK(run_steps(fx) ==
               std::vector<std::string>{"settle", "narrow", "narrow", "narrow", "narrow"});
-        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+        REQUIRE(fx.state_int("bt_tune_phase") == kPhaseAdjust);
         CHECK(fx.state_int("bt_tune_baseline") == 0);
         CHECK(fx.text("bt_tune_instruction") == "Tighten B");
         CHECK(std::stof(fx.text("bt_tune_gap")) == Catch::Approx(2.0f).margin(0.3f));
@@ -1803,7 +1803,7 @@ TEST_CASE("Next Zone walks only registered zones", "[belt][panel][tune]") {
         CHECK(fx.state_int("bt_tune_has_next_zone") == 0);
         belts.set_b({56.0f, 100.0f});
         tune_round(fx);
-        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+        REQUIRE(fx.state_int("bt_tune_phase") == kPhaseMatched);
         CHECK(fx.state_int("bt_tune_has_next_zone") == 0);
         CHECK(fx.text("bt_tune_next_zone_label").empty());
     }
@@ -1826,12 +1826,12 @@ TEST_CASE("a closed gate stops the tuning sweeps", "[belt][panel][tune][gating]"
     SECTION("a calibration") {
         enter_tuning(fx);
         close_gate();
-        CHECK(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+        CHECK(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
     }
     SECTION("a round") {
         enter_adjust(fx);
         close_gate();
-        CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+        CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
     }
 }
 
@@ -1893,7 +1893,7 @@ TEST_CASE("readings that don't repeat give no advice", "[belt][panel][tune]") {
     belts.set_b({106.0f});
     fx.panel().handle_tune_measure_clicked();
     bool second_pair = false;
-    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING; t += 100) {
+    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping; t += 100) {
         if (!second_pair && fx.panel_session() &&
             fx.panel_session()->stage() == helix::calibration::BeltTuneStage::BASELINE &&
             !fx.panel_session()->rounds().empty()) {
@@ -1903,7 +1903,7 @@ TEST_CASE("readings that don't repeat give no advice", "[belt][panel][tune]") {
         fx.pump_ms(100);
     }
     REQUIRE(second_pair);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseAdjust);
 
     CHECK(fx.state_int("bt_tune_unrepeatable") == 1);
     CHECK(fx.state_int("bt_tune_shape_warning") == 1);
@@ -1955,11 +1955,11 @@ TEST_CASE("the power hint names the stronger path", "[belt][panel][tune]") {
         fx.panel().handle_start_clicked();
         REQUIRE(fx.pump_until_state(RESULTS));
         fx.panel().handle_tune_clicked();
-        for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING;
+        for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping;
              t += 100) {
             fx.pump_ms(100);
         }
-        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+        REQUIRE(fx.state_int("bt_tune_phase") == kPhaseAdjust);
     };
     SECTION("B four times A") {
         run(4.0e4);
@@ -2001,7 +2001,7 @@ TEST_CASE("waking the screen mid-tuning keeps the session", "[belt][panel][tune]
         fx.panel().on_activate();
         fx.pump_ms(500);
         CHECK(fx.state_int("belt_tension_state") == TUNING);
-        CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+        CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
         CHECK(fx.text("bt_tune_round") == "Round 2");
         CHECK(fx.text("bt_tune_zone") == zone);
         CHECK(fx.text("bt_tune_last") == last);
@@ -2013,14 +2013,14 @@ TEST_CASE("waking the screen mid-tuning keeps the session", "[belt][panel][tune]
     }
     SECTION("while a round sweeps") {
         fx.panel().handle_tune_measure_clicked();
-        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+        REQUIRE(fx.state_int("bt_tune_phase") == kPhaseSweeping);
         fx.pump_ms(300);
         fx.panel().on_deactivate(DeactivateReason::Suspended);
         fx.panel().on_activate();
         CHECK(fx.state_int("belt_tension_state") == TUNING);
-        CHECK(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+        CHECK(fx.state_int("bt_tune_phase") == kPhaseSweeping);
         CHECK_FALSE(fx.panel_detection_pending());
-        for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING;
+        for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == kPhaseSweeping;
              t += 100) {
             fx.pump_ms(100);
         }
@@ -2076,7 +2076,7 @@ TEST_CASE("a wake re-asks what the suspension cancelled", "[belt][panel]") {
         REQUIRE(dialog != nullptr);
         lv_obj_send_event(lv_obj_find_by_name(dialog, "btn_primary"), LV_EVENT_CLICKED, nullptr);
         fx.pump_ms(200);
-        CHECK(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+        CHECK(fx.state_int("bt_tune_phase") == kPhaseSweeping);
     }
 }
 
@@ -2108,7 +2108,7 @@ TEST_CASE("Continue on the low-RAM warning re-checks the gate", "[belt][panel][t
         fx.pump_ms(200);
         continue_dialog();
         CHECK(fx.state_int("belt_tension_state") == TUNING);
-        CHECK(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+        CHECK(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
     }
     SECTION("a tuning round") {
         enter_adjust(fx);
@@ -2118,7 +2118,7 @@ TEST_CASE("Continue on the low-RAM warning re-checks the gate", "[belt][panel][t
         fx.pump_ms(200);
         continue_dialog();
         CHECK(fx.state_int("belt_tension_state") == TUNING);
-        CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+        CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
         CHECK(fx.text("bt_tune_round") == round);
     }
     SECTION("a Re-test leaves both results in place") {
@@ -2155,21 +2155,21 @@ TEST_CASE("the low-RAM warning is asked once per tuning session", "[belt][panel]
     lv_obj_t* dialog = ModalStack::instance().top_dialog();
     REQUIRE(dialog != nullptr);
     REQUIRE(fx.panel_low_ram_dialog() == dialog);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
     lv_obj_send_event(lv_obj_find_by_name(dialog, "btn_primary"), LV_EVENT_CLICKED, nullptr);
     fx.pump_ms(200);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseSweeping);
     // The calibration registers and its baseline follows without asking.
-    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING; t += 100) {
+    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping; t += 100) {
         fx.pump_ms(100);
     }
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseAdjust);
 
     // The next round sweeps at once.
     fx.panel().handle_tune_measure_clicked();
     CHECK(fx.panel_low_ram_dialog() == nullptr);
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
-    for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING; t += 100) {
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseSweeping);
+    for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == kPhaseSweeping; t += 100) {
         fx.pump_ms(100);
     }
 
@@ -2180,7 +2180,7 @@ TEST_CASE("the low-RAM warning is asked once per tuning session", "[belt][panel]
     fx.panel().handle_tune_measure_clicked();
     fx.pump_ms(200);
     CHECK(fx.panel_low_ram_dialog() != nullptr);
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseCalibrate);
 }
 
 TEST_CASE("a Stop confirmed after the round ended stops nothing", "[belt][panel][tune]") {
@@ -2189,17 +2189,17 @@ TEST_CASE("a Stop confirmed after the round ended stops nothing", "[belt][panel]
     REQUIRE(fx.register_component("modal_dialog"));
     enter_tuning(fx);
     fx.panel().handle_tune_measure_clicked();
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseSweeping);
     fx.panel().handle_stop_clicked();
     fx.pump_ms(200);
     lv_obj_t* dialog = ModalStack::instance().top_dialog();
     REQUIRE(dialog != nullptr);
 
     // The calibration and its baseline finish while the dialog is still up.
-    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING; t += 100) {
+    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping; t += 100) {
         fx.pump_ms(100);
     }
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseAdjust);
     const std::string round = fx.text("bt_tune_round");
 
     fx.mock().clear_gcode_script_history();
@@ -2251,7 +2251,7 @@ TEST_CASE("an untouched stepper is a repeat check", "[belt][panel][tune]") {
     step_as_advised(fx);
     belts.set_b({110.0f});
     tune_round(fx);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseMatched);
     fx.panel().handle_tune_confirm_clicked();
     REQUIRE(fx.pump_until_state(RESULTS));
     // Only the turned rounds booked anything.
@@ -2281,11 +2281,11 @@ TEST_CASE("the gate re-reads the calibrator when a sweep ends", "[belt][panel][g
         enter_adjust(fx);
         fx.panel().handle_tune_measure_clicked();
         notify_mid_sweep();
-        for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING;
+        for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == kPhaseSweeping;
              t += 100) {
             fx.pump_ms(100);
         }
-        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+        REQUIRE(fx.state_int("bt_tune_phase") == kPhaseAdjust);
         CHECK(fx.state_int("bt_can_start") == 1);
     }
 }
@@ -2311,10 +2311,10 @@ TEST_CASE("Next zone names how long its sweep takes", "[belt][panel][tune]") {
           "Next Zone (~" + std::to_string(minutes(next->window, 2)) + " min)");
 
     fx.panel().handle_tune_next_zone_clicked();
-    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING; t += 100) {
+    for (uint32_t t = 0; t < 120000 && fx.state_int("bt_tune_phase") == kPhaseSweeping; t += 100) {
         fx.pump_ms(100);
     }
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseAdjust);
     // After the baseline, a round sweeps the pair once.
     const auto zone = fx.panel_session()->zone();
     REQUIRE(zone.has_value());
@@ -2327,7 +2327,7 @@ TEST_CASE("Next zone names how long its sweep takes", "[belt][panel][tune]") {
 
 TEST_CASE("every locale's tuning strings fit their buffers", "[belt][panel][tune][i18n]") {
     BeltPanelFixture fx;
-    constexpr int MAX_LISTED = 3;
+    constexpr int kMaxListed = 3;
     // The longest each line can get: three-digit peaks, two-digit counts,
     // turn totals past one.
     for (const char* lang : {"en", "de", "es", "fr", "it", "ja", "pt", "ru", "zh"}) {
@@ -2342,7 +2342,7 @@ TEST_CASE("every locale's tuning strings fit their buffers", "[belt][panel][tune
             return fmt::format(fmt::runtime(lv_tr(tag)), args...);
         };
         std::string pairs;
-        for (int i = 0; i < MAX_LISTED; ++i) {
+        for (int i = 0; i < kMaxListed; ++i) {
             pairs += std::string(i == 0 ? "" : " · ") + "133/132";
         }
         const std::string turns = f("{} turns", "10¾");
@@ -2441,9 +2441,9 @@ class ScopedLayoutSubject {
     int original_ = 0;
 };
 
-constexpr int BP_MICRO = 0;
-constexpr int BP_SMALL = 2;
-constexpr int BP_MEDIUM = 3;
+constexpr int kBpMicro = 0;
+constexpr int kBpSmall = 2;
+constexpr int kBpMedium = 3;
 
 lv_obj_t* named_in(BeltPanelFixture& fx, const char* name) {
     lv_obj_t* obj = lv_obj_find_by_name(fx.view(), name);
@@ -2468,9 +2468,9 @@ std::vector<std::string> visible_results_buttons(BeltPanelFixture& fx) {
         fx, {"btn_retest_a", "btn_retest_b", "btn_retest_menu", "btn_test_both", "btn_tune"});
 }
 
-const std::vector<std::string> FOLDED{"btn_retest_menu", "btn_test_both", "btn_tune"};
-const std::vector<std::string> UNFOLDED{"btn_retest_a", "btn_retest_b", "btn_test_both",
-                                        "btn_tune"};
+const std::vector<std::string> kFolded{"btn_retest_menu", "btn_test_both", "btn_tune"};
+const std::vector<std::string> kUnfolded{"btn_retest_a", "btn_retest_b", "btn_test_both",
+                                         "btn_tune"};
 
 /// Opens the Re-test menu, returning the row named `row` inside it.
 lv_obj_t* open_retest_menu(BeltPanelFixture& fx, const char* row) {
@@ -2503,27 +2503,27 @@ void enter_results_with_menu(BeltPanelFixture& fx) {
 TEST_CASE("RESULTS folds Re-test A/B into one menu below medium and in portrait",
           "[belt][panel][compact]") {
     BeltPanelFixture fx;
-    ScopedLayoutSubject bp("ui_breakpoint", BP_MICRO);
+    ScopedLayoutSubject bp("ui_breakpoint", kBpMicro);
     ScopedLayoutSubject portrait("ui_is_portrait", 0);
     enter_results_with_menu(fx);
 
-    CHECK(visible_results_buttons(fx) == FOLDED);
+    CHECK(visible_results_buttons(fx) == kFolded);
 
     SECTION("every breakpoint below medium folds them") {
-        for (int narrow : {1, BP_SMALL}) {
+        for (int narrow : {1, kBpSmall}) {
             bp.set(narrow);
             INFO("ui_breakpoint " << narrow);
-            CHECK(visible_results_buttons(fx) == FOLDED);
+            CHECK(visible_results_buttons(fx) == kFolded);
         }
     }
     SECTION("landscape medium keeps the two Re-test buttons") {
-        bp.set(BP_MEDIUM);
-        CHECK(visible_results_buttons(fx) == UNFOLDED);
+        bp.set(kBpMedium);
+        CHECK(visible_results_buttons(fx) == kUnfolded);
     }
     SECTION("portrait medium folds them") {
-        bp.set(BP_MEDIUM);
+        bp.set(kBpMedium);
         portrait.set(1);
-        CHECK(visible_results_buttons(fx) == FOLDED);
+        CHECK(visible_results_buttons(fx) == kFolded);
     }
     SECTION("Re-test A from the menu re-measures A") {
         pick_retest(fx, "btn_retest_path_a");
@@ -2542,7 +2542,7 @@ TEST_CASE("RESULTS folds Re-test A/B into one menu below medium and in portrait"
 TEST_CASE("leaving the panel closes the Re-test menu so it cannot start a sweep",
           "[belt][panel][compact]") {
     BeltPanelFixture fx;
-    ScopedLayoutSubject bp("ui_breakpoint", BP_MICRO);
+    ScopedLayoutSubject bp("ui_breakpoint", kBpMicro);
     enter_results_with_menu(fx);
 
     lv_obj_t* row = open_retest_menu(fx, "btn_retest_path_a");
@@ -2567,7 +2567,7 @@ TEST_CASE("TUNING below medium is one tappable line over the chart",
           "[belt][panel][compact][tune]") {
     BeltPanelFixture fx;
     get_printer_state().set_printer_type_sync("Voron 2.4");
-    ScopedLayoutSubject bp("ui_breakpoint", BP_MICRO);
+    ScopedLayoutSubject bp("ui_breakpoint", kBpMicro);
     ScopedLayoutSubject portrait("ui_is_portrait", 0);
     enter_tuning(fx);
     REQUIRE(fx.state_int("bt_tune_kind") == 1);
@@ -2601,7 +2601,7 @@ TEST_CASE("TUNING below medium is one tappable line over the chart",
     CHECK(fx.text("bt_tune_swap_label") == "Adjust B instead");
 
     SECTION("landscape medium keeps the full hero") {
-        bp.set(BP_MEDIUM);
+        bp.set(kBpMedium);
         CHECK_FALSE(lv_hidden(named("bt_tune_hero")));
         CHECK(lv_hidden(named("bt_tune_line")));
         CHECK(lv_hidden(named("bt_tune_row_stepper")));
@@ -2618,10 +2618,10 @@ TEST_CASE("TUNING below medium is one tappable line over the chart",
 
 TEST_CASE("the one-line hero's gauge shows the round's gap", "[belt][panel][compact][tune]") {
     BeltPanelFixture fx;
-    ScopedLayoutSubject bp("ui_breakpoint", BP_MICRO);
+    ScopedLayoutSubject bp("ui_breakpoint", kBpMicro);
     enter_tuning(fx);
     tune_round(fx);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseAdjust);
 
     lv_obj_t* line_gauge = named_in(fx, "bt_tune_line_gauge");
     CHECK_FALSE(lv_hidden(line_gauge));
@@ -2636,11 +2636,11 @@ TEST_CASE("Confirm drops its duration on compact layouts and beside Next zone",
     BeltPanelFixture fx;
     // The calibration sweep finds B at A's peak: its baseline matches.
     fx.mock().set_belt_tune_script('B', {110.0f});
-    ScopedLayoutSubject bp("ui_breakpoint", BP_MEDIUM);
+    ScopedLayoutSubject bp("ui_breakpoint", kBpMedium);
     ScopedLayoutSubject portrait("ui_is_portrait", 0);
     enter_tuning(fx);
     tune_round(fx);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseMatched);
     lv_subject_t* next_zone = lv_xml_get_subject(nullptr, "bt_tune_has_next_zone");
     REQUIRE(next_zone != nullptr);
     const auto confirms = [&] {
@@ -2659,7 +2659,7 @@ TEST_CASE("Confirm drops its duration on compact layouts and beside Next zone",
         CHECK(confirms() == shortened);
     }
     SECTION("micro, no Next zone") {
-        bp.set(BP_MICRO);
+        bp.set(kBpMicro);
         CHECK(confirms() == shortened);
     }
     SECTION("portrait medium, no Next zone") {
@@ -2703,11 +2703,11 @@ TEST_CASE("leaving the panel ends the tuning session", "[belt][panel][tune]") {
     fx.mock().set_belt_tune_script('B', {110.0f});
     enter_tuning(fx);
     tune_round(fx);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseMatched);
 
     fx.panel().on_deactivate(DeactivateReason::NavigateAway);
     UpdateQueue::instance().drain();
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
     CHECK(fx.state_int("belt_tension_state") ==
           static_cast<int>(BeltTensionPanel::ViewState::START));
 }
@@ -2717,12 +2717,12 @@ TEST_CASE("a fresh Start ends the tuning session", "[belt][panel][tune]") {
     fx.mock().set_belt_tune_script('B', {110.0f});
     enter_tuning(fx);
     tune_round(fx);
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseMatched);
 
     fx.panel().handle_start_clicked();
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
     REQUIRE(fx.pump_until_state(RESULTS));
-    CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    CHECK(fx.state_int("bt_tune_phase") == kPhaseAdjust);
 }
 
 TEST_CASE("a tuning round keeps the peak markers on screen while it sweeps",
@@ -2737,7 +2737,7 @@ TEST_CASE("a tuning round keeps the peak markers on screen while it sweeps",
     }
 
     fx.panel().handle_tune_measure_clicked();
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseSweeping);
     for (int path = 0; path < 2; ++path) {
         CHECK(ui_frequency_response_chart_get_markers(chart, fx.panel_series_id(path)).size() == 1);
     }
@@ -2748,7 +2748,7 @@ TEST_CASE("a gate that closes during a tuning sweep ends it in ERROR",
     BeltPanelFixture fx;
     enter_tuning(fx);
     fx.panel().handle_tune_measure_clicked();
-    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+    REQUIRE(fx.state_int("bt_tune_phase") == kPhaseSweeping);
 
     lv_subject_set_int(get_printer_state().print_state().get_print_active_subject(), 1);
     fx.pump_ms(200);
@@ -2805,7 +2805,7 @@ TEST_CASE("a closed gate stops a Re-test", "[belt][panel][gating]") {
 
 TEST_CASE("cleanup closes the Re-test menu", "[belt][panel][compact]") {
     BeltPanelFixture fx;
-    ScopedLayoutSubject bp("ui_breakpoint", BP_MICRO);
+    ScopedLayoutSubject bp("ui_breakpoint", kBpMicro);
     enter_results_with_menu(fx);
     open_retest_menu(fx, "btn_retest_path_a");
 
@@ -2823,7 +2823,7 @@ TEST_CASE("TUNING on ultrawide puts the chart beside a sidebar with the full her
     BeltPanelFixture fx;
     get_printer_state().set_printer_type_sync("Voron 2.4");
     // 1920x440 reads small, which alone would pick the one-line hero.
-    ScopedLayoutSubject bp("ui_breakpoint", BP_SMALL);
+    ScopedLayoutSubject bp("ui_breakpoint", kBpSmall);
     ScopedLayoutSubject portrait("ui_is_portrait", 0);
     ScopedLayoutSubject ultrawide("ui_is_ultrawide", 1);
     enter_tuning(fx);
@@ -2865,12 +2865,12 @@ TEST_CASE("TUNING on ultrawide puts the chart beside a sidebar with the full her
 TEST_CASE("RESULTS on ultrawide keeps both Re-test buttons in the sidebar",
           "[belt][panel][ultrawide]") {
     BeltPanelFixture fx;
-    ScopedLayoutSubject bp("ui_breakpoint", BP_SMALL);
+    ScopedLayoutSubject bp("ui_breakpoint", kBpSmall);
     ScopedLayoutSubject portrait("ui_is_portrait", 0);
     ScopedLayoutSubject ultrawide("ui_is_ultrawide", 1);
     enter_results_with_menu(fx);
 
-    CHECK(visible_results_buttons(fx) == UNFOLDED);
+    CHECK(visible_results_buttons(fx) == kUnfolded);
     auto* chart = fx.panel_chart();
     REQUIRE(chart != nullptr);
     CHECK(lv_obj_get_parent(ui_frequency_response_chart_get_obj(chart)) ==
@@ -2903,7 +2903,7 @@ int32_t chart_max_h_token() {
 TEST_CASE("portrait gives the primary action its own line and caps the chart",
           "[belt][panel][portrait]") {
     BeltPanelFixture fx;
-    ScopedLayoutSubject bp("ui_breakpoint", BP_MEDIUM);
+    ScopedLayoutSubject bp("ui_breakpoint", kBpMedium);
     ScopedLayoutSubject portrait("ui_is_portrait", 1);
     ScopedLayoutSubject ultrawide("ui_is_ultrawide", 0);
     enter_results_with_menu(fx);
@@ -2927,7 +2927,7 @@ TEST_CASE("portrait gives the primary action its own line and caps the chart",
 
 TEST_CASE("portrait START stacks the sketch over the text", "[belt][panel][portrait]") {
     BeltPanelFixture fx;
-    ScopedLayoutSubject bp("ui_breakpoint", BP_MEDIUM);
+    ScopedLayoutSubject bp("ui_breakpoint", kBpMedium);
     ScopedLayoutSubject portrait("ui_is_portrait", 1);
     ScopedLayoutSubject ultrawide("ui_is_ultrawide", 0);
     REQUIRE(fx.state_int("belt_tension_state") ==
@@ -2949,7 +2949,7 @@ TEST_CASE("portrait START stacks the sketch over the text", "[belt][panel][portr
 TEST_CASE("portrait shows the full tuning hero, stacked", "[belt][panel][portrait][tune]") {
     BeltPanelFixture fx;
     get_printer_state().set_printer_type_sync("Voron 2.4");
-    ScopedLayoutSubject bp("ui_breakpoint", BP_MEDIUM);
+    ScopedLayoutSubject bp("ui_breakpoint", kBpMedium);
     ScopedLayoutSubject portrait("ui_is_portrait", 1);
     ScopedLayoutSubject ultrawide("ui_is_ultrawide", 0);
     enter_adjust(fx);
@@ -2978,7 +2978,7 @@ TEST_CASE("portrait shows the full tuning hero, stacked", "[belt][panel][portrai
     CHECK_FALSE(lv_hidden(named("bt_tune_hint_wrap")));
 
     SECTION("micro portrait keeps the one-line hero") {
-        bp.set(BP_MICRO);
+        bp.set(kBpMicro);
         CHECK(lv_hidden(named("bt_tune_hero")));
         CHECK_FALSE(lv_hidden(named("bt_tune_line")));
         CHECK(lv_hidden(named("btn_tune_swap")));
@@ -3015,7 +3015,7 @@ TEST_CASE("the run title reads Settling belts while the laps run", "[belt][panel
         fx.panel().handle_tune_clicked();
         REQUIRE(fx.state_int("belt_tension_state") == TUNING);
         fx.panel().handle_tune_measure_clicked();
-        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+        REQUIRE(fx.state_int("bt_tune_phase") == kPhaseSweeping);
         lv_obj_t* title = lv_obj_find_by_name(fx.view(), "tune_run_title");
         REQUIRE(title != nullptr);
         CHECK(std::string(lv_label_get_text(title)) == "Settling belts");
@@ -3075,7 +3075,7 @@ TEST_CASE("a settle the printer rejects lands on ERROR", "[belt][panel][settle]"
     BeltPanelFixture fx;
     REQUIRE(fx.wait_gate_open());
     fx.mock().force_next_gcode_error(MoonrakerErrorType::JSON_RPC_ERROR, "Move out of range",
-                                     SETTLE_START);
+                                     kSettleStart);
     fx.mock().clear_gcode_script_history();
 
     fx.panel().handle_start_clicked();
@@ -3090,7 +3090,7 @@ TEST_CASE("Stop during the laps lands on START", "[belt][panel][settle]") {
     REQUIRE(fx.register_component("modal_dialog"));
     REQUIRE(fx.wait_gate_open());
     // The laps' ack never arrives, so the run stays in its laps.
-    fx.mock().force_next_gcode_dropped_response(SETTLE_START);
+    fx.mock().force_next_gcode_dropped_response(kSettleStart);
     fx.mock().clear_gcode_script_history();
 
     fx.panel().handle_start_clicked();

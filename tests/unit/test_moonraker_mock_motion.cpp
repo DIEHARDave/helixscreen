@@ -880,7 +880,7 @@ TEST_CASE("MoonrakerClientMock out-of-range move error handling", "[api][movemen
         mock.gcode_script("G28"); // Home to reset position
         REQUIRE(mock.get_last_gcode_error().empty());
 
-        // Try to move beyond X_MAX (250mm for the Voron 2.4 persona)
+        // Try to move beyond kXMax (250mm for the Voron 2.4 persona)
         int result = mock.gcode_script("G0 X400");
 
         // Should return non-zero error code
@@ -903,7 +903,7 @@ TEST_CASE("MoonrakerClientMock out-of-range move error handling", "[api][movemen
         mock.gcode_script("G28");
         REQUIRE(mock.get_last_gcode_error().empty());
 
-        // Try to move beyond Y_MAX (250mm)
+        // Try to move beyond kYMax (250mm)
         int result = mock.gcode_script("G0 Y500");
 
         REQUIRE(result != 0);
@@ -943,7 +943,7 @@ TEST_CASE("MoonrakerClientMock out-of-range move error handling", "[api][movemen
         mock.gcode_script("G28");
         REQUIRE(mock.get_last_gcode_error().empty());
 
-        // Try to move below X_MIN (0mm)
+        // Try to move below kXMin (0mm)
         int result = mock.gcode_script("G0 X-10");
 
         REQUIRE(result != 0);
@@ -1089,7 +1089,7 @@ TEST_CASE("MoonrakerClientMock multi-line script surfaces the failing line's err
     bool error_called = false;
     MoonrakerError captured;
 
-    // Relative +400 from X=0 lands at 400, beyond the Voron 2.4 X_MAX of 250.
+    // Relative +400 from X=0 lands at 400, beyond the Voron 2.4 kXMax of 250.
     json params = {{"script", "G91\nG0 X400 F6000\nG90"}};
     mock.send_jsonrpc(
         "printer.gcode.script", params, [&success_called](json) { success_called = true; },

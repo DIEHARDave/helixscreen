@@ -177,7 +177,7 @@ class AmsOverviewPanel : public PanelBase {
     void update_bypass_widgets_position();
 
     // === Unit view state ===
-    static constexpr int MAX_DETAIL_SLOTS = AMS_DETAIL_MAX_SLOTS;
+    static constexpr int kMaxDetailSlots = kAmsDetailMaxSlots;
     bool unit_view_active_ = false;        ///< The unit view is on screen, not the overview
     lv_obj_t* detail_container_ = nullptr; ///< Unit view root container (takes the swipe)
     lv_obj_t* path_container_ = nullptr;
@@ -186,7 +186,7 @@ class AmsOverviewPanel : public PanelBase {
     lv_obj_t* page_dots_ = nullptr;
     AmsDetailWidgets detail_widgets_;        ///< Shared widget pointers for the spool box
     lv_obj_t* detail_path_canvas_ = nullptr; ///< Filament path visualization
-    lv_obj_t* detail_slot_widgets_[MAX_DETAIL_SLOTS] = {nullptr};
+    lv_obj_t* detail_slot_widgets_[kMaxDetailSlots] = {nullptr};
     int detail_slot_count_ = 0;
     int shown_unit_pos_ = -1; ///< Position in AmsSystemInfo::units of the unit on screen
 

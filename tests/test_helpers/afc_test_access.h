@@ -191,7 +191,7 @@ class AfcTestAccess {
 
     /// Static constant, so no object to take.
     static constexpr auto message_drain_max_clears() {
-        return AmsBackendAfc::MESSAGE_DRAIN_MAX_CLEARS;
+        return AmsBackendAfc::kMessageDrainMaxClears;
     }
 
     // --- private methods ----------------------------------------------------

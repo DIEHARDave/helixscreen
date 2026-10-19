@@ -53,7 +53,7 @@ Key safety rules:
   Joining there froze the touchscreen until the transfer ended. `shutdown()` and the destructor
   wait a bounded time and then **detach** for the same reason — see `reap_download_thread()`.
 - **Downloads are blocked** while a print is in progress (`PrintJobState::PRINTING` or `PAUSED`).
-- **Rate limited** to one check per `MIN_CHECK_INTERVAL` (10 minutes). A manual tap inside that
+- **Rate limited** to one check per `kMinCheckInterval` (10 minutes). A manual tap inside that
   window returns the cached result and logs only at `debug`, so it looks like nothing happened.
 
 ---
@@ -219,7 +219,7 @@ A downgrade is deliberately quieter than an update:
 
 **Config compatibility.** An older build loading a config written by a newer one
 leaves it entirely alone — `run_versioned_migrations()` returns early when
-`config_version > CURRENT_CONFIG_VERSION` rather than stamping it down. Migration
+`config_version > kCurrentConfigVersion` rather than stamping it down. Migration
 gates are all `version < N` so none would fire anyway; an unconditional stamp would make
 the newer build re-run already-applied migrations
 on its next boot. Unknown keys survive because `Config::save()` serializes the
@@ -362,12 +362,14 @@ warning.
 }
 ```
 
-Default: `https://releases.helixscreen.org` (compiled as `DEFAULT_R2_BASE_URL`).
+Default: `https://releases.helixscreen.org` (compiled as `kDefaultR2BaseUrl`).
 
 **Where the state dir lives.** `/var/lib/helixscreen` on every platform - Pi, K1,
-K2, AD5M, AD5X, CC1 and U1 all resolve the same compile-time `STATE_DIR_DEFAULT`
+K2, AD5M, AD5X, CC1 and U1 all resolve the same compile-time `kStateDirDefault`
 (`include/app_constants.h`); no platform falls back to `~/.helixscreen` for this
-file. systemd units create it via `StateDirectory=helixscreen`
+file. The Android app is the exception: it has no `/var/lib`, so
+`android_configure_backup_dirs()` points the state dir at `files/state` in app storage
+(`docs/devel/ANDROID_ASSETS.md`). systemd units create it via `StateDirectory=helixscreen`
 (`StateDirectoryMode=0700`), and the SysV init script (`config/helixscreen.init`)
 `mkdir -p`s it at boot. On a device where neither has run yet:
 
@@ -811,7 +813,7 @@ Run with:
 
 - Check network connectivity from the device
 - R2 CDN may be down -- the checker automatically falls back to GitHub API
-- GitHub API has rate limits (60 requests/hour unauthenticated). `MIN_CHECK_INTERVAL` caps a single
+- GitHub API has rate limits (60 requests/hour unauthenticated). `kMinCheckInterval` caps a single
   running instance at 6 checks/hour, but the limiter is in-process only -- rapid restarts reset it
   and can exhaust the quota.
 - Check logs: `./build/bin/helix-screen --test -vv` and look for `[UpdateChecker]` messages

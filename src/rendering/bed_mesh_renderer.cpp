@@ -40,8 +40,8 @@ namespace {
 // This ensures consistency between the renderer and any code that reads those constants
 
 // Canvas rendering
-constexpr double CANVAS_PADDING_FACTOR = 0.98; // Margin for axis labels and tick marks at edges
-constexpr double INITIAL_FOV_SCALE = 150.0;    // Starting point for auto-scale (gets adjusted)
+constexpr double kCanvasPaddingFactor = 0.98; // Margin for axis labels and tick marks at edges
+constexpr double kInitialFovScale = 150.0;    // Starting point for auto-scale (gets adjusted)
 
 } // anonymous namespace
 
@@ -132,7 +132,7 @@ bed_mesh_renderer_t* bed_mesh_renderer_create(void) {
     renderer->view_state.angle_x = BED_MESH_DEFAULT_ANGLE_X;
     renderer->view_state.angle_z = BED_MESH_DEFAULT_ANGLE_Z;
     renderer->view_state.z_scale = BED_MESH_DEFAULT_Z_SCALE;
-    renderer->view_state.fov_scale = INITIAL_FOV_SCALE;
+    renderer->view_state.fov_scale = kInitialFovScale;
     renderer->view_state.camera_distance = 1000.0; // Default, recomputed when mesh data is set
     renderer->view_state.is_dragging = false;
 
@@ -314,12 +314,12 @@ void bed_mesh_renderer_set_bounds(bed_mesh_renderer_t* renderer, double bed_x_mi
 
     // Compute scale factor: normalize larger bed dimension to target world size
     // Target world size matches the old BED_MESH_SCALE-based sizing (~200 world units)
-    constexpr double TARGET_WORLD_SIZE = 200.0;
+    constexpr double kTargetWorldSize = 200.0;
     double bed_size_x = bed_x_max - bed_x_min;
     double bed_size_y = bed_y_max - bed_y_min;
     double larger_dimension = std::max(bed_size_x, bed_size_y);
     renderer->coord_scale =
-        helix::mesh::compute_bed_scale_factor(larger_dimension, TARGET_WORLD_SIZE);
+        helix::mesh::compute_bed_scale_factor(larger_dimension, kTargetWorldSize);
     renderer->geometry_computed = true;
 
     spdlog::debug("[Bed Mesh Renderer] Set bounds: bed [{:.1f}, {:.1f}] x [{:.1f}, {:.1f}], mesh "
@@ -334,7 +334,7 @@ void bed_mesh_renderer_set_bounds(bed_mesh_renderer_t* renderer, double bed_x_mi
 
     // Reset FOV scale and centering to trigger auto-calibration on next render
     // This ensures the view zooms to fit the new bed bounds
-    renderer->view_state.fov_scale = INITIAL_FOV_SCALE;
+    renderer->view_state.fov_scale = kInitialFovScale;
     renderer->view_state.center_offset_x = 0;
     renderer->view_state.center_offset_y = 0;
     renderer->initial_centering_computed = false;
@@ -750,7 +750,7 @@ static void compute_centering_offset(int mesh_min_x, int mesh_max_x, int mesh_mi
  *
  * Computes a scale factor that ensures the projected mesh and reference walls
  * fit within the canvas with appropriate padding. Only runs on first render
- * (when fov_scale equals INITIAL_FOV_SCALE).
+ * (when fov_scale equals kInitialFovScale).
  *
  * @param renderer Renderer instance with mesh data
  * @param canvas_width Canvas width in pixels
@@ -811,19 +811,19 @@ static void calibrate_fov_scale(bed_mesh_renderer_t* renderer, int canvas_width,
     // Calculate scale needed to fit projected bounds into canvas
     int projected_width = max_x - min_x;
     int projected_height = max_y - min_y;
-    double scale_x = (canvas_width * CANVAS_PADDING_FACTOR) / projected_width;
-    double scale_y = (canvas_height * CANVAS_PADDING_FACTOR) / projected_height;
+    double scale_x = (canvas_width * kCanvasPaddingFactor) / projected_width;
+    double scale_y = (canvas_height * kCanvasPaddingFactor) / projected_height;
     double scale_factor = std::min(scale_x, scale_y);
 
     spdlog::info("[Bed Mesh Renderer] [FOV] Canvas: {}x{}, Projected (incl walls): {}x{}, "
                  "Padding: {:.2f}, Scale: {:.2f}",
                  canvas_width, canvas_height, projected_width, projected_height,
-                 CANVAS_PADDING_FACTOR, scale_factor);
+                 kCanvasPaddingFactor, scale_factor);
 
     // Apply scale (only once, not every frame)
     renderer->view_state.fov_scale *= scale_factor;
     spdlog::info("[Bed Mesh Renderer] [FOV] Final fov_scale: {:.2f} (initial {} * scale {:.2f})",
-                 renderer->view_state.fov_scale, INITIAL_FOV_SCALE, scale_factor);
+                 renderer->view_state.fov_scale, kInitialFovScale, scale_factor);
 }
 
 /**
@@ -902,7 +902,7 @@ static void prepare_render_frame(bed_mesh_renderer_t* renderer, int canvas_width
 
     // Compute FOV scale ONCE on first render (when fov_scale is still at default)
     // This prevents grow/shrink effect when rotating - scale stays constant
-    if (renderer->view_state.fov_scale == INITIAL_FOV_SCALE) {
+    if (renderer->view_state.fov_scale == kInitialFovScale) {
         calibrate_fov_scale(renderer, canvas_width, canvas_height);
     }
 

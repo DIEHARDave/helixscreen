@@ -219,18 +219,18 @@ void NotificationManager::animate_notification_badge() {
     // Animation constants for attention pulse
     // Stage 1: Scale up to 130% (300ms with overshoot)
     // Stage 2: Scale back to 100% (implicit - overshoot settles naturally)
-    constexpr int32_t PULSE_DURATION_MS = 300;
-    constexpr int32_t SCALE_NORMAL = 256; // 100%
-    constexpr int32_t SCALE_PULSE = 333;  // ~130%
+    constexpr int32_t kPulseDurationMs = 300;
+    constexpr int32_t kScaleNormal = 256; // 100%
+    constexpr int32_t kScalePulse = 333;  // ~130%
 
     // Scale up animation with overshoot easing (automatically bounces back)
     lv_anim_t scale_anim;
     lv_anim_init(&scale_anim);
     lv_anim_set_var(&scale_anim, badge);
-    lv_anim_set_values(&scale_anim, SCALE_NORMAL, SCALE_PULSE);
-    lv_anim_set_duration(&scale_anim, PULSE_DURATION_MS);
+    lv_anim_set_values(&scale_anim, kScaleNormal, kScalePulse);
+    lv_anim_set_duration(&scale_anim, kPulseDurationMs);
     lv_anim_set_path_cb(&scale_anim, lv_anim_path_overshoot);
-    lv_anim_set_playback_duration(&scale_anim, PULSE_DURATION_MS / 2);
+    lv_anim_set_playback_duration(&scale_anim, kPulseDurationMs / 2);
     lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
         lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
     });

@@ -179,7 +179,7 @@ GapSeverity belt_gap_severity(float gap_hz, float tolerance_hz) {
     if (mag <= tolerance_hz) {
         return GapSeverity::MATCHED;
     }
-    if (mag <= calibration::belt_tune::GAUGE_WARN_HZ) {
+    if (mag <= calibration::belt_tune::kGaugeWarnHz) {
         return GapSeverity::NEAR;
     }
     return GapSeverity::FAR;

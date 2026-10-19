@@ -159,7 +159,7 @@ class AmsSubscriptionBackend : public AmsBackend {
     /// @param on_error   Fires on G28 or payload failure. When null the failure
     ///                   is logged and the action is reset to IDLE, matching
     ///                   the historical behaviour.
-    /// @param timeout_ms Payload timeout. G28 always uses HOMING_TIMEOUT_MS.
+    /// @param timeout_ms Payload timeout. G28 always uses kHomingTimeoutMs.
     /// @param skip_homing Dispatch the payload without homing, whatever the
     ///                   toolhead reports. For firmware macros that home
     ///                   themselves (CFS Fork variant).
@@ -186,7 +186,7 @@ class AmsSubscriptionBackend : public AmsBackend {
     AmsError
     ensure_homed_then(std::string gcode, std::function<void()> on_complete = nullptr,
                       std::function<void(const MoonrakerError&)> on_error = nullptr,
-                      uint32_t timeout_ms = IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS,
+                      uint32_t timeout_ms = IMoonrakerAPI::kAmsOperationTimeoutMs,
                       bool skip_homing = false, bool silent = true,
                       std::optional<bool> caller_surfaces_errors = std::nullopt,
                       std::function<void(const MoonrakerError&)> on_predispatch_error = nullptr);
@@ -559,7 +559,7 @@ class AmsSubscriptionBackend : public AmsBackend {
     ///        unwinds state — see include/rpc_error_policy.h.
     AmsError dispatch_payload(std::string gcode, std::function<void()> on_complete,
                               std::function<void(const MoonrakerError&)> on_error = nullptr,
-                              uint32_t timeout_ms = IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS,
+                              uint32_t timeout_ms = IMoonrakerAPI::kAmsOperationTimeoutMs,
                               bool silent = true,
                               std::optional<bool> caller_surfaces_errors = std::nullopt);
 

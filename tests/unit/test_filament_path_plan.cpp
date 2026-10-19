@@ -59,7 +59,7 @@ void render(LVGLTestFixture& fx, lv_obj_t* w) {
 LinearHubFrame widget_frame(lv_obj_t* w) {
     const FilamentPathData* d = get_data(w);
     const BaseGeometry g = compute_base_geometry(w, d);
-    const int32_t nozzle_y = g.y_off + (int32_t)(g.height * NOZZLE_Y_RATIO);
+    const int32_t nozzle_y = g.y_off + (int32_t)(g.height * kNozzleYRatio);
     return compute_linear_hub_frame(*d, g, toolhead_top_y(nozzle_y, d->theme.extruder_scale));
 }
 
@@ -82,7 +82,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "FilamentPath: HUB hit rects match the drawn b
     const int32_t r = d->theme.sensor_radius;
     const int32_t hw = d->theme.hub_width;
     const int32_t cx = c.x1 + 200;
-    const int32_t hub_h = (int32_t)(H * HUB_HEIGHT_RATIO);
+    const int32_t hub_h = (int32_t)(H * kHubHeightRatio);
     // Fitted to the lanes' clearance: at least 3 * 22 + 2 * 8, at most the slot span + 16.
     const LinearHubFrame f = widget_frame(w);
     const int32_t hub_y = f.hub_y;
@@ -93,15 +93,15 @@ TEST_CASE_METHOD(LVGLTestFixture, "FilamentPath: HUB hit rects match the drawn b
     CHECK(area_eq(d->hits.hub,
                   {cx - hub_w / 2, hub_y - hub_h / 2, cx + hub_w / 2, hub_y + hub_h / 2}));
 
-    const int32_t buf_y = c.y1 + (int32_t)(H * BUFFER_Y_RATIO);
+    const int32_t buf_y = c.y1 + (int32_t)(H * kBufferYRatio);
     const int32_t buf_w = LV_MAX(36, hw * 4 / 5);
     const int32_t buf_h = LV_MAX(16, hub_h);
     REQUIRE(d->hits.buffer_valid);
     CHECK(area_eq(d->hits.buffer,
                   {cx - buf_w / 2, buf_y - buf_h / 2, cx + buf_w / 2, buf_y + buf_h / 2}));
 
-    const int32_t bx = c.x1 + (int32_t)(W * BYPASS_X_RATIO);
-    const int32_t my = c.y1 + (int32_t)(H * BYPASS_MERGE_Y_RATIO);
+    const int32_t bx = c.x1 + (int32_t)(W * kBypassXRatio);
+    const int32_t my = c.y1 + (int32_t)(H * kBypassMergeYRatio);
     REQUIRE(d->hits.bypass_valid);
     CHECK(area_eq(d->hits.bypass, {bx - r * 3, my - r * 4, bx + r * 3, my + r * 4}));
     CHECK(d->hits.origin.x == c.x1);
@@ -118,8 +118,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "FilamentPath: LINEAR selector hit rect spans 
     lv_obj_get_coords(w, &c);
     const int32_t r = d->theme.sensor_radius;
     const int32_t cx = c.x1 + 200;
-    const int32_t hub_h = (int32_t)(H * HUB_HEIGHT_RATIO);
-    const int32_t sel_y = c.y1 + (int32_t)(H * PREP_Y_RATIO) + r + hub_h / 2;
+    const int32_t hub_h = (int32_t)(H * kHubHeightRatio);
+    const int32_t sel_y = c.y1 + (int32_t)(H * kPrepYRatio) + r + hub_h / 2;
     const int32_t sel_w = 300 + LV_MAX(100, r * 4);
 
     REQUIRE(d->hits.hub_valid);
@@ -135,11 +135,11 @@ namespace {
 
 namespace pg = helix::ui::pathgeo;
 
-constexpr uint32_t SLOT_COLORS[4] = {0xE53935, 0x1E88E5, 0x43A047, 0xFDD835};
-constexpr uint32_t BYPASS_COLOR = 0x8E24AA;
-const lv_color_t BG = lv_color_hex(0x101010);
+constexpr uint32_t kSlotColors[4] = {0xE53935, 0x1E88E5, 0x43A047, 0xFDD835};
+constexpr uint32_t kBypassColor = 0x8E24AA;
+const lv_color_t kBg = lv_color_hex(0x101010);
 // The default toolhead glyph's top for nozzle 328 at extruder scale 10.
-constexpr int32_t GLYPH_TOP = 297;
+constexpr int32_t kGlyphTop = 297;
 
 std::unique_ptr<FilamentPathData> make_data(helix::PathTopology topo) {
     auto d = std::make_unique<FilamentPathData>();
@@ -152,7 +152,7 @@ std::unique_ptr<FilamentPathData> make_data(helix::PathTopology topo) {
     d->theme.extruder_scale = 10;
     d->theme.color_idle = lv_color_hex(0x606060);
     d->theme.color_error = lv_color_hex(0xFF0000);
-    d->theme.color_bg = BG;
+    d->theme.color_bg = kBg;
     d->theme.color_accent = lv_color_hex(0x2196F3);
     // PARALLEL lanes start as a tool changer's: no sensor before the toolhead.
     for (int i = 0; i < 4 && topo != helix::PathTopology::PARALLEL; i++) {
@@ -162,7 +162,7 @@ std::unique_ptr<FilamentPathData> make_data(helix::PathTopology topo) {
     d->has_hub_sensor = true;
     d->show_bypass = true;
     d->has_toolhead_sensor = true;
-    d->bypass_color = BYPASS_COLOR;
+    d->bypass_color = kBypassColor;
     return d;
 }
 
@@ -179,7 +179,7 @@ std::unique_ptr<FilamentPathData> make_u1_data() {
 void load_active(FilamentPathData& d, int slot, helix::PathSegment seg) {
     d.active_slot = slot;
     d.filament_segment = static_cast<int>(seg);
-    d.filament_color = SLOT_COLORS[slot];
+    d.filament_color = kSlotColors[slot];
 }
 
 BaseGeometry geometry() {
@@ -196,17 +196,17 @@ BaseGeometry geometry() {
 // Where a HUB lane's load sensor band sits: midway down its straight run from
 // the prep row (y 40) to its fan's first bend.
 float load_band_y(const FilamentPathData& d, int slot) {
-    return (40.0f + compute_linear_hub_frame(d, geometry(), GLYPH_TOP).hub_fan[slot].pts[1].y) / 2;
+    return (40.0f + compute_linear_hub_frame(d, geometry(), kGlyphTop).hub_fan[slot].pts[1].y) / 2;
 }
 
 float hub_entry_x(const FilamentPathData& d, int slot) {
-    return compute_linear_hub_frame(d, geometry(), GLYPH_TOP).hub_fan[slot].pts[3].x;
+    return compute_linear_hub_frame(d, geometry(), kGlyphTop).hub_fan[slot].pts[3].x;
 }
 
 PathPlan& plan_for(const FilamentPathData& d) {
     static PathPlan plan;
     const BaseGeometry g = geometry();
-    plan_linear_hub(compute_linear_hub_frame(d, g, GLYPH_TOP), d, g, plan);
+    plan_linear_hub(compute_linear_hub_frame(d, g, kGlyphTop), d, g, plan);
     return plan;
 }
 
@@ -229,7 +229,7 @@ SpanStyle style_a() {
     return {TubeWall::Active, lv_color_hex(0x112233), true, true};
 }
 SpanStyle style_b() {
-    return {TubeWall::Plain, BG, false, true};
+    return {TubeWall::Plain, kBg, false, true};
 }
 
 Route route_of(std::initializer_list<SpanStyle> styles) {
@@ -251,7 +251,7 @@ using helix::PathSegment;
 TEST_CASE("FilamentPath plan: the frame fixture lays out as the plan states",
           "[filament-path][plan]") {
     auto d = make_data(helix::PathTopology::HUB);
-    const LinearHubFrame f = compute_linear_hub_frame(*d, geometry(), GLYPH_TOP);
+    const LinearHubFrame f = compute_linear_hub_frame(*d, geometry(), kGlyphTop);
     CHECK(f.entry_y == -48);
     CHECK(f.prep_y == 40);
     CHECK(f.hub_y == 120);
@@ -288,9 +288,9 @@ TEST_CASE("FilamentPath plan: coalesce joins equal painted runs", "[filament-pat
 }
 
 TEST_CASE("FilamentPath plan: span_style", "[filament-path][plan]") {
-    const lv_color_t fil = lv_color_hex(SLOT_COLORS[1]);
+    const lv_color_t fil = lv_color_hex(kSlotColors[1]);
     auto ss = [&](PathSegment span, PathSegment reached, bool on, PathSegment err) {
-        return span_style(span, reached, on, err, fil, BG);
+        return span_style(span, reached, on, err, fil, kBg);
     };
 
     SpanStyle s = ss(PathSegment::LANE, PathSegment::HUB, true, PathSegment::NONE);
@@ -301,7 +301,7 @@ TEST_CASE("FilamentPath plan: span_style", "[filament-path][plan]") {
     s = ss(PathSegment::OUTPUT, PathSegment::HUB, true, PathSegment::NONE);
     CHECK(s.wall == TubeWall::Plain);
     CHECK_FALSE(s.filled);
-    CHECK(lv_color_eq(s.bore, BG));
+    CHECK(lv_color_eq(s.bore, kBg));
 
     s = ss(PathSegment::LANE, PathSegment::LANE, false, PathSegment::NONE);
     CHECK(s.wall == TubeWall::Plain);
@@ -336,7 +336,7 @@ TEST_CASE("FilamentPath plan: band_state", "[filament-path][plan]") {
 
 TEST_CASE("FilamentPath plan: band_segment crosses the tube", "[filament-path][plan]") {
     pg::PathPoint p0, p1;
-    SensorBand b{{200, 140}, {0, 1}, BandState::Empty, BG};
+    SensorBand b{{200, 140}, {0, 1}, BandState::Empty, kBg};
     band_segment(b, 5, p0, p1);
     CHECK(((near(p0, 194.5f, 140) && near(p1, 205.5f, 140)) ||
            (near(p1, 194.5f, 140) && near(p0, 205.5f, 140))));
@@ -455,12 +455,12 @@ TEST_CASE("FilamentPath plan: an active bypass owns the trunk below the merge",
     REQUIRE(plan.bypass_route >= 0);
     const Route& b = plan.routes[plan.bypass_route];
     REQUIRE(b.path.count > 0);
-    CHECK(near(seg_start(b.path.segs[0]), 400 * (BYPASS_X_RATIO - 0.05f), 232, 1.0f));
+    CHECK(near(seg_start(b.path.segs[0]), 400 * (kBypassXRatio - 0.05f), 232, 1.0f));
     CHECK(near(seg_end(b.path.segs[b.path.count - 1]), 200, 308));
     CHECK(contiguous(b.path));
     for (int i = 0; i < b.path.count; i++) {
         CHECK(b.style[i].wall == TubeWall::Active);
-        CHECK(lv_color_eq(b.style[i].bore, lv_color_hex(BYPASS_COLOR)));
+        CHECK(lv_color_eq(b.style[i].bore, lv_color_hex(kBypassColor)));
     }
 }
 
@@ -468,7 +468,7 @@ TEST_CASE("FilamentPath plan: a staged lane stays visible in its own color",
           "[filament-path][plan]") {
     auto d = make_data(helix::PathTopology::HUB);
     load_active(*d, 1, PathSegment::NOZZLE);
-    d->slot_filament_states[3] = {PathSegment::LANE, SLOT_COLORS[3]};
+    d->slot_filament_states[3] = {PathSegment::LANE, kSlotColors[3]};
     const PathPlan& plan = plan_for(*d);
 
     const Route& r = plan.routes[3];
@@ -483,7 +483,7 @@ TEST_CASE("FilamentPath plan: a staged lane stays visible in its own color",
     const SensorBand* prep = band_at(plan, 350, 40);
     REQUIRE(prep != nullptr);
     CHECK(prep->state == BandState::Loaded);
-    CHECK(lv_color_eq(prep->fill, lv_color_hex(SLOT_COLORS[3])));
+    CHECK(lv_color_eq(prep->fill, lv_color_hex(kSlotColors[3])));
     // The load sensor reads it; no sensor sits at the hub entry.
     const SensorBand* load = band_at(plan, 350, load_band_y(*d, 3));
     REQUIRE(load != nullptr);
@@ -641,9 +641,9 @@ TEST_CASE_METHOD(LVGLTestFixture, "FilamentPath: the animation replays one unbro
     REQUIRE(p.count > 0);
     CHECK(contiguous(p));
     // From slot 1's spool entry to the nozzle glyph's inlet.
-    const int32_t nozzle_y = c.y1 + (int32_t)(H * NOZZLE_Y_RATIO);
+    const int32_t nozzle_y = c.y1 + (int32_t)(H * kNozzleYRatio);
     CHECK(near(seg_start(p.segs[0]), (float)(c.x1 + 150),
-               (float)(c.y1 + (int32_t)(H * ENTRY_Y_RATIO))));
+               (float)(c.y1 + (int32_t)(H * kEntryYRatio))));
     CHECK(near(seg_end(p.segs[p.count - 1]), (float)(c.x1 + 200),
                (float)(nozzle_y - d->theme.extruder_scale * 2)));
 }
@@ -666,7 +666,7 @@ TEST_CASE("FilamentPath plan: sixteen HUB lanes fit the segment and band budgets
         g.slot_x[i] = 25 + 50 * i;
     g.center_x = 400;
     static PathPlan plan;
-    plan_linear_hub(compute_linear_hub_frame(*d, g, GLYPH_TOP), *d, g, plan);
+    plan_linear_hub(compute_linear_hub_frame(*d, g, kGlyphTop), *d, g, plan);
 
     CHECK(plan.dropped == 0);
     for (int i = 0; i < plan.route_count; i++)
@@ -683,8 +683,8 @@ TEST_CASE("FilamentPath plan: route_append reports what it drops", "[filament-pa
         piece.add_line(0, (float)i, 0, (float)i + 1);
     CHECK(route_append(r, piece, style_a()));
     CHECK_FALSE(route_append(r, piece, style_a()));
-    CHECK(r.path.count == pg::FilamentPath::MAX_SEGS);
-    CHECK(r.dropped == 20 - pg::FilamentPath::MAX_SEGS);
+    CHECK(r.path.count == pg::FilamentPath::kMaxSegs);
+    CHECK(r.dropped == 20 - pg::FilamentPath::kMaxSegs);
 }
 
 TEST_CASE("FilamentPath plan: a toolhead error under an active bypass marks the bypass route",
@@ -777,9 +777,9 @@ TEST_CASE_METHOD(LVGLTestFixture, "FilamentPath: on-toolhead records the selecto
     lv_obj_get_coords(w, &c);
     const int32_t r = d->theme.sensor_radius;
     const int32_t cx = c.x1 + 200;
-    const int32_t hub_h = (int32_t)(H * HUB_HEIGHT_RATIO);
+    const int32_t hub_h = (int32_t)(H * kHubHeightRatio);
     const int32_t sel_y =
-        c.y1 + (int32_t)(H * PREP_Y_RATIO) + (int32_t)(H * (HUB_HEIGHT_RATIO / 2 + 0.02f));
+        c.y1 + (int32_t)(H * kPrepYRatio) + (int32_t)(H * (kHubHeightRatio / 2 + 0.02f));
     const int32_t sel_w = 300 + LV_MAX(100, r * 4);
 
     REQUIRE(d->hits.hub_valid);
@@ -843,7 +843,7 @@ TEST_CASE("FilamentPath plan: a lane's own error shows off the active route",
           "[filament-path][plan][lane_error]") {
     auto d = make_data(helix::PathTopology::HUB);
     load_active(*d, 1, PathSegment::NOZZLE);
-    d->slot_filament_states[3] = {PathSegment::LANE, SLOT_COLORS[3]};
+    d->slot_filament_states[3] = {PathSegment::LANE, kSlotColors[3]};
     d->slot_has_error[3] = true;
     d->slot_has_error[2] = true; // no filament in it
     const PathPlan& plan = plan_for(*d);
@@ -897,16 +897,16 @@ TEST_CASE_METHOD(XMLTestFixture, "FilamentPath: a lane of unknown color still re
     // in both themes.
     auto d = make_data(helix::PathTopology::HUB);
     load_active(*d, 1, PathSegment::NOZZLE);
-    d->slot_filament_states[3] = {PathSegment::LANE, helix::AMS_DEFAULT_SLOT_COLOR};
+    d->slot_filament_states[3] = {PathSegment::LANE, helix::kAmsDefaultSlotColor};
     const PathPlan& plan = plan_for(*d);
     CHECK(plan.routes[3].style[0].filled);
-    CHECK_FALSE(lv_color_eq(plan.routes[3].style[0].bore, BG));
+    CHECK_FALSE(lv_color_eq(plan.routes[3].style[0].bore, kBg));
     CHECK_FALSE(plan.routes[2].style[0].filled);
     const SensorBand* load = band_at(plan, 350, load_band_y(*d, 3));
     REQUIRE(load != nullptr);
     CHECK(load->state == BandState::Loaded);
 
-    const lv_color_t gray = lv_color_hex(helix::AMS_DEFAULT_SLOT_COLOR);
+    const lv_color_t gray = lv_color_hex(helix::kAmsDefaultSlotColor);
     for (const char* wall : {"filament_idle_dark", "filament_idle_light"}) {
         CAPTURE(wall);
         const lv_color_t w = theme_manager_get_color(wall);
@@ -970,17 +970,17 @@ TEST_CASE("FilamentPath plan: a buffer fault tints the buffer box, not the hub",
     d->buffer_present = true;
     d->buffer_fault_state = 2;
     load_active(*d, 1, PathSegment::NOZZLE);
-    const LinearHubFrame f = compute_linear_hub_frame(*d, geometry(), GLYPH_TOP);
+    const LinearHubFrame f = compute_linear_hub_frame(*d, geometry(), kGlyphTop);
 
     const BoxColors hub = resolve_hub_tint(*d, f, true);
     CHECK(lv_color_eq(hub.border, d->theme.color_hub_border));
-    CHECK(lv_color_eq(hub.bg, ph_blend(f.hub_bg, lv_color_hex(SLOT_COLORS[1]), 0.33f)));
-    const BoxColors buffer = buffer_box_colors(*d, true, lv_color_hex(SLOT_COLORS[1]));
+    CHECK(lv_color_eq(hub.bg, ph_blend(f.hub_bg, lv_color_hex(kSlotColors[1]), 0.33f)));
+    const BoxColors buffer = buffer_box_colors(*d, true, lv_color_hex(kSlotColors[1]));
     CHECK(lv_color_eq(buffer.border, d->theme.color_buffer[2]));
 
     // An error at the hub is the hub's.
     d->error_segment = static_cast<int>(PathSegment::HUB);
-    const LinearHubFrame fe = compute_linear_hub_frame(*d, geometry(), GLYPH_TOP);
+    const LinearHubFrame fe = compute_linear_hub_frame(*d, geometry(), kGlyphTop);
     CHECK(lv_color_eq(resolve_hub_tint(*d, fe, true).border, fe.error_color));
 }
 
@@ -990,7 +990,7 @@ TEST_CASE("FilamentPath plan: the lanes enter at the spool box's front edge",
     load_active(*d, 1, PathSegment::NOZZLE);
     BaseGeometry g = geometry();
     g.lane_entry_y = -20; // the box front, above the canvas top
-    const LinearHubFrame f = compute_linear_hub_frame(*d, g, GLYPH_TOP);
+    const LinearHubFrame f = compute_linear_hub_frame(*d, g, kGlyphTop);
     REQUIRE(f.prep_on_box_edge);
     static PathPlan plan;
     plan_linear_hub(f, *d, g, plan);
@@ -1078,7 +1078,7 @@ TEST_CASE("FilamentPath plan: PARALLEL tubes hang from below their spools",
     const int32_t entry_y = -20 + (d->theme.tube_gauge + 1) / 2;
     const ParallelRows rows = parallel_rows(*d, g);
     CHECK(rows.entry_y == entry_y);
-    CHECK(rows.sensor_y == entry_y + (int32_t)((280 - entry_y) * PARALLEL_SENSOR_FRACTION));
+    CHECK(rows.sensor_y == entry_y + (int32_t)((280 - entry_y) * kParallelSensorFraction));
     REQUIRE(plan.route_count == 4);
     for (int i = 0; i < 4; i++) {
         CAPTURE(i);
@@ -1098,8 +1098,8 @@ TEST_CASE("FilamentPath plan: a PARALLEL entry sensor clamps the tube below its 
     auto d = make_u1_data();
     d->slot_has_prep_sensor[3] = false;
     load_active(*d, 0, PathSegment::NOZZLE);                          // mounted, reading
-    d->slot_filament_states[1] = {PathSegment::PREP, SLOT_COLORS[1]}; // at the feeder only
-    d->slot_filament_states[3] = {PathSegment::PREP, SLOT_COLORS[3]}; // no sensor published
+    d->slot_filament_states[1] = {PathSegment::PREP, kSlotColors[1]}; // at the feeder only
+    d->slot_filament_states[3] = {PathSegment::PREP, kSlotColors[3]}; // no sensor published
     BaseGeometry g = geometry();
     g.lane_entry_y = -20;
     static PathPlan plan;
@@ -1115,7 +1115,7 @@ TEST_CASE("FilamentPath plan: a PARALLEL entry sensor clamps the tube below its 
     const SensorBand* feeder = band_at(plan, 150, (float)rows.prep_y);
     REQUIRE(feeder != nullptr);
     CHECK(feeder->state == BandState::Loaded);
-    CHECK(lv_color_eq(feeder->fill, lv_color_hex(SLOT_COLORS[1])));
+    CHECK(lv_color_eq(feeder->fill, lv_color_hex(kSlotColors[1])));
     const SensorBand* clear = band_at(plan, 250, (float)rows.prep_y);
     REQUIRE(clear != nullptr);
     CHECK(clear->state == BandState::Empty);
@@ -1175,9 +1175,9 @@ TEST_CASE("FilamentPath plan: a short PARALLEL run keeps its two bands apart",
     const int32_t gauge = d->theme.tube_gauge;
     CAPTURE(rows.entry_y, rows.prep_y, rows.sensor_y);
     // Short enough that three gauges below the cap would crowd the sensor.
-    REQUIRE(rows.sensor_y - rows.entry_y < 3 * gauge + 2 * gauge + BAND_THICKNESS);
-    REQUIRE(rows.sensor_y - rows.entry_y >= 2 * gauge + BAND_THICKNESS);
-    CHECK(rows.sensor_y - rows.prep_y >= 2 * gauge + BAND_THICKNESS);
+    REQUIRE(rows.sensor_y - rows.entry_y < 3 * gauge + 2 * gauge + kBandThickness);
+    REQUIRE(rows.sensor_y - rows.entry_y >= 2 * gauge + kBandThickness);
+    CHECK(rows.sensor_y - rows.prep_y >= 2 * gauge + kBandThickness);
     CHECK(rows.prep_y >= rows.entry_y);
 }
 
@@ -1197,7 +1197,7 @@ TEST_CASE("FilamentPath plan: the mounted PARALLEL tool is one active stroke",
           "[filament-path][plan][parallel]") {
     auto d = make_data(helix::PathTopology::PARALLEL);
     load_active(*d, 2, PathSegment::NOZZLE);
-    d->slot_filament_states[0] = {PathSegment::TOOLHEAD, SLOT_COLORS[0]};
+    d->slot_filament_states[0] = {PathSegment::TOOLHEAD, kSlotColors[0]};
     const PathPlan& plan = parallel_plan(*d);
     const float sensor_y = 198;
 
@@ -1214,7 +1214,7 @@ TEST_CASE("FilamentPath plan: the mounted PARALLEL tool is one active stroke",
     const SensorBand* docked = band_at(plan, 50, sensor_y);
     REQUIRE(docked != nullptr);
     CHECK(docked->state == BandState::Loaded);
-    CHECK(lv_color_eq(docked->fill, lv_color_hex(SLOT_COLORS[0])));
+    CHECK(lv_color_eq(docked->fill, lv_color_hex(kSlotColors[0])));
 }
 
 namespace {
@@ -1268,7 +1268,7 @@ TEST_CASE("FilamentPath plan: filament waiting at the active spool still fills i
     SECTION("PARALLEL") {
         auto d = make_data(helix::PathTopology::PARALLEL);
         load_active(*d, 0, PathSegment::SPOOL);
-        d->slot_filament_states[0] = {PathSegment::SPOOL, SLOT_COLORS[0]};
+        d->slot_filament_states[0] = {PathSegment::SPOOL, kSlotColors[0]};
         const Route& r = parallel_plan(*d).routes[0];
         CHECK(r.style[0].filled);
         CHECK(r.style[0].wall == TubeWall::Active);
@@ -1277,7 +1277,7 @@ TEST_CASE("FilamentPath plan: filament waiting at the active spool still fills i
     SECTION("HUB") {
         auto d = make_data(helix::PathTopology::HUB);
         load_active(*d, 1, PathSegment::SPOOL);
-        d->slot_filament_states[1] = {PathSegment::SPOOL, SLOT_COLORS[1]};
+        d->slot_filament_states[1] = {PathSegment::SPOOL, kSlotColors[1]};
         const Route& r = plan_for(*d).routes[1];
         CHECK(r.style[0].filled);
         CHECK(r.style[0].wall == TubeWall::Active);
@@ -1322,24 +1322,24 @@ TEST_CASE("FilamentPath plan: the MIXED trunk fills from the first hub lane at t
     d->slot_is_hub_routed[3] = true;
 
     SECTION("no hub lane at the nozzle: empty") {
-        d->slot_filament_states[2] = {PathSegment::TOOLHEAD, SLOT_COLORS[2]};
+        d->slot_filament_states[2] = {PathSegment::TOOLHEAD, kSlotColors[2]};
         const PathPlan& plan = mixed_plan(*d);
         CHECK_FALSE(plan.routes[plan.trunk_route].style[0].filled);
     }
     SECTION("the lane at the nozzle colors it, not an earlier staged lane") {
-        d->slot_filament_states[2] = {PathSegment::TOOLHEAD, SLOT_COLORS[2]};
-        d->slot_filament_states[3] = {PathSegment::NOZZLE, SLOT_COLORS[3]};
+        d->slot_filament_states[2] = {PathSegment::TOOLHEAD, kSlotColors[2]};
+        d->slot_filament_states[3] = {PathSegment::NOZZLE, kSlotColors[3]};
         const PathPlan& plan = mixed_plan(*d);
         const SpanStyle t = plan.routes[plan.trunk_route].style[0];
         CHECK(t.filled);
-        CHECK(lv_color_eq(t.bore, lv_color_hex(SLOT_COLORS[3])));
+        CHECK(lv_color_eq(t.bore, lv_color_hex(kSlotColors[3])));
     }
     SECTION("two lanes at the nozzle: the first wins") {
-        d->slot_filament_states[2] = {PathSegment::NOZZLE, SLOT_COLORS[2]};
-        d->slot_filament_states[3] = {PathSegment::NOZZLE, SLOT_COLORS[3]};
+        d->slot_filament_states[2] = {PathSegment::NOZZLE, kSlotColors[2]};
+        d->slot_filament_states[3] = {PathSegment::NOZZLE, kSlotColors[3]};
         const PathPlan& plan = mixed_plan(*d);
         CHECK(
-            lv_color_eq(plan.routes[plan.trunk_route].style[0].bore, lv_color_hex(SLOT_COLORS[2])));
+            lv_color_eq(plan.routes[plan.trunk_route].style[0].bore, lv_color_hex(kSlotColors[2])));
     }
 }
 
@@ -1348,7 +1348,7 @@ TEST_CASE("FilamentPath plan: a MIXED direct lane short of the nozzle fills to i
     auto d = make_data(helix::PathTopology::MIXED);
     d->slot_is_hub_routed[2] = true;
     d->slot_is_hub_routed[3] = true;
-    d->slot_filament_states[0] = {PathSegment::TOOLHEAD, SLOT_COLORS[0]};
+    d->slot_filament_states[0] = {PathSegment::TOOLHEAD, kSlotColors[0]};
     const PathPlan& plan = mixed_plan(*d);
 
     const Route& r = plan.routes[0];
@@ -1423,7 +1423,7 @@ TEST_CASE("FilamentPath plan: the fitted hub stays on the canvas and catches eve
     for (int i = 0; i < count; i++)
         g.slot_x[i] = (int32_t)(canvas.w * (i + 0.5f) / count);
     g.center_x = (g.slot_x[0] + g.slot_x[count - 1]) / 2;
-    const int32_t nozzle_y = (int32_t)(canvas.h * NOZZLE_Y_RATIO);
+    const int32_t nozzle_y = (int32_t)(canvas.h * kNozzleYRatio);
     const LinearHubFrame f = compute_linear_hub_frame(*d, g, nozzle_y - 31);
     static PathPlan plan;
     plan_linear_hub(f, *d, g, plan);
@@ -1455,7 +1455,7 @@ TEST_CASE("FilamentPath plan: a 4-lane micro hub with the bypass hidden keeps it
     for (int i = 0; i < 4; i++)
         g.slot_x[i] = (int32_t)(285 * (i + 0.5f) / 4);
     g.center_x = (g.slot_x[0] + g.slot_x[3]) / 2;
-    const int32_t nozzle_y = (int32_t)(138 * NOZZLE_Y_RATIO);
+    const int32_t nozzle_y = (int32_t)(138 * kNozzleYRatio);
     const LinearHubFrame f = compute_linear_hub_frame(*d, g, nozzle_y - 31);
     static PathPlan plan;
     plan_linear_hub(f, *d, g, plan);
@@ -1496,7 +1496,7 @@ LinearHubFrame frame_with_offpage(FilamentPathData& d, int before, bool before_d
     d.offpage_before_drying = before_drying;
     d.offpage_after = after;
     d.offpage_after_drying = after_drying;
-    return compute_linear_hub_frame(d, g, GLYPH_TOP);
+    return compute_linear_hub_frame(d, g, kGlyphTop);
 }
 
 // dy/dx of a polyline leg, with x taken as a positive run.
@@ -1741,9 +1741,9 @@ TEST_CASE("FilamentPath offpage: a fixed hub is sized for its widest unit",
     g.slot_x[0] = 200;
     g.center_x = 200;
 
-    const LinearHubFrame natural = compute_linear_hub_frame(*narrow, g, GLYPH_TOP);
+    const LinearHubFrame natural = compute_linear_hub_frame(*narrow, g, kGlyphTop);
     narrow->fixed_hub_lanes = 4;
-    const LinearHubFrame fixed = compute_linear_hub_frame(*narrow, g, GLYPH_TOP);
+    const LinearHubFrame fixed = compute_linear_hub_frame(*narrow, g, kGlyphTop);
     CHECK(fixed.hub_box_w > natural.hub_box_w);
     // Four lanes at the target entry spacing, plus the margins.
     CHECK(fixed.hub_box_w >= 3 * 22 + 2 * 8);
@@ -1753,8 +1753,8 @@ TEST_CASE("FilamentPath offpage: a fixed hub is sized for its widest unit",
     wide->fixed_hub_lanes = 4;
     narrow->offpage_before = 1;
     wide->offpage_before = 1;
-    const LinearHubFrame narrow_stub = compute_linear_hub_frame(*narrow, g, GLYPH_TOP);
-    const LinearHubFrame wide_stub = compute_linear_hub_frame(*wide, geometry(), GLYPH_TOP);
+    const LinearHubFrame narrow_stub = compute_linear_hub_frame(*narrow, g, kGlyphTop);
+    const LinearHubFrame wide_stub = compute_linear_hub_frame(*wide, geometry(), kGlyphTop);
     REQUIRE(narrow_stub.stubs[0].present);
     REQUIRE(wide_stub.stubs[0].present);
     CHECK(narrow_stub.hub_box_w >= 3 * 22 + 2 * 8 + 2 * 22);

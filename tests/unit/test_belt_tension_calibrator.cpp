@@ -579,7 +579,7 @@ TEST_CASE_METHOD(BeltCalibratorFixture, "settle sends the laps with the plan's t
     inputs.max_velocity_mm_s = 10.0f;
     const auto plan = plan_belt_settle(inputs);
     REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
-    REQUIRE(plan.timeout_ms > belt_settle::MIN_TIMEOUT_MS);
+    REQUIRE(plan.timeout_ms > belt_settle::kMinTimeoutMs);
 
     std::atomic<bool> done{false};
     calibrator_->settle(

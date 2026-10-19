@@ -114,3 +114,14 @@ TEST_CASE("AppMotionActivity: follow-up sends keep an episode the app started",
     a.note_done(t0 + std::chrono::seconds(4));
     CHECK(a.owns_busy_episode(episode, t0 + std::chrono::seconds(8)));
 }
+
+TEST_CASE("AppMotionActivity: a jog into an external episode before it settles does not adopt it",
+          "[motion][busy_guard][1108]") {
+    // A bed mesh started elsewhere is observed at t0. A jog half a second later
+    // passes the not-yet-settled guard, but it did not start the episode.
+    AppMotionActivity a;
+    const auto t0 = clock_t_::now();
+    a.note_sent(t0 + std::chrono::milliseconds(500));
+    a.note_done(t0 + std::chrono::milliseconds(520));
+    CHECK_FALSE(a.owns_busy_episode(t0, t0 + std::chrono::seconds(3)));
+}

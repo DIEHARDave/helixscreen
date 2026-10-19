@@ -250,7 +250,7 @@ void AbortManager::try_heater_interrupt() {
     commands_sent_++;
 
     // Start timeout timer (one-shot; guard auto-deletes on reassignment or destruction)
-    auto* t = lv_timer_create(heater_interrupt_timer_cb, HEATER_INTERRUPT_TIMEOUT_MS, this);
+    auto* t = lv_timer_create(heater_interrupt_timer_cb, kHeaterInterruptTimeoutMs, this);
     lv_timer_set_repeat_count(t, 1);
     heater_interrupt_timer_.reset(t);
 
@@ -280,7 +280,7 @@ void AbortManager::start_probe() {
     commands_sent_++;
 
     // Start timeout timer (one-shot)
-    auto* t = lv_timer_create(probe_timer_cb, PROBE_TIMEOUT_MS, this);
+    auto* t = lv_timer_create(probe_timer_cb, kProbeTimeoutMs, this);
     lv_timer_set_repeat_count(t, 1);
     probe_timer_.reset(t);
 
@@ -330,9 +330,9 @@ void AbortManager::send_cancel_print() {
         spdlog::info("[AbortManager] Cancel escalation enabled, timeout: {}ms", timeout_ms);
     } else {
         // Escalation disabled — still create a nudge timer so user gets feedback
-        timeout_ms = CANCEL_NUDGE_MS;
+        timeout_ms = kCancelNudgeMs;
         spdlog::info("[AbortManager] Cancel escalation disabled, nudge timer at {}ms",
-                     CANCEL_NUDGE_MS);
+                     kCancelNudgeMs);
     }
     auto* ct = lv_timer_create(cancel_timer_cb, timeout_ms, this);
     lv_timer_set_repeat_count(ct, 1);
@@ -435,7 +435,7 @@ void AbortManager::wait_for_reconnect() {
     set_progress_message("Restarting...");
 
     // Start reconnect timeout timer (one-shot)
-    auto* rt = lv_timer_create(reconnect_timer_cb, RECONNECT_TIMEOUT_MS, this);
+    auto* rt = lv_timer_create(reconnect_timer_cb, kReconnectTimeoutMs, this);
     lv_timer_set_repeat_count(rt, 1);
     reconnect_timer_.reset(rt);
 
@@ -846,7 +846,7 @@ void AbortManager::cancel_timer_cb(lv_timer_t* timer) {
 static_assert(AbortManager::RESTART_TIMEOUT_MS >
                   RecoveryTiming{}.chain_deadline_ms + RecoveryTiming{}.script_timeout_ms +
                       RecoveryTiming{}.poll_interval_ms +
-                      MoonrakerRequestTracker::DEFAULT_REQUEST_TIMEOUT_MS,
+                      MoonrakerRequestTracker::kDefaultRequestTimeoutMs,
               "the restart backstop must outlast the recovery chain's worst case");
 
 void AbortManager::restart_timer_cb(lv_timer_t* timer) {

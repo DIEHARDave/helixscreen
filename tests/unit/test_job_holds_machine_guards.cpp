@@ -155,7 +155,7 @@ class SensorEdgeToastFixture : public LVGLTestFixture {
         mgr.update_from_status(json{{"filament_switch_sensor toolhead_sensor",
                                      {{"filament_detected", false}, {"enabled", true}}}});
         helix::ui::UpdateQueue::instance().drain();
-        PostUnloadGraceTestAccess::age_removal_dwell(mgr, helix::RUNOUT_TOAST_DWELL +
+        PostUnloadGraceTestAccess::age_removal_dwell(mgr, helix::kRunoutToastDwell +
                                                               std::chrono::seconds(1));
         mgr.update_from_status(json::object());
         helix::ui::UpdateQueue::instance().drain();

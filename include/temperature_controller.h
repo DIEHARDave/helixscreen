@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
-#include "ui_heater_config.h" // helix::HeaterType, HEATER_TYPE_COUNT
+#include "ui_heater_config.h" // helix::HeaterType, kHeaterTypeCount
 #include "ui_observer_guard.h"
 
 #include "async_lifetime_guard.h"
@@ -38,7 +38,7 @@ class IMoonrakerAPI;
  *  - Nozzle / Bed: derived from the filament database entry for that slot's
  *    material (user MaterialSettingsManager overrides already folded in).
  *  - Chamber: a documented, slot-indexed enclosure ladder that is deliberately
- *    NOT material-derived — see CHAMBER_PRESET_LADDER_C in the .cpp for why.
+ *    NOT material-derived — see kChamberPresetLadderC in the .cpp for why.
  *
  * Free function so callers without a controller instance (TemperatureService
  * construction) share one derivation instead of duplicating the lookups.
@@ -234,7 +234,7 @@ class TemperatureController {
         int configured_max = 0;          // °C from configfile, 0 = unknown
         HeaterPresets presets{};
     };
-    std::array<HeaterModel, HEATER_TYPE_COUNT> model_{};
+    std::array<HeaterModel, kHeaterTypeCount> model_{};
     AsyncLifetimeGuard lifetime_;
 
     static int idx(HeaterType t) {

@@ -106,7 +106,7 @@ void BackgroundGhostBuilder::worker_thread() {
         auto last_ns = last_user_request_ns_.load();
         auto last_request =
             std::chrono::steady_clock::time_point(std::chrono::steady_clock::duration(last_ns));
-        while ((now - last_request) < YIELD_DURATION && !cancelled_.load()) {
+        while ((now - last_request) < kYieldDuration && !cancelled_.load()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             now = std::chrono::steady_clock::now();
             last_ns = last_user_request_ns_.load();
@@ -151,7 +151,7 @@ const LayerIndexStats GCodeStreamingController::empty_stats_{};
 // =============================================================================
 
 GCodeStreamingController::GCodeStreamingController()
-    : cache_(GCodeLayerCache::DEFAULT_BUDGET_NORMAL) {
+    : cache_(GCodeLayerCache::kDefaultBudgetNormal) {
     // Select cache budget tier based on total system RAM
     auto mem = get_system_memory_info();
     const GCodeLayerCache::BudgetTier tier =
@@ -161,7 +161,7 @@ GCodeStreamingController::GCodeStreamingController()
 
     // Enable adaptive mode on constrained/normal devices (not desktop)
     if (!mem.is_good_device()) {
-        cache_.set_adaptive_mode(true, 15, MIN_CACHE_BUDGET, tier.budget_bytes);
+        cache_.set_adaptive_mode(true, 15, kMinCacheBudget, tier.budget_bytes);
     }
 
     spdlog::info("[StreamingController] {} device (total: {}MB, available: {}MB), "
@@ -173,7 +173,7 @@ GCodeStreamingController::GCodeStreamingController()
 }
 
 GCodeStreamingController::GCodeStreamingController(size_t cache_budget_bytes)
-    : cache_(std::max(cache_budget_bytes, MIN_CACHE_BUDGET)) {
+    : cache_(std::max(cache_budget_bytes, kMinCacheBudget)) {
     spdlog::debug("[StreamingController] Created with {:.1f}MB cache budget",
                   static_cast<double>(cache_budget_bytes) / (1024 * 1024));
     register_memory_responder();
@@ -697,13 +697,13 @@ size_t GCodeStreamingController::get_cache_budget() const {
 }
 
 void GCodeStreamingController::set_cache_budget(size_t budget_bytes) {
-    cache_.set_memory_budget(std::max(budget_bytes, MIN_CACHE_BUDGET));
+    cache_.set_memory_budget(std::max(budget_bytes, kMinCacheBudget));
 }
 
 void GCodeStreamingController::set_adaptive_cache(bool enable) {
     if (enable) {
         // Use current budget as max (respects device tier set at construction)
-        cache_.set_adaptive_mode(true, 15, MIN_CACHE_BUDGET, cache_.memory_budget_bytes());
+        cache_.set_adaptive_mode(true, 15, kMinCacheBudget, cache_.memory_budget_bytes());
     } else {
         cache_.set_adaptive_mode(false);
     }

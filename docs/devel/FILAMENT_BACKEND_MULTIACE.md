@@ -8,9 +8,9 @@ the ACE units are inventory feeding it. Tracking issue: prestonbrown/helixscreen
 > **Status: built from the source read, no hardware seen.** Written against multiACE 1.27b
 > (`multiace/VERSION`) and its engine API document (ENGINE_API.md in its docs). The fixtures in
 > `tests/fixtures/multiace/` are synthesised from its `get_status()`; a tester's capture
-> replaces them. Load/unload/select, the dryer and coded errors are wired; the path-view
-> layout, spool numbering and device actions are not yet (plan:
-> `docs/devel/plans/2026-10-17-multiace-1660.md`).
+> replaces them. Load/unload/select, the dryer, coded errors, the path view, spool numbering
+> and bay editing are wired; device actions and batch preload are not yet (see
+> [Not yet](#not-yet); plan: `docs/devel/plans/2026-10-17-multiace-1660.md`).
 
 ## Detection
 
@@ -105,7 +105,7 @@ if the frame that finally shows it empty arrives later. So does the
 engine leaving multi/head mode, or a print holding the heads by the time the head empties
 (the shared print-active rule, so a start this screen is preparing counts before the printer
 reports it);
-each of those raises EVENT_ERROR naming the bay. A failed unload, or another filament op
+each of those raises kEventError naming the bay. A failed unload, or another filament op
 that actually dispatches (a tool change and a tool park included), drops it at once; an op
 that is refused before sending changes nothing, the pending load included. A head loaded
 with no recorded

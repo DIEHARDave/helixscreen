@@ -661,7 +661,7 @@ class PrinterTemperatureState {
     /// rather than one sample above it. At the module's 2s poll this notices a
     /// real outage in about eight seconds, which costs nothing: an appliance
     /// that has actually gone is gone for minutes.
-    static constexpr int CHAMBER_OFFLINE_CONSECUTIVE_REPORTS = 4;
+    static constexpr int kChamberOfflineConsecutiveReports = 4;
     int chamber_offline_run_ = 0;
 
     SubjectLifetime chamber_heater_externally_controlled_lifetime_;

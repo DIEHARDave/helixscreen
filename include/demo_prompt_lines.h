@@ -39,4 +39,34 @@ inline std::vector<std::string> zmod_color_picker_lines() {
     return lines;
 }
 
+/**
+ * @brief AFC_CALIBRATION's unit picker on a six-unit AFC, line for line
+ *
+ * One button per unit in alternating primary/secondary, then the "All Lanes"
+ * and Cancel footer buttons, as AFC_functions.py#cmd_AFC_CALIBRATION sends
+ * them. Shared by `ctl demo action-prompt-afc-cal` and the action prompt
+ * layout tests.
+ */
+inline std::vector<std::string> afc_calibration_lines() {
+    static constexpr const char* const kUnits[] = {"Turtle_1",        "Vivid_1", "EMU_1",
+                                                   "HTLF_claymore_1", "AMS_1",   "Ace2_1"};
+    std::vector<std::string> lines = {
+        "// action:prompt_begin AFC Calibration",
+        "// action:prompt_text The following prompts will lead you through the calibration of "
+        "your AFC unit(s). First, select a unit to calibrate. *All values will be automatically "
+        "updated in the appropriate config sections.",
+    };
+    int index = 0;
+    for (const char* unit : kUnits) {
+        lines.push_back(std::string("// action:prompt_button ") + unit + "|UNIT_CALIBRATION UNIT=" +
+                        unit + "|" + (index++ % 2 == 0 ? "primary" : "secondary"));
+    }
+    lines.emplace_back(
+        "// action:prompt_footer_button All Lanes in all units|ALL_CALIBRATION|secondary");
+    lines.emplace_back(
+        "// action:prompt_footer_button Cancel|RESPOND TYPE=command MSG=action:prompt_end|warning");
+    lines.emplace_back("// action:prompt_show");
+    return lines;
+}
+
 } // namespace helix::demo

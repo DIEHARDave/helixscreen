@@ -25,6 +25,7 @@
 #include "../test_helpers/cfs_test_access.h"
 #include "../test_helpers/config_dir_guard.h"
 #include "../test_helpers/print_start_controller_test_access.h"
+#include "../ui_test_utils.h"
 #include "ams_backend_ad5x_ifs.h"
 #include "ams_backend_afc.h"
 #include "ams_backend_cfs.h"
@@ -803,4 +804,87 @@ TEST_CASE("reprint with spools latched on the bed never begins preparing",
     CHECK_FALSE(started);
     CHECK_FALSE(h.ps.print_state().has_preparing_job());
     h.ps.print_state().set_spool_latch(false);
+}
+
+namespace {
+
+/// A revision 3 Fork box with boxes 1-3 on the bus and box 2 not answering.
+nlohmann::json fork_print_map_frame() {
+    nlohmann::json slots = nlohmann::json::array();
+    for (int i = 0; i < 12; ++i) {
+        slots.push_back({{"index", i},
+                         {"external", false},
+                         {"present", i < 4 || i >= 8},
+                         {"loaded", false},
+                         {"material", "PLA"},
+                         {"color", "#F2F2F2"}});
+    }
+    nlohmann::json box = {{"api_version", 1},
+                          {"api_revision", 3},
+                          {"driver_ready", true},
+                          {"loaded_slot", -1},
+                          {"slots", slots},
+                          {"boxes",
+                           {{{"address", 1}, {"online", true}},
+                            {{"address", 2}, {"online", false}},
+                            {{"address", 3}, {"online", true}}}}};
+    return {{"params", nlohmann::json::array({nlohmann::json{{"box", box}}, 0})}};
+}
+
+} // namespace
+
+TEST_CASE("pre-print send: a remap to a box that is not answering stops the print",
+          "[print-start][print_map]") {
+    LVGLTestFixture fx;
+    AmsState::instance().init_subjects(true);
+    auto owned = std::make_unique<CapturingCfsBackend>();
+    auto* cfs = owned.get();
+    AmsState::instance().set_backend(std::move(owned));
+    CfsTestAccess::handle_status(*cfs, fork_print_map_frame());
+    REQUIRE(cfs->requires_preprint_send());
+
+    Harness h;
+    h.client.clear_gcode_script_history();
+    std::vector<std::string> errors;
+    helix::ui::set_test_notification_error_hook(
+        [&errors](const std::string& m) { errors.push_back(m); });
+
+    bool done = false;
+    bool aborted = false;
+    const auto send = [&](std::map<int, int> remap) {
+        done = aborted = false;
+        errors.clear();
+        PrintStartControllerTestAccess::send_preprint(
+            h.controller, {0, 1}, remap, [&] { done = true; }, [&] { aborted = true; });
+        helix::ui::UpdateQueue::instance().drain();
+    };
+    const auto print_map_sent = [&] {
+        for (const auto& script : h.client.gcode_script_history()) {
+            if (script.find("BOX_PRINT_MAP") != std::string::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    SECTION("a slot on the offline box") {
+        send({{0, 5}});
+        CHECK(aborted);
+        CHECK_FALSE(done);
+        CHECK_FALSE(print_map_sent());
+        REQUIRE(errors.size() == 1);
+        CHECK(errors[0].find("Disconnected") != std::string::npos);
+    }
+
+    SECTION("a slot on a box that is answering") {
+        send({{0, 9}});
+        CHECK(done);
+        CHECK_FALSE(aborted);
+        CHECK(errors.empty());
+        CHECK(print_map_sent());
+    }
+
+    helix::ui::set_test_notification_error_hook(nullptr);
+    helix::ui::UpdateQueue::instance().drain();
+    AmsState::instance().set_backend(nullptr);
 }

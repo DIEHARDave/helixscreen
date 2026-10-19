@@ -103,15 +103,15 @@ TEST_CASE("UUID v4: variant bits are correct (position 19 is 8/9/a/b)", "[teleme
 
 TEST_CASE("UUID v4: generated UUIDs are unique", "[telemetry][uuid]") {
     std::set<std::string> uuids;
-    constexpr int NUM_UUIDS = 50;
+    constexpr int kNumUuids = 50;
 
-    for (int i = 0; i < NUM_UUIDS; ++i) {
+    for (int i = 0; i < kNumUuids; ++i) {
         auto uuid = TelemetryManager::generate_uuid_v4();
         uuids.insert(uuid);
     }
 
     // All generated UUIDs must be distinct
-    REQUIRE(uuids.size() == NUM_UUIDS);
+    REQUIRE(uuids.size() == kNumUuids);
 }
 
 TEST_CASE("UUID v4: only contains valid characters", "[telemetry][uuid]") {
@@ -244,14 +244,14 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Queue: respects max capacity and drops o
     tm.set_enabled(true);
 
     // Fill the queue to max capacity
-    for (size_t i = 0; i < TelemetryManager::MAX_QUEUE_SIZE; ++i) {
+    for (size_t i = 0; i < TelemetryManager::kMaxQueueSize; ++i) {
         tm.record_session();
     }
-    REQUIRE(tm.queue_size() == TelemetryManager::MAX_QUEUE_SIZE);
+    REQUIRE(tm.queue_size() == TelemetryManager::kMaxQueueSize);
 
     // Record one more - should drop the oldest
     tm.record_print_outcome("completed", 600, 10, 1500.0f, "PLA", 210, 60);
-    REQUIRE(tm.queue_size() == TelemetryManager::MAX_QUEUE_SIZE);
+    REQUIRE(tm.queue_size() == TelemetryManager::kMaxQueueSize);
 
     // The newest event should be the print outcome, not a session event
     auto snapshot = tm.get_queue_snapshot();
@@ -748,11 +748,11 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Persistence: saved file is valid JSON",
 }
 
 // ============================================================================
-// MAX_QUEUE_SIZE constant [telemetry][queue]
+// kMaxQueueSize constant [telemetry][queue]
 // ============================================================================
 
 TEST_CASE("MAX_QUEUE_SIZE is 100", "[telemetry][queue]") {
-    REQUIRE(TelemetryManager::MAX_QUEUE_SIZE == 100);
+    REQUIRE(TelemetryManager::kMaxQueueSize == 100);
 }
 
 // ============================================================================
@@ -763,32 +763,31 @@ TEST_CASE("Drain: one send window can empty a full queue", "[telemetry][send][14
     // The periodic producers enqueue faster than a single batch per window
     // drains, so a window that cannot clear a full queue leaves it saturated
     // and enqueue_event() discards the oldest events unsent.
-    REQUIRE(TelemetryManager::MAX_BATCHES_PER_SEND * TelemetryManager::MAX_BATCH_SIZE >=
-            TelemetryManager::MAX_QUEUE_SIZE);
+    REQUIRE(TelemetryManager::kMaxBatchesPerSend * TelemetryManager::kMaxBatchSize >=
+            TelemetryManager::kMaxQueueSize);
 }
 
 TEST_CASE("Drain: the hourly producer alone outruns a single batch per window",
           "[telemetry][send][1476]") {
     // record_memory_snapshot("hourly") fires from the auto-send timer, so a
     // day enqueues one event per hour with nobody touching the device. A drain
-    // capped at one batch per SEND_INTERVAL is below that rate on its own.
+    // capped at one batch per kSendInterval is below that rate on its own.
     constexpr int hourly_events_per_send_interval =
-        static_cast<int>(TelemetryManager::SEND_INTERVAL.count());
-    REQUIRE(hourly_events_per_send_interval > static_cast<int>(TelemetryManager::MAX_BATCH_SIZE));
+        static_cast<int>(TelemetryManager::kSendInterval.count());
+    REQUIRE(hourly_events_per_send_interval > static_cast<int>(TelemetryManager::kMaxBatchSize));
 
     // The drain has to cover that rate, which is what the batch bound buys.
-    REQUIRE(static_cast<int>(TelemetryManager::MAX_BATCHES_PER_SEND *
-                             TelemetryManager::MAX_BATCH_SIZE) > hourly_events_per_send_interval);
+    REQUIRE(static_cast<int>(TelemetryManager::kMaxBatchesPerSend *
+                             TelemetryManager::kMaxBatchSize) > hourly_events_per_send_interval);
 }
 
 TEST_CASE("Queue budget: an unattended send window fits the queue", "[telemetry][send][1476]") {
     // With nobody touching the device the periodic timers are the whole
-    // producer set, and the queue is drained once per SEND_INTERVAL. A budget
-    // above MAX_QUEUE_SIZE is the number of events enqueue_event() discards
+    // producer set, and the queue is drained once per kSendInterval. A budget
+    // above kMaxQueueSize is the number of events enqueue_event() discards
     // unsent every day — on every platform, not only the K1-class ones where
     // the drop log was read.
-    REQUIRE(TelemetryManager::UNATTENDED_EVENTS_PER_SEND_WINDOW <=
-            TelemetryManager::MAX_QUEUE_SIZE);
+    REQUIRE(TelemetryManager::kUnattendedEventsPerSendWindow <= TelemetryManager::kMaxQueueSize);
 }
 
 TEST_CASE_METHOD(TelemetryTestFixture, "Queue: a day of unattended production survives to the send",
@@ -799,35 +798,35 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Queue: a day of unattended production su
     // The hourly memory snapshot is one of the producers the budget counts, so
     // enqueueing the whole budget through it reproduces a day's worth of
     // unattended enqueue pressure without waiting on the timers.
-    for (size_t i = 0; i < TelemetryManager::UNATTENDED_EVENTS_PER_SEND_WINDOW; ++i) {
+    for (size_t i = 0; i < TelemetryManager::kUnattendedEventsPerSendWindow; ++i) {
         tm.record_memory_snapshot("hourly");
     }
 
-    REQUIRE(tm.queue_size() == TelemetryManager::UNATTENDED_EVENTS_PER_SEND_WINDOW);
+    REQUIRE(tm.queue_size() == TelemetryManager::kUnattendedEventsPerSendWindow);
     REQUIRE(TelemetryManagerTestAccess::events_dropped_since_send(tm) == 0);
 }
 
 TEST_CASE_METHOD(TelemetryTestFixture, "Queue: a discarded event is counted, not silent",
                  "[telemetry][send][1476]") {
-    // A queue at MAX_QUEUE_SIZE looks the same whether it just filled or has
+    // A queue at kMaxQueueSize looks the same whether it just filled or has
     // been shedding events for hours, so the count is the only thing that can
     // tell the next batch's window is incomplete.
     auto& tm = TelemetryManager::instance();
     tm.set_enabled(true);
 
-    for (size_t i = 0; i < TelemetryManager::MAX_QUEUE_SIZE; ++i) {
+    for (size_t i = 0; i < TelemetryManager::kMaxQueueSize; ++i) {
         tm.record_session();
     }
     REQUIRE(TelemetryManagerTestAccess::events_dropped_since_send(tm) == 0);
 
     tm.record_session();
-    REQUIRE(tm.queue_size() == TelemetryManager::MAX_QUEUE_SIZE);
+    REQUIRE(tm.queue_size() == TelemetryManager::kMaxQueueSize);
     REQUIRE(TelemetryManagerTestAccess::events_dropped_since_send(tm) == 1);
 
     // The count covers the span since the last batch reached the server, so a
     // batch that lands starts a fresh window rather than carrying the old
     // shortfall into every send that follows.
-    tm.remove_sent_events(TelemetryManager::MAX_BATCH_SIZE);
+    tm.remove_sent_events(TelemetryManager::kMaxBatchSize);
     REQUIRE(TelemetryManagerTestAccess::events_dropped_since_send(tm) == 0);
 }
 
@@ -836,7 +835,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Queue: a purge ends the window the drop 
     auto& tm = TelemetryManager::instance();
     tm.set_enabled(true);
 
-    for (size_t i = 0; i < TelemetryManager::MAX_QUEUE_SIZE + 1; ++i) {
+    for (size_t i = 0; i < TelemetryManager::kMaxQueueSize + 1; ++i) {
         tm.record_session();
     }
     REQUIRE(TelemetryManagerTestAccess::events_dropped_since_send(tm) == 1);
@@ -850,7 +849,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Queue: a purge ends the window the drop 
 }
 
 TEST_CASE("Send delay: a healthy sender waits the full send interval", "[telemetry][send][1476]") {
-    REQUIRE(TelemetryManager::next_attempt_delay(1) == TelemetryManager::SEND_INTERVAL);
+    REQUIRE(TelemetryManager::next_attempt_delay(1) == TelemetryManager::kSendInterval);
 }
 
 TEST_CASE("Send delay: a first failure retries sooner than the daily cadence",
@@ -858,7 +857,7 @@ TEST_CASE("Send delay: a first failure retries sooner than the daily cadence",
     // A backoff above 1 means the previous attempt failed. Spacing that first
     // retry off the full send interval would leave the queue filling for a day
     // over a server that was unreachable for a moment.
-    REQUIRE(TelemetryManager::next_attempt_delay(2) < TelemetryManager::SEND_INTERVAL);
+    REQUIRE(TelemetryManager::next_attempt_delay(2) < TelemetryManager::kSendInterval);
 }
 
 TEST_CASE("Send delay: a sustained failure backs off past the daily cadence",
@@ -867,8 +866,8 @@ TEST_CASE("Send delay: a sustained failure backs off past the daily cadence",
     // endpoint at all must not end up attempting MORE often than a healthy one
     // — each attempt is a thread, a DNS lookup and a 30s timeout, and on a
     // LAN-only machine every one of them is waste that never succeeds.
-    REQUIRE(TelemetryManager::next_attempt_delay(TelemetryManager::MAX_BACKOFF_MULTIPLIER) >=
-            TelemetryManager::SEND_INTERVAL);
+    REQUIRE(TelemetryManager::next_attempt_delay(TelemetryManager::kMaxBackoffMultiplier) >=
+            TelemetryManager::kSendInterval);
 }
 
 TEST_CASE("Send delay: retries lengthen as the backoff grows", "[telemetry][send][1476]") {
@@ -877,9 +876,9 @@ TEST_CASE("Send delay: retries lengthen as the backoff grows", "[telemetry][send
 }
 
 TEST_CASE("Send delay: the backoff ceiling still reaches seven days", "[telemetry][send][1476]") {
-    // RETRY_INTERVAL is the base, so the multiplier has to be able to climb far
+    // kRetryInterval is the base, so the multiplier has to be able to climb far
     // enough that the ceiling is still a week rather than a few hours.
-    REQUIRE(TelemetryManager::next_attempt_delay(TelemetryManager::MAX_BACKOFF_MULTIPLIER) ==
+    REQUIRE(TelemetryManager::next_attempt_delay(TelemetryManager::kMaxBackoffMultiplier) ==
             std::chrono::hours{24 * 7});
 }
 
@@ -901,7 +900,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Send window: a backed-off sender retries
     REQUIRE(tm.queue_size() > 0); // an empty queue returns before the gate
 
     // The previous attempt failed (backoff 2) three hours ago. Spaced off
-    // RETRY_INTERVAL that is a 2h wait, so this attempt is due.
+    // kRetryInterval that is a 2h wait, so this attempt is due.
     const auto three_hours_ago = std::chrono::steady_clock::now() - std::chrono::hours{3};
     TelemetryManagerTestAccess::set_last_send_time(tm, three_hours_ago);
     TelemetryManagerTestAccess::set_backoff(tm, 2);
@@ -956,7 +955,7 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     REQUIRE(tm.queue_size() > 0);
 
     const auto half_a_window =
-        std::chrono::steady_clock::now() - (TelemetryManager::SEND_INTERVAL / 2);
+        std::chrono::steady_clock::now() - (TelemetryManager::kSendInterval / 2);
     TelemetryManagerTestAccess::set_last_send_time(tm, half_a_window);
     TelemetryManagerTestAccess::set_backoff(tm, 1);
 
@@ -1041,16 +1040,16 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     auto& tm = TelemetryManager::instance();
     tm.set_enabled(true);
 
-    // Fill queue with more events than MAX_BATCH_SIZE
-    for (size_t i = 0; i < TelemetryManager::MAX_BATCH_SIZE + 10; ++i) {
+    // Fill queue with more events than kMaxBatchSize
+    for (size_t i = 0; i < TelemetryManager::kMaxBatchSize + 10; ++i) {
         tm.record_session();
     }
-    REQUIRE(tm.queue_size() == TelemetryManager::MAX_BATCH_SIZE + 10);
+    REQUIRE(tm.queue_size() == TelemetryManager::kMaxBatchSize + 10);
 
     // Build a batch and verify it respects the limit
     auto batch = tm.build_batch();
     REQUIRE(batch.is_array());
-    REQUIRE(batch.size() == TelemetryManager::MAX_BATCH_SIZE);
+    REQUIRE(batch.size() == TelemetryManager::kMaxBatchSize);
 }
 
 TEST_CASE_METHOD(TelemetryTestFixture,
@@ -1120,12 +1119,12 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Transmission: batch payload contains val
 }
 
 TEST_CASE("Transmission: endpoint URL is HTTPS", "[telemetry][transmission]") {
-    // The MAX_BATCH_SIZE / SEND_INTERVAL assertions that used to sit here copied
+    // The kMaxBatchSize / kSendInterval assertions that used to sit here copied
     // the header's literals and compared them to themselves — a constant cannot
     // fail to equal its own definition. The scheme check is the one thing here
     // that constrains the value rather than mirroring it: device telemetry must
     // never leave over plaintext.
-    const std::string url(TelemetryManager::ENDPOINT_URL);
+    const std::string url(TelemetryManager::kEndpointUrl);
     REQUIRE(url.find("https://") == 0);
 }
 
@@ -1304,7 +1303,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Session event v2: schema_version is the 
     tm.record_session();
     auto event = tm.get_queue_snapshot()[0];
 
-    REQUIRE(event["schema_version"] == TelemetryManager::SCHEMA_VERSION);
+    REQUIRE(event["schema_version"] == TelemetryManager::kSchemaVersion);
 }
 
 TEST_CASE_METHOD(TelemetryTestFixture, "Session event v2: app section has display backend fields",
@@ -1494,7 +1493,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Update failed event: has required envelo
     auto snapshot = tm.get_queue_snapshot();
     auto event = snapshot[0];
 
-    REQUIRE(event["schema_version"] == TelemetryManager::SCHEMA_VERSION);
+    REQUIRE(event["schema_version"] == TelemetryManager::kSchemaVersion);
     REQUIRE(event["event"] == "update_failed");
     REQUIRE(event.contains("device_id"));
     REQUIRE(event.contains("timestamp"));
@@ -1618,7 +1617,7 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     auto snapshot = tm.get_queue_snapshot();
     auto event = snapshot[0];
 
-    REQUIRE(event["schema_version"] == TelemetryManager::SCHEMA_VERSION);
+    REQUIRE(event["schema_version"] == TelemetryManager::kSchemaVersion);
     REQUIRE(event["event"] == "update_success");
     REQUIRE(event["version"] == "0.14.0");
     REQUIRE(event["from_version"] == "0.13.4");
@@ -1897,7 +1896,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "record_memory_snapshot creates valid eve
     auto& event = snapshot[0];
 
     CHECK(event["event"] == "memory_snapshot");
-    CHECK(event["schema_version"] == TelemetryManager::SCHEMA_VERSION);
+    CHECK(event["schema_version"] == TelemetryManager::kSchemaVersion);
     CHECK(event.contains("device_id"));
     CHECK(event.contains("timestamp"));
     CHECK(event["trigger"] == "session_start");
@@ -2043,7 +2042,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "record_hardware_profile creates valid ev
     auto& event = snapshot[0];
 
     CHECK(event["event"] == "hardware_profile");
-    CHECK(event["schema_version"] == TelemetryManager::SCHEMA_VERSION);
+    CHECK(event["schema_version"] == TelemetryManager::kSchemaVersion);
     CHECK(event.contains("device_id"));
     CHECK(event.contains("timestamp"));
     // Hardware profile may have empty sections in test mode (no printer connected)
@@ -2105,7 +2104,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "record_settings_snapshot creates valid e
     auto& event = *it;
 
     CHECK(event["event"] == "settings_snapshot");
-    CHECK(event["schema_version"] == TelemetryManager::SCHEMA_VERSION);
+    CHECK(event["schema_version"] == TelemetryManager::kSchemaVersion);
     CHECK(event.contains("device_id"));
     CHECK(event.contains("timestamp"));
     // Settings should have at least theme and locale
@@ -2612,7 +2611,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Frame time: total shares the dropped cou
 
     // Older than the ring: all dropped, and overwritten by the second batch.
     tm.notify_panel_changed("status");
-    const size_t ring = TelemetryManager::FRAME_RING_SIZE;
+    const size_t ring = TelemetryManager::kFrameRingSize;
     for (size_t i = 0; i < ring; ++i) {
         tm.record_frame_time(40000);
     }
@@ -2793,7 +2792,7 @@ int sum_map_entry(const std::vector<json>& events, const char* map, const std::s
     return total;
 }
 
-const char* ACCUMULATOR_FILE = "telemetry_snapshot.json";
+const char* kAccumulatorFile = "telemetry_snapshot.json";
 
 } // namespace
 
@@ -2965,7 +2964,7 @@ TEST_CASE_METHOD(TelemetryTestFixture,
 
     // Recovered once: the file is gone, so a second boot has nothing to resend,
     // and the deltas are already in the saved queue in case one follows.
-    CHECK_FALSE(fs::exists(temp_dir() / ACCUMULATOR_FILE));
+    CHECK_FALSE(fs::exists(temp_dir() / kAccumulatorFile));
     int saved_recovered = 0;
     for (const auto& e : json::parse(read_file("telemetry_queue.json"))) {
         if (e.value("boot_id", "") == old_boot && e.value("snapshot_seq", -1) == 1) {
@@ -3146,7 +3145,7 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     CHECK(recovered[0]["saver_settled_levels"] == json{{"aqua:1", 1}});
 }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 TEST_CASE_METHOD(TelemetryTestFixture,
                  "settings_snapshot names the configured screensaver by its stable name",
                  "[telemetry][settings][screensaver_usage]") {
@@ -3182,14 +3181,14 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     tm.notify_panel_changed("home");
     TelemetryManagerTestAccess::advance_clock(tm, 1h);
     TelemetryManagerTestAccess::fire_auto_send_tick(tm); // accumulator: seq 0, [0, 1h]
-    const std::string pre_snapshot = read_file(ACCUMULATOR_FILE);
+    const std::string pre_snapshot = read_file(kAccumulatorFile);
     REQUIRE_FALSE(pre_snapshot.empty());
 
     TelemetryManagerTestAccess::advance_clock(tm, 1h);
     tm.fire_periodic_snapshot(); // seq 0 queued and saved
 
     // Power lost after the queue save, before the accumulator file was rewritten.
-    write_file(ACCUMULATOR_FILE, pre_snapshot);
+    write_file(kAccumulatorFile, pre_snapshot);
     const std::string old_boot = TelemetryManagerTestAccess::boot_id(tm);
     TelemetryManagerTestAccess::simulate_unclean_exit(tm);
     tm.init(temp_dir().string());
@@ -3217,8 +3216,8 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     tm.notify_panel_changed("controls");
     TelemetryManagerTestAccess::fire_auto_send_tick(tm);
 
-    REQUIRE(fs::exists(temp_dir() / ACCUMULATOR_FILE));
-    auto state = json::parse(read_file(ACCUMULATOR_FILE));
+    REQUIRE(fs::exists(temp_dir() / kAccumulatorFile));
+    auto state = json::parse(read_file(kAccumulatorFile));
     CHECK(state["boot_id"] == TelemetryManagerTestAccess::boot_id(tm));
     CHECK(state["snapshot_seq"] == 1);
     CHECK(state["app_version"] == HELIX_VERSION);
@@ -3235,7 +3234,7 @@ TEST_CASE_METHOD(TelemetryTestFixture,
                  "[telemetry][snapshot][delta]") {
     auto& tm = TelemetryManager::instance();
     tm.set_enabled(true);
-    write_file(ACCUMULATOR_FILE,
+    write_file(kAccumulatorFile,
                R"({"snapshot_seq":5,"panel_visits":{"home":900},"connect_count":40})");
 
     TelemetryManagerTestAccess::simulate_unclean_exit(tm);
@@ -3243,7 +3242,7 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     REQUIRE(tm.is_enabled());
 
     CHECK(queued_events(tm, "panel_usage").empty());
-    CHECK_FALSE(fs::exists(temp_dir() / ACCUMULATOR_FILE));
+    CHECK_FALSE(fs::exists(temp_dir() / kAccumulatorFile));
 
     tm.fire_periodic_snapshot();
     auto panels = queued_events(tm, "panel_usage");
@@ -3289,7 +3288,7 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     tm.notify_panel_changed("home");
     TelemetryManagerTestAccess::advance_clock(tm, 1h);
     tm.fire_periodic_snapshot(); // seq 0
-    while (tm.queue_size() < TelemetryManager::MAX_QUEUE_SIZE) {
+    while (tm.queue_size() < TelemetryManager::kMaxQueueSize) {
         tm.record_session();
     }
 
@@ -3298,7 +3297,7 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     TelemetryManagerTestAccess::advance_clock(tm, 1h);
     tm.fire_periodic_snapshot(); // seq 1, merges
 
-    CHECK(tm.queue_size() == TelemetryManager::MAX_QUEUE_SIZE);
+    CHECK(tm.queue_size() == TelemetryManager::kMaxQueueSize);
     CHECK(tm.get_queue_snapshot()[0]["event"] == "session");
 
     auto panels = queued_events(tm, "panel_usage");
@@ -3325,14 +3324,14 @@ TEST_CASE_METHOD(TelemetryTestFixture,
 
     tm.notify_panel_changed("home");
     tm.record_panel_usage();
-    while (tm.queue_size() < TelemetryManager::MAX_QUEUE_SIZE) {
+    while (tm.queue_size() < TelemetryManager::kMaxQueueSize) {
         tm.record_session();
     }
 
     tm.record_print_outcome("completed", 600, 10, 1500.0f, "PLA", 210, 60);
 
     auto queue = tm.get_queue_snapshot();
-    REQUIRE(queue.size() == TelemetryManager::MAX_QUEUE_SIZE);
+    REQUIRE(queue.size() == TelemetryManager::kMaxQueueSize);
     CHECK(queue[0]["event"] == "panel_usage");
     CHECK(queue.back()["event"] == "print_outcome");
     CHECK(TelemetryManagerTestAccess::events_dropped_since_send(tm) == 1);
@@ -3346,16 +3345,16 @@ TEST_CASE_METHOD(TelemetryTestFixture,
 
     tm.notify_panel_changed("home");
     tm.record_panel_usage(); // index 0, inside the in-flight batch
-    while (tm.queue_size() < TelemetryManager::MAX_QUEUE_SIZE) {
+    while (tm.queue_size() < TelemetryManager::kMaxQueueSize) {
         tm.record_session();
     }
-    TelemetryManagerTestAccess::set_in_flight(tm, TelemetryManager::MAX_BATCH_SIZE);
+    TelemetryManagerTestAccess::set_in_flight(tm, TelemetryManager::kMaxBatchSize);
 
     tm.notify_panel_changed("controls");
     tm.record_panel_usage();
 
     auto queue = tm.get_queue_snapshot();
-    REQUIRE(queue.size() == TelemetryManager::MAX_QUEUE_SIZE);
+    REQUIRE(queue.size() == TelemetryManager::kMaxQueueSize);
     REQUIRE(queue[0]["event"] == "panel_usage");
     CHECK(queue[0]["panel_visits"] == json{{"home", 1}});
     auto panels = queued_events(tm, "panel_usage");
@@ -3363,8 +3362,8 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     CHECK(panels[1]["panel_visits"] == json{{"controls", 1}});
 
     // remove_sent_events() ends the send, after which the newest one merges.
-    tm.remove_sent_events(TelemetryManager::MAX_BATCH_SIZE);
-    while (tm.queue_size() < TelemetryManager::MAX_QUEUE_SIZE) {
+    tm.remove_sent_events(TelemetryManager::kMaxBatchSize);
+    while (tm.queue_size() < TelemetryManager::kMaxQueueSize) {
         tm.record_session();
     }
     tm.notify_panel_changed("home");
@@ -3382,7 +3381,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Queue: a merge never touches a row a fai
 
     tm.notify_panel_changed("home");
     tm.record_panel_usage(); // index 0, inside the attempted batch
-    while (tm.queue_size() < TelemetryManager::MAX_QUEUE_SIZE) {
+    while (tm.queue_size() < TelemetryManager::kMaxQueueSize) {
         tm.record_session();
     }
     TelemetryManagerTestAccess::fail_send(tm);
@@ -3390,7 +3389,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Queue: a merge never touches a row a fai
     tm.notify_panel_changed("controls");
     tm.record_panel_usage();
 
-    REQUIRE(tm.queue_size() == TelemetryManager::MAX_QUEUE_SIZE);
+    REQUIRE(tm.queue_size() == TelemetryManager::kMaxQueueSize);
     auto panels = queued_events(tm, "panel_usage");
     REQUIRE(panels.size() == 2);
     CHECK(panels[0]["panel_visits"] == json{{"home", 1}});
@@ -3412,7 +3411,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Queue: rows loaded from disk are never m
 
     tm.notify_panel_changed("home");
     tm.record_panel_usage();
-    while (tm.queue_size() < TelemetryManager::MAX_QUEUE_SIZE) {
+    while (tm.queue_size() < TelemetryManager::kMaxQueueSize) {
         tm.record_session();
     }
     tm.save_queue();
@@ -3441,7 +3440,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Queue: deltas from different boots are n
     tm.init(temp_dir().string());
     REQUIRE(queued_events(tm, "panel_usage").size() == 1); // the recovered delta
 
-    while (tm.queue_size() < TelemetryManager::MAX_QUEUE_SIZE) {
+    while (tm.queue_size() < TelemetryManager::kMaxQueueSize) {
         tm.record_session();
     }
     tm.notify_panel_changed("status");
@@ -3470,7 +3469,7 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     tm.notify_connection_state_changed(2);
     tm.notify_widget_interaction("led_control");
     tm.fire_periodic_snapshot(); // seq 0
-    while (tm.queue_size() < TelemetryManager::MAX_QUEUE_SIZE) {
+    while (tm.queue_size() < TelemetryManager::kMaxQueueSize) {
         tm.record_session();
     }
 
@@ -3504,7 +3503,7 @@ void fill_queue_behind_panel_row(TelemetryManager& tm, const std::string& panel)
     tm.notify_panel_changed(panel);
     tm.record_panel_usage();
     REQUIRE(tm.queue_size() == 1);
-    fill_queue_with_sessions(tm, TelemetryManager::MAX_QUEUE_SIZE);
+    fill_queue_with_sessions(tm, TelemetryManager::kMaxQueueSize);
 }
 
 /// One real try_send(), past the interval gate, run to its end.
@@ -3543,14 +3542,14 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Queue: a finished send releases its batc
     TelemetryManagerTestAccess::disable_network(tm);
     tm.set_enabled(true);
     tm.record_print_outcome("completed", 600, 5, 300.0f, "PLA", 200, 60);
-    fill_queue_with_sessions(tm, TelemetryManager::MAX_QUEUE_SIZE);
+    fill_queue_with_sessions(tm, TelemetryManager::kMaxQueueSize);
     REQUIRE(tm.get_queue_snapshot()[0]["event"] == "print_outcome");
 
     send_now(tm);
 
     // Nothing is in flight any more, so the oldest row is the one evicted.
     tm.record_session();
-    REQUIRE(tm.queue_size() == TelemetryManager::MAX_QUEUE_SIZE);
+    REQUIRE(tm.queue_size() == TelemetryManager::kMaxQueueSize);
     CHECK(queued_events(tm, "print_outcome").empty());
 }
 
@@ -3559,15 +3558,15 @@ TEST_CASE_METHOD(TelemetryTestFixture,
                  "[telemetry][queue][delta]") {
     auto& tm = TelemetryManager::instance();
     tm.set_enabled(true);
-    fill_queue_with_sessions(tm, TelemetryManager::MAX_BATCH_SIZE);
+    fill_queue_with_sessions(tm, TelemetryManager::kMaxBatchSize);
     tm.notify_panel_changed("home");
     tm.record_panel_usage(); // first row after the claimed batch
-    fill_queue_with_sessions(tm, TelemetryManager::MAX_QUEUE_SIZE);
+    fill_queue_with_sessions(tm, TelemetryManager::kMaxQueueSize);
 
     TelemetryManagerTestAccess::claim_batch(tm);
-    tm.remove_sent_events(TelemetryManager::MAX_BATCH_SIZE);
+    tm.remove_sent_events(TelemetryManager::kMaxBatchSize);
     REQUIRE(tm.get_queue_snapshot()[0]["event"] == "panel_usage");
-    fill_queue_with_sessions(tm, TelemetryManager::MAX_QUEUE_SIZE);
+    fill_queue_with_sessions(tm, TelemetryManager::kMaxQueueSize);
 
     tm.notify_panel_changed("controls");
     tm.record_panel_usage();
@@ -3599,7 +3598,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Queue: a new boot inherits no claim on t
     tm.set_enabled(true);
     fill_queue_behind_panel_row(tm, "status");
     TelemetryManagerTestAccess::fail_send(tm);
-    TelemetryManagerTestAccess::set_in_flight(tm, TelemetryManager::MAX_BATCH_SIZE);
+    TelemetryManagerTestAccess::set_in_flight(tm, TelemetryManager::kMaxBatchSize);
 
     TelemetryManagerTestAccess::simulate_unclean_exit(tm);
     tm.init(temp_dir().string()); // nothing was saved, so nothing is loaded
@@ -3660,12 +3659,12 @@ TEST_CASE_METHOD(TelemetrySchedulerFixture,
     TelemetryManagerTestAccess::disable_network(tm);
     tm.set_enabled(true);
     tm.start_auto_send();
-    REQUIRE_FALSE(fs::exists(temp_dir() / ACCUMULATOR_FILE));
+    REQUIRE_FALSE(fs::exists(temp_dir() / kAccumulatorFile));
 
-    lv_tick_inc(TelemetryManager::INITIAL_SEND_DELAY_MS);
+    lv_tick_inc(TelemetryManager::kInitialSendDelayMs);
     lv_timer_handler();
 
-    CHECK(fs::exists(temp_dir() / ACCUMULATOR_FILE));
+    CHECK(fs::exists(temp_dir() / kAccumulatorFile));
 }
 
 TEST_CASE_METHOD(TelemetryTestFixture,
@@ -3880,7 +3879,7 @@ TEST_CASE_METHOD(TelemetryTestFixture,
 
 namespace {
 
-constexpr const char* ENVELOPE_KEYS[] = {"schema_version", "app_version", "app_platform",
+constexpr const char* kEnvelopeKeys[] = {"schema_version", "app_version", "app_platform",
                                          "app_board", "boot_id"};
 
 } // namespace
@@ -3903,7 +3902,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Envelope: every event carries all five e
     }
 
     for (const auto& [name, event] : events) {
-        for (const char* key : ENVELOPE_KEYS) {
+        for (const char* key : kEnvelopeKeys) {
             INFO("event: " << name << ", key: " << key);
             REQUIRE(event.contains(key));
             if (std::string(key) == "schema_version") {
@@ -3920,7 +3919,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Envelope: every event carries all five e
 }
 
 TEST_CASE("Envelope: SCHEMA_VERSION is 3", "[telemetry][envelope]") {
-    REQUIRE(TelemetryManager::SCHEMA_VERSION == 3);
+    REQUIRE(TelemetryManager::kSchemaVersion == 3);
 }
 
 TEST_CASE_METHOD(TelemetryTestFixture, "Envelope: boot_id is 16 lowercase hex characters",

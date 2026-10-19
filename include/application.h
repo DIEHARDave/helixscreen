@@ -120,7 +120,7 @@ class Application {
 
     // Helper functions
     void ensure_project_root_cwd();
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     void show_screensaver_migration_notice_if_pending();
 #endif
     void check_wifi_availability();

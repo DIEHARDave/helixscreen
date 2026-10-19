@@ -30,11 +30,11 @@ using namespace helix;
 namespace {
 
 // Enough units that the last two sit past the per-unit subjects.
-constexpr int kUnits = AmsState::MAX_UNITS + 4;
+constexpr int kUnits = AmsState::kMaxUnits + 4;
 constexpr int kLast = kUnits - 1;
 // A unit at the first index with no per-unit subjects, and its predecessor.
-constexpr int kPast = AmsState::MAX_UNITS + 2;
-constexpr int kBelow = AmsState::MAX_UNITS - 1;
+constexpr int kPast = AmsState::kMaxUnits + 2;
+constexpr int kBelow = AmsState::kMaxUnits - 1;
 
 class FleetMock : public AmsBackendMock {
   public:
@@ -112,7 +112,7 @@ std::string subject_str(const char* name) {
 
 TEST_CASE_METHOD(LVGLUITestFixture, "The detail env chip shows a unit past the per-unit cap",
                  "[ams][pages][env]") {
-    static_assert(kUnits > AmsState::MAX_UNITS);
+    static_assert(kUnits > AmsState::kMaxUnits);
     FleetMock* mock = install();
     auto& ams = AmsState::instance();
 

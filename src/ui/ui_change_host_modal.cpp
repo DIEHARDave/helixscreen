@@ -631,7 +631,7 @@ DeferredFailure& deferred_failure() {
     return d;
 }
 
-constexpr uint32_t CHOOSER_POLL_MS = 300;
+constexpr uint32_t kChooserPollMs = 300;
 
 void defer_connection_failed(const std::string& title, const std::string& message,
                              const std::optional<DiscoveredPrinter>& moved) {
@@ -666,7 +666,7 @@ void defer_connection_failed(const std::string& title, const std::string& messag
             }
             present_connection_failed(pending.title, pending.message, pending.moved);
         },
-        CHOOSER_POLL_MS, nullptr);
+        kChooserPollMs, nullptr);
     lv_timer_set_repeat_count(d.timer, 1);
 }
 
@@ -722,7 +722,7 @@ void finish_rediscovery() {
     const int port = cfg->get<int>(cfg->df() + "moonraker_port", 7125);
     const auto moved =
         find_moved_printer(found, host, port,
-                           {cfg->get<std::string>(cfg->df() + wizard::HOSTNAME, ""),
+                           {cfg->get<std::string>(cfg->df() + wizard::kHostname, ""),
                             cfg->get<std::string>(cfg->df() + wizard::PRINTER_NAME, "")});
     if (moved) {
         spdlog::info("[ChangeHost] {}:{} unreachable; mDNS finds '{}' at {}:{}", host, port,
@@ -760,7 +760,7 @@ void begin_connection_failed(const std::string& title, const std::string& messag
     r.mdns->start_discovery({});
     // TIMER_DTOR_OK: process-lifetime state with no owner object; a one-shot LVGL deletes.
     lv_timer_t* t =
-        lv_timer_create([](lv_timer_t*) { finish_rediscovery(); }, REDISCOVERY_WINDOW_MS, nullptr);
+        lv_timer_create([](lv_timer_t*) { finish_rediscovery(); }, kRediscoveryWindowMs, nullptr);
     lv_timer_set_repeat_count(t, 1);
 }
 

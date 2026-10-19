@@ -16,7 +16,7 @@ before believing a number it prints.**
 
 It is green in CI - 96/96 shards. Its one real-hardware test through its own UI, on a
 Voron 2.4 350 (#1721), failed: a clean audible pluck almost never cleared
-`MIN_RMS_RATIO`, a pluck hard enough to clear it rang as broadband noise, and one belt
+`kMinRmsRatio`, a pluck hard enough to clear it rang as broadband noise, and one belt
 read ~130, ~85 and ~120 Hz across repeats. Everything below is open.
 
 ### The thresholds are circular
@@ -57,7 +57,7 @@ Minimum matrix, agreed with the maintainer:
 ### Known traps when you first run it
 
 - **A soft first pluck producing no response is a threshold, not a hang.**
-  `MIN_DETECTABLE_RATIO` is 5.0, so strikes below 5x the noise floor are dropped
+  `kMinDetectableRatio` is 5.0, so strikes below 5x the noise floor are dropped
   silently rather than surfaced as "pluck harder". That is deliberate - the evidence
   says nothing below 5x was a pluck at all - but it reads as a dead UI.
 - **Verify the deployed artifact two independent ways.** They fail independently:
@@ -100,12 +100,12 @@ BeltTensionPanel (UI, state machine, XML-bound subjects)
   |     alongside Moonraker, so this does not disturb the printer.
   |
   +-> BeltListenSession             belt_listen_session.h
-  |     Owns the live detection window. Applies MIN_DETECTABLE_RATIO,
+  |     Owns the live detection window. Applies kMinDetectableRatio,
   |     hands accepted strikes to the detector, drives the capture writer.
   |
   +-> PluckDetector                 pluck_detector.h
   |     Onset detection, strength gate, temporal-shape gate. Extracts the
-  |     ring-down segment (SKIP_MS past the transient, ANALYZE_MS long).
+  |     ring-down segment (kSkipMs past the transient, kAnalyzeMs long).
   |
   +-> pitch_estimator               pitch_estimator.h
   |     Harmonic product spectrum over the ring-down. Search window derived
@@ -127,7 +127,7 @@ Supporting units: `BeltCaptureWriter` (`belt_capture.h`, gated on
 
 The single easiest mistake in this code. `rms_ratio()`, `passes_gate()` and
 `has_sharp_onset()` operate on the **live detection window**, which includes the onset.
-`extract_ringdown()` returns a *different* buffer that has already decayed for `SKIP_MS`
+`extract_ringdown()` returns a *different* buffer that has already decayed for `kSkipMs`
 or more, and reads several times lower. `PluckWindow` deliberately has no strength field
 so the two cannot be silently swapped - `extract_ringdown()` is static and has no access
 to the window it came from.

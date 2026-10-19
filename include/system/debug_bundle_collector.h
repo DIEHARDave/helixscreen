@@ -231,7 +231,7 @@ class DebugBundleCollector {
     static std::string collect_local_log_tail(const std::string& log_name, int num_lines,
                                               int condense_max_repeats = 0);
     /// Line cap for moonraker.log. Deliberately far above what the byte budget
-    /// yields (a 2 MiB condensed window measured 4319 lines) so MOONRAKER_TAIL_BYTES
+    /// yields (a 2 MiB condensed window measured 4319 lines) so kMoonrakerTailBytes
     /// is what binds, not an arbitrary line count.
     static std::string collect_moonraker_log_tail(int num_lines = 8000);
 
@@ -374,14 +374,14 @@ class DebugBundleCollector {
     /// exists is answerable from neither ZMOD's source nor the stock AD5X
     /// printer.cfg, and none of the seven AD5X bundles on hand could settle it.
     ///
-    /// Truncates at MAX_GCODE_MACRO_NAMES, reporting the drop rather than
+    /// Truncates at kMaxGcodeMacroNames, reporting the drop rather than
     /// silently shortening the list.
     static nlohmann::json extract_gcode_macro_names(const nlohmann::json& object_list);
 
     /// Cap on captured macro names. A stock AD5X config defines 5 macros and a
     /// ZMOD one a few hundred; this only bounds a pathological config, and the
     /// bundle records `gcode_macros_truncated` when it bites.
-    static constexpr size_t MAX_GCODE_MACRO_NAMES = 600;
+    static constexpr size_t kMaxGcodeMacroNames = 600;
 
     /// Collect printer.cfg and every config it `[include]`s, sanitized.
     ///
@@ -395,7 +395,7 @@ class DebugBundleCollector {
     /// the log copy arrives head-truncated when the fetch slices through it.
     ///
     /// Every file body goes through sanitize_text_block() (per-LINE
-    /// sanitize_value; see MAX_CONFIG_BYTES for why not whole-file).
+    /// sanitize_value; see kMaxConfigBytes for why not whole-file).
     static nlohmann::json collect_printer_config();
 
     /// Breadth-first walk of `root`'s `[include]` tree (public for testing).
@@ -432,16 +432,16 @@ class DebugBundleCollector {
     /// bodies are sanitized per line rather than whole - the cap here is about
     /// bundle size, not that guard. A ZMOD AD5X config is ~6668 lines / ~250 KB
     /// across its includes, so this holds a full one.
-    static constexpr size_t MAX_CONFIG_BYTES = 512 * 1024;
+    static constexpr size_t kMaxConfigBytes = 512 * 1024;
 
     /// Cap on how many config files are fetched, including printer.cfg itself.
     /// Guards a pathological include tree; the bundle records
     /// `truncated` when either cap bites.
-    static constexpr size_t MAX_CONFIG_FILES = 40;
+    static constexpr size_t kMaxConfigFiles = 40;
 
     /// Shape-collapse threshold for klippy.log. Tuned against Klipper's
     /// per-second Stats line and ZMOD's 4-line toolhead dump.
-    static constexpr int KLIPPER_CONDENSE_MAX_REPEATS = 40;
+    static constexpr int kKlipperCondenseMaxRepeats = 40;
 
     /// Shape-collapse threshold for moonraker.log. Higher than Klipper's because
     /// moonraker's most valuable repeated block is proc_stats._handle_shutdown()'s
@@ -450,7 +450,7 @@ class DebugBundleCollector {
     /// Vger1700's moonraker.log.2026-08-11, which had two 102 lines apart). 100
     /// keeps every block whole while still collapsing the log_request() padding
     /// that dominates a busy file.
-    static constexpr int MOONRAKER_CONDENSE_MAX_REPEATS = 100;
+    static constexpr int kMoonrakerCondenseMaxRepeats = 100;
 
     /// Byte window fetched for moonraker.log. Raised from the 512 KiB default
     /// because condensing shrinks the payload afterwards, so a bigger fetch buys
@@ -459,7 +459,7 @@ class DebugBundleCollector {
     /// shipped 240 KB. moonraker.log is also the log that SURVIVES the events
     /// klippy.log does not — it lives outside the Klipper tree, so a rollback or
     /// reinstall leaves it intact (bundle LYGVE39Y).
-    static constexpr int MOONRAKER_TAIL_BYTES = 2 * 1024 * 1024;
+    static constexpr int kMoonrakerTailBytes = 2 * 1024 * 1024;
 
     /// Collapse repeating noise in a raw klippy.log tail (public for testing).
     ///
@@ -512,9 +512,9 @@ class DebugBundleCollector {
     static std::vector<uint8_t> gzip_compress(const std::string& data);
 
   private:
-    static constexpr const char* WORKER_URL = "https://crash.helixscreen.org/v1/debug-bundle";
+    static constexpr const char* kWorkerUrl = "https://crash.helixscreen.org/v1/debug-bundle";
 
-    /// WORKER_URL with the HELIX_BUNDLE_WORKER_URL test override applied. The
+    /// kWorkerUrl with the HELIX_BUNDLE_WORKER_URL test override applied. The
     /// override exists so a test that reaches the real upload path posts to a
     /// loopback listener instead of the CDN — libhv honours no proxy
     /// environment, so this is the only thing keeping an ungated test run
@@ -537,7 +537,7 @@ class DebugBundleCollector {
     /// `condense_max_repeats` of 0 ships the window verbatim; anything positive
     /// runs it through condense_klipper_log() at that threshold. The condenser is
     /// shape-based, not Klipper-specific, so moonraker.log uses it too — with its
-    /// own threshold, see MOONRAKER_CONDENSE_MAX_REPEATS.
+    /// own threshold, see kMoonrakerCondenseMaxRepeats.
     ///
     /// `raw_bytes_out`, when non-null, receives how many bytes the fetch actually
     /// pulled off the wire, before condensing and the line cap. That is the only

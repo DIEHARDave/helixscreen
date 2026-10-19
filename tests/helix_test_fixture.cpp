@@ -512,7 +512,7 @@ void HelixTestFixture::reset_all() {
     // eject in test_ams_backend_qidi.cpp) cascades into
     // DisplaySettingsManager::init_subjects() and latches it true, which then
     // leaks into every later test. With animations ON, Modal exit animates over
-    // MODAL_EXIT_DURATION_MS (150ms) and only removes the entry from the raw
+    // kModalExitDurationMs (150ms) and only removes the entry from the raw
     // stack_ vector when the animation completes — but modal tests typically
     // pump only ~10ms of LVGL time before asserting ModalStack::stack_empty(),
     // so the entry lingers and the assertion fails
@@ -527,7 +527,7 @@ void HelixTestFixture::reset_all() {
     // withdraws the name from the XML registry, so the lookup finds nothing, the
     // force is skipped, and the NEXT fixture's init restores the platform
     // default (animations ON on desktop). Modal exits then animate over
-    // MODAL_EXIT_DURATION_MS instead of completing synchronously, and any modal
+    // kModalExitDurationMs instead of completing synchronously, and any modal
     // test that pumps less than 150ms starts reading the OUTGOING dialog —
     // lv_obj_find_by_name() returns the stale subtree because it is still parented
     // to the screen (test_afc_fault_path_modal.cpp read a previous fault's text).
@@ -541,7 +541,7 @@ void HelixTestFixture::reset_all() {
     auto& display_settings = helix::DisplaySettingsManager::instance();
     display_settings.init_subjects();
     lv_subject_t* anim = display_settings.subject_animations_enabled();
-    lv_xml_register_subject(nullptr, helix::ui::ANIMATIONS_SUBJECT_NAME, anim);
+    lv_xml_register_subject(nullptr, helix::ui::kAnimationsSubjectName, anim);
     lv_subject_set_int(anim, 0);
 
     // Page-scroll gutters are opt-in off-device. A test that enabled them leaves the
@@ -549,13 +549,13 @@ void HelixTestFixture::reset_all() {
     // later scrollable it shows, so row counts in unrelated pages read one too high.
     lv_subject_set_int(display_settings.subject_page_scroll_buttons(), 0);
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     // The manager stays initialised across tests, so a screensaver choice one test
     // made would otherwise be read back as the "fresh install" default by the next.
     // Set on the subject, not through set_screensaver_type(), which writes Config.
     lv_subject_set_int(
         display_settings.subject_screensaver_type(),
-        static_cast<int>(helix::ui::default_screensaver_type(helix::ui::SAVER_BUILD_DEPTH)));
+        static_cast<int>(helix::ui::default_screensaver_type(helix::ui::kSaverBuildDepth)));
 #endif
 
     // Same restore for the other two settings sub-managers a test can tear down.

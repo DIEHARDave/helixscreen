@@ -17,7 +17,7 @@
 #include "buffer_reading.h"
 #include "clog_meter_geometry.h"
 #include "display_numbering.h"
-#include "filament_op_dispatch.h"      // EXTERNAL_SPOOL_SLOT: the bypass sentinel
+#include "filament_op_dispatch.h"      // kExternalSpoolSlot: the bypass sentinel
 #include "filament_op_slot_resolver.h" // clear_spool_blocked_by_print: the print guard
 #include "filament_tube_stroker.h"
 #include "panel_widget_size.h"
@@ -52,16 +52,16 @@ namespace tray = helix::ui::tray;
 
 namespace {
 
-constexpr int CAP_POINTS = 17;
-constexpr int MAX_LIDS = AMS_DETAIL_MAX_SLOTS;
+constexpr int kCapPoints = 17;
+constexpr int kMaxLids = kAmsDetailMaxSlots;
 
 // Opacities of the faces and glass, dark theme first.
 struct TrayOpacities {
     lv_opa_t front, edge, shell, glass, cap, glass_edge;
     float sheen;
 };
-constexpr TrayOpacities DARK_OPA{140, 140, 204, 15, 36, 153, 0.26f};
-constexpr TrayOpacities LIGHT_OPA{140, 153, 204, 13, 26, 140, 0.60f};
+constexpr TrayOpacities kDarkOpa{140, 140, 204, 15, 36, 153, 0.26f};
+constexpr TrayOpacities kLightOpa{140, 153, 204, 13, 26, 140, 0.60f};
 
 struct TrayColors {
     lv_color_t front, wall, floor, back, side, edge, shell, glass, glass_edge;
@@ -78,9 +78,9 @@ struct TrayState {
     float lid_h = 0;
     float lane_half = 0;
     int lane_count = 0;
-    float lane_x[AMS_DETAIL_MAX_SLOTS] = {}; // front-plane slot centres
+    float lane_x[kAmsDetailMaxSlots] = {}; // front-plane slot centres
     TrayColors color{};
-    TrayOpacities opa = DARK_OPA;
+    TrayOpacities opa = kDarkOpa;
 };
 
 TrayState s_tray;
@@ -106,7 +106,7 @@ TrayColors load_tray_colors(bool dark) {
 void load_tray_look() {
     const bool dark = theme_manager_is_dark_mode();
     s_tray.color = load_tray_colors(dark);
-    s_tray.opa = dark ? DARK_OPA : LIGHT_OPA;
+    s_tray.opa = dark ? kDarkOpa : kLightOpa;
 }
 
 lv_point_precise_t to_screen(lv_point_t origin, tray::PointF p) {
@@ -155,8 +155,8 @@ void edge(lv_layer_t* layer, lv_point_t origin, tray::PointF a, tray::PointF b, 
 /// One lid: its two caps and their convex hull.
 struct Lid {
     tray::TrayBox box; // fl/fr are the lid's ends
-    tray::PointF left[CAP_POINTS], right[CAP_POINTS];
-    tray::PointF hull[2 * CAP_POINTS];
+    tray::PointF left[kCapPoints], right[kCapPoints];
+    tray::PointF hull[2 * kCapPoints];
     int hull_n = 0;
 };
 
@@ -168,24 +168,24 @@ void build_lid(const tray::TrayBox& unit_box, float lid_h, float x0, float x1, L
     lid.box = unit_box;
     lid.box.fl = x0;
     lid.box.fr = x1;
-    tray::cap_polyline(unit_box, lid_h, x0, lid.left, CAP_POINTS);
-    tray::cap_polyline(unit_box, lid_h, x1, lid.right, CAP_POINTS);
+    tray::cap_polyline(unit_box, lid_h, x0, lid.left, kCapPoints);
+    tray::cap_polyline(unit_box, lid_h, x1, lid.right, kCapPoints);
     // Monotone-chain hull; the right cap is the left one shifted along x.
-    tray::PointF pts[2 * CAP_POINTS];
-    for (int i = 0; i < CAP_POINTS; ++i) {
+    tray::PointF pts[2 * kCapPoints];
+    for (int i = 0; i < kCapPoints; ++i) {
         pts[i] = lid.left[i];
-        pts[CAP_POINTS + i] = lid.right[i];
+        pts[kCapPoints + i] = lid.right[i];
     }
-    std::sort(pts, pts + 2 * CAP_POINTS, [](tray::PointF a, tray::PointF b) {
+    std::sort(pts, pts + 2 * kCapPoints, [](tray::PointF a, tray::PointF b) {
         return a.x < b.x || (a.x == b.x && a.y < b.y);
     });
     int k = 0;
-    for (int i = 0; i < 2 * CAP_POINTS; ++i) {
+    for (int i = 0; i < 2 * kCapPoints; ++i) {
         while (k >= 2 && cross(lid.hull[k - 2], lid.hull[k - 1], pts[i]) <= 0)
             --k;
         lid.hull[k++] = pts[i];
     }
-    for (int i = 2 * CAP_POINTS - 2, lower = k + 1; i >= 0; --i) {
+    for (int i = 2 * kCapPoints - 2, lower = k + 1; i >= 0; --i) {
         while (k >= lower && cross(lid.hull[k - 2], lid.hull[k - 1], pts[i]) <= 0)
             --k;
         lid.hull[k++] = pts[i];
@@ -237,7 +237,7 @@ void tray_back_draw_cb(lv_event_t* e) {
         return;
     // The tinted interior shell, then the back wall again: it stands in front
     // of the lid's lower interior.
-    float x0[MAX_LIDS], x1[MAX_LIDS];
+    float x0[kMaxLids], x1[kMaxLids];
     const int lids = lid_spans(x0, x1);
     Lid lid;
     for (int i = 0; i < lids; ++i) {
@@ -251,7 +251,7 @@ void tray_back_draw_cb(lv_event_t* e) {
 /// The sheen: one diffuse band, a horizontal gradient per row.
 void draw_sheen(lv_layer_t* layer, lv_point_t o, const Lid& lid) {
     tray::SheenSpan span{};
-    tray::SheenRow rows[tray::SHEEN_MAX_ROWS];
+    tray::SheenRow rows[tray::kSheenMaxRows];
     const int n = tray::sheen_rows(lid.box, s_tray.lid_h, s_tray.opa.sheen, span, rows);
     const float width = span.x1 - span.x0;
     if (n == 0 || width < 1)
@@ -303,7 +303,7 @@ void tray_front_draw_cb(lv_event_t* e) {
     for (const auto& ab : edges)
         edge(layer, o, ab[0], ab[1], c.edge, s_tray.opa.edge);
 
-    float x0[MAX_LIDS], x1[MAX_LIDS];
+    float x0[kMaxLids], x1[kMaxLids];
     const int lids = lid_spans(x0, x1);
     Lid lid;
     const TrayOpacities& a = s_tray.opa;
@@ -311,13 +311,13 @@ void tray_front_draw_cb(lv_event_t* e) {
         build_lid(s_tray.box, s_tray.lid_h, x0[i], x1[i], lid);
         if (!simple) {
             fill_convex(layer, o, lid.hull, lid.hull_n, c.glass, a.glass);
-            fill_convex(layer, o, lid.right, CAP_POINTS, c.glass, a.cap);
+            fill_convex(layer, o, lid.right, kCapPoints, c.glass, a.cap);
             draw_sheen(layer, o, lid);
         }
         stroke(layer, o, lid.hull, lid.hull_n, true, c.glass_edge, a.glass_edge);
-        stroke(layer, o, lid.right, CAP_POINTS, false, c.glass_edge,
+        stroke(layer, o, lid.right, kCapPoints, false, c.glass_edge,
                (lv_opa_t)(a.glass_edge * 7 / 10));
-        stroke(layer, o, lid.left, CAP_POINTS, false, c.glass_edge,
+        stroke(layer, o, lid.left, kCapPoints, false, c.glass_edge,
                (lv_opa_t)(a.glass_edge * 3 / 10));
     }
 }
@@ -555,7 +555,7 @@ void helix::ui::ams_detail_sync_lane_entry(lv_obj_t* canvas, lv_obj_t* slot_grid
         float x = 0, y = 0;
         int32_t size = 0;
         if (spool_centre(slot_grid, {g.x1, g.y1}, x, y, size))
-            offset = (int32_t)std::lround(y + tray::SPOOL_FLANGE_RADIUS * size);
+            offset = (int32_t)std::lround(y + tray::kSpoolFlangeRadius * size);
     }
     ui_filament_path_canvas_set_lane_entry(canvas, offset);
 }
@@ -591,7 +591,7 @@ AmsSlotLayout helix::ui::ams_detail_slot_layout(int32_t available_width, int slo
     // the row (for any pitch), and its right side face ends S/4 right of it.
     // Spools stand at the tray's pitch rather than spreading across the width,
     // centered with the box.
-    const float skew = tray::DEPTH_SKEW * tray::box_depth(spool);
+    const float skew = tray::kDepthSkew * tray::box_depth(spool);
     const int32_t lead = (int32_t)std::ceil(std::max(0.0f, skew / 4 - 1));
     const int32_t tail = (int32_t)std::ceil(skew / 4);
     AmsSlotLayout layout =
@@ -639,7 +639,7 @@ void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[],
 
     if (!container || !slot_widgets || slot_count <= 0)
         return;
-    const int n = std::min(slot_count, AMS_DETAIL_MAX_SLOTS);
+    const int n = std::min(slot_count, kAmsDetailMaxSlots);
 
     // Any climate data gets glass.
     helix::AmsUnit unit;
@@ -665,7 +665,7 @@ void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[],
     const lv_point_t origin = {c.x1, c.y1};
 
     // Spools as laid out: front-plane centres sit S/2 left of the drawn ones.
-    float cx[AMS_DETAIL_MAX_SLOTS], cy_sum = 0;
+    float cx[kAmsDetailMaxSlots], cy_sum = 0;
     int32_t spool_size = 0;
     for (int i = 0; i < n; ++i) {
         float y = 0;
@@ -674,20 +674,20 @@ void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[],
         cy_sum += y;
     }
     const float size = (float)spool_size;
-    const float flange_ry = tray::SPOOL_FLANGE_RADIUS * size;
+    const float flange_ry = tray::kSpoolFlangeRadius * size;
     tray::TrayBox box{};
     box.depth = tray::box_depth(size);
     box.rise = tray::box_rise(box.depth);
     box.back_extra = (float)theme_manager_get_spacing("space_md");
-    const float skew = tray::DEPTH_SKEW * box.depth;
+    const float skew = tray::kDepthSkew * box.depth;
     for (int i = 0; i < n; ++i)
         s_tray.lane_x[i] = cx[i] - skew / 2;
     const float spacing = n > 1 ? s_tray.lane_x[1] - s_tray.lane_x[0] : tray::spool_pitch(size);
     const float half = tray::lane_lid_half_width(spacing, box);
 
     // The spools stand on the floor: their mid-depth centre is RISE/2 above the
-    // front-plane centre, whose flange bottom sits SPOOL_FLOOR_GAP above FB.
-    box.fb = cy_sum / n + flange_ry + tray::SPOOL_FLOOR_GAP + box.rise / 2;
+    // front-plane centre, whose flange bottom sits kSpoolFloorGap above FB.
+    box.fb = cy_sum / n + flange_ry + tray::kSpoolFloorGap + box.rise / 2;
     lv_obj_update_layout(w.slot_grid);
     const float front_h = std::max(20.0f, lv_obj_get_height(w.slot_grid) / 6.0f);
     box.ft = box.fb - front_h;
@@ -1194,7 +1194,7 @@ bool ams_dispatch_backend_action(AmsContextMenu::MenuAction action, int slot,
         // sentinel reaches it. The external spool is not one of the backend's
         // lanes: it carries no number to name, and apply_user_edit() refuses the
         // index, so it clears through its own store instead.
-        if (slot == EXTERNAL_SPOOL_SLOT) {
+        if (slot == kExternalSpoolSlot) {
             AmsState::instance().commit_external_spool_edit(SlotInfo{});
             NOTIFY_INFO(lv_tr("External spool cleared"));
             break;
@@ -1221,7 +1221,7 @@ bool ams_dispatch_backend_action(AmsContextMenu::MenuAction action, int slot,
         SlotInfo original = backend->get_slot_info(slot);
         SlotInfo cleared = original;
         cleared.material.clear();
-        cleared.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+        cleared.color_rgb = kAmsDefaultSlotColor;
         cleared.color_name.clear();
         cleared.multi_color_hexes.clear();
         cleared.brand.clear();
@@ -1272,7 +1272,7 @@ namespace {
 /// already answered the question the notice asked.
 struct InsertOfferSnapshot {
     std::string material;
-    uint32_t color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    uint32_t color_rgb = kAmsDefaultSlotColor;
     int spoolman_id = 0;
 
     static InsertOfferSnapshot of(const SlotInfo& info) {

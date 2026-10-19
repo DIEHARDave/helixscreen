@@ -16,7 +16,7 @@ using namespace helix;
 
 using settings::Scope;
 // Row order is AudioSettingsManager::Key.
-static constexpr settings::PersistedSetting AUDIO_SETTINGS[] = {
+static constexpr settings::PersistedSetting kAudioSettings[] = {
     {"settings_sounds_enabled", "/sounds_enabled", Scope::Global, true, 0, 0, 1, "sounds_enabled"},
     {"settings_ui_sounds_enabled", "/ui_sounds_enabled", Scope::Global, true, 1, 0, 1,
      "ui_sounds_enabled"},
@@ -32,10 +32,10 @@ AudioSettingsManager& AudioSettingsManager::instance() {
 }
 
 settings::TableView AudioSettingsManager::persisted_table() {
-    return {AUDIO_SETTINGS, std::size(AUDIO_SETTINGS)};
+    return {kAudioSettings, std::size(kAudioSettings)};
 }
 
-AudioSettingsManager::AudioSettingsManager() : settings_(AUDIO_SETTINGS) {
+AudioSettingsManager::AudioSettingsManager() : settings_(kAudioSettings) {
     spdlog::trace("[AudioSettingsManager] Constructor");
 }
 

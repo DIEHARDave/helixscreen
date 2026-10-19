@@ -50,13 +50,13 @@ struct LargeGCode {
         // vacuously. On a desktop should_use_gcode_streaming() is false (its
         // threshold scales with available RAM), so these take the full-load
         // path, which is the one with the cancellable getline loop.
-        static const char* CANDIDATES[] = {
+        static const char* kCandidates[] = {
             "assets/test_gcodes/Night Spirit_v1_2_og.gcode",
             "assets/test_gcodes/vaso_voronoi_V2_abajo.gcode",
             "assets/test_gcodes/Low poly vase v1.1 flat top.gcode",
             "assets/test_gcodes/Benchbin_MK4_MMU3.gcode",
         };
-        for (const char* c : CANDIDATES) {
+        for (const char* c : kCandidates) {
             std::error_code ec;
             if (fs::exists(c, ec)) {
                 path = c;
@@ -173,7 +173,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "gcode viewer cancels an in-flight parse promp
 
     // This is the measurement: load_file -> start_build -> cancel_build -> join.
     // With no in-loop cancellation check the join waits out the rest of the
-    // large parse; with it, the worker notices within CANCEL_POLL_LINES.
+    // large parse; with it, the worker notices within kCancelPollLines.
     const auto cancel_start = steady_clock::now();
     ui_gcode_viewer_load_file(viewer, tiny.path.string().c_str());
     const auto cancel_ms = duration_cast<milliseconds>(steady_clock::now() - cancel_start).count();

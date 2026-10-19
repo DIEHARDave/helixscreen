@@ -101,7 +101,7 @@ call, returning both halves in a `LoadedOverrideStore`:
 
 ```cpp
 auto loaded = helix::ams::make_loaded_override_store(api_, "happyhare", get_type(),
-                                                     backend_log_tag(), OVERRIDE_NAMESPACE);
+                                                     backend_log_tag(), kOverrideNamespace);
 {
     std::lock_guard<std::mutex> lock(mutex_);
     override_store_ = std::move(loaded.store);
@@ -224,7 +224,7 @@ does neither, and both halves of that are load-bearing:
   have to mean. The user-initiated `clear_slot_override()` is a different thing
   and is implemented: it drops the store record, the only record there is.
 - **The wipe it fixes is `initialize_tools()`**, which resets every slot to
-  `AMS_DEFAULT_SLOT_COLOR` with the tool name as a placeholder `spool_name`, and
+  `kAmsDefaultSlotColor` with the tool name as a placeholder `spool_name`, and
   runs on every `set_discovered_tools()`. Overrides are therefore re-layered at
   three points, not just the parse tail: that function's own tail, the parse
   tail, and immediately after the start-time load (because `set_discovered_tools()`
@@ -269,7 +269,7 @@ them. For AFC that is not merely etiquette: AFC.py `delete_lane_data()`
 wipes the whole namespace at the start of every PREP and refills it one lane at
 a time, so the namespace is non-durable across reboots *and* transiently
 incomplete during them. AFC/HH overrides go to a private namespace
-(`OVERRIDE_NAMESPACE`) — see prestonbrown/helixscreen#1158.
+(`kOverrideNamespace`) — see prestonbrown/helixscreen#1158.
 
 ---
 
@@ -416,7 +416,7 @@ What counts as a value the record "carries" at all, per field type:
 | `std::string` | empty string |
 | `int` (ids) | 0 |
 | `float` (weights) | negative |
-| `uint32_t` (`color_rgb`) | `color_set` false, or the value `AMS_DEFAULT_SLOT_COLOR` (`0x808080`), which is where a cleared slot and a colourless record both land |
+| `uint32_t` (`color_rgb`) | `color_set` false, or the value `kAmsDefaultSlotColor` (`0x808080`), which is where a cleared slot and a colourless record both land |
 
 `color_set` is why colour needs two tests rather than one: pure black is a real
 filament colour, so `color_rgb == 0` cannot mean "unset". `is_declarable_color()`

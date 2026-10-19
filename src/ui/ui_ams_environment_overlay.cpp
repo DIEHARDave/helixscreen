@@ -93,7 +93,7 @@ void AmsEnvironmentOverlay::init_subjects() {
         UI_MANAGED_SUBJECT_INT(drying_progress_subject_, 0, "ams_env_overlay_drying_progress",
                                subjects_);
         // Per-material comfort row subjects (4 rows max)
-        for (int i = 0; i < MAX_COMFORT_ROWS; ++i) {
+        for (int i = 0; i < kMaxComfortRows; ++i) {
             char name[48];
             snprintf(name, sizeof(name), "ams_env_comfort_%d_visible", i);
             UI_MANAGED_SUBJECT_INT(comfort_visible_[i], 0, name, subjects_);
@@ -872,7 +872,7 @@ void AmsEnvironmentOverlay::update_comfort_text(float humidity_pct) {
     // sensor — common on the QIDI box). Hide the rows entirely so the overlay
     // shows "--" for humidity and no comfort claim, rather than a false all-clear.
     if (humidity_pct <= 0.0f) {
-        for (int i = 0; i < MAX_COMFORT_ROWS; ++i) {
+        for (int i = 0; i < kMaxComfortRows; ++i) {
             lv_subject_set_int(&comfort_visible_[i], 0);
         }
         return;
@@ -912,10 +912,10 @@ void AmsEnvironmentOverlay::update_comfort_text(float humidity_pct) {
         loaded_materials = fallback_comfort_materials();
     }
 
-    // Update subjects for each comfort row (up to MAX_COMFORT_ROWS)
+    // Update subjects for each comfort row (up to kMaxComfortRows)
     int row_idx = 0;
     for (const auto& mat_name : loaded_materials) {
-        if (row_idx >= MAX_COMFORT_ROWS)
+        if (row_idx >= kMaxComfortRows)
             break;
 
         const auto range = filament::get_comfort_range(mat_name.c_str());
@@ -950,7 +950,7 @@ void AmsEnvironmentOverlay::update_comfort_text(float humidity_pct) {
     }
 
     // Hide unused rows
-    for (int i = row_idx; i < MAX_COMFORT_ROWS; ++i) {
+    for (int i = row_idx; i < kMaxComfortRows; ++i) {
         lv_subject_set_int(&comfort_visible_[i], 0);
     }
 }

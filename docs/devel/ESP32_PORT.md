@@ -32,8 +32,12 @@ firmware. Before you commit:
   `wifi:malloc buffer fail` at boot and no WiFi. Small ones add up: every `lv_subject_t` and
   text buffer a home widget keeps at namespace scope counts, and the widgets that ship them
   (`src/ui/panel_widgets/toolhead_widget.cpp`, `host_health_widget.cpp`, `bed_mesh_tile_widget.cpp`,
-  `dryer_widget.cpp`, `dryer_model.cpp`) declare them all `HELIX_PSRAM_BSS`, as do the state singletons they
-  read (`src/printer/bed_mesh_state.cpp`, `src/system/performance_state.cpp`). Do the same for a new widget's
+  `dryer_widget.cpp`, `dryer_model.cpp`, `tool_switcher_widget.cpp`) declare them all `HELIX_PSRAM_BSS`, as
+  do the state singletons they read (`src/printer/bed_mesh_state.cpp`, `src/system/performance_state.cpp`).
+  The same goes beyond the home screen: the AMS sidebar's and context menu's subjects and hint buffers
+  (`src/ui/ui_ams_sidebar.cpp`, `src/ui/ui_ams_context_menu.cpp`), the theme's XML subjects
+  (`src/ui/theme_manager.cpp#subjects`) and `SettingsManager`
+  (`src/system/settings_manager.cpp#"static HELIX_PSRAM_BSS SettingsManager instance"`). Do the same for a new widget's, overlay's
   or model's subjects, buffers and singleton. Subjects registered at app runtime are first touched after PSRAM
   is up, which is what makes the attribute legal.
 - **Push:** `.githooks/pre-push` runs `scripts/esp32_syntax_check.py`, which compiles the touched firmware units

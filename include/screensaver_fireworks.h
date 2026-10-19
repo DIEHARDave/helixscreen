@@ -2,7 +2,7 @@
 
 #pragma once
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_canvas.h"
 #include "screensaver_fireworks_sim.h"
@@ -30,7 +30,7 @@ class FireworksScreensaver : public SimSaver<FireworksSim> {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return SAVER_BUILD_CANVAS_FORMAT;
+        return kSaverBuildCanvasFormat;
     }
     void on_frame(uint32_t dt_ms, std::vector<DirtyRect>& dirty) override;
     void on_level_request(size_t level) override {

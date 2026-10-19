@@ -574,7 +574,7 @@ Force the screensaver to start immediately instead of waiting for the idle timeo
 
 | Property | Value |
 |----------|-------|
-| **Values** | A saver name from `include/screensaver_registry.h#"SCREENSAVERS[]"` (`toasters`, `starfield`, `pipes`, `bounce`, `fireworks`, `logo`, `maze`, `hyperspace`, `flipclock`, `fireflies`, `aqua`, `highfly`), or `1` / any other value (uses the configured type, falling back to flying toasters). A saver stored as too heavy for the board runs its fallback, as the idle screen would (`docs/devel/SCREENSAVERS.md` § "The gate") |
+| **Values** | A saver name from `include/screensaver_registry.h#"kScreensavers[]"` (`toasters`, `starfield`, `pipes`, `bounce`, `fireworks`, `logo`, `maze`, `hyperspace`, `flipclock`, `fireflies`, `aqua`, `highfly`), or `1` / any other value (uses the configured type, falling back to flying toasters). A saver stored as too heavy for the board runs its fallback, as the idle screen would (`docs/devel/SCREENSAVERS.md` § "The gate") |
 | **Default** | Unset — normal idle-timeout behavior |
 | **File** | `src/application/display_manager.cpp`, names in `include/screensaver_registry.h` |
 
@@ -586,7 +586,7 @@ HELIX_SCREENSAVER_NOW=starfield ./build/bin/helix-screen --test -vv
 HELIX_SCREENSAVER_NOW=1 ./build/bin/helix-screen --test -vv
 ```
 
-Requires a build with `HELIX_ENABLE_SCREENSAVER` — the whole block is `#ifdef`-ed out otherwise, and the variable is then ignored.
+Requires a build with screensavers (`HELIX_ENABLE_SCREENSAVER` defined and non-zero; the ESP32 firmware defines it as 0). Without them the whole block is compiled out and the variable is ignored.
 
 ### `HELIX_REFR_PERIOD_MS`
 
@@ -634,7 +634,7 @@ Level 0 frame period of every screensaver, for manual testing: the saver draws a
 HELIX_SCREENSAVER_REFR_PERIOD_MS=0 HELIX_SCREENSAVER_NOW=1 ./build/bin/helix-screen --test -vv
 ```
 
-Requires a build with `HELIX_ENABLE_SCREENSAVER`.
+Requires a build with screensavers (`HELIX_ENABLE_SCREENSAVER` non-zero).
 
 ### `HELIX_SCREENSAVER_BUDGET_PCT`
 
@@ -651,7 +651,7 @@ Replaces the screensaver gate's CPU budget, as a whole percent of one core. Each
 HELIX_SCREENSAVER_BUDGET_PCT=5 HELIX_SCREENSAVER_NOW=toasters ./build/bin/helix-screen --test -vv
 ```
 
-Requires a build with `HELIX_ENABLE_SCREENSAVER`.
+Requires a build with screensavers (`HELIX_ENABLE_SCREENSAVER` non-zero).
 
 ### `HELIX_SCREENSAVER_LEVEL`
 
@@ -668,7 +668,7 @@ Runs every saver that starts at this quality level and turns the gate off for th
 HELIX_SCREENSAVER_LEVEL=1 HELIX_SCREENSAVER_NOW=pipes ./build/bin/helix-screen --test -vv
 ```
 
-Requires a build with `HELIX_ENABLE_SCREENSAVER`.
+Requires a build with screensavers (`HELIX_ENABLE_SCREENSAVER` non-zero).
 
 ### `HELIX_LOOP_MIN_SLEEP_MS`
 
@@ -899,7 +899,7 @@ Press-debounce for the calibration wizard. **On by default.** The calibration st
 |----------|-------------|---------|
 | `HELIX_TOUCH_CAL_DEBOUNCE` | Capture-on-press / commit-on-release debounce. Set to `0` to opt out to the legacy sample-on-press path. | Enabled |
 
-**How it works:** `on_press()` captures the press point without sampling; `on_release()` commits it. A commit within **150 ms** (`REFRACTORY_MS`) of the previous committed sample is treated as bounce and dropped. A **600 ms** (`STALL_COMMIT_MS`) stall timer commits a pending press for controllers that never deliver a clean release, so calibration can never wedge. Setting `HELIX_TOUCH_CAL_DEBOUNCE=0` restores the exact legacy behavior — sample on every press, release is a no-op — for A/B testing on real hardware.
+**How it works:** `on_press()` captures the press point without sampling; `on_release()` commits it. A commit within **150 ms** (`kRefractoryMs`) of the previous committed sample is treated as bounce and dropped. A **600 ms** (`kStallCommitMs`) stall timer commits a pending press for controllers that never deliver a clean release, so calibration can never wedge. Setting `HELIX_TOUCH_CAL_DEBOUNCE=0` restores the exact legacy behavior — sample on every press, release is a no-op — for A/B testing on real hardware.
 
 **Composes with `HELIX_DEBUG_TOUCH`:** set both to capture the validation evidence in a debug bundle — `HELIX_DEBUG_TOUCH=1` logs one `[TouchDebug] sample N/3 …` line per recorded sample, and with debounce on you also get `[TouchDebug] dropped bounce sample, dt=…ms` for each collapsed burst press.
 
@@ -1930,7 +1930,7 @@ Detection only — nothing is killed. A deadlocked UI thread leaves the process 
 | Property | Value |
 |----------|-------|
 | **Values** | `0`–`3600` seconds. `0` disables detection. Out-of-range and unparseable values are ignored with a warning. |
-| **Default** | `60` (`MainLoopHangDetector::DEFAULT_THRESHOLD_MS`) |
+| **Default** | `60` (`MainLoopHangDetector::kDefaultThresholdMs`) |
 | **File** | `src/application/application.cpp` (wiring), `include/main_loop_heartbeat.h` (logic) |
 
 ```bash
@@ -2000,7 +2000,7 @@ The variable is read twice, because the ring is installed by `init_early()` and 
 
 ### `HELIX_LOG_ROTATE_BYTES` / `HELIX_LOG_ROTATE_FILES`
 
-Tune rotating-file-log sizing on constrained-flash platforms. Together they cap total log disk usage at roughly `BYTES × FILES`.
+Tune rotating-file-log sizing on constrained-flash platforms. Together they cap total log disk usage at roughly `kBytes × FILES`.
 
 | Property | Value |
 |----------|-------|
@@ -2370,7 +2370,7 @@ SSL_CERT_FILE=/usr/data/ca-certificates.crt ./build/bin/helix-screen
 
 The store is resolved on the first such request and logged as `[TLS] Verifying our servers against <path>`. Servers are checked for chain and hostname but not for validity dates, because printers often boot with a 1970 clock. A store that exists but cannot be loaded trusts nothing, so those requests fail with `[TLS] Certificate for '<host>' rejected: ...`. With no store at all the app logs a warning and connects unverified.
 
-Telemetry also refuses to send when no store is found: on devices with no CA bundle at all (AD5M stock firmware), glibc's NSS resolver can `SIGSEGV` during the SSL handshake. The check runs once and is cached, so setting the variable after startup does not re-enable sends.
+Telemetry also refuses to send when no store is found: on devices with no CA bundle at all (AD5M stock firmware), glibc's NSS resolver can `SIGSEGV` during the SSL handshake. The check runs once and is cached, so setting the variable after startup does not re-enable sends. On Android, telemetry, crash reports and debug bundle uploads go through the platform's own HTTPS stack, which needs no CA bundle on disk, so these variables do not apply to them and telemetry always has a transport (`src/system/ingest_client.cpp#transport_available`).
 
 ---
 

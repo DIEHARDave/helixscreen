@@ -361,7 +361,7 @@ TEST_CASE_METHOD(ReaderFixture, "read_entry refuses an entry too large to hold w
     put("a.gcode.3mf", fixture("single_plate.gcode.3mf"));
     helix::zip::ZipEntry huge;
     huge.name = "Metadata/plate_9.png";
-    huge.csize = helix::three_mf::MAX_ENTRY_BYTES + 1;
+    huge.csize = helix::three_mf::kMaxEntryBytes + 1;
     huge.usize = 10;
     std::string error;
     ThreeMfReader::read_entry(

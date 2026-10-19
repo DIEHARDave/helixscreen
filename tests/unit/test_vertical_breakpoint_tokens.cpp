@@ -48,7 +48,7 @@ struct HeightToken {
     const char* xxlarge; // > 1000   (the 1480px axis of a 320x1480 panel)
 };
 
-constexpr HeightToken HEIGHT_TOKENS[] = {
+constexpr HeightToken kHeightTokens[] = {
     {"button_height", "32", "52", "72", "96"},
     {"button_height_sm", "28", "40", "40", "56"},
     {"button_height_lg", "40", "70", "96", "128"},
@@ -124,7 +124,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "responsive_vertical_dimension returns the ver
     }
 
     SECTION("null display falls back to the default display") {
-        CHECK(responsive_vertical_dimension(nullptr) == TEST_DISPLAY_HEIGHT);
+        CHECK(responsive_vertical_dimension(nullptr) == kTestDisplayHeight);
     }
 }
 
@@ -134,7 +134,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "responsive_vertical_dimension returns the ver
 
 TEST_CASE("Only the declared height tokens follow the vertical ladder",
           "[theme][breakpoints][1209]") {
-    for (const auto& t : HEIGHT_TOKENS) {
+    for (const auto& t : kHeightTokens) {
         INFO("token: " << t.name);
         CHECK(theme_manager_token_uses_vertical_axis(t.name));
     }
@@ -159,7 +159,7 @@ TEST_CASE_METHOD(XMLTestFixture, "A tall portrait panel gets full-height control
     lv_display_t* d = make_test_display(320, 1480);
     const auto tokens = theme_manager_resolve_px_tokens(d);
 
-    for (const auto& t : HEIGHT_TOKENS) {
+    for (const auto& t : kHeightTokens) {
         INFO("token: " << t.name);
         CHECK(resolved(tokens, t.name) == t.xxlarge);
     }
@@ -193,7 +193,7 @@ TEST_CASE_METHOD(XMLTestFixture, "Landscape token resolution is byte-identical t
     SECTION("800x480 — MEDIUM on both axes") {
         lv_display_t* d = make_test_display(800, 480);
         const auto tokens = theme_manager_resolve_px_tokens(d);
-        for (const auto& t : HEIGHT_TOKENS) {
+        for (const auto& t : kHeightTokens) {
             INFO("token: " << t.name);
             CHECK(resolved(tokens, t.name) == t.medium);
         }
@@ -205,7 +205,7 @@ TEST_CASE_METHOD(XMLTestFixture, "Landscape token resolution is byte-identical t
     SECTION("1024x600 — LARGE on both axes") {
         lv_display_t* d = make_test_display(1024, 600);
         const auto tokens = theme_manager_resolve_px_tokens(d);
-        for (const auto& t : HEIGHT_TOKENS) {
+        for (const auto& t : kHeightTokens) {
             INFO("token: " << t.name);
             CHECK(resolved(tokens, t.name) == t.large);
         }
@@ -217,7 +217,7 @@ TEST_CASE_METHOD(XMLTestFixture, "Landscape token resolution is byte-identical t
     SECTION("480x320 — TINY on both axes, the smallest shipping panel") {
         lv_display_t* d = make_test_display(480, 320);
         const auto tokens = theme_manager_resolve_px_tokens(d);
-        for (const auto& t : HEIGHT_TOKENS) {
+        for (const auto& t : kHeightTokens) {
             INFO("token: " << t.name);
             CHECK(resolved(tokens, t.name) == t.tiny);
         }
@@ -240,7 +240,7 @@ TEST_CASE_METHOD(XMLTestFixture, "Startup registration matches the shared resolv
     // (theme_manager_init → theme_manager_register_responsive_spacing) at the
     // fixture's 800x480. They must be exactly what the resolver says.
     const auto tokens = theme_manager_resolve_px_tokens(disp);
-    for (const auto& t : HEIGHT_TOKENS) {
+    for (const auto& t : kHeightTokens) {
         INFO("token: " << t.name);
         CHECK(token(t.name) == resolved(tokens, t.name));
         CHECK(token(t.name) == t.medium);

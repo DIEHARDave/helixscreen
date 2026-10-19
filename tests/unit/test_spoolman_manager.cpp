@@ -819,7 +819,7 @@ TEST_CASE_METHOD(SpoolmanLaneFixture,
 
     poll();
 
-    CHECK(helix::ams::lane_sources(helix::ams::BYPASS_LANE_ID).spoolman.has_value());
+    CHECK(helix::ams::lane_sources(helix::ams::kBypassLaneId).spoolman.has_value());
     auto shown = AmsState::instance().get_external_spool_info();
     REQUIRE(shown.has_value());
     CHECK(shown->remaining_weight_g == 850.0F);
@@ -902,12 +902,12 @@ TEST_CASE_METHOD(SpoolmanLaneFixture,
     state_polymaker_pla(server_spool(1));
 
     poll();
-    REQUIRE(helix::ams::lane_sources(helix::ams::BYPASS_LANE_ID).spoolman.has_value());
+    REQUIRE(helix::ams::lane_sources(helix::ams::kBypassLaneId).spoolman.has_value());
 
     remove_server_spool(1);
     poll();
 
-    CHECK_FALSE(helix::ams::lane_sources(helix::ams::BYPASS_LANE_ID).spoolman.has_value());
+    CHECK_FALSE(helix::ams::lane_sources(helix::ams::kBypassLaneId).spoolman.has_value());
     auto shown = AmsState::instance().get_external_spool_info();
     REQUIRE(shown.has_value());
     // The first poll moved the stored binding to the fetched weight, so the
@@ -933,12 +933,12 @@ TEST_CASE_METHOD(SpoolmanLaneFixture,
     // delete that follows must keep the PETG view, not revert to the stub.
     server_spool(1).material = "PETG";
     poll();
-    REQUIRE(helix::ams::lane_sources(helix::ams::BYPASS_LANE_ID).spoolman.has_value());
+    REQUIRE(helix::ams::lane_sources(helix::ams::kBypassLaneId).spoolman.has_value());
 
     remove_server_spool(1);
     poll();
 
-    auto sources = helix::ams::lane_sources(helix::ams::BYPASS_LANE_ID);
+    auto sources = helix::ams::lane_sources(helix::ams::kBypassLaneId);
     CHECK_FALSE(sources.spoolman.has_value());
     // A delete is bookkeeping, not a spool change: what the resolved view
     // carried goes back on the lane as remembered, the way a denied slot's
@@ -963,7 +963,7 @@ TEST_CASE_METHOD(SpoolmanLaneFixture,
     state_polymaker_pla(server_spool(1));
 
     poll();
-    REQUIRE(helix::ams::lane_sources(helix::ams::BYPASS_LANE_ID).spoolman.has_value());
+    REQUIRE(helix::ams::lane_sources(helix::ams::kBypassLaneId).spoolman.has_value());
 
     remove_server_spool(1);
     fetch(); // the mock answers inside the call; the denial is queued, not run
@@ -981,11 +981,11 @@ TEST_CASE_METHOD(SpoolmanLaneFixture,
     s2.material = "ABS";
     s2.initial_weight_g = 750.0;
     s2.remaining_weight_g = 600.0;
-    REQUIRE(SpoolmanManager::file_spool_on_lane(helix::ams::BYPASS_LANE_ID, s2));
+    REQUIRE(SpoolmanManager::file_spool_on_lane(helix::ams::kBypassLaneId, s2));
 
     drain(); // the denial for spool 1 runs now
 
-    auto sources = helix::ams::lane_sources(helix::ams::BYPASS_LANE_ID);
+    auto sources = helix::ams::lane_sources(helix::ams::kBypassLaneId);
     REQUIRE(sources.spoolman.has_value());
     CHECK(sources.spoolman->spoolman_id == 2);
     CHECK_FALSE(sources.remembered.has_value());

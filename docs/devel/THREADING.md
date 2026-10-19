@@ -154,7 +154,7 @@ main_loop()              libhv Event Loop       UpdateChecker
 
 ```cpp
 void WiFiManager::handle_scan_complete(const std::string& data) {
-    auto networks = parse_networks(data);   // BG thread — no LVGL calls
+    auto networks = parse_networks(data);   // kBg thread — no LVGL calls
     helix::ui::queue_update([networks = std::move(networks), cb = scan_callback_]() {
         cb(networks);                        // Main thread — widgets now safe
     });
@@ -219,7 +219,7 @@ defer only the mutation:
 auto tok = lifetime_.token();
 api_->rest().get_strips(
     [this, tok](const Resp& r) {
-        // BG: parse, validate, build LOCAL objects — no `this` access
+        // kBg: parse, validate, build LOCAL objects — no `this` access
         Local out = parse(r);
         // MAIN: only the mutation
         tok.defer("LedController::on_strips_apply",

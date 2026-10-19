@@ -1079,6 +1079,14 @@ This enables SIMD-accelerated JPEG decoding, which is **3-5x faster** than the b
 
 **Tap the Printer Image widget** to open the Printer Manager overlay. This is your central place to view and customize your printer's identity.
 
+You can also reach it without the widget, which helps if you removed Printer Image from your home screen or your layout has no room for it:
+
+1. Tap the **gear icon** in the navigation bar to open Settings
+2. In the **Printer** group, tap **Printer** (the row reads *Name, image and model*)
+3. The Printer Manager opens. Tap the back arrow to return to Settings
+
+The steps below start from the printer image, but every one of them works the same from **Settings > Printer**.
+
 ### Changing the Printer Name
 
 1. Tap the **printer image** on the Home Panel to open the Printer Manager
@@ -1113,8 +1121,8 @@ The list is filtered to your printer's motion type, the same way the setup wizar
 2. Tap the **printer image** again (marked with a pencil badge) to open the Image Picker
 3. The picker shows a scrollable list on the left and a live preview on the right
 4. Choose from one of three sources:
-   - **Auto-Detect** (default) — HelixScreen selects an image based on your printer type reported by Klipper
-   - **Shipped Images** — Over 25 pre-rendered images covering Voron, Creality, FlashForge, Anycubic, RatRig, FLSUN, and more
+   - **Auto-Detect** (default) — HelixScreen selects an image based on your printer type reported by Klipper. Some printers have a second picture for optional hardware: a Creality K2 with a CFS connected shows the K2 with the CFS on top. The picture switches on its own once the CFS reports in, and back if it is disconnected. An image you pick yourself always stays in place
+   - **Shipped Images** — Every printer picture HelixScreen ships (over 80), covering Voron, Creality, FlashForge, Anycubic, RatRig, FLSUN, and more
    - **Custom Images** — Your own images (see below)
 5. Tap an image to select it — your choice takes effect immediately
 
@@ -1189,9 +1197,29 @@ If the deleted image was active, HelixScreen falls back to auto-detect.
 
 Below the identity card, the overlay displays current software versions for Klipper, Moonraker, and HelixScreen, with update indicators when new versions are available.
 
-### Hardware Capabilities
+On a printer running Kalico, the Klipper row is labeled **Kalico**.
 
-A row of chips shows detected hardware capabilities: Probe, Bed Mesh, Heated Bed, LEDs, ADXL, QGL, Z-Tilt, and others depending on your Klipper configuration.
+### Capabilities
+
+The **Capabilities** section lists everything HelixScreen found on your printer, grouped under six headings: Motion & Leveling, Thermal & Air, Filament & Toolhead, Printing, Electronics & Accessories, and Add-ons. Only what was detected appears; a heading with nothing under it is hidden.
+
+Many chips carry a detail after the name, so you can check that HelixScreen identified your hardware correctly:
+
+| Chip | Example | What the detail tells you |
+|------|---------|---------------------------|
+| Kinematics | CoreXY | How your printer moves, from your Klipper config |
+| Build volume | 350×350×340 | The travel HelixScreen read from your stepper limits, in mm |
+| Probe | Probe · Beacon | Which probe type was recognized |
+| Filament system | Happy Hare · 8 | Each multi-material system and its slot count |
+| Tool changer | Tool Changer · 4 Tools | Toolheads on a tool changer, or **2 Extruders** on an IDEX or other multi-extruder printer |
+| MCUs | 2 MCUs | How many controller boards Klipper reports (one board shows its chip name) |
+| Counts | Fans · 2, Power · 4 | How many of that item were found. Fans counts the fans you can control, other than part cooling |
+
+A chip that says **set manually** (for example **QGL · set manually**) is one you turned on yourself with a [capability override](../CONFIGURATION.md#capability-overrides) even though HelixScreen did not detect it on the printer.
+
+**Tap any chip** to go to the screen that uses it, such as Bed Mesh, Input Shaper, LED Control or the Power panel. Chips with no screen of their own open a short note explaining what the feature is and where HelixScreen uses it. Belt Tension and Tool Offsets open their screens only when beta features are on; otherwise they show the note.
+
+If something you know is on your printer is missing from this list, HelixScreen did not detect it. See [A feature is missing for hardware my printer has](../TROUBLESHOOTING.md#a-feature-is-missing-for-hardware-my-printer-has).
 
 ![Printer Manager — name, image, software versions](../../images/user/home-printer-manager.png)
 

@@ -60,7 +60,7 @@ Five catalogues: the ledger and its ratchet, the duplication debt, the open corr
   style          59   → XML style attribute (style_bg_color="#card_bg") or bind_style
   text           83   → bind_text="subject" on the XML element
   visibility    136   → <bind_flag_if_eq subject=... flag="hidden"> or <if cond=...>
-  TOTAL         319
+  kTotal         319
 ```
 
 (verbatim from `python3 scripts/check_imperative_ui.py --summary`; regenerate any number in this section with `--list`). The count is enforced as a ratchet: [`scripts/qc/decl_ui.sh#qc_decl_ui`](../../../scripts/qc/decl_ui.sh) runs the gate with `--max-allowed` set to the baseline, so a change that adds a site past it fails the commit, and a port lowers both the count and the baseline. The baseline can sit a few sites above the live count after ports land; lowering it to the count is a one-line change. The porting epic is prestonbrown/helixscreen#1140.

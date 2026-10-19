@@ -396,7 +396,7 @@ void MacrosPanel::layout_rows() {
         const int viewport = lv_obj_get_content_height(scroll_container_);
         const size_t needed =
             std::min(n, static_cast<size_t>((viewport + max_h + gap) / std::max(1, min_h + gap) +
-                                            1 + 2 * BUFFER_ROWS));
+                                            1 + 2 * kBufferRows));
         if (needed > slots_.size()) {
             grow_slots(needed);
         }
@@ -419,7 +419,7 @@ void MacrosPanel::update_visible(bool refill) {
     }
     const auto w = helix::ui::compute_window(lv_obj_get_scroll_y(scroll_container_),
                                              lv_obj_get_content_height(scroll_container_),
-                                             row_tops_, BUFFER_ROWS);
+                                             row_tops_, kBufferRows);
     if (!refill && w.first == shown_first_ && w.last == shown_last_) {
         return;
     }

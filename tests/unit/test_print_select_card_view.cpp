@@ -111,7 +111,7 @@ size_t window_cards(lv_obj_t* container, const CardDimensions& dims, int file_co
     const int rows = (file_count + dims.num_columns - 1) / dims.num_columns;
     const auto w =
         helix::ui::compute_window(lv_obj_get_scroll_y(container), lv_obj_get_height(container),
-                                  stride, rows, PrintSelectCardView::BUFFER_ROWS);
+                                  stride, rows, PrintSelectCardView::kBufferRows);
     return static_cast<size_t>(std::min(file_count, w.last * dims.num_columns) -
                                w.first * dims.num_columns);
 }
@@ -271,7 +271,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
         const auto w =
             helix::ui::compute_window(lv_obj_get_scroll_y(container), lv_obj_get_height(container),
-                                      stride, 15, PrintSelectCardView::BUFFER_ROWS);
+                                      stride, 15, PrintSelectCardView::kBufferRows);
         int expect = w.first * dims.num_columns;
         for (uint32_t i = 0; i < lv_obj_get_child_count(container); ++i) {
             lv_obj_t* card = lv_obj_get_child(container, static_cast<int32_t>(i));

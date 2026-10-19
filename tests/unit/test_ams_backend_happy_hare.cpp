@@ -154,7 +154,7 @@ class AmsBackendHappyHareTestHelper : public AmsBackendHappyHare {
             slot.global_index = i;
             slot.status = SlotStatus::AVAILABLE;
             slot.mapped_tool = i;
-            slot.color_rgb = helix::AMS_DEFAULT_SLOT_COLOR;
+            slot.color_rgb = helix::kAmsDefaultSlotColor;
             unit.slots.push_back(slot);
         }
 
@@ -182,7 +182,7 @@ class AmsBackendHappyHareTestHelper : public AmsBackendHappyHare {
             auto* entry = HappyHareTestAccess::slots(*this).get_mut(i);
             if (entry) {
                 entry->info.status = SlotStatus::AVAILABLE;
-                entry->info.color_rgb = helix::AMS_DEFAULT_SLOT_COLOR;
+                entry->info.color_rgb = helix::kAmsDefaultSlotColor;
             }
         }
         // Set 1:1 tool map
@@ -580,7 +580,7 @@ TEST_CASE("Happy Hare persistence: clearing one field names it empty",
 
     // The same edit on the colour, keeping the material.
     SlotInfo cleared_color = *second;
-    cleared_color.color_rgb = helix::AMS_DEFAULT_SLOT_COLOR;
+    cleared_color.color_rgb = helix::kAmsDefaultSlotColor;
     helix::test::apply_edit(helper, 1, cleared_color);
     REQUIRE(helper.has_gcode("MMU_GATE_MAP GATE=1 COLOR= MATERIAL=PLA"));
 
@@ -607,7 +607,7 @@ TEST_CASE("Happy Hare persistence: clearing one field names it empty",
 static SlotInfo funnel_cleared_copy(const SlotInfo& original) {
     SlotInfo cleared = original;
     cleared.material.clear();
-    cleared.color_rgb = helix::AMS_DEFAULT_SLOT_COLOR;
+    cleared.color_rgb = helix::kAmsDefaultSlotColor;
     cleared.color_name.clear();
     cleared.multi_color_hexes.clear();
     cleared.brand.clear();
@@ -712,7 +712,7 @@ TEST_CASE("Happy Hare clear: slot stays blank across the status echo", "[ams][ha
     // Live: blank.
     const SlotInfo* live = helper.get_mutable_slot(0);
     REQUIRE(live->material.empty());
-    REQUIRE(live->color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    REQUIRE(live->color_rgb == helix::kAmsDefaultSlotColor);
     REQUIRE(live->spoolman_id == 0);
 
     // The firmware's echo of the cleared gate map: still blank. The cleared
@@ -722,7 +722,7 @@ TEST_CASE("Happy Hare clear: slot stays blank across the status echo", "[ams][ha
     helper.test_parse_mmu_state(echo);
     const SlotInfo* echoed = helper.get_mutable_slot(0);
     REQUIRE(echoed->material.empty());
-    REQUIRE(echoed->color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    REQUIRE(echoed->color_rgb == helix::kAmsDefaultSlotColor);
     REQUIRE(echoed->spoolman_id == 0);
 }
 
@@ -4747,7 +4747,7 @@ TEST_CASE("HappyHare persist_override does not record the no-color sentinel",
 
     SlotInfo info;
     info.material = "PLA";
-    info.color_rgb = helix::AMS_DEFAULT_SLOT_COLOR;
+    info.color_rgb = helix::kAmsDefaultSlotColor;
     helix::test::apply_edit(helper, 0, info);
 
     REQUIRE(helper.has_gate_override(0));

@@ -23,7 +23,7 @@
 // The data derives from Martin Newell's teapot, as Juhana Kouhia archived it from Philip
 // Schneider in 1990.
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_pipes_sim.h"
 
@@ -37,10 +37,10 @@ namespace {
 
 /// Patches 0-5 (rim, body, lid, bottom) cover one quadrant and repeat in all four; 6-9
 /// (handle, spout) cover the half at y <= 0 and mirror across y = 0.
-constexpr int TEAPOT_PATCHES = 10;
-constexpr int TEAPOT_QUADRANT_PATCHES = 6;
+constexpr int kTeapotPatches = 10;
+constexpr int kTeapotQuadrantPatches = 6;
 
-constexpr uint8_t TEAPOT_PATCH[TEAPOT_PATCHES][16] = {
+constexpr uint8_t kTeapotPatch[kTeapotPatches][16] = {
     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},           // rim
     {12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27}, // body
     {24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39},
@@ -53,7 +53,7 @@ constexpr uint8_t TEAPOT_PATCH[TEAPOT_PATCHES][16] = {
     {113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128},
 };
 
-constexpr float TEAPOT_CP[][3] = {
+constexpr float kTeapotCp[][3] = {
     {1.40000f, 0.00000f, 2.40000f},   {1.40000f, -0.78400f, 2.40000f},
     {0.78400f, -1.40000f, 2.40000f},  {0.00000f, -1.40000f, 2.40000f},
     {1.33750f, 0.00000f, 2.53125f},   {1.33750f, -0.74900f, 2.53125f},
@@ -122,16 +122,16 @@ constexpr float TEAPOT_CP[][3] = {
 };
 
 /// Samples along each side of a patch.
-constexpr int TEAPOT_GRID = 6;
+constexpr int kTeapotGrid = 6;
 
 /// Model units per data unit: auxSolidTeapot(2.5 r) halves its size argument.
-constexpr float TEAPOT_SCALE = 0.5f * 2.5f * PIPES_RADIUS;
+constexpr float kTeapotScale = 0.5f * 2.5f * kPipesRadius;
 
 /// Data height the model is dropped by, so the teapot sits about its node.
-constexpr float TEAPOT_DROP = 1.5f;
+constexpr float kTeapotDrop = 1.5f;
 
 /// The point outward normals face away from, in data units (on the axis, mid-height).
-constexpr PipeVec3 TEAPOT_INSIDE{0.0f, 0.0f, 1.5f};
+constexpr PipeVec3 kTeapotInside{0.0f, 0.0f, 1.5f};
 
 struct Cubic {
     float b[4];
@@ -151,7 +151,7 @@ using Patch = std::array<PipeVec3, 16>;
 Patch patch_points(int patch, float sx, float sy) {
     Patch p{};
     for (size_t i = 0; i < 16; i++) {
-        const float* c = TEAPOT_CP[TEAPOT_PATCH[patch][i]];
+        const float* c = kTeapotCp[kTeapotPatch[patch][i]];
         p[i] = {c[0] * sx, c[1] * sy, c[2]};
     }
     return p;
@@ -180,7 +180,7 @@ void evaluate(const Patch& p, float u, float v, PipeVec3& pos, PipeVec3& normal)
 
 /// Data-space (z up) to model space (y up), scaled and dropped.
 PipeVec3 to_model(PipeVec3 d) {
-    return {d.x * TEAPOT_SCALE, (d.z - TEAPOT_DROP) * TEAPOT_SCALE, -d.y * TEAPOT_SCALE};
+    return {d.x * kTeapotScale, (d.z - kTeapotDrop) * kTeapotScale, -d.y * kTeapotScale};
 }
 
 PipeVec3 normal_to_model(PipeVec3 n) {
@@ -188,11 +188,11 @@ PipeVec3 normal_to_model(PipeVec3 n) {
 }
 
 void add_patch(const Patch& p, PipeMesh& out) {
-    constexpr int N = TEAPOT_GRID;
+    constexpr int N = kTeapotGrid;
     constexpr float STEP = 1.0f / static_cast<float>(N - 1);
     // A collapsed edge (the lid's tip, the bottom's centre) has no tangent plane; the normal
     // there is the limit from just inside the patch.
-    constexpr float INSET = 0.01f;
+    constexpr float kInset = 0.01f;
     std::array<PipeVec3, N * N> pos{};
     std::array<PipeVec3, N * N> nrm{};
     float outward = 0.0f;
@@ -205,11 +205,11 @@ void add_patch(const Patch& p, PipeMesh& out) {
             evaluate(p, u, v, point, n);
             if (length(n) < 1e-5f) {
                 PipeVec3 unused;
-                evaluate(p, std::clamp(u, INSET, 1.0f - INSET), std::clamp(v, INSET, 1.0f - INSET),
-                         unused, n);
+                evaluate(p, std::clamp(u, kInset, 1.0f - kInset),
+                         std::clamp(v, kInset, 1.0f - kInset), unused, n);
             }
             n = normalized_or(n, {0, 0, 1});
-            const PipeVec3 away = point - TEAPOT_INSIDE;
+            const PipeVec3 away = point - kTeapotInside;
             const float away_len = length(away);
             if (away_len > 0.0f) {
                 outward += dot(n, away) / away_len;
@@ -250,13 +250,13 @@ void add_patch(const Patch& p, PipeMesh& out) {
 void pipes_build_teapot(PipeMesh& out) {
     out.verts.clear();
     out.tris.clear();
-    constexpr std::array<std::array<float, 2>, 4> QUADRANTS = {
+    constexpr std::array<std::array<float, 2>, 4> kQuadrants = {
         {{1.0f, 1.0f}, {-1.0f, 1.0f}, {1.0f, -1.0f}, {-1.0f, -1.0f}}};
-    for (int patch = 0; patch < TEAPOT_PATCHES; patch++) {
-        const size_t copies = patch < TEAPOT_QUADRANT_PATCHES ? 4 : 2;
+    for (int patch = 0; patch < kTeapotPatches; patch++) {
+        const size_t copies = patch < kTeapotQuadrantPatches ? 4 : 2;
         for (size_t q = 0; q < copies; q++) {
             // Handle and spout copies are the first two quadrants: as given, and mirrored in y.
-            const auto& signs = patch < TEAPOT_QUADRANT_PATCHES ? QUADRANTS[q] : QUADRANTS[q * 2];
+            const auto& signs = patch < kTeapotQuadrantPatches ? kQuadrants[q] : kQuadrants[q * 2];
             add_patch(patch_points(patch, signs[0], signs[1]), out);
         }
     }

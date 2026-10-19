@@ -790,18 +790,20 @@ state, constructed with representative sample data and the real lifecycle:
 `preflight-check`, `color-mismatch`, `runout-modal`, `lock-screen`,
 `print-status`, `print-tune`, `ams`, `camera`, `ams-error-toast`,
 `action-prompt-worst`, `action-prompt-many`, `action-prompt-hex`, `action-prompt-zmod`,
+`action-prompt-afc-cal`,
 `spaghetti-detection`, `bed-check` (the modal a printer bed check raises when it stops a
 print).
 `spaghetti-detection` fetches its camera still from the mock's unreachable webcam, so set
 `HELIX_DEMO_SNAPSHOT_URL` to a JPEG URL to see the preview.
 
 `action-prompt-many` raises a Klipper `action:prompt` carrying seven material
-presets, the case where the buttons cannot share one row and must wrap. The
+presets, the case where the buttons cannot share one row and become a grid. The
 `action-prompt-*` demos all need a live `action:prompt_begin`, so no sequence of
 clicks reaches them in mock mode. `action-prompt-zmod` feeds the Z-Mod color
 picker's own `// action:` lines (one text line, three groups of eight swatches, a
 footer Cancel) through the app's `ActionPromptManager::process_line`, so it shows
-what that printer's macro would.
+what that printer's macro would. `action-prompt-afc-cal` does the same with
+AFC_CALIBRATION's unit picker on a six-unit AFC.
 
 `ams-error-toast` raises the two-line AMS error toast (message plus
 `AmsError::suggestion`) using the longest suggestion any backend produces. The

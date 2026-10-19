@@ -738,8 +738,48 @@ TEST_CASE_METHOD(HelixTestFixture, "PrintPreparationManager: capabilities come f
     }
 }
 
+namespace {
+
+/// Known heating rates for the estimate tests, cleared again on the way out.
+struct EstimateRatesScope {
+    EstimateRatesScope() {
+        auto& rates = ThermalRateManager::instance();
+        rates.reset();
+        rates.get_model("extruder").set_default_rate(0.5f);
+        rates.get_model("heater_bed").set_default_rate(2.0f);
+    }
+    ~EstimateRatesScope() {
+        ThermalRateManager::instance().reset();
+    }
+};
+
+FileMetadata file_at(double bed_c, double nozzle_c) {
+    FileMetadata m;
+    m.filename = "estimate.gcode";
+    m.first_layer_bed_temp = bed_c;
+    m.first_layer_extr_temp = nozzle_c;
+    return m;
+}
+
+void set_temps(PrinterState& ps, int bed_c, int nozzle_c) {
+    lv_subject_set_int(ps.temperature_state().get_bed_temp_subject(), bed_c * 10);
+    lv_subject_set_int(ps.temperature_state().get_active_extruder_temp_subject(), nozzle_c * 10);
+}
+
+int sum_of_default_phases() {
+    const auto homing = static_cast<int>(helix::PrintStartPhase::HOMING);
+    int total = 0;
+    for (const auto& [phase, secs] : helix::PreprintPredictor::default_phase_durations()) {
+        total +=
+            phase == homing ? std::max(secs, helix::PreprintPredictor::kMinHomingSeconds) : secs;
+    }
+    return total;
+}
+
+} // namespace
+
 TEST_CASE_METHOD(HelixTestFixture,
-                 "PrintPreparationManager: estimate takes its homing time from the predictor",
+                 "PrintPreparationManager: estimate heats to the file's temperatures",
                  "[print_preparation][estimate]") {
     lv_init_safe();
     PrinterState& printer_state = get_printer_state();
@@ -748,24 +788,115 @@ TEST_CASE_METHOD(HelixTestFixture,
 
     PrintPreparationManager manager;
     manager.set_dependencies(nullptr, &printer_state);
-    lv_subject_t* estimate = manager.get_preprint_estimate_subject();
-    const int homing = static_cast<int>(helix::PrintStartPhase::HOMING);
+    lv_subject_t* const estimate = manager.get_preprint_estimate_subject();
+    PreprintConfigScope config;
+    EstimateRatesScope rates;
+    auto& thermal = ThermalRateManager::instance();
+    const FileMetadata file = file_at(60, 220);
 
-    // Heaters idle and no pre-print options: the estimate is the homing time.
-    SECTION("a printer with measured default phases") {
-        const std::string name = "Elegoo Centauri Carbon";
-        PreprintConfigScope config(name);
-        printer_state.set_printer_type_sync(name);
-        manager.recalculate_estimate();
-        REQUIRE(lv_subject_get_int(estimate) ==
-                PrinterDetector::get_print_start_default_phases(name).at(homing));
+    SECTION("no metadata yet: no estimate") {
+        set_temps(printer_state, 25, 25);
+        lv_subject_set_int(estimate, 123);
+        manager.recalculate_estimate(nullptr, file.filename);
+        REQUIRE(lv_subject_get_int(estimate) == 0);
     }
 
-    SECTION("a printer on the generic defaults") {
-        PreprintConfigScope config;
-        manager.recalculate_estimate();
-        REQUIRE(lv_subject_get_int(estimate) ==
-                helix::PreprintPredictor::default_phase_durations().at(homing));
+    SECTION("cold printer, no history: the full heat-up plus every default phase") {
+        set_temps(printer_state, 25, 25);
+        manager.recalculate_estimate(&file, file.filename);
+        const float heat = thermal.estimate_heating_seconds("extruder", 25.0f, 220.0f) +
+                           thermal.estimate_heating_seconds("heater_bed", 25.0f, 60.0f);
+        REQUIRE(heat > 100.0f);
+        REQUIRE(lv_subject_get_int(estimate) == static_cast<int>(heat + sum_of_default_phases()));
+        REQUIRE(lv_subject_get_int(estimate) > 300);
+    }
+
+    SECTION("a warm printer heats less") {
+        set_temps(printer_state, 25, 25);
+        manager.recalculate_estimate(&file, file.filename);
+        const int cold = lv_subject_get_int(estimate);
+        set_temps(printer_state, 55, 200);
+        manager.recalculate_estimate(&file, file.filename);
+        const float heat = thermal.estimate_heating_seconds("extruder", 200.0f, 220.0f) +
+                           thermal.estimate_heating_seconds("heater_bed", 55.0f, 60.0f);
+        REQUIRE(lv_subject_get_int(estimate) == static_cast<int>(heat + sum_of_default_phases()));
+        REQUIRE(lv_subject_get_int(estimate) < cold);
+    }
+
+    SECTION("a printer with its own default phases uses them") {
+        const std::string name = "Elegoo Centauri Carbon";
+        PreprintConfigScope typed(name);
+        printer_state.set_printer_type_sync(name);
+        set_temps(printer_state, 25, 25);
+        manager.invalidate_predictor_cache();
+        manager.recalculate_estimate(&file, file.filename);
+        const float heat = thermal.estimate_heating_seconds("extruder", 25.0f, 220.0f) +
+                           thermal.estimate_heating_seconds("heater_bed", 25.0f, 60.0f);
+        REQUIRE(sum_of_default_phases() != 260);
+        REQUIRE(lv_subject_get_int(estimate) == static_cast<int>(heat + sum_of_default_phases()));
+    }
+
+    SECTION("history: the recorded wall clock, heating included") {
+        helix::PreprintEntry e;
+        e.total_seconds = 400;
+        e.timestamp = 1000;
+        e.temp_bucket = 1;
+        e.window = helix::PreprintWindow::PrinterEdge;
+        e.phase_durations = {{static_cast<int>(helix::PrintStartPhase::HOMING), 30},
+                             {static_cast<int>(helix::PrintStartPhase::BED_MESH), 120}};
+        helix::PreprintPredictor::append_to_config(e);
+        set_temps(printer_state, 25, 25);
+        manager.invalidate_predictor_cache();
+        manager.recalculate_estimate(&file, file.filename);
+        REQUIRE(lv_subject_get_int(estimate) == 400);
+
+        SECTION("a toggle turned off subtracts its phase") {
+            manager.set_option_state_provider(
+                [](const std::string& id) { return id == "bed_mesh" ? 0 : -1; });
+            manager.recalculate_estimate(&file, file.filename);
+            REQUIRE(lv_subject_get_int(estimate) == 280);
+        }
+
+        SECTION("a toggle left on keeps its phase") {
+            manager.set_option_state_provider(
+                [](const std::string& id) { return id == "bed_mesh" ? 1 : -1; });
+            manager.recalculate_estimate(&file, file.filename);
+            REQUIRE(lv_subject_get_int(estimate) == 400);
+        }
+    }
+
+    SECTION("history that never named a phase: a toggle left on adds nothing") {
+        // AD5M-style: the start meshes, the matcher never mapped it, so the
+        // mesh is already inside the recorded 400s.
+        helix::PreprintEntry e;
+        e.total_seconds = 400;
+        e.timestamp = 1000;
+        e.temp_bucket = 1;
+        e.window = helix::PreprintWindow::PrinterEdge;
+        e.phase_durations = {{static_cast<int>(helix::PrintStartPhase::HOMING), 30}};
+        helix::PreprintPredictor::append_to_config(e);
+        set_temps(printer_state, 25, 25);
+        manager.invalidate_predictor_cache();
+        manager.set_option_state_provider([](const std::string& id) {
+            return id == "bed_mesh" || id == "qgl" || id == "z_tilt" || id == "nozzle_clean" ||
+                           id == "purge_line"
+                       ? 1
+                       : -1;
+        });
+        manager.recalculate_estimate(&file, file.filename);
+        REQUIRE(lv_subject_get_int(estimate) == 400);
+    }
+
+    SECTION("no history: a toggle turned off subtracts its default phase") {
+        set_temps(printer_state, 25, 25);
+        manager.recalculate_estimate(&file, file.filename);
+        const int all = lv_subject_get_int(estimate);
+        manager.set_option_state_provider(
+            [](const std::string& id) { return id == "bed_mesh" ? 0 : -1; });
+        manager.recalculate_estimate(&file, file.filename);
+        const int mesh = helix::PreprintPredictor::default_phase_durations().at(
+            static_cast<int>(helix::PrintStartPhase::BED_MESH));
+        REQUIRE(lv_subject_get_int(estimate) == all - mesh);
     }
 }
 
@@ -785,12 +916,16 @@ TEST_CASE_METHOD(
     manager.set_dependencies(nullptr, &printer_state);
 
     PreprintConfigScope config;
-    manager.recalculate_estimate();
+    EstimateRatesScope rates;
+    set_temps(printer_state, 25, 25);
+    const FileMetadata file = file_at(60, 220);
+    manager.recalculate_estimate(&file, file.filename);
 
+    auto& thermal = ThermalRateManager::instance();
+    const float heat = thermal.estimate_heating_seconds("extruder", 25.0f, 220.0f) +
+                       thermal.estimate_heating_seconds("heater_bed", 25.0f, 60.0f);
     lv_subject_t* const estimate = manager.get_preprint_estimate_subject();
-    const int homing = static_cast<int>(helix::PrintStartPhase::HOMING);
-    REQUIRE(lv_subject_get_int(estimate) ==
-            helix::PreprintPredictor::default_phase_durations().at(homing));
+    REQUIRE(lv_subject_get_int(estimate) == static_cast<int>(heat + sum_of_default_phases()));
 }
 
 TEST_CASE_METHOD(HelixTestFixture,
@@ -2666,8 +2801,8 @@ TEST_CASE("PrepManager: Extension safety - adding new operations", "[print_prepa
      *
      * 1. Add enum value to OperationCategory in operation_patterns.h
      * 2. Add entry to OperationRegistry::build_all() in operation_registry.h
-     * 3. Add keyword patterns to OPERATION_KEYWORDS in operation_patterns.h
-     * 4. Add skip/perform variations to SKIP_PARAM_VARIATIONS/PERFORM_PARAM_VARIATIONS
+     * 3. Add keyword patterns to kOperationKeywords in operation_patterns.h
+     * 4. Add skip/perform variations to kSkipParamVariations/kPerformParamVariations
      * 5. Update category_key() and category_name() in operation_patterns.h
      * 6. Add UI subject handling in PrintPreparationManager
      * 7. Add printer database entries if needed
@@ -4357,7 +4492,7 @@ TEST_CASE_METHOD(ObjectScanFixture,
 TEST_CASE_METHOD(ObjectScanFixture, "Definitions past the scan window are not in the scan",
                  "[print_preparation][pre_start_exclude]") {
     std::string content = "; HEADER\n";
-    content += std::string(helix::PRINTER_STOP_SCAN_BYTES, ';') + "\n";
+    content += std::string(helix::kPrinterStopScanBytes, ';') + "\n";
     content += "EXCLUDE_OBJECT_DEFINE NAME=Late_A CENTER=1,1\n";
     content += "EXCLUDE_OBJECT_DEFINE NAME=Late_B CENTER=9,9\n";
     helix::PlantedGcode file("late_defines.gcode", "", content);
@@ -4403,4 +4538,59 @@ TEST_CASE_METHOD(HelixTestFixture,
     CHECK(exclusions == std::vector<std::string>{"EXCLUDE_OBJECT NAME=Cube_id_1"});
     set_moonraker_api(nullptr);
     mock_printer.client.disconnect();
+}
+
+TEST_CASE_METHOD(HelixTestFixture,
+                 "PrintPreparationManager: estimate reads the history window the start will run in",
+                 "[print_preparation][estimate]") {
+    // The pre-start line exists only once the extruder temperature is known,
+    // which for this file only its scanned START_PRINT call states. A start
+    // sends it, so the collector measures the host-pre-start window.
+    PrePrintOption ext_only = make_pre_start_gcode_opt("ai_detect");
+    ext_only.strategy = PrePrintStrategyPreStartGcode{"{?ext}AI_RUN T={extruder_temp}{/?}"};
+    PrePrintOptionSet set;
+    set.macro_name = "START_PRINT";
+    set.options.push_back(ext_only);
+    GateFixture fx(std::move(set));
+
+    PreprintConfigScope config;
+    for (const auto& [window, total] : {std::pair{helix::PreprintWindow::HostPreStart, 500},
+                                        std::pair{helix::PreprintWindow::PrinterEdge, 300}}) {
+        helix::PreprintEntry e;
+        e.total_seconds = total;
+        e.timestamp = 1000;
+        e.temp_bucket = 1;
+        e.window = window;
+        helix::PreprintPredictor::append_to_config(e);
+    }
+
+    gcode::ScanResult scan;
+    scan.print_start.found = true;
+    scan.print_start.macro_name = "START_PRINT";
+    scan.print_start.extruder_temp = 220;
+    scan.print_start.bed_temp = 60;
+    const FileMetadata file = file_at(60, 220);
+    PrintPreparationManagerTestAccess::keep_scan(fx.manager, file.filename, scan);
+
+    set_temps(fx.ps, 25, 25);
+    fx.manager.recalculate_estimate(&file, file.filename);
+    REQUIRE(lv_subject_get_int(fx.manager.get_preprint_estimate_subject()) == 500);
+}
+
+TEST_CASE_METHOD(HelixTestFixture,
+                 "PrintPreparationManager: a start records the phases its toggles turned off",
+                 "[print_preparation][estimate]") {
+    lv_init_safe();
+    PrinterState& printer_state = get_printer_state();
+    PrinterStateTestAccess::reset(printer_state);
+    printer_state.init_subjects(false);
+    PrintPreparationManager manager;
+    manager.set_dependencies(nullptr, &printer_state);
+
+    // bed_mesh off, qgl on, the rest not shown.
+    manager.set_option_state_provider([](const std::string& id) {
+        return id == "bed_mesh" ? 0 : id == "qgl" ? 1 : -1;
+    });
+    CHECK(PrintPreparationManagerTestAccess::skipped_preprint_phases(manager) ==
+          std::set<int>{static_cast<int>(helix::PrintStartPhase::BED_MESH)});
 }

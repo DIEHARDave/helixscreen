@@ -125,16 +125,16 @@ TEST_CASE("square cells: rotating a panel transposes its grid to within one cell
 
 TEST_CASE("square cells: no measured geometry reaches either track clamp",
           "[grid_layout][square]") {
-    // MIN_TRACKS is a degenerate-display guard and MAX_TRACKS is a memory
+    // kMinTracks is a degenerate-display guard and kMaxTracks is a memory
     // ceiling. A real geometry landing on either means the cell size no longer
     // controls the grid and the aspect invariant above is being met by accident.
     for (const auto& g : kMeasured) {
         auto d = dims_of(g);
         INFO(g.name << " -> " << d.cols << "x" << d.rows);
-        CHECK(d.cols > GridLayout::MIN_TRACKS);
-        CHECK(d.rows > GridLayout::MIN_TRACKS);
-        CHECK(d.cols < GridLayout::MAX_TRACKS);
-        CHECK(d.rows < GridLayout::MAX_TRACKS);
+        CHECK(d.cols > GridLayout::kMinTracks);
+        CHECK(d.rows > GridLayout::kMinTracks);
+        CHECK(d.cols < GridLayout::kMaxTracks);
+        CHECK(d.rows < GridLayout::kMaxTracks);
     }
 }
 
@@ -142,12 +142,12 @@ TEST_CASE("square cells: the track clamps bound both ends", "[grid_layout][squar
     // Asserted directly rather than through a panel, because no panel reaches
     // them. Both bounds are whole cells, so clamping never yields an odd count.
     auto tiny = GridLayout::get_dimensions(UiBreakpoint::Medium, 1, 1);
-    CHECK(tiny.cols == GridLayout::MIN_TRACKS);
-    CHECK(tiny.rows == GridLayout::MIN_TRACKS);
+    CHECK(tiny.cols == GridLayout::kMinTracks);
+    CHECK(tiny.rows == GridLayout::kMinTracks);
 
     auto huge = GridLayout::get_dimensions(UiBreakpoint::Micro, 100000, 100000);
-    CHECK(huge.cols == GridLayout::MAX_TRACKS);
-    CHECK(huge.rows == GridLayout::MAX_TRACKS);
+    CHECK(huge.cols == GridLayout::kMaxTracks);
+    CHECK(huge.rows == GridLayout::kMaxTracks);
 }
 
 TEST_CASE("square cells: an unmeasured content box falls to the track floor",
@@ -156,14 +156,14 @@ TEST_CASE("square cells: an unmeasured content box falls to the track floor",
     // consumer asking then gets the floor, deliberately and identically on both
     // axes, rather than a plausible-looking grid derived from nothing.
     auto zero = GridLayout::get_dimensions(UiBreakpoint::Medium, 0, 0);
-    CHECK(zero.cols == GridLayout::MIN_TRACKS);
-    CHECK(zero.rows == GridLayout::MIN_TRACKS);
+    CHECK(zero.cols == GridLayout::kMinTracks);
+    CHECK(zero.rows == GridLayout::kMinTracks);
 
     // Negative extents come from an inverted or unresolved lv_area_t and must
     // not wrap into a huge track count.
     auto negative = GridLayout::get_dimensions(UiBreakpoint::Medium, -800, -480);
-    CHECK(negative.cols == GridLayout::MIN_TRACKS);
-    CHECK(negative.rows == GridLayout::MIN_TRACKS);
+    CHECK(negative.cols == GridLayout::kMinTracks);
+    CHECK(negative.rows == GridLayout::kMinTracks);
 }
 
 TEST_CASE("square cells: each axis takes the nearest whole cell, not the largest that fits",

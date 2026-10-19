@@ -2,7 +2,7 @@
 
 #pragma once
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver.h"
 #include "screensaver_clock.h"
@@ -20,7 +20,7 @@ namespace helix::ui {
  * @brief High Fly: over a sunlit cloud deck with a thin clock at the cloud line
  *
  * helix::ui::HighFlySim draws the sky, clouds and numerals; this class draws the date block
- * and AM/PM with lv_draw_label, so the canvas takes LV_DRAW_CANVAS_FORMAT.
+ * and AM/PM with lv_draw_label, so the canvas takes kLvDrawCanvasFormat.
  */
 class HighFlyScreensaver : public ClockSaver<HighFlySim> {
   public:
@@ -30,7 +30,7 @@ class HighFlyScreensaver : public ClockSaver<HighFlySim> {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return LV_DRAW_CANVAS_FORMAT;
+        return kLvDrawCanvasFormat;
     }
     /// The date block and AM/PM, put back wherever `under` repainted beneath them.
     void draw_clock_text(const std::vector<DirtyRect>& under,

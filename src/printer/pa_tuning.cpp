@@ -15,10 +15,10 @@ namespace {
 
 /// Two reported K values closer than this are the same setting: Klipper
 /// reports what it was sent, and the overlay never sends finer than 0.0001.
-constexpr float K_EPSILON = 0.00005f;
+constexpr float kKEpsilon = 0.00005f;
 
 bool same_k(float a, float b) {
-    return std::fabs(a - b) < K_EPSILON;
+    return std::fabs(a - b) < kKEpsilon;
 }
 
 /// Base layers above the first layer, before band 0.
@@ -51,7 +51,7 @@ double layer_height_of(const TowerGeometry& g, int layer) {
 }
 
 /// Brim loops outside the tower on the first layer, for adhesion.
-constexpr int BRIM_LOOPS = 4;
+constexpr int kBrimLoops = 4;
 
 /// Total extrusion path for one layer, and the loops that make it.
 struct LayerPlan {
@@ -68,7 +68,7 @@ LayerPlan plan_layer(const TestPrintParams& p, int layer) {
         plan.halves.push_back(outer - i * w);
     }
     if (layer == 1) {
-        for (int i = 1; i <= BRIM_LOOPS; ++i) {
+        for (int i = 1; i <= kBrimLoops; ++i) {
             plan.halves.push_back(outer + i * w);
         }
     }
@@ -135,8 +135,8 @@ namespace {
 
 /// Spellings slicers' start gcode passes temperatures to a start macro under,
 /// most explicit first.
-constexpr const char* BED_PARAMS[] = {"BED_TEMP", "BED", "BED_TEMPERATURE", "BEDTEMP"};
-constexpr const char* NOZZLE_PARAMS[] = {
+constexpr const char* kBedParams[] = {"BED_TEMP", "BED", "BED_TEMPERATURE", "BEDTEMP"};
+constexpr const char* kNozzleParams[] = {
     "EXTRUDER_TEMP", "EXTRUDER", "HOTEND_TEMP",         "HOTEND",
     "NOZZLE_TEMP",   "NOZZLE",   "EXTRUDER_TEMPERATURE"};
 
@@ -162,8 +162,8 @@ MachineMacros pick_machine_macros(const std::vector<std::string>& start_candidat
     for (const auto& name : start_candidates) {
         if (auto params = params_of(name)) {
             m.start = name;
-            m.start_bed_param = first_known(*params, BED_PARAMS);
-            m.start_nozzle_param = first_known(*params, NOZZLE_PARAMS);
+            m.start_bed_param = first_known(*params, kBedParams);
+            m.start_nozzle_param = first_known(*params, kNozzleParams);
             break;
         }
     }

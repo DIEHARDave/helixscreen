@@ -241,16 +241,15 @@ class BedMeshPanel : public OverlayBase {
     /// Owns the SAVE_CONFIG contract: absorbs the rpc the restart drops
     /// and reports success only once Klipper is back.
     helix::ui::SaveConfigWatch save_watch_;
-    static constexpr uint32_t OPERATION_TIMEOUT_MS = 15000; // quick ops (delete, rename)
-    static constexpr uint32_t SLOW_OPERATION_TIMEOUT_MS =
+    static constexpr uint32_t kOperationTimeoutMs = 15000; // quick ops (delete, rename)
+    static constexpr uint32_t kSlowOperationTimeoutMs =
         120000; // load, save_config (Klipper restart)
     /// Bounds the TEMPERATURE_WAIT that preheats for probing. The probing itself
     /// is timed by the advanced API.
-    static constexpr uint32_t PREHEAT_TIMEOUT_MS = 300000; // 5 min
-    static constexpr double PROBE_NOZZLE_TEMP =
-        150.0; // °C — warm nozzle prevents ooze interference
-    static constexpr double PROBE_BED_TEMP =
-        helix::bed_mesh::DEFAULT_PROBE_BED_TEMP_C; // °C — thermal expansion for accurate mesh
+    static constexpr uint32_t kPreheatTimeoutMs = 300000; // 5 min
+    static constexpr double kProbeNozzleTemp = 150.0; // °C — warm nozzle prevents ooze interference
+    static constexpr double kProbeBedTemp =
+        helix::bed_mesh::kDefaultProbeBedTempC; // °C — thermal expansion for accurate mesh
 
     // RAII subscription guard - auto-unsubscribes from Moonraker on destruction
     SubscriptionGuard subscription_;
@@ -356,3 +355,8 @@ class BedMeshPanel : public OverlayBase {
 // Global instance accessor (needed by main.cpp)
 // Defined out of line: the ESP32 build, which excludes this panel, supplies its own.
 BedMeshPanel& get_global_bed_mesh_panel();
+
+/// Open the Bed Mesh panel over @p parent_screen.
+namespace helix::ui {
+void open_bed_mesh_panel(lv_obj_t* parent_screen);
+} // namespace helix::ui

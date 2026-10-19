@@ -37,7 +37,7 @@ using helix::ui::temperature::get_heating_state_color;
 // ============================================================================
 
 /** Magic number to identify temp_display widgets ("TMP1" as ASCII) */
-static constexpr uint32_t TEMP_DISPLAY_MAGIC = 0x544D5031;
+static constexpr uint32_t kTempDisplayMagic = 0x544D5031;
 
 // ============================================================================
 // Per-widget user data
@@ -47,7 +47,7 @@ static constexpr uint32_t TEMP_DISPLAY_MAGIC = 0x544D5031;
  * @brief User data stored on each temp_display widget
  */
 struct TempDisplayData {
-    uint32_t magic = TEMP_DISPLAY_MAGIC;
+    uint32_t magic = kTempDisplayMagic;
     int current_deci = 0; // Decidegrees for precision formatting
     int current_temp = 0; // Whole degrees (public accessor + trace logging)
     int target_temp = 0;  // Whole degrees (target label text, off-state gating)
@@ -207,7 +207,7 @@ static void update_heating_color(TempDisplayData* data) {
         auto mode = static_cast<helix::ChamberMode>(data->current_mode);
         auto state = helix::ui::temperature::classify_heat_state_with_mode(
             shown_deci, data->target_deci, mode,
-            helix::ui::temperature::DEFAULT_AT_TEMP_TOLERANCE_DECI);
+            helix::ui::temperature::kDefaultAtTempToleranceDeci);
         lv_color_t color = helix::ui::temperature::get_heating_state_color(state);
         lv_obj_set_style_text_color(data->current_label, color, LV_PART_MAIN);
         return;
@@ -215,8 +215,8 @@ static void update_heating_color(TempDisplayData* data) {
 
     // No mode binding (nozzle/bed): plain 4-state behavior. A heater at target=0
     // resolves to Off (muted/gray) via get_heating_state_color(current, 0).
-    lv_color_t color = get_heating_state_color(
-        shown_deci, data->target_deci, helix::ui::temperature::DEFAULT_AT_TEMP_TOLERANCE_DECI);
+    lv_color_t color = get_heating_state_color(shown_deci, data->target_deci,
+                                               helix::ui::temperature::kDefaultAtTempToleranceDeci);
     lv_obj_set_style_text_color(data->current_label, color, LV_PART_MAIN);
 }
 
@@ -739,5 +739,5 @@ int ui_temp_display_get_target(lv_obj_t* obj) {
 
 bool ui_temp_display_is_valid(lv_obj_t* obj) {
     auto* data = get_data(obj);
-    return data && data->magic == TEMP_DISPLAY_MAGIC;
+    return data && data->magic == kTempDisplayMagic;
 }

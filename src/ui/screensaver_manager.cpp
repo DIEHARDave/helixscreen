@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "ui_screensaver.h"
 
@@ -75,8 +75,8 @@ ScreensaverManager::ScreensaverManager() : cpu_clock_(helix::ui::read_process_cp
 
 std::vector<const char*> ScreensaverManager::savers_missing_for_build_depth() const {
     std::vector<const char*> missing;
-    for (const helix::ui::ScreensaverInfo& row : helix::ui::SCREENSAVERS) {
-        if ((row.depths & helix::ui::SAVER_BUILD_DEPTH) != 0U && find(row.type) == nullptr) {
+    for (const helix::ui::ScreensaverInfo& row : helix::ui::kScreensavers) {
+        if ((row.depths & helix::ui::kSaverBuildDepth) != 0U && find(row.type) == nullptr) {
             missing.push_back(row.name);
         }
     }
@@ -141,7 +141,7 @@ void ScreensaverManager::launch(ScreensaverType type) {
                      board_, version_);
         release_refresh_period();
         show_black_screen(type);
-        count_run_start(helix::SAVER_USAGE_BLACK_SCREEN);
+        count_run_start(helix::kSaverUsageBlackScreen);
         hold_screen();
         return;
     }
@@ -338,7 +338,7 @@ void ScreensaverManager::begin_gate(const StartPlan& plan) {
 
 void ScreensaverManager::on_idle_check_tick() {
     const CpuSample now = cpu_clock_();
-    if (sampled_ && now.wall_ns - last_sample_ns_ < SAMPLE_INTERVAL_NS) {
+    if (sampled_ && now.wall_ns - last_sample_ns_ < kSampleIntervalNs) {
         return;
     }
     last_sample_ns_ = now.wall_ns;

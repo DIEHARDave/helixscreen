@@ -11,33 +11,33 @@ enum class DetectionKind { Spaghetti, DirtyBed, Residue, DirtyNozzle, Unknown };
 
 /// The Snapmaker U1 defect_detection module raises exception id 532, with
 /// these codes (stock defect_detection.py).
-inline constexpr int U1_DEFECT_EXCEPTION_ID = 532;
-inline constexpr int U1_DEFECT_CODE_DIRTY_BED = 1;
-inline constexpr int U1_DEFECT_CODE_NOODLE = 2;
-inline constexpr int U1_DEFECT_CODE_RESIDUE = 3;
-inline constexpr int U1_DEFECT_CODE_DIRTY_NOZZLE = 4;
+inline constexpr int kU1DefectExceptionId = 532;
+inline constexpr int kU1DefectCodeDirtyBed = 1;
+inline constexpr int kU1DefectCodeNoodle = 2;
+inline constexpr int kU1DefectCodeResidue = 3;
+inline constexpr int kU1DefectCodeDirtyNozzle = 4;
 
 /// Map a Snapmaker U1 `print_stats.exception.code` to a kind. 0 / -1 /
 /// anything else = not a visual defect we surface.
 inline DetectionKind kind_from_u1_code(int code) {
     switch (code) {
-    case U1_DEFECT_CODE_DIRTY_BED:
+    case kU1DefectCodeDirtyBed:
         return DetectionKind::DirtyBed;
-    case U1_DEFECT_CODE_NOODLE:
+    case kU1DefectCodeNoodle:
         return DetectionKind::Spaghetti;
-    case U1_DEFECT_CODE_RESIDUE:
+    case kU1DefectCodeResidue:
         return DetectionKind::Residue;
-    case U1_DEFECT_CODE_DIRTY_NOZZLE:
+    case kU1DefectCodeDirtyNozzle:
         return DetectionKind::DirtyNozzle;
     default:
         return DetectionKind::Unknown;
     }
 }
 
-/// A code under any id but U1_DEFECT_EXCEPTION_ID belongs to a different
+/// A code under any id but kU1DefectExceptionId belongs to a different
 /// module; a frame that carried no id (-1) is judged by its code alone.
 inline DetectionKind kind_from_u1_exception(int exception_id, int code) {
-    if (exception_id >= 0 && exception_id != U1_DEFECT_EXCEPTION_ID) {
+    if (exception_id >= 0 && exception_id != kU1DefectExceptionId) {
         return DetectionKind::Unknown;
     }
     return kind_from_u1_code(code);

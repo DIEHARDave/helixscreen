@@ -31,8 +31,8 @@ using namespace helix::ui::syspath;
 namespace fpath = helix::ui::fpath;
 
 // Default dimensions
-static constexpr int32_t DEFAULT_WIDTH = 300;
-static constexpr int32_t DEFAULT_HEIGHT = 150;
+static constexpr int32_t kDefaultWidth = 300;
+static constexpr int32_t kDefaultHeight = 150;
 
 // Registry of widget data
 static std::unordered_map<lv_obj_t*, SystemPathData*> s_registry;
@@ -204,7 +204,7 @@ static void draw_status_beside_nozzle(lv_layer_t* layer, SystemPathData* data, c
 // hub with its buffer box below it.
 static void draw_mini_hubs(lv_layer_t* layer, const SystemPathData* data,
                            const OverviewBoxes& boxes) {
-    for (int i = 0; i < data->unit_count && i < SystemPathData::MAX_UNITS; i++) {
+    for (int i = 0; i < data->unit_count && i < SystemPathData::kMaxUnits; i++) {
         const HubInfo& hi = boxes.hubs[i];
         if (!hi.valid)
             continue;
@@ -223,7 +223,7 @@ static void draw_mini_hubs(lv_layer_t* layer, const SystemPathData* data,
 static void draw_tool_row(lv_layer_t* layer, SystemPathData* data, const SysLayout& L) {
     const int32_t small_scale = small_tool_scale(*data);
     const lv_color_t active = lv_color_hex(data->active_color);
-    const int tools = LV_MIN(data->total_tools, SystemPathData::MAX_TOOLS);
+    const int tools = LV_MIN(data->total_tools, SystemPathData::kMaxTools);
     for (int t = 0; t < tools; ++t) {
         int32_t tool_x = calc_tool_x(t, data->total_tools, L.x_off, L.width);
         bool is_active_tool = (t == data->active_tool) && data->filament_loaded;
@@ -342,7 +342,7 @@ static void* system_path_xml_create(lv_xml_parser_state_t* state, const char** a
     load_theme_sizes(data);
 
     // Configure object
-    lv_obj_set_size(obj, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+    lv_obj_set_size(obj, kDefaultWidth, kDefaultHeight);
     lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(obj, 0, 0);
     lv_obj_set_style_pad_all(obj, 0, 0);
@@ -378,7 +378,7 @@ static void system_path_xml_apply(lv_xml_parser_state_t* state, const char** att
         const char* value = attrs[i + 1];
 
         if (strcmp(name, "unit_count") == 0) {
-            data->unit_count = LV_CLAMP(atoi(value), 0, SystemPathData::MAX_UNITS);
+            data->unit_count = LV_CLAMP(atoi(value), 0, SystemPathData::kMaxUnits);
             needs_redraw = true;
         } else if (strcmp(name, "active_unit") == 0) {
             data->active_unit = atoi(value);
@@ -426,7 +426,7 @@ lv_obj_t* ui_system_path_canvas_create(lv_obj_t* parent) {
     load_theme_sizes(data);
 
     // Configure object
-    lv_obj_set_size(obj, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+    lv_obj_set_size(obj, kDefaultWidth, kDefaultHeight);
     lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(obj, 0, 0);
     lv_obj_set_style_pad_all(obj, 0, 0);
@@ -447,7 +447,7 @@ void ui_system_path_canvas_set_unit_count(lv_obj_t* obj, int count) {
     auto* data = get_data(obj);
     if (!data)
         return;
-    int clamped = LV_CLAMP(count, 0, SystemPathData::MAX_UNITS);
+    int clamped = LV_CLAMP(count, 0, SystemPathData::kMaxUnits);
     if (data->unit_count == clamped)
         return;
     data->unit_count = clamped;
@@ -456,7 +456,7 @@ void ui_system_path_canvas_set_unit_count(lv_obj_t* obj, int count) {
 
 void ui_system_path_canvas_set_unit_x(lv_obj_t* obj, int unit_index, int32_t center_x) {
     auto* data = get_data(obj);
-    if (!data || unit_index < 0 || unit_index >= SystemPathData::MAX_UNITS)
+    if (!data || unit_index < 0 || unit_index >= SystemPathData::kMaxUnits)
         return;
     if (data->unit_x_positions[unit_index] == center_x)
         return;
@@ -516,7 +516,7 @@ void ui_system_path_canvas_set_bypass(lv_obj_t* obj, bool has_bypass, bool bypas
 void ui_system_path_canvas_set_unit_hub_sensor(lv_obj_t* obj, int unit_index, bool has_sensor,
                                                bool triggered) {
     auto* data = get_data(obj);
-    if (!data || unit_index < 0 || unit_index >= SystemPathData::MAX_UNITS)
+    if (!data || unit_index < 0 || unit_index >= SystemPathData::kMaxUnits)
         return;
     if (data->unit_has_hub_sensor[unit_index] == has_sensor &&
         data->unit_hub_triggered[unit_index] == triggered)
@@ -549,7 +549,7 @@ void ui_system_path_canvas_set_buffer(lv_obj_t* obj, bool present, int fault, co
 void ui_system_path_canvas_set_unit_hub(lv_obj_t* obj, int unit_index, int hub_group, bool present,
                                         int fault, const char* label) {
     auto* data = get_data(obj);
-    if (!data || unit_index < 0 || unit_index >= SystemPathData::MAX_UNITS)
+    if (!data || unit_index < 0 || unit_index >= SystemPathData::kMaxUnits)
         return;
     char text[sizeof(data->unit_buffer_label[0])];
     copy_label(text, sizeof(text), label);
@@ -595,7 +595,7 @@ void ui_system_path_canvas_set_error_segment(lv_obj_t* obj, int segment) {
 void ui_system_path_canvas_set_unit_lane(lv_obj_t* obj, int unit_index, int segment,
                                          uint32_t color) {
     auto* data = get_data(obj);
-    if (!data || unit_index < 0 || unit_index >= SystemPathData::MAX_UNITS)
+    if (!data || unit_index < 0 || unit_index >= SystemPathData::kMaxUnits)
         return;
     const auto seg = static_cast<helix::PathSegment>(segment);
     if (data->unit_lane_segment[unit_index] == seg && data->unit_lane_color[unit_index] == color)
@@ -608,7 +608,7 @@ void ui_system_path_canvas_set_unit_lane(lv_obj_t* obj, int unit_index, int segm
 void ui_system_path_canvas_set_unit_tools(lv_obj_t* obj, int unit_index, int tool_count,
                                           int first_tool) {
     auto* data = get_data(obj);
-    if (!data || unit_index < 0 || unit_index >= SystemPathData::MAX_UNITS)
+    if (!data || unit_index < 0 || unit_index >= SystemPathData::kMaxUnits)
         return;
     if (data->unit_tool_count[unit_index] == tool_count &&
         data->unit_first_tool[unit_index] == first_tool)
@@ -621,7 +621,7 @@ void ui_system_path_canvas_set_unit_tools(lv_obj_t* obj, int unit_index, int too
 namespace helix::ui {
 void ui_system_path_canvas_set_unit_absent(lv_obj_t* obj, int unit_index, bool absent) {
     auto* data = get_data(obj);
-    if (!data || unit_index < 0 || unit_index >= SystemPathData::MAX_UNITS)
+    if (!data || unit_index < 0 || unit_index >= SystemPathData::kMaxUnits)
         return;
     if (data->unit_absent[unit_index] == absent)
         return;
@@ -632,7 +632,7 @@ void ui_system_path_canvas_set_unit_absent(lv_obj_t* obj, int unit_index, bool a
 
 void ui_system_path_canvas_set_unit_topology(lv_obj_t* obj, int unit_index, int topology) {
     auto* data = get_data(obj);
-    if (!data || unit_index < 0 || unit_index >= SystemPathData::MAX_UNITS)
+    if (!data || unit_index < 0 || unit_index >= SystemPathData::kMaxUnits)
         return;
     if (data->unit_topology[unit_index] == topology)
         return;
@@ -644,7 +644,7 @@ void ui_system_path_canvas_set_total_tools(lv_obj_t* obj, int total_tools) {
     auto* data = get_data(obj);
     if (!data)
         return;
-    int clamped = LV_CLAMP(total_tools, 0, SystemPathData::MAX_TOOLS);
+    int clamped = LV_CLAMP(total_tools, 0, SystemPathData::kMaxTools);
     if (data->total_tools == clamped)
         return;
     data->total_tools = clamped;
@@ -691,7 +691,7 @@ void ui_system_path_canvas_set_tool_label_prefix(lv_obj_t* obj, char prefix) {
     data->tool_label_prefix = prefix;
     // Reformat in place: the numbers can be unchanged while the letter flips,
     // and set_tool_virtual_numbers() short-circuits on unchanged numbers.
-    for (int i = 0; i < SystemPathData::MAX_TOOLS; ++i) {
+    for (int i = 0; i < SystemPathData::kMaxTools; ++i) {
         const int n =
             data->has_virtual_numbers ? data->tool_virtual_number[i] : helix::ui::lane_number(i);
         snprintf(data->tool_labels[i], sizeof(data->tool_labels[i]), "%c%d", prefix, n);
@@ -703,7 +703,7 @@ void ui_system_path_canvas_set_tool_virtual_numbers(lv_obj_t* obj, const int* nu
     auto* data = get_data(obj);
     if (!data)
         return;
-    int n = LV_MIN(count, SystemPathData::MAX_TOOLS);
+    int n = LV_MIN(count, SystemPathData::kMaxTools);
     bool changed = (data->has_virtual_numbers != (n > 0));
     if (!changed) {
         for (int i = 0; i < n && !changed; ++i) {
@@ -719,7 +719,7 @@ void ui_system_path_canvas_set_tool_virtual_numbers(lv_obj_t* obj, const int* nu
         snprintf(data->tool_labels[i], sizeof(data->tool_labels[i]), "%c%d", prefix, numbers[i]);
     }
     // Clear remaining entries
-    for (int i = n; i < SystemPathData::MAX_TOOLS; ++i) {
+    for (int i = n; i < SystemPathData::kMaxTools; ++i) {
         const int fallback_n = helix::ui::lane_number(i);
         data->tool_virtual_number[i] = fallback_n;
         snprintf(data->tool_labels[i], sizeof(data->tool_labels[i]), "%c%d", prefix, fallback_n);

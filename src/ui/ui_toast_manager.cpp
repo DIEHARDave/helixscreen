@@ -40,9 +40,9 @@ void show_feature_unavailable_toast() {
 } // namespace helix
 
 // Animation durations — kept in sync with globals.xml anim_fast / anim_normal.
-static constexpr int32_t TOAST_ENTRANCE_DURATION_MS = 200;
-static constexpr int32_t TOAST_EXIT_DURATION_MS = 150;
-static constexpr int32_t TOAST_ENTRANCE_OFFSET_Y = -30; // slide-down distance
+static constexpr int32_t kToastEntranceDurationMs = 200;
+static constexpr int32_t kToastExitDurationMs = 150;
+static constexpr int32_t kToastEntranceOffsetY = -30; // slide-down distance
 
 ToastManager& ToastManager::instance() {
     static ToastManager instance;
@@ -151,14 +151,14 @@ void ToastManager::animate_entrance(lv_obj_t* toast) {
         return;
     }
 
-    lv_obj_set_style_translate_y(toast, TOAST_ENTRANCE_OFFSET_Y, LV_PART_MAIN);
+    lv_obj_set_style_translate_y(toast, kToastEntranceOffsetY, LV_PART_MAIN);
     lv_obj_set_style_opa(toast, LV_OPA_TRANSP, LV_PART_MAIN);
 
     lv_anim_t slide_anim;
     lv_anim_init(&slide_anim);
     lv_anim_set_var(&slide_anim, toast);
-    lv_anim_set_values(&slide_anim, TOAST_ENTRANCE_OFFSET_Y, 0);
-    lv_anim_set_duration(&slide_anim, TOAST_ENTRANCE_DURATION_MS);
+    lv_anim_set_values(&slide_anim, kToastEntranceOffsetY, 0);
+    lv_anim_set_duration(&slide_anim, kToastEntranceDurationMs);
     lv_anim_set_path_cb(&slide_anim, lv_anim_path_ease_out);
     lv_anim_set_exec_cb(&slide_anim, [](void* obj, int32_t value) {
         auto* o = static_cast<lv_obj_t*>(obj);
@@ -172,7 +172,7 @@ void ToastManager::animate_entrance(lv_obj_t* toast) {
     lv_anim_init(&fade_anim);
     lv_anim_set_var(&fade_anim, toast);
     lv_anim_set_values(&fade_anim, LV_OPA_TRANSP, LV_OPA_COVER);
-    lv_anim_set_duration(&fade_anim, TOAST_ENTRANCE_DURATION_MS);
+    lv_anim_set_duration(&fade_anim, kToastEntranceDurationMs);
     lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_out);
     lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
         auto* o = static_cast<lv_obj_t*>(obj);
@@ -193,7 +193,7 @@ void ToastManager::animate_exit(lv_obj_t* toast) {
     lv_anim_init(&fade_anim);
     lv_anim_set_var(&fade_anim, toast);
     lv_anim_set_values(&fade_anim, LV_OPA_COVER, LV_OPA_TRANSP);
-    lv_anim_set_duration(&fade_anim, TOAST_EXIT_DURATION_MS);
+    lv_anim_set_duration(&fade_anim, kToastExitDurationMs);
     lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_in);
     lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
         auto* o = static_cast<lv_obj_t*>(obj);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_stroke_digits.h"
 
@@ -17,7 +17,7 @@ namespace helix::ui {
 namespace {
 
 // Digits are strokes along lines and circular arcs, in a box one unit wide and
-// STROKE_DIGIT_PATH_H tall (y down). Angles are degrees, 0 pointing right and growing
+// kStrokeDigitPathH tall (y down). Angles are degrees, 0 pointing right and growing
 // clockwise on screen, so -90 is the top of a circle.
 
 struct Stroke {
@@ -32,18 +32,18 @@ constexpr Stroke arc(float cx, float cy, float r, float start, float sweep) {
     return {true, cx, cy, r, start, sweep};
 }
 
-constexpr size_t MAX_STROKES = 4;
+constexpr size_t kMaxStrokes = 4;
 
 struct GlyphDef {
     size_t count;
-    Stroke strokes[MAX_STROKES];
+    Stroke strokes[kMaxStrokes];
 };
 
-constexpr GlyphDef SIX = {3,
-                          {arc(0.5f, 1.1f, 0.5f, 0.0f, 360.0f), line(0.0f, 1.1f, 0.0f, 0.5f),
-                           arc(0.5f, 0.5f, 0.5f, 180.0f, 125.0f)}};
+constexpr GlyphDef kSix = {3,
+                           {arc(0.5f, 1.1f, 0.5f, 0.0f, 360.0f), line(0.0f, 1.1f, 0.0f, 0.5f),
+                            arc(0.5f, 0.5f, 0.5f, 180.0f, 125.0f)}};
 
-constexpr GlyphDef GLYPHS[10] = {
+constexpr GlyphDef kGlyphs[10] = {
     {4,
      {arc(0.5f, 0.5f, 0.5f, 180.0f, 180.0f), arc(0.5f, 1.1f, 0.5f, 0.0f, 180.0f),
       line(0.0f, 0.5f, 0.0f, 1.1f), line(1.0f, 0.5f, 1.0f, 1.1f)}},
@@ -58,7 +58,7 @@ constexpr GlyphDef GLYPHS[10] = {
     {3,
      {line(0.92f, 0.0f, 0.12f, 0.0f), line(0.12f, 0.0f, 0.09f, 0.813f),
       arc(0.5f, 1.1f, 0.5f, 215.0f, 280.0f)}},
-    SIX,
+    kSix,
     {2, {line(0.0f, 0.0f, 1.0f, 0.0f), line(1.0f, 0.0f, 0.32f, 1.6f)}},
     {2, {arc(0.5f, 0.38f, 0.38f, 0.0f, 360.0f), arc(0.5f, 1.18f, 0.42f, 0.0f, 360.0f)}},
     {0, {}}, // a six turned upside down
@@ -80,13 +80,13 @@ float dist_to_arc(const Stroke& s, float px, float py) {
     if (s.e >= 360.0f) {
         return std::fabs(dist - s.c);
     }
-    const float angle = std::atan2(dy, dx) * 180.0f / SAVER_PI;
+    const float angle = std::atan2(dy, dx) * 180.0f / kSaverPi;
     const float rel = std::fmod(angle - s.d + 720.0f, 360.0f);
     if (rel <= s.e) {
         return std::fabs(dist - s.c);
     }
-    const float a0 = s.d * SAVER_PI / 180.0f;
-    const float a1 = (s.d + s.e) * SAVER_PI / 180.0f;
+    const float a0 = s.d * kSaverPi / 180.0f;
+    const float a1 = (s.d + s.e) * kSaverPi / 180.0f;
     return std::min(std::hypot(px - (s.a + s.c * std::cos(a0)), py - (s.b + s.c * std::sin(a0))),
                     std::hypot(px - (s.a + s.c * std::cos(a1)), py - (s.b + s.c * std::sin(a1))));
 }
@@ -96,12 +96,12 @@ float dist_to_arc(const Stroke& s, float px, float py) {
 float stroke_digit_distance(int digit, float px, float py) {
     // Nine is six turned half a turn about the path box's centre.
     if (digit == 9) {
-        return stroke_digit_distance(6, 1.0f - px, STROKE_DIGIT_PATH_H - py);
+        return stroke_digit_distance(6, 1.0f - px, kStrokeDigitPathH - py);
     }
     if (digit < 0 || digit > 9) {
         return 1e9f;
     }
-    const GlyphDef& def = GLYPHS[digit];
+    const GlyphDef& def = kGlyphs[digit];
     float best = 1e9f;
     for (size_t i = 0; i < def.count; i++) {
         const Stroke& s = def.strokes[i];
@@ -130,7 +130,7 @@ void StrokeDigitSet::clear() {
 void build_stroke_digits(int32_t unit, float stroke, StrokeDigitSet& out) {
     const auto u = static_cast<float>(std::max<int32_t>(1, unit));
     out.w = static_cast<int32_t>(std::lround((1.0f + stroke) * u));
-    out.h = static_cast<int32_t>(std::lround((STROKE_DIGIT_PATH_H + stroke) * u));
+    out.h = static_cast<int32_t>(std::lround((kStrokeDigitPathH + stroke) * u));
     out.coverage.assign(static_cast<size_t>(out.w) * out.h * 10, 0);
     const float half = stroke / 2.0f;
     for (int digit = 0; digit < 10; digit++) {

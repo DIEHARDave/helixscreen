@@ -137,19 +137,18 @@ std::string plr_read_creality_recovery_filename();
 // --- Wire constants -------------------------------------------------------
 
 /// Snapmaker fork gcode.
-inline constexpr const char* SNAPMAKER_RESUME_GCODE = "SDCARD_PRINT_PL_RESTORE";
-inline constexpr const char* SNAPMAKER_DISCARD_GCODE = "SDCARD_PRINT_PL_CLEAR_ENV";
+inline constexpr const char* kSnapmakerResumeGcode = "SDCARD_PRINT_PL_RESTORE";
+inline constexpr const char* kSnapmakerDiscardGcode = "SDCARD_PRINT_PL_CLEAR_ENV";
 
 /// Creality fork. The detect endpoint is a Klipper webhook that Moonraker
 /// auto-registers as a JSON-RPC method (klippy_connection.py re-exports every
 /// non-reserved endpoint). It is SIDE-EFFECTFUL — call at most once per
 /// connection, only while print_stats.state == "standby". Never poll it.
-inline constexpr const char* CREALITY_DETECT_RPC =
-    "printer.pause_resume.check_continue_print_state";
-inline constexpr const char* CREALITY_DISCARD_RPC = "printer.pause_resume.cancel_continue_print";
+inline constexpr const char* kCrealityDetectRpc = "printer.pause_resume.check_continue_print_state";
+inline constexpr const char* kCrealityDiscardRpc = "printer.pause_resume.cancel_continue_print";
 
 /// Sidecar holding the interrupted job's path, relative to the data root.
-inline constexpr const char* CREALITY_SIDECAR_REL_PATH =
+inline constexpr const char* kCrealitySidecarRelPath =
     "creality/userdata/config/print_file_name.json";
 
 /// Qidi stock firmware (Q2 / Q1 Pro / Plus 4). Both are the plain gcode
@@ -157,13 +156,13 @@ inline constexpr const char* CREALITY_SIDECAR_REL_PATH =
 /// so a recovery filename is display-only for this backend. RESUME_INTERRUPTED
 /// rebuilds the resume gcode from the .temp/ backup, lifts Z clear of the part
 /// before homing X/Y, then prints it.
-inline constexpr const char* QIDI_RESUME_GCODE = "RESUME_INTERRUPTED";
-inline constexpr const char* QIDI_DISCARD_GCODE = "CLEAR_LAST_FILE";
+inline constexpr const char* kQidiResumeGcode = "RESUME_INTERRUPTED";
+inline constexpr const char* kQidiDiscardGcode = "CLEAR_LAST_FILE";
 /// The boot-time check the stock screen sends. Newer Qidi firmware (Q2
 /// 01.01.02.03 at least) registers RESUME_INTERRUPTED and CLEAR_LAST_FILE as Python commands, which
 /// never appear as gcode_macro objects, so this macro is the one that marks
 /// every Qidi firmware generation.
-inline constexpr const char* QIDI_DETECT_MACRO = "DETECT_INTERRUPTION";
+inline constexpr const char* kQidiDetectMacro = "DETECT_INTERRUPTION";
 
 /// Whether the connected printer runs a firmware whose resume command is one
 /// the PLR module knows (currently Qidi's stock RESUME_INTERRUPTED, recognised

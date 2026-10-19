@@ -20,7 +20,7 @@ using helix::ThumbnailTarget;
 
 // ============================================================================
 // Test PNG data (solid-color images of various aspect ratios); the square
-// 10x10 one is TINY_PNG
+// 10x10 one is kTinyPng
 // ============================================================================
 
 // clang-format off
@@ -82,7 +82,7 @@ TEST_CASE("ThumbnailProcessor output fits within target dimensions",
     target.color_format = 0x10; // ARGB8888
 
     SECTION("Square source fits exactly") {
-        auto result = processor.process_sync(TINY_PNG, "test_sq_10x10.png", target);
+        auto result = processor.process_sync(kTinyPng, "test_sq_10x10.png", target);
         REQUIRE(result.success);
         CHECK(result.output_width <= target.width);
         CHECK(result.output_height <= target.height);

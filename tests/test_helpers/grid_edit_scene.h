@@ -23,8 +23,8 @@ namespace helix {
 struct GridEditScene {
     /// The widget's span: one authored cell on each axis, which is
     /// TRACKS_PER_CELL tracks. Spans are in tracks everywhere.
-    static constexpr int COLSPAN = GridLayout::TRACKS_PER_CELL;
-    static constexpr int ROWSPAN = GridLayout::TRACKS_PER_CELL;
+    static constexpr int kColspan = GridLayout::TRACKS_PER_CELL;
+    static constexpr int kRowspan = GridLayout::TRACKS_PER_CELL;
 
     lv_obj_t* container = nullptr;
     lv_obj_t* widget = nullptr;
@@ -72,8 +72,8 @@ struct GridEditScene {
         widget = lv_obj_create(container);
         lv_obj_set_name(widget, "temperature");
         lv_obj_remove_flag(widget, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_grid_cell(widget, LV_GRID_ALIGN_STRETCH, 0, COLSPAN, LV_GRID_ALIGN_STRETCH, 0,
-                             ROWSPAN);
+        lv_obj_set_grid_cell(widget, LV_GRID_ALIGN_STRETCH, 0, kColspan, LV_GRID_ALIGN_STRETCH, 0,
+                             kRowspan);
         lv_obj_update_layout(container);
 
         // Widget lives on page 1: PanelWidgetConfig::load() appends registry
@@ -92,8 +92,8 @@ struct GridEditScene {
                                  {"enabled", true},
                                  {"col", 0},
                                  {"row", 0},
-                                 {"colspan", COLSPAN},
-                                 {"rowspan", ROWSPAN}}}}}}}});
+                                 {"colspan", kColspan},
+                                 {"rowspan", kRowspan}}}}}}}});
 
         auto& mgr = PanelWidgetManager::instance();
         mgr.get_widget_config(panel_id).mark_dirty();

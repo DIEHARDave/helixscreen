@@ -272,7 +272,7 @@ class CrashReporter {
     std::string get_log_tail(int num_lines = 500);
 
     /// Worker endpoint for auto-send
-    static constexpr const char* CRASH_WORKER_URL = "https://crash.helixscreen.org/v1/report";
+    static constexpr const char* kCrashWorkerUrl = "https://crash.helixscreen.org/v1/report";
 
     /// GitHub repo for issue URL generation
     static constexpr const char* GITHUB_REPO = "prestonbrown/helixscreen";

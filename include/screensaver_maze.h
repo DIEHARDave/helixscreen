@@ -2,7 +2,7 @@
 
 #pragma once
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "print_history_data.h"
 #include "screensaver_canvas.h"
@@ -22,16 +22,16 @@ namespace helix::ui {
 /// Wall art: at most this many recent prints, other files on the printer, and lookups spent
 /// finding the files' (most files on a printer were never shown, so their thumbnails are not
 /// in the cache).
-inline constexpr size_t MAZE_ART_RECENT = 5;
-inline constexpr size_t MAZE_ART_FILES = 6;
-inline constexpr size_t MAZE_ART_FILE_PROBES = 48;
+inline constexpr size_t kMazeArtRecent = 5;
+inline constexpr size_t kMazeArtFiles = 6;
+inline constexpr size_t kMazeArtFileProbes = 48;
 /// A picture larger than this a side is not decoded, so start-up never holds a full-size
 /// image: at most one decode of this size runs past the time budget.
-inline constexpr int MAZE_ART_MAX_SOURCE_SIDE = 512;
+inline constexpr int kMazeArtMaxSourceSide = 512;
 /// Each picture is kept at most this size a side until its texture is built.
-inline constexpr int MAZE_ART_PICTURE_SIDE = 64;
+inline constexpr int kMazeArtPictureSide = 64;
 /// No new decode starts once start-up has spent this long on art.
-inline constexpr uint32_t MAZE_ART_DECODE_BUDGET_MS = 120;
+inline constexpr uint32_t kMazeArtDecodeBudgetMs = 120;
 
 /// Where wall art comes from: LVGL paths of cached thumbnails, and the printer picture.
 struct MazeArtSources {
@@ -47,7 +47,7 @@ using MazeArtLookup = std::function<std::string(const std::string& key)>;
 
 /// Up to `max_jobs` files from print history, newest first and each once, with their
 /// thumbnails resolved from the gcodes root: the largest that fit
-/// MAZE_ART_MAX_SOURCE_SIDE first, then the larger ones, smallest first.
+/// kMazeArtMaxSourceSide first, then the larger ones, smallest first.
 std::vector<MazeArtCandidate> history_art_candidates(const std::vector<PrintHistoryJob>& jobs,
                                                      size_t max_jobs);
 
@@ -98,7 +98,7 @@ class MazeScreensaver : public SimSaver<MazeSim> {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return SAVER_BUILD_CANVAS_FORMAT;
+        return kSaverBuildCanvasFormat;
     }
     /// Decodes the art, then starts the sim with it.
     bool on_start() override;

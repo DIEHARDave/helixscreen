@@ -198,12 +198,12 @@ std::string get_helix_cache_dir(const std::string& subdir) {
 // ============================================================================
 
 /// Cache subdirectories this build creates. Mirrors the get_helix_cache_dir()
-/// call sites: ThumbnailCache::CACHE_SUBDIR, ThumbnailProcessor, the gcode temp
+/// call sites: ThumbnailCache::kCacheSubdir, ThumbnailProcessor, the gcode temp
 /// and modified-file caches, ToolsUsedCache, and prerendered printer images. A
 /// name missing here means a stale directory survives, which is harmless; a
 /// name that is wrong would target something we do not own, which is not, so
 /// this list is explicit rather than a glob.
-static const char* const HELIX_CACHE_SUBDIRS[] = {
+static const char* const kHelixCacheSubdirs[] = {
     "helix_thumbs", "gcode_temp", "gcode_mod", "tools_used", "printer_images",
 };
 
@@ -344,7 +344,7 @@ int migrate_state_root(const std::string& legacy_root, const std::string& curren
 
 int sweep_stale_helix_cache_dirs() {
     int removed = 0;
-    for (const char* subdir : HELIX_CACHE_SUBDIRS) {
+    for (const char* subdir : kHelixCacheSubdirs) {
         const std::vector<std::string> stale = helix::cache_internal::select_stale_paths(
             cache_path_candidates(subdir), cache_candidate_viable);
         removed += reclaim_cache_paths(stale, subdir);

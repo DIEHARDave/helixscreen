@@ -56,7 +56,7 @@ TEST_CASE("SaverUsage keeps each ending apart, per saver", "[screensaver][screen
 TEST_CASE("SaverUsage: a run with no level records its ending but no settled level",
           "[screensaver][screensaver_usage]") {
     SaverUsage usage;
-    usage.begin(helix::SAVER_USAGE_BLACK_SCREEN, T0);
+    usage.begin(helix::kSaverUsageBlackScreen, T0);
     usage.end(SaverRunEnd::TOUCH, std::nullopt, T0 + 5s);
 
     const SaverUsageWindow w = usage.window(T0 + 5s);

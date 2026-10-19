@@ -306,7 +306,7 @@ class FilamentPanel : public PanelBase {
     /**
      * @brief Check if extrusion operations are safe
      *
-     * @return true if nozzle is at or above MIN_EXTRUSION_TEMP (170°C)
+     * @return true if nozzle is at or above kMinExtrusionTemp (170°C)
      */
     bool is_extrusion_allowed() const;
 
@@ -699,7 +699,7 @@ class FilamentPanel : public PanelBase {
     void update_chamber_temp_display();
     void update_left_card_temps();
     void update_status_icon_for_state();
-    static constexpr uint32_t OPERATION_TIMEOUT_MS =
+    static constexpr uint32_t kOperationTimeoutMs =
         120000; // 2 min — purge/extrude at slow feedrate
 
     // Filament sensor warning helpers

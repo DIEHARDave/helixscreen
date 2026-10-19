@@ -301,7 +301,7 @@ class WidgetCatalogCategoryFixture : public LVGLUITestFixture {
 
     Config config_;
     std::unique_ptr<PanelWidgetConfig> widget_config_;
-    std::array<lv_obj_t*, UI_PANEL_COUNT> root_panels_{};
+    std::array<lv_obj_t*, kUiPanelCount> root_panels_{};
     int close_count_ = 0;
     bool animations_were_enabled_ = true;
     std::vector<std::string> selected_ids_;

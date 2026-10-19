@@ -3,7 +3,7 @@
 
 #pragma once
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_base.h"
 #include "screensaver_motion.h"
@@ -20,24 +20,24 @@
 namespace helix::screensaver_bounce {
 
 /// Room the sprite must leave on each axis for the bounce to read as a bounce.
-inline constexpr int MIN_RANGE_PX = 48;
+inline constexpr int kMinRangePx = 48;
 
 /// Sprite edge as a fraction of the screen's narrow axis.
-inline constexpr float SPRITE_FRACTION = 0.28f;
+inline constexpr float kSpriteFraction = 0.28f;
 
 /**
  * @brief Longest sprite edge for a screen, or 0 when the screen cannot host a bounce
  *
  * Sized off the narrow axis, then held below what would leave less than
- * MIN_RANGE_PX of travel. 480x320 yields a 90px box over a 390x230 range.
+ * kMinRangePx of travel. 480x320 yields a 90px box over a 390x230 range.
  */
 inline int sprite_size_for(int screen_w, int screen_h) {
     const int narrow = (screen_w < screen_h) ? screen_w : screen_h;
-    int target = static_cast<int>(std::lround(SPRITE_FRACTION * static_cast<float>(narrow)));
+    int target = static_cast<int>(std::lround(kSpriteFraction * static_cast<float>(narrow)));
     if (target > 320) {
         target = 320;
     }
-    const int ceiling = narrow - MIN_RANGE_PX;
+    const int ceiling = narrow - kMinRangePx;
     if (target > ceiling) {
         target = ceiling;
     }
@@ -116,10 +116,10 @@ class BouncingPrinterScreensaver : public helix::ui::SaverBase {
     void on_frame(uint32_t dt_ms, std::vector<helix::ui::DirtyRect>& dirty) override;
     void on_stop() override;
     size_t ladder_size() const override {
-        return std::size(LEVELS);
+        return std::size(kLevels);
     }
     uint32_t ladder_period_ms(size_t level) const override {
-        return helix::ui::ladder_period(LEVELS, level);
+        return helix::ui::ladder_period(kLevels, level);
     }
 
   private:
@@ -130,8 +130,8 @@ class BouncingPrinterScreensaver : public helix::ui::SaverBase {
         bool confetti;      ///< a corner throws confetti as well as flashing
     };
     /// The ladder, most expensive level first.
-    static constexpr Level LEVELS[] = {
-        {helix::ui::SAVER_FAST_PERIOD, true},
+    static constexpr Level kLevels[] = {
+        {helix::ui::kSaverFastPeriod, true},
         {33, true},
         {33, false},
     };

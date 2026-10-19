@@ -85,7 +85,7 @@ Runs on the K1's built-in screen. K1C and K1 Max are the most thoroughly tested 
 
 ### Creality K2 / K2 Plus / K2 Pro
 
-Runs on the K2's built-in screen and, unlike the K1, **works with stock firmware and stock Moonraker**, no custom firmware required. This is the flagship CFS integration. The base K2 is detected as its own machine with its own artwork, and differs from the Plus and Pro in one way that matters here: it has no chamber heater, so there is no chamber control to show.
+Runs on the K2's built-in screen and, unlike the K1, **works with stock firmware and stock Moonraker**, no custom firmware required. This is the flagship CFS integration. The base K2 is detected as its own machine with its own artwork, and differs from the Plus and Pro in one way that matters here: it has no chamber heater, so there is no chamber control to show. With a CFS connected, the home screen picture of the base K2 shows the CFS on top of the printer.
 
 **What works:**
 - **Full CFS multi-material** — up to 4 units × 4 slots (16 colors): per-slot color, material type, and remaining filament length; per-unit temperature and humidity; load/unload
@@ -100,6 +100,11 @@ Runs on the K2's built-in screen and, unlike the K1, **works with stock firmware
 **Status:** Tested — runs natively with CFS support.
 
 > **Community firmware:** the list above describes **stock** Creality firmware. Some owners replace it with a community build that swaps in its own rewritten CFS module — those are auto-detected and fully supported, including load, unload and filament changes. See [Filament → CFS](filament.md#creality-filament-system-cfs).
+>
+> On the K2 Plus community firmware (the Kalico-based port with its own CFS module), recent module versions add more:
+> - **Per-box readings**: each CFS unit shows its own temperature and humidity
+> - **Filament Mapping**: the tool-to-slot choices you make when starting a print are sent to the CFS just before the print starts, and apply to that print only. If a mapping points at a slot the CFS cannot feed from, or at a unit that has stopped answering, the print does not start and HelixScreen tells you why. Older module versions have no Filament Mapping
+> - **Disconnected units**: a CFS unit that stops answering is marked **Disconnected** on its card until it comes back
 
 > **Good to know:** The K2's portrait panel is software-rotated to landscape — that is the supported configuration. Running it un-rotated with the portrait layout is alpha and mostly untested. On this lower-power CPU, animations and 3D bed-mesh rendering may be throttled. The CFS material database is fetched from Creality's cloud.
 
@@ -134,7 +139,8 @@ A true 4-toolhead changer, running on the U1's built-in 3.5" screen. Each of the
 - **RFID filament recognition** via the built-in reader
 - **Per-extruder feed/load state and runout handling** with automatic resume
 - **Batch load and unload**: the AMS panel's Load and Unload buttons open a picker covering several heads at once; the U1 runs its own batch command, preheating the next head while the current one finishes. See [Filament](filament.md#sidebar)
-- **The firmware's print preferences**: under the AMS panel's **Settings** button, in the **Print Behaviour** section: **Auto-Replenish** (Endless Spool, and whether replenish ignores color), filament tangle detection with a low/medium/high sensitivity, per-head **Unload at end** toggles, and turning the LED off when the print ends. The toggles show the firmware's stored values and write changes back to the firmware
+- **The firmware's print preferences**: under the AMS panel's **Settings** button, in the **Print Behaviour** section: **Auto-Replenish** (Endless Spool, and whether replenish ignores color), filament tangle detection with a low/medium/high sensitivity, and turning the LED off when the print ends. These show the firmware's stored values and write changes back to the firmware
+- **Unload at end, per toolhead**: in the same section, one toggle per toolhead. The U1 forgets this choice after every print, so HelixScreen keeps it per printer and sends it with every print it starts, including Print Again and a restart from the beginning. A choice made from another app between prints is replaced by HelixScreen's. A toolhead holding soft filament such as TPU is never unloaded, as on the Snapmaker screen: its toggle is greyed out and reads off, and your choice comes back once that head holds rigid filament again. Changing a toggle during a print takes effect from the next print
 - **Pre-print options that stick**: the toggles offered before a print starts (bed mesh, input shaper, pressure advance, timelapse) read the firmware's stored settings and write your choice back to them, instead of resetting to a default every print
 - **Per-filament temperatures**: the U1 keeps its own load/unload temperature table per filament, and HelixScreen reads it: a load preheats to the temperature the firmware measured for that filament rather than a generic default
 - **Faults in plain language**: the U1's numeric fault codes arrive translated into a sentence saying what went wrong, not just the code

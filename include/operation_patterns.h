@@ -63,7 +63,7 @@ struct OperationKeyword {
  * Both PrintStartAnalyzer and GCodeOpsDetector use this list.
  */
 // clang-format off
-inline const OperationKeyword OPERATION_KEYWORDS[] = {
+inline const OperationKeyword kOperationKeywords[] = {
     // === Bed Mesh ===
     // Matches BED_MESH_CALIBRATE, BED_MESH_PROFILE, AUTO_BED_LEVEL, etc.
     {"BED_MESH",             OperationCategory::BED_MESH, "SKIP_BED_MESH",     false},
@@ -109,11 +109,11 @@ inline const OperationKeyword OPERATION_KEYWORDS[] = {
 };
 // clang-format on
 
-inline constexpr size_t OPERATION_KEYWORDS_COUNT =
-    sizeof(OPERATION_KEYWORDS) / sizeof(OPERATION_KEYWORDS[0]);
+inline constexpr size_t kOperationKeywordsCount =
+    sizeof(kOperationKeywords) / sizeof(kOperationKeywords[0]);
 
 /// Row width of the parameter-name tables below; unused slots are empty.
-inline constexpr size_t MAX_PARAM_VARIATIONS = 8;
+inline constexpr size_t kMaxParamVariations = 8;
 
 /// One category's parameter names: a view into a constexpr table row, so the
 /// tables need no static initialization in the TUs that include this header.
@@ -136,14 +136,14 @@ struct ParamNames {
 
 /// The names in @p table's row for @p cat, or none when @p cat has no row.
 template <size_t N>
-ParamNames param_names(const std::string_view (&table)[N][MAX_PARAM_VARIATIONS],
+ParamNames param_names(const std::string_view (&table)[N][kMaxParamVariations],
                        OperationCategory cat) {
     size_t idx = static_cast<size_t>(cat);
     if (idx >= N) {
         return {};
     }
     size_t n = 0;
-    while (n < MAX_PARAM_VARIATIONS && !table[idx][n].empty()) {
+    while (n < kMaxParamVariations && !table[idx][n].empty()) {
         ++n;
     }
     return {table[idx], n};
@@ -156,7 +156,7 @@ ParamNames param_names(const std::string_view (&table)[N][MAX_PARAM_VARIATIONS],
  * to determine if an operation can be skipped.
  */
 // clang-format off
-inline constexpr std::string_view SKIP_PARAM_VARIATIONS[][MAX_PARAM_VARIATIONS] = {
+inline constexpr std::string_view kSkipParamVariations[][kMaxParamVariations] = {
     // Index 0: BED_MESH
     {"SKIP_BED_MESH", "SKIP_MESH", "SKIP_BED_LEVELING", "NO_BED_MESH", "SKIP_LEVEL"},
     // Index 1: QGL
@@ -187,7 +187,7 @@ inline constexpr std::string_view SKIP_PARAM_VARIATIONS[][MAX_PARAM_VARIATIONS] 
  * These use opt-in semantics: param=1 means "do it", param=0 or omitted means "skip it".
  */
 // clang-format off
-inline constexpr std::string_view PERFORM_PARAM_VARIATIONS[][MAX_PARAM_VARIATIONS] = {
+inline constexpr std::string_view kPerformParamVariations[][kMaxParamVariations] = {
     // Index 0: BED_MESH
     {"PERFORM_BED_MESH", "DO_BED_MESH", "ENABLE_BED_MESH", "FORCE_BED_MESH", "FORCE_LEVELING"},
     // Index 1: QGL
@@ -221,7 +221,7 @@ inline constexpr std::string_view PERFORM_PARAM_VARIATIONS[][MAX_PARAM_VARIATION
  * Used by GCodeOpsDetector for parameter parsing, NOT by PrintStartAnalyzer.
  */
 // clang-format off
-inline constexpr std::string_view SLICER_PARAM_VARIATIONS[][MAX_PARAM_VARIATIONS] = {
+inline constexpr std::string_view kSlicerParamVariations[][kMaxParamVariations] = {
     // Index 0: BED_MESH
     {"MESH", "BED_MESH", "DO_BED_MESH"},
     // Index 1: QGL
@@ -250,7 +250,7 @@ inline constexpr std::string_view SLICER_PARAM_VARIATIONS[][MAX_PARAM_VARIATIONS
  * @return List of short parameter name variations, or empty if none
  */
 inline ParamNames get_slicer_param_variations(OperationCategory cat) {
-    return param_names(SLICER_PARAM_VARIATIONS, cat);
+    return param_names(kSlicerParamVariations, cat);
 }
 
 /**
@@ -322,7 +322,7 @@ inline const char* category_key(OperationCategory cat) {
  * @return List of skip parameter name variations, or empty if none
  */
 inline ParamNames get_skip_variations(OperationCategory cat) {
-    return param_names(SKIP_PARAM_VARIATIONS, cat);
+    return param_names(kSkipParamVariations, cat);
 }
 
 /**
@@ -363,7 +363,7 @@ inline std::vector<std::string> get_all_skip_variations(OperationCategory cat) {
  * @return List of perform parameter name variations, or empty if none
  */
 inline ParamNames get_perform_variations(OperationCategory cat) {
-    return param_names(PERFORM_PARAM_VARIATIONS, cat);
+    return param_names(kPerformParamVariations, cat);
 }
 
 /**
@@ -465,18 +465,18 @@ inline const OperationKeyword* find_keyword(const std::string& pattern) {
     // Always uppercase for case-insensitive comparison
     std::string pat = helix::text_io::to_upper(pattern);
 
-    for (size_t i = 0; i < OPERATION_KEYWORDS_COUNT; ++i) {
-        std::string keyword = helix::text_io::to_upper(OPERATION_KEYWORDS[i].keyword);
+    for (size_t i = 0; i < kOperationKeywordsCount; ++i) {
+        std::string keyword = helix::text_io::to_upper(kOperationKeywords[i].keyword);
 
-        if (OPERATION_KEYWORDS[i].exact_match) {
+        if (kOperationKeywords[i].exact_match) {
             // G-codes: exact match only (avoid G28 matching inside FOO_G28_BAR)
             if (pat == keyword) {
-                return &OPERATION_KEYWORDS[i];
+                return &kOperationKeywords[i];
             }
         } else {
             // Macros: substring match (catches _PRIME_NOZZLE, AUTO_BED_LEVEL, etc.)
             if (pat.find(keyword) != std::string::npos) {
-                return &OPERATION_KEYWORDS[i];
+                return &kOperationKeywords[i];
             }
         }
     }

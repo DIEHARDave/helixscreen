@@ -203,10 +203,10 @@ class WizardConnectionStep : public helix::wizard::Step {
     /// AD5M/CC1 over wifi, so this is ~6x headroom; it is also deliberately
     /// under MoonrakerRequestTracker's 60 s per-request timeout, which would
     /// otherwise stack across identify → server.info → printer.objects.list.
-    static constexpr uint32_t DISCOVERY_WATCHDOG_MS = 30000;
+    static constexpr uint32_t kDiscoveryWatchdogMs = 30000;
 
     // Watchdog state — main thread only (created, fired and cancelled there)
-    uint32_t discovery_watchdog_ms_ = DISCOVERY_WATCHDOG_MS;
+    uint32_t discovery_watchdog_ms_ = kDiscoveryWatchdogMs;
     lv_timer_t* discovery_watchdog_timer_ = nullptr;
     bool discovery_in_flight_ = false;
 

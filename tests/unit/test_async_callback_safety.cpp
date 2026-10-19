@@ -333,7 +333,7 @@ TEST_CASE("Destruction flag: thread-safe access", "[destruction_flag][async][thr
     // from multiple threads without issues.
 
     constexpr int NUM_THREADS = 4;
-    constexpr int READS_PER_THREAD = 100;
+    constexpr int kReadsPerThread = 100;
 
     std::atomic<int> total_reads{0};
     std::atomic<int> true_reads{0};
@@ -346,7 +346,7 @@ TEST_CASE("Destruction flag: thread-safe access", "[destruction_flag][async][thr
     // Start reader threads - capture flag BY VALUE for thread safety
     for (int i = 0; i < NUM_THREADS; i++) {
         threads.emplace_back([flag, &total_reads, &true_reads]() {
-            for (int j = 0; j < READS_PER_THREAD; j++) {
+            for (int j = 0; j < kReadsPerThread; j++) {
                 bool val = flag->load();
                 total_reads.fetch_add(1);
                 if (val) {
@@ -363,8 +363,8 @@ TEST_CASE("Destruction flag: thread-safe access", "[destruction_flag][async][thr
 
     // Verify results - all reads should have succeeded and seen true
     // (object not destroyed yet)
-    REQUIRE(total_reads.load() == NUM_THREADS * READS_PER_THREAD);
-    REQUIRE(true_reads.load() == NUM_THREADS * READS_PER_THREAD);
+    REQUIRE(total_reads.load() == NUM_THREADS * kReadsPerThread);
+    REQUIRE(true_reads.load() == NUM_THREADS * kReadsPerThread);
     REQUIRE(flag->load() == true);
 
     // Now destroy the object and verify flag is false
@@ -375,7 +375,7 @@ TEST_CASE("Destruction flag: thread-safe access", "[destruction_flag][async][thr
 TEST_CASE("Destruction flag: concurrent readers during destruction",
           "[destruction_flag][async][thread][slow]") {
     constexpr int NUM_READERS = 4;
-    constexpr int READS_PER_THREAD = 100;
+    constexpr int kReadsPerThread = 100;
 
     std::shared_ptr<std::atomic<bool>> flag;
     std::vector<std::thread> readers;
@@ -395,7 +395,7 @@ TEST_CASE("Destruction flag: concurrent readers during destruction",
                 std::this_thread::yield();
             }
 
-            for (int j = 0; j < READS_PER_THREAD; j++) {
+            for (int j = 0; j < kReadsPerThread; j++) {
                 if (flag->load()) {
                     true_count++;
                 } else {
@@ -422,7 +422,7 @@ TEST_CASE("Destruction flag: concurrent readers during destruction",
 
     // Verify results
     int total_reads = true_count.load() + false_count.load();
-    REQUIRE(total_reads == NUM_READERS * READS_PER_THREAD);
+    REQUIRE(total_reads == NUM_READERS * kReadsPerThread);
 
     // Some reads should have been true (before destruction)
     // and some should be false (after destruction)
@@ -759,9 +759,9 @@ TEST_CASE("Memory: callback keeps flag alive", "[memory][async]") {
 // ============================================================================
 
 TEST_CASE("Stress: rapid create/destroy with pending callbacks", "[stress][async][thread][.slow]") {
-    constexpr int ITERATIONS = 100;
+    constexpr int kIterations = 100;
 
-    for (int i = 0; i < ITERATIONS; i++) {
+    for (int i = 0; i < kIterations; i++) {
         std::function<void()> pending_callback;
         std::shared_ptr<std::atomic<bool>> flag;
 
@@ -781,14 +781,14 @@ TEST_CASE("Stress: rapid create/destroy with pending callbacks", "[stress][async
 
 TEST_CASE("Stress: concurrent object creation and destruction", "[stress][async][thread][.slow]") {
     constexpr int NUM_THREADS = 8;
-    constexpr int OBJECTS_PER_THREAD = 50;
+    constexpr int kObjectsPerThread = 50;
 
     std::atomic<int> completed{0};
     std::vector<std::thread> threads;
 
     for (int t = 0; t < NUM_THREADS; t++) {
         threads.emplace_back([&completed]() {
-            for (int i = 0; i < OBJECTS_PER_THREAD; i++) {
+            for (int i = 0; i < kObjectsPerThread; i++) {
                 std::function<void()> callback;
 
                 {

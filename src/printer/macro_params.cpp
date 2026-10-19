@@ -84,13 +84,13 @@ bool is_quoted_string(std::string_view text) {
 
 MacroDefaultKind classify_default(std::string_view text) {
     static const helix::Regex number_re(R"(^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$)");
-    static constexpr std::string_view KEYWORDS[] = {"true",  "True", "false",
-                                                    "False", "none", "None"};
+    static constexpr std::string_view kKeywords[] = {"true",  "True", "false",
+                                                     "False", "none", "None"};
 
     if (text.empty() || is_quoted_string(text) || helix::regex_match(text, number_re)) {
         return MacroDefaultKind::Literal;
     }
-    for (std::string_view keyword : KEYWORDS) {
+    for (std::string_view keyword : kKeywords) {
         if (text == keyword) {
             return MacroDefaultKind::Literal;
         }

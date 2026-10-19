@@ -12,9 +12,9 @@ namespace {
 
 /// Multiples of @p spacing strictly inside (lo, hi).
 std::vector<double> interior_multiples(double lo, double hi, double spacing) {
-    constexpr double EDGE_EPSILON = 1e-6;
+    constexpr double kEdgeEpsilon = 1e-6;
     std::vector<double> out;
-    for (double v = std::ceil((lo + EDGE_EPSILON) / spacing) * spacing; v < hi - EDGE_EPSILON;
+    for (double v = std::ceil((lo + kEdgeEpsilon) / spacing) * spacing; v < hi - kEdgeEpsilon;
          v += spacing) {
         out.push_back(v);
     }

@@ -330,15 +330,15 @@ bool validate_calibration_result(const TouchCalibration& cal, const Point screen
     // a few sensor units don't define a real transform — the matrix is
     // mathematically exact but wildly noise-sensitive (a single 1-unit touch
     // jitter at runtime produces hundreds of pixels of pointer motion).
-    constexpr int MIN_TOUCH_AXIS_SPAN = 5;
+    constexpr int kMinTouchAxisSpan = 5;
     int tx_min = std::min({touch_points[0].x, touch_points[1].x, touch_points[2].x});
     int tx_max = std::max({touch_points[0].x, touch_points[1].x, touch_points[2].x});
     int ty_min = std::min({touch_points[0].y, touch_points[1].y, touch_points[2].y});
     int ty_max = std::max({touch_points[0].y, touch_points[1].y, touch_points[2].y});
-    if ((tx_max - tx_min) < MIN_TOUCH_AXIS_SPAN || (ty_max - ty_min) < MIN_TOUCH_AXIS_SPAN) {
+    if ((tx_max - tx_min) < kMinTouchAxisSpan || (ty_max - ty_min) < kMinTouchAxisSpan) {
         spdlog::warn("[TouchCalibration] Touch points too clustered "
                      "(x_span={}, y_span={}, min={})",
-                     tx_max - tx_min, ty_max - ty_min, MIN_TOUCH_AXIS_SPAN);
+                     tx_max - tx_min, ty_max - ty_min, kMinTouchAxisSpan);
         return false;
     }
 

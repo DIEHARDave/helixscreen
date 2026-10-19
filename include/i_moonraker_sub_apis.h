@@ -270,24 +270,24 @@ class IHistoryAPI {
 class IAdvancedAPI {
   public:
     // ========== Timeout constants for long-running G-code commands ==========
-    static constexpr uint32_t CALIBRATION_TIMEOUT_MS =
+    static constexpr uint32_t kCalibrationTimeoutMs =
         300000; // 5 min - BED_MESH_CALIBRATE, SCREWS_TILT_CALCULATE
     /// A printer-shipped calibration sequence does its own heating, homing and
     /// wipe inside the one script, so its clock starts at heat-begin rather than
-    /// at probe-begin. CALIBRATION_TIMEOUT_MS measures only the probing and
+    /// at probe-begin. kCalibrationTimeoutMs measures only the probing and
     /// times out mid-probe here — which flips the panel to ERROR and cools the
     /// machine while it is still measuring.
-    static constexpr uint32_t SELF_PREPARED_CALIBRATION_TIMEOUT_MS = 900000; // 15 min
-    static constexpr uint32_t LEVELING_TIMEOUT_MS = 600000; // 10 min - QGL, Z_TILT_ADJUST
-    static constexpr uint32_t SHAPER_TIMEOUT_MS =
+    static constexpr uint32_t kSelfPreparedCalibrationTimeoutMs = 900000; // 15 min
+    static constexpr uint32_t kLevelingTimeoutMs = 600000; // 10 min - QGL, Z_TILT_ADJUST
+    static constexpr uint32_t kShaperTimeoutMs =
         600000; // 10 min - SHAPER_CALIBRATE, MEASURE_AXES_NOISE. Analysis alone
                 // measured ~3m50s per axis on a Creality K1C host; the analysis
                 // phase shows a spinner + elapsed time, so the longer wait is
                 // not silent.
-    static constexpr uint32_t PID_TIMEOUT_MS =
+    static constexpr uint32_t kPidTimeoutMs =
         1200000; // 20 min - PID_CALIBRATE (slow-cooling beds, e.g. AD5M Pro, exceed 15 min)
-    static constexpr uint32_t MPC_TIMEOUT_MS = 1200000; // 20 min - MPC_CALIBRATE
-    static constexpr uint32_t PROBING_TIMEOUT_MS =
+    static constexpr uint32_t kMpcTimeoutMs = 1200000; // 20 min - MPC_CALIBRATE
+    static constexpr uint32_t kProbingTimeoutMs =
         180000; // 3 min - PROBE_CALIBRATE, Z_ENDSTOP_CALIBRATE
 
     using SuccessCallback = std::function<void()>;

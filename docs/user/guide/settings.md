@@ -21,6 +21,7 @@ Tap the **gear icon** in the navigation bar to open Settings. It's a single list
 
 | Page | What's in it |
 |------|--------------|
+| [Printer](home-panel.md#printer-manager) | Opens the Printer Manager: the printer's name, its picture, the model HelixScreen recorded, software versions, detected hardware, and Manage Printers. The same screen opens when you tap the printer picture on the Home screen |
 | [Printing](settings/printing.md) | Machine limits, motion, retraction, enclosure, material temperatures, cold load and unload, cooling the nozzle after a filament change, confirming tool changes, timelapse, macro buttons |
 | [Devices](settings/devices.md) | Hardware health, camera, filament system, fans, sensors, [LED settings](settings/led-settings.md), power devices, Spoolman (with label printer and barcode scanner) |
 | [Safety & Alerts](settings/safety.md) | E-Stop confirmation, cancel escalation, macro confirmation, spaghetti detection, print completion alert, on-screen alerts |
@@ -51,7 +52,7 @@ Some rows show a short line under their name, so you can check things without op
 | **Language & Time** | Your language and clock | *English · 24-hour* |
 | **Updates** | Whether an update is waiting | *Up to date*, *1.1.1 available*, *Checking…*, *Check failed*, *Version 1.1.0*, *Managed by firmware* |
 
-Touch & Input, Printing, Safety & Alerts, System and Help & About have no status line.
+Touch & Input, Printing, Safety & Alerts, System and Help & About have no status line. **Printer** always reads *Name, image and model*, a reminder of what it opens rather than a status.
 
 ## Where did it go?
 

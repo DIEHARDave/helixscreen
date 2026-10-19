@@ -180,7 +180,7 @@ void BeltTensionCalibrator::settle(const BeltSettleInputs& inputs, std::function
 
     state_.store(State::HOMING);
     spdlog::info("[BeltTension] Settling belts: {} laps at {:.0f} mm/s, about {:.0f} s",
-                 belt_settle::LAPS, plan.speed_mm_s, plan.seconds);
+                 belt_settle::kLaps, plan.speed_mm_s, plan.seconds);
 
     ensure_homed_then(
         api_, lifetime_,

@@ -34,41 +34,41 @@ struct HighFlyLevel {
     uint32_t period_ms;
     uint8_t scale;   ///< the scene renders at canvas / scale
     uint16_t slices; ///< deck depth slices
-    uint8_t layers;  ///< translucent layers drawn, 0 to HIGHFLY_LAYER_COUNT
+    uint8_t layers;  ///< translucent layers drawn, 0 to kHighflyLayerCount
     bool towers;
     bool still; ///< draw the scene once, then only the clock
 };
 
 /// Most expensive first: layers go before the deck coarsens, the coarse deck slows to a slow
 /// drift before it stops, and the last rung stands still.
-inline constexpr HighFlyLevel HIGHFLY_LEVELS[] = {
-    {SAVER_FAST_PERIOD, 2, 117, 3, true, false},
+inline constexpr HighFlyLevel kHighflyLevels[] = {
+    {kSaverFastPeriod, 2, 117, 3, true, false},
     {33, 2, 117, 3, true, false},
     {33, 2, 117, 0, true, false},
     {50, 4, 70, 0, false, false},
     {125, 4, 70, 0, false, false},
     {250, 2, 117, 3, true, true},
 };
-inline constexpr size_t HIGHFLY_LEVEL_COUNT = std::size(HIGHFLY_LEVELS);
+inline constexpr size_t kHighflyLevelCount = std::size(kHighflyLevels);
 
-inline constexpr size_t HIGHFLY_LAYER_COUNT = 3;
-inline constexpr size_t HIGHFLY_TOWER_VARIANTS = 3;
+inline constexpr size_t kHighflyLayerCount = 3;
+inline constexpr size_t kHighflyTowerVariants = 3;
 /// Deck heightfield side, texels; tileable both ways.
-inline constexpr int32_t HIGHFLY_FIELD = 256;
+inline constexpr int32_t kHighflyField = 256;
 /// Deck scroll toward the camera, world units per second.
-inline constexpr float HIGHFLY_SPEED = 10.0f;
+inline constexpr float kHighflySpeed = 10.0f;
 /// Fly-throughs start this many seconds apart, uniformly.
-inline constexpr float HIGHFLY_FLY_MIN_S = 60.0f;
-inline constexpr float HIGHFLY_FLY_MAX_S = 120.0f;
+inline constexpr float kHighflyFlyMinS = 60.0f;
+inline constexpr float kHighflyFlyMaxS = 120.0f;
 /// Fly-through envelope: ease in, hold, clear, seconds.
-inline constexpr float HIGHFLY_FLY_IN_S = 1.0f;
-inline constexpr float HIGHFLY_FLY_HOLD_S = 0.5f;
-inline constexpr float HIGHFLY_FLY_OUT_S = 1.3f;
+inline constexpr float kHighflyFlyInS = 1.0f;
+inline constexpr float kHighflyFlyHoldS = 0.5f;
+inline constexpr float kHighflyFlyOutS = 1.3f;
 /// Interior colour's opacity at the depth of the fly-through.
-inline constexpr float HIGHFLY_WHITEOUT_MAX = 0.62f;
+inline constexpr float kHighflyWhiteoutMax = 0.62f;
 /// Towers enter this far apart in travel time, uniformly.
-inline constexpr float HIGHFLY_TOWER_MIN_S = 13.0f;
-inline constexpr float HIGHFLY_TOWER_MAX_S = 14.0f;
+inline constexpr float kHighflyTowerMinS = 13.0f;
+inline constexpr float kHighflyTowerMaxS = 14.0f;
 
 /// A premultiplied RGBA texture, row-major.
 struct HighFlyTexture {
@@ -78,21 +78,21 @@ struct HighFlyTexture {
     size_t heap_bytes() const;
 };
 
-/// Field texels per world unit: a world height is the stored height / HIGHFLY_TEXELS_PER_UNIT.
-inline constexpr float HIGHFLY_TEXELS_PER_UNIT = 2.0f;
+/// Field texels per world unit: a world height is the stored height / kHighflyTexelsPerUnit.
+inline constexpr float kHighflyTexelsPerUnit = 2.0f;
 
-/// The baked deck: height (texel units) and shade (0-1) per texel, HIGHFLY_FIELD^2 row-major.
+/// The baked deck: height (texel units) and shade (0-1) per texel, kHighflyField^2 row-major.
 struct HighFlyField {
     std::vector<float> height;
     std::vector<float> shade;
 };
 
-/// Builds the deck at HIGHFLY_FIELD^2 from `rng`: puffs at three scales, noise, a talus pass
-/// that limits each texel to HIGHFLY_TALUS above its lowest neighbour's limit, a 1-texel blur,
+/// Builds the deck at kHighflyField^2 from `rng`: puffs at three scales, noise, a talus pass
+/// that limits each texel to kHighflyTalus above its lowest neighbour's limit, a 1-texel blur,
 /// then Lambert + ambient occlusion + noise shading.
 void build_highfly_field(std::minstd_rand& rng, HighFlyField& out);
 /// Slope limit of the talus pass, height units per texel.
-inline constexpr float HIGHFLY_TALUS = 2.0f;
+inline constexpr float kHighflyTalus = 2.0f;
 
 /// Fly-through amount, 0 to 1, `since_start_s` after one began; 0 before and after.
 float highfly_whiteout(float since_start_s);
@@ -104,10 +104,10 @@ float highfly_layer_visibility(float deck_z, float layer_z);
 
 /// Most the fly-through interior and its wisps together may cover the scene over the clock,
 /// so the pale numerals stay readable.
-inline constexpr float HIGHFLY_CLOCK_COVER_MAX = 0.70f;
+inline constexpr float kHighflyClockCoverMax = 0.70f;
 
 /// `scene` seen from inside the fly-through cloud `amt` (0 to 1) of the way in: eased toward
-/// the blue-grey interior, never more than HIGHFLY_WHITEOUT_MAX of the way, then lit toward
+/// the blue-grey interior, never more than kHighflyWhiteoutMax of the way, then lit toward
 /// white by a wisp of strength `wisp`, held so the two together cover at most `most` of the
 /// scene (where the interior alone already covers more, the wisp adds nothing).
 Rgb highfly_inside(Rgb scene, float amt, float wisp = 0.0f, float most = 1.0f);
@@ -131,7 +131,7 @@ HighFlyClockLayout layout_highfly_clock(int32_t w, int32_t h, int32_t dx, int32_
 class HighFlySim {
   public:
     friend class HighFlySimTestAccess;
-    static constexpr const auto& LEVELS = HIGHFLY_LEVELS;
+    static constexpr const auto& kLevels = kHighflyLevels;
 
     void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level,
               const ClockReading& reading);
@@ -174,7 +174,7 @@ class HighFlySim {
     int32_t scale() const {
         return scale_;
     }
-    /// Shape (0 to HIGHFLY_TOWER_VARIANTS - 1) of tower slot `i`, or -1 when the slot is empty.
+    /// Shape (0 to kHighflyTowerVariants - 1) of tower slot `i`, or -1 when the slot is empty.
     int tower_variant(size_t i) const;
     /// Internal-frame box tower slot `i` covers, empty when the slot is empty or off screen.
     DirtyRect tower_box(size_t i) const;
@@ -195,7 +195,7 @@ class HighFlySim {
   private:
     struct Tower {
         float z = 0.0f;
-        double entered_s = 0.0; ///< run time it entered at TOWER_Z_ENTER
+        double entered_s = 0.0; ///< run time it entered at kTowerZEnter
         float x = 0.0f;         ///< world x of its centre when it entered
         float drift = 0.0f;     ///< wind, world units per second sideways
         float size = 1.0f;
@@ -299,15 +299,15 @@ class HighFlySim {
     bool painted_ = false;
     bool last_full_ = false;
     bool scene_released_ = false;
-    std::vector<int16_t> deck_height_; ///< the baked deck, texels x 128, HIGHFLY_FIELD^2
+    std::vector<int16_t> deck_height_; ///< the baked deck, texels x 128, kHighflyField^2
     std::vector<uint8_t> deck_shade_;  ///< and its shade, 0 to 255
     HeightfieldRenderer renderer_;
     std::vector<Rgb> sky_;       ///< internal row-major, static
     std::vector<Rgb> frame_;     ///< internal row-major
     std::vector<Rgb> slice_lut_; ///< per slice: 256 deck shades through near-white and fog
     HighFlyTexture band_;
-    std::array<HighFlyTexture, HIGHFLY_LAYER_COUNT> layers_{};
-    std::array<HighFlyTexture, HIGHFLY_TOWER_VARIANTS> towers_tex_{};
+    std::array<HighFlyTexture, kHighflyLayerCount> layers_{};
+    std::array<HighFlyTexture, kHighflyTowerVariants> towers_tex_{};
     std::vector<float> wisp_;         ///< polar wisp noise, 64 log-radius rows x 128 angles
     std::vector<uint16_t> polar_;     ///< per internal pixel: log-radius, angle, radial weight
     std::vector<int32_t> col_u0_;     ///< billboard sampling, per internal column

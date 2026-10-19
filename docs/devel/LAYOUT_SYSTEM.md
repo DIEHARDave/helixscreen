@@ -379,7 +379,7 @@ and rowspan mean the same physical thing.
 ```cpp
 // include/grid_layout.h
 TRACKS_PER_CELL = 2                                         // a track is HALF a cell
-GRID_CELL[NUM_BREAKPOINTS] = {34, 40, 40, 60, 60, 72, 72}   // target track edge, px
+GRID_CELL[kNumBreakpoints] = {34, 40, 40, 60, 60, 72, 72}   // target track edge, px
 ```
 
 `GRID_CELL` carries one entry per `UiBreakpoint`, XXLarge included - a `static_assert` ties
@@ -394,7 +394,7 @@ to the **nearest** whole cell, and multiplies back up to tracks:
 
 ```
 cells  = round(content / (TRACKS_PER_CELL * GRID_CELL[bp]))
-tracks = TRACKS_PER_CELL * clamp(cells, MIN_TRACKS/2, MAX_TRACKS/2)
+tracks = TRACKS_PER_CELL * clamp(cells, kMinTracks/2, kMaxTracks/2)
 ```
 
 Two details do the work here:
@@ -414,8 +414,8 @@ Because the count is always a whole number of cells, the track count is always e
 trailing half-cell that a whole-cell widget could never occupy, and edit mode's `TRACKS_PER_CELL`
 snap step can always restore a size the user dragged past.
 
-`MIN_TRACKS` (4) and `MAX_TRACKS` (64) are both whole cells, so clamping cannot produce an
-odd count either. Neither is reached by any measured geometry; `MIN_TRACKS` exists for a
+`kMinTracks` (4) and `kMaxTracks` (64) are both whole cells, so clamping cannot produce an
+odd count either. Neither is reached by any measured geometry; `kMinTracks` exists for a
 container that has not been laid out yet.
 
 The breakpoint comes from the **narrow** axis (`min(width, height)`), so a tall portrait

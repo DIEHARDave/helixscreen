@@ -41,7 +41,7 @@ These docs are **end-user facing**. They must be written for people who are NOT 
 | `guide/label-printing.md` | Label printer setup, supported printers (Brother/Phomemo/Niimbot/MakeID), Bluetooth pairing, troubleshooting |
 | `guide/calibration.md` | Bed mesh, screws tilt, input shaper, PID |
 | `guide/touch-calibration.md` | Touch screen calibration, forcing recalibration, config reference |
-| `guide/settings.md` | Settings hub: the three groups (Screen, Printer, HelixScreen) and their twelve pages |
+| `guide/settings.md` | Settings hub: the three groups (Screen, Printer, HelixScreen) and their thirteen pages |
 | `guide/settings/display.md` | Screen rotation, UI scale, brightness, screen dim, display sleep, screensaver, sleep while printing |
 | `guide/settings/appearance.md` | Dark mode, themes and the theme editor, animations, widget labels, printer visuals (toolhead style, G-code preview, Z movement, bed mesh render) |
 | `guide/settings/touch-input.md` | Touch calibration, debug viz, scroll engage distance, long press, home screen editing, scroll guard, scroll buttons, Android keyboard and navigation bar |

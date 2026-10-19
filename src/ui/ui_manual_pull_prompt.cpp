@@ -25,8 +25,8 @@ bool s_registered = false;
 
 /// Toolhead-detected subject values. -1 is "this printer has no such sensor",
 /// which is a third answer and not a synonym for 0.
-constexpr int TOOLHEAD_CLEAR = 0;
-constexpr int TOOLHEAD_DETECTED = 1;
+constexpr int kToolheadClear = 0;
+constexpr int kToolheadDetected = 1;
 
 void fire(const char* via) {
     // Disarm BEFORE notifying. NOTIFY_* is synchronous, and tearing the observer
@@ -57,12 +57,12 @@ void arm_manual_pull_prompt() {
     // (already clear, or no sensor at all) can produce no meaningful 1 -> 0 edge,
     // and observe<int> fires once on registration — hooking it up in those
     // states would toast immediately, before the retract has moved anything.
-    const bool watchable = toolhead && lv_subject_get_int(toolhead) == TOOLHEAD_DETECTED;
+    const bool watchable = toolhead && lv_subject_get_int(toolhead) == kToolheadDetected;
     if (watchable) {
         s_toolhead_observer = observe<int>(
             toolhead, &sensors,
             [](FilamentSensorManager*, int detected) {
-                if (detected == TOOLHEAD_CLEAR) {
+                if (detected == kToolheadClear) {
                     fire("toolhead sensor");
                 }
             },

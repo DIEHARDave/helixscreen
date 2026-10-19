@@ -1,7 +1,7 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_bounce.h"
 
@@ -18,7 +18,7 @@
 #include <string>
 
 using helix::screensaver_bounce::fit_sprite;
-using helix::screensaver_bounce::MIN_RANGE_PX;
+using helix::screensaver_bounce::kMinRangePx;
 using helix::screensaver_bounce::sprite_size_for;
 using helix::ui::screensaver::fold;
 using helix::ui::screensaver::fold_index;
@@ -30,35 +30,35 @@ namespace {
 
 // Travel per second as a fraction of the screen's narrow axis, so a 480x272
 // panel and a 1024x600 one read at the same pace.
-constexpr float SPEED_FRACTION = 0.16f;
+constexpr float kSpeedFraction = 0.16f;
 
 // Angles this far off both axes keep the path from degenerating into a line.
-constexpr float ANGLE_MIN_DEG = 18.0f;
-constexpr float ANGLE_SPAN_DEG = 54.0f;
+constexpr float kAngleMinDeg = 18.0f;
+constexpr float kAngleSpanDeg = 54.0f;
 
 // Rejection bound for short repeating paths, and how close counts as repeating.
-constexpr int MAX_DENOMINATOR = 6;
-constexpr float RATIONAL_EPS = 0.02f;
-constexpr int SEED_ATTEMPTS = 16;
+constexpr int kMaxDenominator = 6;
+constexpr float kRationalEps = 0.02f;
+constexpr int kSeedAttempts = 16;
 
 // Tint strength. At LV_OPA_COVER the recolor replaces every channel and the
 // sprite collapses to a flat silhouette; this leaves the render readable.
 constexpr lv_opa_t RECOLOR_OPA = 110;
 
-constexpr int CORNER_FLASH_TICKS = 3;
+constexpr int kCornerFlashTicks = 3;
 // How far the backdrop travels from black toward the tint. The overlay stays
 // fully opaque throughout — fading it would show the UI it is covering.
-constexpr lv_opa_t CORNER_FLASH_MIX = 56;
+constexpr lv_opa_t kCornerFlashMix = 56;
 // Every particle costs a position, a size and a style write each frame, so one is
 // roughly 2.5x a flying-toaster sprite. The tightest board that runs animations
 // sustains 49 toaster sprites; this keeps the celebration inside that same band
 // instead of spiking to twice it.
-constexpr int CORNER_CONFETTI_PARTICLES = 24;
+constexpr int kCornerConfettiParticles = 24;
 
 // Procedural palette for the sprite tint and the corner flash. These are
 // animation content rather than UI chrome, so they are not theme tokens —
-// the same footing as STAR_TINTS and CONFETTI_COLORS.
-const lv_color_t BOUNCE_TINTS[] = {
+// the same footing as kStarTints and kConfettiColors.
+const lv_color_t kBounceTints[] = {
     LV_COLOR_MAKE(0xFF, 0x6B, 0x6B), // red
     LV_COLOR_MAKE(0xFF, 0xE6, 0x6D), // yellow
     LV_COLOR_MAKE(0x4E, 0xCD, 0xC4), // teal
@@ -67,11 +67,11 @@ const lv_color_t BOUNCE_TINTS[] = {
     LV_COLOR_MAKE(0xDD, 0xA0, 0xDD), // plum
     LV_COLOR_MAKE(0xFF, 0xA6, 0x5C), // orange
 };
-constexpr int NUM_TINTS = sizeof(BOUNCE_TINTS) / sizeof(BOUNCE_TINTS[0]);
+constexpr int kNumTints = sizeof(kBounceTints) / sizeof(kBounceTints[0]);
 
 /// Logo art cropped to its opaque bounds, so the walls meet the artwork itself, and
 /// sized to the largest box sprite_size_for() hands out.
-constexpr const char* LOGO_SPRITE_PATH = "A:assets/images/helixscreen-logo-bounce.png";
+constexpr const char* kLogoSpritePath = "A:assets/images/helixscreen-logo-bounce.png";
 
 } // namespace
 
@@ -82,7 +82,7 @@ std::string BouncingPrinterScreensaver::sprite_path(int screen_w) const {
 }
 
 std::string BouncingLogoScreensaver::sprite_path(int /*screen_w*/) const {
-    return LOGO_SPRITE_PATH;
+    return kLogoSpritePath;
 }
 
 bool BouncingPrinterScreensaver::on_start() {
@@ -94,7 +94,7 @@ bool BouncingPrinterScreensaver::on_start() {
     const int box = sprite_size_for(screen_w_, screen_h_);
     if (box <= 0) {
         spdlog::warn("[Screensaver] {}x{} leaves under {}px of travel, declining to bounce",
-                     screen_w_, screen_h_, MIN_RANGE_PX);
+                     screen_w_, screen_h_, kMinRangePx);
         return false;
     }
 
@@ -159,9 +159,9 @@ void BouncingPrinterScreensaver::seed_motion() {
     const float start_x = unit_random(rng()) * range_x_;
     const float start_y = unit_random(rng()) * range_y_;
 
-    for (int attempt = 0; attempt < SEED_ATTEMPTS; ++attempt) {
-        const float deg = ANGLE_MIN_DEG + unit_random(rng()) * ANGLE_SPAN_DEG;
-        const float theta = deg * (helix::ui::SAVER_PI / 180.0f);
+    for (int attempt = 0; attempt < kSeedAttempts; ++attempt) {
+        const float deg = kAngleMinDeg + unit_random(rng()) * kAngleSpanDeg;
+        const float theta = deg * (helix::ui::kSaverPi / 180.0f);
         const float sx = (unit_random(rng()) < 0.5f) ? -1.0f : 1.0f;
         const float sy = (unit_random(rng()) < 0.5f) ? -1.0f : 1.0f;
 
@@ -172,7 +172,7 @@ void BouncingPrinterScreensaver::seed_motion() {
             break;
         }
         const float ratio = std::fabs((vx_ / range_x_) / (vy_ / range_y_));
-        if (!near_rational(ratio, MAX_DENOMINATOR, RATIONAL_EPS)) {
+        if (!near_rational(ratio, kMaxDenominator, kRationalEps)) {
             break;
         }
     }
@@ -187,7 +187,7 @@ void BouncingPrinterScreensaver::apply_geometry(int box) {
     fit_sprite(box, src_w_, src_h_, sprite_w_, sprite_h_);
     range_x_ = static_cast<float>(screen_w_ - sprite_w_);
     range_y_ = static_cast<float>(screen_h_ - sprite_h_);
-    speed_ = SPEED_FRACTION * static_cast<float>(std::min(screen_w_, screen_h_));
+    speed_ = kSpeedFraction * static_cast<float>(std::min(screen_w_, screen_h_));
 }
 
 void BouncingPrinterScreensaver::rebase(int screen_w, int screen_h) {
@@ -228,12 +228,12 @@ void BouncingPrinterScreensaver::apply_tint() {
     if (!img_ || !decorated()) {
         return;
     }
-    lv_obj_set_style_image_recolor(img_, BOUNCE_TINTS[color_index_], 0);
+    lv_obj_set_style_image_recolor(img_, kBounceTints[color_index_], 0);
     lv_obj_set_style_image_recolor_opa(img_, RECOLOR_OPA, 0);
 }
 
 int BouncingPrinterScreensaver::confetti_count(size_t level) const {
-    return LEVELS[std::min(level, std::size(LEVELS) - 1)].confetti ? CORNER_CONFETTI_PARTICLES : 0;
+    return kLevels[std::min(level, std::size(kLevels) - 1)].confetti ? kCornerConfettiParticles : 0;
 }
 
 // The sprite is an LVGL image, which invalidates its own old and new areas when
@@ -266,7 +266,7 @@ void BouncingPrinterScreensaver::on_frame(uint32_t dt_ms,
     prev_fold_y_ = fy;
 
     if (bounced_x || bounced_y) {
-        color_index_ = (color_index_ + 1) % NUM_TINTS;
+        color_index_ = (color_index_ + 1) % kNumTints;
         apply_tint();
     }
 
@@ -278,10 +278,10 @@ void BouncingPrinterScreensaver::on_frame(uint32_t dt_ms,
         decorated() && is_corner_hit(bounced_x, bounced_y, x, y, range_x_, range_y_, tol);
     if (corner) {
         spdlog::info("[Screensaver] Bouncing {} hit the corner", subject_name());
-        corner_flash_ticks_ = CORNER_FLASH_TICKS;
+        corner_flash_ticks_ = kCornerFlashTicks;
         lv_obj_set_style_bg_color(
             overlay().obj(),
-            lv_color_mix(BOUNCE_TINTS[color_index_], lv_color_black(), CORNER_FLASH_MIX), 0);
+            lv_color_mix(kBounceTints[color_index_], lv_color_black(), kCornerFlashMix), 0);
 
         // The particle system is dozens of objects repositioned and resized
         // every frame. That is the cost profile BASIC and EMBEDDED tiers had the

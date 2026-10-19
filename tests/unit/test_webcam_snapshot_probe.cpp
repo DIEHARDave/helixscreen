@@ -70,11 +70,11 @@ bool accepts_connections(int port) {
 /// Milliseconds the "slow camera" endpoint stalls before answering. Above the 2s
 /// connect budget so it fails under the old single-timeout scheme, and comfortably
 /// under the total budget so it must pass under the new one.
-constexpr int SLOW_RESPONSE_MS = 2500;
+constexpr int kSlowResponseMs = 2500;
 
 /// Smallest bytes that look like a JPEG. Content is irrelevant to the probe (it
 /// only reads the status code) but a realistic body keeps the fixture honest.
-const std::string JPEG_BODY = "\xFF\xD8\xFF\xE0 fake jpeg payload \xFF\xD9";
+const std::string kJpegBody = "\xFF\xD8\xFF\xE0 fake jpeg payload \xFF\xD9";
 
 /// A libhv HTTP server that serves the probe fixtures for the life of the object.
 class ProbeServer {
@@ -82,13 +82,13 @@ class ProbeServer {
     ProbeServer() {
         service_.GET("/fast.jpg", [](HttpRequest*, HttpResponse* resp) {
             resp->content_type = APPLICATION_OCTET_STREAM;
-            resp->body = JPEG_BODY;
+            resp->body = kJpegBody;
             return 200;
         });
         service_.GET("/slow.jpg", [](HttpRequest*, HttpResponse* resp) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(SLOW_RESPONSE_MS));
+            std::this_thread::sleep_for(std::chrono::milliseconds(kSlowResponseMs));
             resp->content_type = APPLICATION_OCTET_STREAM;
-            resp->body = JPEG_BODY;
+            resp->body = kJpegBody;
             return 200;
         });
         service_.GET("/missing.jpg", [](HttpRequest*, HttpResponse* resp) {
@@ -180,12 +180,12 @@ TEST_CASE("Snapshot probe rejects a dead address without waiting out the respons
     // make the stale-address case — the reason this probe exists — any slower. A
     // refused connection returns immediately; the assertion guards against a future
     // change that folds the two budgets back together.
-    REQUIRE(elapsed_ms < SNAPSHOT_PROBE_TOTAL_TIMEOUT_SEC * 1000);
+    REQUIRE(elapsed_ms < kSnapshotProbeTotalTimeoutSec * 1000);
 }
 
 TEST_CASE("Snapshot probe allows a live endpoint more time than a dead one",
           "[webcam][discovery][probe][1205]") {
     // The two budgets must stay distinct. Collapsing them (as the pre-#1205 code
     // did, with a single 2s total) is what rejected the reporter's camera.
-    REQUIRE(SNAPSHOT_PROBE_TOTAL_TIMEOUT_SEC > SNAPSHOT_PROBE_CONNECT_TIMEOUT_SEC);
+    REQUIRE(kSnapshotProbeTotalTimeoutSec > kSnapshotProbeConnectTimeoutSec);
 }

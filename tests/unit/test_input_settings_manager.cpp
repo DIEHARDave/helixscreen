@@ -66,8 +66,8 @@ class InputSettingsFixture : public LVGLTestFixture {
 TEST_CASE_METHOD(InputSettingsFixture, "InputSettingsManager default values after init",
                  "[input_settings]") {
     SECTION("scroll_throw defaults to the platform constant, 25 off ESP32") {
-        CHECK(InputSettingsManager::DEFAULT_SCROLL_THROW == 25);
-        REQUIRE(input().get_scroll_throw() == InputSettingsManager::DEFAULT_SCROLL_THROW);
+        CHECK(InputSettingsManager::kDefaultScrollThrow == 25);
+        REQUIRE(input().get_scroll_throw() == InputSettingsManager::kDefaultScrollThrow);
     }
 
     SECTION("scroll_limit defaults to 10") {
@@ -268,10 +268,10 @@ TEST_CASE_METHOD(InputSettingsFixture, "InputSettingsManager long_press_time def
     SECTION("defaults to the documented 500ms") {
         // Pin both the constant and the wiring: a change to either is a change
         // to how easily a resting finger opens edit mode.
-        CHECK(static_cast<int>(app_constants::input::LONG_PRESS_MS) == 500);
+        CHECK(static_cast<int>(app_constants::input::kLongPressMs) == 500);
         CHECK(input().get_long_press_time() == 500);
         CHECK(input().get_long_press_time() ==
-              static_cast<int>(app_constants::input::LONG_PRESS_MS));
+              static_cast<int>(app_constants::input::kLongPressMs));
     }
 
     SECTION("setter clamps below the 300ms minimum") {

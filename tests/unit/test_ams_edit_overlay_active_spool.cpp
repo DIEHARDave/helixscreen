@@ -644,7 +644,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     UpdateQueue::instance().drain();
     process_lvgl(10);
 
-    CHECK(access.get_view_mode() == AmsEditOverlay::VIEW_SPOOL_PICKER);
+    CHECK(access.get_view_mode() == AmsEditOverlay::kViewSpoolPicker);
 
     NavigationManager::instance().go_back();
     UpdateQueue::instance().drain();
@@ -663,7 +663,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "show_for_slot opens on the editor by defaul
     UpdateQueue::instance().drain();
     process_lvgl(10);
 
-    CHECK(access.get_view_mode() == AmsEditOverlay::VIEW_EDITOR);
+    CHECK(access.get_view_mode() == AmsEditOverlay::kViewEditor);
 
     NavigationManager::instance().go_back();
     UpdateQueue::instance().drain();

@@ -162,7 +162,7 @@ TEST_CASE("decide_preheat: targets stay between the floor and the hotend's maxim
 
 namespace {
 
-constexpr const char* HEAT_GCODE = "SET_HEATER_TEMPERATURE HEATER=extruder TARGET=";
+constexpr const char* kHeatGcode = "SET_HEATER_TEMPERATURE HEATER=extruder TARGET=";
 
 class HeaterFixture : public LVGLTestFixture {
   public:
@@ -312,7 +312,7 @@ TEST_CASE_METHOD(HeaterFixture, "The home tile's Load heats a cold nozzle before
     helix::ui::UpdateQueue::instance().drain();
 
     REQUIRE(heater->get().pending());
-    CHECK(sent(std::string(HEAT_GCODE) + "220"));
+    CHECK(sent(std::string(kHeatGcode) + "220"));
     CHECK_FALSE(sent("LOAD_FILAMENT"));
 
     feed_nozzle(150, 220);
@@ -321,7 +321,7 @@ TEST_CASE_METHOD(HeaterFixture, "The home tile's Load heats a cold nozzle before
     feed_nozzle(218, 220);
     CHECK_FALSE(heater->get().pending());
     REQUIRE(sent("LOAD_FILAMENT"));
-    CHECK(sent_at(HEAT_GCODE) < sent_at("LOAD_FILAMENT"));
+    CHECK(sent_at(kHeatGcode) < sent_at("LOAD_FILAMENT"));
 }
 
 TEST_CASE_METHOD(HeaterFixture, "The home tile's Unload heats a cold nozzle before the macro",
@@ -332,12 +332,12 @@ TEST_CASE_METHOD(HeaterFixture, "The home tile's Unload heats a cold nozzle befo
     helix::ui::UpdateQueue::instance().drain();
 
     REQUIRE(heater->get().pending());
-    CHECK(sent(HEAT_GCODE));
+    CHECK(sent(kHeatGcode));
     CHECK_FALSE(sent("UNLOAD_FILAMENT"));
 
     feed_nozzle(220, 220);
     REQUIRE(sent("UNLOAD_FILAMENT"));
-    CHECK(sent_at(HEAT_GCODE) < sent_at("UNLOAD_FILAMENT"));
+    CHECK(sent_at(kHeatGcode) < sent_at("UNLOAD_FILAMENT"));
 }
 
 TEST_CASE_METHOD(HeaterFixture, "The home tile's Purge heats a cold nozzle before the macro",
@@ -364,7 +364,7 @@ TEST_CASE_METHOD(HeaterFixture, "A hot nozzle loads at once with no heat command
 
     CHECK_FALSE(heater->get().pending());
     CHECK(sent("LOAD_FILAMENT"));
-    CHECK_FALSE(sent(HEAT_GCODE));
+    CHECK_FALSE(sent(kHeatGcode));
 }
 
 TEST_CASE_METHOD(HeaterFixture, "The allow-cold-load setting skips the preheat",
@@ -377,7 +377,7 @@ TEST_CASE_METHOD(HeaterFixture, "The allow-cold-load setting skips the preheat",
 
     CHECK_FALSE(heater->get().pending());
     CHECK(sent("LOAD_FILAMENT"));
-    CHECK_FALSE(sent(HEAT_GCODE));
+    CHECK_FALSE(sent(kHeatGcode));
 }
 
 TEST_CASE_METHOD(HeaterFixture, "A runout reload during a pause with a hot nozzle does not wait",
@@ -395,7 +395,7 @@ TEST_CASE_METHOD(HeaterFixture, "A runout reload during a pause with a hot nozzl
 
     CHECK_FALSE(heater->get().pending());
     CHECK(sent("LOAD_FILAMENT"));
-    CHECK_FALSE(sent(HEAT_GCODE));
+    CHECK_FALSE(sent(kHeatGcode));
 }
 
 TEST_CASE_METHOD(HeaterFixture, "The same reload while idle heats to the spool's material",
@@ -440,7 +440,7 @@ TEST_CASE_METHOD(HeaterFixture, "A second tap while heating cancels and turns th
     helix::ui::UpdateQueue::instance().drain();
 
     CHECK_FALSE(heater->get().pending());
-    CHECK(sent(std::string(HEAT_GCODE) + "0")); // it was off when the user asked
+    CHECK(sent(std::string(kHeatGcode) + "0")); // it was off when the user asked
 
     // Heat arriving later for any other reason runs nothing.
     feed_nozzle(220, 220);
@@ -458,7 +458,7 @@ TEST_CASE_METHOD(HeaterFixture, "Cancelling leaves alone a target someone else h
     REQUIRE(heater->get().cancel());
     helix::ui::UpdateQueue::instance().drain();
 
-    CHECK_FALSE(sent(std::string(HEAT_GCODE) + "0"));
+    CHECK_FALSE(sent(std::string(kHeatGcode) + "0"));
 }
 
 TEST_CASE_METHOD(HeaterFixture, "A preheat whose target is taken away runs nothing",
@@ -551,7 +551,7 @@ TEST_CASE_METHOD(HeaterFixture, "A preheat waiting when an op finishes takes ove
     client.clear_gcode_script_history();
     REQUIRE(heater->get().cancel());
     drain_all();
-    CHECK(sent(std::string(HEAT_GCODE) + "0"));
+    CHECK(sent(std::string(kHeatGcode) + "0"));
 }
 
 TEST_CASE_METHOD(HeaterFixture, "A replacement that runs on the replaced heat keeps it, then cools",
@@ -576,7 +576,7 @@ TEST_CASE_METHOD(HeaterFixture, "A replacement that runs on the replaced heat ke
     drain_all();
     REQUIRE_FALSE(heater->get().pending());
     REQUIRE(count_starting("PURGE") == 1);
-    CHECK_FALSE(sent(std::string(HEAT_GCODE) + "0")); // not taken away mid-purge
+    CHECK_FALSE(sent(std::string(kHeatGcode) + "0")); // not taken away mid-purge
 
     CHECK(wait_until(
         [&cd]() {
@@ -649,7 +649,7 @@ TEST_CASE_METHOD(HeaterFixture, "A backend op's end on the action feed schedules
     SECTION("a watch past its deadline ignores a later, unrelated op") {
         heater->get().watch_backend_completion(ticket);
         drain_all();
-        fake_now += FilamentOpHeater::BACKEND_WATCH_TIMEOUT + std::chrono::seconds(1);
+        fake_now += FilamentOpHeater::kBackendWatchTimeout + std::chrono::seconds(1);
         lv_subject_set_int(action, static_cast<int>(helix::AmsAction::LOADING));
         drain_all();
         lv_subject_set_int(action, static_cast<int>(helix::AmsAction::IDLE));
@@ -682,7 +682,7 @@ TEST_CASE_METHOD(HeaterFixture, "A print started during an idle preheat abandons
     client.clear_gcode_script_history();
     set_print_state("printing");
     CHECK_FALSE(heater->get().pending());
-    CHECK_FALSE(sent(std::string(HEAT_GCODE) + "0")); // the print owns the heater now
+    CHECK_FALSE(sent(std::string(kHeatGcode) + "0")); // the print owns the heater now
 
     feed_nozzle(220, 220); // PRINT_START heats the nozzle
     CHECK_FALSE(sent("LOAD_FILAMENT"));
@@ -727,11 +727,11 @@ TEST_CASE_METHOD(HeaterFixture, "A target that never lands times the preheat out
     REQUIRE(heater->get().pending());
 
     client.clear_gcode_script_history();
-    fake_now += FilamentOpHeater::TARGET_LAND_TIMEOUT + std::chrono::seconds(1);
+    fake_now += FilamentOpHeater::kTargetLandTimeout + std::chrono::seconds(1);
     fire_deadline_timer();
     CHECK_FALSE(heater->get().pending());
     // The heat it sent is taken back: the heater was off before the request.
-    CHECK(sent(std::string(HEAT_GCODE) + "0"));
+    CHECK(sent(std::string(kHeatGcode) + "0"));
 
     feed_nozzle(220, 220);
     CHECK_FALSE(sent("LOAD_FILAMENT"));
@@ -745,15 +745,15 @@ TEST_CASE_METHOD(HeaterFixture, "A nozzle that never gets hot times the preheat 
     feed_nozzle(120, 220); // the target landed; the heater plateaus
     REQUIRE(heater->get().pending());
 
-    fake_now += FilamentOpHeater::TARGET_LAND_TIMEOUT + std::chrono::seconds(1);
+    fake_now += FilamentOpHeater::kTargetLandTimeout + std::chrono::seconds(1);
     fire_deadline_timer();
     REQUIRE(heater->get().pending()); // a seen target is not the short timeout
 
     client.clear_gcode_script_history();
-    fake_now += FilamentOpHeater::PREHEAT_TIMEOUT;
+    fake_now += FilamentOpHeater::kPreheatTimeout;
     fire_deadline_timer();
     CHECK_FALSE(heater->get().pending());
-    CHECK(sent(std::string(HEAT_GCODE) + "0"));
+    CHECK(sent(std::string(kHeatGcode) + "0"));
 }
 
 TEST_CASE_METHOD(HeaterFixture, "Never runs below the extrusion floor",
@@ -788,7 +788,7 @@ TEST_CASE_METHOD(HeaterFixture, "Another surface's different op replaces a pendi
     helix::ui::FilamentRunoutHandlerTestAccess::dispatch_unload(handler);
     drain_all();
     REQUIRE(heater->get().pending());
-    CHECK_FALSE(sent(std::string(HEAT_GCODE) + "0"));
+    CHECK_FALSE(sent(std::string(kHeatGcode) + "0"));
 
     feed_nozzle(220, 220);
     REQUIRE(sent("UNLOAD_FILAMENT"));
@@ -819,7 +819,7 @@ TEST_CASE_METHOD(HeaterFixture, "A surface waiting on the op hears when its preh
     SECTION("it times out") {
         helix::ui::execute_filament_unload(nullptr, -1, true, surface);
         drain_all();
-        fake_now += FilamentOpHeater::TARGET_LAND_TIMEOUT + std::chrono::seconds(1);
+        fake_now += FilamentOpHeater::kTargetLandTimeout + std::chrono::seconds(1);
         fire_deadline_timer();
     }
     drain_all();
@@ -1136,7 +1136,7 @@ TEST_CASE_METHOD(HeaterFixture, "A replace that skips its preheat takes the heat
 
     CHECK_FALSE(heater->get().pending());
     REQUIRE(sent("UNLOAD_FILAMENT"));
-    CHECK_FALSE(sent(std::string(HEAT_GCODE) + "0"));
+    CHECK_FALSE(sent(std::string(kHeatGcode) + "0"));
     CHECK(wait_until(
         [&cd]() {
             helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
@@ -1382,12 +1382,12 @@ TEST_CASE_METHOD(HeaterFixture, "A CFS bypass unload on a cold nozzle preheats f
     CfsCapture* cfs = owned.get();
     helix::AmsState::instance().set_backend(std::move(owned));
 
-    helix::ui::execute_filament_unload(cfs, helix::ui::EXTERNAL_SPOOL_SLOT,
+    helix::ui::execute_filament_unload(cfs, helix::ui::kExternalSpoolSlot,
                                        /*target_is_loaded=*/true, "[Test]");
     drain_all();
 
     CHECK(heater->get().pending());
-    CHECK(sent(HEAT_GCODE));
+    CHECK(sent(kHeatGcode));
     CHECK(cfs->dispatched.empty());
 }
 
@@ -1465,7 +1465,7 @@ TEST_CASE_METHOD(HeaterFixture,
     set_print_state("printing");
     CHECK_FALSE(heater->get().pending());
     // The resumed print owns the heater: no TARGET=0 into a running print.
-    CHECK_FALSE(sent(std::string(HEAT_GCODE) + "0"));
+    CHECK_FALSE(sent(std::string(kHeatGcode) + "0"));
 
     feed_nozzle(220, 220);
     CHECK(count_starting("LOAD_FILAMENT") == 0);
@@ -1487,7 +1487,7 @@ TEST_CASE_METHOD(HeaterFixture,
     set_print_state("cancelled");
     CHECK_FALSE(heater->get().pending());
     // The print no longer owns the heater, and it was off before the request.
-    CHECK(sent(std::string(HEAT_GCODE) + "0"));
+    CHECK(sent(std::string(kHeatGcode) + "0"));
 
     feed_nozzle(220, 220);
     CHECK(count_starting("LOAD_FILAMENT") == 0);

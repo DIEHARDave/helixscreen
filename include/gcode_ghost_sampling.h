@@ -25,7 +25,7 @@
  * from under the visible layer, and a UI that could not keep up with touch.
  *
  * The bound below fixes the *work*, not the fidelity: a streamed ghost visits at
- * most GHOST_MAX_SAMPLED_LAYERS layers however large the file is, spaced evenly
+ * most kGhostMaxSampledLayers layers however large the file is, spaced evenly
  * so the silhouette still spans the whole model rather than trailing off partway
  * up. Full load is left alone — there, every layer is already free.
  *
@@ -46,7 +46,7 @@ namespace gcode {
  * The budget is normally the height of the ghost buffer (see below); this caps
  * it for an unusually tall canvas so the pass can never grow without limit.
  */
-inline constexpr int GHOST_MAX_SAMPLED_LAYERS = 512;
+inline constexpr int kGhostMaxSampledLayers = 512;
 
 /**
  * @brief Floor on that budget.
@@ -54,7 +54,7 @@ inline constexpr int GHOST_MAX_SAMPLED_LAYERS = 512;
  * A canvas whose height is not known yet, or is very small, still gets enough
  * samples for the silhouette to read as a shape rather than a few strokes.
  */
-inline constexpr int GHOST_MIN_SAMPLED_LAYERS = 64;
+inline constexpr int kGhostMinSampledLayers = 64;
 
 /**
  * @brief Milliseconds a *streamed* ghost pass sleeps between layers.
@@ -66,7 +66,7 @@ inline constexpr int GHOST_MIN_SAMPLED_LAYERS = 64;
  * back at a known cadence; against the bounded sample above it adds a quarter
  * of a second to a pass that is no longer the thing users are waiting on.
  */
-inline constexpr int GHOST_STREAM_YIELD_MS = 2;
+inline constexpr int kGhostStreamYieldMs = 2;
 
 /// Which layers a ghost pass visits: every `step`-th layer, `count` of them.
 struct GhostSamplePlan {
@@ -89,11 +89,11 @@ struct GhostSamplePlan {
  *                        when the canvas is not sized yet; the floor covers it.
  */
 constexpr int ghost_sample_budget(int resolvable_rows) {
-    if (resolvable_rows < GHOST_MIN_SAMPLED_LAYERS) {
-        return GHOST_MIN_SAMPLED_LAYERS;
+    if (resolvable_rows < kGhostMinSampledLayers) {
+        return kGhostMinSampledLayers;
     }
-    if (resolvable_rows > GHOST_MAX_SAMPLED_LAYERS) {
-        return GHOST_MAX_SAMPLED_LAYERS;
+    if (resolvable_rows > kGhostMaxSampledLayers) {
+        return kGhostMaxSampledLayers;
     }
     return resolvable_rows;
 }

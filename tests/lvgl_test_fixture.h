@@ -14,15 +14,15 @@
 /**
  * @brief Test display dimensions (standard 800x480 touchscreen)
  */
-constexpr int TEST_DISPLAY_WIDTH = 800;
-constexpr int TEST_DISPLAY_HEIGHT = 480;
+constexpr int kTestDisplayWidth = 800;
+constexpr int kTestDisplayHeight = 480;
 
 /**
  * @brief Drive a display to a size for the duration of a scope, then put it back
  *
  * A resize is the only production path that reaches
  * theme_manager_refresh_layout_constants(), and the rest of the suite assumes
- * the fixture's TEST_DISPLAY_WIDTH x TEST_DISPLAY_HEIGHT.
+ * the fixture's kTestDisplayWidth x kTestDisplayHeight.
  *
  * The destructor restores the pixels only. The derived state those pixels
  * feed - XML px constants, the ui_breakpoint / ui_breakpoint_v /

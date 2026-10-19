@@ -53,15 +53,15 @@ class MoonrakerJobAPI : public helix::IJobAPI {
     // answer while the print is already running. 10 min covers a cold heat-up; a
     // genuinely lost request still surfaces, just later.
     // (prestonbrown/helixscreen#1451)
-    static constexpr uint32_t PRINT_START_TIMEOUT_MS = 600000; // 10 min
+    static constexpr uint32_t kPrintStartTimeoutMs = 600000; // 10 min
 
     // The helix_print plugin answers print_modified only after awaiting that same
     // SDCARD_PRINT_FILE ack, and it gets there after copying metadata and creating
     // its symlink. Strictly more work for the same wait, so this endpoint can never
     // deserve the shorter ceiling of the two.
-    static constexpr uint32_t PRINT_MODIFIED_TIMEOUT_MS = PRINT_START_TIMEOUT_MS;
+    static constexpr uint32_t kPrintModifiedTimeoutMs = kPrintStartTimeoutMs;
 
-    static constexpr uint32_t CANCEL_TIMEOUT_MS = 300000; // 5 min — CANCEL_PRINT macros can be slow
+    static constexpr uint32_t kCancelTimeoutMs = 300000; // 5 min — CANCEL_PRINT macros can be slow
 
     /**
      * @brief Constructor

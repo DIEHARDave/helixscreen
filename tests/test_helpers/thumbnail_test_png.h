@@ -15,7 +15,7 @@
 /// Smallest PNG the cache and the processor will both accept: a 10x10 solid
 /// square, 75 bytes.
 // clang-format off
-inline const std::vector<uint8_t> TINY_PNG = {
+inline const std::vector<uint8_t> kTinyPng = {
     0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
     0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x0A,
     0x08, 0x02, 0x00, 0x00, 0x00, 0x02, 0x50, 0x58, 0xEA, 0x00, 0x00, 0x00,
@@ -32,7 +32,7 @@ inline const std::vector<uint8_t> TINY_PNG = {
 /// the whole point. A direct write rather than save_raw_png(), which checks the
 /// PNG magic, so a test can also plant @p bytes that cannot be decoded.
 inline void plant_cached_png(const ThumbnailCache& cache, const std::string& key,
-                             const std::vector<uint8_t>& bytes = TINY_PNG) {
+                             const std::vector<uint8_t>& bytes = kTinyPng) {
     const std::string path = cache.get_cache_path(key);
     std::ofstream out(path, std::ios::binary | std::ios::trunc);
     REQUIRE(out.good());

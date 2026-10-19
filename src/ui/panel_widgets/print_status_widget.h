@@ -91,7 +91,7 @@ class PrintStatusWidget : public PanelWidget {
     /// Factory-registration key. Exposed so callers scanning a heterogeneous
     /// widget list can match on id() and static_cast, instead of dynamic_cast —
     /// the firmware builds -fno-rtti.
-    static constexpr const char* WIDGET_ID = "print_status";
+    static constexpr const char* kWidgetId = "print_status";
 
     /// One row of the nozzle-tool picker: what it reads, and the Klipper
     /// extruder object it pins the temperature display to.
@@ -116,7 +116,7 @@ class PrintStatusWidget : public PanelWidget {
     bool apply_nozzle_tool_override(const std::string& tool_key);
 
     const char* id() const override {
-        return WIDGET_ID;
+        return kWidgetId;
     }
 
     // Configuration

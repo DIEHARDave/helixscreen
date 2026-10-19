@@ -42,7 +42,7 @@ struct LetterEntry {
 };
 
 // US QWERTY physical-layout letter mapping (matches standard Linux input keymap).
-constexpr LetterEntry QWERTY_LETTERS[] = {
+constexpr LetterEntry kQwertyLetters[] = {
     {16, 'q'}, {17, 'w'}, {18, 'e'}, {19, 'r'}, {20, 't'}, {21, 'y'}, {22, 'u'},
     {23, 'i'}, {24, 'o'}, {25, 'p'}, {30, 'a'}, {31, 's'}, {32, 'd'}, {33, 'f'},
     {34, 'g'}, {35, 'h'}, {36, 'j'}, {37, 'k'}, {38, 'l'}, {44, 'z'}, {45, 'x'},
@@ -56,7 +56,7 @@ constexpr LetterEntry QWERTY_LETTERS[] = {
 // shifted/unshifted letter/digit keys, which ARE covered.
 // NOTE: QWERTZ punctuation mapping is incomplete by design — covers Spoolman
 // URL decoding only, not general-purpose German text entry.
-constexpr LetterEntry QWERTZ_LETTERS[] = {
+constexpr LetterEntry kQwertzLetters[] = {
     {16, 'q'}, {17, 'w'}, {18, 'e'}, {19, 'r'}, {20, 't'}, {21, 'z'}, {22, 'u'},
     {23, 'i'}, {24, 'o'}, {25, 'p'}, {30, 'a'}, {31, 's'}, {32, 'd'}, {33, 'f'},
     {34, 'g'}, {35, 'h'}, {36, 'j'}, {37, 'k'}, {38, 'l'}, {44, 'y'}, {45, 'x'},
@@ -67,7 +67,7 @@ constexpr LetterEntry QWERTZ_LETTERS[] = {
 // keycode 50 to keycode 39 (where QWERTY has ';'); keycode 50 becomes ','.
 // NOTE: AZERTY support is partial — covers Spoolman URL decoding, not
 // general-purpose French text entry. Accented/dead keys are not handled.
-constexpr LetterEntry AZERTY_LETTERS[] = {
+constexpr LetterEntry kAzertyLetters[] = {
     {16, 'a'}, {17, 'z'}, {18, 'e'}, {19, 'r'}, {20, 't'}, {21, 'y'}, {22, 'u'},
     {23, 'i'}, {24, 'o'}, {25, 'p'}, {30, 'q'}, {31, 's'}, {32, 'd'}, {33, 'f'},
     {34, 'g'}, {35, 'h'}, {36, 'j'}, {37, 'k'}, {38, 'l'}, {39, 'm'}, {44, 'w'},
@@ -157,21 +157,21 @@ char UsbScannerMonitor::keycode_to_char(int keycode, bool shift, ScannerKeymap l
     char letter = 0;
     switch (layout) {
     case ScannerKeymap::Qwertz:
-        letter = lookup_letter(QWERTZ_LETTERS, keycode, shift);
+        letter = lookup_letter(kQwertzLetters, keycode, shift);
         break;
     case ScannerKeymap::Azerty:
-        letter = lookup_letter(AZERTY_LETTERS, keycode, shift);
+        letter = lookup_letter(kAzertyLetters, keycode, shift);
         break;
     case ScannerKeymap::Qwerty:
     default:
-        letter = lookup_letter(QWERTY_LETTERS, keycode, shift);
+        letter = lookup_letter(kQwertyLetters, keycode, shift);
         break;
     }
     if (letter != 0)
         return letter;
 
     // Punctuation. AZERTY remaps several keys vs QWERTY:
-    //   39 -> 'm' (handled in AZERTY_LETTERS above)
+    //   39 -> 'm' (handled in kAzertyLetters above)
     //   50 -> ','
     //   51 -> ';' unshifted, '.' shifted (QWERTY: ',' / '<')
     //   52 -> ':' unshifted, '/' shifted (QWERTY: '.' / '>')
@@ -185,7 +185,7 @@ char UsbScannerMonitor::keycode_to_char(int keycode, bool shift, ScannerKeymap l
             return shift ? '/' : ':';
         if (keycode == 53)
             return shift ? 0 : '!'; // '§' shifted — non-ASCII, dropped
-        // Keycode 39 on AZERTY is 'm' (handled in AZERTY_LETTERS above).
+        // Keycode 39 on AZERTY is 'm' (handled in kAzertyLetters above).
     } else {
         if (keycode == 39)
             return shift ? ':' : ';';

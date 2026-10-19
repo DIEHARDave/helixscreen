@@ -1,7 +1,7 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/print_select_panel_test_access.h"
@@ -31,7 +31,7 @@
 
 using helix::ui::DirtyRect;
 using helix::ui::FrameTarget;
-using helix::ui::MAZE_LEVELS;
+using helix::ui::kMazeLevels;
 using helix::ui::MazeArt;
 using helix::ui::MazeItem;
 using helix::ui::MazeItemKind;
@@ -67,8 +67,8 @@ int reachable_cells(const MazeMap& map) {
             if (!map.passage(c % n, c / n, d)) {
                 continue;
             }
-            const int nx = c % n + helix::ui::HEADING_DX[d];
-            const int ny = c / n + helix::ui::HEADING_DY[d];
+            const int nx = c % n + helix::ui::kHeadingDx[d];
+            const int ny = c / n + helix::ui::kHeadingDy[d];
             const int next = ny * n + nx;
             if (!seen[static_cast<size_t>(next)]) {
                 seen[static_cast<size_t>(next)] = true;
@@ -298,19 +298,19 @@ TEST_CASE("a generated maze hangs 16 pictures, indices 0..15 once each", "[scree
         std::minstd_rand rng(seed);
         MazeMap map;
         map.generate(MazeSim::CELLS, rng);
-        std::vector<int> seen(MazeMap::PICTURE_WALLS, 0);
+        std::vector<int> seen(MazeMap::kPictureWalls, 0);
         for (int y = 0; y < map.size(); y++) {
             for (int x = 0; x < map.size(); x++) {
                 if (map.tile(x, y) == MazeTile::PICTURE) {
                     const int i = map.picture_index(x, y);
-                    REQUIRE(i < MazeMap::PICTURE_WALLS);
+                    REQUIRE(i < MazeMap::kPictureWalls);
                     seen[static_cast<size_t>(i)]++;
                 } else {
                     CHECK(map.picture_index(x, y) == 0);
                 }
             }
         }
-        for (int i = 0; i < MazeMap::PICTURE_WALLS; i++) {
+        for (int i = 0; i < MazeMap::kPictureWalls; i++) {
             CHECK(seen[static_cast<size_t>(i)] == 1);
         }
     }
@@ -351,7 +351,7 @@ TEST_CASE("an opened maze keeps every cell, closes its outside and has loops",
             CHECK(map.wall(map.size() - 1, i));
         }
         const int extra = open_edges(map) - (cells - 1);
-        CHECK(extra >= MazeMap::EXTRA_OPENINGS);
+        CHECK(extra >= MazeMap::kExtraOpenings);
         extra_total += extra;
     }
     CHECK(extra_total >= 10 * 200);
@@ -429,8 +429,8 @@ TEST_CASE("items still stand in distinct open cells of an opened maze", "[screen
         }
         CHECK(counts[static_cast<int>(MazeItemKind::START)] == 1);
         CHECK(counts[static_cast<int>(MazeItemKind::EXIT)] == 1);
-        CHECK(counts[static_cast<int>(MazeItemKind::LOGO)] == MazeSim::LOGO_COUNT);
-        CHECK(counts[static_cast<int>(MazeItemKind::ROCK)] == MazeSim::ROCK_COUNT);
+        CHECK(counts[static_cast<int>(MazeItemKind::LOGO)] == MazeSim::kLogoCount);
+        CHECK(counts[static_cast<int>(MazeItemKind::ROCK)] == MazeSim::kRockCount);
         CHECK(counts[static_cast<int>(MazeItemKind::TOOLHEAD)] == 1);
     }
 }
@@ -497,7 +497,7 @@ TEST_CASE("a walker never recovers on a perfect maze", "[screensaver][maze]") {
             far = dist[static_cast<size_t>(c)] > dist[static_cast<size_t>(far)] ? c : far;
             for (int d = 0; d < 4; d++) {
                 const int next =
-                    (c / n + helix::ui::HEADING_DY[d]) * n + c % n + helix::ui::HEADING_DX[d];
+                    (c / n + helix::ui::kHeadingDy[d]) * n + c % n + helix::ui::kHeadingDx[d];
                 if (map.passage(c % n, c / n, d) && dist[static_cast<size_t>(next)] < 0) {
                     dist[static_cast<size_t>(next)] = dist[static_cast<size_t>(c)] + 1;
                     todo.push_back(next);
@@ -540,7 +540,7 @@ TEST_CASE("every opened maze reaches its exit, rocks and all", "[screensaver][ma
     // each at most every (cell, heading) state once.
     MazeSim sim;
     CHECK(sim.step_bound() ==
-          (MazeSim::ROCK_COUNT + 1) * 3u * 4u * MazeSim::CELLS * MazeSim::CELLS);
+          (MazeSim::kRockCount + 1) * 3u * 4u * MazeSim::CELLS * MazeSim::CELLS);
 }
 
 TEST_CASE("extra hand swaps still reach the exit", "[screensaver][maze]") {
@@ -619,7 +619,7 @@ TEST_CASE("a walker stops at each doorway and each cell middle so the caller see
     // From the middle of the first cell, speeding up to the doorway: one tile.
     uint32_t used = walker.advance(map, 100000, event);
     CHECK(event == WalkEvent::ENTERED);
-    CHECK(used == MazeWalker::DEFAULT_MOVE_MS);
+    CHECK(used == MazeWalker::kDefaultMoveMs);
     CHECK(walker.cell_x() == 1);
     CHECK(walker.moves() == 0);
     CHECK(walker.pose().x == Catch::Approx(2.5f));
@@ -627,7 +627,7 @@ TEST_CASE("a walker stops at each doorway and each cell middle so the caller see
     // Then at walking pace, two tiles per move, to the middle of the next.
     used = walker.advance(map, 100000, event);
     CHECK(event == WalkEvent::ARRIVED);
-    CHECK(used == MazeWalker::DEFAULT_MOVE_MS / 2);
+    CHECK(used == MazeWalker::kDefaultMoveMs / 2);
     CHECK(walker.moves() == 1);
     CHECK(walker.pose().x == Catch::Approx(3.5f).margin(0.01f));
 }
@@ -847,10 +847,10 @@ TEST_CASE("a wall's fog follows its distance, darker on the y side", "[screensav
              frame.target);
     CHECK(r.wall_fog_k(mid) == k);
     // Facing north, 3.5 tiles from the north wall's face at y = 1.
-    r.render(map, {}, MazePose{size * 0.5f, 4.5f, -helix::ui::SAVER_PI * 0.5f}, 0.0f, 0,
+    r.render(map, {}, MazePose{size * 0.5f, 4.5f, -helix::ui::kSaverPi * 0.5f}, 0.0f, 0,
              frame.target);
     REQUIRE(r.wall_distance(mid) == Catch::Approx(3.5f).margin(0.01f));
-    CHECK(r.wall_fog_k(mid) == (k * helix::ui::MAZE_SIDE_K + 16) >> 5);
+    CHECK(r.wall_fog_k(mid) == (k * helix::ui::kMazeSideK + 16) >> 5);
 }
 
 TEST_CASE("a picture wall is drawn at its fogged colour", "[screensaver][maze]") {
@@ -919,8 +919,8 @@ TEST_CASE("a sprite takes the fog of its distance", "[screensaver][maze]") {
 }
 
 TEST_CASE("flat levels bake the fog into each row", "[screensaver][maze]") {
-    using helix::ui::MAZE_FLAT_CEILING;
-    using helix::ui::MAZE_FLAT_FLOOR;
+    using helix::ui::kMazeFlatCeiling;
+    using helix::ui::kMazeFlatFloor;
     using helix::ui::maze_fog;
     using helix::ui::maze_fog_k;
     using helix::ui::maze_fog_slot_depth;
@@ -939,9 +939,9 @@ TEST_CASE("flat levels bake the fog into each row", "[screensaver][maze]") {
     const auto fmt = PixelFormat::XRGB8888;
     for (uint32_t x = 0; x < r.internal_w(); x++) {
         INFO("column " << x);
-        CHECK(r.internal_pixel(x, 30) == PixelWriter::pack(maze_fog(MAZE_FLAT_FLOOR, k), fmt));
-        CHECK(r.internal_pixel(x, 17) == PixelWriter::pack(maze_fog(MAZE_FLAT_CEILING, k), fmt));
-        CHECK(r.internal_pixel(x, 47) == PixelWriter::pack(maze_fog(MAZE_FLAT_FLOOR, near_k), fmt));
+        CHECK(r.internal_pixel(x, 30) == PixelWriter::pack(maze_fog(kMazeFlatFloor, k), fmt));
+        CHECK(r.internal_pixel(x, 17) == PixelWriter::pack(maze_fog(kMazeFlatCeiling, k), fmt));
+        CHECK(r.internal_pixel(x, 47) == PixelWriter::pack(maze_fog(kMazeFlatFloor, near_k), fmt));
     }
 }
 
@@ -965,7 +965,7 @@ TEST_CASE("a textured floor darkens with distance", "[screensaver][maze]") {
 
 TEST_CASE("a flat level gives the fog bands back", "[screensaver][maze]") {
     const size_t bands =
-        2u * helix::ui::MAZE_FOG_BANDS * MazeRenderer::TEX * MazeRenderer::TEX * 2u;
+        2u * helix::ui::kMazeFogBands * MazeRenderer::kTex * MazeRenderer::kTex * 2u;
     MazeRenderer r;
     r.init(800, 480, PixelFormat::RGB565, MazeArt{}, 1);
     const size_t textured = r.heap_bytes();
@@ -1057,9 +1057,9 @@ TEST_CASE("picture walls read the right way round from all four sides", "[screen
     for (int heading = 0; heading < 4; heading++) {
         INFO("heading " << heading);
         // Three tiles back from the picture tile's centre, facing it.
-        const MazePose pose{picture[heading][0] + 0.5f - 3.0f * helix::ui::HEADING_DX[heading],
-                            picture[heading][1] + 0.5f - 3.0f * helix::ui::HEADING_DY[heading],
-                            heading * helix::ui::SAVER_PI * 0.5f};
+        const MazePose pose{picture[heading][0] + 0.5f - 3.0f * helix::ui::kHeadingDx[heading],
+                            picture[heading][1] + 0.5f - 3.0f * helix::ui::kHeadingDy[heading],
+                            heading * helix::ui::kSaverPi * 0.5f};
         r.render(map, {}, pose, 0.0f, 0, frame.target);
         const uint32_t row = r.internal_h() / 2;
         const uint32_t left = r.internal_pixel(r.internal_w() / 2 - 10, row);
@@ -1138,7 +1138,7 @@ MazeMap two_picture_room(uint8_t east, uint8_t north) {
 uint32_t centre_facing(MazeRenderer& r, const MazeMap& map, int heading) {
     TestFrame frame(160, 100, PixelFormat::XRGB8888);
     const MazePose pose = heading == 0 ? MazePose{14.0f - 3.0f, 7.5f, 0.0f}
-                                       : MazePose{7.5f, 1.0f + 3.0f, -helix::ui::SAVER_PI * 0.5f};
+                                       : MazePose{7.5f, 1.0f + 3.0f, -helix::ui::kSaverPi * 0.5f};
     r.render(map, {}, pose, 0.0f, 0, frame.target);
     return r.internal_pixel(r.internal_w() / 2, r.internal_h() / 2);
 }
@@ -1180,7 +1180,7 @@ TEST_CASE("pictures past twelve are ignored, empty ones skipped", "[screensaver]
     }
     MazeRenderer r;
     r.init(64, 48, PixelFormat::RGB565, art);
-    CHECK(r.picture_count() == helix::ui::MAZE_MAX_PICTURES);
+    CHECK(r.picture_count() == helix::ui::kMazeMaxPictures);
 
     MazeArt sparse;
     sparse.pictures = {helix::ui::MazeImage{}, solid(4, 4, 0xFFFF0000u), helix::ui::MazeImage{},
@@ -1198,7 +1198,7 @@ TEST_CASE("frames of every size, level and depth stay inside their rows", "[scre
     const uint32_t dts[] = {16, 700, 33, 16, 50, 1, 16, 400};
     for (PixelFormat fmt : {PixelFormat::RGB565, PixelFormat::XRGB8888}) {
         for (const auto& [w, h] : sizes) {
-            for (size_t level = 0; level < helix::ui::MAZE_LEVEL_COUNT; level++) {
+            for (size_t level = 0; level < helix::ui::kMazeLevelCount; level++) {
                 INFO(w << "x" << h << " level " << level << " bpp " << helix::ui::pixel_bytes(fmt));
                 TestFrame frame(w, h, fmt);
                 FrameTarget& target = frame.target;
@@ -1208,7 +1208,7 @@ TEST_CASE("frames of every size, level and depth stay inside their rows", "[scre
                 std::vector<DirtyRect> dirty;
                 for (int i = 0; i < 24; i++) {
                     if (i == 8) {
-                        sim.request_level(helix::ui::MAZE_LEVEL_COUNT - 1);
+                        sim.request_level(helix::ui::kMazeLevelCount - 1);
                     } else if (i == 16) {
                         sim.request_level(0);
                     }
@@ -1265,7 +1265,7 @@ TEST_CASE("upside down is the vertical mirror of upright", "[screensaver][maze]"
     MazeMap map;
     map.generate(MazeSim::CELLS, rng);
     const MazePose pose{1.5f, 1.5f, 0.0f};
-    for (size_t level = 0; level < helix::ui::MAZE_LEVEL_COUNT; level++) {
+    for (size_t level = 0; level < helix::ui::kMazeLevelCount; level++) {
         INFO("level " << level);
         TestFrame up(64, 48, PixelFormat::XRGB8888);
         TestFrame down(64, 48, PixelFormat::XRGB8888);
@@ -1298,16 +1298,16 @@ TEST_CASE("mid-flip the view squashes to black at the horizon", "[screensaver][m
 
 TEST_CASE("the maze ladder runs 16, 33, 33, 50, 66 ms and shrinks the internal frame",
           "[screensaver][maze]") {
-    REQUIRE(helix::ui::MAZE_LEVEL_COUNT == 5);
-    CHECK(MAZE_LEVELS[0].period_ms == 16);
-    CHECK(MAZE_LEVELS[1].period_ms == 33);
-    CHECK(MAZE_LEVELS[2].period_ms == 33);
-    CHECK(MAZE_LEVELS[3].period_ms == 50);
-    CHECK(MAZE_LEVELS[4].period_ms == 66);
-    CHECK(MAZE_LEVELS[4].scale == 4);
-    CHECK_FALSE(MAZE_LEVELS[4].textured_floor);
-    CHECK(MAZE_LEVELS[1].textured_floor);
-    CHECK_FALSE(MAZE_LEVELS[2].textured_floor);
+    REQUIRE(helix::ui::kMazeLevelCount == 5);
+    CHECK(kMazeLevels[0].period_ms == 16);
+    CHECK(kMazeLevels[1].period_ms == 33);
+    CHECK(kMazeLevels[2].period_ms == 33);
+    CHECK(kMazeLevels[3].period_ms == 50);
+    CHECK(kMazeLevels[4].period_ms == 66);
+    CHECK(kMazeLevels[4].scale == 4);
+    CHECK_FALSE(kMazeLevels[4].textured_floor);
+    CHECK(kMazeLevels[1].textured_floor);
+    CHECK_FALSE(kMazeLevels[2].textured_floor);
 
     MazeRenderer r;
     r.init(800, 480, PixelFormat::RGB565, MazeArt{});
@@ -1322,7 +1322,7 @@ TEST_CASE("the maze ladder runs 16, 33, 33, 50, 66 ms and shrinks the internal f
     CHECK(r.internal_h() == 120);
     r.set_level(99);
     CHECK(r.level() == 4);
-    CHECK(r.level() == helix::ui::MAZE_LEVEL_COUNT - 1);
+    CHECK(r.level() == helix::ui::kMazeLevelCount - 1);
 
     // A run that starts low holds only the frame that level draws.
     MazeRenderer low;
@@ -1388,8 +1388,8 @@ TEST_CASE("a scene places start, exit, logos, rocks and a toolhead", "[screensav
     }
     CHECK(counts[static_cast<int>(MazeItemKind::START)] == 1);
     CHECK(counts[static_cast<int>(MazeItemKind::EXIT)] == 1);
-    CHECK(counts[static_cast<int>(MazeItemKind::LOGO)] == MazeSim::LOGO_COUNT);
-    CHECK(counts[static_cast<int>(MazeItemKind::ROCK)] == MazeSim::ROCK_COUNT);
+    CHECK(counts[static_cast<int>(MazeItemKind::LOGO)] == MazeSim::kLogoCount);
+    CHECK(counts[static_cast<int>(MazeItemKind::ROCK)] == MazeSim::kRockCount);
     CHECK(counts[static_cast<int>(MazeItemKind::TOOLHEAD)] == 1);
 }
 
@@ -1615,7 +1615,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "the maze saver keeps twelve pictures at most"
     sources.files.push_back("A:assets/images/benchy_thumbnail_white.png");
     sources.files.push_back("A:assets/images/folder.png");
     sources.printer = "A:assets/images/printer_200.png";
-    CHECK(pictures_hung(sources) == helix::ui::MAZE_MAX_PICTURES);
+    CHECK(pictures_hung(sources) == helix::ui::kMazeMaxPictures);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "no wall art means brick", "[screensaver][maze]") {

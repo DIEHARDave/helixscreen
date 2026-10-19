@@ -42,8 +42,8 @@ namespace {
 /// The two printer.mmu filament_pos values Happy Hare's own check_if_loaded()
 /// treats as "not loaded" (mmu.py FILAMENT_POS_UNKNOWN / FILAMENT_POS_UNLOADED).
 /// Every other position, including the intermediate ones, is refused.
-constexpr int HAPPY_HARE_POS_UNKNOWN = -1;
-constexpr int HAPPY_HARE_POS_UNLOADED = 0;
+constexpr int kHappyHarePosUnknown = -1;
+constexpr int kHappyHarePosUnloaded = 0;
 
 /// HH's reasons carry raw newlines (it swaps them for ". " only in its own
 /// dialog); one-line UI text needs the same.
@@ -191,7 +191,7 @@ void AmsBackendHappyHare::on_started() {
     // subscription is already live. Publish under it so the parse path reads a
     // whole map.
     auto loaded = helix::ams::make_loaded_override_store(api_, "happyhare", get_type(),
-                                                         backend_log_tag(), OVERRIDE_NAMESPACE);
+                                                         backend_log_tag(), kOverrideNamespace);
     {
         std::lock_guard<std::mutex> lock(mutex_);
         override_store_ = std::move(loaded.store);
@@ -696,7 +696,7 @@ void AmsBackendHappyHare::apply_gate_appearance_locked(
                 gate_reading_locked(gate).color_rgb = color.rgb;
                 frame.stated_for(gate).color_rgb = color.rgb;
             } else if (color.kind == ams::ColorReadingKind::Cleared) {
-                entry->info.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+                entry->info.color_rgb = kAmsDefaultSlotColor;
                 gate_reading_locked(gate).color_rgb.reset();
                 frame.cleared_for(gate).color_rgb = 0u;
             }
@@ -1554,20 +1554,11 @@ void AmsBackendHappyHare::sync_narration_step() {
     if (!phase_id)
         return;
 
-    const auto op = AmsState::instance().get_active_step_operation();
-    const auto tmpl = toolchange_phase_template(op);
-    for (size_t k = 0; k < tmpl.size(); ++k) {
-        if (tmpl[k].id == phase_id) {
-            auto tok = lifetime_.token();
-            const int index = static_cast<int>(k);
-            std::string label = tmpl[k].label;
-            tok.defer("AmsBackendHappyHare::sync_narration_step",
-                      [index, label = std::move(label)]() {
-                          AmsState::instance().set_narration_phase(index, label);
-                      });
-            return;
-        }
-    }
+    // Resolved on the main thread, against the operation the step bar holds then.
+    auto tok = lifetime_.token();
+    tok.defer("AmsBackendHappyHare::sync_narration_step", [id = std::string(phase_id)]() {
+        AmsState::instance().apply_narration_phase_id(id);
+    });
 }
 
 const HappyHareGateSensor* AmsBackendHappyHare::gate_sensor(int slot_index) const {
@@ -1691,7 +1682,7 @@ void AmsBackendHappyHare::initialize_slots(int gate_count) {
             slot.global_index = global_offset + i;
             slot.status = SlotStatus::UNKNOWN;
             slot.mapped_tool = global_offset + i;
-            slot.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+            slot.color_rgb = kAmsDefaultSlotColor;
             unit.slots.push_back(slot);
         }
 
@@ -2391,9 +2382,9 @@ AmsError AmsBackendHappyHare::dispatch_filament_op(std::string cmd) {
         std::move(cmd), nullptr,
         [this](const MoonrakerError& err) {
             spdlog::error("[AMS HappyHare] Filament operation failed: {}", err.message);
-            emit_event(EVENT_ERROR, err.message);
+            emit_event(kEventError, err.message);
         },
-        IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS, /*skip_homing=*/false, /*silent=*/true,
+        IMoonrakerAPI::kAmsOperationTimeoutMs, /*skip_homing=*/false, /*silent=*/true,
         // The callback above only logs, so Klipper's `!!` broadcast stays the
         // thing that shows the user why.
         /*caller_surfaces_errors=*/false);
@@ -2700,7 +2691,7 @@ void AmsBackendHappyHare::clear_slot_override(int slot_index) {
         helix::printer::SlotEntry* entry = slots_.get_mut(slot_index);
         clear_override_locked(slot_index, entry ? &entry->info : nullptr);
     }
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
 }
 
 void AmsBackendHappyHare::publish_external_spool_lane(const SlotInfo* spool) {
@@ -2770,7 +2761,7 @@ AmsError AmsBackendHappyHare::apply_user_edit(int slot_index, const SlotInfo& in
     std::string old_material;
     std::string old_brand;
     bool v4 = false;
-    uint32_t old_color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    uint32_t old_color_rgb = kAmsDefaultSlotColor;
     SpoolmanMode spoolman_mode = SpoolmanMode::OFF;
     int current_slot = -1;
     {
@@ -2842,7 +2833,7 @@ AmsError AmsBackendHappyHare::apply_user_edit(int slot_index, const SlotInfo& in
             spdlog::warn("[AMS HappyHare] Spoolman pull mode owns the gate map; gate {} "
                          "cleared locally only",
                          slot_index);
-            emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+            emit_event(kEventSlotChanged, std::to_string(slot_index));
             return pull_mode_refusal("Couldn't clear the printer's gate map",
                                      "This printer fills its gates from Spoolman. HelixScreen "
                                      "cleared its own copy; remove the spool in Spoolman.");
@@ -2856,7 +2847,7 @@ AmsError AmsBackendHappyHare::apply_user_edit(int slot_index, const SlotInfo& in
             spdlog::warn("[AMS HappyHare] Clear of gate {} reached us mid-print; firmware "
                          "write skipped",
                          slot_index);
-            emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+            emit_event(kEventSlotChanged, std::to_string(slot_index));
             AmsError skipped(AmsResult::COMMAND_FAILED,
                              "A running print is using this gate; firmware write skipped",
                              lv_tr("Couldn't clear the printer's gate map"),
@@ -2877,7 +2868,7 @@ AmsError AmsBackendHappyHare::apply_user_edit(int slot_index, const SlotInfo& in
             execute_gcode(fmt::format("MMU_TTG_MAP TOOL={} GATE={}", info.mapped_tool, slot_index));
         }
 
-        emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+        emit_event(kEventSlotChanged, std::to_string(slot_index));
         return AmsErrorHelper::success();
     }
 
@@ -3008,7 +2999,7 @@ AmsError AmsBackendHappyHare::apply_user_edit(int slot_index, const SlotInfo& in
     }
 
     // Emit OUTSIDE the lock to avoid deadlock with callbacks
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
 
     if (has_changes && pull_owns_gate_map) {
         return pull_mode_refusal("Couldn't save the printer's gate map",
@@ -3049,7 +3040,7 @@ AmsError AmsBackendHappyHare::sync_external_identity(int slot_index, const SlotI
     }
 
     // Emit OUTSIDE the lock to avoid deadlock with callbacks
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     return AmsErrorHelper::success();
 }
 
@@ -3146,7 +3137,7 @@ AmsError AmsBackendHappyHare::enable_bypass() {
         // that flag is set solely from filament == "Loaded" — Happy Hare refuses
         // at every position except UNLOADED and UNKNOWN, so an intermediate
         // position (mid-bowden, mid-unload) has to refuse here too.
-        if (filament_pos_ != HAPPY_HARE_POS_UNLOADED && filament_pos_ != HAPPY_HARE_POS_UNKNOWN) {
+        if (filament_pos_ != kHappyHarePosUnloaded && filament_pos_ != kHappyHarePosUnknown) {
             return AmsError(AmsResult::WRONG_STATE, "Unload filament first",
                             lv_tr("Filament is still loaded. Unload it before enabling bypass."),
                             "");

@@ -97,7 +97,7 @@ class PrintStatusIdleThumbFixture : public LVGLTestFixture {
         return reinterpret_cast<const char*>(src);
     }
 
-    static constexpr const char* BENCHY_PATH = "A:assets/images/benchy_thumbnail_white.png";
+    static constexpr const char* kBenchyPath = "A:assets/images/benchy_thumbnail_white.png";
 };
 
 // =============================================================================
@@ -116,7 +116,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
 
     // Should fall back to benchy since no history manager
     auto src = get_idle_thumb_src(container);
-    REQUIRE(src == BENCHY_PATH);
+    REQUIRE(src == kBenchyPath);
 
     widget.detach();
 }
@@ -151,7 +151,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
     lv_obj_t* fresh = create_mock_print_card(test_screen());
     widget.attach(fresh, test_screen());
     process_lvgl(200);
-    REQUIRE(get_idle_thumb_src(fresh) == BENCHY_PATH);
+    REQUIRE(get_idle_thumb_src(fresh) == kBenchyPath);
     widget.detach();
 
     // LVGL processing after detach must not reach the detached widget.
@@ -168,7 +168,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
     process_lvgl(200);
 
     // Verify benchy is shown (no history in test env)
-    REQUIRE(get_idle_thumb_src(container) == BENCHY_PATH);
+    REQUIRE(get_idle_thumb_src(container) == kBenchyPath);
 
     widget.detach();
 
@@ -206,14 +206,14 @@ TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
     // Seed the subject buffer with a sentinel so we can detect whether
     // reset_print_card_to_idle() (which rewrites to benchy) ran before
     // attach() returned, or only after the next LVGL tick.
-    static constexpr const char* SENTINEL = "A:assets/images/__test_seed__.png";
-    lv_subject_copy_string(subj, SENTINEL);
+    static constexpr const char* kSentinel = "A:assets/images/__test_seed__.png";
+    lv_subject_copy_string(subj, kSentinel);
 
     auto current_value = [&]() {
         const char* p = static_cast<const char*>(subj->value.pointer);
         return std::string(p ? p : "");
     };
-    REQUIRE(current_value() == SENTINEL);
+    REQUIRE(current_value() == kSentinel);
 
     PrintStatusWidget widget;
     lv_obj_t* container = create_mock_print_card(test_screen());
@@ -229,11 +229,11 @@ TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
     // If it does, the bind_src observer on idle_thumb cascades through
     // lv_image_set_src → layout → grid_update on the page grid that
     // populate_page is still building sibling widgets into (AD5M SY6JLLKJ).
-    REQUIRE(after_attach == SENTINEL);
+    REQUIRE(after_attach == kSentinel);
 
     // Sanity: after one LVGL tick the deferred reset has run and rewritten
     // the subject back to benchy (no history available in this fixture).
-    REQUIRE(after_process == BENCHY_PATH);
+    REQUIRE(after_process == kBenchyPath);
 
     widget.detach();
 }
@@ -242,7 +242,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
                  "PrintStatusWidget: detach cancels a queued idle reset and runs nothing",
                  "[print_status_widget][idle_thumb]") {
     auto* subj = PrintStatusWidgetTestAccess::idle_thumb_path_subject();
-    static constexpr const char* SENTINEL = "A:assets/images/__test_seed__.png";
+    static constexpr const char* kSentinel = "A:assets/images/__test_seed__.png";
 
     PrintStatusWidget widget;
     lv_obj_t* container = create_mock_print_card(test_screen());
@@ -254,9 +254,9 @@ TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
     widget.detach();
     CHECK_FALSE(PrintStatusWidgetTestAccess::idle_reset_pending(widget));
 
-    lv_subject_copy_string(subj, SENTINEL);
+    lv_subject_copy_string(subj, kSentinel);
     process_lvgl(200);
-    CHECK(std::string(static_cast<const char*>(subj->value.pointer)) == SENTINEL);
+    CHECK(std::string(static_cast<const char*>(subj->value.pointer)) == kSentinel);
 }
 
 // attach() resolves the idle thumbnail, and so does the print-state observer's
@@ -452,7 +452,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     lv_obj_t* container = create_mock_print_card(test_screen());
     widget.attach(container, test_screen());
     process_lvgl(200); // deferred reset #0 — no API installed yet, so inert
-    REQUIRE(get_idle_thumb_src(container) == BENCHY_PATH);
+    REQUIRE(get_idle_thumb_src(container) == kBenchyPath);
 
     const helix::ThumbnailTarget target = size_thumb(container, 100, 100);
     plant_cached_png(cache, key);
@@ -465,9 +465,9 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
 
     // Benchy is painted as a placeholder while the fetch runs. Pinned so the
     // final assertion cannot pass by the subject simply never having moved.
-    REQUIRE(subject_value() == BENCHY_PATH);
+    REQUIRE(subject_value() == kBenchyPath);
 
-    settle_thumb([this]() { return subject_value() != BENCHY_PATH; });
+    settle_thumb([this]() { return subject_value() != kBenchyPath; });
 
     const std::string produced = cached_bin(cache, key, target);
     REQUIRE_FALSE(produced.empty()); // the pre-scale really ran
@@ -494,7 +494,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     lv_obj_t* container = create_mock_print_card(test_screen());
     widget.attach(container, test_screen());
     process_lvgl(200);
-    REQUIRE(get_idle_thumb_src(container) == BENCHY_PATH);
+    REQUIRE(get_idle_thumb_src(container) == kBenchyPath);
 
     // Load A — 100px thumb, so a 200x200 detail target, PNG only.
     const helix::ThumbnailTarget target_a = size_thumb(container, 100, 100);
@@ -507,7 +507,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     REQUIRE(helix::ui::UpdateQueueTestAccess::queue_empty(queue));
 
     PrintStatusWidgetTestAccess::reset_to_idle(widget);
-    REQUIRE(subject_value() == BENCHY_PATH);
+    REQUIRE(subject_value() == kBenchyPath);
 
     REQUIRE(park_pool_result());
     const std::string path_a = cached_bin(cache, key, target_a);
@@ -518,7 +518,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     const helix::ThumbnailTarget target_b = size_thumb(container, 900, 900);
     REQUIRE(target_b.width != target_a.width);
     const auto planted_b =
-        helix::ThumbnailProcessor::instance().process_sync(TINY_PNG, key, target_b);
+        helix::ThumbnailProcessor::instance().process_sync(kTinyPng, key, target_b);
     REQUIRE(planted_b.success);
     const std::string path_b = planted_b.output_path;
     REQUIRE(path_b != path_a);
@@ -558,7 +558,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     queue.drain();
 
     PrintStatusWidgetTestAccess::reset_to_idle(widget);
-    REQUIRE(subject_value() == BENCHY_PATH);
+    REQUIRE(subject_value() == kBenchyPath);
     REQUIRE(park_pool_result());
     const std::string path = cached_bin(cache, key, target);
     REQUIRE_FALSE(path.empty());
@@ -596,7 +596,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
 
     widget.detach();
     queue.drain();
-    CHECK(subject_value() == BENCHY_PATH);
+    CHECK(subject_value() == kBenchyPath);
 
     cache.invalidate(key);
 }
@@ -624,7 +624,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     lv_obj_t* container = create_mock_print_card(test_screen());
     widget.attach(container, test_screen());
     process_lvgl(200); // deferred reset #0 — no API installed, so inert
-    REQUIRE(get_idle_thumb_src(container) == BENCHY_PATH);
+    REQUIRE(get_idle_thumb_src(container) == kBenchyPath);
 
     // The history head carries the source mtime the probe has to compare
     // against. Without it there is nothing to validate and this test is inert.
@@ -632,7 +632,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     REQUIRE(source_modified > 0.0);
 
     const helix::ThumbnailTarget target = size_thumb(container, 100, 100);
-    const auto planted = helix::ThumbnailProcessor::instance().process_sync(TINY_PNG, key, target);
+    const auto planted = helix::ThumbnailProcessor::instance().process_sync(kTinyPng, key, target);
     REQUIRE(planted.success);
     REQUIRE(ThumbnailCache::is_lvgl_path(planted.output_path));
 
@@ -663,8 +663,8 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     // to benchy — it cannot quietly resolve the same path through a fetch.
     CHECK(subject_value() != planted.output_path);
     CHECK(get_idle_thumb_src(container) != planted.output_path);
-    CHECK(subject_value() == BENCHY_PATH);
-    CHECK(get_idle_thumb_src(container) == BENCHY_PATH);
+    CHECK(subject_value() == kBenchyPath);
+    CHECK(get_idle_thumb_src(container) == kBenchyPath);
 
     widget.detach();
     cache.invalidate(key);
@@ -688,13 +688,13 @@ TEST_CASE_METHOD(
     lv_obj_t* container = create_mock_print_card(test_screen());
     widget.attach(container, test_screen());
     process_lvgl(200); // deferred reset #0 - no API installed, so inert
-    REQUIRE(get_idle_thumb_src(container) == BENCHY_PATH);
+    REQUIRE(get_idle_thumb_src(container) == kBenchyPath);
 
     const helix::ThumbnailTarget target = size_thumb(container, 100, 100);
     std::string shown;
     SECTION("render published from the cache") {
         const auto planted =
-            helix::ThumbnailProcessor::instance().process_sync(TINY_PNG, key, target);
+            helix::ThumbnailProcessor::instance().process_sync(kTinyPng, key, target);
         REQUIRE(planted.success);
         shown = planted.output_path;
         PrintStatusWidgetTestAccess::reset_to_idle(widget);
@@ -703,8 +703,8 @@ TEST_CASE_METHOD(
         plant_cached_png(cache, key);
         set_moonraker_api(api_.get());
         PrintStatusWidgetTestAccess::reset_to_idle(widget);
-        REQUIRE(subject_value() == BENCHY_PATH);
-        settle_thumb([this]() { return subject_value() != BENCHY_PATH; });
+        REQUIRE(subject_value() == kBenchyPath);
+        settle_thumb([this]() { return subject_value() != kBenchyPath; });
         shown = cached_bin(cache, key, target);
         REQUIRE_FALSE(shown.empty());
     }
@@ -715,7 +715,7 @@ TEST_CASE_METHOD(
         // The file is gone, so the placeholder.
         cache.invalidate(key);
         REQUIRE_FALSE(std::filesystem::exists(shown.substr(2)));
-        expected = BENCHY_PATH;
+        expected = kBenchyPath;
     } else {
         // Resized: the render on disk stays while the new size is fetched.
         const helix::ThumbnailTarget bigger = size_thumb(container, 900, 900);
@@ -737,7 +737,7 @@ TEST_CASE_METHOD(
 
     CHECK(subject_value() == expected);
     CHECK(get_idle_thumb_src(container) == expected);
-    CHECK((expected == BENCHY_PATH || std::filesystem::exists(expected.substr(2))));
+    CHECK((expected == kBenchyPath || std::filesystem::exists(expected.substr(2))));
 
     widget.detach();
     cache.invalidate(key);
@@ -758,7 +758,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     widget.attach(first, test_screen());
     process_lvgl(200);
     const helix::ThumbnailTarget target = size_thumb(first, 100, 100);
-    const auto planted = helix::ThumbnailProcessor::instance().process_sync(TINY_PNG, key, target);
+    const auto planted = helix::ThumbnailProcessor::instance().process_sync(kTinyPng, key, target);
     REQUIRE(planted.success);
     PrintStatusWidgetTestAccess::reset_to_idle(widget);
     REQUIRE(subject_value() == planted.output_path);
@@ -793,7 +793,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     process_lvgl(200);
 
     const helix::ThumbnailTarget target = size_thumb(container, 100, 100);
-    const auto planted = helix::ThumbnailProcessor::instance().process_sync(TINY_PNG, key, target);
+    const auto planted = helix::ThumbnailProcessor::instance().process_sync(kTinyPng, key, target);
     REQUIRE(planted.success);
     PrintStatusWidgetTestAccess::reset_to_idle(widget);
     REQUIRE(subject_value() == planted.output_path);
@@ -892,7 +892,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
 
     widget.attach(container, test_screen());
     process_lvgl(200);
-    REQUIRE(get_idle_thumb_src(container) == BENCHY_PATH);
+    REQUIRE(get_idle_thumb_src(container) == kBenchyPath);
 
     widget.detach();
 }

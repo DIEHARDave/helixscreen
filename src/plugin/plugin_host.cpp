@@ -694,6 +694,153 @@ void PluginHost::disable(const std::string& id) {
     }
 }
 
+namespace {
+
+LuaRuntime::PushFn push_context(const json& context) {
+    return [&context](lua_State* co) {
+        push_json(co, context);
+        return 1;
+    };
+}
+
+/// What a menu check decided for one item.
+struct CheckVerdict {
+    bool valid = false;
+    bool visible = false;
+    bool enabled = true;
+    std::string reason;
+};
+
+/// Reads a check's return value: a boolean, or a plain table whose `visible` and `enabled`
+/// are booleans (absent means true) and whose `reason` is a string (absent means none).
+/// call_sync runs it between the check's resume and closing its thread, outside any
+/// protected call, so nothing here may run plugin code: an error would reach the panic
+/// handler. Fields are read raw, and a table with a metatable is not a valid result.
+CheckVerdict read_check_value(lua_State* co, int nres) {
+    CheckVerdict v;
+    if (nres < 1)
+        return v;
+    const int at = lua_absindex(co, -nres);
+    if (lua_type(co, at) == LUA_TBOOLEAN) {
+        v.valid = true;
+        v.visible = lua_toboolean(co, at);
+        return v;
+    }
+    if (lua_type(co, at) != LUA_TTABLE)
+        return v;
+    if (lua_getmetatable(co, at)) {
+        lua_pop(co, 1);
+        return v;
+    }
+    auto raw_field = [&](const char* key) {
+        lua_pushstring(co, key);
+        return lua_rawget(co, at);
+    };
+    auto flag = [&](const char* key, bool& out) {
+        int t = raw_field(key);
+        bool ok = t == LUA_TNIL || t == LUA_TBOOLEAN;
+        out = t == LUA_TNIL || lua_toboolean(co, -1);
+        lua_pop(co, 1);
+        return ok;
+    };
+    bool ok = flag("visible", v.visible) && flag("enabled", v.enabled);
+    int t = raw_field("reason");
+    if (t == LUA_TSTRING)
+        v.reason = lua_tostring(co, -1);
+    lua_pop(co, 1);
+    v.valid = ok && (t == LUA_TNIL || t == LUA_TSTRING);
+    return v;
+}
+
+} // namespace
+
+bool PluginHost::menu_declared(MenuKind kind, std::string_view plugin_id) const {
+    for (const auto& [id, l] : loaded_) {
+        if (!l.rt || l.rt->faulted() || (!plugin_id.empty() && id != plugin_id))
+            continue;
+        const auto& items = l.ctx->manifest.menu_items;
+        if (std::any_of(items.begin(), items.end(),
+                        [kind](const MenuItemDecl& d) { return d.menu == kind; }))
+            return true;
+    }
+    return false;
+}
+
+std::vector<plugin_menu::Entry> PluginHost::resolve_menu(MenuKind kind, const json& context,
+                                                         std::string_view only_plugin) {
+    std::vector<plugin_menu::Entry> out;
+    const size_t cap = static_cast<size_t>(std::max(0, plugin_menu::row_cap(kind)));
+    size_t dropped = 0;
+    // plugins_ is in load order; loaded_ holds the runtimes.
+    for (const auto& info : plugins_) {
+        if (!only_plugin.empty() && info.dir_name != only_plugin)
+            continue;
+        auto it = loaded_.find(info.dir_name);
+        if (it == loaded_.end())
+            continue;
+        Loaded& l = it->second;
+        const Manifest& m = l.ctx->manifest;
+        for (const auto& d : m.menu_items) {
+            if (d.menu != kind)
+                continue;
+            if (!l.rt || l.rt->faulted())
+                break;
+            if (out.size() >= cap) {
+                ++dropped;
+                continue;
+            }
+            plugin_menu::Entry e;
+            e.plugin_id = m.id;
+            e.plugin_name = lv_tr(m.name.c_str());
+            e.item_id = d.id;
+            e.label = lv_tr(d.label.c_str());
+            e.icon = d.icon;
+            e.gen = l.gen;
+            if (!d.check.empty()) {
+                CheckVerdict v;
+                if (!call_ui_handler_sync(
+                        *l.rt, d.check, push_context(context),
+                        [&v](lua_State* co, int nres) { v = read_check_value(co, nres); }))
+                    continue;
+                if (!v.valid) {
+                    l.rt->report_error(
+                        "menu check '" + d.check +
+                        "' must return a boolean or a plain table {visible = bool, enabled = "
+                        "bool, reason = string}");
+                    continue;
+                }
+                if (!v.visible)
+                    continue;
+                e.enabled = v.enabled;
+                if (!v.enabled && !v.reason.empty())
+                    e.reason = lv_tr(v.reason.c_str());
+            }
+            out.push_back(std::move(e));
+        }
+    }
+    if (dropped > 0)
+        spdlog::debug("[PluginHost] {} menu: {} plugin row(s) past the cap of {} not shown",
+                      menu_kind_name(kind), dropped, cap);
+    return out;
+}
+
+void PluginHost::activate_menu(const plugin_menu::Entry& e, const json& context) {
+    auto it = loaded_.find(e.plugin_id);
+    if (it == loaded_.end() || it->second.gen != e.gen || !it->second.rt ||
+        it->second.rt->faulted()) {
+        spdlog::debug("[PluginHost] menu item '{}' of '{}' is gone; ignoring the tap", e.item_id,
+                      e.plugin_id);
+        return;
+    }
+    const auto& items = it->second.ctx->manifest.menu_items;
+    auto d = std::find_if(items.begin(), items.end(),
+                          [&](const MenuItemDecl& m) { return m.id == e.item_id; });
+    if (d == items.end())
+        return;
+    if (!dispatch_ui_handler(*it->second.rt, d->handler, push_context(context)))
+        spdlog::debug("[PluginHost] plugin '{}' has no handler '{}'", e.plugin_id, d->handler);
+}
+
 void PluginHost::dispatch_event(std::string_view user_data) {
     PluginEventTarget target = parse_plugin_event(user_data);
     if (target.id.empty()) {

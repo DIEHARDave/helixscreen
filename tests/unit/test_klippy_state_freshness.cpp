@@ -17,7 +17,7 @@
  * Two independent signals gate the write:
  *
  *  - Provenance, STATED not inferred. `dispatch_status_update(status, true)`
- *    stamps CACHED_SNAPSHOT_MARKER on the synthetic notification. A zero eventtime
+ *    stamps kCachedSnapshotMarker on the synthetic notification. A zero eventtime
  *    is NOT a usable proxy: MoonrakerClientMock drives its simulated shutdown and
  *    recovery through the very same untimestamped dispatch, and those are current
  *    truth for their session, not a replay.

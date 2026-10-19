@@ -28,8 +28,8 @@ namespace {
 
 // ui_temp_display_create_cb() creates its labels in a fixed order:
 // current (0), separator (1), target (2), unit (3).
-constexpr int CURRENT_CHILD = 0;
-constexpr int SEPARATOR_CHILD = 1;
+constexpr int kCurrentChild = 0;
+constexpr int kSeparatorChild = 1;
 
 lv_obj_t* create_display(lv_obj_t* parent, const char* current, const char* target,
                          const char* align) {
@@ -40,13 +40,13 @@ lv_obj_t* create_display(lv_obj_t* parent, const char* current, const char* targ
 }
 
 int32_t separator_x(lv_obj_t* display) {
-    lv_obj_t* separator = lv_obj_get_child(display, SEPARATOR_CHILD);
+    lv_obj_t* separator = lv_obj_get_child(display, kSeparatorChild);
     REQUIRE(separator != nullptr);
     return lv_obj_get_x(separator);
 }
 
 int32_t current_width(lv_obj_t* display) {
-    return lv_obj_get_width(lv_obj_get_child(display, CURRENT_CHILD));
+    return lv_obj_get_width(lv_obj_get_child(display, kCurrentChild));
 }
 
 } // namespace
@@ -79,7 +79,7 @@ TEST_CASE_METHOD(XMLTestFixture, "align_current lines separators up across readi
     CHECK(separator_x(nozzle) == separator_x(bed));
     CHECK(current_width(nozzle) == current_width(bed));
 
-    lv_obj_t* label = lv_obj_get_child(nozzle, CURRENT_CHILD);
+    lv_obj_t* label = lv_obj_get_child(nozzle, kCurrentChild);
     CHECK(lv_obj_get_style_text_align(label, LV_PART_MAIN) == LV_TEXT_ALIGN_RIGHT);
     // Wide enough for the widest reading, so a 3-digit and a decimal value both fit.
     const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
@@ -91,7 +91,7 @@ TEST_CASE_METHOD(XMLTestFixture, "align_current follows a face retiered after cr
                  "[temp_display][align_current]") {
     lv_obj_t* display = create_display(test_screen(), "extruder_temp", "extruder_target", "true");
     REQUIRE(display != nullptr);
-    lv_obj_t* label = lv_obj_get_child(display, CURRENT_CHILD);
+    lv_obj_t* label = lv_obj_get_child(display, kCurrentChild);
     lv_obj_update_layout(display);
     const int32_t before = current_width(display);
 

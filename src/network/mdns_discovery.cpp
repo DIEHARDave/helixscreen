@@ -35,13 +35,13 @@ using namespace helix;
 namespace {
 
 // Query interval for mDNS discovery (re-query every 3 seconds)
-constexpr auto QUERY_INTERVAL = std::chrono::milliseconds(3000);
+constexpr auto kQueryInterval = std::chrono::milliseconds(3000);
 
 // Buffer size for mDNS operations (must be 32-bit aligned)
-constexpr size_t MDNS_BUFFER_SIZE = 2048;
+constexpr size_t kMdnsBufferSize = 2048;
 
 // Timeout for socket receive operations (milliseconds)
-constexpr int SOCKET_TIMEOUT_MS = 500;
+constexpr int kSocketTimeoutMs = 500;
 
 /**
  * @brief Extract display name from a full hostname
@@ -197,11 +197,11 @@ class MdnsDiscovery::Impl {
         // Set socket timeout for non-blocking receives
         struct timeval tv;
         tv.tv_sec = 0;
-        tv.tv_usec = SOCKET_TIMEOUT_MS * 1000;
+        tv.tv_usec = kSocketTimeoutMs * 1000;
         setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
         // Aligned buffer for mDNS operations
-        alignas(4) uint8_t buffer[MDNS_BUFFER_SIZE];
+        alignas(4) uint8_t buffer[kMdnsBufferSize];
 
         while (running_.load()) {
             // Send PTR query for Moonraker service
@@ -233,7 +233,7 @@ class MdnsDiscovery::Impl {
 
             // Wait for next query interval (or until stop requested)
             std::unique_lock<std::mutex> lock(stop_mutex_);
-            stop_cv_.wait_for(lock, QUERY_INTERVAL, [this]() { return !running_.load(); });
+            stop_cv_.wait_for(lock, kQueryInterval, [this]() { return !running_.load(); });
         }
 
         mdns_socket_close(sock);

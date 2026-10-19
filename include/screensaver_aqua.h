@@ -2,7 +2,7 @@
 
 #pragma once
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver.h"
 #include "screensaver_aqua_sim.h"
@@ -21,7 +21,7 @@ namespace helix::ui {
  * @brief Aqua Surface: glassy water with a ring clock in it
  *
  * helix::ui::AquaSim draws the water, the rings and their digits; this class draws the date or
- * print line with lv_draw_label, so the canvas takes LV_DRAW_CANVAS_FORMAT.
+ * print line with lv_draw_label, so the canvas takes kLvDrawCanvasFormat.
  */
 class AquaScreensaver : public ClockSaver<AquaSim> {
   public:
@@ -31,7 +31,7 @@ class AquaScreensaver : public ClockSaver<AquaSim> {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return LV_DRAW_CANVAS_FORMAT;
+        return kLvDrawCanvasFormat;
     }
     void draw_clock_text(const std::vector<DirtyRect>& under,
                          std::vector<DirtyRect>& dirty) override;

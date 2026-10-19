@@ -12,27 +12,27 @@ namespace helix::ui {
 enum class PendingAction : int { None = 0, Pausing = 1, Resuming = 2 };
 
 /// MDI glyphs (UTF-8). pause=F03E4, play=F040A, hourglass=F051F.
-inline constexpr const char* CONTROL_ICON_PAUSE = "\xF3\xB0\x8F\xA4";
-inline constexpr const char* CONTROL_ICON_PLAY = "\xF3\xB0\x90\x8A";
-inline constexpr const char* CONTROL_ICON_HOURGLASS = "\xF3\xB0\x94\x9F";
+inline constexpr const char* kControlIconPause = "\xF3\xB0\x8F\xA4";
+inline constexpr const char* kControlIconPlay = "\xF3\xB0\x90\x8A";
+inline constexpr const char* kControlIconHourglass = "\xF3\xB0\x94\x9F";
 
 /// Primary-button labels (English; callers translate them).
-inline constexpr const char* CONTROL_LABEL_PAUSE = "Pause";
-inline constexpr const char* CONTROL_LABEL_RESUME = "Resume";
-inline constexpr const char* CONTROL_LABEL_PAUSING = "Pausing...";
-inline constexpr const char* CONTROL_LABEL_RESUMING = "Resuming...";
+inline constexpr const char* kControlLabelPause = "Pause";
+inline constexpr const char* kControlLabelResume = "Resume";
+inline constexpr const char* kControlLabelPausing = "Pausing...";
+inline constexpr const char* kControlLabelResuming = "Resuming...";
 
 /// Every label compute_control_button_view() can give the primary button, for
 /// a layout that has to fit the widest of them.
-inline constexpr const char* CONTROL_PRIMARY_LABELS[] = {
-    CONTROL_LABEL_PAUSE, CONTROL_LABEL_RESUME, CONTROL_LABEL_PAUSING, CONTROL_LABEL_RESUMING};
+inline constexpr const char* kControlPrimaryLabels[] = {
+    kControlLabelPause, kControlLabelResume, kControlLabelPausing, kControlLabelResuming};
 
 /// Pure view model for the two print-control buttons. No LVGL, no globals.
 /// `primary_label` is an English string — callers pass it through lv_tr(),
 /// which falls back to the string itself when no translation exists.
 struct ControlButtonView {
-    const char* primary_icon = CONTROL_ICON_PAUSE;
-    const char* primary_label = CONTROL_LABEL_PAUSE;
+    const char* primary_icon = kControlIconPause;
+    const char* primary_label = kControlLabelPause;
     bool primary_enabled = false;
     bool stop_enabled = false;
     /// Stop must retire the preparing job rather than send CANCEL_PRINT.

@@ -468,7 +468,7 @@ void LedControlOverlay::set_pending_effect_chip(int chip) {
                 [self = data->self, gen = data->gen]() { self->end_pending_effect(gen); });
             delete data;
         },
-        PENDING_EFFECT_TIMEOUT_MS,
+        kPendingEffectTimeoutMs,
         new Timeout{lifetime_.token(), this, gen}); // TIMER_DTOR_OK: LifetimeToken-guarded one-shot
     lv_timer_set_repeat_count(t, 1);
 }

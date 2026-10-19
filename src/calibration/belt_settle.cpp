@@ -13,9 +13,9 @@ namespace {
 
 float inset_for(float span, int tool_count) {
     if (tool_count > 1) {
-        return belt_settle::MULTI_TOOL_INSET_SPAN_FRACTION * span;
+        return belt_settle::kMultiToolInsetSpanFraction * span;
     }
-    return std::max(belt_settle::INSET_MIN_MM, belt_settle::INSET_SPAN_FRACTION * span);
+    return std::max(belt_settle::kInsetMinMm, belt_settle::kInsetSpanFraction * span);
 }
 
 } // namespace
@@ -46,14 +46,14 @@ BeltSettlePlan plan_belt_settle(const BeltSettleInputs& in) {
     const float y1 = in.y_max - inset_y;
     const float side_x = x1 - x0;
     const float side_y = y1 - y0;
-    if (side_x < bs::MIN_SIDE_MM || side_y < bs::MIN_SIDE_MM) {
+    if (side_x < bs::kMinSideMm || side_y < bs::kMinSideMm) {
         plan.refusal = BeltSettleRefusal::SPAN_TOO_SMALL;
         return plan;
     }
 
     const auto& probe = *in.probe_point;
     const float speed =
-        std::min(bs::SPEED_MAX_MM_S, bs::SPEED_VELOCITY_FRACTION * in.max_velocity_mm_s);
+        std::min(bs::kSpeedMaxMmS, bs::kSpeedVelocityFraction * in.max_velocity_mm_s);
     const float feed = speed * 60.0f;
 
     // G-code coordinates are machine minus the homing origin.
@@ -63,11 +63,11 @@ BeltSettlePlan plan_belt_settle(const BeltSettleInputs& in) {
     const float gy1 = y1 - in.origin_y;
 
     std::vector<std::string> lines;
-    lines.push_back(fmt::format("SAVE_GCODE_STATE NAME={}", bs::STATE_NAME));
+    lines.push_back(fmt::format("SAVE_GCODE_STATE NAME={}", bs::kStateName));
     lines.emplace_back("G90");
     lines.push_back(fmt::format("G1 Z{:.1f} F{:.0f}", probe[2] - in.origin_z, feed));
     lines.push_back(fmt::format("G1 X{:.1f} Y{:.1f} F{:.0f}", gx0, gy0, feed));
-    for (int lap = 0; lap < bs::LAPS; ++lap) {
+    for (int lap = 0; lap < bs::kLaps; ++lap) {
         lines.push_back(fmt::format("G1 X{:.1f} Y{:.1f}", gx1, gy0));
         lines.push_back(fmt::format("G1 X{:.1f} Y{:.1f}", gx1, gy1));
         lines.push_back(fmt::format("G1 X{:.1f} Y{:.1f}", gx0, gy1));
@@ -76,7 +76,7 @@ BeltSettlePlan plan_belt_settle(const BeltSettleInputs& in) {
     lines.push_back(
         fmt::format("G1 X{:.1f} Y{:.1f}", probe[0] - in.origin_x, probe[1] - in.origin_y));
     lines.emplace_back("M400");
-    lines.push_back(fmt::format("RESTORE_GCODE_STATE NAME={}", bs::STATE_NAME));
+    lines.push_back(fmt::format("RESTORE_GCODE_STATE NAME={}", bs::kStateName));
 
     for (size_t i = 0; i < lines.size(); ++i) {
         if (i > 0) {
@@ -90,10 +90,10 @@ BeltSettlePlan plan_belt_settle(const BeltSettleInputs& in) {
     plan.speed_mm_s = speed;
     plan.inset_x_mm = inset_x;
     plan.inset_y_mm = inset_y;
-    plan.seconds = (static_cast<float>(bs::LAPS) * lap_mm + return_mm) / speed;
-    const double timeout = std::ceil(static_cast<double>(bs::TIMEOUT_FACTOR) *
+    plan.seconds = (static_cast<float>(bs::kLaps) * lap_mm + return_mm) / speed;
+    const double timeout = std::ceil(static_cast<double>(bs::kTimeoutFactor) *
                                      static_cast<double>(plan.seconds) * 1000.0);
-    plan.timeout_ms = std::max(bs::MIN_TIMEOUT_MS, static_cast<uint32_t>(timeout));
+    plan.timeout_ms = std::max(bs::kMinTimeoutMs, static_cast<uint32_t>(timeout));
     return plan;
 }
 

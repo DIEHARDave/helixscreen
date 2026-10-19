@@ -564,8 +564,8 @@ TEST_CASE("chips_that_fit: capacity is what the row can actually hold",
     CHECK(FilamentMappingCard::chips_that_fit(10, gap) == 1);
 
     // Layout has not settled: fall back to the floor, never to "everything".
-    CHECK(FilamentMappingCard::chips_that_fit(0, gap) == FilamentMappingCard::MIN_VISIBLE_CHIPS);
-    CHECK(FilamentMappingCard::chips_that_fit(-1, gap) == FilamentMappingCard::MIN_VISIBLE_CHIPS);
+    CHECK(FilamentMappingCard::chips_that_fit(0, gap) == FilamentMappingCard::kMinVisibleChips);
+    CHECK(FilamentMappingCard::chips_that_fit(-1, gap) == FilamentMappingCard::kMinVisibleChips);
 }
 
 TEST_CASE_METHOD(MappingCardRenderFixture,
@@ -626,7 +626,7 @@ TEST_CASE_METHOD(MappingCardRenderFixture,
                  "[filament_mapping][overflow]") {
     // The measured width decides how many chips get drawn, so it has to be an
     // input to the render fingerprint too. A first render that lands before
-    // layout has settled takes the MIN_VISIBLE_CHIPS fallback; if the width is
+    // layout has settled takes the kMinVisibleChips fallback; if the width is
     // not in the fingerprint that wrong answer is permanent, because every later
     // rebuild with the same data early-returns and on_ui_destroyed() is the only
     // other thing that clears the fingerprint.
@@ -643,7 +643,7 @@ TEST_CASE_METHOD(MappingCardRenderFixture,
     // Unmeasurable row falls back to the floor, and six tools do not fit in four
     // slots: three chips and a "+3".
     card.update(colors, materials);
-    REQUIRE(FilamentMappingCard::MIN_VISIBLE_CHIPS == 4);
+    REQUIRE(FilamentMappingCard::kMinVisibleChips == 4);
     REQUIRE(lv_obj_get_child_count(rows) == 4);
     lv_obj_t* const first_before = lv_obj_get_child(rows, 0);
     lv_obj_t* const pill = lv_obj_get_child(rows, 3);

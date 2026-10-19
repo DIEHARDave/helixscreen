@@ -231,7 +231,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Style and span binders survive a deinitialize
 
 namespace {
 
-constexpr const char* BIND_STYLE_XML = R"(<component>
+constexpr const char* kBindStyleXml = R"(<component>
   <styles>
     <style name="deinit_probe_style" bg_opa="77"/>
   </styles>
@@ -256,7 +256,7 @@ lv_subject_t& deinit_probe_subject() {
 lv_obj_t* create_bind_style_probe(lv_obj_t* parent) {
     static bool registered = false;
     if (!registered) {
-        REQUIRE(lv_xml_register_component_from_data("deinit_bind_style_probe", BIND_STYLE_XML) ==
+        REQUIRE(lv_xml_register_component_from_data("deinit_bind_style_probe", kBindStyleXml) ==
                 LV_RESULT_OK);
         registered = true;
     }

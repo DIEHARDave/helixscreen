@@ -31,16 +31,16 @@ struct FlipClockLevel {
 };
 
 /// The ladder, most expensive level first. Nothing is drawn between changes at any level.
-inline constexpr FlipClockLevel FLIP_CLOCK_LEVELS[] = {
-    {SAVER_FAST_PERIOD, true},
+inline constexpr FlipClockLevel kFlipClockLevels[] = {
+    {kSaverFastPeriod, true},
     {33, true},
     {250, false},
 };
 
-inline constexpr size_t FLIP_CLOCK_LEVEL_COUNT = std::size(FLIP_CLOCK_LEVELS);
+inline constexpr size_t kFlipClockLevelCount = std::size(kFlipClockLevels);
 
 /// How long one card takes to flip.
-inline constexpr uint32_t FLIP_DURATION_MS = 300;
+inline constexpr uint32_t kFlipDurationMs = 300;
 
 /// The line under the cards.
 enum class FlipCaption : uint8_t { NONE, DONE_AT, PAUSED, DONE };
@@ -58,19 +58,19 @@ struct FlipCard {
 };
 
 /// Hours, minutes, seconds.
-inline constexpr size_t FLIP_MAX_GROUPS = 3;
+inline constexpr size_t kFlipMaxGroups = 3;
 /// Three hour cards, two minute cards, two second cards.
-inline constexpr size_t FLIP_MAX_CARDS = 7;
+inline constexpr size_t kFlipMaxCards = 7;
 
 /// How the cards fall into groups (hours, minutes and seconds), one card per digit.
 struct FlipShape {
     uint8_t group_count = 0;
-    std::array<uint8_t, FLIP_MAX_GROUPS> groups{}; ///< cards in each group
+    std::array<uint8_t, kFlipMaxGroups> groups{}; ///< cards in each group
 
     uint8_t card_count() const;
     /// Only the countdown, three groups, has a line under its cards.
     bool has_caption() const {
-        return group_count >= FLIP_MAX_GROUPS;
+        return group_count >= kFlipMaxGroups;
     }
     bool operator==(const FlipShape& o) const {
         return group_count == o.group_count && groups == o.groups;
@@ -83,7 +83,7 @@ struct FlipShape {
 /// Everything the screen shows, without pixels.
 struct FlipFace {
     FlipShape shape;
-    std::array<FlipCard, FLIP_MAX_CARDS> cards{}; ///< shape.card_count() of them, left to right
+    std::array<FlipCard, kFlipMaxCards> cards{}; ///< shape.card_count() of them, left to right
     ClockMeridiem meridiem = ClockMeridiem::NONE;
     FlipCaption caption = FlipCaption::NONE;
     int32_t eta_minute_of_day = 0; ///< DONE_AT: local minute the print ends, 0 to 1439
@@ -95,7 +95,7 @@ struct FlipFace {
 FlipFace clock_face(int32_t seconds_of_day, bool use_24h);
 
 /// One card per digit of the hours (no leading zero, as many as needed), minutes and seconds
-/// for `seconds`, clamped to 0 and CLOCK_MAX_COUNTDOWN_S.
+/// for `seconds`, clamped to 0 and kClockMaxCountdownS.
 FlipFace countdown_face(int32_t seconds);
 
 /// The cards and caption for `reading`: the time of day, or the countdown with DONE_AT,
@@ -134,10 +134,10 @@ struct FlipLayout {
     int32_t unit = 0; ///< glyph scale: pixels per glyph width unit
     FlipShape shape;
     uint8_t card_count = 0;
-    std::array<DirtyRect, FLIP_MAX_CARDS> cards{};
+    std::array<DirtyRect, kFlipMaxCards> cards{};
     uint8_t colon_count = 0;
     /// The colon between two groups in a row; a column of groups has none.
-    std::array<DirtyRect, FLIP_MAX_GROUPS - 1> colons{};
+    std::array<DirtyRect, kFlipMaxGroups - 1> colons{};
     DirtyRect caption;        ///< the line under the cards, empty for the clock
     DirtyRect meridiem;       ///< AM/PM, in the first card's top-left corner
     int32_t split_top = 0;    ///< first row of the split line, relative to a card's top
@@ -161,13 +161,13 @@ DirtyRect flip_centred_bounds(int32_t w, int32_t h, const FlipShape& shape);
  * @brief Draws the clock into a frame, redrawing only the cards that change
  *
  * Each digit has its own card. A card whose digit changes folds its top half down over
- * FLIP_DURATION_MS at an animating level, or swaps at once otherwise; cards that change
+ * kFlipDurationMs at an animating level, or swaps at once otherwise; cards that change
  * together fold together, and the rest are not touched. A changed shape or a drift step
  * repaints the whole layout. Between changes a frame writes nothing.
  */
 class FlipClockSim {
   public:
-    static constexpr const auto& LEVELS = FLIP_CLOCK_LEVELS;
+    static constexpr const auto& kLevels = kFlipClockLevels;
 
     /// Lays out `face` for `frame`, paints the screen and draws the cards.
     void init(FrameTarget& frame, size_t level, const FlipFace& face);
@@ -206,17 +206,17 @@ class FlipClockSim {
     size_t heap_bytes() const;
 
     /// Background, card, split-line and digit colours.
-    static constexpr Rgb BACKGROUND{0, 0, 0};
-    static constexpr Rgb CARD_TOP{30, 30, 32};
-    static constexpr Rgb CARD_BOTTOM{24, 24, 26};
-    static constexpr Rgb DIGIT{222, 222, 222};
-    static constexpr Rgb COLON{130, 130, 130};
+    static constexpr Rgb kBackground{0, 0, 0};
+    static constexpr Rgb kCardTop{30, 30, 32};
+    static constexpr Rgb kCardBottom{24, 24, 26};
+    static constexpr Rgb kDigit{222, 222, 222};
+    static constexpr Rgb kColon{130, 130, 130};
 
   private:
     struct CardAnim {
         FlipCard from;
         FlipCard to;
-        uint32_t elapsed_ms = FLIP_DURATION_MS;
+        uint32_t elapsed_ms = kFlipDurationMs;
     };
 
     void relayout(FrameTarget& frame, const FlipShape& shape, std::vector<DirtyRect>& dirty);
@@ -234,7 +234,7 @@ class FlipClockSim {
     /// The shape drift_'s range was set for.
     FlipShape drift_shape_;
     FlipLayout layout_;
-    std::array<CardAnim, FLIP_MAX_CARDS> anims_{};
+    std::array<CardAnim, kFlipMaxCards> anims_{};
     /// Coverage of digits 0-9 at the layout's unit.
     StrokeDigitSet glyphs_;
 };

@@ -127,7 +127,7 @@ class GcodeErrorRouter {
     ///   - the age cannot be positively determined (`entry_time <= 0`, an
     ///     absent/zero timestamp) -- we never suppress a possibly-fresh
     ///     error on missing data, or
-    ///   - the error is recent (age <= REPLAY_MAX_AGE_SECONDS).
+    ///   - the error is recent (age <= kReplayMaxAgeSeconds).
     /// Returns `false` (suppress, log at debug) only when age is positively
     /// known to exceed the threshold -- the stale-after-restart case.
     static bool should_surface_replay(double entry_time, double now);
@@ -178,7 +178,7 @@ class GcodeErrorRouter {
 
     /// The broadcast claimant installed into rpc_error_correlation: when
     /// explains_rpc_error(), take `report` and run it after
-    /// RPC_REPORT_CLAIM_MS unless the explanation has surfaced by then.
+    /// kRpcReportClaimMs unless the explanation has surfaced by then.
     bool claim_rpc_report(const std::string& message, std::function<void()>& report);
 
     /// Context carried by one claimed report's timer. Defined in the .cpp.
@@ -245,7 +245,7 @@ class GcodeErrorRouter {
 
     /// [L072] notify_status_update subscription, unregistered symmetrically
     /// in the dtor.
-    SubscriptionId standing_notify_id_ = INVALID_SUBSCRIPTION_ID;
+    SubscriptionId standing_notify_id_ = kInvalidSubscriptionId;
 
     /// The coded lines surfaced from the standing-fault list, main-thread only
     /// (the bg_cb wrapper defers the notify body). A line leaves the set when

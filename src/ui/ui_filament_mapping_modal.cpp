@@ -25,8 +25,8 @@ namespace helix::ui {
 // varies per file. lv_obj_add_event_cb and lv_label_set_text are used here
 // as allowed exceptions for dynamic content.
 namespace {
-constexpr int TOOL_LABEL_MIN_W = 32;
-constexpr lv_opa_t SWATCH_BORDER_OPA = 30;
+constexpr int kToolLabelMinW = 32;
+constexpr lv_opa_t kSwatchBorderOpa = 30;
 
 // Process-wide, not per-instance: the dialog tree is deleted after the owning
 // modal's teardown, so instance-owned subjects would die under bound labels.

@@ -261,7 +261,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AmsState: a slot past the backend's count h
     ams.sync_from_backend();
 
     CHECK(std::string(lv_subject_get_string(ams.get_slot_name_subject(5))).empty());
-    CHECK(ams.get_slot_name_subject(AmsState::MAX_SLOTS) == nullptr);
+    CHECK(ams.get_slot_name_subject(AmsState::kMaxSlots) == nullptr);
     CHECK(ams.get_slot_name_subject(-1) == nullptr);
 
     ams.clear_backends();
