@@ -48,7 +48,15 @@ struct FieldValue {
     PrinterValueKind kind;
     int32_t i = 0;
     std::string s = {};
+    bool nil = false;
 };
+
+// Klipper's state is unknown while Moonraker is away: the subject holds
+// whatever it last heard, or its startup default.
+bool moonraker_connected() {
+    lv_subject_t* conn = lv_xml_get_subject(nullptr, "printer_connection_state");
+    return conn && lv_subject_get_int(conn) == static_cast<int>(helix::ConnectionState::CONNECTED);
+}
 
 FieldValue read_field(const PrinterField& f, lv_subject_t* subject) {
     FieldValue v{f.kind};
@@ -56,10 +64,16 @@ FieldValue read_field(const PrinterField& f, lv_subject_t* subject) {
         v.s = lv_subject_get_string(subject);
     else
         v.i = lv_subject_get_int(subject);
+    if (f.kind == PrinterValueKind::KlippyState)
+        v.nil = !moonraker_connected();
     return v;
 }
 
 int push_field(lua_State* L, const FieldValue& v) {
+    if (v.nil) {
+        lua_pushnil(L);
+        return 1;
+    }
     switch (v.kind) {
     case PrinterValueKind::Bool:
         lua_pushboolean(L, v.i == static_cast<int>(helix::ConnectionState::CONNECTED));

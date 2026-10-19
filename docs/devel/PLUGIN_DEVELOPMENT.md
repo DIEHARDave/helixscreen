@@ -610,7 +610,7 @@ Fields (`src/plugin/lua_bind_printer.cpp#printer_fields`):
 | Name | Type |
 |---|---|
 | `connected` | boolean: the Moonraker connection |
-| `klippy_state` | string: Klipper's own state, `"ready"`, `"startup"`, `"shutdown"` or `"error"` |
+| `klippy_state` | string: Klipper's own state, `"ready"`, `"startup"`, `"shutdown"` or `"error"`; `nil` while `connected` is `false` |
 | `print_state` | string |
 | `progress` | integer (percent) |
 | `filename` | string |
@@ -625,9 +625,11 @@ change. No permission is needed for either call.
 or lose its MCU while Moonraker stays connected, so `connected` stays `true` through all
 of it; `klippy_state` is what tells you Klipper itself is gone. A Klipper that disconnects
 from Moonraker reads `"shutdown"` until it reports again. Anything other than `"ready"`
-means status values may be stale and commands will fail; the value is only meaningful
-while `connected` is `true`. You do not need to re-query on the way back: every
-subscription gets a fresh snapshot when Klipper returns to ready (below).
+means status values may be stale and commands will fail. While Moonraker itself is
+disconnected nobody knows Klipper's state, so `klippy_state` reads `nil`; watch `connected`
+to learn when that starts, since losing Moonraker does not change `klippy_state` by
+itself. You do not need to re-query on the way back: every subscription gets a fresh
+snapshot when Klipper returns to ready (below).
 
 ```lua
 helix.printer.watch("klippy_state", function(state)

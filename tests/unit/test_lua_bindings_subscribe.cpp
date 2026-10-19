@@ -147,6 +147,27 @@ TEST_CASE_METHOD(LVGLTestFixture, "a whole-object frame re-delivers every subscr
     CHECK(b.t.global("r") == "ext:215.0/nil/nil:true,sim:run/3:true");
 }
 
+TEST_CASE_METHOD(LVGLTestFixture, "a query that fails after the runtime closed logs its plugin",
+                 "[plugin][lua][subscribe]") {
+    BoundRuntime b({&install_moonraker_bindings});
+    REQUIRE(b.t.run(R"(
+        helix.moonraker.subscribe({ extruder = { "temperature" } }, function(s) end)
+    )"));
+    b.fake.status[0](whole_objects_frame({{"extruder", {{"temperature", 20.0}}}}, true));
+    drain();
+    REQUIRE(b.fake.requests.size() == 2);
+
+    // Both replies land after the runtime is gone; under ASAN a read of its id
+    // through the freed runtime fails this case.
+    b.t.rt.reset();
+    helix::LogCapture logs;
+    for (auto& r : b.fake.requests)
+        r.reply(RpcResult{false, json(), "klippy disconnected"});
+    drain();
+    CHECK(logs.count_containing("[plugin test-plugin] initial subscribe query failed") == 1);
+    CHECK(logs.count_containing("[plugin test-plugin] subscription snapshot query failed") == 1);
+}
+
 TEST_CASE_METHOD(LVGLTestFixture, "whole-object frames coalesce into one query at a time",
                  "[plugin][lua][subscribe]") {
     BoundRuntime b({&install_moonraker_bindings});

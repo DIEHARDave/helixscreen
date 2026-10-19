@@ -81,6 +81,8 @@ TEST_CASE_METHOD(XMLTestFixture, "klippy_state reports Klipper's own state names
     BoundRuntime b({&install_printer_bindings});
     lv_subject_t* klippy = lv_xml_get_subject(nullptr, "klippy_state");
     REQUIRE(klippy);
+    lv_subject_set_int(lv_xml_get_subject(nullptr, "printer_connection_state"),
+                       static_cast<int>(helix::ConnectionState::CONNECTED));
     lv_subject_set_int(klippy, static_cast<int>(helix::KlippyState::READY));
     REQUIRE(b.t.run(R"(
         first = helix.printer.get("klippy_state")
@@ -93,6 +95,32 @@ TEST_CASE_METHOD(XMLTestFixture, "klippy_state reports Klipper's own state names
     REQUIRE(b.t.run("r = table.concat(seen, ',')"));
     CHECK(b.t.global("first") == "ready");
     CHECK(b.t.global("r") == "shutdown,startup,error,ready");
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "klippy_state reads nil while Moonraker is disconnected",
+                 "[plugin][bindings][printer]") {
+    BoundRuntime b({&install_printer_bindings});
+    lv_subject_t* conn = lv_xml_get_subject(nullptr, "printer_connection_state");
+    lv_subject_t* klippy = lv_xml_get_subject(nullptr, "klippy_state");
+    REQUIRE(conn);
+    REQUIRE(klippy);
+    lv_subject_set_int(conn, static_cast<int>(helix::ConnectionState::DISCONNECTED));
+    lv_subject_set_int(klippy, static_cast<int>(helix::KlippyState::SHUTDOWN));
+    REQUIRE(b.t.run(R"(
+        before = helix.printer.get("klippy_state")
+        seen = {}
+        helix.printer.watch("klippy_state", function(v) seen[#seen + 1] = tostring(v) end)
+    )"));
+    lv_subject_set_int(klippy, static_cast<int>(helix::KlippyState::STARTUP));
+    lv_subject_set_int(conn, static_cast<int>(helix::ConnectionState::CONNECTED));
+    lv_subject_set_int(klippy, static_cast<int>(helix::KlippyState::READY));
+    REQUIRE(b.t.run(R"(
+        after = helix.printer.get("klippy_state")
+        r = table.concat(seen, ',')
+    )"));
+    CHECK(b.t.global("before") == "nil");
+    CHECK(b.t.global("r") == "nil,ready");
+    CHECK(b.t.global("after") == "ready");
 }
 
 TEST_CASE("the stable printer table", "[plugin][bindings][printer]") {

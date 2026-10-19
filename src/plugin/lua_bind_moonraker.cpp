@@ -357,13 +357,14 @@ void resnapshot(LuaRuntime* rtp, LifetimeToken token, std::shared_ptr<Subscripti
     if (objects.empty())
         return;
     hub->resnapshot_in_flight = true;
+    // The callback can outlive the runtime, so it logs a copy of the id.
     backend->call("printer.objects.query", json{{"objects", objects}},
-                  [rtp, token, hub, backend](RpcResult r) {
+                  [rtp, token, hub, backend, id = std::string(rtp->plugin_id())](RpcResult r) {
                       if (r.ok)
                           deliver_snapshot(rtp, token, *hub, query_status(r.value), 0);
                       else
-                          spdlog::debug("[plugin {}] subscription snapshot query failed: {}",
-                                        rtp->plugin_id(), r.error);
+                          spdlog::debug("[plugin {}] subscription snapshot query failed: {}", id,
+                                        r.error);
                       token.defer("plugin_resnapshot_settle", [rtp, token, hub, backend]() {
                           hub->resnapshot_in_flight = false;
                           if (std::exchange(hub->resnapshot_again, false))
@@ -501,10 +502,10 @@ int subscribe(lua_State* L) {
     // First delivery: a snapshot of the current values, from one query for this
     // subscription's own objects.
     backend->call("printer.objects.query", json{{"objects", spec}},
-                  [rtp, token, hub, sid](RpcResult r) {
+                  [rtp, token, hub, sid, id = std::string(rt.plugin_id())](RpcResult r) {
                       if (!r.ok) {
-                          spdlog::debug("[plugin {}] initial subscribe query failed: {}",
-                                        rtp->plugin_id(), r.error);
+                          spdlog::debug("[plugin {}] initial subscribe query failed: {}", id,
+                                        r.error);
                           return;
                       }
                       deliver_snapshot(rtp, token, *hub, query_status(r.value), sid);
