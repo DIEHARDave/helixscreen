@@ -294,6 +294,9 @@ void set_variant(lv_obj_t* icon, const char* variant_str) {
         return;
     }
 
+    // A colour from set_color() is a local style, which would outrank the
+    // variant's shared style and keep the icon in that colour.
+    lv_obj_remove_local_style_prop(icon, LV_STYLE_TEXT_COLOR, LV_PART_MAIN);
     auto variant = helix::ui::parse_variant(variant_str);
     helix::ui::apply_variant_text_style(icon, variant);
     spdlog::trace("[Icon] Changed icon variant to '{}'", variant_str);

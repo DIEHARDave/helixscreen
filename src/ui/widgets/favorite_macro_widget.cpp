@@ -24,6 +24,7 @@
 #include "printer_state.h"
 #include "safety_settings_manager.h"
 #include "theme_manager.h"
+#include "tile_color.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -219,6 +220,10 @@ IMoonrakerAPI* FavoriteMacroWidget::get_api() const {
 
 void FavoriteMacroWidget::update_display() {
     bool unconfigured = macro_name_.empty();
+    // A macro tile has no off state: configured is Active.
+    const tile_color::Paint paint =
+        tile_color::paint_for(icon_color_, unconfigured ? tile_color::TileState::Unconfigured
+                                                        : tile_color::TileState::Active);
 
     if (name_label_) {
         if (unconfigured) {
@@ -237,25 +242,19 @@ void FavoriteMacroWidget::update_display() {
             effective_icon = icon_name_.empty() ? "play" : icon_name_.c_str();
         helix::ui::icon::set_source(icon_label_, effective_icon);
 
-        // Apply custom color when configured, muted when unconfigured
-        if (icon_color_ != 0 && !unconfigured) {
+        if (paint == tile_color::Paint::Custom) {
             helix::ui::icon::set_color(icon_label_, lv_color_hex(icon_color_), LV_OPA_COVER);
-        } else if (unconfigured) {
-            helix::ui::icon::set_variant(icon_label_, "secondary");
         } else {
             helix::ui::icon::set_variant(icon_label_, "secondary");
         }
     }
 
-    // Badge background: muted when unconfigured, tinted when configured
     if (icon_badge_) {
-        if (unconfigured) {
-            lv_obj_set_style_bg_color(icon_badge_, theme_manager_get_color("secondary"), 0);
-        } else if (icon_color_ != 0) {
-            lv_obj_set_style_bg_color(icon_badge_, lv_color_hex(icon_color_), 0);
-        } else {
-            lv_obj_set_style_bg_color(icon_badge_, theme_manager_get_color("secondary"), 0);
-        }
+        lv_obj_set_style_bg_color(icon_badge_,
+                                  paint == tile_color::Paint::Custom
+                                      ? lv_color_hex(icon_color_)
+                                      : theme_manager_get_color("secondary"),
+                                  0);
     }
 }
 

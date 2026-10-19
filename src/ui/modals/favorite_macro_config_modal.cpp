@@ -13,7 +13,6 @@
 #include "device_display_name.h"
 #include "favorite_macro_config.h"
 #include "helix-xml/src/xml/lv_xml.h"
-#include "helix/xml/indexed_subject_pool.h"
 #include "i_moonraker_api.h"
 #include "macro_param_cache.h"
 #include "macro_param_defaults.h"
@@ -21,13 +20,12 @@
 #include "panel_widget_manager.h"
 #include "static_subject_registry.h"
 #include "subject_managed_panel.h"
-#include "theme_manager.h"
+#include "tile_color.h"
 #include "ui/ui_widget_helpers.h"
 
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -39,10 +37,6 @@ lv_subject_t s_require_confirm_subject{};
 /// 1 while the configured macro declares a parameter list, so the Options tab
 /// can show the "Default Parameters" row only for macros that have one.
 lv_subject_t s_has_param_defaults_subject{};
-/// Index into kIconColors of the colour the swatch ring marks, or -1.
-lv_subject_t s_selected_color_subject{};
-/// favorite_macro_config_modal.xml's swatches bind fav_macro_swatch_color_<i>.
-std::unique_ptr<helix::xml::IndexedSubjectPool> s_color_pool;
 bool s_subjects_registered = false;
 SubjectManager s_subjects;
 
@@ -56,33 +50,6 @@ static const char* const kCuratedIcons[] = {
 };
 static constexpr size_t kCuratedIconCount = std::size(kCuratedIcons);
 
-// Color palette — first entry (0) = theme secondary sentinel.
-static constexpr uint32_t kIconColors[] = {
-    0xE53935, // Red
-    0xFF5722, // Deep Orange
-    0xFF9800, // Orange
-    0xFFC107, // Amber
-    0xFFEB3B, // Yellow
-    0x8BC34A, // Lime
-    0x43A047, // Green
-    0x009688, // Teal
-    0x00BCD4, // Cyan
-    0x1E88E5, // Blue
-    0x3F51B5, // Indigo
-    0x7B1FA2, // Purple
-    0xE91E63, // Pink
-    0xFFFFFF, // White
-    0x808080, // Gray
-    0x000000, // sentinel: theme default (secondary variant)
-};
-static constexpr size_t kIconColorCount = std::size(kIconColors);
-
-/// The index of @p color in kIconColors, or -1.
-int icon_color_index(uint32_t color) {
-    const auto* it = std::find(std::begin(kIconColors), std::end(kIconColors), color);
-    return it == std::end(kIconColors) ? -1 : static_cast<int>(it - std::begin(kIconColors));
-}
-
 } // namespace
 
 FavoriteMacroConfigModal* FavoriteMacroConfigModal::s_active_ = nullptr;
@@ -95,23 +62,18 @@ void register_favorite_macro_config_subjects() {
     // reads correctly even before on_show() loads a widget's config.
     lv_subject_init_int(&s_require_confirm_subject, 1);
     lv_subject_init_int(&s_has_param_defaults_subject, 0);
-    lv_subject_init_int(&s_selected_color_subject, -1);
-    s_color_pool = std::make_unique<helix::xml::IndexedSubjectPool>(
-        "fav_macro_swatch_color", helix::xml::IndexedSubjectPool::Type::Color);
-    s_color_pool->ensure_size(kIconColorCount);
     s_subjects.publish("fav_macro_config_tab", &s_tab_subject);
     s_subjects.publish("fav_macro_require_confirm", &s_require_confirm_subject);
     s_subjects.publish("fav_macro_has_param_defaults", &s_has_param_defaults_subject);
-    s_subjects.publish("fav_macro_selected_color", &s_selected_color_subject);
     // Registered once with the widget factories, so it outlives a printer switch.
     StaticSubjectRegistry::instance().register_deinit(
         "FavoriteMacroConfigSubjects",
         []() {
-            s_color_pool.reset();
             s_subjects.deinit_all();
             s_subjects_registered = false;
         },
         StaticSubjectRegistry::Lifetime::Process);
+    tile_color::register_subjects();
     s_subjects_registered = true;
 }
 
@@ -153,14 +115,7 @@ void FavoriteMacroConfigModal::on_show() {
     refresh_param_defaults_visible();
     populate_macro_list();
     populate_icon_grid();
-    // The theme-default entry shows the current theme's secondary colour.
-    for (size_t i = 0; i < kIconColorCount; ++i) {
-        const uint32_t rgb = kIconColors[i] == 0
-                                 ? lv_color_to_u32(theme_manager_get_color("secondary")) & 0xFFFFFF
-                                 : kIconColors[i];
-        s_color_pool->set_color(i, rgb);
-    }
-    lv_subject_set_int(&s_selected_color_subject, icon_color_index(icon_color_));
+    tile_color::publish_palette(icon_color_);
     spdlog::debug("[FavoriteMacroConfig] Opened: widget={}, macro={}", widget_id_, macro_name_);
 }
 
@@ -323,7 +278,7 @@ void FavoriteMacroConfigModal::refresh_highlights() {
         helix::ui::refresh_icon_grid(icon_grid_, effective);
     }
 
-    lv_subject_set_int(&s_selected_color_subject, icon_color_index(icon_color_));
+    tile_color::publish_selection(icon_color_);
 }
 
 void FavoriteMacroConfigModal::select_macro(const std::string& name) {
@@ -370,8 +325,8 @@ void FavoriteMacroConfigModal::macro_row_cb(lv_event_t* e) {
 void FavoriteMacroConfigModal::color_swatch_cb(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[FavoriteMacroConfigModal] color_swatch_cb");
     const int index = helix::ui::event_user_int(e).value_or(-1);
-    if (s_active_ && index >= 0 && index < static_cast<int>(kIconColorCount)) {
-        s_active_->select_color(kIconColors[index]);
+    if (s_active_ && index >= 0 && index < static_cast<int>(tile_color::palette_size())) {
+        s_active_->select_color(tile_color::palette_at(index));
     }
     LVGL_SAFE_EVENT_CB_END();
 }

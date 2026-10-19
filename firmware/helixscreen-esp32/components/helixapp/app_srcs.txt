@@ -682,6 +682,7 @@ src/ui/ui_zone_presentation.cpp
 src/ui/widgets/favorite_macro_config.cpp
 src/ui/widgets/favorite_macro_widget.cpp
 src/ui/widgets/power_device_widget.cpp
+src/ui/widgets/tile_color.cpp
 src/ui/wizard_step_registry.cpp
 src/ui/z_offset_utils.cpp
 src/util/indexed_subject_pool.cpp

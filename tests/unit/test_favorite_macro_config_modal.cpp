@@ -282,11 +282,11 @@ TEST_CASE_METHOD(ConfigModalDefaultsFixture,
     auto& modal = show_config_for("PLAIN_MACRO");
     lv_obj_t* dlg = modal.dialog();
 
-    lv_obj_t* red = lv_obj_find_by_name(dlg, "fav_macro_swatch_0");
-    lv_obj_t* theme_default = lv_obj_find_by_name(dlg, "fav_macro_swatch_15");
+    lv_obj_t* red = lv_obj_find_by_name(dlg, "tile_color_swatch_0");
+    lv_obj_t* theme_default = lv_obj_find_by_name(dlg, "tile_color_swatch_15");
     REQUIRE(red != nullptr);
     REQUIRE(theme_default != nullptr);
-    CHECK(lv_obj_find_by_name(dlg, "fav_macro_swatch_16") == nullptr);
+    CHECK(lv_obj_find_by_name(dlg, "tile_color_swatch_16") == nullptr);
     for (lv_obj_t* swatch : {red, theme_default}) {
         lv_obj_t* disc = lv_obj_find_by_name(swatch, "color_swatch_disc");
         REQUIRE(disc != nullptr);
@@ -298,11 +298,11 @@ TEST_CASE_METHOD(ConfigModalDefaultsFixture,
                       theme_manager_get_color("secondary")));
 
     // The saved colour 0 is the theme default, the last swatch.
-    lv_subject_t* selected = lv_xml_get_subject(nullptr, "fav_macro_selected_color");
+    lv_subject_t* selected = lv_xml_get_subject(nullptr, "tile_color_selected");
     REQUIRE(selected != nullptr);
     CHECK(lv_subject_get_int(selected) == 15);
 
-    lv_obj_t* amber = lv_obj_find_by_name(dlg, "fav_macro_swatch_3");
+    lv_obj_t* amber = lv_obj_find_by_name(dlg, "tile_color_swatch_3");
     REQUIRE(amber != nullptr);
     lv_obj_send_event(amber, LV_EVENT_CLICKED, nullptr);
     helix::ui::UpdateQueue::instance().drain();
@@ -320,8 +320,10 @@ TEST_CASE_METHOD(ConfigModalDefaultsFixture,
     cache_macros({{"PLAIN_MACRO", "G28"}});
     REQUIRE(StaticSubjectRegistry::instance().deinit_one(
         "FavoriteMacroConfigSubjects", StaticSubjectRegistry::Scope::PrinterSwitch));
+    REQUIRE(StaticSubjectRegistry::instance().deinit_one(
+        "TileColorSubjects", StaticSubjectRegistry::Scope::PrinterSwitch));
 
-    REQUIRE(lv_xml_get_subject(nullptr, "fav_macro_swatch_color_0") != nullptr);
+    REQUIRE(lv_xml_get_subject(nullptr, "tile_color_swatch_color_0") != nullptr);
     lv_subject_t* tab = lv_xml_get_subject(nullptr, "fav_macro_config_tab");
     REQUIRE(tab != nullptr);
 
