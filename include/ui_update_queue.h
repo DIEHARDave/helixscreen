@@ -246,6 +246,17 @@ class UpdateQueue {
     }
 
     /**
+     * @brief Whether a queued callback is running, at any depth
+     *
+     * A drain() called from inside a callback runs further callbacks under the
+     * first, so code that must not run inside any batch asks this rather than
+     * whether it was itself queued. Main thread only.
+     */
+    bool is_draining() const {
+        return drain_depth_ > 0;
+    }
+
+    /**
      * @brief RAII guard that silently discards queued callbacks
      *
      * Use around drain()+destroy sequences to prevent the WebSocket background
@@ -465,6 +476,7 @@ class UpdateQueue {
             std::swap(to_process, pending_);
         }
 
+        ++drain_depth_;
         // Execute all pending updates - safe because no render is in progress.
         //
         // std::system_error is matched ahead of std::exception (it derives
@@ -524,6 +536,7 @@ class UpdateQueue {
             current_tag_ = nullptr;
             to_process.pop();
         }
+        --drain_depth_;
     }
 
     /**
@@ -555,6 +568,8 @@ class UpdateQueue {
     bool shut_down_ = false;
     // Protected by mutex_ — accessed from queue() and ScopedFreeze ctor/dtor.
     int freeze_depth_ = 0;
+    /// process_pending() calls on the stack. Main thread only.
+    int drain_depth_ = 0;
 
     /// Tag of the currently executing callback (read by crash handler).
     /// Only written from the main LVGL thread; read by the crash signal handler.

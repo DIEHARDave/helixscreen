@@ -97,6 +97,10 @@ class ChangeHostRestoreFixture : public XMLTestFixture {
         REQUIRE(btn != nullptr);
         lv_obj_send_event(btn, LV_EVENT_CLICKED, nullptr);
         UpdateQueue::instance().drain();
+        // An add hands the address over on the next tick; its callback closes over the
+        // test's locals, so it runs here rather than in a later test.
+        lv_timer_handler();
+        UpdateQueue::instance().drain();
     }
 
     helix::test::FakeMoonrakerClient* client_ = nullptr;

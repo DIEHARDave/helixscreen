@@ -363,3 +363,30 @@ TEST_CASE_METHOD(LVGLTestFixture, "queue_update frees its payload when the callb
     REQUIRE(probe.expired());
     lv_obj_delete(widget);
 }
+
+TEST_CASE_METHOD(LVGLTestFixture, "is_draining holds through nested drains and ends with them",
+                 "[update_queue][lifecycle]") {
+    auto& q = UpdateQueue::instance();
+    REQUIRE_FALSE(q.is_draining());
+
+    bool in_outer = false;
+    bool in_inner = false;
+    bool after_inner = false;
+    q.queue("outer", [&]() {
+        in_outer = q.is_draining();
+        q.queue("inner", [&]() { in_inner = q.is_draining(); });
+        q.drain();
+        after_inner = q.is_draining();
+    });
+    q.drain();
+
+    CHECK(in_outer);
+    CHECK(in_inner);
+    CHECK(after_inner);
+    CHECK_FALSE(q.is_draining());
+
+    // A callback that throws still ends its drain.
+    q.queue("throws", []() { throw std::runtime_error("boom"); });
+    q.drain();
+    CHECK_FALSE(q.is_draining());
+}
