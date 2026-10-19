@@ -6,6 +6,7 @@
 // per-lane lids each lane shows its own humidity behind a droplet.
 
 #include "ui_ams_detail.h"
+#include "ui_ams_lane_spool.h"
 #include "ui_ams_sidebar.h"
 #include "ui_ams_slot.h"
 #include "ui_endless_spool_arrows.h"
@@ -19,6 +20,7 @@
 #include "ams_backend_mock.h"
 #include "ams_state.h"
 #include "ams_tray_projection.h"
+#include "config.h"
 #include "filament_tube_stroker.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "src/ui/ui_filament_path_internal.h"
@@ -59,8 +61,10 @@ void register_ams_xml_once() {
 
 class AmsTrayPanelFixture : public XMLTestFixture {
   public:
-    /// A tool changer has no housing, so build() finds no tray for it.
+    /// A tool changer has no housing, and flat spools stand in none, so build()
+    /// finds no tray for either.
     void build(const char* env_mode, int gates = 4, bool tool_changer = false) {
+        helix::Config::get_instance()->set<std::string>("/ams/spool_style", flat_ ? "flat" : "3d");
         auto mock = std::make_unique<AmsBackendMock>(gates);
         if (tool_changer)
             mock->set_tool_changer_mode(true);
@@ -93,7 +97,8 @@ class AmsTrayPanelFixture : public XMLTestFixture {
         lv_area_t c;
         lv_obj_get_coords(container_, &c);
         origin_ = {c.x1, c.y1};
-        REQUIRE(helix::ui::ams_detail_tray_geometry(box_, lid_, lid_h_, half_) != tool_changer);
+        REQUIRE(helix::ui::ams_detail_tray_geometry(box_, lid_, lid_h_, half_) !=
+                (tool_changer || flat_));
     }
 
     ~AmsTrayPanelFixture() override {
@@ -105,6 +110,7 @@ class AmsTrayPanelFixture : public XMLTestFixture {
             lv_obj_delete(panel_obj_);
         process_lvgl(10);
         AmsState::instance().set_backend(nullptr);
+        helix::Config::get_instance()->set<std::string>("/ams/spool_style", "3d");
     }
 
     lv_obj_t* slot(int i) const {
@@ -175,6 +181,7 @@ class AmsTrayPanelFixture : public XMLTestFixture {
         }
     }
 
+    bool flat_ = false;
     std::unique_ptr<AmsPanel> panel_;
     lv_obj_t* panel_obj_ = nullptr;
     /// Where build() puts the panel; the screen when null.
@@ -425,6 +432,101 @@ TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS tool changer: each tube hangs from ju
         CHECK((float)tube_top >= flange_bottom - 1);
         CHECK((float)tube_top <= flange_bottom + 1);
     }
+}
+
+TEST_CASE_METHOD(AmsTrayPanelFixture,
+                 "AMS flat spool style: no box, the tubes hang from the spools",
+                 "[ams][tray][ui_integration][filament-path]") {
+    const auto size = GENERATE(std::make_pair(480, 272), std::make_pair(800, 480));
+    CAPTURE(size.first, size.second);
+    helix::test::ScopedGeometry screen(size.first, size.second);
+    flat_ = true;
+    build("off");
+
+    lv_obj_t* front = lv_obj_find_by_name(panel_obj_, "slot_tray");
+    REQUIRE(front != nullptr);
+    CHECK(lv_obj_has_flag(front, LV_OBJ_FLAG_HIDDEN));
+
+    // The row stays compact rather than spreading across the width.
+    const int32_t pitch = theme_manager_get_spacing("ams_slot_spool_size") +
+                          helix::ui::kAmsLaneSpoolBadgeMarginPx +
+                          theme_manager_get_spacing("space_xs");
+    CHECK(helix::ui::ams_detail_slot_layout(4000, 4).slot_width == pitch);
+
+    // The lanes leave from under the spools' lower flanges.
+    lv_obj_t* canvas = lv_obj_find_by_name(panel_obj_, "path_canvas");
+    REQUIRE(canvas != nullptr);
+    auto* data = helix::ui::fpath::get_data(canvas);
+    REQUIRE(data != nullptr);
+    lv_area_t g, a;
+    lv_obj_get_coords(slot_grid_, &g);
+    lv_obj_get_coords(lv_obj_find_by_name(slot(0), "spool_graphic"), &a);
+    const float flange_bottom =
+        (a.y1 + a.y2 + 1) / 2.0f + tray::kSpoolFlangeRadius * lv_area_get_width(&a);
+    CAPTURE(g.y1, a.y1, a.y2, flange_bottom, data->lane_entry_offset);
+    REQUIRE(data->lane_entry_offset != INT32_MIN);
+    CHECK(std::fabs((float)(g.y1 + data->lane_entry_offset) - flange_bottom) <= 1);
+}
+
+TEST_CASE_METHOD(AmsTrayPanelFixture,
+                 "AMS flat spool style: per-lane humidity still shows above each label",
+                 "[ams][tray][ui_integration]") {
+    flat_ = true;
+    build("slot");
+    for (int i = 0; i < 4; ++i) {
+        CAPTURE(i);
+        lv_obj_t* row = ui_ams_slot_get_lane_humidity(slot(i));
+        REQUIRE(row != nullptr);
+        CHECK_FALSE(lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN));
+        lv_obj_t* label = lv_obj_find_by_name(slot(i), "material_label");
+        REQUIRE(label != nullptr);
+        lv_area_t ra, la;
+        lv_obj_get_coords(row, &ra);
+        lv_obj_get_coords(label, &la);
+        CHECK(ra.y2 <= la.y1);
+    }
+}
+
+TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS flat spool style: the readout stands beside the spools",
+                 "[ams][tray][ui_integration]") {
+    const auto size = GENERATE(std::make_pair(480, 272), std::make_pair(800, 480));
+    const int gates = GENERATE(1, 4);
+    CAPTURE(size.first, size.second, gates);
+    helix::test::ScopedGeometry screen(size.first, size.second);
+    flat_ = true;
+    build("passive", gates);
+
+    lv_obj_t* pill = lv_obj_find_by_name(panel_obj_, "env_indicator");
+    REQUIRE(pill != nullptr);
+    REQUIRE_FALSE(lv_obj_has_flag(pill, LV_OBJ_FLAG_HIDDEN));
+    lv_obj_update_layout(test_screen());
+    lv_area_t pa;
+    lv_obj_get_coords(pill, &pa);
+    CAPTURE(pa.x1, pa.y1, pa.x2, pa.y2);
+    lv_area_t row;
+    lv_obj_get_coords(lv_obj_get_parent(container_), &row);
+    CHECK(pa.x2 <= row.x2);
+
+    // As tall as the spools, level with them, just past the last lane's spool
+    // and its badge as the badge layer shows it.
+    int32_t spool_top = INT32_MAX, spool_bottom = INT32_MIN, lanes_right = INT32_MIN;
+    for (int i = 0; i < gates; ++i) {
+        lv_area_t a;
+        lv_obj_get_coords(lv_obj_find_by_name(slot(i), "spool_graphic"), &a);
+        spool_top = std::min(spool_top, a.y1);
+        spool_bottom = std::max(spool_bottom, a.y2);
+        lanes_right = std::max(lanes_right, a.x2);
+        lv_obj_get_coords(ui_ams_slot_get_status_badge(slot(i)), &a);
+        lanes_right = std::max(lanes_right, a.x2);
+    }
+    lv_area_t c;
+    lv_obj_get_coords(container_, &c);
+    lanes_right = std::min(lanes_right, c.x2);
+    CAPTURE(spool_top, spool_bottom, lanes_right);
+    CHECK(std::abs(pa.y1 - spool_top) <= 1);
+    CHECK(std::abs(pa.y2 - spool_bottom) <= 1);
+    CHECK(pa.x1 > lanes_right);
+    CHECK(pa.x1 - lanes_right <= theme_manager_get_spacing("space_md"));
 }
 
 TEST_CASE_METHOD(AmsTrayPanelFixture,

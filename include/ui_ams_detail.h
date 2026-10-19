@@ -74,6 +74,9 @@ void ams_detail_destroy_slots(AmsDetailWidgets& w, lv_obj_t* slot_widgets[], int
 
 /**
  * @brief Size tray to 1/4 of slot grid height (minimum 20px) with 3D box effect
+ *
+ * No box is drawn in flat spool style or for a unit with no housing; the
+ * environment pill then stands beside the spools.
  * @param w Widget pointers — uses slot_grid height and positions slot_tray
  */
 void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[] = nullptr,
