@@ -30,6 +30,7 @@
 #include "post_op_cooldown_manager.h"
 #include "printer_discovery.h"
 #include "printer_state.h"
+#include "snapmaker_nozzle_offset.h"
 #include "spoolman_types.h" // SpoolInfo + apply_spool_to_slot (the picker-side writer)
 #include "test_helpers/registered_backend.h"
 #include "test_helpers/seeded_override.h"
@@ -6080,6 +6081,21 @@ TEST_CASE_METHOD(SnapmakerFixture,
         h.frame(json{{"machine_state_manager", {{"main_state", 0}}}});
         CHECK_FALSE(h.config_writes().empty());
     }
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker forgets a pending calibration exit once the state reads free",
+                 "[ams][snapmaker][nozzle_offset][reconcile]") {
+    lv_init_safe();
+    FilamentRecordHarness h("pending_exit_state_free");
+    helix::snapmaker::nozzle_offset::mark_exit_pending();
+    REQUIRE(helix::snapmaker::nozzle_offset::exit_pending());
+
+    h.frame(json{{"machine_state_manager", {{"main_state", 2}}}});
+    CHECK(helix::snapmaker::nozzle_offset::exit_pending());
+
+    h.frame(json{{"machine_state_manager", {{"main_state", 0}}}});
+    CHECK_FALSE(helix::snapmaker::nozzle_offset::exit_pending());
 }
 
 TEST_CASE_METHOD(SnapmakerFixture,

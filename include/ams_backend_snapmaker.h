@@ -570,6 +570,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     [[nodiscard]] std::string build_preference_gcode(const std::string& action_id,
                                                      const std::any& value) const;
 
+    /// Ends a toolhead offset calibration run in progress, so the printer is
+    /// not left holding the calibration state with heaters on.
+    void before_disconnect() override;
+
   protected:
     // Extension points for hardware hung off the U1's heads. Each default is
     // the stock U1's answer, and each is called with mutex_ held.

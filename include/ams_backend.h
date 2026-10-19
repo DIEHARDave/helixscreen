@@ -211,6 +211,16 @@ class AmsBackend {
     virtual void release_subscriptions() {}
 
     /**
+     * @brief Last word to the printer before the client disconnects
+     *
+     * Teardown (a printer switch or app exit) calls it on the main thread
+     * while the client is still connected, so a backend can end an operation
+     * that would otherwise leave the printer holding heaters or a machine
+     * state. May block briefly for a reply; must not touch the UI.
+     */
+    virtual void before_disconnect() {}
+
+    /**
      * @brief Re-fetch authoritative slot/state from the printer.
      *
      * Called from UI sites where the user expects a fresh view of slot state

@@ -141,9 +141,13 @@ enum class HeldState {
                                           bool exit_pending);
 
 /// A run in this process ended without its EXIT confirmed: the firmware may
-/// still hold the state on our behalf. In memory only; a restart forgets it.
+/// still hold the state on our behalf. Recorded against the printer the last
+/// reconcile_on_connect() named, so another printer's held state never reads
+/// as ours. In memory only; a restart forgets it.
 void mark_exit_pending();
+/// True when the pending exit belongs to the printer last connected.
 [[nodiscard]] bool exit_pending();
+/// Called wherever the state is seen not held: nothing is left to end.
 void clear_exit_pending();
 
 /// Sends EXIT and forgets the reply beyond the pending-exit flag: cleared when
@@ -163,16 +167,19 @@ void send_probe_abort(helix::IMoonrakerClient& client);
  */
 void reconcile_on_connect(helix::IMoonrakerClient& client, std::function<void()> ask_user);
 
-class Runner;
+/// How long leave_live_run() waits for EXIT's reply before teardown goes on.
+inline constexpr uint32_t kTeardownExitWaitMs = 1000;
 
 /**
- * @brief Ends @p runner's run as the app shuts down
+ * @brief Ends the run in progress before the client disconnects
  *
- * A live run left behind holds the heaters on. With @p client connected this
- * aborts a probe pass in progress and sends EXIT without waiting; otherwise it
- * marks the exit pending for a reconnect in this process.
+ * A run left behind holds the heaters on. With @p client connected this aborts
+ * a probe pass in progress, sends EXIT and waits up to kTeardownExitWaitMs for
+ * the reply; otherwise it marks the exit pending. Either way the run ends here,
+ * without sending anything further. No-op when no run is live. Main thread;
+ * replies must arrive on another thread for the wait to see them.
  */
-void leave_on_shutdown(const Runner& runner, helix::IMoonrakerClient* client);
+void leave_live_run(helix::IMoonrakerClient* client);
 
 /**
  * @brief Walks build_sequence() one command at a time
@@ -224,6 +231,9 @@ class Runner {
     void cancel();
     /// Forgets a run that ended (Done, Failed, Cancelled), back to Idle.
     void reset();
+    /// Ends a live run as Cancelled without sending anything: the caller has
+    /// dealt with the firmware state itself. Late completions are dropped.
+    void abandon();
 
     [[nodiscard]] Phase phase() const {
         return phase_;

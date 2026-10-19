@@ -159,11 +159,10 @@ void SnapmakerNozzleOffsetOverlay::on_activate() {
 void SnapmakerNozzleOffsetOverlay::on_deactivating(DeactivateReason reason) {
     // A blanked screen is not the user leaving: the run outlives the
     // screensaver. Closing the overlay ends it, and the exit turns the heaters
-    // off. Shutdown sends the exit without waiting: nothing is left to report into.
+    // off. Shutdown arrives after the client is gone; the Snapmaker backend's
+    // before_disconnect() ends the run while it can still send.
     if (reason == DeactivateReason::NavigateAway) {
         runner_.cancel();
-    } else if (reason == DeactivateReason::Shutdown) {
-        nozzle_offset::leave_on_shutdown(runner_, get_moonraker_client());
     }
 }
 

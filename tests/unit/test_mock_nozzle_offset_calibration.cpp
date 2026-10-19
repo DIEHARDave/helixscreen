@@ -17,10 +17,12 @@
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/scoped_env.h"
 #include "../test_helpers/update_queue_test_access.h"
+#include "ams_backend_snapmaker.h"
 #include "app_globals.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "moonraker_error.h"
+#include "printer_discovery.h"
 #include "printer_state.h"
 #include "snapmaker_nozzle_offset.h"
 
@@ -221,15 +223,16 @@ TEST_CASE_METHOD(NozzleCalFixture, "mock: connect-time reconcile leaves a live r
     CHECK_FALSE(client.nozzle_calibration_active());
 }
 
-TEST_CASE_METHOD(NozzleCalFixture, "mock: shutting down mid-run exits the state",
+TEST_CASE_METHOD(NozzleCalFixture, "mock: leaving a live run before disconnect exits the state",
                  "[mock][snapmaker][nozzle_offset][reconcile]") {
     client.connect("ws://mock/websocket", [] {}, [] {});
     runner.start();
     process_lvgl(1300);
     REQUIRE(client.nozzle_calibration_active());
 
-    SECTION("connected: EXIT goes out") {
-        leave_on_shutdown(runner, &client);
+    SECTION("connected: EXIT goes out and the run ends") {
+        leave_live_run(&client);
+        CHECK(runner.phase() == Runner::Phase::Cancelled);
         process_lvgl(1300);
         CHECK_FALSE(client.nozzle_calibration_active());
         CHECK_FALSE(client.sent(kProbeAbortMethod));
@@ -243,23 +246,68 @@ TEST_CASE_METHOD(NozzleCalFixture, "mock: shutting down mid-run exits the state"
             process_lvgl(1300);
         }
         REQUIRE(runner.probing());
-        leave_on_shutdown(runner, &client);
+        leave_live_run(&client);
         CHECK(client.sent(kProbeAbortMethod));
         process_lvgl(1300);
         CHECK_FALSE(client.nozzle_calibration_active());
     }
     SECTION("no client: the exit is left pending") {
-        leave_on_shutdown(runner, nullptr);
+        leave_live_run(nullptr);
         CHECK(exit_pending());
+        CHECK(runner.phase() == Runner::Phase::Cancelled);
         CHECK(client.nozzle_calibration_active());
     }
     SECTION("an ended run sends nothing") {
         runner.cancel();
         process_lvgl(1300);
         client.methods.clear();
-        leave_on_shutdown(runner, &client);
+        leave_live_run(&client);
         CHECK(client.methods.empty());
     }
+}
+
+TEST_CASE_METHOD(NozzleCalFixture, "mock: reconcile forgets a pending exit once the state is free",
+                 "[mock][snapmaker][nozzle_offset][reconcile]") {
+    reconcile();
+    mark_exit_pending();
+    REQUIRE(exit_pending());
+
+    // The state ended some other way while we were gone.
+    reconcile();
+    CHECK_FALSE(exit_pending());
+
+    // So a later run from another screen is asked about, not ended.
+    enter_state_elsewhere();
+    reconcile();
+    CHECK(asked == 1);
+    CHECK(client.nozzle_calibration_active());
+}
+
+TEST_CASE_METHOD(NozzleCalFixture, "mock: a pending exit belongs to the printer it was left on",
+                 "[mock][snapmaker][nozzle_offset][reconcile]") {
+    client.connect("ws://printer-a/websocket", [] {}, [] {});
+    enter_state_elsewhere();
+    reconcile();
+    REQUIRE(asked == 1);
+    mark_exit_pending();
+
+    RecordingClient other{MoonrakerClientMock::PrinterType::SNAPMAKER_U1, 100.0};
+    other.connect("ws://printer-b/websocket", [] {}, [] {});
+    other.send_jsonrpc(
+        "printer.gcode.script", json{{"script", "EXTRUDER_OFFSET_ACTION_PRESTART"}},
+        [](const json&) {}, [](const MoonrakerError&) {});
+    process_lvgl(1300);
+    REQUIRE(other.nozzle_calibration_active());
+
+    reconcile_on_connect(other, [this] { ++asked; });
+    process_lvgl(1300);
+    CHECK(asked == 2);
+    CHECK(other.nozzle_calibration_active());
+
+    // Back on the printer it was left on, it is ours again.
+    reconcile();
+    CHECK(asked == 2);
+    CHECK_FALSE(client.nozzle_calibration_active());
 }
 
 TEST_CASE_METHOD(NozzleCalFixture, "mock: connect-time reconcile sends nothing when idle",
@@ -282,7 +330,7 @@ TEST_CASE_METHOD(NozzleCalFixture, "mock: connect-time reconcile sends nothing w
     CHECK_FALSE(client.nozzle_calibration_active());
 }
 
-TEST_CASE_METHOD(NozzleCalFixture, "mock: the overlay exits a live run when the app shuts down",
+TEST_CASE_METHOD(NozzleCalFixture, "mock: teardown's before_disconnect ends the overlay's live run",
                  "[mock][snapmaker][nozzle_offset][reconcile]") {
     helix::PrinterState state;
     state.init_subjects(false);
@@ -292,6 +340,20 @@ TEST_CASE_METHOD(NozzleCalFixture, "mock: the overlay exits a live run when the 
     set_moonraker_api(&api);
     set_moonraker_client(&client);
 
+    nlohmann::json objects = json::array({"gcode_macro _EXTRUDER_OFFSET_ACTION_PRESTART",
+                                          "gcode_macro _EXTRUDER_OFFSET_ACTION_EXIT"});
+    for (int t = 0; t < kHeads; ++t) {
+        for (const char* step :
+             {"HEAT", "AUTO_CLEAN", "MANUAL_CLEAN", "WAIT_COOL", "PROBE_CALIBRATE"}) {
+            objects.push_back(std::string("gcode_macro _EXTRUDER_OFFSET_ACTION_") + step + "_T" +
+                              std::to_string(t));
+        }
+    }
+    helix::PrinterDiscovery hw;
+    hw.parse_objects(objects);
+    helix::AmsBackendSnapmaker backend(&api, &client);
+    backend.set_discovery(hw);
+
     auto& overlay = helix::ui::get_snapmaker_nozzle_offset_overlay();
     overlay.runner().start();
     for (int guard = 0; guard < 20 && !client.nozzle_calibration_active(); ++guard) {
@@ -300,13 +362,14 @@ TEST_CASE_METHOD(NozzleCalFixture, "mock: the overlay exits a live run when the 
     REQUIRE(client.nozzle_calibration_active());
     REQUIRE(run_live());
 
-    overlay.on_deactivating(DeactivateReason::Shutdown);
+    // PrinterSession::teardown_printer_scope reaches the backend through
+    // AmsState::before_disconnect() while the client is still connected
+    // (tests/shell/test_teardown_order_gate.bats pins that order).
+    backend.before_disconnect();
+    CHECK(overlay.runner().phase() == Runner::Phase::Cancelled);
     process_lvgl(1300);
     CHECK_FALSE(client.nozzle_calibration_active());
 
-    // Leave the singleton's run ended for the tests after this one.
-    overlay.runner().cancel();
-    process_lvgl(1300);
     helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     overlay.runner().reset();
     set_moonraker_client(nullptr);

@@ -308,6 +308,17 @@ void AmsBackendSnapmaker::set_discovery(const helix::PrinterDiscovery& discovery
     nozzle_offset_supported_ = snapmaker::nozzle_offset::supported(discovery);
 }
 
+void AmsBackendSnapmaker::before_disconnect() {
+    bool nozzle_offset = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        nozzle_offset = nozzle_offset_supported_;
+    }
+    if (nozzle_offset) {
+        snapmaker::nozzle_offset::leave_live_run(client_);
+    }
+}
+
 void AmsBackendSnapmaker::on_started() {
     // A run whose driver died leaves the firmware in its offset calibration
     // state with heaters on. One this process owned is ended; one it did not
@@ -2564,6 +2575,9 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
         }
         if (const auto main_state = snapmaker::screws_tilt::main_state_from_status(status)) {
             main_state_ = *main_state;
+            if (*main_state != snapmaker::nozzle_offset::kMainStateXyzOffsetCalibrate) {
+                snapmaker::nozzle_offset::clear_exit_pending();
+            }
         }
 
         apply_extension_locked(status, fx.changed);

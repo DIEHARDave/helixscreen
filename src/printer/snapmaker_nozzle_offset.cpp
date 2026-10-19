@@ -14,6 +14,11 @@
 #include <spdlog/spdlog.h>
 
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <memory>
+#include <mutex>
+#include <optional>
 
 namespace helix::snapmaker::nozzle_offset {
 
@@ -26,8 +31,14 @@ constexpr std::array<const char*, 5> kPerHeadHooks = {"HEAT", "AUTO_CLEAN", "MAN
 /// Runners in this process that are mid-run.
 std::atomic<int> s_live_runs{0};
 
-/// A run here ended without its EXIT confirmed.
-std::atomic<bool> s_exit_pending{false};
+/// The printer reconcile_on_connect() last named (its URL), and the printer a
+/// run here left its EXIT unconfirmed on. Replies land on the WebSocket thread.
+std::mutex s_pending_mutex;
+std::string s_printer;
+std::optional<std::string> s_pending_for;
+
+/// The Runner most recently gone live. Main thread only.
+Runner* s_live_runner = nullptr;
 
 bool phase_is_live(Runner::Phase phase) {
     return phase == Runner::Phase::Running || phase == Runner::Phase::AwaitingUser ||
@@ -188,15 +199,18 @@ HeldState held_state_action(const nlohmann::json& response, bool live, bool pend
 }
 
 void mark_exit_pending() {
-    s_exit_pending.store(true);
+    std::lock_guard<std::mutex> lock(s_pending_mutex);
+    s_pending_for = s_printer;
 }
 
 bool exit_pending() {
-    return s_exit_pending.load();
+    std::lock_guard<std::mutex> lock(s_pending_mutex);
+    return s_pending_for && *s_pending_for == s_printer;
 }
 
 void clear_exit_pending() {
-    s_exit_pending.store(false);
+    std::lock_guard<std::mutex> lock(s_pending_mutex);
+    s_pending_for.reset();
 }
 
 void send_exit(helix::IMoonrakerClient& client) {
@@ -224,12 +238,22 @@ void send_probe_abort(helix::IMoonrakerClient& client) {
 }
 
 void reconcile_on_connect(helix::IMoonrakerClient& client, std::function<void()> ask_user) {
+    {
+        std::lock_guard<std::mutex> lock(s_pending_mutex);
+        s_printer = client.get_last_url();
+    }
     nlohmann::json params = {
         {"objects", {{"machine_state_manager", nlohmann::json::array({"main_state"})}}}};
     client.send_jsonrpc(
         "printer.objects.query", params,
         [&client, ask_user = std::move(ask_user)](const nlohmann::json& response) {
             // Decided at answer time: a run started since the query went out owns the state.
+            const nlohmann::json* status = status_map(response);
+            const auto main_state =
+                status ? screws_tilt::main_state_from_status(*status) : std::nullopt;
+            if (main_state && *main_state != kMainStateXyzOffsetCalibrate) {
+                clear_exit_pending();
+            }
             switch (held_state_action(response, run_live(), exit_pending())) {
             case HeldState::None:
                 return;
@@ -251,23 +275,70 @@ void reconcile_on_connect(helix::IMoonrakerClient& client, std::function<void()>
         0, true);
 }
 
-void leave_on_shutdown(const Runner& runner, helix::IMoonrakerClient* client) {
+namespace {
+
+/// Sends EXIT and blocks until its reply or @p timeout_ms. A send queued right
+/// before disconnect() can sit in libhv's loop and never reach the socket; the
+/// reply proves Klipper got it. Bounded, so a dead link cannot hold teardown.
+bool send_exit_and_wait(helix::IMoonrakerClient& client, uint32_t timeout_ms) {
+    struct Reply {
+        std::mutex mutex;
+        std::condition_variable cv;
+        bool done = false;
+    };
+    auto reply = std::make_shared<Reply>();
+    const auto finish = [reply] {
+        {
+            std::lock_guard<std::mutex> lock(reply->mutex);
+            reply->done = true;
+        }
+        reply->cv.notify_all();
+    };
+    client.send_jsonrpc(
+        "printer.gcode.script", {{"script", kExitGcode}},
+        [finish](const nlohmann::json&) {
+            clear_exit_pending();
+            spdlog::info("[NozzleOffsetCal] Calibration state cleared");
+            finish();
+        },
+        [finish](const MoonrakerError& err) {
+            mark_exit_pending();
+            spdlog::warn("[NozzleOffsetCal] {} failed: {}", kExitGcode, err.message);
+            finish();
+        },
+        kStepTimeoutMs, true);
+    std::unique_lock<std::mutex> lock(reply->mutex);
+    return reply->cv.wait_for(lock, std::chrono::milliseconds(timeout_ms),
+                              [&reply] { return reply->done; });
+}
+
+} // namespace
+
+void leave_live_run(helix::IMoonrakerClient* client) {
+    Runner* runner = s_live_runner;
     // Finishing already has its EXIT in flight.
-    const auto phase = runner.phase();
-    if (phase != Runner::Phase::Running && phase != Runner::Phase::AwaitingUser) {
+    if (!runner || (runner->phase() != Runner::Phase::Running &&
+                    runner->phase() != Runner::Phase::AwaitingUser)) {
         return;
     }
+    const bool probing = runner->probing();
+    runner->abandon();
     if (!client || client->get_connection_state() != helix::ConnectionState::CONNECTED) {
-        spdlog::warn("[NozzleOffsetCal] Shutting down mid-run with no connection; the "
-                     "calibration state stays held");
+        spdlog::warn("[NozzleOffsetCal] Leaving a run with no connection; the calibration "
+                     "state stays held");
         mark_exit_pending();
         return;
     }
-    spdlog::info("[NozzleOffsetCal] Shutting down mid-run; exiting the calibration state");
-    if (runner.probing()) {
+    spdlog::info("[NozzleOffsetCal] Leaving a run before disconnect; exiting the calibration "
+                 "state");
+    if (probing) {
         send_probe_abort(*client);
     }
-    send_exit(*client);
+    if (!send_exit_and_wait(*client, kTeardownExitWaitMs)) {
+        spdlog::warn("[NozzleOffsetCal] No reply to {} within {}ms", kExitGcode,
+                     kTeardownExitWaitMs);
+        mark_exit_pending();
+    }
 }
 
 // ============================================================================
@@ -279,6 +350,9 @@ Runner::Runner(Hooks hooks) : hooks_(std::move(hooks)), steps_(build_sequence())
 Runner::~Runner() {
     if (phase_is_live(phase_)) {
         s_live_runs.fetch_sub(1);
+    }
+    if (s_live_runner == this) {
+        s_live_runner = nullptr;
     }
 }
 
@@ -328,6 +402,15 @@ void Runner::cancel() {
     }
     spdlog::info("[NozzleOffsetCal] Cancelled at step {}", index_);
     send_exit(Phase::Cancelled);
+}
+
+void Runner::abandon() {
+    if (phase_ != Phase::Running && phase_ != Phase::AwaitingUser) {
+        return;
+    }
+    ++run_;
+    spdlog::info("[NozzleOffsetCal] Run abandoned at step {}", index_);
+    set_phase(Phase::Cancelled);
 }
 
 bool Runner::probing() const {
@@ -405,6 +488,11 @@ void Runner::set_phase(Phase phase) {
     const bool is_live = phase_is_live(phase);
     if (is_live != was_live) {
         s_live_runs.fetch_add(is_live ? 1 : -1);
+    }
+    if (is_live) {
+        s_live_runner = this;
+    } else if (s_live_runner == this) {
+        s_live_runner = nullptr;
     }
     phase_ = phase;
     if (hooks_.changed) {
