@@ -133,7 +133,7 @@ struct DecodedThumbnail {
  *
  * @p Inflate wraps a miniz tinfl-compatible streaming inflater (the ESP32 ROM's
  * on the firmware) and the allocator the decode uses:
- *   - `Decompressor` and `static constexpr size_t WINDOW` (32KB for tinfl);
+ *   - `Decompressor` and `static constexpr size_t kWindow` (32KB for tinfl);
  *   - `static void init(Decompressor*)`;
  *   - `static int step(Decompressor*, const uint8_t* in, size_t* in_size,
  *      uint8_t* window, uint8_t* next, size_t* out_size, bool more_input)`,
@@ -175,7 +175,7 @@ DecodedThumbnail decode_png_thumbnail(const uint8_t* png, size_t size, int max_w
     out.p = into ? nullptr : Inflate::alloc(rgb565a8_size(result.dims));
     uint8_t* const pixels = into ? into : static_cast<uint8_t*>(out.p);
     inflater.p = Inflate::alloc(sizeof(typename Inflate::Decompressor));
-    window.p = Inflate::alloc(Inflate::WINDOW);
+    window.p = Inflate::alloc(Inflate::kWindow);
     auto* scaler =
         new (std::nothrow) RowDownscaler(header.width, header.height, result.dims, pixels);
     std::unique_ptr<RowDownscaler> scaler_owner(scaler);
@@ -206,14 +206,14 @@ DecodedThumbnail decode_png_thumbnail(const uint8_t* png, size_t size, int max_w
         bool inflate(const uint8_t* in, size_t left, bool more_input) {
             for (;;) {
                 size_t in_size = left;
-                size_t out_size = Inflate::WINDOW - at;
+                size_t out_size = Inflate::kWindow - at;
                 status = Inflate::step(d, in, &in_size, window, window + at, &out_size, more_input);
                 in += in_size;
                 left -= in_size;
                 if (out_size && !rows->feed(window + at, out_size)) {
                     return false;
                 }
-                at = (at + out_size) & (Inflate::WINDOW - 1);
+                at = (at + out_size) & (Inflate::kWindow - 1);
                 if (status < 0) {
                     return false;
                 }

@@ -659,9 +659,9 @@ class BacklightBackendBrightnessCli : public BacklightBackend {
 
     // True when the Sonic Pad `brightness` helper is installed.
     static bool binary_present() {
-        static const char* PATHS[] = {"/usr/bin/brightness", "/bin/brightness",
-                                      "/usr/sbin/brightness", "/sbin/brightness"};
-        for (const char* p : PATHS) {
+        static const char* kPaths[] = {"/usr/bin/brightness", "/bin/brightness",
+                                       "/usr/sbin/brightness", "/sbin/brightness"};
+        for (const char* p : kPaths) {
             if (access(p, X_OK) == 0) {
                 return true;
             }

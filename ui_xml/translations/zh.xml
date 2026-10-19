@@ -106,6 +106,7 @@
   <translation tag="2. Place paper between nozzle and bed" zh="2. 将纸张放在喷嘴和热床之间"/>
   <translation tag="2. Results show how much to turn each screw" zh="2. 结果显示每个螺丝需要旋转多少"/>
   <translation tag="2. Take the PEI sheet off the bed when asked" zh="2. 提示时从热床上取下 PEI 板"/>
+  <translation tag="2.4 GHz only" zh="仅 2.4 GHz"/>
   <translation tag="20 minutes" zh="20分钟"/>
   <translation tag="24 Hour" zh="24 小时"/>
   <translation tag="24-hour" zh="24小时制"/>
@@ -834,6 +835,7 @@
   <translation tag="Could not save the drying state: nothing was heated" zh="无法保存烘干状态:未进行任何加热"/>
   <translation tag="Could not save the mesh as &apos;{}&apos;: {}" zh="无法将网格保存为 &apos;{}&apos;：{}"/>
   <translation tag="Could not save the printer image tags" zh="保存打印机图片标记失败"/>
+  <translation tag="Could not set the WiFi country" zh="无法设置 WiFi 地区"/>
   <translation tag="Could not skip {}" zh="无法跳过 {}"/>
   <translation tag="Could not start Bluetooth discovery" zh="无法启动蓝牙发现"/>
   <translation tag="Could not turn the heaters off" zh="无法关闭加热"/>
@@ -846,6 +848,8 @@
   <translation tag="Couldn&apos;t save the material name" zh="无法保存材料名称"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" zh="无法保存打印机的通道映射"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." zh="无法保存到 Spoolman。此打印机上未做任何更改。"/>
+  <translation tag="Couldn&apos;t set the backup" zh="无法设置备用"/>
+  <translation tag="Country" zh="地区"/>
   <translation tag="Cover open" zh="盖子未关闭"/>
   <translation tag="Crash Report" zh="崩溃报告"/>
   <translation tag="Crash report sent — thank you!" zh="崩溃报告已发送 — 谢谢！"/>
@@ -2214,6 +2218,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." zh="没有足够的空间放置此小组件。请重新排列或移除小组件以腾出空间。"/>
   <translation tag="Not in your spools? Set it up" zh="不在您的料盘中？立即设置"/>
   <translation tag="Not now" zh="暂不"/>
+  <translation tag="Not set" zh="未设置"/>
   <translation tag="Not turned" zh="未转动"/>
   <translation tag="Not yet available on this display" zh="此屏幕暂不支持"/>
   <translation tag="Not yet calibrated" zh="尚未校准"/>

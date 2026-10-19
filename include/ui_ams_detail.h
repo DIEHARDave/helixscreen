@@ -184,14 +184,11 @@ void ams_detail_sync_slot_states(lv_obj_t* slot_widgets[], int slot_count,
 /**
  * @brief Dispatch the context-menu actions that are pure backend calls
  *
- * AmsPanel and AmsOverviewPanel each wire their own AmsContextMenu action
- * callback, and the two switches drifted: Overview was missing EJECT,
- * SELECT_GATE, CHECK_GATE and CLEAR_SPOOL entirely, so those fell through its
- * `default:` and were swallowed without a toast or a log line. Multi-unit
- * setups render the Overview, so every AFC user with two units had a dead
- * Eject button (prestonbrown/helixscreen#1258).
+ * AmsPanel and AmsOverviewPanel both route their slot menus through this, so
+ * neither can swallow one of these actions in its own `default:`
+ * (prestonbrown/helixscreen#1258).
  *
- * These five actions need nothing from the owning panel except the path canvas,
+ * These actions need nothing from the owning panel except the path canvas,
  * so they live here rather than in either panel. Panel-specific actions (EDIT,
  * SPOOLMAN, SCAN_QR, LOAD/UNLOAD's sidebar routing) stay with their panel —
  * they open panel-owned modals and have no single shared form.

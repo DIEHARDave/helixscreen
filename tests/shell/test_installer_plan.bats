@@ -361,6 +361,7 @@ _cp_setup() {
     INIT_SYSTEM=systemd KLIPPER_USER=pi UI_UTF8=0
     MISSING_RUNTIME_DEPS="" MISSING_UNZIP_PKG="" COMPETING_UIS_FOUND=""
     MOONRAKER_ADDS="" KIAUH_DIR="" PROBE_SIZE_TEXT="" DISK_CHECK_DEFERRED=""
+    KIAUH_SUDO="" KIAUH_WRITE_SKIPPED=""
 }
 
 @test "confirm_point on a dry run shows the plan and exits 0 with nothing written" {
@@ -699,6 +700,22 @@ _fn_body() {
     MISSING_RUNTIME_DEPS="libdrm2"
     run confirm_point pi v1.2.3
     contains "  sudo       needed for: service, libraries, udev and polkit rules" "$output"
+}
+
+@test "the plan names a KIAUH it will write with sudo, and one it has to skip" {
+    _cp_setup
+    _has_no_new_privs() { return 1; }
+    DRY_RUN=true SUDO=sudo
+    KIAUH_DIR=/home/mks/kiauh/kiauh/extensions KIAUH_SUDO=1
+    run confirm_point pi v1.2.3
+    contains "  Add        KIAUH extension" "$output"
+    contains "  sudo       needed for: service, KIAUH extension, udev and polkit rules" "$output"
+    lacks "  KIAUH      found" "$output"
+
+    KIAUH_DIR="" KIAUH_SUDO="" KIAUH_WRITE_SKIPPED=/home/mks/kiauh/kiauh/extensions SUDO=""
+    run confirm_point pi v1.2.3
+    lacks "KIAUH extension" "$output"
+    contains "  KIAUH      found at /home/mks/kiauh/kiauh/extensions, not writable without sudo: extension skipped" "$output"
 }
 
 @test "the plan has no sudo row under NoNewPrivileges, where sudo cannot run" {

@@ -185,4 +185,10 @@ class PrintStartCollectorTestAccess {
                                         std::vector<helix::PreprintEntry> entries) {
         c.predictor_.load_entries(entries, helix::StartCondition::COLD);
     }
+
+    /// The phases this run's start said it runs and skips; nullopt until told.
+    static std::optional<helix::PreprintPhaseOverrides> phase_overrides(PrintStartCollector& c) {
+        std::lock_guard<std::mutex> lock(c.state_mutex_);
+        return c.phase_overrides_;
+    }
 };

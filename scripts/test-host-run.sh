@@ -84,6 +84,8 @@ set -euo pipefail
 
 HOST="${HELIX_TEST_HOST:-}"
 CONTAINER="${HELIX_TEST_CONTAINER:-helix-test}"
+# safe.directory for every git in a container exec, set without writing config.
+GIT_SAFE_ENV="-e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e 'GIT_CONFIG_VALUE_0=*'"
 WORKDIR="${HELIX_TEST_WORKDIR:-/work/helixscreen}"       # the --commit checkout
 # On the test host, relative to the ssh user's home unless absolute; it is the
 # same directory the container sees as TREES.
@@ -718,7 +720,10 @@ fi
 
 # The heredoc runs on the test host. docker needs sudo -n there (the ssh user
 # need not be in the docker group), and git inside the container looks at a
-# host-owned checkout, hence safe.directory.
+# host-owned checkout, hence safe.directory. Every exec passes it in the
+# environment (GIT_CONFIG_*), which reaches git under make and submodule too:
+# concurrent runs share one container, and a `git config --global` write from
+# each races on /root/.gitconfig.lock and fails one of them.
 # shellcheck disable=SC2087  # client-side expansion is the point: the sha, the
 # container name and the caller's arguments are resolved HERE, and the one value
 # that has to stay server-side ($1 in D) is escaped.
@@ -796,14 +801,13 @@ fi
 # docker exec fails several steps before anything explains why.
 $(container_up)
 
-D() { sudo -n docker exec -w "$RUNDIR" -e CCACHE_DIR="$CCACHE" -e HELIX_J="\$HELIX_J" -e HELIX_JFLAG="\$HELIX_JFLAG" "$CONTAINER" bash -lc "\$1"; }
+D() { sudo -n docker exec -w "$RUNDIR" $GIT_SAFE_ENV -e CCACHE_DIR="$CCACHE" -e HELIX_J="\$HELIX_J" -e HELIX_JFLAG="\$HELIX_JFLAG" "$CONTAINER" bash -lc "\$1"; }
 
 # Before git touches the --commit checkout. A mirror run waited before its sync;
 # this second wait costs one docker exec.
 $(orphan_wait)
 
 if [ "$MODE" = commit ]; then
-    D 'git config --global --add safe.directory "*"' >/dev/null
     # Submodules are fetched by the update below, for $SHA's pins only. Recursing
     # here fetches the pin of every new superproject commit, and one pin to a
     # submodule commit that was rebased away before pushing fails the whole fetch.
@@ -829,7 +833,7 @@ if [ -n "\$POOL_ENV" ]; then
     # build; inside, the container opens the FIFO and exports MAKEFLAGS. The
     # FIFO is mode 600, so a container uid that is not root (or is a remapped
     # root) cannot open it; that run takes its own -j instead.
-    "\$JP" exec -- sudo -n docker exec -w "$RUNDIR" -e CCACHE_DIR="$CCACHE" -e HELIX_J="\$HELIX_J" -e HELIX_JFLAG= "$CONTAINER" bash -lc \
+    "\$JP" exec -- sudo -n docker exec -w "$RUNDIR" $GIT_SAFE_ENV -e CCACHE_DIR="$CCACHE" -e HELIX_J="\$HELIX_J" -e HELIX_JFLAG= "$CONTAINER" bash -lc \
         "if { \$POOL_ENV; } 2>/dev/null; then :; else "'echo "→ uid \$(id -u) cannot open the jobpool FIFO; using -j\$HELIX_J"; HELIX_JFLAG=-j\$HELIX_J; fi; $CMD 2>&1'
 else
     D '$CMD 2>&1'

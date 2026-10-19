@@ -2213,6 +2213,40 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
 }
 
 TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
+                 "With a phase toggled off, print details and the countdown still agree",
+                 "[print][collector][eta][estimate]") {
+    PreprintConfigScope config;
+    const int mesh = static_cast<int>(PrintStartPhase::BED_MESH);
+    for (int64_t stamp : {1000, 2000}) {
+        helix::PreprintEntry e;
+        e.total_seconds = 400;
+        e.timestamp = stamp;
+        e.temp_bucket = 1;
+        e.window = helix::PreprintWindow::PrinterEdge;
+        e.phase_durations = {{static_cast<int>(PrintStartPhase::HOMING), 20}, {mesh, 150}};
+        helix::PreprintPredictor::append_to_config(e);
+    }
+
+    set_all_temps(250, 600, 250, 2200); // bed 25/60C, nozzle 25/220C
+    PrintPreparationManager details;
+    details.set_dependencies(nullptr, &state());
+    details.set_option_state_provider(
+        [](const std::string& id) { return id == "bed_mesh" ? 0 : -1; });
+    FileMetadata file;
+    file.first_layer_bed_temp = 60.0;
+    file.first_layer_extr_temp = 220.0;
+    details.recalculate_estimate(&file, "countdown.gcode");
+    const int shown = lv_subject_get_int(details.get_preprint_estimate_subject());
+    REQUIRE(shown == 400 - 150);
+
+    collector().start();
+    REQUIRE(PrintStartCollectorTestAccess::get_predicted_total(collector()) == 400.0f);
+    collector().note_phase_overrides({{mesh, false}});
+    CHECK(static_cast<int>(PrintStartCollectorTestAccess::get_predicted_total(collector())) ==
+          shown);
+}
+
+TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
                  "ETA re-baselines when nozzle target rises in stages", "[print][collector][eta]") {
     // K1C heats the nozzle to ~130°C for probing, then to print temp. The
     // second stage is a genuine new input: the recompute (and the anchor
@@ -7989,12 +8023,12 @@ TEST_CASE_METHOD(SilentVoronReplayFixture,
                  "PrintStartCollector: the history entry records the phases its start skipped",
                  "[print][collector][preprint][silent_voron]") {
     const int mesh = static_cast<int>(PrintStartPhase::BED_MESH);
-    const auto run = [&](const std::optional<std::set<int>>& told) {
+    const auto run = [&](const std::optional<helix::PreprintPhaseOverrides>& told) {
         set_all_temps(300, 900, 320, 0);
         collector().start();
         collector().enable_fallbacks();
         if (told) {
-            collector().note_skipped_phases(*told);
+            collector().note_phase_overrides(*told);
         }
         settle();
         clock_.advance(std::chrono::seconds(60));
@@ -8006,7 +8040,8 @@ TEST_CASE_METHOD(SilentVoronReplayFixture,
         settle();
     };
 
-    run(std::set<int>{mesh});
+    run(helix::PreprintPhaseOverrides{{mesh, false},
+                                      {static_cast<int>(PrintStartPhase::QGL), true}});
     run(std::nullopt); // a start nothing told: the last run's list does not carry over
 
     const auto entries = helix::PreprintPredictor::load_entries_from_config();

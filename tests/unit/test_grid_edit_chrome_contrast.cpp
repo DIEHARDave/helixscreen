@@ -108,10 +108,10 @@ TEST_CASE_METHOD(XMLTestFixture, "edit-mode chrome icons clear WCAG AA on their 
     mgr.get_widget_config(panel_id).mark_dirty();
     mgr.clear_panel_config(panel_id);
     auto& config = mgr.get_widget_config(panel_id);
-    constexpr int PAGE_INDEX = 1;
+    constexpr int kPageIndex = 1;
 
     GridEditMode em;
-    em.enter(container, &config, PAGE_INDEX);
+    em.enter(container, &config, kPageIndex);
     em.select_widget(widget);
     REQUIRE(em.selected_widget() == widget);
 

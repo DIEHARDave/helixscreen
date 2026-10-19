@@ -124,7 +124,7 @@ TEST_CASE("Concurrent thumbnail decode survives eviction unlinking beneath it",
 
     constexpr int kDecoderThreads = 4;
     constexpr int kEvictorThreads = 2;
-    constexpr int ROUNDS = 40;
+    constexpr int kRounds = 40;
 
     // Mixed targets on purpose: the crash window had 164/200/300 in flight at
     // once, so every worker writes a differently-sized .bin into one directory.
@@ -152,7 +152,7 @@ TEST_CASE("Concurrent thumbnail decode survives eviction unlinking beneath it",
     decoders.reserve(kDecoderThreads);
     for (int t = 0; t < kDecoderThreads; ++t) {
         decoders.emplace_back([&, t] {
-            for (int r = 0; r < ROUNDS; ++r) {
+            for (int r = 0; r < kRounds; ++r) {
                 const auto& target = targets[static_cast<size_t>((t + r) % targets.size())];
                 // Distinct source identifiers so each thread hashes to its own
                 // output filename most of the time, and collides sometimes —

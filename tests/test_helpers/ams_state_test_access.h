@@ -56,7 +56,7 @@ class AmsStateTestAccess {
     /// The production window, so tests express "just inside" / "just outside"
     /// against the real constant instead of a hardcoded copy of it.
     static constexpr std::chrono::seconds grace_window() {
-        return RunoutGrace::WINDOW;
+        return RunoutGrace::kWindow;
     }
 
     /// Drive the clog-meter subject sync with a hand-built AmsSystemInfo, so

@@ -36,7 +36,7 @@ bool RunoutGrace::consume() {
     }
     armed_ = false;
     const auto age = Clock::now() - armed_at_;
-    if (age >= WINDOW) {
+    if (age >= kWindow) {
         spdlog::debug("[AmsState] Post-unload runout grace expired unused after {}s",
                       std::chrono::duration_cast<std::chrono::seconds>(age).count());
         return false;
@@ -48,7 +48,7 @@ bool RunoutGrace::armed() const {
     std::lock_guard<std::mutex> lock(mutex_);
     // Does NOT clear on expiry: only the consumer spends the shot, so a peek
     // that also disarmed would be a second consumer by another name.
-    return armed_ && (Clock::now() - armed_at_) < WINDOW;
+    return armed_ && (Clock::now() - armed_at_) < kWindow;
 }
 
 void RunoutGrace::mark_slot_unloaded(int slot_index) {
@@ -70,7 +70,7 @@ bool RunoutGrace::was_slot_recently_unloaded(int slot_index) const {
     if (t.time_since_epoch().count() == 0) {
         return false;
     }
-    return (Clock::now() - t) < WINDOW;
+    return (Clock::now() - t) < kWindow;
 }
 
 void RunoutGrace::reset() {

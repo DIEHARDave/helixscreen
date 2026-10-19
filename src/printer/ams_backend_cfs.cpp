@@ -68,7 +68,7 @@ std::string CfsMaterialDb::strip_code(const std::string& code) {
 
 uint32_t CfsMaterialDb::parse_color(const std::string& color_str) {
     if (color_str == "-1" || color_str == "None")
-        return DEFAULT_COLOR;
+        return kDefaultColor;
     // Creality's leading-zero "0RRGGBB" is this firmware's own spelling and is
     // owned here; what is left is ordinary hex, which helix::ams::read_lane_color
     // reads by the same grammar as every other lane-shaped producer. A value
@@ -79,7 +79,7 @@ uint32_t CfsMaterialDb::parse_color(const std::string& color_str) {
     if (hex.size() == 7 && hex[0] == '0')
         hex = hex.substr(1);
     const auto reading = helix::ams::read_lane_color(hex);
-    return reading.kind == helix::ams::ColorReadingKind::Observed ? reading.rgb : DEFAULT_COLOR;
+    return reading.kind == helix::ams::ColorReadingKind::Observed ? reading.rgb : kDefaultColor;
 }
 
 std::string CfsMaterialDb::slot_to_tnn(int global_index) {

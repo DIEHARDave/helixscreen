@@ -28,16 +28,16 @@ using AnchorAlign = ContextMenu::AnchorAlign;
 namespace {
 
 constexpr int32_t kMargin = 10;
-constexpr int32_t GAP = 4;
+constexpr int32_t kGap = 4;
 
 lv_point_t below(lv_point_t card, lv_area_t anchor, lv_point_t bounds,
                  AnchorAlign align = AnchorAlign::Center) {
-    return ContextMenu::compute_card_pos(card, anchor, bounds, kMargin, GAP,
+    return ContextMenu::compute_card_pos(card, anchor, bounds, kMargin, kGap,
                                          AnchorMode::BelowAnchor, align);
 }
 
 lv_point_t at_click(lv_point_t card, int32_t x, int32_t y, lv_point_t bounds) {
-    return ContextMenu::compute_card_pos(card, {x, y, x, y}, bounds, kMargin, GAP,
+    return ContextMenu::compute_card_pos(card, {x, y, x, y}, bounds, kMargin, kGap,
                                          AnchorMode::ClickPoint, AnchorAlign::Center);
 }
 

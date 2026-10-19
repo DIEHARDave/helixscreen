@@ -738,7 +738,7 @@ static void on_delete(lv_event_t* e) {
     if (data->target_label)
         lv_obj_remove_from_subject(data->target_label, nullptr);
 
-    // 2. NOW safe to deinit owned subjects
+    // 2. kNow safe to deinit owned subjects
     lv_subject_deinit(&data->owned_subject);
 }
 ```

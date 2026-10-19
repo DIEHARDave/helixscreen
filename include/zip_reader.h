@@ -123,7 +123,7 @@ template <class Inflate> class ZipEntryInflater {
         if (entry_.method == 8) {
             d_ = static_cast<typename Inflate::Decompressor*>(
                 Inflate::alloc(sizeof(typename Inflate::Decompressor)));
-            window_ = static_cast<uint8_t*>(Inflate::alloc(Inflate::WINDOW));
+            window_ = static_cast<uint8_t*>(Inflate::alloc(Inflate::kWindow));
             if (d_ && window_) {
                 Inflate::init(d_);
             } else {
@@ -197,14 +197,14 @@ template <class Inflate> class ZipEntryInflater {
     template <class Sink> bool inflate(const uint8_t* in, size_t left, bool more, Sink& sink) {
         for (;;) {
             size_t in_size = left;
-            size_t out_size = Inflate::WINDOW - at_;
+            size_t out_size = Inflate::kWindow - at_;
             status_ = Inflate::step(d_, in, &in_size, window_, window_ + at_, &out_size, more);
             in += in_size;
             left -= in_size;
             if (out_size && !emit(window_ + at_, out_size, sink)) {
                 return false;
             }
-            at_ = (at_ + out_size) & (Inflate::WINDOW - 1);
+            at_ = (at_ + out_size) & (Inflate::kWindow - 1);
             if (status_ < 0) {
                 error_ = ZipError::Inflate;
                 return false;

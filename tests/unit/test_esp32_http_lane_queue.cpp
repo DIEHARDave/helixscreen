@@ -100,17 +100,17 @@ TEST_CASE("A submission abandoned after try_acquire() must give its slot back", 
     // to release it itself. Without that, max_depth consecutive spawn failures
     // wedge the lane at "queue full" for the rest of the session even after
     // the condition that blocked the spawn has cleared.
-    constexpr size_t DEPTH = 8; // EspHttpLane::kQueueDepth, as a literal — see below
-    BoundedSlotCounter slots(DEPTH);
+    constexpr size_t kDepth = 8; // EspHttpLane::kQueueDepth, as a literal — see below
+    BoundedSlotCounter slots(kDepth);
 
-    for (size_t attempt = 0; attempt < DEPTH * 3; ++attempt) {
+    for (size_t attempt = 0; attempt < kDepth * 3; ++attempt) {
         REQUIRE(slots.try_acquire()); // never rejects: every prior attempt gave its slot back
         slots.release();              // the abandon path
         REQUIRE(slots.in_flight() == 0);
     }
 
     // The lane is still fully available afterward — nothing leaked.
-    for (size_t i = 0; i < DEPTH; ++i) {
+    for (size_t i = 0; i < kDepth; ++i) {
         REQUIRE(slots.try_acquire());
     }
     REQUIRE_FALSE(slots.try_acquire());

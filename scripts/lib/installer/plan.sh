@@ -105,10 +105,12 @@ confirm_point() { # platform version
     [ -n "$_cp_libs" ] && plan_set Libraries "$_cp_libs (apt)"
     [ -n "${COMPETING_UIS_FOUND:-}" ] && plan_set Disable "$COMPETING_UIS_FOUND"
     [ -n "$_cp_add" ] && plan_set Add "$_cp_add"
+    [ -n "${KIAUH_WRITE_SKIPPED:-}" ] && plan_set KIAUH \
+        "found at $(display_path "$KIAUH_WRITE_SKIPPED"), not writable without sudo: extension skipped"
     [ -n "${DISK_CHECK_DEFERRED:-}" ] && plan_set Disk "would check after sudo"
     # Under NoNewPrivileges sudo cannot run, and the steps that need it skip.
     if [ -n "${SUDO:-}" ] && ! _has_no_new_privs; then
-        plan_set sudo "needed for: service, ${_cp_libs:+libraries, }udev and polkit rules"
+        plan_set sudo "needed for: service, ${_cp_libs:+libraries, }${KIAUH_SUDO:+KIAUH extension, }udev and polkit rules"
     fi
 
     print_banner "$2" "${R2_CHANNEL:-stable}"

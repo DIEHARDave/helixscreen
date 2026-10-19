@@ -46,7 +46,7 @@ class CfsMaterialDb {
     static int tnn_to_slot(const std::string& tnn);
 
     /// Default color for unknown/sentinel slots
-    static constexpr uint32_t DEFAULT_COLOR = 0x808080;
+    static constexpr uint32_t kDefaultColor = 0x808080;
 };
 
 /// Decode CFS key8xx error codes into human-readable AmsAlerts

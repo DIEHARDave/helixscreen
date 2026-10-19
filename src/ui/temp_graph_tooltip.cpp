@@ -185,7 +185,7 @@ std::optional<TempGraphHit> tooltip_hit_test(ui_temp_graph_t* graph, int32_t x, 
 
 lv_area_t temp_graph_tooltip_box_area(const temp_graph_geometry_t& geo, int32_t px, int32_t py,
                                       int32_t box_w, int32_t box_h) {
-    constexpr int32_t GAP = 8;
+    constexpr int32_t kGap = 8;
     const int32_t plot_x2 = geo.cx1 + geo.cw;
     const int32_t plot_y2 = geo.cy1 + geo.ch;
 
@@ -209,7 +209,7 @@ lv_area_t temp_graph_tooltip_box_area(const temp_graph_geometry_t& geo, int32_t 
 
     // Flip below when the point sits in the top third of the plot.
     const bool below = py < geo.cy1 + geo.ch / 3;
-    a.y1 = below ? (py + GAP) : (py - GAP - h);
+    a.y1 = below ? (py + kGap) : (py - kGap - h);
     if (a.y1 + h > plot_y2) {
         a.y1 = plot_y2 - h;
     }

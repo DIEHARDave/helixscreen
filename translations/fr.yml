@@ -112,6 +112,7 @@ translations:
   2. Results show how much to turn each screw: 2. Les résultats indiquent combien
     tourner chaque vis
   2. Take the PEI sheet off the bed when asked: 2. Retirez la plaque PEI du plateau lorsque cela vous est demandé
+  2.4 GHz only: 2,4 GHz seul
   20 minutes: 20 minutes
   24 Hour: 24 heures
   24-hour: 24 heures
@@ -939,6 +940,7 @@ translations:
 
   "Could not save the mesh as '{}': {}": "Impossible d'enregistrer le maillage sous '{}' : {}"
   Could not save the printer image tags: 'Échec de l''enregistrement des repères de l''image'
+  Could not set the WiFi country: Impossible de définir le pays du WiFi
   Could not skip {}: 'Impossible d''ignorer {}'
   Could not start Bluetooth discovery: Impossible de démarrer la découverte Bluetooth
   Could not update filaments: Impossible de mettre à jour les filaments
@@ -951,6 +953,8 @@ translations:
   Couldn't save the material name: 'Impossible d''enregistrer le nom du matériau'
   Couldn't save the printer's gate map: Impossible d'enregistrer la table des gates de l'imprimante
   Couldn't save to Spoolman. Nothing changed on this printer.: Impossible d'enregistrer dans Spoolman. Rien n'a été modifié sur cette imprimante.
+  Couldn't set the backup: Impossible de définir le secours
+  Country: Pays
   Cover open: Capot ouvert
   Crash Report: Rapport de plantage
   Crash report sent — thank you!: Rapport de crash envoyé — merci !
@@ -2451,6 +2455,7 @@ translations:
   Not in your spools? Set it up: Pas dans vos bobines ? Configurez-la
   Not now: Pas maintenant
   Not turned: 'Pas tourné'
+  Not set: Non défini
   Not yet available on this display: 'Pas encore disponible sur cet écran'
   Not yet calibrated: Pas encore calibré
   Notes: Notes

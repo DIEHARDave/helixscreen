@@ -68,7 +68,8 @@ HelixScreen uses a backend abstraction layer to support multiple multi-filament 
 | `include/printer_temperature_state.h` | `ExtruderInfo` struct, multi-extruder dynamic subjects |
 | `include/preflight_validator.h` | Pre-print tool-vs-slot validation; takes bypass as a required input ([§ Bypass suppresses the pre-print filament gates](#bypass-suppresses-the-pre-print-filament-gates)) |
 | `include/print_start_checks.h` | Print-start gate pipeline pure core (context, rules, ordered gate list) |
-| `include/ui_ams_context_menu.h` | Slot context menu (load, unload, edit, spoolman) |
+| `include/ui_ams_context_menu.h` | Slot context menu: actions only (load, unload, check, preload, edit, spoolman) |
+| `include/ui_ams_lane_settings.h` | A lane's Assigned Tool and Endless Spool backup: what the editor's two dropdowns offer, refuse and write |
 | `include/ui_ams_device_operations_overlay.h` | Device operations overlay (home, recover, bypass, etc.) |
 
 ### Data Flow
@@ -1486,10 +1487,22 @@ title's centre line: Choose from Spoolman and Scan QR (`ams_edit_scan_enabled`
 also carries the no-camera build gate). They sit in `header_bar`'s
 `header_content` slot, drawn by `styles.header_icon_button` like the header's own
 `action_icon`, in a row padded by their `ext_click_area` reach so each reaches
-the header's height (or 44px) while staying inside its parent's hit box. The
-same menu carries **Assigned Tool**, shown only where
-`helix::printer::can_write_mapping_table()` says a mapping write lands
-(`ams_slot_tool_row_visible`); the editor itself never remaps tools.
+the header's height (or 44px) while staying inside its parent's hit box.
+
+**The lane's own settings** sit in one row above More (`lane_section`): **Assigned
+Tool**, shown only where `helix::printer::can_write_mapping_table()` says a mapping
+write lands (`ams_edit_tool_row_visible`), and the Endless Spool backup
+(`ams_edit_backup_row_visible`, read-only and disabled per
+`lane_settings::show_backup_row()`), with the `ams_endless_status` line under them.
+They are properties of the lane, not the spool, so they never enter `SlotInfo`: the
+dropdowns stage `LaneSettings`, Save writes the difference through
+`helix::ui::lane_settings` (`set_tool_mapping()`, `set_endless_spool_backup()`)
+before the slot's own commit, and a Save that changed nothing else closes without a
+slot edit. An incompatible backup is refused at the pick, with a toast, and the
+dropdown goes back to what is staged. The colour grid keeps one row of presets
+stacked and two in the short-landscape split column (the rainbow tile opens the
+rest), which keeps the row in view on open at 800x480, 480x320 and 480x272. At
+320x480 the two dropdowns stack and the backup's reaches the fold.
 
 **Identity is a dropdown cascade**: Material (families, Spoolman recents first,
 else PLA/PETG/ABS/ASA/PA/TPU/PC lead), Variant (the family's catalog variants),
@@ -2361,8 +2374,8 @@ Anything that needs one successor per slot calls the projection and never re-der
 Unordered groups project onto a **ring**: `members[i] -> members[i+1]`, last back to first.
 Both entry points agree that the first group to give a slot a successor wins, so they cannot
 disagree on a hand-built config with two successors for one slot. The production caller is
-`AmsContextMenu::get_current_backup_for_slot()` (`src/ui/ui_ams_context_menu.cpp`), whose
-dropdown can show only one backup per slot.
+`helix::ui::lane_settings::backup_of()` (`src/ui/ui_ams_lane_settings.cpp`), behind the spool
+editor's backup dropdown, which can show only one backup per slot.
 
 **Why a ring and not "the first other member".** Pointing every member at the first *other*
 member draws a 4-gate group as 0->1, 1->0, 2->0, 3->0, which says "gate 1 is everyone's
@@ -2447,7 +2460,7 @@ subject-driven and needs no C++ of its own.
 | Surface | Why |
 |---------|-----|
 | AMS panel, inside `slot_area` under the slots | It explains the arrows at the top of that same container. Growth is absorbed by `path_container`, which is `flex_grow="1"` and whose canvas scales. Note it goes in `slot_area`, not directly in `ams_unit_card` — the card has no `flex_flow`, so a second child there stacks *on top of* the slots |
-| Slot context menu, under `backup_dropdown_row` | Where the disabled-or-absent backup dropdown actually is, and the only surface a CFS user reaches at all: CFS hides the dropdown row entirely (no per-slot relation), so without this line tapping a slot said nothing about runout behaviour |
+| Spool editor (`AmsEditOverlay`), under `backup_dropdown_row` | Where the disabled-or-absent backup dropdown actually is, and the only surface a CFS user reaches at all: CFS hides the dropdown row entirely (no per-slot relation), so without this line the editor would say nothing about runout behaviour |
 
 **Not on the filament panel**, despite it being the obvious second home. Its `left_column` is a
 fixed height budget with `temp_graph_card` as the flexible remainder
@@ -2527,8 +2540,8 @@ whenever auto-refill was off.
 CFS, and AD5X IFS in every mode (stock zMod, bambufy, lessWaste), report `Available` while
 leaving `get_endless_spool_config()` unoverridden. That is the truthful answer, not an
 omission: the firmware picks the backup itself and exposes no per-slot mapping to read, so
-the base's empty relation is correct, and it is what keeps the context menu from drawing a
-dropdown that could only ever read "None" (see [Context Menu Actions](#context-menu-actions)).
+the base's empty relation is correct, and it is what keeps the spool editor from drawing a
+dropdown that could only ever read "None" (see [Lane Settings in the Spool Editor](#lane-settings-in-the-spool-editor)).
 
 ---
 
@@ -2683,28 +2696,32 @@ Dryer status flows into `AmsState::sync_dryer_from_backend()` the same way slot 
 
 ## Context Menu Actions
 
-The `AmsContextMenu` (`ui_ams_context_menu.h`) provides per-slot operations:
+The `AmsContextMenu` (`ui_ams_context_menu.h`) is actions only, so it never scrolls: with
+plugin items it goes side by side, and where even that is wider than the screen the groups
+that do not fit wrap under the others (`ContextMenu::decide_column_flow()`).
 
 | Action | Description | Availability |
 |--------|-------------|------------|
 | **Load** | Load filament from this slot | When slot has filament and not at toolhead |
 | **Unload** | Unload filament from extruder | When filament is loaded to extruder |
 | **Eject** | Eject filament from hub back to spool | When hub-loaded but not at toolhead, and `supports_lane_eject()` is true (AFC and Happy Hare) |
-| **Spool Info** | View/edit slot properties (color, material, brand) | When slot has filament |
-| **Spoolman** | Assign a Spoolman spool to this slot | Always |
+| **Check Slot** | Check this gate's sensor | `supports_gate_check()` |
+| **Preload** | Park the lane's filament ready for a later load | `supports_lane_preload()` |
+| **Edit Spool** | Open the spool editor, which also holds the lane's Assigned Tool and Endless Spool backup | Always |
+| **Select Spool** / **Scan QR Code** | Assign a Spoolman spool to this slot | With Spoolman |
+| **Clear Spool** | Clear the slot's assignment | When the slot carries one |
 
-The context menu also includes inline dropdowns for:
+Moving the selector to a gate is the selector menu's (`ams_selector_menu.xml`), not this one's.
 
-- **Tool Mapping**: Assign which tool number maps to this slot (if backend supports it)
-- **Endless Spool Backup**: Set backup slot for runout (if backend supports it)
+## Lane Settings in the Spool Editor
 
-The tool dropdown is populated from `backend->get_tool_mapping()`.
+The editor's Assigned Tool dropdown is populated from `backend->get_tool_mapping()`.
 
 The backup dropdown is populated from `backend->get_endless_spool_config()`, which is a
 *group* relation, projected to this slot's single successor with
 `helix::printer::endless_spool_backup_for()` - the same projection the panel's arrow renderer
 uses (see [Endless Spool](#endless-spool-shared-model)). Its row visibility is the pure
-predicate `AmsContextMenu::decide_show_backup_row(caps, has_relation)`:
+predicate `helix::ui::lane_settings::show_backup_row(caps, cfg, slot)`:
 
 - Not `available()` - hidden.
 - `editable()` - shown, because there is something to write even before anything is set.
@@ -2723,7 +2740,7 @@ non-empty answers are tagged differently, because they mean different things to 
 |---------|--------|-------------|
 | `Eligible` | none | yes |
 | `GradeDiffers` | `(different grade)` | **yes** - same polymer, filled variant; it will print |
-| `Incompatible` | `(incompatible)` | no - `decide_backup_refused()` bounces it with a toast |
+| `Incompatible` | `(incompatible)` | no - `lane_settings::backup_refused()` bounces it with a toast |
 
 `GradeDiffers` is the only verdict where the label and the refusal deliberately disagree, and
 it is why the enum exists: refusing a PLA-CF backup for a PLA lane would leave a print dead at

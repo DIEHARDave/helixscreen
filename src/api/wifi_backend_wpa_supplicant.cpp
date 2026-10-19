@@ -11,7 +11,10 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
+#include "system/run_capture.h"
 #include "wifi_5ghz_detection.h"
+#include "wifi_country.h"
+#include "wifi_regdomain.h"
 #include "wifi_saved_config.h"
 
 // find_network_id() is pure string parsing with no OS dependency, and its
@@ -239,6 +242,16 @@ ScanTrigger classify_scan_reply(const std::string& reply) {
 }
 } // namespace helix::wifi::detail
 
+/// The process table the daemon scans read. HELIX_WPA_PROC_ROOT is the test
+/// seam, like HELIX_WPA_NET_SYSFS: every scan opens each live PID's cmdline,
+/// and on a host with tens of thousands of processes (a container that never
+/// reaps its zombies) a scan costs a second, which is enough to push init_wpa()
+/// past start()'s 5 s wait.
+static std::string wpa_proc_root() {
+    const char* root = std::getenv("HELIX_WPA_PROC_ROOT");
+    return (root != nullptr && root[0] != '\0') ? std::string(root) : "/proc";
+}
+
 /// Inspect running processes for a `wpa_supplicant` daemon and return the
 /// control-interface directory it was launched with.
 ///
@@ -256,10 +269,11 @@ ScanTrigger classify_scan_reply(const std::string& reply) {
 /// its per-PID precedence/fallthrough is load-bearing, so it is left alone.
 static std::string detect_wpa_conf_path_from_proc() {
     std::error_code ec;
-    if (!fs::is_directory("/proc", ec))
+    const std::string proc = wpa_proc_root();
+    if (!fs::is_directory(proc, ec))
         return {};
 
-    for (const auto& entry : fs::directory_iterator("/proc", ec)) {
+    for (const auto& entry : fs::directory_iterator(proc, ec)) {
         if (ec)
             break;
         const std::string name = entry.path().filename().string();
@@ -290,10 +304,11 @@ static std::string detect_wpa_conf_path_from_proc() {
 
 static std::string detect_wpa_ctrl_dir_from_proc() {
     std::error_code ec;
-    if (!fs::is_directory("/proc", ec))
+    const std::string proc = wpa_proc_root();
+    if (!fs::is_directory(proc, ec))
         return {};
 
-    for (const auto& entry : fs::directory_iterator("/proc", ec)) {
+    for (const auto& entry : fs::directory_iterator(proc, ec)) {
         if (ec)
             break;
         // PID directories only.
@@ -1049,6 +1064,7 @@ static std::string describe_conf_access(const std::string& path) {
 
 void WifiBackendWpaSupplicant::resolve_and_store_interface() {
     helix::wifi::Roots roots;
+    roots.proc = wpa_proc_root();
     roots.ctrl = resolve_wpa_ctrl_directory();
 
     if (roots.ctrl.empty()) {
@@ -1194,6 +1210,9 @@ std::string WifiBackendWpaSupplicant::map_event_to_callback(const std::string& e
     if (event.find("CTRL-EVENT-DISCONNECTED") != std::string::npos) {
         return "DISCONNECTED";
     }
+    if (event.find("CTRL-EVENT-REGDOM-CHANGE") != std::string::npos) {
+        return "REGDOM_CHANGE";
+    }
     // Auth failures can come in multiple forms
     if (event.find("CTRL-EVENT-SSID-TEMP-DISABLED") != std::string::npos &&
         event.find("WRONG_KEY") != std::string::npos) {
@@ -1204,7 +1223,7 @@ std::string WifiBackendWpaSupplicant::map_event_to_callback(const std::string& e
     }
 
     // Informational events - no callback needed
-    // SCAN-STARTED, BSS-ADDED, BSS-REMOVED, REGDOM-CHANGE, SIGNAL-CHANGE, etc.
+    // SCAN-STARTED, BSS-ADDED, BSS-REMOVED, REGDOM-BEACON-HINT, SIGNAL-CHANGE, etc.
     return "";
 }
 
@@ -2076,6 +2095,48 @@ WifiBackend::ConnectionStatus WifiBackendWpaSupplicant::get_status() {
     return status;
 }
 
+WiFiError WifiBackendWpaSupplicant::get_country(std::string& code) {
+    code.clear();
+    if (!is_running()) {
+        return WiFiError(WiFiResult::NOT_INITIALIZED, "Backend not started");
+    }
+    // The kernel's domain is what the radio runs under. wpa_supplicant's
+    // GET country reads only its own config, which is unset wherever the
+    // domain came from somewhere else (cfg80211's ieee80211_regdom, crda).
+    if (const auto kernel = helix::wifi::regdomain::read_country()) {
+        code = *kernel;
+        return WiFiErrorHelper::success();
+    }
+    const std::string reply = send_command("GET country");
+    if (reply.empty()) {
+        return WiFiErrorHelper::connection_failed("No response from wpa_supplicant GET country");
+    }
+    // "FAIL" is how wpa_supplicant says no country is configured.
+    code = helix::wifi::country::parse_wpa_get_country(reply);
+    return WiFiErrorHelper::success();
+}
+
+WiFiError WifiBackendWpaSupplicant::set_country(const std::string& code) {
+    const std::string clean = helix::wifi::country::normalize(code);
+    if (clean.empty()) {
+        return WiFiError(WiFiResult::INVALID_PARAMETERS, "Not an ISO 3166-1 alpha-2 country");
+    }
+    if (!is_running()) {
+        return WiFiError(WiFiResult::NOT_INITIALIZED, "Backend not started");
+    }
+    const std::string reply = send_command("SET country " + clean);
+    if (reply.rfind("OK", 0) != 0) {
+        return WiFiError(WiFiResult::BACKEND_ERROR,
+                         "wpa_supplicant SET country " + clean + " failed: " + reply);
+    }
+    // The setting is reapplied at every start, so a SAVE_CONFIG that does not
+    // persist costs only the window before HelixScreen starts.
+    const std::string save = send_command("SAVE_CONFIG");
+    spdlog::info("[WifiBackend] Country set to {} (SAVE_CONFIG: {})", clean,
+                 save.rfind("OK", 0) == 0 ? "ok" : "not saved");
+    return WiFiErrorHelper::success();
+}
+
 bool WifiBackendWpaSupplicant::supports_5ghz() const {
     return supports_5ghz_cached_;
 }
@@ -2096,21 +2157,13 @@ void WifiBackendWpaSupplicant::resolve_5ghz_support() {
 
         // Fallback: try iw phy info
         // Find phy name from /sys/class/net/wlan0/phy80211/name (or similar)
-        FILE* pipe = popen("iw phy phy0 info 2>/dev/null", "r");
-        if (pipe) {
-            std::string iw_output;
-            char buf[256];
-            while (fgets(buf, sizeof(buf), pipe)) {
-                iw_output += buf;
-            }
-            pclose(pipe);
-
-            if (wifi_parse_iw_phy_has_5ghz(iw_output)) {
-                supports_5ghz_cached_ = true;
-                supports_5ghz_resolved_ = true;
-                spdlog::debug("[WifiBackend] 5GHz support detected via iw phy info");
-                return;
-            }
+        int iw_exit = -1;
+        const std::string iw_output = helix::run_capture("iw phy phy0 info 2>/dev/null", iw_exit);
+        if (wifi_parse_iw_phy_has_5ghz(iw_output)) {
+            supports_5ghz_cached_ = true;
+            supports_5ghz_resolved_ = true;
+            spdlog::debug("[WifiBackend] 5GHz support detected via iw phy info");
+            return;
         }
 
         supports_5ghz_resolved_ = true;

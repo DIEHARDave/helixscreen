@@ -44,7 +44,7 @@ constexpr float kCardGap = 0.12f;
 /// Between groups in a row, where the colon sits.
 constexpr float kGroupGap = 0.6f;
 /// Between rows when the groups stack.
-constexpr float ROW_GAP = 0.3f;
+constexpr float kRowGap = 0.3f;
 constexpr float kColonR = kGlyphStroke * 0.55f;
 constexpr float kCaptionGap = 0.2f;
 constexpr float kCaptionH = 0.45f;
@@ -77,7 +77,7 @@ Metrics metrics_for(int32_t unit) {
     m.card_h = m.glyph_h + 2 * m.pad_y;
     m.card_gap = std::max(1, px(kCardGap));
     m.group_gap = px(kGroupGap);
-    m.row_gap = px(ROW_GAP);
+    m.row_gap = px(kRowGap);
     m.caption_gap = px(kCaptionGap);
     m.caption_h = std::max(kMinCaptionH, px(kCaptionH));
     return m;
@@ -114,7 +114,7 @@ Arrangement arrange(int32_t w, int32_t h, const FlipShape& shape) {
                                FILL * static_cast<float>(h) / (card_h + tail));
     const float col =
         std::min(FILL * static_cast<float>(w) / group_width(widest_group(shape), card_w, kCardGap),
-                 FILL * static_cast<float>(h) / (groups * card_h + (groups - 1) * ROW_GAP + tail));
+                 FILL * static_cast<float>(h) / (groups * card_h + (groups - 1) * kRowGap + tail));
     Arrangement a{};
     a.column = shape.group_count > 1 && col > row;
     a.unit = std::max(1, static_cast<int32_t>(std::floor(a.column ? col : row)));

@@ -27,15 +27,19 @@
 #include "../test_helpers/wpa_fake_supplicant.h"
 #include "netd_test_server.h" // helix_test::EnvVarGuard
 #include "wifi_backend_wpa_supplicant.h"
+#include "wifi_regdomain.h"
 
 #include <algorithm>
 #include <chrono>
 #include <condition_variable>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <mutex>
 #include <optional>
+#include <sys/stat.h>
 #include <thread>
+#include <unistd.h>
 
 #include "../catch_amalgamated.hpp"
 
@@ -63,9 +67,14 @@ struct WpaFakeFixture {
         // Hermetic hardware: without this the suite needs a real wlan-named
         // interface, which CI runners do not have.
         net_sysfs_guard.emplace(dir);
+        proc_root_guard.emplace(dir);
+        // Hermetic regulatory domain: no iw unless a case installs a fake one.
+        helix::wifi::regdomain::set_iw_for_test("");
     }
 
     ~WpaFakeFixture() {
+        helix::wifi::regdomain::reset_iw_for_test();
+        proc_root_guard.reset();
         net_sysfs_guard.reset();
         env_guard.reset();
         fake.reset();
@@ -74,6 +83,7 @@ struct WpaFakeFixture {
 
     std::optional<helix_test::WpaSocketDirGuard> env_guard;
     std::optional<helix_test::WpaNetSysfsGuard> net_sysfs_guard;
+    std::optional<helix_test::WpaProcRootGuard> proc_root_guard;
 };
 
 /// Counts SCAN_COMPLETE dispatches from a backend under test.
@@ -177,10 +187,117 @@ TEST_CASE("wpa stop with a scan outstanding stays silent and reusable", "[networ
     REQUIRE(events.wait_for(1));
 }
 
+TEST_CASE("wpa reads the configured country, and FAIL as none", "[network][wpa][wifi_country]") {
+    WpaFakeFixture fx;
+    WifiBackendWpaSupplicant backend(kWatchdogMs);
+    REQUIRE(backend.start().success());
+
+    std::string code = "stale";
+    fx.fake->set_reply("GET country", "DE");
+    REQUIRE(backend.get_country(code).success());
+    CHECK(code == "DE");
+
+    // wpa_supplicant answers FAIL when no country= is configured: the world domain.
+    fx.fake->set_reply("GET country", "FAIL\n");
+    REQUIRE(backend.get_country(code).success());
+    CHECK(code.empty());
+}
+
+TEST_CASE("wpa reports the kernel's domain when iw can read it", "[network][wpa][wifi_country]") {
+    WpaFakeFixture fx;
+    WifiBackendWpaSupplicant backend(kWatchdogMs);
+    CHECK_FALSE(backend.supports_country());
+    REQUIRE(backend.start().success());
+    CHECK(backend.supports_country());
+
+    // A domain set outside wpa_supplicant (cfg80211's ieee80211_regdom): its
+    // own config has none, the kernel has DE.
+    const std::string iw = fx.dir + "/fake_iw";
+    {
+        std::FILE* f = std::fopen(iw.c_str(), "w");
+        REQUIRE(f != nullptr);
+        std::fputs("#!/bin/sh\n[ \"$1 $2\" = \"reg get\" ] || exit 1\n"
+                   "printf 'global\\ncountry DE: DFS-ETSI\\n'\n",
+                   f);
+        std::fclose(f);
+        REQUIRE(::chmod(iw.c_str(), 0755) == 0);
+    }
+    helix::wifi::regdomain::set_iw_for_test(iw);
+    fx.fake->set_reply("GET country", "FAIL\n");
+
+    std::string code;
+    REQUIRE(backend.get_country(code).success());
+    CHECK(code == "DE");
+
+    helix::wifi::regdomain::set_iw_for_test("");
+    ::unlink(iw.c_str());
+}
+
+TEST_CASE("wpa set_country sends SET country, then SAVE_CONFIG", "[network][wpa][wifi_country]") {
+    WpaFakeFixture fx;
+    WifiBackendWpaSupplicant backend(kWatchdogMs);
+    REQUIRE(backend.start().success());
+
+    REQUIRE(backend.set_country("us").success());
+    const std::vector<std::string> cmds = fx.fake->commands();
+    const auto set = std::find(cmds.begin(), cmds.end(), "SET country US");
+    REQUIRE(set != cmds.end());
+    CHECK(std::find(set, cmds.end(), "SAVE_CONFIG") != cmds.end());
+
+    // A code outside ISO 3166 never reaches the control socket.
+    const size_t before = fx.fake->commands().size();
+    CHECK(backend.set_country("ZZ").result == WiFiResult::INVALID_PARAMETERS);
+    CHECK(fx.fake->commands().size() == before);
+}
+
+TEST_CASE("wpa REGDOM-CHANGE reaches the manager as REGDOM_CHANGE",
+          "[network][wpa][wifi_country]") {
+    // Declared before the backend so they outlive its event thread.
+    std::mutex m;
+    std::condition_variable cv;
+    std::string seen;
+
+    WpaFakeFixture fx;
+    WifiBackendWpaSupplicant backend(kWatchdogMs);
+    REQUIRE(backend.start().success());
+
+    backend.register_event_callback("REGDOM_CHANGE", [&](const std::string& data) {
+        std::lock_guard<std::mutex> lock(m);
+        seen = data;
+        cv.notify_all();
+    });
+
+    fx.fake->push_event("<3>CTRL-EVENT-REGDOM-CHANGE init=USER type=COUNTRY alpha2=US");
+    std::unique_lock<std::mutex> lock(m);
+    REQUIRE(cv.wait_for(lock, std::chrono::seconds(5), [&] { return !seen.empty(); }));
+    CHECK(seen.find("alpha2=US") != std::string::npos);
+}
+
 // A hidden AP broadcasts no SSID, so it never matches the supplicant's
 // beacon-based scan selection: the join only completes when the backend asks
 // for a directed probe via scan_ssid=1. The visible join must not ask, or
 // every ordinary connect pays a full-channel probe sweep.
+// Vendor firmwares relocate the control interface (-O); the backend finds it
+// from the daemon's command line in the process table it was pointed at.
+TEST_CASE("wpa finds a relocated control directory from the daemon's -O", "[network][wpa]") {
+    WpaFakeFixture fx;
+    fx.env_guard.reset(); // no HELIX_WPA_SOCKET_DIR: the -O path is the only route
+    const std::string pid_dir = fx.dir + "/proc/4242";
+    REQUIRE(std::filesystem::create_directories(pid_dir));
+    {
+        std::FILE* f = std::fopen((pid_dir + "/cmdline").c_str(), "wb");
+        REQUIRE(f != nullptr);
+        const std::string argv = std::string("/usr/sbin/wpa_supplicant") + '\0' + "-B" + '\0' +
+                                 "-O" + '\0' + fx.dir + '\0';
+        std::fwrite(argv.data(), 1, argv.size(), f);
+        std::fclose(f);
+    }
+
+    WifiBackendWpaSupplicant backend(kWatchdogMs);
+    CHECK(backend.start().success());
+    backend.stop();
+}
+
 TEST_CASE("wpa hidden join sends scan_ssid 1; a visible join omits it", "[network][wpa][hidden]") {
     WpaFakeFixture fx;
 

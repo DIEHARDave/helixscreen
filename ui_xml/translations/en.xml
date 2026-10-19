@@ -106,6 +106,7 @@
   <translation tag="2. Place paper between nozzle and bed" en="2. Place paper between nozzle and bed"/>
   <translation tag="2. Results show how much to turn each screw" en="2. Results show how much to turn each screw"/>
   <translation tag="2. Take the PEI sheet off the bed when asked" en="2. Take the PEI sheet off the bed when asked"/>
+  <translation tag="2.4 GHz only" en="2.4 GHz only"/>
   <translation tag="20 minutes" en="20 minutes"/>
   <translation tag="24 Hour" en="24 Hour"/>
   <translation tag="24-hour" en="24-hour"/>
@@ -834,6 +835,7 @@
   <translation tag="Could not save the drying state: nothing was heated" en="Could not save the drying state: nothing was heated"/>
   <translation tag="Could not save the mesh as &apos;{}&apos;: {}" en="Could not save the mesh as &apos;{}&apos;: {}"/>
   <translation tag="Could not save the printer image tags" en="Could not save the printer image tags"/>
+  <translation tag="Could not set the WiFi country" en="Could not set the WiFi country"/>
   <translation tag="Could not skip {}" en="Could not skip {}"/>
   <translation tag="Could not start Bluetooth discovery" en="Could not start Bluetooth discovery"/>
   <translation tag="Could not turn the heaters off" en="Could not turn the heaters off"/>
@@ -846,6 +848,8 @@
   <translation tag="Couldn&apos;t save the material name" en="Couldn&apos;t save the material name"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" en="Couldn&apos;t save the printer&apos;s gate map"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." en="Couldn&apos;t save to Spoolman. Nothing changed on this printer."/>
+  <translation tag="Couldn&apos;t set the backup" en="Couldn&apos;t set the backup"/>
+  <translation tag="Country" en="Country"/>
   <translation tag="Cover open" en="Cover open"/>
   <translation tag="Crash Report" en="Crash Report"/>
   <translation tag="Crash report sent — thank you!" en="Crash report sent — thank you!"/>
@@ -2214,6 +2218,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." en="Not enough room for this widget. Rearrange or remove widgets to make space."/>
   <translation tag="Not in your spools? Set it up" en="Not in your spools? Set it up"/>
   <translation tag="Not now" en="Not now"/>
+  <translation tag="Not set" en="Not set"/>
   <translation tag="Not turned" en="Not turned"/>
   <translation tag="Not yet available on this display" en="Not yet available on this display"/>
   <translation tag="Not yet calibrated" en="Not yet calibrated"/>

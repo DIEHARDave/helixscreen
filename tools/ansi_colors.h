@@ -24,7 +24,7 @@ inline bool is_tty() {
 // Colors
 constexpr const char* RESET = "\033[0m";
 constexpr const char* kBold = "\033[1m";
-constexpr const char* DIM = "\033[2m";
+constexpr const char* kDim = "\033[2m";
 constexpr const char* kItalic = "\033[3m";
 constexpr const char* kUnderline = "\033[4m";
 
@@ -66,7 +66,7 @@ inline std::string info(const std::string& text) {
 }
 
 inline std::string dim(const std::string& text) {
-    return std::string(DIM) + text + RESET;
+    return std::string(kDim) + text + RESET;
 }
 
 inline std::string header(const std::string& text) {

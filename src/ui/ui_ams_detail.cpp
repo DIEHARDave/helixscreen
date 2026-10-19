@@ -1109,7 +1109,6 @@ bool ams_dispatch_backend_action(AmsContextMenu::MenuAction action, int slot,
     switch (action) {
     case MenuAction::EJECT:
     case MenuAction::RECOVER_POSITION:
-    case MenuAction::SELECT_GATE:
     case MenuAction::CHECK_GATE:
     case MenuAction::PRELOAD:
     case MenuAction::CLEAR_SPOOL:
@@ -1148,14 +1147,6 @@ bool ams_dispatch_backend_action(AmsContextMenu::MenuAction action, int slot,
         AmsError error = backend->recover_lane_position(slot);
         if (error.result != AmsResult::SUCCESS) {
             notify_ams_error(error, lv_tr("Recovery failed"));
-        }
-        break;
-    }
-
-    case MenuAction::SELECT_GATE: {
-        AmsError error = backend->select_gate(slot);
-        if (error.result != AmsResult::SUCCESS) {
-            notify_ams_error(error, lv_tr("Select slot failed"));
         }
         break;
     }

@@ -193,6 +193,13 @@ class WiFiManagerTestAccess {
         wm.control_shutdown_ = true;
     }
 
+    /// One tick of the periodic scan timer, as LVGL would run it.
+    static void fire_scan_timer(WiFiManager& wm) {
+        if (wm.scan_timer_) {
+            WiFiManager::scan_timer_callback(wm.scan_timer_);
+        }
+    }
+
     /// The backend event WiFiManager subscribes to for scan results, fired
     /// on the calling thread as the backend's event loop would.
     static void fire_scan_complete(WiFiManager& wm) {

@@ -167,13 +167,13 @@ LayerProbe probe_layer(GCodeStreamingController& ctl, size_t layer) {
 
 TEST_CASE("#1127 spiral-vase: streaming layers keep their extrusion flags",
           "[gcode][streaming][vase1127]") {
-    constexpr int LAYERS = 40;
+    constexpr int kLayers = 40;
     constexpr int kSteps = 64;
-    TempGCodeFile vase("vase", make_vase_gcode(LAYERS, kSteps));
+    TempGCodeFile vase("vase", make_vase_gcode(kLayers, kSteps));
 
     GCodeStreamingController ctl;
     REQUIRE(ctl.open_file(vase.path()));
-    REQUIRE(ctl.get_layer_count() >= static_cast<size_t>(LAYERS));
+    REQUIRE(ctl.get_layer_count() >= static_cast<size_t>(kLayers));
 
     // Middle layer: pure spiral wall, every move extrudes. Before the fix this
     // reported a handful of extrusions out of 64 because each E delta was zero.
@@ -186,7 +186,7 @@ TEST_CASE("#1127 spiral-vase: streaming layers keep their extrusion flags",
 
 TEST_CASE("#1127 spiral-vase: index XY bounds match the full-file parser",
           "[gcode][streaming][vase1127]") {
-    constexpr int LAYERS = 40;
+    constexpr int kLayers = 40;
     constexpr int kSteps = 64;
 
     auto check_bounds = [](const std::string& path) {
@@ -215,11 +215,11 @@ TEST_CASE("#1127 spiral-vase: index XY bounds match the full-file parser",
     };
 
     SECTION("vase mode") {
-        TempGCodeFile g("vase_bb", make_vase_gcode(LAYERS, kSteps));
+        TempGCodeFile g("vase_bb", make_vase_gcode(kLayers, kSteps));
         check_bounds(g.path());
     }
     SECTION("normal mode (control)") {
-        TempGCodeFile g("norm_bb", make_normal_gcode(LAYERS, kSteps));
+        TempGCodeFile g("norm_bb", make_normal_gcode(kLayers, kSteps));
         check_bounds(g.path());
     }
 }

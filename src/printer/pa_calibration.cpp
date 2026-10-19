@@ -143,10 +143,10 @@ constexpr Provider kFlashforgeEboard{
 };
 
 /// The table. One entry per firmware that can do this.
-constexpr const Provider* PROVIDERS[] = {&SNAPMAKER_U1, &kFlashforgeEboard};
+constexpr const Provider* kProviders[] = {&SNAPMAKER_U1, &kFlashforgeEboard};
 
 const Provider* match(const PrinterDiscovery& hw) {
-    for (const Provider* p : PROVIDERS) {
+    for (const Provider* p : kProviders) {
         if (p->detect_macro && hw.has_macro(p->detect_macro)) {
             return p;
         }

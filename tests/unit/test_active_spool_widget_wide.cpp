@@ -10,7 +10,7 @@
  * (>=2 wide). update_spool_display() colors only the canvas selected by the
  * current is_wide_ mode. This test drives the reporter's flow — attach at 1x1,
  * then on_size_changed(2) — and asserts the *wide* canvas ends up carrying the
- * real filament color, not the DEFAULT_COLOR (0xE0E0E0) white.
+ * real filament color, not the kDefaultColor (0xE0E0E0) white.
  */
 
 #include "ui_spool_canvas.h"
@@ -28,8 +28,8 @@ using namespace helix;
 
 namespace {
 
-constexpr uint32_t kTestSpoolColor = 0x00FF00; // distinct green, != DEFAULT_COLOR
-constexpr uint32_t kDefaultWhite = 0xE0E0E0;   // ui_spool_canvas.cpp DEFAULT_COLOR
+constexpr uint32_t kTestSpoolColor = 0x00FF00; // distinct green, != kDefaultColor
+constexpr uint32_t kDefaultWhite = 0xE0E0E0;   // ui_spool_canvas.cpp kDefaultColor
 
 bool color_is(lv_color_t c, uint32_t rgb) {
     return c.red == ((rgb >> 16) & 0xFF) && c.green == ((rgb >> 8) & 0xFF) &&
@@ -69,7 +69,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "active_spool wide canvas is colored after r
     REQUIRE(color_is(ui_spool_canvas_get_color(spool_compact), kTestSpoolColor));
 
     // Resize to 2x1 — the reporter's repro. The wide canvas must be colored,
-    // not left at the DEFAULT_COLOR white.
+    // not left at the kDefaultColor white.
     widget.on_size_changed(2, 1, 200, 100);
     process_lvgl(30);
 

@@ -1732,6 +1732,14 @@
       "manufacturer": "Creality",
       "toolhead_style": "creality_k2",
       "image": "creality-k2-plus.png",
+      "image_variants": [
+        {
+          "when": {
+            "filament_system": "cfs"
+          },
+          "image": "creality-k2-plus-cfs.png"
+        }
+      ],
       "probe_type": "prtouch_v3",
       "preset": "k2",
       "print_start_profile": "creality_k2",
@@ -1879,6 +1887,14 @@
       "manufacturer": "Creality",
       "toolhead_style": "creality_k2",
       "image": "creality-k2-plus.png",
+      "image_variants": [
+        {
+          "when": {
+            "filament_system": "cfs"
+          },
+          "image": "creality-k2-plus-cfs.png"
+        }
+      ],
       "probe_type": "cartographer",
       "preset": "k2",
       "print_start_profile": "k2_improvements",
@@ -2033,6 +2049,14 @@
       "manufacturer": "Creality",
       "toolhead_style": "creality_k2",
       "image": "creality-k2-pro.png",
+      "image_variants": [
+        {
+          "when": {
+            "filament_system": "cfs"
+          },
+          "image": "creality-k2-pro-cfs.png"
+        }
+      ],
       "probe_type": "prtouch_v3",
       "preset": "k2",
       "print_start_profile": "creality_k2",

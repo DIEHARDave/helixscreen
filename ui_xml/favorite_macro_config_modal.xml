@@ -80,19 +80,7 @@
               height="content" flex_grow="2" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs"
               scrollable="false">
         <text_small text="Color"/>
-        <!-- Colours come from the modal's icon palette, published as
-             fav_macro_swatch_color_<i>; the fixed count matches it. -->
-        <lv_obj name="color_grid"
-                width="100%" height="content" flex_flow="row_wrap" style_pad_all="#space_xs"
-                style_pad_gap="#swatch_grid_gap" scrollable="false">
-          <repeat count="16">
-            <color_swatch name="fav_macro_swatch_${i}"
-                          index="${i}" color_subject="fav_macro_swatch_color_${i}"
-                          selected_subject="fav_macro_selected_color" callback="fav_macro_config_color_cb"
-                          size="#swatch_grid_size" hit="#swatch_grid_gap_half" reach="#swatch_grid_ring_reach"
-                          ring="styles.grid_swatch_ring"/>
-          </repeat>
-        </lv_obj>
+        <tile_color_grid name="color_grid" swatch_callback="fav_macro_config_color_cb"/>
       </lv_obj>
     </lv_obj>
 

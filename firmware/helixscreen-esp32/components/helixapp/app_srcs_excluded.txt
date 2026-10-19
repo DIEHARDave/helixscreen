@@ -79,6 +79,7 @@ src/api/wifi_backend_mock.cpp  # not in the v1 Core+AMS cut
 src/api/wifi_backend_netd.cpp  # not in the v1 Core+AMS cut
 src/api/wifi_backend_networkmanager.cpp  # not in the v1 Core+AMS cut
 src/api/wifi_backend_wpa_supplicant.cpp  # not in the v1 Core+AMS cut
+src/api/wifi_regdomain.cpp  # not in the v1 Core+AMS cut
 src/api/wifi_saved_config.cpp  # not in the v1 Core+AMS cut
 src/app_globals.cpp  # not in the v1 Core+AMS cut
 src/application/ams_error_bridge.cpp  # not in the v1 Core+AMS cut
@@ -227,6 +228,7 @@ src/system/pwg_raster.cpp  # not in the v1 Core+AMS cut
 src/system/pwm_sound_backend.cpp  # not in the v1 Core+AMS cut
 src/system/qr_decoder.cpp  # not in the v1 Core+AMS cut
 src/system/release_page.cpp  # not in the v1 Core+AMS cut
+src/system/run_capture.cpp  # popen, which the firmware has none of; only the Linux and macOS platform paths call it
 src/system/screen_locality.cpp  # not in the v1 Core+AMS cut
 src/system/screensaver_usage.cpp  # not in the v1 Core+AMS cut
 src/system/screenshot.cpp  # not in the v1 Core+AMS cut

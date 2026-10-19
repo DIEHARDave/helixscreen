@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "ui_ams_edit_overlay.h"
+#include "ui_ams_lane_settings.h"
 #include "ui_nav_manager.h"
 #include "ui_update_queue.h"
 
@@ -21,6 +22,7 @@
 #include "spoolman_slot_saver.h"
 #include "test_helpers/unique_temp_dir.h"
 
+#include <atomic>
 #include <cstdlib>
 #include <filesystem>
 
@@ -77,6 +79,19 @@ class AmsEditOverlayTestAccess {
     }
     bool completion_fired() const {
         return overlay_.completion_fired_;
+    }
+    void set_lane_settings(int tool_original, int backup_original, int tool_working,
+                           int backup_working) {
+        overlay_.lane_original_ = {tool_original, backup_original};
+        overlay_.lane_working_ = {tool_working, backup_working};
+    }
+    bool lane_dirty() const {
+        return overlay_.lane_settings_dirty();
+    }
+    /// A stored More-section value; with no detail widgets built, Save reads
+    /// it back as cleared, which is a logistics edit.
+    void set_detail_original_location(const std::string& location) {
+        overlay_.detail_original_.location = location;
     }
 
     // Forward the private static create-gate predicate (friend access).
@@ -668,4 +683,117 @@ TEST_CASE_METHOD(LVGLUITestFixture, "show_for_slot opens on the editor by defaul
     NavigationManager::instance().go_back();
     UpdateQueue::instance().drain();
     process_lvgl(10);
+}
+
+// ============================================================================
+// Lane settings: a write the backend refuses is not taken as saved
+// ============================================================================
+
+namespace {
+
+/// A mock whose tool-mapping and backup writes can each be refused, the way a
+/// firmware rejects the G-code.
+class RefusingLaneBackend : public AmsBackendMock {
+  public:
+    using AmsBackendMock::AmsBackendMock;
+    std::atomic<bool> refuse_tool{false};
+    std::atomic<bool> refuse_backup{false};
+    std::atomic<int> tool_writes{0};
+
+    AmsError set_tool_mapping_impl(int tool_number, int slot_index) override {
+        ++tool_writes;
+        if (refuse_tool.load()) {
+            return AmsErrorHelper::not_supported("refused for test");
+        }
+        return AmsBackendMock::set_tool_mapping_impl(tool_number, slot_index);
+    }
+
+  protected:
+    AmsError apply_endless_spool_backup(int slot_index, int backup_slot) override {
+        if (refuse_backup.load()) {
+            return AmsErrorHelper::not_supported("refused for test");
+        }
+        return AmsBackendMock::apply_endless_spool_backup(slot_index, backup_slot);
+    }
+};
+
+} // namespace
+
+TEST_CASE_METHOD(OverlayCommitFixture,
+                 "a lane write the backend refuses stays staged and the next Save retries it",
+                 "[ams_edit_overlay][lane_settings]") {
+    auto owned = std::make_unique<RefusingLaneBackend>(4);
+    RefusingLaneBackend* lanes = owned.get();
+    AmsState::instance().set_backend(std::move(owned));
+
+    AmsEditOverlay overlay;
+    AmsEditOverlayTestAccess access(overlay);
+    access.init_subjects();
+    const SlotInfo slot = lanes->get_slot_info(1);
+    access.set_original_info(slot);
+    access.set_working_info(slot);
+    access.set_api(&api);
+    access.set_slot_index(1);
+    bool completion_fired = false;
+    access.set_completion_callback(
+        [&](const AmsEditOverlay::EditResult&) { completion_fired = true; });
+
+    const int backup_before = lane_settings::backup_of(*lanes, 1);
+    REQUIRE(backup_before != 3);
+    const int tool_before = lane_settings::assigned_tool(*lanes, 1);
+    REQUIRE(tool_before != 2);
+    // Stage tool 2 and backup slot 3; the backup write is refused.
+    access.set_lane_settings(tool_before, backup_before, 2, 3);
+    lanes->refuse_backup = true;
+
+    access.call_handle_save();
+    UpdateQueue::instance().drain();
+
+    CHECK(lane_settings::backup_of(*lanes, 1) == backup_before);
+    REQUIRE(lanes->get_tool_mapping().size() > 2);
+    CHECK(lanes->get_tool_mapping()[2] == 1);
+    CHECK(lanes->tool_writes == 1);
+    CHECK(access.lane_dirty());
+    CHECK_FALSE(completion_fired);
+
+    // The backend accepts it now. Save writes the backup and does not resend
+    // the tool, which already landed.
+    lanes->refuse_backup = false;
+    access.call_handle_save();
+    UpdateQueue::instance().drain();
+
+    CHECK(lane_settings::backup_of(*lanes, 1) == 3);
+    CHECK(lanes->tool_writes == 1);
+    CHECK_FALSE(access.lane_dirty());
+    CHECK(completion_fired);
+}
+
+TEST_CASE_METHOD(OverlayCommitFixture,
+                 "with Spoolman unreachable and More edits pending, Save still writes the lane",
+                 "[ams_edit_overlay][lane_settings]") {
+    auto owned = std::make_unique<RefusingLaneBackend>(4);
+    RefusingLaneBackend* lanes = owned.get();
+    AmsState::instance().set_backend(std::move(owned));
+
+    AmsEditOverlay overlay;
+    AmsEditOverlayTestAccess access(overlay);
+    access.init_subjects();
+    SlotInfo slot = lanes->get_slot_info(1);
+    slot.spoolman_id = 7; // linked, but its record never loaded
+    access.set_original_info(slot);
+    access.set_working_info(slot);
+    access.set_api(nullptr); // Spoolman unreachable
+    access.set_slot_index(1);
+    access.set_detail_original_location("Shelf A");
+    access.set_completion_callback([](const AmsEditOverlay::EditResult&) {});
+
+    const int backup_before = lane_settings::backup_of(*lanes, 1);
+    REQUIRE(backup_before != 3);
+    access.set_lane_settings(-1, backup_before, -1, 3);
+
+    access.call_handle_save();
+    UpdateQueue::instance().drain();
+
+    CHECK(lane_settings::backup_of(*lanes, 1) == 3);
+    CHECK_FALSE(access.lane_dirty());
 }

@@ -87,18 +87,18 @@ TEST_CASE("BusThread serializes interleaved work", "[bt][slow]") {
     std::atomic<int> max_concurrent{0};
     std::atomic<int> completed{0};
 
-    constexpr int THREADS = 3;
+    constexpr int kThreads = 3;
     constexpr int kPerThread = 20;
 
     std::vector<std::thread> submitters;
-    submitters.reserve(THREADS);
+    submitters.reserve(kThreads);
 
     // Collect futures on the main thread to avoid racing on a shared container.
     std::mutex futures_mu;
     std::vector<std::future<void>> futures;
-    futures.reserve(THREADS * kPerThread);
+    futures.reserve(kThreads * kPerThread);
 
-    for (int t = 0; t < THREADS; ++t) {
+    for (int t = 0; t < kThreads; ++t) {
         submitters.emplace_back([&] {
             for (int i = 0; i < kPerThread; ++i) {
                 auto fut = bt.submit([&](sd_bus*) {
@@ -129,7 +129,7 @@ TEST_CASE("BusThread serializes interleaved work", "[bt][slow]") {
         REQUIRE_NOTHROW(f.get());
     }
 
-    REQUIRE(completed.load() == THREADS * kPerThread);
+    REQUIRE(completed.load() == kThreads * kPerThread);
     REQUIRE(max_concurrent.load() == 1);
     REQUIRE(in_flight.load() == 0);
 

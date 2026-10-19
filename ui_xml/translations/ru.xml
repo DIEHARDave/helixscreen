@@ -139,6 +139,7 @@
   <translation tag="2. Place paper between nozzle and bed" ru="2. Положите бумагу между соплом и столом"/>
   <translation tag="2. Results show how much to turn each screw" ru="2. Результаты покажут, насколько повернуть каждый винт"/>
   <translation tag="2. Take the PEI sheet off the bed when asked" ru="2. Снимите лист PEI со стола, когда появится запрос"/>
+  <translation tag="2.4 GHz only" ru="Только 2,4 ГГц"/>
   <translation tag="20 minutes" ru="20 минут"/>
   <translation tag="24 Hour" ru="24 часа"/>
   <translation tag="24-hour" ru="24-часовой"/>
@@ -876,6 +877,7 @@
   <translation tag="Could not save the drying state: nothing was heated" ru="Не удалось сохранить состояние сушки: ничего не нагревалось"/>
   <translation tag="Could not save the mesh as &apos;{}&apos;: {}" ru="Не удалось сохранить сетку как &apos;{}&apos;: {}"/>
   <translation tag="Could not save the printer image tags" ru="Не удалось сохранить отметки изображения"/>
+  <translation tag="Could not set the WiFi country" ru="Не удалось задать страну WiFi"/>
   <translation tag="Could not skip {}" ru="Не удалось пропустить {}"/>
   <translation tag="Could not start Bluetooth discovery" ru="Не удалось запустить поиск Bluetooth"/>
   <translation tag="Could not turn the heaters off" ru="Не удалось выключить нагреватели"/>
@@ -888,6 +890,8 @@
   <translation tag="Couldn&apos;t save the material name" ru="Не удалось сохранить название материала"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" ru="Не удалось сохранить карту шлюзов принтера"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." ru="Не удалось сохранить в Spoolman. На этом принтере ничего не изменено."/>
+  <translation tag="Couldn&apos;t set the backup" ru="Не удалось задать резерв"/>
+  <translation tag="Country" ru="Страна"/>
   <translation tag="Cover open" ru="Крышка открыта"/>
   <translation tag="Crash Report" ru="Отчёт о сбое"/>
   <translation tag="Crash report sent — thank you!" ru="Отчёт об ошибке отправлен — спасибо!"/>
@@ -2259,6 +2263,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." ru="Недостаточно места для этого виджета. Измените раскладку или удалите виджеты, чтобы освободить место."/>
   <translation tag="Not in your spools? Set it up" ru="Нет в ваших катушках? Настроить"/>
   <translation tag="Not now" ru="Не сейчас"/>
+  <translation tag="Not set" ru="Не задана"/>
   <translation tag="Not turned" ru="Не повёрнут"/>
   <translation tag="Not yet available on this display" ru="Пока недоступно на этом дисплее"/>
   <translation tag="Not yet calibrated" ru="Ещё не откалибровано"/>

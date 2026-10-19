@@ -22,6 +22,7 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "printer_state.h"
 #include "static_panel_registry.h"
+#include "system/run_capture.h"
 #include "theme_manager.h"
 #include "thumbnail_cache.h"
 #include "thumbnail_processor.h"
@@ -620,25 +621,13 @@ void TimelapseVideosOverlay::detect_playback_capability() {
         detected = true;
 
         // Check for available players (only once per process)
-        FILE* pipe = popen("which mpv 2>/dev/null", "r");
-        if (pipe) {
-            char buf[256];
-            if (fgets(buf, sizeof(buf), pipe) != nullptr) {
-                cached_player = "mpv";
+        for (const char* player : {"mpv", "ffplay"}) {
+            int exit_code = -1;
+            if (!helix::run_capture(std::string("which ") + player + " 2>/dev/null", exit_code)
+                     .empty()) {
+                cached_player = player;
                 cached_can_play = true;
-            }
-            pclose(pipe);
-        }
-
-        if (!cached_can_play) {
-            pipe = popen("which ffplay 2>/dev/null", "r");
-            if (pipe) {
-                char buf[256];
-                if (fgets(buf, sizeof(buf), pipe) != nullptr) {
-                    cached_player = "ffplay";
-                    cached_can_play = true;
-                }
-                pclose(pipe);
+                break;
             }
         }
     }

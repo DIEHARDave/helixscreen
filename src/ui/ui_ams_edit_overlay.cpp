@@ -3,6 +3,7 @@
 
 #include "ui_ams_edit_overlay.h"
 
+#include "ui_ams_lane_settings.h"
 #include "ui_button.h"
 #include "ui_callback_helpers.h"
 #include "ui_color_picker.h"
@@ -15,6 +16,7 @@
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
+#include "ams_backend.h"
 #include "ams_state.h"
 #include "ams_tag_reading.h"
 #include "app_globals.h"
@@ -214,6 +216,8 @@ bool AmsEditOverlay::show_for_slot(lv_obj_t* parent, int slot_index, const SlotI
         return false;
     }
     lv_subject_set_int(&more_open_subject_, 0);
+    // After show(): the first one initialises the subjects this writes.
+    load_lane_settings();
 
     // Safety net + memory reclaim on close. A dismissal that bypasses our
     // handlers (backdrop tap, external go_back) must still complete as "not
@@ -521,6 +525,16 @@ void AmsEditOverlay::init_subjects() {
         // Spoolman spool number for the header badge ("#19").
         UI_MANAGED_SUBJECT_STRING(spoolman_id_subject_, spoolman_id_buf_, "",
                                   "ams_edit_spoolman_id", subjects_);
+
+        // The lane's Assigned Tool and Endless Spool rows (load_lane_settings).
+        UI_MANAGED_SUBJECT_INT(lane_visible_subject_, 0, "ams_edit_lane_visible", subjects_);
+        UI_MANAGED_SUBJECT_INT(tool_row_visible_subject_, 0, "ams_edit_tool_row_visible",
+                               subjects_);
+        UI_MANAGED_SUBJECT_INT(backup_row_visible_subject_, 0, "ams_edit_backup_row_visible",
+                               subjects_);
+        UI_MANAGED_SUBJECT_INT(backup_editable_subject_, 0, "ams_edit_backup_editable", subjects_);
+        UI_MANAGED_SUBJECT_STRING(backup_label_subject_, backup_label_buf_, "",
+                                  "ams_edit_backup_label", subjects_);
 
         // Expose the label-printer readiness flag to XML so
         // btn_detail_print_label can bind its `hidden` flag declaratively and
@@ -1131,23 +1145,21 @@ int AmsEditOverlay::grid_preset_count(int grid_width, int tile, int gap, int row
 void AmsEditOverlay::size_color_grids() {
     // The colour areas are subject-counted (a literal <repeat> inside <if> is
     // refused by the engine), sized here from the measured grid width: whole
-    // rows only, three in the split column, two in the stacked grid where
-    // height allows and one where it is scarce.
+    // rows only, two in the split column and one in the stacked grid, which
+    // leaves the lane's settings in view. The rainbow tile opens the rest.
     if (!overlay_root_) {
         return;
     }
     lv_obj_update_layout(overlay_root_);
     const int palette = static_cast<int>(swatch_palette(ColorPicker::Palette::General).size());
-    lv_subject_t* bp = theme_manager_get_breakpoint_subject();
-    const bool short_class = bp && lv_subject_get_int(bp) <= static_cast<int>(UiBreakpoint::Small);
     const struct {
         const char* grid;
         const char* custom;
         int rows;
         lv_subject_t* count;
     } grids[] = {
-        {"color_grid_split", "btn_custom_color_split", 3, &color_col_count_subject_},
-        {"color_grid", "btn_custom_color", short_class ? 1 : 2, &color_row_count_subject_},
+        {"color_grid_split", "btn_custom_color_split", 2, &color_col_count_subject_},
+        {"color_grid", "btn_custom_color", 1, &color_row_count_subject_},
     };
     for (const auto& g : grids) {
         lv_obj_t* grid = find_widget(g.grid);
@@ -1174,6 +1186,7 @@ void AmsEditOverlay::populate_editor_view() {
     update_summary();
     update_temp_display();
     populate_detail_fields();
+    populate_lane_dropdowns();
 }
 
 void AmsEditOverlay::repopulate() {
@@ -1354,8 +1367,6 @@ bool AmsEditOverlay::selection_dirty() const {
 }
 
 bool AmsEditOverlay::is_dirty() const {
-    // The tool mapping is not compared: Assigned Tool lives in the context
-    // menu, not here.
     const bool identity_dirty = working_info_.color_rgb != original_info_.color_rgb ||
                                 working_info_.material != original_info_.material ||
                                 working_info_.brand != original_info_.brand ||
@@ -1369,7 +1380,8 @@ bool AmsEditOverlay::is_dirty() const {
                                detail_working_.location != detail_original_.location ||
                                detail_working_.lot_nr != detail_original_.lot_nr ||
                                detail_working_.comment != detail_original_.comment;
-    return identity_dirty || weight_dirty || details_dirty || selection_dirty();
+    return identity_dirty || weight_dirty || details_dirty || selection_dirty() ||
+           lane_settings_dirty();
 }
 
 void AmsEditOverlay::update_sync_button_state() {
@@ -1397,6 +1409,120 @@ bool AmsEditOverlay::save_is_disabled(int view, bool save_in_flight, bool dirty)
         return true;
     }
     return (view == kViewEditor) ? !dirty : false;
+}
+
+// ============================================================================
+// Lane settings: Assigned Tool and Endless Spool backup
+// ============================================================================
+
+void AmsEditOverlay::load_lane_settings() {
+    lane_original_ = {};
+    backup_candidates_.clear();
+    lane_tool_count_ = 0;
+    AmsBackend* backend = slot_index_ >= 0 ? AmsState::instance().get_backend() : nullptr;
+    bool tool_row = false;
+    bool backup_row = false;
+    bool backup_editable = false;
+    if (backend) {
+        const AmsSystemInfo info = backend->get_system_info();
+        lane_tool_count_ = info.total_slots;
+        backup_candidates_ = lane_settings::backup_candidates(info.present_slots(), slot_index_);
+        tool_row = lane_settings::show_tool_row(backend);
+        if (tool_row) {
+            lane_original_.tool = lane_settings::assigned_tool(*backend, slot_index_);
+        }
+        const auto caps = backend->get_endless_spool_capabilities();
+        backup_row =
+            lane_settings::show_backup_row(caps, backend->get_endless_spool_config(), slot_index_);
+        if (backup_row) {
+            lane_original_.backup = lane_settings::backup_of(*backend, slot_index_);
+            backup_editable = caps.editable();
+            lv_subject_copy_string(&backup_label_subject_,
+                                   backup_lane_text(backend->lane_noun()).c_str());
+        }
+    }
+    lane_working_ = lane_original_;
+    lv_subject_set_int(&lane_visible_subject_, backend ? 1 : 0);
+    lv_subject_set_int(&tool_row_visible_subject_, tool_row ? 1 : 0);
+    lv_subject_set_int(&backup_row_visible_subject_, backup_row ? 1 : 0);
+    lv_subject_set_int(&backup_editable_subject_, backup_editable ? 1 : 0);
+}
+
+void AmsEditOverlay::populate_lane_dropdowns() {
+    if (lv_obj_t* dd = find_widget("tool_dropdown")) {
+        lv_dropdown_set_options(dd, lane_settings::tool_options(lane_tool_count_).c_str());
+        // None=0, T0=1, T1=2...
+        lv_dropdown_set_selected(dd, static_cast<uint32_t>(lane_working_.tool + 1));
+    }
+    if (lv_obj_t* dd = find_widget("backup_dropdown")) {
+        AmsBackend* backend = AmsState::instance().get_backend();
+        lv_dropdown_set_options(
+            dd, lane_settings::backup_options(backend ? backend->lane_noun() : active_lane_noun(),
+                                              backup_candidates_, slot_index_,
+                                              lane_settings::eligibility_of(backend))
+                    .c_str());
+        // None=0, then each candidate in order.
+        const auto it =
+            std::find(backup_candidates_.begin(), backup_candidates_.end(), lane_working_.backup);
+        const int selected = it == backup_candidates_.end()
+                                 ? 0
+                                 : 1 + static_cast<int>(it - backup_candidates_.begin());
+        lv_dropdown_set_selected(dd, static_cast<uint32_t>(selected));
+    }
+}
+
+void AmsEditOverlay::handle_tool_selected(int index) {
+    lane_working_.tool = index - 1;
+    update_sync_button_state();
+}
+
+void AmsEditOverlay::handle_backup_selected(int index) {
+    const int backup = index > 0 && index <= static_cast<int>(backup_candidates_.size())
+                           ? backup_candidates_[static_cast<size_t>(index - 1)]
+                           : -1;
+    AmsBackend* backend = AmsState::instance().get_backend();
+    if (backend && lane_settings::backup_refused(slot_index_, backup,
+                                                 lane_settings::eligibility_of(backend))) {
+        lane_settings::notify_backup_refused(*backend, slot_index_, backup);
+        populate_lane_dropdowns(); // back to what is staged
+        return;
+    }
+    lane_working_.backup = backup;
+    update_sync_button_state();
+}
+
+bool AmsEditOverlay::lane_settings_dirty() const {
+    return (lane_working_.tool >= 0 && lane_working_.tool != lane_original_.tool) ||
+           lane_working_.backup != lane_original_.backup;
+}
+
+bool AmsEditOverlay::commit_lane_settings() {
+    if (!lane_settings_dirty()) {
+        return true;
+    }
+    AmsBackend* backend = AmsState::instance().get_backend();
+    if (!backend) {
+        // The lane went with its backend; there is nothing left to write to.
+        spdlog::warn("[AmsEditOverlay] No backend for slot {}; lane settings not written",
+                     slot_index_);
+        return true;
+    }
+    bool all_written = true;
+    if (lane_working_.tool >= 0 && lane_working_.tool != lane_original_.tool) {
+        if (lane_settings::commit_assigned_tool(*backend, slot_index_, lane_working_.tool)) {
+            lane_original_.tool = lane_working_.tool;
+        } else {
+            all_written = false;
+        }
+    }
+    if (lane_working_.backup != lane_original_.backup) {
+        if (lane_settings::commit_backup(*backend, slot_index_, lane_working_.backup)) {
+            lane_original_.backup = lane_working_.backup;
+        } else {
+            all_written = false;
+        }
+    }
+    return all_written;
 }
 
 // ============================================================================
@@ -1940,16 +2066,9 @@ void AmsEditOverlay::handle_save() {
         SpoolmanSlotSaver::build_spool_patches(detail_original_, detail_working_, a, b);
         return !a.empty() || !b.empty();
     }();
+    const bool spoolman_reachable = api_ && get_printer_state().is_spoolman_available();
     if (working_info_.spoolman_id > 0 && !details_loaded && has_logistics_diff &&
-        (!api_ || !get_printer_state().is_spoolman_available())) {
-        // Spoolman is unreachable, so the record never will arrive. The
-        // slot's own edits commit now; the More edits stay in the editor.
-        SaveCapture cap = capture_save();
-        cap.stay_open = true;
-        commit_capture(cap);
-        return;
-    }
-    if (working_info_.spoolman_id > 0 && !details_loaded && has_logistics_diff) {
+        spoolman_reachable) {
         // The record those fields edit has not arrived, so there is nothing to
         // diff them against. Keep them, ask for the record again, and say so
         // rather than closing on a Save that wrote them nowhere.
@@ -1959,6 +2078,30 @@ void AmsEditOverlay::handle_save() {
         if (!linked_fetch_pending_) {
             fetch_linked_spool();
         }
+        return;
+    }
+
+    // The lane's settings go to the backend, not to Spoolman, so they land
+    // whatever the spool's own save does next.
+    const bool lane_changed = lane_settings_dirty();
+    if (!commit_lane_settings()) {
+        // The refusal has toasted. The editor stays open with that field
+        // still staged, and the slot's own edits wait for the same Save.
+        stay_open_after_failed_save();
+        return;
+    }
+    if (lane_changed && !is_dirty()) {
+        // Only the lane's settings changed: there is no slot edit to commit.
+        close_editor(false);
+        return;
+    }
+
+    if (working_info_.spoolman_id > 0 && !details_loaded && has_logistics_diff) {
+        // Spoolman is unreachable, so the record never will arrive. The
+        // slot's own edits commit now; the More edits stay in the editor.
+        SaveCapture cap = capture_save();
+        cap.stay_open = true;
+        commit_capture(cap);
         return;
     }
     logistics_pending_ = has_logistics_diff && details_loaded &&
@@ -2432,6 +2575,10 @@ void AmsEditOverlay::register_callbacks() {
          [](lv_event_t* e) {
              get_ams_edit_overlay().handle_option_selected(3, helix::ui::event_selected(e));
          }},
+        {"ams_edit_tool_dd_cb",
+         [](lv_event_t* e) { get_ams_edit_overlay().handle_tool_selected(event_selected(e)); }},
+        {"ams_edit_backup_dd_cb",
+         [](lv_event_t* e) { get_ams_edit_overlay().handle_backup_selected(event_selected(e)); }},
         {"ams_edit_print_label_cb",
          [](lv_event_t*) {
 #if HELIX_HAS_LABEL_PRINTER

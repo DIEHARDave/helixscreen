@@ -68,7 +68,7 @@ static constexpr int32_t kDefaultSlotWidth = 80;
 // scope to or -1 for "every unit". This panel is always the whole-system view:
 // the AMS Overview panel owns the per-unit presentation, via its own inline
 // detail view rather than through here.
-static constexpr int ALL_UNITS = -1;
+static constexpr int kAllUnits = -1;
 
 // Logo path mapping moved to AmsState::get_logo_path()
 
@@ -808,11 +808,11 @@ void AmsPanel::create_slots(int count) {
     ams_detail_destroy_slots(detail_widgets_, slot_widgets_, current_slot_count_);
 
     // Show the environment chip for this unit; update_tray places it on the lid.
-    ams_detail_pre_show_env_indicator(detail_widgets_, ALL_UNITS);
+    ams_detail_pre_show_env_indicator(detail_widgets_, kAllUnits);
 
     // Create new slots
     auto result = ams_detail_create_slots(detail_widgets_, slot_widgets_, kMaxVisibleSlots,
-                                          ALL_UNITS, on_slot_clicked, this);
+                                          kAllUnits, on_slot_clicked, this);
 
     current_slot_count_ = result.slot_count;
 
@@ -835,7 +835,7 @@ void AmsPanel::create_slots(int count) {
     setup_slot_path_observers(result.slot_count);
 
     // Update tray
-    ams_detail_update_tray(detail_widgets_, slot_widgets_, result.slot_count, ALL_UNITS);
+    ams_detail_update_tray(detail_widgets_, slot_widgets_, result.slot_count, kAllUnits);
     helix::ui::ams_detail_sync_lane_entry(path_canvas_, slot_grid_);
 }
 
@@ -904,13 +904,13 @@ void AmsPanel::setup_path_canvas() {
     ui_filament_path_canvas_set_buffer_callback(path_canvas_, on_buffer_clicked, this);
 
     // Configure from backend using shared helper
-    ams_detail_setup_path_canvas(path_canvas_, slot_grid_, ALL_UNITS);
+    ams_detail_setup_path_canvas(path_canvas_, slot_grid_, kAllUnits);
 
     spdlog::debug("[{}] Path canvas setup complete", get_name());
 }
 
 void AmsPanel::update_path_canvas_from_backend() {
-    ams_detail_setup_path_canvas(path_canvas_, slot_grid_, ALL_UNITS);
+    ams_detail_setup_path_canvas(path_canvas_, slot_grid_, kAllUnits);
 }
 
 void AmsPanel::setup_bypass_spool() {
@@ -1096,7 +1096,7 @@ void AmsPanel::refresh_slots() {
     // early when canvas/backend is null) and never writes slot subjects, so it
     // can't recurse back into a slots_version bump.
     if (backend && info)
-        ams_detail_setup_path_canvas(path_canvas_, slot_grid_, ALL_UNITS, backend, *info);
+        ams_detail_setup_path_canvas(path_canvas_, slot_grid_, kAllUnits, backend, *info);
 }
 
 // ============================================================================

@@ -72,6 +72,13 @@ class WifiBackendNetworkManager : public WifiBackend {
     ConnectionStatus get_status() override;
     bool supports_5ghz() const override;
 
+    /// NetworkManager has no regulatory-domain setting of its own, so the
+    /// country goes to the kernel through `iw reg`. Supported where iw is
+    /// installed.
+    bool supports_country() const override;
+    WiFiError get_country(std::string& code) override;
+    WiFiError set_country(const std::string& code) override;
+
   private:
     // ========================================================================
     // Internal State
@@ -108,6 +115,9 @@ class WifiBackendNetworkManager : public WifiBackend {
     // 5GHz support — computed once at start(), never changes
     std::atomic<bool> supports_5ghz_cached_{false};
     std::atomic<bool> supports_5ghz_resolved_{false};
+    /// `iw` is installed and this process may set the regulatory domain
+    /// (root or CAP_NET_ADMIN). Resolved in start(), off the LVGL thread.
+    std::atomic<bool> country_settable_{false};
 
     // Cached `nmcli radio wifi` state. is_radio_enabled() is polled from the
     // UI thread (WiFiManager::is_enabled), so it must not shell out; the cache

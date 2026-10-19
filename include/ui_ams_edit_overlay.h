@@ -46,7 +46,9 @@ namespace helix::ui {
  * The editor view is a cascading dropdown form: Material family, Variant,
  * Brand, Product (each list ends in a
  * browse-the-catalog entry), plus a colour
- * grid, a weight pill (numeric keypad) and a collapsed More section.
+ * grid, a weight pill (numeric keypad) and a collapsed More section. Below
+ * them sit the lane's own settings, Assigned Tool and the Endless Spool
+ * backup, each shown only where the backend supports it.
  * Selection state lives in SpoolEditSelection; Save stages it into the
  * working SlotInfo. Tag-sourced fields show a badge and reset through
  * helix::ams::reset_to_tag.
@@ -299,6 +301,32 @@ class AmsEditOverlay : public OverlayBase {
     void rebuild_option_lists();
     void handle_option_selected(int row, int index);
 
+    // === Lane settings: Assigned Tool and Endless Spool backup ===
+    /// The lane's standing settings. Not part of the slot's identity: they are
+    /// written to the backend through helix::ui::lane_settings, on Save.
+    struct LaneSettings {
+        int tool = -1;   ///< tool mapped to this lane, -1 for none
+        int backup = -1; ///< the lane's Endless Spool backup, -1 for none
+    };
+    LaneSettings lane_original_; ///< as the backend held them on open
+    LaneSettings lane_working_;  ///< as the dropdowns stage them
+    /// The backup dropdown's slots after "None" (lane_settings::backup_candidates()).
+    std::vector<int> backup_candidates_;
+    int lane_tool_count_ = 0;
+    /// On open: read the lane's settings from the backend and decide which rows show.
+    void load_lane_settings();
+    /// Fill both dropdowns from the staged settings.
+    void populate_lane_dropdowns();
+    void handle_tool_selected(int index);
+    void handle_backup_selected(int index);
+    /// A staged change Save would write. "None" for the tool writes nothing: a
+    /// mapping is cleared by mapping that tool elsewhere.
+    [[nodiscard]] bool lane_settings_dirty() const;
+    /// Write the staged changes through the backend, taking each one that was
+    /// written as the lane's setting. False when a write was refused: that
+    /// field stays staged, so the next Save retries it.
+    [[nodiscard]] bool commit_lane_settings();
+
     // === Subjects for XML binding ===
     SubjectManager subjects_;
     lv_subject_t title_subject_{};     ///< "Gate 3" (lane label)
@@ -335,13 +363,19 @@ class AmsEditOverlay : public OverlayBase {
     lv_subject_t reset_tag_visible_subject_{};
     lv_subject_t add_spoolman_visible_subject_{};
     lv_subject_t more_open_subject_{};
-    lv_subject_t spoolman_id_subject_{}; ///< "#19" for the header badge
+    lv_subject_t spoolman_id_subject_{};        ///< "#19" for the header badge
+    lv_subject_t lane_visible_subject_{};       ///< 1 = the slot is a backend lane
+    lv_subject_t tool_row_visible_subject_{};   ///< 1 = Assigned Tool row shows
+    lv_subject_t backup_row_visible_subject_{}; ///< 1 = Endless Spool row shows
+    lv_subject_t backup_editable_subject_{};    ///< 0 = backup shown read-only
+    lv_subject_t backup_label_subject_{};       ///< "Backup Gate", in the backend's noun
     char title_buf_[96] = {0};
     char summary_buf_[96] = {0};
     char temp_buf_[96] = {0};
     char weight_buf_[24] = {0};
     char weight_hint_buf_[32] = {0};
     char spoolman_id_buf_[16] = {0};
+    char backup_label_buf_[64] = {0};
 
     // === Picker state (Spoolman spool selection) ===
     std::vector<SpoolInfo> cached_spools_;

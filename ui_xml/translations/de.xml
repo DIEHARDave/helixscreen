@@ -106,6 +106,7 @@
   <translation tag="2. Place paper between nozzle and bed" de="2. Papier zwischen Düse und Bett legen"/>
   <translation tag="2. Results show how much to turn each screw" de="2. Ergebnisse zeigen, wie viel jede Schraube gedreht werden muss"/>
   <translation tag="2. Take the PEI sheet off the bed when asked" de="2. Nimm die PEI-Platte vom Bett, wenn du dazu aufgefordert wirst"/>
+  <translation tag="2.4 GHz only" de="Nur 2,4 GHz"/>
   <translation tag="20 minutes" de="20 Minuten"/>
   <translation tag="24 Hour" de="24 Stunden"/>
   <translation tag="24-hour" de="24-Stunden"/>
@@ -834,6 +835,7 @@
   <translation tag="Could not save the drying state: nothing was heated" de="Trocknungsstatus konnte nicht gespeichert werden: Es wurde nichts geheizt"/>
   <translation tag="Could not save the mesh as &apos;{}&apos;: {}" de="Netz konnte nicht als &apos;{}&apos; gespeichert werden: {}"/>
   <translation tag="Could not save the printer image tags" de="Bildmarkierungen konnten nicht gespeichert werden"/>
+  <translation tag="Could not set the WiFi country" de="WiFi-Land konnte nicht eingestellt werden"/>
   <translation tag="Could not skip {}" de="{} konnte nicht übersprungen werden"/>
   <translation tag="Could not start Bluetooth discovery" de="Bluetooth-Erkennung konnte nicht gestartet werden"/>
   <translation tag="Could not turn the heaters off" de="Die Heizungen konnten nicht ausgeschaltet werden"/>
@@ -846,6 +848,8 @@
   <translation tag="Couldn&apos;t save the material name" de="Materialname konnte nicht gespeichert werden"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" de="Gate-Zuordnung des Druckers konnte nicht gespeichert werden"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." de="Speichern in Spoolman fehlgeschlagen. Auf diesem Drucker wurde nichts geändert."/>
+  <translation tag="Couldn&apos;t set the backup" de="Ersatz konnte nicht festgelegt werden"/>
+  <translation tag="Country" de="Land"/>
   <translation tag="Cover open" de="Abdeckung offen"/>
   <translation tag="Crash Report" de="Absturzbericht"/>
   <translation tag="Crash report sent — thank you!" de="Absturzbericht gesendet — vielen Dank!"/>
@@ -2214,6 +2218,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." de="Nicht genug Platz für dieses Widget. Ordnen Sie Widgets neu an oder entfernen Sie welche, um Platz zu schaffen."/>
   <translation tag="Not in your spools? Set it up" de="Nicht in Ihren Spulen? Einrichten"/>
   <translation tag="Not now" de="Nicht jetzt"/>
+  <translation tag="Not set" de="Nicht festgelegt"/>
   <translation tag="Not turned" de="Ungedreht"/>
   <translation tag="Not yet available on this display" de="Auf diesem Display noch nicht verfügbar"/>
   <translation tag="Not yet calibrated" de="Noch nicht kalibriert"/>

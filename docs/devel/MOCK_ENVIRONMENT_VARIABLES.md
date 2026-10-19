@@ -27,6 +27,21 @@ HELIX_AMS_GATES=8 ./build/bin/helix-screen --test
 HELIX_AMS_GATES=16 ./build/bin/helix-screen --test
 ```
 
+### `HELIX_MOCK_WIFI_COUNTRY`
+
+The regulatory country the mock WiFi radio reports at startup, standing in for one the device's own configuration set. With it unset the mock radio is in the world domain, so Network Settings shows the 5 GHz hint.
+
+| Property | Value |
+|----------|-------|
+| **Values** | ISO 3166-1 alpha-2 code (`US`, `de`, ...); anything else reads as unset |
+| **Default** | unset (world) |
+| **File** | `src/api/wifi_backend_mock.cpp` |
+
+```bash
+# A radio the system already set to Germany: shown as current, left alone
+HELIX_MOCK_WIFI_COUNTRY=DE ./build/bin/helix-screen --test
+```
+
 ### `HELIX_MOCK_REMOTE_THUMBS`
 
 Make the mock advertise Moonraker-relative thumbnail paths and fetch them over real HTTP, so `--test` exercises the cold-fetch pipeline instead of short-cutting it.
@@ -997,7 +1012,7 @@ Select which printer the mock Moonraker client impersonates. Drives the mock's r
 
 | Property | Value |
 |----------|-------|
-| **Values** | see `include/mock_persona.h#PERSONAS`: currently `voron_24`, `voron_trident`, `k1`, `k1max`, `ad5m`, `creator5`, `creator5_zmod`, `generic_corexy`, `generic_bedslinger`, `multi_extruder`, `delta`, `snapmaker_u1`, `cc1`, `ad5x`, `k2`. Matched exactly (case-sensitive); an unrecognised value falls back to `voron_24` with a warning listing the valid ids |
+| **Values** | see `include/mock_persona.h#kPersonas`: currently `voron_24`, `voron_trident`, `k1`, `k1max`, `ad5m`, `creator5`, `creator5_zmod`, `generic_corexy`, `generic_bedslinger`, `multi_extruder`, `delta`, `snapmaker_u1`, `cc1`, `ad5x`, `k2`. Matched exactly (case-sensitive); an unrecognised value falls back to `voron_24` with a warning listing the valid ids |
 | **Default** | `voron_24` (Voron 2.4); unset and empty both select it silently |
 | **File** | `include/mock_persona.h` |
 

@@ -143,7 +143,7 @@ TEST_CASE_METHOD(XMLTestFixture,
     const std::string path = Config::get_instance()->df() + "panel_widgets/" + scene.panel_id;
     {
         GridEditMode em;
-        em.enter(scene.container, scene.config, static_cast<int>(GridEditScene::PAGE_INDEX));
+        em.enter(scene.container, scene.config, static_cast<int>(GridEditScene::kPageIndex));
         em.select_widget(scene.widget);
         GridEditModeTestAccess::commit_resize(
             em,
@@ -192,13 +192,13 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: every edit asks for a save once 
 
     SECTION("entering syncs a drifted position") {
         // The entry says column 4; the widget is laid out in column 0.
-        scene.config->page_entries_mut(GridEditScene::PAGE_INDEX)[0].col = 4;
-        em.enter(scene.container, scene.config, static_cast<int>(GridEditScene::PAGE_INDEX));
-        REQUIRE(scene.config->page_entries(GridEditScene::PAGE_INDEX)[0].col == 0);
+        scene.config->page_entries_mut(GridEditScene::kPageIndex)[0].col = 4;
+        em.enter(scene.container, scene.config, static_cast<int>(GridEditScene::kPageIndex));
+        REQUIRE(scene.config->page_entries(GridEditScene::kPageIndex)[0].col == 0);
         CHECK(scene.config->save_pending());
     }
     SECTION("removing a widget") {
-        em.enter(scene.container, scene.config, static_cast<int>(GridEditScene::PAGE_INDEX));
+        em.enter(scene.container, scene.config, static_cast<int>(GridEditScene::kPageIndex));
         scene.config->flush_pending_save();
         em.select_widget(scene.widget);
         lv_obj_t* remove = GridEditModeTestAccess::remove_button(em);
@@ -208,7 +208,7 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: every edit asks for a save once 
         CHECK(scene.config->save_pending());
     }
     SECTION("placing a widget from the catalog") {
-        em.enter(scene.container, scene.config, static_cast<int>(GridEditScene::PAGE_INDEX));
+        em.enter(scene.container, scene.config, static_cast<int>(GridEditScene::kPageIndex));
         scene.config->flush_pending_save();
         GridEditModeTestAccess::place_from_catalog(em, "clock");
         REQUIRE(scene.config->is_placed("clock"));

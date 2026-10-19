@@ -106,6 +106,7 @@
   <translation tag="2. Place paper between nozzle and bed" ja="2. ノズルとベッドの間に紙を置いてください"/>
   <translation tag="2. Results show how much to turn each screw" ja="2. 各ネジをどれだけ回すか結果が表示されます"/>
   <translation tag="2. Take the PEI sheet off the bed when asked" ja="2. 指示が出たらPEIシートをベッドから取り外します"/>
+  <translation tag="2.4 GHz only" ja="2.4 GHz のみ"/>
   <translation tag="20 minutes" ja="20分"/>
   <translation tag="24 Hour" ja="24時間"/>
   <translation tag="24-hour" ja="24時間制"/>
@@ -834,6 +835,7 @@
   <translation tag="Could not save the drying state: nothing was heated" ja="乾燥の状態を保存できませんでした: 何も加熱していません"/>
   <translation tag="Could not save the mesh as &apos;{}&apos;: {}" ja="メッシュを &apos;{}&apos; として保存できませんでした: {}"/>
   <translation tag="Could not save the printer image tags" ja="プリンター画像のタグの保存に失敗しました"/>
+  <translation tag="Could not set the WiFi country" ja="WiFi の地域を設定できませんでした"/>
   <translation tag="Could not skip {}" ja="{} をスキップできませんでした"/>
   <translation tag="Could not start Bluetooth discovery" ja="Bluetooth の検出を開始できませんでした"/>
   <translation tag="Could not turn the heaters off" ja="ヒーターを切れませんでした"/>
@@ -846,6 +848,8 @@
   <translation tag="Couldn&apos;t save the material name" ja="材料名を保存できませんでした"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" ja="プリンターのゲートマップを保存できませんでした"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." ja="Spoolman に保存できませんでした。このプリンターでは何も変更されていません。"/>
+  <translation tag="Couldn&apos;t set the backup" ja="予備を設定できませんでした"/>
+  <translation tag="Country" ja="地域"/>
   <translation tag="Cover open" ja="カバーが開いています"/>
   <translation tag="Crash Report" ja="クラッシュレポート"/>
   <translation tag="Crash report sent — thank you!" ja="クラッシュレポートを送信しました — ありがとうございます！"/>
@@ -2214,6 +2218,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." ja="このウィジェットを配置するスペースが足りません。スペースを確保するためにウィジェットを整理または削除してください。"/>
   <translation tag="Not in your spools? Set it up" ja="スプールにない？登録する"/>
   <translation tag="Not now" ja="後で"/>
+  <translation tag="Not set" ja="未設定"/>
   <translation tag="Not turned" ja="未回転"/>
   <translation tag="Not yet available on this display" ja="このディスプレイではまだ利用できません"/>
   <translation tag="Not yet calibrated" ja="未キャリブレーション"/>

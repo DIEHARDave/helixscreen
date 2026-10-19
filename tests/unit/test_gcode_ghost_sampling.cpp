@@ -41,14 +41,14 @@ using helix::gcode::kGhostMinSampledLayers;
 using helix::gcode::plan_ghost_sampling;
 
 /// A representative ghost buffer height for the 480x800 panels this runs on.
-static constexpr int ROWS = 320;
+static constexpr int kRows = 320;
 
 TEST_CASE("plan_ghost_sampling: full-load mode still visits every layer",
           "[gcode][ghost][sampling]") {
     // Full load holds the whole parse in memory; a step there is a pointer
     // dereference, so bounding it would cost fidelity and buy nothing.
     for (int total : {1, 50, 128, 1000, 5000, 40000}) {
-        auto plan = plan_ghost_sampling(total, /*streaming=*/false, ROWS);
+        auto plan = plan_ghost_sampling(total, /*streaming=*/false, kRows);
         CAPTURE(total);
         CHECK(plan.step == 1);
         CHECK(plan.count == total);
@@ -58,8 +58,8 @@ TEST_CASE("plan_ghost_sampling: full-load mode still visits every layer",
 TEST_CASE("plan_ghost_sampling: a streamed file small enough is not degraded",
           "[gcode][ghost][sampling]") {
     // Under the budget there is nothing to save, so the ghost stays exact.
-    for (int total : {1, 2, 64, ROWS}) {
-        auto plan = plan_ghost_sampling(total, /*streaming=*/true, ROWS);
+    for (int total : {1, 2, 64, kRows}) {
+        auto plan = plan_ghost_sampling(total, /*streaming=*/true, kRows);
         CAPTURE(total);
         CHECK(plan.step == 1);
         CHECK(plan.count == total);
@@ -73,11 +73,11 @@ TEST_CASE("plan_ghost_sampling: a streamed file's cost stops growing with the fi
     // shape of the 133MB K2 Plus file this was found on; 200000 is well past
     // anything real and must still be bounded.
     for (int total : {999, 5000, 20000, 200000}) {
-        auto plan = plan_ghost_sampling(total, /*streaming=*/true, ROWS);
+        auto plan = plan_ghost_sampling(total, /*streaming=*/true, kRows);
         CAPTURE(total);
         CHECK(plan.step > 1);
         CHECK(plan.count > 0);
-        CHECK(plan.count < ghost_sample_budget(ROWS) * 2);
+        CHECK(plan.count < ghost_sample_budget(kRows) * 2);
     }
 }
 
@@ -89,13 +89,13 @@ TEST_CASE("plan_ghost_sampling: never fewer samples than the canvas has rows",
     // and 161 samples, so a model whose projection fills the canvas has twice
     // as many rows as samples and renders as stripes. Every row the model
     // occupies must be able to get ink.
-    for (int total = 1; total <= ROWS * 8; ++total) {
-        auto plan = plan_ghost_sampling(total, /*streaming=*/true, ROWS);
+    for (int total = 1; total <= kRows * 8; ++total) {
+        auto plan = plan_ghost_sampling(total, /*streaming=*/true, kRows);
         CAPTURE(total);
-        REQUIRE(plan.count >= std::min(total, ghost_sample_budget(ROWS)));
+        REQUIRE(plan.count >= std::min(total, ghost_sample_budget(kRows)));
     }
     // The boundary the ceil version got wrong, called out by name.
-    CHECK(plan_ghost_sampling(ROWS + 1, true, ROWS).count == ROWS + 1);
+    CHECK(plan_ghost_sampling(kRows + 1, true, kRows).count == kRows + 1);
 }
 
 TEST_CASE("plan_ghost_sampling: the budget holds for every size in a dense sweep",
@@ -103,13 +103,13 @@ TEST_CASE("plan_ghost_sampling: the budget holds for every size in a dense sweep
     // The bound is a ceil-of-a-ceil, which is exactly where an off-by-one
     // would hide. Sweep every size across the first few multiples of the
     // budget rather than trusting the round numbers above.
-    for (int total = 1; total <= ROWS * 8; ++total) {
-        auto plan = plan_ghost_sampling(total, /*streaming=*/true, ROWS);
+    for (int total = 1; total <= kRows * 8; ++total) {
+        auto plan = plan_ghost_sampling(total, /*streaming=*/true, kRows);
         CAPTURE(total);
         REQUIRE(plan.step >= 1);
         REQUIRE(plan.count > 0);
         REQUIRE(plan.count <= total);
-        REQUIRE(plan.count < ghost_sample_budget(ROWS) * 2);
+        REQUIRE(plan.count < ghost_sample_budget(kRows) * 2);
     }
 }
 
@@ -118,8 +118,8 @@ TEST_CASE("plan_ghost_sampling: sampling spans the full height of the model",
     // A ghost that samples only the bottom of the object is worse than no
     // ghost: it claims the print ends where the sampling stopped. The last
     // visited index must land within one stride of the top layer.
-    for (int total : {ROWS + 1, 1000, 5000, 20000}) {
-        auto plan = plan_ghost_sampling(total, /*streaming=*/true, ROWS);
+    for (int total : {kRows + 1, 1000, 5000, 20000}) {
+        auto plan = plan_ghost_sampling(total, /*streaming=*/true, kRows);
         int last_visited = plan.step * (plan.count - 1);
         CAPTURE(total, plan.step, plan.count, last_visited);
         CHECK(last_visited < total);
@@ -133,12 +133,12 @@ TEST_CASE("plan_ghost_sampling: an empty or nonsense layer count visits nothing"
     // is built. A negative can only be a bug upstream, but the loop that
     // consumes this must not be handed a stride of 0 or a negative count.
     for (int total : {0, -1, -5000}) {
-        auto plan = plan_ghost_sampling(total, /*streaming=*/true, ROWS);
+        auto plan = plan_ghost_sampling(total, /*streaming=*/true, kRows);
         CAPTURE(total);
         CHECK(plan.count == 0);
         CHECK(plan.step >= 1);
     }
-    auto full = plan_ghost_sampling(0, /*streaming=*/false, ROWS);
+    auto full = plan_ghost_sampling(0, /*streaming=*/false, kRows);
     CHECK(full.count == 0);
     CHECK(full.step >= 1);
 }

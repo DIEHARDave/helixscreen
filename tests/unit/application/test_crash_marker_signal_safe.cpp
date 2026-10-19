@@ -121,13 +121,13 @@ TEST_CASE("a start after three recent ones is a crash loop and clears the marker
     ScopedRuntimeConfig scoped_config; // a detected loop arms safe mode globally
     const std::string path = temp_marker_path("loop");
     fs::remove(path);
-    constexpr long long NOW = 1770000000;
+    constexpr long long kNow = 1770000000;
 
-    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, NOW));
-    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, NOW + 10));
-    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, NOW + 20));
+    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, kNow));
+    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, kNow + 10));
+    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, kNow + 20));
     REQUIRE(fs::exists(path));
-    CHECK(helix::record_start_and_check_crash_loop(path, NOW + 30));
+    CHECK(helix::record_start_and_check_crash_loop(path, kNow + 30));
     CHECK_FALSE(fs::exists(path));
 }
 
@@ -135,13 +135,13 @@ TEST_CASE("starts older than the window do not count toward a crash loop",
           "[application][crash_loop]") {
     const std::string path = temp_marker_path("window");
     fs::remove(path);
-    constexpr long long NOW = 1770000000;
+    constexpr long long kNow = 1770000000;
 
-    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, NOW));
-    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, NOW + 10));
-    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, NOW + 20));
+    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, kNow));
+    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, kNow + 10));
+    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, kNow + 20));
     // 200s later all three have aged out of the 120s window.
-    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, NOW + 200));
+    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, kNow + 200));
     fs::remove(path);
 }
 
@@ -150,20 +150,20 @@ TEST_CASE("a crash loop boots this run in safe mode", "[application][crash_loop]
     get_runtime_config()->crash_loop_safe_mode = false;
     const std::string path = temp_marker_path("safe_mode");
     fs::remove(path);
-    constexpr long long NOW = 1770000000;
+    constexpr long long kNow = 1770000000;
 
-    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, NOW));
-    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, NOW + 10));
-    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, NOW + 20));
+    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, kNow));
+    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, kNow + 10));
+    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, kNow + 20));
     CHECK_FALSE(get_runtime_config()->crash_loop_safe_mode);
 
-    REQUIRE(helix::record_start_and_check_crash_loop(path, NOW + 30));
+    REQUIRE(helix::record_start_and_check_crash_loop(path, kNow + 30));
     CHECK(get_runtime_config()->crash_loop_safe_mode);
 
     // The flag lives only in this process. The next start sees an empty
     // marker, so a fresh process stays in normal mode.
     get_runtime_config()->crash_loop_safe_mode = false;
-    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, NOW + 40));
+    CHECK_FALSE(helix::record_start_and_check_crash_loop(path, kNow + 40));
     CHECK_FALSE(get_runtime_config()->crash_loop_safe_mode);
     fs::remove(path);
 }

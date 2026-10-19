@@ -3,6 +3,7 @@
 
 #if HELIX_HAS_PLUGINS
 
+#include "i_moonraker_client.h"
 #include "json_utils.h"
 #include "lua_bindings.h"
 #include "moonraker_subscription_merge.h"
@@ -15,6 +16,7 @@
 #include <mutex>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 namespace helix::plugin {
 
@@ -86,28 +88,33 @@ struct Subscription {
     int fn_ref = LUA_NOREF;
     json spec; ///< object name -> null (every field) or an array of field names
     /// Shared with the deferred deliveries in flight for this subscription: false once
-    /// cancelled, so a delivery queued on the WebSocket thread never invokes a ref the
-    /// cancel already released.
+    /// cancelled, so a delivery queued on another thread never invokes a ref the cancel
+    /// already released.
     std::shared_ptr<std::atomic<bool>> alive = std::make_shared<std::atomic<bool>>(true);
 };
 
-/// The plugin's subscriptions. The notify handler reads it on the WebSocket thread while
-/// the main thread subscribes and cancels, so every access takes the mutex; the records
-/// are plain JSON and ints, never Lua.
+/// The plugin's subscriptions. The status handler reads it on whichever thread dispatched
+/// the frame while the main thread subscribes and cancels, so every access to `subs` takes
+/// the mutex; the records are plain JSON and ints, never Lua.
 struct SubscriptionHub {
     std::mutex mu;
     std::map<uint64_t, Subscription> subs;
     uint64_t next_id = 1;
+    /// A re-snapshot is queued for the main thread; more whole-object frames fold into it.
+    std::atomic<bool> resnapshot_queued{false};
+    /// Main thread only: a re-snapshot query is out, and another was asked for meanwhile.
+    bool resnapshot_in_flight = false;
+    bool resnapshot_again = false;
 };
 
 // Every registered agent-event handler keeps a notify subscription alive, so their count
 // is bounded here rather than by the WebSocket's fan-out.
 struct MoonrakerBindState {
     size_t agent_handlers = 0;
-    /// Set once the one notify_status_update handler is registered; it stays until the
-    /// runtime closes, delivering nothing while no subscription is live.
-    bool notify_registered = false;
-    std::function<void()> notify_off;
+    /// Set once the one status handler is registered; it stays until the runtime closes,
+    /// delivering nothing while no subscription is live.
+    bool status_registered = false;
+    std::function<void()> status_off;
     std::shared_ptr<SubscriptionHub> hub = std::make_shared<SubscriptionHub>();
 };
 
@@ -277,29 +284,131 @@ json filter_status(const json& status, const json& spec) {
     return out;
 }
 
-// One status table on its way to a subscription's callback: measured on the producing
-// thread, then handed to the main thread through the runtime's token with the same
-// memory-cap check the agent-event deliveries use.
+// One status table on its way to a subscription's callback, `fn(status, snapshot)`:
+// measured on the producing thread, then handed to the main thread through the runtime's
+// token with the same memory-cap check the agent-event deliveries use.
 void deliver_status(LuaRuntime* rtp, LifetimeToken token,
-                    const std::shared_ptr<std::atomic<bool>>& alive, int ref, json data) {
+                    const std::shared_ptr<std::atomic<bool>>& alive, int ref, json data,
+                    bool snapshot) {
     size_t bytes = pushed_bytes(data);
-    token.defer("plugin_status_update", [rtp, alive, ref, data = std::move(data), bytes]() {
-        if (!alive->load())
-            return;
-        if (bytes > memory_remaining(*rtp)) {
-            spdlog::warn("[plugin {}] status update over the memory cap; callback saw nil",
-                         rtp->plugin_id());
-            rtp->invoke(ref, [](lua_State* co) {
-                lua_pushnil(co);
-                return 1;
-            });
+    token.defer("plugin_status_update",
+                [rtp, alive, ref, data = std::move(data), bytes, snapshot]() {
+                    if (!alive->load())
+                        return;
+                    if (bytes > memory_remaining(*rtp)) {
+                        spdlog::warn("[plugin {}] status update over the memory cap; "
+                                     "callback saw nil",
+                                     rtp->plugin_id());
+                        rtp->invoke(ref, [snapshot](lua_State* co) {
+                            lua_pushnil(co);
+                            lua_pushboolean(co, snapshot);
+                            return 2;
+                        });
+                        return;
+                    }
+                    rtp->invoke(ref, [&data, snapshot](lua_State* co) {
+                        push_json(co, data);
+                        lua_pushboolean(co, snapshot);
+                        return 2;
+                    });
+                });
+}
+
+// The status table of a printer.objects.query reply, which the backend hands over as the
+// whole JSON-RPC message: {"result": {"status": {...}}}. Empty when it has none.
+json query_status(const json& response) {
+    auto res = response.is_object() ? response.find("result") : response.end();
+    if (res == response.end() || !res->is_object())
+        return json::object();
+    auto st = res->find("status");
+    return st != res->end() && st->is_object() ? *st : json::object();
+}
+
+// Delivers `status` as a snapshot to subscription `only`, or to every live subscription
+// when `only` is 0. Each gets its own fields, an empty table when none of its objects
+// reported. Pure JSON under the hub's lock, so it runs on any thread.
+void deliver_snapshot(LuaRuntime* rtp, LifetimeToken token, SubscriptionHub& hub,
+                      const json& status, uint64_t only) {
+    std::vector<std::tuple<std::shared_ptr<std::atomic<bool>>, int, json>> targets;
+    {
+        std::lock_guard<std::mutex> lk(hub.mu);
+        for (const auto& [id, s] : hub.subs) {
+            if (only != 0 && id != only)
+                continue;
+            targets.emplace_back(s.alive, s.fn_ref, filter_status(status, s.spec));
+        }
+    }
+    for (auto& [alive, ref, data] : targets)
+        deliver_status(rtp, token, alive, ref, std::move(data), /*snapshot=*/true);
+}
+
+json merged_specs(SubscriptionHub& hub);
+
+// Queries every subscribed object and delivers the answer to every subscription as a
+// snapshot. Main thread only. One query is out at a time; asks arriving meanwhile fold
+// into one more once it settles, because its answer may predate what they announced.
+void resnapshot(LuaRuntime* rtp, LifetimeToken token, std::shared_ptr<SubscriptionHub> hub,
+                PluginBackend* backend) {
+    if (hub->resnapshot_in_flight) {
+        hub->resnapshot_again = true;
+        return;
+    }
+    json objects = merged_specs(*hub);
+    if (objects.empty())
+        return;
+    hub->resnapshot_in_flight = true;
+    // The callback can outlive the runtime, so it logs a copy of the id.
+    backend->call("printer.objects.query", json{{"objects", objects}},
+                  [rtp, token, hub, backend, id = std::string(rtp->plugin_id())](RpcResult r) {
+                      if (r.ok)
+                          deliver_snapshot(rtp, token, *hub, query_status(r.value), 0);
+                      else
+                          spdlog::debug("[plugin {}] subscription snapshot query failed: {}", id,
+                                        r.error);
+                      token.defer("plugin_resnapshot_settle", [rtp, token, hub, backend]() {
+                          hub->resnapshot_in_flight = false;
+                          if (std::exchange(hub->resnapshot_again, false))
+                              resnapshot(rtp, token, hub, backend);
+                      });
+                  });
+}
+
+// The one status handler a plugin registers. A whole-object frame (discovery after a
+// connect or Klipper restart, a subscription refresh) re-snapshots every subscription
+// from a fresh query instead of replaying the frame, which discovery may have carried for
+// seconds. Any other frame is a delta, reduced per subscription under the hub's lock.
+std::function<void(const json&)> make_status_handler(LuaRuntime* rtp, LifetimeToken token,
+                                                     std::shared_ptr<SubscriptionHub> hub,
+                                                     PluginBackend* backend) {
+    return [rtp, token, hub, backend](const json& msg) {
+        if (helix::json_util::safe_bool(msg, helix::kWholeObjectsMarker)) {
+            if (!hub->resnapshot_queued.exchange(true))
+                token.defer("plugin_resnapshot", [rtp, token, hub, backend]() {
+                    hub->resnapshot_queued = false;
+                    resnapshot(rtp, token, hub, backend);
+                });
             return;
         }
-        rtp->invoke(ref, [&data](lua_State* co) {
-            push_json(co, data);
-            return 1;
-        });
-    });
+        auto params = msg.find("params");
+        if (params == msg.end() || !params->is_array() || params->empty() ||
+            !(*params)[0].is_object())
+            return;
+        const json& delta = (*params)[0];
+        // A cancel between the copy and the invoke leaves alive false, so the main-thread
+        // check in deliver_status never touches the released ref.
+        std::vector<std::tuple<std::shared_ptr<std::atomic<bool>>, int, json>> targets;
+        {
+            std::lock_guard<std::mutex> lk(hub->mu);
+            for (const auto& [id, s] : hub->subs) {
+                json f = filter_status(delta, s.spec);
+                if (f.empty())
+                    continue;
+                targets.emplace_back(s.alive, s.fn_ref, std::move(f));
+            }
+        }
+        for (auto& [alive, ref, data] : targets)
+            deliver_status(rtp, token, alive, ref, std::move(data), /*snapshot=*/false);
+    };
 }
 
 // The subscribe argument as a printer.objects.subscribe map: object name -> null (every
@@ -375,62 +484,32 @@ int subscribe(lua_State* L) {
 
     int ref = rt.ref_value(L, 2);
     uint64_t sid;
-    auto alive = std::shared_ptr<std::atomic<bool>>();
     {
         std::lock_guard<std::mutex> lk(mstate.hub->mu);
         sid = mstate.hub->next_id++;
-        auto [it, inserted] = mstate.hub->subs.emplace(sid, Subscription{ref, spec});
-        alive = it->second.alive;
+        mstate.hub->subs.emplace(sid, Subscription{ref, spec});
     }
     backend->set_plugin_objects(rt.plugin_id(), merged);
 
-    if (!mstate.notify_registered) {
-        mstate.notify_registered = true;
-        LuaRuntime* rtp = &rt;
-        LifetimeToken token = rt.token();
-        auto hub = mstate.hub;
-        // Runs on the WebSocket thread: reduces each delta to plain JSON per
-        // subscription under the hub's lock, then defers through the runtime's token.
-        mstate.notify_off = context(L).backend.on_notify(
-            "notify_status_update", [rtp, token, hub](const json& msg) {
-                auto params = msg.find("params");
-                if (params == msg.end() || !params->is_array() || params->empty() ||
-                    !(*params)[0].is_object())
-                    return;
-                const json& delta = (*params)[0];
-                // (alive flag, callback ref, filtered payload) per matching subscription.
-                // A cancel between the copy and the invoke leaves alive false, so the
-                // main-thread check in deliver_status never touches the released ref.
-                std::vector<std::tuple<std::shared_ptr<std::atomic<bool>>, int, json>> targets;
-                {
-                    std::lock_guard<std::mutex> lk(hub->mu);
-                    for (const auto& [id, s] : hub->subs) {
-                        json f = filter_status(delta, s.spec);
-                        if (f.empty())
-                            continue;
-                        targets.emplace_back(s.alive, s.fn_ref, std::move(f));
-                    }
-                }
-                for (auto& [alive, ref, data] : targets)
-                    deliver_status(rtp, token, alive, ref, std::move(data));
-            });
-    }
-
-    // First delivery: the current values, from one query the plugin's own objects answer.
     LuaRuntime* rtp = &rt;
     LifetimeToken token = rt.token();
-    json params{{"objects", spec}};
-    backend->call("printer.objects.query", params, [rtp, token, alive, ref, spec](RpcResult r) {
-        if (!r.ok) {
-            spdlog::debug("[plugin {}] initial subscribe query failed: {}", rtp->plugin_id(),
-                          r.error);
-            return;
-        }
-        json out;
-        auto st = r.value.is_object() ? r.value.find("status") : r.value.end();
-        out = st != r.value.end() && st->is_object() ? filter_status(*st, spec) : json::object();
-        deliver_status(rtp, token, alive, ref, std::move(out));
-    });
+    auto hub = mstate.hub;
+    if (!mstate.status_registered) {
+        mstate.status_registered = true;
+        mstate.status_off = backend->on_status(make_status_handler(rtp, token, hub, backend));
+    }
+
+    // First delivery: a snapshot of the current values, from one query for this
+    // subscription's own objects.
+    backend->call("printer.objects.query", json{{"objects", spec}},
+                  [rtp, token, hub, sid, id = std::string(rt.plugin_id())](RpcResult r) {
+                      if (!r.ok) {
+                          spdlog::debug("[plugin {}] initial subscribe query failed: {}", id,
+                                        r.error);
+                          return;
+                      }
+                      deliver_snapshot(rtp, token, *hub, query_status(r.value), sid);
+                  });
 
     *static_cast<uint64_t*>(lua_newuserdatauv(L, sizeof(uint64_t), 0)) = sid;
     luaL_setmetatable(L, kSubMeta);
@@ -469,14 +548,14 @@ void install_moonraker_bindings(PluginContext& ctx) {
     lua_rawsetp(L, LUA_REGISTRYINDEX, &kMoonrakerStateKey);
     ctx.rt.on_close([state] { delete state; });
     // Runs before the state's own closer (closers run in reverse registration order):
-    // drops the notify handler, stops every delivery and clears the plugin's objects, so
+    // drops the status handler, stops every delivery and clears the plugin's objects, so
     // unload shrinks the union subscription. The backend outlives the runtime.
     PluginBackend* backend = &ctx.backend;
     std::string id = ctx.manifest.id;
     ctx.rt.on_close([state, backend, id] {
-        if (state->notify_off) {
-            state->notify_off();
-            state->notify_off = nullptr;
+        if (state->status_off) {
+            state->status_off();
+            state->status_off = nullptr;
         }
         {
             std::lock_guard<std::mutex> lk(state->hub->mu);

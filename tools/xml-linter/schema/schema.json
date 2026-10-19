@@ -1555,6 +1555,10 @@
           "type": "enum",
           "enum": "label_long_mode"
         },
+        "label_align": {
+          "type": "enum",
+          "enum": "button_label_align"
+        },
         "label_hidden_if_bp_eq": {
           "type": "int"
         },
@@ -2463,6 +2467,10 @@
       "row",
       "column"
     ],
+    "button_label_align": [
+      "start",
+      "center"
+    ],
     "spinner_size": [
       "xs",
       "sm",
@@ -3040,12 +3048,6 @@
     "ams_clog_arc_max_micro",
     "ams_clog_arc_max_small",
     "ams_clog_arc_max_tiny",
-    "ams_context_dropdown_w",
-    "ams_context_dropdown_w_large",
-    "ams_context_dropdown_w_medium",
-    "ams_context_dropdown_w_micro",
-    "ams_context_dropdown_w_small",
-    "ams_context_dropdown_w_tiny",
     "ams_context_plugin_col_w",
     "ams_context_plugin_col_w_large",
     "ams_context_plugin_col_w_medium",
@@ -3076,6 +3078,12 @@
     "ams_edit_hdr_hit_medium",
     "ams_edit_hdr_hit_micro",
     "ams_edit_hdr_hit_small",
+    "ams_edit_lane_dd_w",
+    "ams_edit_lane_dd_w_large",
+    "ams_edit_lane_dd_w_medium",
+    "ams_edit_lane_dd_w_micro",
+    "ams_edit_lane_dd_w_small",
+    "ams_edit_lane_dd_w_tiny",
     "ams_edit_more_pad",
     "ams_edit_more_pad_large",
     "ams_edit_more_pad_medium",
@@ -3091,6 +3099,12 @@
     "ams_edit_row_label_w_micro",
     "ams_edit_row_label_w_small",
     "ams_edit_row_label_w_tiny",
+    "ams_edit_tool_dd_w",
+    "ams_edit_tool_dd_w_large",
+    "ams_edit_tool_dd_w_medium",
+    "ams_edit_tool_dd_w_micro",
+    "ams_edit_tool_dd_w_small",
+    "ams_edit_tool_dd_w_tiny",
     "ams_edit_vgap",
     "ams_edit_vgap_large",
     "ams_edit_vgap_medium",

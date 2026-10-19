@@ -768,12 +768,12 @@ double fireflies_cost(size_t level) {
     Swarm s(53, level, PixelFormat::RGB565, 800, 480);
     const uint32_t period = kFirefliesLevels[level].period_ms;
     helix::test::SaverLoad load;
-    constexpr int FRAMES = 240;
-    for (int i = 0; i < FRAMES; i++) {
+    constexpr int kFrames = 240;
+    for (int i = 0; i < kFrames; i++) {
         s.step(period);
         load.add_frame(s.dirty);
     }
-    load.average_over(FRAMES);
+    load.average_over(kFrames);
     return load.cost() * 33.0 / static_cast<double>(period);
 }
 

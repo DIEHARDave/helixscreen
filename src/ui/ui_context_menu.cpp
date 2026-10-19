@@ -459,15 +459,48 @@ void ContextMenu::fit_card_to_screen(lv_obj_t* menu_card) {
     }
 
     lv_obj_update_layout(menu_card);
-    if (lv_obj_get_height(menu_card) <= available_h) {
+    const int32_t stacked_h = lv_obj_get_height(menu_card);
+    if (stacked_h <= available_h) {
         return; // Stacked layout fits; leave it as one list.
     }
 
     if (columns) {
         lv_obj_set_flex_flow(columns, LV_FLEX_FLOW_ROW);
         lv_obj_update_layout(menu_card);
-        spdlog::debug("[ContextMenu] Card exceeded {}px — switched to side-by-side columns ({}px)",
-                      available_h, lv_obj_get_height(menu_card));
+        spdlog::debug("[ContextMenu] Card {}px tall exceeded {}px — switched to side-by-side "
+                      "columns ({}x{}px)",
+                      stacked_h, available_h, lv_obj_get_width(menu_card),
+                      lv_obj_get_height(menu_card));
+
+        const int32_t available_w = lv_obj_get_width(backdrop) - (margin * 2);
+        if (decide_column_flow(stacked_h, lv_obj_get_width(menu_card), available_w, available_h) ==
+            ColumnFlow::RowWrap) {
+            // A wrapping row needs a width to wrap against: the card's own, at
+            // the most the screen allows.
+            const int32_t inner_w = available_w -
+                                    lv_obj_get_style_space_left(menu_card, LV_PART_MAIN) -
+                                    lv_obj_get_style_space_right(menu_card, LV_PART_MAIN);
+            lv_obj_set_width(columns, inner_w);
+            lv_obj_set_flex_flow(columns, LV_FLEX_FLOW_ROW_WRAP);
+            lv_obj_update_layout(menu_card);
+            // A group wrapped below the first line has the card's whole width to
+            // itself, so it takes it rather than ellipsize its rows in a column
+            // sized for sitting beside the others.
+            int32_t first_line_y = -1;
+            for (uint32_t i = 0; i < lv_obj_get_child_count(columns); i++) {
+                lv_obj_t* col = lv_obj_get_child(columns, static_cast<int32_t>(i));
+                if (!col || lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN))
+                    continue;
+                if (first_line_y < 0) {
+                    first_line_y = lv_obj_get_y(col);
+                } else if (lv_obj_get_y(col) > first_line_y) {
+                    lv_obj_set_width(col, inner_w);
+                }
+            }
+            lv_obj_update_layout(menu_card);
+            spdlog::debug("[ContextMenu] Columns wider than {}px — wrapped ({}x{}px)", available_w,
+                          lv_obj_get_width(menu_card), lv_obj_get_height(menu_card));
+        }
     }
 
     // Even side by side the card can outgrow a very short screen, so cap it and let
@@ -480,6 +513,14 @@ void ContextMenu::fit_card_to_screen(lv_obj_t* menu_card) {
         spdlog::debug("[ContextMenu] Card still over budget — capped at {}px, scrollable",
                       available_h);
     }
+}
+
+ContextMenu::ColumnFlow ContextMenu::decide_column_flow(int32_t stacked_h, int32_t row_w,
+                                                        int32_t avail_w, int32_t avail_h) {
+    if (stacked_h <= avail_h) {
+        return ColumnFlow::Stacked;
+    }
+    return row_w <= avail_w ? ColumnFlow::Row : ColumnFlow::RowWrap;
 }
 
 void ContextMenu::tidy_column_groups(lv_obj_t* columns) {

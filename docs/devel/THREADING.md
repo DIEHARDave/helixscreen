@@ -131,7 +131,7 @@ library, assume you are on a background thread.
 ### Threading model
 
 ```
-MAIN THREAD              LIBHV THREAD           UTILITY THREADS
+MAIN THREAD              LIBHV THREAD           UTILITY kThreads
 ─────────────            ─────────────          ───────────────
 main_loop()              libhv Event Loop       UpdateChecker
   ├ process_notifs()       ├ WebSocket conn     TelemetryManager

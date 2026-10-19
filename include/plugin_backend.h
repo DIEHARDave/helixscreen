@@ -48,6 +48,12 @@ struct PluginBackend {
     std::function<std::function<void()>(const std::string& notify_method,
                                         std::function<void(const json& msg)>)>
         on_notify;
+    /// Registers a handler for every notify_status_update the app's own status parsers
+    /// receive: the live deltas and the client's whole-object snapshots (discovery after a
+    /// connect or Klipper restart, subscription refreshes), which carry
+    /// helix::kWholeObjectsMarker. Runs on whichever thread dispatched it. Returns the
+    /// function that unregisters it.
+    std::function<std::function<void()>(std::function<void(const json& notification)>)> on_status;
     /// Publishes `objects`, the plugin's merged printer.objects.subscribe map (object name
     /// to null for every field or an array of field names). An empty object clears the
     /// plugin's set. Main thread only.

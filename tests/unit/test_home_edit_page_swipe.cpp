@@ -1820,9 +1820,9 @@ TEST_CASE_METHOD(EditHomeFixture, "a multi-frame resize commits and tears down i
     REQUIRE(GridEditModeTestAccess::resizing(grid()));
     lv_obj_t* preview = GridEditModeTestAccess::resize_preview(grid());
     REQUIRE(preview != nullptr);
-    constexpr int FRAMES = 5;
-    for (int frame = 1; frame <= FRAMES; ++frame) {
-        indev.move(x, start_y + (y + cell_px - start_y) * frame / FRAMES);
+    constexpr int kFrames = 5;
+    for (int frame = 1; frame <= kFrames; ++frame) {
+        indev.move(x, start_y + (y + cell_px - start_y) * frame / kFrames);
     }
     REQUIRE(GridEditModeTestAccess::resizing(grid()));
 
@@ -1868,9 +1868,9 @@ TEST_CASE_METHOD(EditHomeFixture, "a multi-frame drag commits its landing cell",
     const int start_x = c.x + past_drag_threshold();
     indev.move(start_x, c.y);
     REQUIRE(GridEditModeTestAccess::dragging(grid()));
-    constexpr int FRAMES = 6;
-    for (int frame = 1; frame <= FRAMES; ++frame) {
-        indev.move(start_x + travel * frame / FRAMES, c.y);
+    constexpr int kFrames = 6;
+    for (int frame = 1; frame <= kFrames; ++frame) {
+        indev.move(start_x + travel * frame / kFrames, c.y);
     }
     REQUIRE(GridEditModeTestAccess::snap_col(grid()) == expected_col);
     indev.release(start_x + travel, c.y);
@@ -2001,9 +2001,9 @@ TEST_CASE_METHOD(EditHomeFixture, "a move that empties a page removes it",
     const auto temperature = config().page_entries(0)[0];
     REQUIRE(temperature.id == "temperature");
     const int drop_x = (frame.x1 + frame.x2) / 2;
-    constexpr int FRAMES = 4;
-    for (int f = 1; f <= FRAMES; ++f) {
-        indev.move(zone_x + (drop_x - zone_x) * f / FRAMES, c.y);
+    constexpr int kFrames = 4;
+    for (int f = 1; f <= kFrames; ++f) {
+        indev.move(zone_x + (drop_x - zone_x) * f / kFrames, c.y);
     }
     const int snap_col = GridEditModeTestAccess::snap_col(grid());
     const int snap_row = GridEditModeTestAccess::snap_row(grid());
@@ -3625,9 +3625,9 @@ TEST_CASE_METHOD(EditHomeFixture, "a commit saves the layout once when edits set
         // Carried clear of 'temperature', a cell per read.
         const lv_area_t frame = settled_page_area();
         const int drop_x = (frame.x1 + frame.x2) / 2;
-        constexpr int FRAMES = 4;
-        for (int f = 1; f <= FRAMES; ++f) {
-            indev.move(zone.x + (drop_x - zone.x) * f / FRAMES, c.y);
+        constexpr int kFrames = 4;
+        for (int f = 1; f <= kFrames; ++f) {
+            indev.move(zone.x + (drop_x - zone.x) * f / kFrames, c.y);
         }
         const helix::PanelWidgetEntry temperature = entry_on_page(0, "temperature");
         REQUIRE(GridEditModeTestAccess::snap_col(grid()) >= temperature.col + temperature.colspan);
@@ -4148,9 +4148,9 @@ TEST_CASE_METHOD(EditHomeFixture,
     // Carried out of the edge zone onto empty grid, a few cells per read.
     const lv_area_t frame = settled_page_area();
     const int drop_x = (frame.x1 + frame.x2) / 2;
-    constexpr int FRAMES = 4;
-    for (int f = 1; f <= FRAMES; ++f) {
-        indev.move(zone.x + (drop_x - zone.x) * f / FRAMES, c.y);
+    constexpr int kFrames = 4;
+    for (int f = 1; f <= kFrames; ++f) {
+        indev.move(zone.x + (drop_x - zone.x) * f / kFrames, c.y);
     }
     REQUIRE(GridEditModeTestAccess::snap_col(grid()) >= 0);
     const PageSetChange change = watch_page_set_change();

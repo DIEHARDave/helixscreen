@@ -24,6 +24,7 @@
 #include "safe_log.h"
 #include "spdlog/spdlog.h"
 #include "system_settings_manager.h"
+#include "wifi_country.h"
 #include "wifi_interface.h"
 #include "wifi_radio_toggle.h"
 #include "wifi_ui_utils.h"
@@ -135,13 +136,18 @@ void WiFiManager::register_backend_callbacks(bool silent) {
         "AUTH_FAILED", [this](const std::string& data) { handle_auth_failed(data); });
     backend_->register_event_callback(
         "INIT_FAILED", [this, silent](const std::string& msg) { handle_init_failed(silent, msg); });
+    backend_->register_event_callback("REGDOM_CHANGE", [this](const std::string& data) {
+        // Fired on the backend's event thread; scanning is LVGL-thread state.
+        async_lifetime_.defer("WiFiManager::regdom_change",
+                              [this, data]() { handle_regdom_change(data); });
+    });
     backend_->register_event_callback("READY", [this](const std::string&) {
         spdlog::debug("[WiFiManager] Backend READY event received");
         // Wake UI consumers that queried status before async init landed —
         // NetworkWidget in particular attaches synchronously during home-panel
         // load, races the backend's worker thread, and gets an empty STATUS
         // response that pins it on 'Disconnected' until this event lands.
-        notify_state_observers();
+        notify_state_observers(/*country_may_have_changed=*/true);
 
         // A radio the user switched off must not come back on because the
         // process restarted. Reassert the stored choice once the backend can
@@ -159,6 +165,8 @@ void WiFiManager::register_backend_callbacks(bool silent) {
         // network path (wired or otherwise) is actually up. When resolution of
         // the WiFi interface itself is inconclusive, fail safe: treat it the
         // same as "no known wired fallback" and do not disable the radio.
+        async_lifetime_.defer("WiFiManager::apply_stored_country",
+                              [this]() { apply_stored_country(); });
         async_lifetime_.defer("WiFiManager::reassert_stored_radio_state", [this]() {
             if (backend_ && !backend_->supports_radio_toggle()) {
                 // The radio belongs to the printer's network daemon: there is
@@ -306,10 +314,9 @@ void WiFiManager::handle_init_failed(bool silent, const std::string& msg) {
 
 void WiFiManager::swap_to_wpa_supplicant(bool silent) {
 #if !defined(__APPLE__) && !defined(__ANDROID__) && !defined(ESP_PLATFORM)
-    // A call in progress usually returns at once. Waiting longer would hold
-    // the LVGL thread for as long as it takes, which on a wedged daemon is
-    // unbounded, so past a short bound look again later instead.
-    if (!wait_for_radio_ops_for(std::chrono::milliseconds(200))) {
+    // Never wait here: this is the LVGL thread, and a call in progress on a
+    // wedged daemon does not return. Look again later instead.
+    if (!wait_for_radio_ops_for(std::chrono::milliseconds(0))) {
         after_ms(100, [this, silent]() { swap_to_wpa_supplicant(silent); });
         return;
     }
@@ -325,6 +332,12 @@ void WiFiManager::swap_to_wpa_supplicant(bool silent) {
     backend_.reset();
     backend_ = std::make_unique<WifiBackendWpaSupplicant>();
     backend_->set_silent(silent);
+    {
+        // The strikes belong to the backend that failed; the new one starts
+        // trusted, or an open breaker would refuse every user op against it.
+        std::lock_guard<std::mutex> lock(breaker_mutex_);
+        breaker_ = wifi::ControlBreaker(breaker_.config());
+    }
     {
         std::lock_guard<std::mutex> lock(control_mutex_);
         control_paused_ = false;
@@ -635,8 +648,6 @@ void WiFiManager::stop_scan() {
         std::lock_guard<std::mutex> lock(callback_mutex_);
         scan_callback_ = nullptr;
     }
-    user_scan_waiting_ = false;
-    ++scan_wait_generation_;
 }
 
 void WiFiManager::scan_timer_callback(lv_timer_t* timer) {
@@ -767,16 +778,9 @@ void WiFiManager::apply_connect_result(uint64_t generation, const std::string& s
     }
     // Success/failure will be reported via CONNECTED/AUTH_FAILED events — or, when the
     // backend never produces either, by the watchdog armed here. Either event may
-    // already have landed while the join ran on the lane: a CONNECTED clears
-    // connecting_in_progress_, an AUTH_FAILED owns the attempt through its grace timer.
-    bool pending;
-    {
-        std::lock_guard<std::mutex> lock(callback_mutex_);
-        pending = connecting_in_progress_;
-    }
-    if (pending && !auth_fail_grace_timer_) {
-        start_connect_timeout();
-    }
+    // already have landed while the join ran on the lane; the watchdog then finds
+    // nothing pending when it fires and delivers nothing.
+    start_connect_timeout();
 }
 
 void WiFiManager::disconnect() {
@@ -941,6 +945,134 @@ bool WiFiManager::supports_forget() {
 
 bool WiFiManager::supports_radio_toggle() {
     return backend_ && backend_->supports_radio_toggle();
+}
+
+// ============================================================================
+// Regulatory Country
+// ============================================================================
+
+bool WiFiManager::supports_country() {
+    return backend_ && backend_->supports_country();
+}
+
+void WiFiManager::get_country_async(helix::LifetimeToken token,
+                                    std::function<void(const CountryState&)> on_done) {
+    if (!on_done) {
+        return;
+    }
+    CountryState unread;
+    unread.stored = helix::wifi::country::normalize(
+        helix::SystemSettingsManager::instance().get_wifi_country());
+    unread.display = unread.stored;
+    if (!supports_country()) {
+        on_done(unread);
+        return;
+    }
+    submit_user_op(
+        "get_country", user_op_timeouts_.other_ms,
+        [this, token, on_done, unread]() -> std::function<void()> {
+            CountryState state = unread;
+            state.read_ok = backend_->get_country(state.system).success();
+            state.display = helix::wifi::country::plan(state.stored, state.system).display;
+            return [token, on_done, state]() {
+                if (!token.expired()) {
+                    on_done(state);
+                }
+            };
+        },
+        [token, on_done, unread]() {
+            if (!token.expired()) {
+                on_done(unread);
+            }
+        });
+}
+
+void WiFiManager::set_country_async(const std::string& code, helix::LifetimeToken token,
+                                    std::function<void(bool success)> on_done) {
+    const std::string clean = helix::wifi::country::normalize(code);
+    auto answer = [token, on_done](bool success) {
+        if (on_done && !token.expired()) {
+            on_done(success);
+        }
+    };
+    if (clean.empty()) {
+        helix::SystemSettingsManager::instance().set_wifi_country(clean);
+        spdlog::info("[WiFiManager] WiFi country cleared — the system's own setting applies");
+        answer(true);
+        return;
+    }
+    if (!supports_country()) {
+        answer(false);
+        return;
+    }
+    spdlog::info("[WiFiManager] Setting WiFi country to {}", clean);
+    submit_user_op(
+        "set_country", user_op_timeouts_.other_ms,
+        [this, clean, answer]() -> std::function<void()> {
+            const WiFiError result = backend_->set_country(clean);
+            if (result.success()) {
+                // Saved only once the radio took it, since a choice it refuses
+                // would fail again at every start. Deferred on its own rather
+                // than in the answer: the answer is dropped when it comes after
+                // the deadline, and the radio has the country all the same.
+                async_lifetime_.defer("WiFiManager::save_country", [clean]() {
+                    helix::SystemSettingsManager::instance().set_wifi_country(clean);
+                });
+            }
+            return [clean, result, answer]() {
+                if (!result.success()) {
+                    spdlog::warn("[WiFiManager] Could not set WiFi country {}: {}", clean,
+                                 result.technical_msg);
+                    NOTIFY_ERROR("{}", lv_tr("Could not set the WiFi country"));
+                }
+                answer(result.success());
+            };
+        },
+        [answer]() {
+            notify_unresponsive();
+            answer(false);
+        });
+}
+
+void WiFiManager::apply_stored_country() {
+    if (!supports_country()) {
+        return;
+    }
+    const std::string stored = helix::wifi::country::normalize(
+        helix::SystemSettingsManager::instance().get_wifi_country());
+    if (stored.empty()) {
+        spdlog::debug("[WiFiManager] No WiFi country saved — leaving the radio's own setting");
+        return;
+    }
+    submit_control("apply_country", ControlKind::User, [this, stored]() {
+        std::string system;
+        if (!backend_->get_country(system).success()) {
+            system.clear();
+        }
+        const auto plan = helix::wifi::country::plan(stored, system);
+        if (plan.apply.empty()) {
+            spdlog::debug("[WiFiManager] WiFi country already {}", stored);
+            return;
+        }
+        const WiFiError result = backend_->set_country(plan.apply);
+        if (result.success()) {
+            spdlog::info("[WiFiManager] Applied saved WiFi country {} (radio had '{}')", plan.apply,
+                         system.empty() ? "world" : system);
+        } else {
+            spdlog::warn("[WiFiManager] Could not apply saved WiFi country {}: {}", plan.apply,
+                         result.technical_msg);
+        }
+    });
+}
+
+void WiFiManager::handle_regdom_change(const std::string& event_data) {
+    const std::string alpha2 = helix::wifi::country::parse_regdom_change_alpha2(event_data);
+    spdlog::info("[WiFiManager] Regulatory domain changed (alpha2={}){}",
+                 alpha2.empty() ? "?" : alpha2, scan_timer_ ? " — rescanning" : "");
+    notify_state_observers(/*country_may_have_changed=*/true);
+    if (scan_timer_) {
+        request_scan(/*user_refresh=*/false);
+    }
 }
 
 // ============================================================================
@@ -1414,16 +1546,23 @@ void WiFiManager::submit_user_op(const char* tag, uint32_t deadline_ms,
     auto tok = async_lifetime_.token();
     submit_control(
         tag, ControlKind::User,
-        [tok, tag, phase, work = std::move(work)]() {
+        [this, tok, tag, phase, work = std::move(work)]() {
             int expected = Queued;
             if (!phase->compare_exchange_strong(expected, Running)) {
                 return; // the caller was already told it failed; do not act now
             }
             std::function<void()> apply = work();
-            tok.defer(tag, [phase, apply = std::move(apply)]() {
-                if (phase->exchange(Answered) != Answered && apply) {
-                    apply();
+            tok.defer(tag, [this, tag, phase, apply = std::move(apply)]() {
+                if (phase->exchange(Answered) != Answered) {
+                    if (apply) {
+                        apply();
+                    }
+                    return;
                 }
+                // The caller was told this failed at its deadline, but it ran:
+                // the radio or link may have moved, so let the UI re-read it.
+                spdlog::info("[WiFiManager] '{}' finished after its deadline — refreshing", tag);
+                notify_state_observers();
             });
         },
         [tok, tag, answer_unanswered]() { tok.defer(tag, answer_unanswered); });
@@ -1958,7 +2097,16 @@ void WiFiManager::add_state_observer(helix::LifetimeToken token, std::function<v
     state_observers_.push_back({std::move(token), std::move(on_change)});
 }
 
-void WiFiManager::notify_state_observers() {
+void WiFiManager::add_country_observer(helix::LifetimeToken token,
+                                       std::function<void()> on_change) {
+    if (!on_change) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(state_observers_mutex_);
+    state_observers_.push_back({std::move(token), std::move(on_change), /*country_only=*/true});
+}
+
+void WiFiManager::notify_state_observers(bool country_may_have_changed) {
     // Snapshot under lock, then invoke outside the lock so defer() — and any
     // work it kicks off on the UI thread — can't call back into us while we
     // hold state_observers_mutex_. Drop expired entries as we go; the backend
@@ -1978,6 +2126,9 @@ void WiFiManager::notify_state_observers() {
         snapshot = state_observers_;
     }
     for (const auto& obs : snapshot) {
+        if (obs.country_only && !country_may_have_changed) {
+            continue;
+        }
         obs.token.defer("WiFiManager::state_observer", obs.callback);
     }
 }

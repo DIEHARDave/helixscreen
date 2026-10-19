@@ -107,15 +107,17 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     void note_host_side_pre_start(const std::string& dispatched_block);
 
     /**
-     * @brief The phases this run's start was told to skip
+     * @brief The phases this run's start runs and skips, from its option toggles
      *
-     * Recorded on the run's history entry, so a later estimate can tell a
-     * phase no start ran from one the phase matcher missed. A run never told
-     * records nothing, which reads as unknown. Safe to call after start().
+     * The countdown's estimate takes them as print details does, so the two
+     * agree. The phases skipped are recorded on the run's history entry, so a
+     * later estimate can tell a phase no start ran from one the phase matcher
+     * missed; a run never told records nothing, which reads as unknown. Call
+     * on the main thread, after start().
      *
-     * @param phases PrintStartPhase values of the option toggles turned off
+     * @param overrides PrintStartPhase value -> whether this start runs it
      */
-    void note_skipped_phases(std::set<int> phases);
+    void note_phase_overrides(helix::PreprintPhaseOverrides overrides);
 
     /**
      * @brief Stop monitoring
@@ -736,9 +738,9 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// reset(), with the rest of the per-run state.
     std::vector<std::string> host_pre_start_echo_lines_;
 
-    /// The phases this run's start skipped, from note_skipped_phases(); reset
-    /// with the rest of the per-run state.
-    std::optional<std::set<int>> skipped_phases_;
+    /// The phases this run's start runs and skips, from note_phase_overrides();
+    /// reset with the rest of the per-run state.
+    std::optional<helix::PreprintPhaseOverrides> phase_overrides_;
 
     // Duration-proportional progress weights (protected by state_mutex_)
     std::map<int, float> predicted_phase_weights_; ///< Phase -> fraction of total (0.0-1.0)

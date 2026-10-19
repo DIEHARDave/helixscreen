@@ -45,7 +45,7 @@ constexpr int32_t kScales[] = {6, 7, 8, 10, 12};
 struct BadgeSize {
     int32_t h, w;
 };
-constexpr BadgeSize SIZES[] = {{14, 18}, {16, 22}};
+constexpr BadgeSize kSizes[] = {{14, 18}, {16, 22}};
 constexpr int32_t kInset = 2;
 
 // Tube gauge 5 plus its halo, either side of the column center.
@@ -58,7 +58,7 @@ TEST_CASE("Toolhead badge: the lower-right corner clears the tube on every style
     bool upper_left_overlaps = false;
     for (const StyleCase& sc : kStyles) {
         for (int32_t s : kScales) {
-            for (const BadgeSize& b : SIZES) {
+            for (const BadgeSize& b : kSizes) {
                 CAPTURE(sc.name, s, b.h, b.w);
                 const GlyphBounds g = toolhead_bounds(sc.style, 200, 200, s);
                 // The tube runs down to the nozzle inlet, 2 scale units above center.

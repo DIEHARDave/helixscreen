@@ -60,7 +60,7 @@ json initial_status(MoonrakerClientMock& mock) {
 
 TEST_CASE_METHOD(LVGLTestFixture, "Every persona reports its descriptor on every mock path",
                  "[mock][persona][descriptor]") {
-    for (const auto& p : helix::mock::PERSONAS) {
+    for (const auto& p : helix::mock::kPersonas) {
         DYNAMIC_SECTION(p.id) {
             const std::string id(p.id);
             PersonaEnv env(id.c_str());
