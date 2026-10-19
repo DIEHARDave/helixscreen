@@ -1120,6 +1120,30 @@ TEST_CASE("Happy Hare set_endless_spool_backup removal makes gate standalone",
     REQUIRE(helper.has_gcode("MMU_ENDLESS_SPOOL QUIET=1 GROUPS=2,0,1,1"));
 }
 
+TEST_CASE("Happy Hare Endless Spool switch sends MMU_ENDLESS_SPOOL ENABLE",
+          "[ams][happy_hare][endless_spool][endless]") {
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.initialize_test_gates(4);
+
+    REQUIRE(helper.get_endless_spool_capabilities().switchable);
+    REQUIRE(helper.set_endless_spool_enabled(true).success());
+    CHECK(helper.has_gcode("MMU_ENDLESS_SPOOL ENABLE=1 QUIET=1"));
+    REQUIRE(helper.set_endless_spool_enabled(false).success());
+    CHECK(helper.has_gcode("MMU_ENDLESS_SPOOL ENABLE=0 QUIET=1"));
+}
+
+TEST_CASE("Happy Hare Endless Spool switch is refused on multi-unit",
+          "[ams][happy_hare][endless_spool][endless]") {
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.initialize_test_gates_multi({4, 4});
+
+    CHECK_FALSE(helper.get_endless_spool_capabilities().switchable);
+    CHECK_FALSE(helper.set_endless_spool_enabled(true).success());
+    CHECK(helper.captured_gcodes.empty());
+}
+
 TEST_CASE("Happy Hare endless spool is read-only on multi-unit",
           "[ams][happy_hare][endless_spool]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;

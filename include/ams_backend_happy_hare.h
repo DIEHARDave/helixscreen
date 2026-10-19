@@ -381,6 +381,10 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
      */
     AmsError apply_endless_spool_backup(int slot_index, int backup_slot) override;
 
+    /// MMU_ENDLESS_SPOOL ENABLE=0|1 QUIET=1, on a single unit only (see
+    /// get_endless_spool_capabilities()).
+    AmsError apply_endless_spool_enabled(bool enabled) override;
+
     // Allow test helper access to private members
     /// Pre-gate sensor record for @p slot_index, or nullptr when the index is
     /// out of range or no frame ever reported the gate's sensor.
