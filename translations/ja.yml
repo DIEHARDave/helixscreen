@@ -850,6 +850,7 @@ translations:
 
   "Could not save the mesh as '{}': {}": "メッシュを '{}' として保存できませんでした: {}"
   Could not save the printer image tags: プリンター画像のタグの保存に失敗しました
+  Could not set the WiFi country: WiFi の地域を設定できませんでした
   Could not skip {}: '{} をスキップできませんでした'
   Could not start Bluetooth discovery: Bluetooth の検出を開始できませんでした
   Could not update filaments: フィラメントを更新できませんでした
@@ -862,6 +863,7 @@ translations:
   Couldn't save the material name: '材料名を保存できませんでした'
   Couldn't save the printer's gate map: プリンターのゲートマップを保存できませんでした
   Couldn't save to Spoolman. Nothing changed on this printer.: Spoolman に保存できませんでした。このプリンターでは何も変更されていません。
+  Country: 地域
   Cover open: カバーが開いています
   Crash Report: クラッシュレポート
   Crash report sent — thank you!: クラッシュレポートを送信しました — ありがとうございます！
@@ -2260,6 +2262,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: このウィジェットを配置するスペースが足りません。スペースを確保するためにウィジェットを整理または削除してください。
   Not in your spools? Set it up: スプールにない？登録する
   Not now: 後で
+  Not set: 未設定
   Not yet available on this display: 'このディスプレイではまだ利用できません'
   Not yet calibrated: 未キャリブレーション
   Notes: メモ
@@ -3114,6 +3117,7 @@ translations:
   Set up: セットアップ
   Set up your label printer in Settings: 設定でラベルプリンターをセットアップしてください
   Set what is really selected and loaded. Nothing moves.: '実際に選択・装填されている状態を設定します。何も動きません。'
+  Set your country to find 5 GHz networks: 5 GHz ネットワークを検出するには地域を設定してください
   Settings: 設定
   Settings Snapshot: 設定スナップショット
   Settings reset to defaults. Restarting...: 設定をデフォルトにリセットしました。再起動中...

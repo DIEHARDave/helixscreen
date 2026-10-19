@@ -213,6 +213,12 @@ This is different from `sounds_enabled` — that toggle mutes playback but still
 **Default:** `false`
 **Description:** Whether WiFi connectivity is expected. When `true`, HelixScreen shows connection warnings if WiFi is unavailable. Set during the wizard based on your network configuration choice.
 
+### `wifi_country`
+**Type:** string
+**Default:** `""` (not set)
+**Values:** a two-letter ISO 3166 country code such as `"US"`, `"DE"` or `"GB"`, or `""`
+**Description:** The Wi-Fi country HelixScreen applies at every start. Without one the radio stays in a restricted worldwide mode and usually can't find 5 GHz networks until it has joined a 2.4 GHz one. Empty leaves the country to your printer's system. Change via Settings > Connection > Network Settings > Country.
+
 ### `language`
 **Type:** string
 **Default:** `"en"`

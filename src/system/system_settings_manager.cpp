@@ -150,6 +150,19 @@ std::string SystemSettingsManager::get_language() const {
     return language_index_to_code(index);
 }
 
+std::string SystemSettingsManager::get_wifi_country() const {
+    return Config::get_instance()->get<std::string>("/wifi_country", "");
+}
+
+void SystemSettingsManager::set_wifi_country(const std::string& code) {
+    Config* config = Config::get_instance();
+    if (config->get<std::string>("/wifi_country", "") == code) {
+        return;
+    }
+    config->set("/wifi_country", code);
+    config->save();
+}
+
 void SystemSettingsManager::set_language(const std::string& lang) {
     int index = language_code_to_index(lang);
     spdlog::info("[SystemSettingsManager] set_language({}) -> index {}", lang, index);

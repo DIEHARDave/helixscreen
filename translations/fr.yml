@@ -923,6 +923,7 @@ translations:
 
   "Could not save the mesh as '{}': {}": "Impossible d'enregistrer le maillage sous '{}' : {}"
   Could not save the printer image tags: 'Échec de l''enregistrement des repères de l''image'
+  Could not set the WiFi country: Impossible de définir le pays du WiFi
   Could not skip {}: 'Impossible d''ignorer {}'
   Could not start Bluetooth discovery: Impossible de démarrer la découverte Bluetooth
   Could not update filaments: Impossible de mettre à jour les filaments
@@ -935,6 +936,7 @@ translations:
   Couldn't save the material name: 'Impossible d''enregistrer le nom du matériau'
   Couldn't save the printer's gate map: Impossible d'enregistrer la table des gates de l'imprimante
   Couldn't save to Spoolman. Nothing changed on this printer.: Impossible d'enregistrer dans Spoolman. Rien n'a été modifié sur cette imprimante.
+  Country: Pays
   Cover open: Capot ouvert
   Crash Report: Rapport de plantage
   Crash report sent — thank you!: Rapport de crash envoyé — merci !
@@ -2409,6 +2411,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Pas assez de place pour ce widget. Réorganisez ou supprimez des widgets pour libérer de l'espace.
   Not in your spools? Set it up: Pas dans vos bobines ? Configurez-la
   Not now: Pas maintenant
+  Not set: Non défini
   Not yet available on this display: 'Pas encore disponible sur cet écran'
   Not yet calibrated: Pas encore calibré
   Notes: Notes
@@ -3318,6 +3321,7 @@ translations:
   Set up your label printer in Settings: Configurez votre imprimante d'étiquettes
     dans les Paramètres
   Set what is really selected and loaded. Nothing moves.: 'Indiquez ce qui est réellement sélectionné et chargé. Rien ne bouge.'
+  Set your country to find 5 GHz networks: Choisissez votre pays pour trouver les réseaux 5 GHz
   Settings: Paramètres
   Settings Snapshot: Instantané des paramètres
   Settings reset to defaults. Restarting...: Paramètres réinitialisés par défaut.

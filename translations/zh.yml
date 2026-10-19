@@ -848,6 +848,7 @@ translations:
 
   "Could not save the mesh as '{}': {}": "无法将网格保存为 '{}'：{}"
   Could not save the printer image tags: 保存打印机图片标记失败
+  Could not set the WiFi country: 无法设置 WiFi 地区
   Could not skip {}: '无法跳过 {}'
   Could not start Bluetooth discovery: 无法启动蓝牙发现
   Could not update filaments: 无法更新耗材
@@ -860,6 +861,7 @@ translations:
   Couldn't save the material name: '无法保存材料名称'
   Couldn't save the printer's gate map: 无法保存打印机的通道映射
   Couldn't save to Spoolman. Nothing changed on this printer.: 无法保存到 Spoolman。此打印机上未做任何更改。
+  Country: 地区
   Cover open: 盖子未关闭
   Crash Report: 崩溃报告
   Crash report sent — thank you!: 崩溃报告已发送 — 谢谢！
@@ -2253,6 +2255,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: 没有足够的空间放置此小组件。请重新排列或移除小组件以腾出空间。
   'Not in your spools? Set it up': 不在您的料盘中？立即设置
   Not now: 暂不
+  Not set: 未设置
   Not yet available on this display: '此屏幕暂不支持'
   Not yet calibrated: 尚未校准
   Notes: 备注
@@ -3105,6 +3108,7 @@ translations:
   Set up: 设置
   Set up your label printer in Settings: 在设置中配置标签打印机
   Set what is really selected and loaded. Nothing moves.: '设置实际选择和加载的状态。不会移动任何部件。'
+  Set your country to find 5 GHz networks: 设置地区以查找 5 GHz 网络
   Settings: 设置
   Settings Snapshot: 设置快照
   Settings reset to defaults. Restarting...: 设置已重置为默认值。正在重启...

@@ -921,6 +921,7 @@ translations:
 
   "Could not save the mesh as '{}': {}": "Netz konnte nicht als '{}' gespeichert werden: {}"
   Could not save the printer image tags: Bildmarkierungen konnten nicht gespeichert werden
+  Could not set the WiFi country: WiFi-Land konnte nicht eingestellt werden
   Could not skip {}: '{} konnte nicht übersprungen werden'
   Could not start Bluetooth discovery: Bluetooth-Erkennung konnte nicht gestartet
     werden
@@ -934,6 +935,7 @@ translations:
   Couldn't save the material name: 'Materialname konnte nicht gespeichert werden'
   Couldn't save the printer's gate map: Gate-Zuordnung des Druckers konnte nicht gespeichert werden
   Couldn't save to Spoolman. Nothing changed on this printer.: Speichern in Spoolman fehlgeschlagen. Auf diesem Drucker wurde nichts geändert.
+  Country: Land
   Cover open: Abdeckung offen
   Crash Report: Absturzbericht
   Crash report sent — thank you!: Absturzbericht gesendet — vielen Dank!
@@ -2402,6 +2404,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Nicht genug Platz für dieses Widget. Ordnen Sie Widgets neu an oder entfernen Sie welche, um Platz zu schaffen.
   Not in your spools? Set it up: Nicht in Ihren Spulen? Einrichten
   Not now: Nicht jetzt
+  Not set: Nicht festgelegt
   Not yet available on this display: 'Auf diesem Display noch nicht verfügbar'
   Not yet calibrated: Noch nicht kalibriert
   Notes: Notizen
@@ -3306,6 +3309,7 @@ translations:
   Set up: Einrichten
   Set up your label printer in Settings: Etikettendrucker in Einstellungen einrichten
   Set what is really selected and loaded. Nothing moves.: 'Festlegen, was wirklich ausgewählt und geladen ist. Nichts bewegt sich.'
+  Set your country to find 5 GHz networks: Land festlegen, um 5-GHz-Netzwerke zu finden
   Settings: Einstellungen
   Settings Snapshot: Einstellungen-Momentaufnahme
   Settings reset to defaults. Restarting...: Einstellungen auf Standardwerte zurückgesetzt.

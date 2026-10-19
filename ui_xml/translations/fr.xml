@@ -818,6 +818,7 @@
   <translation tag="Could not save the drying state: nothing was heated" fr="Impossible d&apos;enregistrer l&apos;état du séchage : rien n&apos;a été chauffé"/>
   <translation tag="Could not save the mesh as &apos;{}&apos;: {}" fr="Impossible d&apos;enregistrer le maillage sous &apos;{}&apos; : {}"/>
   <translation tag="Could not save the printer image tags" fr="Échec de l&apos;enregistrement des repères de l&apos;image"/>
+  <translation tag="Could not set the WiFi country" fr="Impossible de définir le pays du WiFi"/>
   <translation tag="Could not skip {}" fr="Impossible d&apos;ignorer {}"/>
   <translation tag="Could not start Bluetooth discovery" fr="Impossible de démarrer la découverte Bluetooth"/>
   <translation tag="Could not turn the heaters off" fr="Impossible de couper les chauffes"/>
@@ -830,6 +831,7 @@
   <translation tag="Couldn&apos;t save the material name" fr="Impossible d&apos;enregistrer le nom du matériau"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" fr="Impossible d&apos;enregistrer la table des gates de l&apos;imprimante"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." fr="Impossible d&apos;enregistrer dans Spoolman. Rien n&apos;a été modifié sur cette imprimante."/>
+  <translation tag="Country" fr="Pays"/>
   <translation tag="Cover open" fr="Capot ouvert"/>
   <translation tag="Crash Report" fr="Rapport de plantage"/>
   <translation tag="Crash report sent — thank you!" fr="Rapport de crash envoyé — merci !"/>
@@ -2174,6 +2176,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." fr="Pas assez de place pour ce widget. Réorganisez ou supprimez des widgets pour libérer de l&apos;espace."/>
   <translation tag="Not in your spools? Set it up" fr="Pas dans vos bobines ? Configurez-la"/>
   <translation tag="Not now" fr="Pas maintenant"/>
+  <translation tag="Not set" fr="Non défini"/>
   <translation tag="Not yet available on this display" fr="Pas encore disponible sur cet écran"/>
   <translation tag="Not yet calibrated" fr="Pas encore calibré"/>
   <translation tag="Notes" fr="Notes"/>
@@ -3001,6 +3004,7 @@
   <translation tag="Set up" fr="Configurer"/>
   <translation tag="Set up your label printer in Settings" fr="Configurez votre imprimante d&apos;étiquettes dans les Paramètres"/>
   <translation tag="Set what is really selected and loaded. Nothing moves." fr="Indiquez ce qui est réellement sélectionné et chargé. Rien ne bouge."/>
+  <translation tag="Set your country to find 5 GHz networks" fr="Choisissez votre pays pour trouver les réseaux 5 GHz"/>
   <translation tag="Settings" fr="Paramètres"/>
   <translation tag="Settings Snapshot" fr="Instantané des paramètres"/>
   <translation tag="Settings reset to defaults. Restarting..." fr="Paramètres réinitialisés par défaut. Redémarrage..."/>

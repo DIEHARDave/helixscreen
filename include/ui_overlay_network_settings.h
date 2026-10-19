@@ -186,6 +186,9 @@ class NetworkSettingsOverlay : public OverlayBase {
     lv_subject_t wifi_only_24ghz_{};       // 1 if hardware only supports 2.4GHz
     lv_subject_t wifi_can_forget_{};       // 1 if the backend can forget a saved network
     lv_subject_t wifi_can_toggle_radio_{}; // 1 if the backend can move the radio
+    lv_subject_t wifi_can_set_country_{};  // 1 if the backend can set the regulatory country
+    lv_subject_t wifi_country_index_{};    // country dropdown selection (0 = not set)
+    lv_subject_t wifi_country_hint_{};     // 1: 5 GHz capable radio in the world domain
     lv_subject_t wifi_unresponsive_{};     // 1 while WiFi control stops answering (rows show
                                            // the last known state)
     lv_subject_t connected_ssid_{};
@@ -289,6 +292,7 @@ class NetworkSettingsOverlay : public OverlayBase {
     void handle_add_other_clicked();
     void handle_network_item_clicked(lv_event_t* e);
     void handle_network_settings_forget();
+    void handle_country_changed(lv_event_t* e);
     void handle_network_forget_confirm();
     void handle_network_forget_cancel();
 
@@ -306,6 +310,9 @@ class NetworkSettingsOverlay : public OverlayBase {
     // downs/ups the OTHER transport too, so the ethernet row is as stale as
     // the wifi one until re-queried (prestonbrown/helixscreen#1398).
     void refresh_transport_status();
+    // Reads the radio's country off the UI thread and applies it to the
+    // country row: selection, visibility and the 5 GHz hint.
+    void refresh_country();
 
     /// Ethernet refresh coalescing: at most one daemon probe in flight, with
     /// one trailing refresh armed while one runs (a flapping link or a

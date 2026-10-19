@@ -26,6 +26,7 @@ Opens the network screen. It has two columns.
 
 - The Wi-Fi networks in range, with their signal strength.
 - Tap a network to join it. Enter the password if it asks.
+- **Country** sets the Wi-Fi country. Until one is set, the Wi-Fi radio stays in a restricted worldwide mode and usually can't find 5 GHz networks until it has joined a 2.4 GHz one; a hint under the list says so when your hardware supports 5 GHz. If your printer's system already set a country, it is shown here and left alone. Choose **Not set** to go back to the system's own setting. Hidden on printers where the printer's own network service manages Wi-Fi.
 - **Add Hidden Network** joins a network that doesn't broadcast its name.
 - **Refresh** scans again.
 

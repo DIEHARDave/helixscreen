@@ -860,6 +860,7 @@
   <translation tag="Could not save the drying state: nothing was heated" ru="Не удалось сохранить состояние сушки: ничего не нагревалось"/>
   <translation tag="Could not save the mesh as &apos;{}&apos;: {}" ru="Не удалось сохранить сетку как &apos;{}&apos;: {}"/>
   <translation tag="Could not save the printer image tags" ru="Не удалось сохранить отметки изображения"/>
+  <translation tag="Could not set the WiFi country" ru="Не удалось задать страну WiFi"/>
   <translation tag="Could not skip {}" ru="Не удалось пропустить {}"/>
   <translation tag="Could not start Bluetooth discovery" ru="Не удалось запустить поиск Bluetooth"/>
   <translation tag="Could not turn the heaters off" ru="Не удалось выключить нагреватели"/>
@@ -872,6 +873,7 @@
   <translation tag="Couldn&apos;t save the material name" ru="Не удалось сохранить название материала"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" ru="Не удалось сохранить карту шлюзов принтера"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." ru="Не удалось сохранить в Spoolman. На этом принтере ничего не изменено."/>
+  <translation tag="Country" ru="Страна"/>
   <translation tag="Cover open" ru="Крышка открыта"/>
   <translation tag="Crash Report" ru="Отчёт о сбое"/>
   <translation tag="Crash report sent — thank you!" ru="Отчёт об ошибке отправлен — спасибо!"/>
@@ -2219,6 +2221,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." ru="Недостаточно места для этого виджета. Измените раскладку или удалите виджеты, чтобы освободить место."/>
   <translation tag="Not in your spools? Set it up" ru="Нет в ваших катушках? Настроить"/>
   <translation tag="Not now" ru="Не сейчас"/>
+  <translation tag="Not set" ru="Не задана"/>
   <translation tag="Not yet available on this display" ru="Пока недоступно на этом дисплее"/>
   <translation tag="Not yet calibrated" ru="Ещё не откалибровано"/>
   <translation tag="Notes" ru="Заметки"/>
@@ -3055,6 +3058,7 @@
   <translation tag="Set up" ru="Настроить"/>
   <translation tag="Set up your label printer in Settings" ru="Настройте принтер этикеток в Настройках"/>
   <translation tag="Set what is really selected and loaded. Nothing moves." ru="Укажите, что на самом деле выбрано и загружено. Ничего не двигается."/>
+  <translation tag="Set your country to find 5 GHz networks" ru="Укажите страну, чтобы найти сети 5 ГГц"/>
   <translation tag="Settings" ru="Настройки"/>
   <translation tag="Settings Snapshot" ru="Снимок настроек"/>
   <translation tag="Settings reset to defaults. Restarting..." ru="Настройки сброшены к значениям по умолчанию. Перезапуск..."/>

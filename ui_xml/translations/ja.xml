@@ -818,6 +818,7 @@
   <translation tag="Could not save the drying state: nothing was heated" ja="乾燥の状態を保存できませんでした: 何も加熱していません"/>
   <translation tag="Could not save the mesh as &apos;{}&apos;: {}" ja="メッシュを &apos;{}&apos; として保存できませんでした: {}"/>
   <translation tag="Could not save the printer image tags" ja="プリンター画像のタグの保存に失敗しました"/>
+  <translation tag="Could not set the WiFi country" ja="WiFi の地域を設定できませんでした"/>
   <translation tag="Could not skip {}" ja="{} をスキップできませんでした"/>
   <translation tag="Could not start Bluetooth discovery" ja="Bluetooth の検出を開始できませんでした"/>
   <translation tag="Could not turn the heaters off" ja="ヒーターを切れませんでした"/>
@@ -830,6 +831,7 @@
   <translation tag="Couldn&apos;t save the material name" ja="材料名を保存できませんでした"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" ja="プリンターのゲートマップを保存できませんでした"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." ja="Spoolman に保存できませんでした。このプリンターでは何も変更されていません。"/>
+  <translation tag="Country" ja="地域"/>
   <translation tag="Cover open" ja="カバーが開いています"/>
   <translation tag="Crash Report" ja="クラッシュレポート"/>
   <translation tag="Crash report sent — thank you!" ja="クラッシュレポートを送信しました — ありがとうございます！"/>
@@ -2174,6 +2176,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." ja="このウィジェットを配置するスペースが足りません。スペースを確保するためにウィジェットを整理または削除してください。"/>
   <translation tag="Not in your spools? Set it up" ja="スプールにない？登録する"/>
   <translation tag="Not now" ja="後で"/>
+  <translation tag="Not set" ja="未設定"/>
   <translation tag="Not yet available on this display" ja="このディスプレイではまだ利用できません"/>
   <translation tag="Not yet calibrated" ja="未キャリブレーション"/>
   <translation tag="Notes" ja="メモ"/>
@@ -3001,6 +3004,7 @@
   <translation tag="Set up" ja="セットアップ"/>
   <translation tag="Set up your label printer in Settings" ja="設定でラベルプリンターをセットアップしてください"/>
   <translation tag="Set what is really selected and loaded. Nothing moves." ja="実際に選択・装填されている状態を設定します。何も動きません。"/>
+  <translation tag="Set your country to find 5 GHz networks" ja="5 GHz ネットワークを検出するには地域を設定してください"/>
   <translation tag="Settings" ja="設定"/>
   <translation tag="Settings Snapshot" ja="設定スナップショット"/>
   <translation tag="Settings reset to defaults. Restarting..." ja="設定をデフォルトにリセットしました。再起動中..."/>

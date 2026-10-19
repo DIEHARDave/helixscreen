@@ -12,6 +12,7 @@
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
 #include "wifi_5ghz_detection.h"
+#include "wifi_country.h"
 #include "wifi_saved_config.h"
 
 // find_network_id() is pure string parsing with no OS dependency, and its
@@ -1207,6 +1208,9 @@ std::string WifiBackendWpaSupplicant::map_event_to_callback(const std::string& e
     if (event.find("CTRL-EVENT-DISCONNECTED") != std::string::npos) {
         return "DISCONNECTED";
     }
+    if (event.find("CTRL-EVENT-REGDOM-CHANGE") != std::string::npos) {
+        return "REGDOM_CHANGE";
+    }
     // Auth failures can come in multiple forms
     if (event.find("CTRL-EVENT-SSID-TEMP-DISABLED") != std::string::npos &&
         event.find("WRONG_KEY") != std::string::npos) {
@@ -1217,7 +1221,7 @@ std::string WifiBackendWpaSupplicant::map_event_to_callback(const std::string& e
     }
 
     // Informational events - no callback needed
-    // SCAN-STARTED, BSS-ADDED, BSS-REMOVED, REGDOM-CHANGE, SIGNAL-CHANGE, etc.
+    // SCAN-STARTED, BSS-ADDED, BSS-REMOVED, REGDOM-BEACON-HINT, SIGNAL-CHANGE, etc.
     return "";
 }
 
@@ -2087,6 +2091,41 @@ WifiBackend::ConnectionStatus WifiBackendWpaSupplicant::get_status() {
     }
 
     return status;
+}
+
+WiFiError WifiBackendWpaSupplicant::get_country(std::string& code) {
+    code.clear();
+    if (!is_running()) {
+        return WiFiError(WiFiResult::NOT_INITIALIZED, "Backend not started");
+    }
+    const std::string reply = send_command("GET country");
+    if (reply.empty()) {
+        return WiFiErrorHelper::connection_failed("No response from wpa_supplicant GET country");
+    }
+    // "FAIL" is how wpa_supplicant says no country is configured.
+    code = helix::wifi::country::parse_wpa_get_country(reply);
+    return WiFiErrorHelper::success();
+}
+
+WiFiError WifiBackendWpaSupplicant::set_country(const std::string& code) {
+    const std::string clean = helix::wifi::country::normalize(code);
+    if (clean.empty()) {
+        return WiFiError(WiFiResult::INVALID_PARAMETERS, "Not an ISO 3166-1 alpha-2 country");
+    }
+    if (!is_running()) {
+        return WiFiError(WiFiResult::NOT_INITIALIZED, "Backend not started");
+    }
+    const std::string reply = send_command("SET country " + clean);
+    if (reply.rfind("OK", 0) != 0) {
+        return WiFiError(WiFiResult::BACKEND_ERROR,
+                         "wpa_supplicant SET country " + clean + " failed: " + reply);
+    }
+    // The setting is reapplied at every start, so a SAVE_CONFIG that does not
+    // persist costs only the window before HelixScreen starts.
+    const std::string save = send_command("SAVE_CONFIG");
+    spdlog::info("[WifiBackend] Country set to {} (SAVE_CONFIG: {})", clean,
+                 save.rfind("OK", 0) == 0 ? "ok" : "not saved");
+    return WiFiErrorHelper::success();
 }
 
 bool WifiBackendWpaSupplicant::supports_5ghz() const {

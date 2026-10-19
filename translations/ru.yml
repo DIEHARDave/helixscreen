@@ -961,6 +961,7 @@ translations:
 
   "Could not save the mesh as '{}': {}": "Не удалось сохранить сетку как '{}': {}"
   Could not save the printer image tags: Не удалось сохранить отметки изображения
+  Could not set the WiFi country: Не удалось задать страну WiFi
   Could not skip {}: 'Не удалось пропустить {}'
   Could not start Bluetooth discovery: Не удалось запустить поиск Bluetooth
   Could not update filaments: Не удалось обновить филаменты
@@ -973,6 +974,7 @@ translations:
   Couldn't save the material name: 'Не удалось сохранить название материала'
   Couldn't save the printer's gate map: Не удалось сохранить карту шлюзов принтера
   Couldn't save to Spoolman. Nothing changed on this printer.: Не удалось сохранить в Spoolman. На этом принтере ничего не изменено.
+  Country: Страна
   Cover open: Крышка открыта
   Crash Report: Отчёт о сбое
   Crash report sent — thank you!: Отчёт об ошибке отправлен — спасибо!
@@ -2433,6 +2435,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Недостаточно места для этого виджета. Измените раскладку или удалите виджеты, чтобы освободить место.
   Not in your spools? Set it up: Нет в ваших катушках? Настроить
   Not now: Не сейчас
+  Not set: Не задана
   Not yet available on this display: 'Пока недоступно на этом дисплее'
   Not yet calibrated: Ещё не откалибровано
   Notes: Заметки
@@ -3341,6 +3344,7 @@ translations:
   Set up: Настроить
   Set up your label printer in Settings: Настройте принтер этикеток в Настройках
   Set what is really selected and loaded. Nothing moves.: 'Укажите, что на самом деле выбрано и загружено. Ничего не двигается.'
+  Set your country to find 5 GHz networks: Укажите страну, чтобы найти сети 5 ГГц
   Settings: Настройки
   Settings Snapshot: Снимок настроек
   Settings reset to defaults. Restarting...: Настройки сброшены к значениям по умолчанию.

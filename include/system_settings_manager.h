@@ -19,6 +19,7 @@ namespace helix {
  * - update_channel (Stable=0, Beta=1, Dev=2)
  * - telemetry_enabled (opt-in toggle)
  * - wifi_enabled (radio on/off choice, survives restarts)
+ * - wifi_country (regulatory country, "" = leave it to the system)
  *
  * Thread safety: Single-threaded, main LVGL thread only.
  */
@@ -130,6 +131,21 @@ class SystemSettingsManager {
     void set_wifi_enabled(bool enabled) {
         settings_.set(Key::WifiEnabled, enabled);
     }
+
+    /**
+     * @brief The user's WiFi regulatory country (ISO 3166-1 alpha-2), "" when
+     *        never chosen. Readable before init_subjects().
+     *
+     * "" means HelixScreen leaves the radio's country to the system.
+     */
+    std::string get_wifi_country() const;
+
+    /**
+     * @brief Persist the WiFi country choice ("" clears it)
+     *
+     * Persists only, like set_wifi_enabled(): WiFiManager applies it.
+     */
+    void set_wifi_country(const std::string& code);
 
     // =========================================================================
     // LOG LEVEL SETTINGS

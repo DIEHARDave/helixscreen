@@ -180,6 +180,62 @@ TEST_CASE("wpa stop with a scan outstanding stays silent and reusable", "[networ
     REQUIRE(events.wait_for(1));
 }
 
+TEST_CASE("wpa reads the configured country, and FAIL as none", "[network][wpa][wifi_country]") {
+    WpaFakeFixture fx;
+    WifiBackendWpaSupplicant backend(kWatchdogMs);
+    REQUIRE(backend.start().success());
+
+    std::string code = "stale";
+    fx.fake->set_reply("GET country", "DE");
+    REQUIRE(backend.get_country(code).success());
+    CHECK(code == "DE");
+
+    // wpa_supplicant answers FAIL when no country= is configured: the world domain.
+    fx.fake->set_reply("GET country", "FAIL\n");
+    REQUIRE(backend.get_country(code).success());
+    CHECK(code.empty());
+}
+
+TEST_CASE("wpa set_country sends SET country, then SAVE_CONFIG", "[network][wpa][wifi_country]") {
+    WpaFakeFixture fx;
+    WifiBackendWpaSupplicant backend(kWatchdogMs);
+    REQUIRE(backend.start().success());
+
+    REQUIRE(backend.set_country("us").success());
+    const std::vector<std::string> cmds = fx.fake->commands();
+    const auto set = std::find(cmds.begin(), cmds.end(), "SET country US");
+    REQUIRE(set != cmds.end());
+    CHECK(std::find(set, cmds.end(), "SAVE_CONFIG") != cmds.end());
+
+    // A code outside ISO 3166 never reaches the control socket.
+    const size_t before = fx.fake->commands().size();
+    CHECK(backend.set_country("ZZ").result == WiFiResult::INVALID_PARAMETERS);
+    CHECK(fx.fake->commands().size() == before);
+}
+
+TEST_CASE("wpa REGDOM-CHANGE reaches the manager as REGDOM_CHANGE",
+          "[network][wpa][wifi_country]") {
+    // Declared before the backend so they outlive its event thread.
+    std::mutex m;
+    std::condition_variable cv;
+    std::string seen;
+
+    WpaFakeFixture fx;
+    WifiBackendWpaSupplicant backend(kWatchdogMs);
+    REQUIRE(backend.start().success());
+
+    backend.register_event_callback("REGDOM_CHANGE", [&](const std::string& data) {
+        std::lock_guard<std::mutex> lock(m);
+        seen = data;
+        cv.notify_all();
+    });
+
+    fx.fake->push_event("<3>CTRL-EVENT-REGDOM-CHANGE init=USER type=COUNTRY alpha2=US");
+    std::unique_lock<std::mutex> lock(m);
+    REQUIRE(cv.wait_for(lock, std::chrono::seconds(5), [&] { return !seen.empty(); }));
+    CHECK(seen.find("alpha2=US") != std::string::npos);
+}
+
 // A hidden AP broadcasts no SSID, so it never matches the supplicant's
 // beacon-based scan selection: the join only completes when the backend asks
 // for a directed probe via scan_ssid=1. The visible join must not ask, or

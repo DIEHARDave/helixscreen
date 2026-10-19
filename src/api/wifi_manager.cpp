@@ -24,6 +24,7 @@
 #include "safe_log.h"
 #include "spdlog/spdlog.h"
 #include "system_settings_manager.h"
+#include "wifi_country.h"
 #include "wifi_interface.h"
 #include "wifi_radio_toggle.h"
 #include "wifi_ui_utils.h"
@@ -135,6 +136,11 @@ void WiFiManager::register_backend_callbacks(bool silent) {
         "AUTH_FAILED", [this](const std::string& data) { handle_auth_failed(data); });
     backend_->register_event_callback(
         "INIT_FAILED", [this, silent](const std::string& msg) { handle_init_failed(silent, msg); });
+    backend_->register_event_callback("REGDOM_CHANGE", [this](const std::string& data) {
+        // Fired on the backend's event thread; scanning is LVGL-thread state.
+        async_lifetime_.defer("WiFiManager::regdom_change",
+                              [this, data]() { handle_regdom_change(data); });
+    });
     backend_->register_event_callback("READY", [this](const std::string&) {
         spdlog::debug("[WiFiManager] Backend READY event received");
         // Wake UI consumers that queried status before async init landed —
@@ -159,6 +165,8 @@ void WiFiManager::register_backend_callbacks(bool silent) {
         // network path (wired or otherwise) is actually up. When resolution of
         // the WiFi interface itself is inconclusive, fail safe: treat it the
         // same as "no known wired fallback" and do not disable the radio.
+        async_lifetime_.defer("WiFiManager::apply_stored_country",
+                              [this]() { apply_stored_country(); });
         async_lifetime_.defer("WiFiManager::reassert_stored_radio_state", [this]() {
             if (backend_ && !backend_->supports_radio_toggle()) {
                 // The radio belongs to the printer's network daemon: there is
@@ -941,6 +949,125 @@ bool WiFiManager::supports_forget() {
 
 bool WiFiManager::supports_radio_toggle() {
     return backend_ && backend_->supports_radio_toggle();
+}
+
+// ============================================================================
+// Regulatory Country
+// ============================================================================
+
+bool WiFiManager::supports_country() {
+    return backend_ && backend_->supports_country();
+}
+
+void WiFiManager::get_country_async(helix::LifetimeToken token,
+                                    std::function<void(const CountryState&)> on_done) {
+    if (!on_done) {
+        return;
+    }
+    CountryState unread;
+    unread.stored = helix::wifi::country::normalize(
+        helix::SystemSettingsManager::instance().get_wifi_country());
+    unread.display = unread.stored;
+    if (!supports_country()) {
+        on_done(unread);
+        return;
+    }
+    submit_user_op(
+        "get_country", user_op_timeouts_.other_ms,
+        [this, token, on_done, unread]() -> std::function<void()> {
+            CountryState state = unread;
+            state.read_ok = backend_->get_country(state.system).success();
+            state.display = helix::wifi::country::plan(state.stored, state.system).display;
+            return [token, on_done, state]() {
+                if (!token.expired()) {
+                    on_done(state);
+                }
+            };
+        },
+        [token, on_done, unread]() {
+            if (!token.expired()) {
+                on_done(unread);
+            }
+        });
+}
+
+void WiFiManager::set_country_async(const std::string& code, helix::LifetimeToken token,
+                                    std::function<void(bool success)> on_done) {
+    const std::string clean = helix::wifi::country::normalize(code);
+    helix::SystemSettingsManager::instance().set_wifi_country(clean);
+    auto answer = [token, on_done](bool success) {
+        if (on_done && !token.expired()) {
+            on_done(success);
+        }
+    };
+    if (clean.empty()) {
+        spdlog::info("[WiFiManager] WiFi country cleared — the system's own setting applies");
+        answer(true);
+        return;
+    }
+    if (!supports_country()) {
+        answer(false);
+        return;
+    }
+    spdlog::info("[WiFiManager] Setting WiFi country to {}", clean);
+    submit_user_op(
+        "set_country", user_op_timeouts_.other_ms,
+        [this, clean, answer]() -> std::function<void()> {
+            const WiFiError result = backend_->set_country(clean);
+            return [clean, result, answer]() {
+                if (!result.success()) {
+                    spdlog::warn("[WiFiManager] Could not set WiFi country {}: {}", clean,
+                                 result.technical_msg);
+                    NOTIFY_ERROR("{}", lv_tr("Could not set the WiFi country"));
+                }
+                answer(result.success());
+            };
+        },
+        [answer]() {
+            notify_unresponsive();
+            answer(false);
+        });
+}
+
+void WiFiManager::apply_stored_country() {
+    if (!supports_country()) {
+        return;
+    }
+    const std::string stored = helix::wifi::country::normalize(
+        helix::SystemSettingsManager::instance().get_wifi_country());
+    if (stored.empty()) {
+        spdlog::debug("[WiFiManager] No WiFi country saved — leaving the radio's own setting");
+        return;
+    }
+    submit_control("apply_country", ControlKind::User, [this, stored]() {
+        std::string system;
+        if (!backend_->get_country(system).success()) {
+            system.clear();
+        }
+        const auto plan = helix::wifi::country::plan(stored, system);
+        if (plan.apply.empty()) {
+            spdlog::debug("[WiFiManager] WiFi country already {}", stored);
+            return;
+        }
+        const WiFiError result = backend_->set_country(plan.apply);
+        if (result.success()) {
+            spdlog::info("[WiFiManager] Applied saved WiFi country {} (radio had '{}')", plan.apply,
+                         system.empty() ? "world" : system);
+        } else {
+            spdlog::warn("[WiFiManager] Could not apply saved WiFi country {}: {}", plan.apply,
+                         result.technical_msg);
+        }
+    });
+}
+
+void WiFiManager::handle_regdom_change(const std::string& event_data) {
+    const std::string alpha2 = helix::wifi::country::parse_regdom_change_alpha2(event_data);
+    spdlog::info("[WiFiManager] Regulatory domain changed (alpha2={}){}",
+                 alpha2.empty() ? "?" : alpha2, scan_timer_ ? " — rescanning" : "");
+    notify_state_observers();
+    if (scan_timer_) {
+        request_scan(/*user_refresh=*/false);
+    }
 }
 
 // ============================================================================
