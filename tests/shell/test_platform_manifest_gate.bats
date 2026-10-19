@@ -409,6 +409,28 @@ except pm.ManifestError as e:
     contains "refused: mips: candidate 'pi' has no fixed panel" "$output"
 }
 
+@test "deriver: an inline candidate panel contributes its own class and tier" {
+    # The Creator 5 boards ride the mips binary with no platform entry of their
+    # own, so their panels sit inline in the candidate list.
+    make_tree
+    python3 - "$TREE/assets/config/platforms.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+m = json.load(open(p))
+m["platforms"]["mips"]["panel"]["candidates"].append(
+    {"board": "tiny-board", "width": 480, "height": 272, "rotate": 0})
+json.dump(m, open(p, "w"))
+PY
+    run python3 -c "
+import sys; sys.path.insert(0, 'scripts')
+import platform_manifest as pm
+m = pm.load('$TREE/assets/config/platforms.json')
+print(' '.join(pm.splash_3d_classes_for(m, 'mips')), pm.printer_image_sizes_for(m, 'mips'))"
+    [ "$status" -eq 0 ] || fail "derive failed: $output"
+    contains "micro" "$output"
+    contains "[150, 300]" "$output"
+}
+
 @test "prune: drops the translation files no locale loads, on every platform" {
     for p in pi k2; do
         make_stage

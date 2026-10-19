@@ -20,6 +20,9 @@ import json
 import os
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from translation_packs import UNLOADED_TRANSLATION_FILES  # noqa: E402
+
 MANIFEST_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "assets",
@@ -103,21 +106,30 @@ def printer_image_size(manifest, width):
 
 
 def candidate_panels(manifest, platform_id):
-    """The fixed-panel platforms whose panels this package can land on.
+    """The panels this package can land on, as manifest-shaped entries.
 
     A fixed panel is its own only candidate. A variable panel that names
     `candidates` is one binary serving several known boards, so its package
-    needs exactly what those boards need. An empty list means the panel is
-    unbounded: user-supplied hardware of any size.
+    needs exactly what those boards need. A candidate is either another
+    platform's id, which brings that platform's package hedges with it, or an
+    inline panel for a board with no platform entry of its own. An empty list
+    means the panel is unbounded: user-supplied hardware of any size.
     """
     entry = platform(manifest, platform_id)
     if has_fixed_panel(entry):
-        return [platform_id]
-    candidates = entry.get("panel", {}).get("candidates", [])
-    for cid in candidates:
-        if not has_fixed_panel(platform(manifest, cid)):
-            raise ManifestError(f"{platform_id}: candidate {cid!r} has no fixed panel")
-    return list(candidates)
+        return [entry]
+    out = []
+    for cand in entry.get("panel", {}).get("candidates", []):
+        if isinstance(cand, str):
+            resolved = platform(manifest, cand)
+            name = cand
+        else:
+            resolved = {"panel": cand}
+            name = cand.get("board", "inline panel")
+        if not has_fixed_panel(resolved):
+            raise ManifestError(f"{platform_id}: candidate {name!r} has no fixed panel")
+        out.append(resolved)
+    return out
 
 
 def _union(lists):
@@ -136,8 +148,7 @@ def splash_3d_classes_for(manifest, platform_id):
     for a platform whose panel is not known until runtime.
     """
     per_panel = []
-    for cid in candidate_panels(manifest, platform_id):
-        entry = platform(manifest, cid)
+    for entry in candidate_panels(manifest, platform_id):
         classes = [splash_class(manifest, *effective_resolution(entry))]
         per_panel.append(classes + entry.get("package", {}).get("extra_splash_3d_classes", []))
     return _union(per_panel)
@@ -149,14 +160,10 @@ def printer_image_sizes_for(manifest, platform_id):
     Empty for an unbounded panel, which keeps every tier.
     """
     per_panel = []
-    for cid in candidate_panels(manifest, platform_id):
-        entry = platform(manifest, cid)
+    for entry in candidate_panels(manifest, platform_id):
         size = printer_image_size(manifest, effective_resolution(entry)[0])
         per_panel.append([size] + entry.get("package", {}).get("extra_printer_image_sizes", []))
     return sorted(_union(per_panel))
-
-
-UNLOADED_TRANSLATION_FILES = ("translations.xml", "en.xml")
 
 
 def _kb(paths):
@@ -197,9 +204,7 @@ def prune_assets(manifest, platform_id, root, dry_run=False):  # noqa: C901
                 doomed.extend(os.path.join(dirpath, n) for n in filenames)
             notes.append("dropped assets/sounds: no tracker player on this platform")
 
-    # The runtime loads one <lang>.xml per locale and never the merged catalogue;
-    # English needs no pack because every tag is its own English text
-    # (translation_loader.cpp, kIdentityLocale).
+    # Translation files no locale loads (translation_packs.py).
     translations = os.path.join(root, "ui_xml", "translations")
     for name in UNLOADED_TRANSLATION_FILES:
         path = os.path.join(translations, name)
