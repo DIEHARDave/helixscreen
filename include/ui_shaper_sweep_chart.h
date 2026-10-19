@@ -24,8 +24,7 @@ inline constexpr float kShaperChartMaxHz = 200.0f;
 /// Amplitude axis ceiling over the tallest point.
 inline constexpr float kShaperChartHeadroom = 1.1f;
 
-/// The results charts' raw PSD series color (the text_muted token); the live
-/// curve uses it too.
+/// The results charts' raw PSD series color; the live curve uses it too.
 [[nodiscard]] lv_color_t shaper_raw_psd_color();
 
 /**

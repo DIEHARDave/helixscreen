@@ -5,7 +5,6 @@
 #include "ui_frequency_response_chart.h"
 
 #include "platform_capabilities.h"
-#include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
 
@@ -21,7 +20,9 @@ using helix::calibration::SweepColumn;
 using helix::calibration::SweepPoint;
 
 lv_color_t shaper_raw_psd_color() {
-    return theme_manager_get_color("text_muted");
+    // DECLARATIVE_OK: the legend dot in input_shaper_panel.xml carries the same
+    // hex, and text_muted is already the Previous curve's color.
+    return lv_color_hex(0xB0B0B0);
 }
 
 bool live_chart_layout_fits(const char* component_name, const char* gate_subject) {
