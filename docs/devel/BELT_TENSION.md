@@ -193,7 +193,9 @@ accumulator runs and nothing else. Finished points cross to the LVGL thread thro
 loop, so a point already queued is dropped instead of reaching a destroyed panel. The loop
 thread takes nice 10 (`kPreviewLoopNice`), since a starved klippy fails the sweep's moves.
 The stream stops at the last point, at `finish()`, on a source error and on every teardown,
-so the preview never keeps the accelerometer running.
+so the preview never keeps the accelerometer running. A sweep's last console line (within
+`kPreviewLastLineSlackHz` of the plan's end) ends a stream that never locked a grace later,
+so a run with no lock does not stay subscribed through Klipper's analysis.
 
 **CB1 cost.** The CPU cost on a BTT CB1 (Voron 2.4) is a pending hardware check, not a
 measured fact. Procedure: run the same full check twice, once normally and once with
