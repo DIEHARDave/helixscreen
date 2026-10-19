@@ -5,8 +5,8 @@
 // RGB565, base64 on numbered, crc32-checked "SNAP:" lines between HELIX-SNAP
 // markers. "snapline N": line N of the last snap again. "tap X Y": a touch
 // at panel coordinates. "notes": every notification since boot as "NOTE:" lines.
-// "stack": the UI thread's stack high-water mark and internal/PSRAM heap as one
-// "STACK:" line.
+// "stack": the UI thread's stack high-water mark, internal/PSRAM heap and the
+// LVGL image cache's fill as one "STACK:" line.
 // scripts/esp32_serial_snapshot.py drives snap and tap and writes a PNG.
 
 #ifdef __cplusplus
