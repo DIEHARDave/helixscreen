@@ -37,6 +37,28 @@ using CardWidth = ContextMenu::CardWidth;
 // compute_card_width
 // ============================================================================
 
+// ============================================================================
+// decide_column_flow
+// ============================================================================
+
+TEST_CASE("decide_column_flow: stacked, then side by side, then wrapped", "[context_menu][fit]") {
+    using Flow = ContextMenu::ColumnFlow;
+    // Card sizes measured from the Happy Hare lane menu (stacked height, then
+    // side-by-side width) against each screen's room less its margins.
+    // 800x480: 445 of 460 tall stacks.
+    CHECK(ContextMenu::decide_column_flow(445, 193, 780, 460) == Flow::Stacked);
+    // 320x480: 471 > 468 goes side by side, 250 of 308 wide.
+    CHECK(ContextMenu::decide_column_flow(471, 250, 308, 468) == Flow::Row);
+    // 480x272 with a plugin column: 412 > 260, side by side 350 of 468 wide.
+    CHECK(ContextMenu::decide_column_flow(412, 350, 468, 260) == Flow::Row);
+    // 320x480 with a plugin column: 574 > 468, and 376 > 308 side by side.
+    CHECK(ContextMenu::decide_column_flow(574, 376, 308, 468) == Flow::RowWrap);
+    // Exactly full fits; one pixel over does not.
+    CHECK(ContextMenu::decide_column_flow(100, 999, 50, 100) == Flow::Stacked);
+    CHECK(ContextMenu::decide_column_flow(101, 50, 50, 100) == Flow::Row);
+    CHECK(ContextMenu::decide_column_flow(101, 51, 50, 100) == Flow::RowWrap);
+}
+
 TEST_CASE("compute_card_width: fitted card takes its content width", "[context_menu][fit]") {
     const CardWidth fit{50, 160, 0, true};
     CHECK(ContextMenu::compute_card_width(fit, 800, 250, 10, false) == 250);

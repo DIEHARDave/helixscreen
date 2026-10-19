@@ -868,6 +868,7 @@ translations:
   Couldn't save the material name: '无法保存材料名称'
   Couldn't save the printer's gate map: 无法保存打印机的通道映射
   Couldn't save to Spoolman. Nothing changed on this printer.: 无法保存到 Spoolman。此打印机上未做任何更改。
+  Couldn't set the backup: 无法设置备用
   Cover open: 盖子未关闭
   Crash Report: 崩溃报告
   Crash report sent — thank you!: 崩溃报告已发送 — 谢谢！

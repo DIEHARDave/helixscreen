@@ -7,6 +7,7 @@
 // AmsEditOverlayViewTestAccess friend shim.
 
 #include "ui_ams_edit_overlay.h"
+#include "ui_ams_lane_settings.h"
 #include "ui_component_keypad.h"
 #include "ui_icon_codepoints.h"
 #include "ui_modal.h"
@@ -15,6 +16,7 @@
 #include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_helpers/backend_user_edit.h"
 #include "../test_helpers/log_capture.h"
 #include "../test_helpers/scoped_breakpoint.h"
 #include "../ui_test_utils.h"
@@ -3818,4 +3820,219 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     access.set_detail_field("detail_field_comment", "");
     close_editor_overlay();
     set_spoolman_available(false);
+}
+
+// ============================================================================
+// The lane's own settings: Assigned Tool and the Endless Spool backup
+// ============================================================================
+
+namespace {
+
+/// Open the editor on @p slot as the AMS panels do, with the slot as the
+/// backend holds it. @p completions counts the completion callbacks and
+/// @p last_saved records the last one's verdict.
+void show_editor_on_lane(LVGLUITestFixture& fx, AmsBackendMock& backend, int slot,
+                         int* completions = nullptr, bool* last_saved = nullptr) {
+    auto& overlay = get_ams_edit_overlay();
+    REQUIRE(overlay.show_for_slot(fx.test_screen(), slot, backend.get_slot_info(slot), nullptr,
+                                  [completions, last_saved](const AmsEditOverlay::EditResult& r) {
+                                      if (completions) {
+                                          ++*completions;
+                                      }
+                                      if (last_saved) {
+                                          *last_saved = r.saved;
+                                      }
+                                  }));
+    UpdateQueue::instance().drain();
+    fx.process_lvgl(10);
+}
+
+void set_material(AmsBackendMock& backend, int slot, const char* material) {
+    SlotInfo info = backend.get_slot_info(slot);
+    info.material = material;
+    info.status = SlotStatus::AVAILABLE;
+    REQUIRE(helix::test::apply_edit(backend, slot, info).success());
+}
+
+} // namespace
+
+TEST_CASE_METHOD(OverlayConsumerCommitFixture,
+                 "the editor stages Assigned Tool and writes it through the backend on Save",
+                 "[ams_edit_overlay][lane_settings]") {
+    REQUIRE(helix::ui::lane_settings::show_tool_row(backend));
+    std::vector<std::pair<ToastSeverity, std::string>> toasts;
+    helix::ui::set_test_toast_hook([&](ToastSeverity sev, const std::string& msg, uint32_t) {
+        toasts.emplace_back(sev, msg);
+    });
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    int completions = 0;
+    bool saved = true;
+    show_editor_on_lane(*this, *backend, 2, &completions, &saved);
+
+    REQUIRE(access.shown("tool_dropdown_row"));
+    const int before = helix::ui::lane_settings::assigned_tool(*backend, 2);
+    REQUIRE(before == 2);
+    CHECK(access.dropdown_selected("tool_dropdown") == "T2");
+    CHECK(access.save_disabled() == 1);
+
+    // Staged only: the backend still maps T0 to its own lane.
+    REQUIRE(access.pick_dropdown("tool_dropdown", "T0"));
+    CHECK(backend->get_tool_mapping()[0] == 0);
+    CHECK(access.is_dirty());
+    CHECK(access.save_disabled() == 0);
+
+    access.call_handle_save();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    // The same backend call the slot menu made, and the shared-lane warning
+    // naming both tools by their labels.
+    CHECK(backend->get_tool_mapping()[0] == 2);
+    helix::ui::set_test_toast_hook(nullptr);
+    REQUIRE(toasts.size() == 1);
+    CHECK(toasts[0].first == ToastSeverity::WARNING);
+    CHECK(toasts[0].second.find("T0") != std::string::npos);
+    CHECK(toasts[0].second.find("T2") != std::string::npos);
+    // Nothing of the slot's own changed, so no slot edit is committed.
+    CHECK(completions == 1);
+    CHECK_FALSE(saved);
+}
+
+TEST_CASE_METHOD(OverlayConsumerCommitFixture,
+                 "the editor stages the Endless Spool backup and writes it on Save",
+                 "[ams_edit_overlay][lane_settings][endless_spool]") {
+    set_material(*backend, 1, "PLA");
+    set_material(*backend, 2, "PLA");
+    set_material(*backend, 3, "ABS");
+    REQUIRE(helix::ui::lane_settings::backup_of(*backend, 1) == -1);
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    show_editor_on_lane(*this, *backend, 1);
+
+    REQUIRE(access.shown("backup_dropdown_row"));
+    lv_obj_t* label = access.widget("backup_label");
+    REQUIRE(label != nullptr);
+    CHECK(std::string(lv_label_get_text(label)) == "Backup Gate");
+    CHECK(access.dropdown_selected("backup_dropdown") == "None");
+
+    SECTION("a compatible lane is staged, then written") {
+        REQUIRE(access.pick_dropdown("backup_dropdown", "Gate 3"));
+        CHECK(helix::ui::lane_settings::backup_of(*backend, 1) == -1);
+        CHECK(access.save_disabled() == 0);
+        access.call_handle_save();
+        UpdateQueue::instance().drain();
+        process_lvgl(10);
+        CHECK(helix::ui::lane_settings::backup_of(*backend, 1) == 2);
+    }
+
+    SECTION("an incompatible lane is refused at the pick and nothing is staged") {
+        std::vector<std::pair<ToastSeverity, std::string>> toasts;
+        helix::ui::set_test_toast_hook([&](ToastSeverity sev, const std::string& msg, uint32_t) {
+            toasts.emplace_back(sev, msg);
+        });
+        REQUIRE(access.pick_dropdown("backup_dropdown", "Gate 4 (incompatible)"));
+        helix::ui::set_test_toast_hook(nullptr);
+        REQUIRE(toasts.size() == 1);
+        CHECK(toasts[0].first == ToastSeverity::ERROR);
+        CHECK(access.dropdown_selected("backup_dropdown") == "None");
+        CHECK_FALSE(access.is_dirty());
+        CHECK(access.save_disabled() == 1);
+        close_editor_overlay();
+        CHECK(helix::ui::lane_settings::backup_of(*backend, 1) == -1);
+    }
+}
+
+TEST_CASE_METHOD(OverlayConsumerCommitFixture,
+                 "the lane rows stay hidden where the backend has no such capability",
+                 "[ams_edit_overlay][lane_settings]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    SECTION("both supported: both rows") {
+        show_editor_on_lane(*this, *backend, 1);
+        CHECK(access.shown("tool_dropdown_row"));
+        CHECK(access.shown("backup_dropdown_row"));
+    }
+    SECTION("a mapping table the backend cannot write: no Assigned Tool") {
+        backend->set_remap_strategy(AmsBackend::RemapStrategy::PrePrintSend);
+        show_editor_on_lane(*this, *backend, 1);
+        CHECK_FALSE(access.shown("tool_dropdown_row"));
+        CHECK(access.shown("backup_dropdown_row"));
+    }
+    SECTION("a remap route that is not ready: no Assigned Tool") {
+        backend->set_remap_ready(false);
+        show_editor_on_lane(*this, *backend, 1);
+        CHECK_FALSE(access.shown("tool_dropdown_row"));
+    }
+    SECTION("no Endless Spool: no backup row") {
+        backend->set_endless_spool_supported(false);
+        show_editor_on_lane(*this, *backend, 1);
+        CHECK(access.shown("tool_dropdown_row"));
+        CHECK_FALSE(access.shown("backup_dropdown_row"));
+    }
+    SECTION("neither: the whole row goes") {
+        backend->set_remap_strategy(AmsBackend::RemapStrategy::PrePrintSend);
+        backend->set_endless_spool_supported(false);
+        show_editor_on_lane(*this, *backend, 1);
+        CHECK_FALSE(access.shown("lane_row"));
+    }
+    SECTION("a read-only backup is shown disabled") {
+        set_material(*backend, 1, "PLA");
+        set_material(*backend, 2, "PLA");
+        // Set while it is still editable: a read-only backup is the firmware's.
+        REQUIRE(backend->set_endless_spool_backup(1, 2).success());
+        backend->set_endless_spool_editable(false);
+        show_editor_on_lane(*this, *backend, 1);
+        REQUIRE(access.shown("backup_dropdown_row"));
+        CHECK(lv_obj_has_state(access.widget("backup_dropdown"), LV_STATE_DISABLED));
+        CHECK(access.dropdown_selected("backup_dropdown") == "Gate 3");
+    }
+    SECTION("the external spool is not a lane") {
+        REQUIRE(overlay.show_for_slot(test_screen(), -2, SlotInfo{}, nullptr, nullptr));
+        UpdateQueue::instance().drain();
+        process_lvgl(10);
+        CHECK_FALSE(access.shown("lane_section"));
+    }
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(OverlayConsumerCommitFixture, "the lane rows sit in view when the editor opens",
+                 "[ams_edit_overlay][lane_settings][layout]") {
+    lv_display_t* disp = lv_display_get_default();
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    for (const auto& [w, h] :
+         {std::pair<int32_t, int32_t>{800, 480}, {480, 320}, {480, 272}, {320, 480}}) {
+        {
+            ScopedResolution res(disp, w, h);
+            theme_manager_refresh_layout_constants(disp);
+            show_editor_on_lane(*this, *backend, 1);
+            lv_obj_t* content = access.widget("overlay_content");
+            REQUIRE(content != nullptr);
+            lv_obj_update_layout(content);
+            lv_area_t box;
+            lv_obj_get_coords(content, &box);
+            CAPTURE(w, h);
+            CHECK(lv_obj_get_scroll_right(content) <= 0);
+            for (const char* name : {"tool_dropdown", "backup_dropdown"}) {
+                INFO(name);
+                REQUIRE(access.shown(name));
+                lv_area_t dd;
+                lv_obj_get_coords(access.widget(name), &dd);
+                CHECK(dd.x1 >= box.x1);
+                CHECK(dd.x2 <= box.x2);
+                // Reachable by scrolling, never past the scroller's extent.
+                CHECK(dd.y2 <= box.y2 + lv_obj_get_scroll_bottom(content));
+                // In view when the editor opens wherever one row holds both.
+                if (w > h) {
+                    CHECK(dd.y2 <= box.y2);
+                }
+            }
+            close_editor_overlay();
+        }
+        theme_manager_refresh_layout_constants(disp);
+    }
 }

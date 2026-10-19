@@ -838,6 +838,7 @@
   <translation tag="Couldn&apos;t save the material name" en="Couldn&apos;t save the material name"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" en="Couldn&apos;t save the printer&apos;s gate map"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." en="Couldn&apos;t save to Spoolman. Nothing changed on this printer."/>
+  <translation tag="Couldn&apos;t set the backup" en="Couldn&apos;t set the backup"/>
   <translation tag="Cover open" en="Cover open"/>
   <translation tag="Crash Report" en="Crash Report"/>
   <translation tag="Crash report sent — thank you!" en="Crash report sent — thank you!"/>

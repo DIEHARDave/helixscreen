@@ -938,6 +938,7 @@ translations:
   Couldn't save the material name: 'No se pudo guardar el nombre del material'
   Couldn't save the printer's gate map: No se pudo guardar el mapa de gates de la impresora
   Couldn't save to Spoolman. Nothing changed on this printer.: No se pudo guardar en Spoolman. No se cambió nada en esta impresora.
+  Couldn't set the backup: No se pudo establecer la reserva
   Cover open: Tapa abierta
   Crash Report: Informe de fallo
   Crash report sent — thank you!: ¡Reporte de fallo enviado — gracias!

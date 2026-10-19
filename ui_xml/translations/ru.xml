@@ -880,6 +880,7 @@
   <translation tag="Couldn&apos;t save the material name" ru="Не удалось сохранить название материала"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" ru="Не удалось сохранить карту шлюзов принтера"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." ru="Не удалось сохранить в Spoolman. На этом принтере ничего не изменено."/>
+  <translation tag="Couldn&apos;t set the backup" ru="Не удалось задать резерв"/>
   <translation tag="Cover open" ru="Крышка открыта"/>
   <translation tag="Crash Report" ru="Отчёт о сбое"/>
   <translation tag="Crash report sent — thank you!" ru="Отчёт об ошибке отправлен — спасибо!"/>

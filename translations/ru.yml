@@ -981,6 +981,7 @@ translations:
   Couldn't save the material name: 'Не удалось сохранить название материала'
   Couldn't save the printer's gate map: Не удалось сохранить карту шлюзов принтера
   Couldn't save to Spoolman. Nothing changed on this printer.: Не удалось сохранить в Spoolman. На этом принтере ничего не изменено.
+  Couldn't set the backup: Не удалось задать резерв
   Cover open: Крышка открыта
   Crash Report: Отчёт о сбое
   Crash report sent — thank you!: Отчёт об ошибке отправлен — спасибо!

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "ui_ams_context_menu.h"
+#include "ui_ams_lane_settings.h"
 #include "ui_button.h"
 #include "ui_update_queue.h"
 
@@ -82,135 +83,7 @@ class AmsContextMenuTestAccess {
         return AmsContextMenu::decide_slot_ops(backend, slot_index, pending_is_loaded, system_busy,
                                                print_blocks_op, toolhead_unaccounted);
     }
-
-    static bool decide_show_backup_row(const helix::printer::EndlessSpoolCapabilities& caps,
-                                       const helix::printer::EndlessSpoolConfig& cfg, int slot) {
-        return AmsContextMenu::decide_show_backup_row(caps, cfg, slot);
-    }
-
-    using BackupEligibleFn = AmsContextMenu::BackupEligibleFn;
-
-    static std::string build_backup_options_for(int total_slots, int item_index,
-                                                const BackupEligibleFn& eligible,
-                                                LaneNoun noun = LaneNoun::Slot) {
-        std::vector<int> bays;
-        for (int i = 0; i < total_slots; ++i) {
-            bays.push_back(i);
-        }
-        return AmsContextMenu::build_backup_options_for(
-            noun, AmsContextMenu::backup_candidates_for(bays, item_index), item_index, eligible);
-    }
-
-    static std::string build_backup_options_from(const std::vector<int>& candidates,
-                                                 int item_index) {
-        return AmsContextMenu::build_backup_options_for(LaneNoun::Slot, candidates, item_index,
-                                                        nullptr);
-    }
-
-    static std::vector<int> backup_candidates_for(const std::vector<int>& bays, int item_index) {
-        return AmsContextMenu::backup_candidates_for(bays, item_index);
-    }
-
-    static bool decide_backup_refused(int item_index, int backup_slot,
-                                      const BackupEligibleFn& eligible) {
-        return AmsContextMenu::decide_backup_refused(item_index, backup_slot, eligible);
-    }
-
-    // Production reaches this only through the tool dropdown's value_changed
-    // event, which needs a live widget + a real user selection. The function
-    // itself just reads tool_dropdown_/backend_/get_item_index(), so a test
-    // that has built those (show_near_widget() + a selected dropdown value)
-    // can call it directly.
-    static void handle_tool_changed(AmsContextMenu& menu) {
-        menu.handle_tool_changed();
-    }
 };
-
-// A read-only backend's row is only worth drawing on a slot that has a backup:
-// anywhere else it reads a permanent "None" that looks like "nothing configured".
-TEST_CASE("AmsContextMenu::decide_show_backup_row needs a relation, not just availability",
-          "[ams][context_menu][endless_spool]") {
-    using namespace helix::printer;
-
-    // Slot 0 backs onto slot 1; nothing else has an edge.
-    const EndlessSpoolConfig none;
-    const EndlessSpoolConfig edge_0_to_1 = endless_spool_config_from_edges({1, -1, -1, -1});
-
-    const EndlessSpoolCapabilities unsupported;
-
-    EndlessSpoolCapabilities afc{.availability = EndlessSpoolAvailability::Available,
-                                 .enabled = EndlessSpoolEnabled::On,
-                                 .editability = EndlessSpoolEditability::PerSlot};
-
-    EndlessSpoolCapabilities hh_multi_unit{.availability = EndlessSpoolAvailability::Available,
-                                           .enabled = EndlessSpoolEnabled::On,
-                                           .editability = EndlessSpoolEditability::ReadOnly,
-                                           .restriction = EndlessSpoolRestriction::MultiUnit};
-
-    EndlessSpoolCapabilities cfs{.availability = EndlessSpoolAvailability::Available,
-                                 .enabled = EndlessSpoolEnabled::On,
-                                 .editability = EndlessSpoolEditability::ReadOnly,
-                                 .restriction = EndlessSpoolRestriction::FirmwareManaged};
-
-    EndlessSpoolCapabilities ad5x_stock{.availability = EndlessSpoolAvailability::Available,
-                                        .enabled = EndlessSpoolEnabled::On,
-                                        .editability = EndlessSpoolEditability::ReadOnly,
-                                        .restriction = EndlessSpoolRestriction::FirmwareManaged,
-                                        .provider = "zmod"};
-
-    // No real backend currently reports RequiresPlugin — AD5X stock zMod moved
-    // to Available/FirmwareManaged once source read of ANALOG_PRUTOK landed.
-    // Kept as a synthetic so the rendering path stays covered for any future
-    // backend whose package genuinely can be missing.
-    EndlessSpoolCapabilities synthetic_plugin_missing{
-        .availability = EndlessSpoolAvailability::RequiresPlugin,
-        .enabled = EndlessSpoolEnabled::Off,
-        .editability = EndlessSpoolEditability::ReadOnly,
-        .restriction = EndlessSpoolRestriction::PluginMissing};
-
-    SECTION("no such feature: never") {
-        CHECK_FALSE(AmsContextMenuTestAccess::decide_show_backup_row(unsupported, none, 0));
-        CHECK_FALSE(AmsContextMenuTestAccess::decide_show_backup_row(unsupported, edge_0_to_1, 0));
-    }
-
-    SECTION("plugin not installed: never - there is nothing to configure yet") {
-        CHECK_FALSE(
-            AmsContextMenuTestAccess::decide_show_backup_row(synthetic_plugin_missing, none, 0));
-        CHECK_FALSE(AmsContextMenuTestAccess::decide_show_backup_row(synthetic_plugin_missing,
-                                                                     edge_0_to_1, 0));
-    }
-
-    SECTION("AD5X stock zMod: same shape as CFS, hides when no relation") {
-        // FirmwareManaged + ReadOnly + no per-slot relation -> the CFS rule.
-        CHECK_FALSE(AmsContextMenuTestAccess::decide_show_backup_row(ad5x_stock, none, 0));
-    }
-
-    SECTION("editable: always, even before anything is configured") {
-        CHECK(AmsContextMenuTestAccess::decide_show_backup_row(afc, none, 0));
-        CHECK(AmsContextMenuTestAccess::decide_show_backup_row(afc, edge_0_to_1, 0));
-        CHECK(AmsContextMenuTestAccess::decide_show_backup_row(afc, edge_0_to_1, 2));
-    }
-
-    SECTION("read-only WITH a relation: shown, so the user can see it") {
-        CHECK(AmsContextMenuTestAccess::decide_show_backup_row(hh_multi_unit, edge_0_to_1, 0));
-    }
-
-    SECTION("read-only with NO relation: hidden - this is the CFS fix") {
-        // Showing it produced a dropdown stuck on "None" that could never be
-        // told apart from "no backup configured".
-        CHECK_FALSE(AmsContextMenuTestAccess::decide_show_backup_row(cfs, none, 0));
-    }
-
-    SECTION("read-only: only the slot that HAS an edge shows the row (#1464)") {
-        // The CFS fork publishes one edge, for the loaded slot. Every other
-        // slot would render a disabled "None" the firmware never stated.
-        CHECK(AmsContextMenuTestAccess::decide_show_backup_row(cfs, edge_0_to_1, 0));
-        CHECK_FALSE(AmsContextMenuTestAccess::decide_show_backup_row(cfs, edge_0_to_1, 1));
-        CHECK_FALSE(AmsContextMenuTestAccess::decide_show_backup_row(cfs, edge_0_to_1, 2));
-        CHECK_FALSE(
-            AmsContextMenuTestAccess::decide_show_backup_row(hh_multi_unit, edge_0_to_1, 3));
-    }
-}
 
 // "Clear Spool" was revealed only when `!slot_has_filament`, so it vanished the
 // moment a new spool went into the lane — precisely when a stale assignment is
@@ -513,340 +386,6 @@ TEST_CASE("AmsContextMenu::decide_unload_enabled blocks only the toolhead unload
     }
 }
 
-// =============================================================================
-// Backup eligibility now flows through the BACKEND virtual
-//
-// build_backup_options() used to call filament::are_materials_compatible()
-// directly, so AmsBackend::endless_spool_backup_eligibility() had no production
-// caller at all: AD5X IFS's stricter firmware rule could never reach the
-// "(incompatible)" label, and no backend could tighten or loosen it.
-// =============================================================================
-
-TEST_CASE("Backup options are tagged by the backend's eligibility rule",
-          "[ams][context_menu][endless_spool][1250]") {
-    using Access = AmsContextMenuTestAccess;
-
-    // The base-class default, replicated here so the "unchanged for AFC/HH"
-    // claim is checked against the rule itself and not against a mock of it.
-    // AmsBackend::endless_spool_backup_eligibility() is this function over
-    // get_slot_info(slot).material.
-    const std::vector<std::string> materials = {"PLA", "PLA", "ABS", ""};
-    const auto default_rule = [&materials](int slot, int candidate) {
-        if (slot < 0 || candidate < 0 || slot == candidate) {
-            return BackupEligibility::Incompatible;
-        }
-        const std::string& a = materials[static_cast<size_t>(slot)];
-        const std::string& b = materials[static_cast<size_t>(candidate)];
-        if (a.empty() || b.empty()) {
-            return BackupEligibility::Eligible;
-        }
-        if (!filament::materials_compatible(a, b)) {
-            return BackupEligibility::Incompatible;
-        }
-        return filament::grades_match(a, b) ? BackupEligibility::Eligible
-                                            : BackupEligibility::GradeDiffers;
-    };
-
-    SECTION("a bay of a box that is not there is not offered") {
-        // Bays 0-3 and 8-11 exist; 4-7 belong to an absent box.
-        const std::vector<int> bays = {0, 1, 2, 3, 8, 9, 10, 11};
-        const auto candidates = Access::backup_candidates_for(bays, 9);
-        CHECK(candidates == std::vector<int>{0, 1, 2, 3, 8, 10, 11});
-        const auto opts = Access::build_backup_options_from(candidates, 9);
-        CHECK(opts.find("Slot 5") == std::string::npos);
-        CHECK(opts.find("Slot 9") != std::string::npos);
-        CHECK(opts.find("Slot 12") != std::string::npos);
-    }
-
-    SECTION("the current slot is skipped and None leads") {
-        const auto opts = Access::build_backup_options_for(4, 1, default_rule);
-        CHECK(opts.rfind("None", 0) == 0);
-        // Slots 1, 3, 4 in 1-based labels — slot index 1 ("Slot 2") is absent.
-        CHECK(opts.find("Slot 2") == std::string::npos);
-        CHECK(opts.find("Slot 1") != std::string::npos);
-        CHECK(opts.find("Slot 3") != std::string::npos);
-        CHECK(opts.find("Slot 4") != std::string::npos);
-    }
-
-    SECTION("default rule: incompatible material is tagged, unknown material is not") {
-        // Slot 0 is PLA. Slot 1 (PLA) compatible; slot 2 (ABS) not; slot 3
-        // (unlabelled) counts as eligible rather than blocking a lane the user
-        // simply has not filled in yet.
-        const auto opts = Access::build_backup_options_for(4, 0, default_rule);
-        const auto slot2 = opts.find("Slot 2");
-        const auto slot3 = opts.find("Slot 3");
-        const auto slot4 = opts.find("Slot 4");
-        REQUIRE(slot2 != std::string::npos);
-        REQUIRE(slot3 != std::string::npos);
-        REQUIRE(slot4 != std::string::npos);
-
-        CHECK(opts.substr(slot2, slot3 - slot2).find("(incompatible)") == std::string::npos);
-        CHECK(opts.substr(slot3, slot4 - slot3).find("(incompatible)") != std::string::npos);
-        CHECK(opts.substr(slot4).find("(incompatible)") == std::string::npos);
-    }
-
-    SECTION("a stricter backend rule reaches the label - the AD5X shape") {
-        // Exact material AND exact colour AND port present. All four lanes hold
-        // PLA, so the default material rule allows every pairing and tags
-        // nothing; AD5X still refuses two of them. Before this change that
-        // refusal had no way to reach the label at all.
-        const std::vector<std::string> ifs_materials = {"PLA", "PLA", "PLA", "PLA"};
-        const std::vector<std::string> colors = {"FF0000", "00FF00", "FF0000", "FF0000"};
-        const std::vector<bool> present = {true, true, true, false};
-        const auto strict = [&](int slot, int candidate) {
-            if (slot < 0 || candidate < 0 || slot == candidate) {
-                return BackupEligibility::Incompatible;
-            }
-            const auto s = static_cast<size_t>(slot);
-            const auto c = static_cast<size_t>(candidate);
-            if (ifs_materials[s].empty() || colors[s].empty()) {
-                return BackupEligibility::Incompatible;
-            }
-            const bool ok =
-                present[c] && ifs_materials[c] == ifs_materials[s] && colors[c] == colors[s];
-            // A firmware rule has no soft verdict: it either performs the swap
-            // or it does not. GradeDiffers is the base rule's to hand out.
-            return ok ? BackupEligibility::Eligible : BackupEligibility::Incompatible;
-        };
-        const auto lenient = [&ifs_materials](int slot, int candidate) {
-            if (slot < 0 || candidate < 0 || slot == candidate) {
-                return BackupEligibility::Incompatible;
-            }
-            return filament::materials_compatible(ifs_materials[static_cast<size_t>(slot)],
-                                                  ifs_materials[static_cast<size_t>(candidate)])
-                       ? BackupEligibility::Eligible
-                       : BackupEligibility::Incompatible;
-        };
-
-        const auto strict_opts = Access::build_backup_options_for(4, 0, strict);
-        const auto lenient_opts = Access::build_backup_options_for(4, 0, lenient);
-        CHECK(strict_opts != lenient_opts);
-        // All PLA: the old rule had nothing to say about any of these lanes.
-        CHECK(lenient_opts.find("(incompatible)") == std::string::npos);
-
-        const auto s2 = strict_opts.find("Slot 2");
-        const auto s3 = strict_opts.find("Slot 3");
-        const auto s4 = strict_opts.find("Slot 4");
-        REQUIRE(s2 != std::string::npos);
-        REQUIRE(s3 != std::string::npos);
-        REQUIRE(s4 != std::string::npos);
-        // Slot index 1: same material, different colour -> refused.
-        CHECK(strict_opts.substr(s2, s3 - s2).find("(incompatible)") != std::string::npos);
-        // Slot index 2: same material, same colour, port present -> allowed.
-        CHECK(strict_opts.substr(s3, s4 - s3).find("(incompatible)") == std::string::npos);
-        // Slot index 3: material and colour match, but the port reads empty.
-        CHECK(strict_opts.substr(s4).find("(incompatible)") != std::string::npos);
-    }
-
-    SECTION("a grade difference gets its own tag, not the incompatible one") {
-        // Slot 0 is PLA. Slot 1 is PLA-CF: same polymer, filled, so the swap
-        // will work but is worth naming. Slot 2 is ABS and is refused outright.
-        const std::vector<std::string> graded = {"PLA", "PLA-CF", "ABS", "PLA"};
-        const auto rule = [&graded](int slot, int candidate) {
-            if (slot < 0 || candidate < 0 || slot == candidate) {
-                return BackupEligibility::Incompatible;
-            }
-            const std::string& a = graded[static_cast<size_t>(slot)];
-            const std::string& b = graded[static_cast<size_t>(candidate)];
-            if (!filament::materials_compatible(a, b)) {
-                return BackupEligibility::Incompatible;
-            }
-            return filament::grades_match(a, b) ? BackupEligibility::Eligible
-                                                : BackupEligibility::GradeDiffers;
-        };
-
-        const auto opts = Access::build_backup_options_for(4, 0, rule);
-        const auto s2 = opts.find("Slot 2");
-        const auto s3 = opts.find("Slot 3");
-        const auto s4 = opts.find("Slot 4");
-        REQUIRE(s2 != std::string::npos);
-        REQUIRE(s3 != std::string::npos);
-        REQUIRE(s4 != std::string::npos);
-
-        const std::string entry2 = opts.substr(s2, s3 - s2);
-        const std::string entry3 = opts.substr(s3, s4 - s3);
-        const std::string entry4 = opts.substr(s4);
-
-        // PLA-CF: tagged as a grade difference and NOT as incompatible. Both
-        // halves matter - the whole point is that this lane stays choosable.
-        CHECK(entry2.find("(different grade)") != std::string::npos);
-        CHECK(entry2.find("(incompatible)") == std::string::npos);
-        // ABS: the hard tag, and not the soft one.
-        CHECK(entry3.find("(incompatible)") != std::string::npos);
-        CHECK(entry3.find("(different grade)") == std::string::npos);
-        // PLA: untagged.
-        CHECK(entry4.find("(") == std::string::npos);
-    }
-
-    SECTION("no backend: nothing is tagged") {
-        // Matches the old code, which skipped every check when backend_ was null.
-        const auto always = [](int, int) { return BackupEligibility::Eligible; };
-        const auto opts = Access::build_backup_options_for(4, 0, always);
-        CHECK(opts.find("(incompatible)") == std::string::npos);
-    }
-
-    SECTION("an out-of-menu item index tags nothing rather than indexing garbage") {
-        bool called = false;
-        const auto spy = [&called](int, int) {
-            called = true;
-            return BackupEligibility::Incompatible;
-        };
-        const auto opts = Access::build_backup_options_for(4, -1, spy);
-        CHECK_FALSE(called);
-        CHECK(opts.find("(incompatible)") == std::string::npos);
-    }
-
-    SECTION("every option is spelled in the backend's own word") {
-        const auto always = [](int, int) { return BackupEligibility::Eligible; };
-        const auto opts = Access::build_backup_options_for(4, 0, always, LaneNoun::Lane);
-        // An AFC user picks a backup Lane, not a backup Slot, and the numbers
-        // stay 1-based whichever word spells them.
-        CHECK(opts.find("Lane 2") != std::string::npos);
-        CHECK(opts.find("Lane 3") != std::string::npos);
-        CHECK(opts.find("Lane 4") != std::string::npos);
-        CHECK(opts.find("Slot") == std::string::npos);
-        CHECK(opts.find("Lane 1") == std::string::npos); // the open slot is skipped
-    }
-}
-
-TEST_CASE("The change handler refuses exactly what the option list tagged",
-          "[ams][context_menu][endless_spool][1250]") {
-    using Access = AmsContextMenuTestAccess;
-
-    const auto refuse_all = [](int, int) { return BackupEligibility::Incompatible; };
-    const auto allow_all = [](int, int) { return BackupEligibility::Eligible; };
-
-    SECTION("clearing a backup is always allowed") {
-        // "None" needs nothing to be compatible with, so the rule is not even
-        // consulted - a backend that refuses everything must not block a clear.
-        CHECK_FALSE(Access::decide_backup_refused(0, -1, refuse_all));
-    }
-
-    SECTION("an ineligible pairing is refused") {
-        CHECK(Access::decide_backup_refused(0, 2, refuse_all));
-    }
-
-    SECTION("an eligible pairing goes through") {
-        CHECK_FALSE(Access::decide_backup_refused(0, 2, allow_all));
-    }
-
-    SECTION("no open slot: nothing to refuse") {
-        CHECK_FALSE(Access::decide_backup_refused(-1, 2, refuse_all));
-    }
-
-    SECTION("a grade difference is tagged but NOT refused") {
-        // The one asymmetry between the label and the refusal, and the reason
-        // the verdict is tri-state at all: the user is told, then allowed to go
-        // ahead. A refusal here would leave a print dying at a runout with a
-        // usable spool sitting in the next lane.
-        const auto grade_differs = [](int, int) { return BackupEligibility::GradeDiffers; };
-        CHECK_FALSE(Access::decide_backup_refused(0, 2, grade_differs));
-    }
-
-    SECTION("label and refusal agree for every pairing under one rule") {
-        // The invariant that matters: a slot tagged "(incompatible)" must be the
-        // slot the handler bounces, for the same rule, with no third opinion.
-        const std::vector<std::string> materials = {"PLA", "ABS", "PETG", "PLA"};
-        const auto rule = [&materials](int slot, int candidate) {
-            if (slot < 0 || candidate < 0 || slot == candidate) {
-                return BackupEligibility::Incompatible;
-            }
-            return filament::materials_compatible(materials[static_cast<size_t>(slot)],
-                                                  materials[static_cast<size_t>(candidate)])
-                       ? BackupEligibility::Eligible
-                       : BackupEligibility::Incompatible;
-        };
-
-        for (int item = 0; item < 4; ++item) {
-            const auto opts = Access::build_backup_options_for(4, item, rule);
-            for (int cand = 0; cand < 4; ++cand) {
-                if (cand == item) {
-                    continue;
-                }
-                const std::string label = "Slot " + std::to_string(cand + 1);
-                const auto pos = opts.find(label);
-                REQUIRE(pos != std::string::npos);
-                const auto end = opts.find('\n', pos);
-                const std::string entry = opts.substr(pos, end - pos);
-                const bool tagged = entry.find("(incompatible)") != std::string::npos;
-                CHECK(tagged == Access::decide_backup_refused(item, cand, rule));
-                // The soft tag never appears under a rule that only ever
-                // answers Eligible or Incompatible.
-                CHECK(entry.find("(different grade)") == std::string::npos);
-            }
-        }
-    }
-}
-
-TEST_CASE("The option list is built from the live backend virtual, not a local rule",
-          "[ams][context_menu][endless_spool][integration][1250]") {
-    // A pure function is only as good as whether its inputs are the ones it gets
-    // at runtime. Production binds `eligible` to
-    // AmsBackend::endless_spool_backup_eligibility() on the live backend
-    // (AmsContextMenu::backend_eligible_fn()); this binds the same thing, so the
-    // assertions below are about real slot data going through the real virtual.
-    AmsBackendMock backend(4);
-    backend.set_operation_delay(0);
-    REQUIRE(backend.start());
-
-    auto set_material = [&backend](int slot, const char* material) {
-        SlotInfo info = backend.get_slot_info(slot);
-        info.material = material;
-        info.status = SlotStatus::AVAILABLE;
-        REQUIRE(helix::test::apply_edit(backend, slot, info));
-    };
-    set_material(0, "PLA");
-    set_material(1, "PLA");
-    set_material(2, "ABS");
-    set_material(3, "");
-
-    const AmsContextMenuTestAccess::BackupEligibleFn live = [&backend](int slot, int candidate) {
-        return backend.endless_spool_backup_eligibility(slot, candidate);
-    };
-
-    SECTION("the virtual holds the values the call site actually passes") {
-        // Guard against the pure function being right about inputs the backend
-        // never produces: assert the backend's own view of the same slots.
-        CHECK(backend.get_slot_info(0).material == "PLA");
-        CHECK(backend.get_slot_info(2).material == "ABS");
-        CHECK(backend.get_slot_info(3).material.empty());
-
-        CHECK(live(0, 1) == BackupEligibility::Eligible);     // PLA / PLA
-        CHECK(live(0, 2) == BackupEligibility::Incompatible); // PLA / ABS
-        // PLA / unlabelled counts as eligible.
-        CHECK(live(0, 3) == BackupEligibility::Eligible);
-        // A slot is never its own backup, and there is no open slot at -1.
-        CHECK(live(0, 0) == BackupEligibility::Incompatible);
-        CHECK(live(-1, 1) == BackupEligibility::Incompatible);
-    }
-
-    SECTION("the default backend rule tags exactly the incompatible slot") {
-        // "Unchanged for AFC/HH" on same-grade slot data: the polymer half of
-        // the base virtual is the rule it always was, so this option list is
-        // byte-identical to the one the pre-Phase-2 code produced here. The
-        // grade half only speaks when a filler differs, which these four lanes
-        // do not exercise - the grade case has its own section above.
-        const auto opts = AmsContextMenuTestAccess::build_backup_options_for(4, 0, live);
-        const auto s2 = opts.find("Slot 2");
-        const auto s3 = opts.find("Slot 3");
-        const auto s4 = opts.find("Slot 4");
-        REQUIRE(s2 != std::string::npos);
-        REQUIRE(s3 != std::string::npos);
-        REQUIRE(s4 != std::string::npos);
-
-        CHECK(opts.substr(s2, s3 - s2).find("(incompatible)") == std::string::npos);
-        CHECK(opts.substr(s3, s4 - s3).find("(incompatible)") != std::string::npos);
-        CHECK(opts.substr(s4).find("(incompatible)") == std::string::npos);
-
-        // And the handler refuses the same one.
-        CHECK_FALSE(AmsContextMenuTestAccess::decide_backup_refused(0, 1, live));
-        CHECK(AmsContextMenuTestAccess::decide_backup_refused(0, 2, live));
-        CHECK_FALSE(AmsContextMenuTestAccess::decide_backup_refused(0, 3, live));
-    }
-
-    backend.stop();
-}
-
 // ============================================================================
 // A backend that withdraws its unmount offer has to be able to make it stick.
 //
@@ -1057,50 +596,6 @@ TEST_CASE("A no-feed tool changer's menu offers Mount and Park, never a filament
 }
 
 // ============================================================================
-// handle_tool_changed: remap conflict toast
-// ============================================================================
-
-TEST_CASE_METHOD(LVGLUITestFixture,
-                 "AmsContextMenu: a conflicting tool selection names both tools as labels",
-                 "[ui][ams][context_menu]") {
-    std::vector<std::pair<ToastSeverity, std::string>> toasts;
-    helix::ui::set_test_toast_hook([&](ToastSeverity sev, const std::string& msg, uint32_t) {
-        toasts.emplace_back(sev, msg);
-    });
-
-    auto backend = std::make_unique<AmsBackendMock>(4);
-    backend->set_operation_delay(0);
-    backend->set_tool_mapping(0, 2); // T0 already routes to slot 2
-
-    // Unlike most components, ams_context_menu.xml is registered lazily by
-    // AmsPanel/AmsOverviewPanel rather than helix::register_xml_components(),
-    // so LVGLUITestFixture's "every component" registration does not cover it.
-    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
-
-    AmsContextMenu menu;
-    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
-                                  /*is_loaded=*/false, backend.get()));
-
-    lv_obj_t* dd = lv_obj_find_by_name(test_screen(), "tool_dropdown");
-    REQUIRE(dd != nullptr);
-    // Options are "None", T0, T1, T2, T3 - index 2 selects T1, which collides
-    // with T0's existing mapping to this same slot.
-    lv_dropdown_set_options(dd, "None\nT0\nT1\nT2\nT3");
-    lv_dropdown_set_selected(dd, 2);
-
-    AmsContextMenuTestAccess::handle_tool_changed(menu);
-
-    helix::ui::set_test_toast_hook(nullptr);
-
-    REQUIRE(toasts.size() == 1);
-    CHECK(toasts[0].first == ToastSeverity::WARNING);
-    CHECK(toasts[0].second.find("T1") != std::string::npos);
-    CHECK(toasts[0].second.find("T0") != std::string::npos);
-    CHECK(toasts[0].second.find("Tool 1") == std::string::npos);
-    CHECK(toasts[0].second.find("Tool 0") == std::string::npos);
-}
-
-// ============================================================================
 // on_created: the header names the position in the backend's own word
 // ============================================================================
 
@@ -1125,41 +620,6 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_obj_t* header = lv_obj_find_by_name(test_screen(), "slot_header");
     REQUIRE(header != nullptr);
     CHECK(std::string(lv_label_get_text(header)) == "Gate 3");
-}
-
-TEST_CASE_METHOD(LVGLUITestFixture,
-                 "AmsContextMenu: the Endless Spool row is labelled in the backend's own word",
-                 "[ui][ams][context_menu]") {
-    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
-
-    const auto backup_label_after_show = [this](bool afc) {
-        auto backend = std::make_unique<AmsBackendMock>(4);
-        backend->set_afc_mode(afc);
-        backend->set_endless_spool_supported(true);
-        backend->set_endless_spool_editable(true);
-
-        AmsContextMenu menu;
-        REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/1, test_screen(),
-                                      /*is_loaded=*/false, backend.get()));
-
-        lv_obj_t* row = lv_obj_find_by_name(test_screen(), "backup_dropdown_row");
-        REQUIRE(row != nullptr);
-        REQUIRE_FALSE(lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN));
-
-        lv_subject_t* subject = lv_xml_get_subject(nullptr, "ams_slot_backup_label");
-        REQUIRE(subject != nullptr);
-        const std::string from_subject = lv_subject_get_string(subject);
-
-        lv_obj_t* label = lv_obj_find_by_name(row, "backup_label");
-        REQUIRE(label != nullptr);
-        CHECK(std::string(lv_label_get_text(label)) == from_subject);
-
-        menu.hide();
-        return from_subject;
-    };
-
-    CHECK(backup_label_after_show(/*afc=*/false) == "Backup Gate");
-    CHECK(backup_label_after_show(/*afc=*/true) == "Backup Lane");
 }
 
 // ============================================================================
@@ -1505,15 +965,17 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: plugin rows get their own c
     REQUIRE(col);
     CHECK(lv_obj_get_parent(col) == lv_obj_find_by_name(test_screen(), "menu_columns"));
     CHECK_FALSE(lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN));
-    lv_obj_t* heading = lv_obj_find_by_name(col, "plugin_name");
+    lv_obj_t* heading = lv_obj_find_by_name(col, "heading_text");
     REQUIRE(heading);
     CHECK(std::string(lv_label_get_text(heading)) == "Slot Plug");
-    lv_obj_t* label = lv_obj_find_by_name(col, "item_label");
+    lv_obj_t* button = lv_obj_find_by_name(col, "item_button");
+    REQUIRE(button);
+    lv_obj_t* label = ui_button_get_label(button);
     REQUIRE(label);
     CHECK(std::string(lv_label_get_text(label)) == "Look up");
 
     const std::string material = backend->get_slot_info(2).material;
-    lv_obj_send_event(lv_obj_get_parent(lv_obj_get_parent(label)), LV_EVENT_CLICKED, nullptr);
+    lv_obj_send_event(lv_obj_get_parent(button), LV_EVENT_CLICKED, nullptr);
     CHECK_FALSE(menu.is_visible());
     CHECK(plugin.seen() == "0|2|Gate 3|" + (material.empty() ? std::string("nil") : material));
     process_lvgl(20);
@@ -1544,7 +1006,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_obj_t* col = lv_obj_find_by_name(test_screen(), "col_plugins");
     REQUIRE(col);
     lv_obj_update_layout(lv_obj_get_screen(col));
-    lv_obj_t* label = lv_obj_find_by_name(col, "item_label");
+    lv_obj_t* label = ui_button_get_label(lv_obj_find_by_name(col, "item_button"));
     REQUIRE(label);
     const int32_t need =
         helix::ui::text_width("Inspect this slot", lv_obj_get_style_text_font(label, LV_PART_MAIN),
@@ -1554,58 +1016,6 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_obj_t* card = lv_obj_find_by_name(test_screen(), "context_menu");
     REQUIRE(card);
     CHECK(lv_obj_get_width(card) <= 800);
-    menu.hide();
-    process_lvgl(20);
-}
-
-TEST_CASE_METHOD(LVGLUITestFixture,
-                 "AmsContextMenu: at the cap the plugin column adds no height at 480x272",
-                 "[ui][ams][context_menu][plugin]") {
-    lv_display_t* disp = lv_display_get_default();
-    ScopedResolution res(disp, 480, 272);
-    theme_manager_refresh_layout_constants(disp);
-
-    // Two plugins with more filament_slot items between them than the cap allows,
-    // so the column holds its most: the cap's rows under two headings.
-    helix::plugin::test::TempDir tmp;
-    std::string four;
-    for (int i = 0; i < 4; ++i)
-        four += std::string(i ? "," : "") + R"({"id":"i)" + std::to_string(i) +
-                R"(","menu":"filament_slot","label":"Slot action )" + std::to_string(i) +
-                R"(","handler":"go"})";
-    for (const char* id : {"cap-a", "cap-b"}) {
-        std::filesystem::create_directories(tmp.path / id);
-        std::ofstream(tmp.path / id / "manifest.json")
-            << R"({"id":")" << id << R"(","name":")" << id
-            << R"(","version":"1.0.0","menu_items":[)" << four << "]}";
-        std::ofstream(tmp.path / id / "main.lua") << R"(helix.ui.on("go", function() end))";
-    }
-    helix::plugin::test::HostRig rig(
-        helix::plugin::test::enabled_all({{"cap-a", {}}, {"cap-b", {}}}));
-    rig.host->load_from(tmp.path.string());
-
-    auto backend = std::make_unique<AmsBackendMock>(4);
-    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
-    AmsContextMenu menu;
-    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
-                                  /*is_loaded=*/false, backend.get()));
-    lv_obj_t* col = lv_obj_find_by_name(test_screen(), "col_plugins");
-    lv_obj_t* filament = lv_obj_find_by_name(test_screen(), "col_filament");
-    REQUIRE(col);
-    REQUIRE(filament);
-    lv_obj_update_layout(lv_obj_get_screen(col));
-
-    uint32_t rows = 0;
-    for (uint32_t i = 0; i < lv_obj_get_child_count(col); ++i)
-        rows += lv_obj_find_by_name(lv_obj_get_child(col, static_cast<int32_t>(i)), "item_label") !=
-                nullptr;
-    CHECK(rows == static_cast<uint32_t>(
-                      helix::plugin_menu::row_cap(helix::plugin_menu::MenuKind::FilamentSlot)));
-    CAPTURE(lv_obj_get_height(col), lv_obj_get_height(filament));
-    CHECK_FALSE(lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN));
-    // Side by side, the tallest column sets the card's height: the plugin column
-    // at the cap must not be it.
-    CHECK(lv_obj_get_height(col) <= lv_obj_get_height(filament));
     menu.hide();
     process_lvgl(20);
 }
@@ -1641,7 +1051,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: the external spool takes no
 #endif // HELIX_HAS_PLUGINS
 
 // ============================================================================
-// Edit Spool + Assigned Tool
+// Edit Spool
 // ============================================================================
 
 TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: Edit Spool opens the editor",
@@ -1668,39 +1078,321 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: Edit Spool opens the editor
     CHECK(*fired == AmsContextMenu::MenuAction::EDIT);
 }
 
-TEST_CASE_METHOD(LVGLUITestFixture,
-                 "AmsContextMenu: Assigned Tool shows only where a mapping write lands",
-                 "[ui][ams][context_menu][edit_spool]") {
-    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+// ============================================================================
+// A lane menu is actions only, and never scrolls
+// ============================================================================
 
-    const auto row_shown = [this](AmsBackendMock& backend) {
-        AmsContextMenu menu;
-        REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/1, test_screen(),
-                                      /*is_loaded=*/false, &backend));
-        lv_obj_t* row = lv_obj_find_by_name(test_screen(), "tool_dropdown_row");
-        REQUIRE(row != nullptr);
-        lv_obj_t* label = lv_obj_find_by_name(row, "tool_label");
-        REQUIRE(label != nullptr);
-        CHECK(std::string(lv_label_get_text(label)) == "Assigned Tool");
-        const bool shown = !lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN);
-        menu.hide();
-        return shown;
-    };
+namespace {
 
-    AmsBackendMock writable(4);
-    writable.set_remap_strategy(AmsBackend::RemapStrategy::Native);
-    writable.set_remap_ready(true);
-    CHECK(row_shown(writable));
-
-    AmsBackendMock not_ready(4);
-    not_ready.set_remap_strategy(AmsBackend::RemapStrategy::Native);
-    not_ready.set_remap_ready(false);
-    CHECK_FALSE(row_shown(not_ready));
-
-    AmsBackendMock pre_print(4);
-    pre_print.set_remap_strategy(AmsBackend::RemapStrategy::PrePrintSend);
-    CHECK_FALSE(row_shown(pre_print));
-
-    // A writable backend after a refused one: the row comes back.
-    CHECK(row_shown(writable));
+/// A Happy Hare lane whose menu offers everything it can: Check Slot, Preload,
+/// an editable Endless Spool and a writable tool map. With Spoolman on and the
+/// mock's seeded material, Select Spool, Scan QR and Clear Spool show too.
+std::unique_ptr<AmsBackendMock> fullest_lane_backend() {
+    auto backend = std::make_unique<AmsBackendMock>(4);
+    backend->set_operation_delay(0);
+    backend->set_endless_spool_supported(true);
+    backend->set_endless_spool_editable(true);
+    backend->set_remap_strategy(AmsBackend::RemapStrategy::Native);
+    backend->set_remap_ready(true);
+    return backend;
 }
+
+/// Spoolman availability for one case, put back on scope exit.
+class ScopedSpoolman {
+  public:
+    ScopedSpoolman() : subj_(lv_xml_get_subject(nullptr, "printer_has_spoolman")) {
+        REQUIRE(subj_ != nullptr);
+        was_ = lv_subject_get_int(subj_);
+        lv_subject_set_int(subj_, 1);
+    }
+    ~ScopedSpoolman() {
+        lv_subject_set_int(subj_, was_);
+    }
+
+  private:
+    lv_subject_t* subj_;
+    int32_t was_ = 0;
+};
+
+struct MenuFit {
+    int32_t card_h = 0;
+    int32_t available_h = 0;
+    int32_t scroll_bottom = 0;
+    int32_t scroll_right = 0;
+    lv_area_t card{};
+    std::string layout; ///< each shown column's width and height, for the failure message
+};
+
+/// Open the fullest lane menu on slot 2 at @p w x @p h and measure its card.
+MenuFit measure_lane_menu(LVGLUITestFixture& fx, int32_t w, int32_t h, bool with_plugins) {
+    lv_display_t* disp = lv_display_get_default();
+    ScopedResolution res(disp, w, h);
+    theme_manager_refresh_layout_constants(disp);
+
+    auto backend = fullest_lane_backend();
+    AmsContextMenu menu;
+    REQUIRE(menu.show_near_widget(fx.test_screen(), /*slot_index=*/2, fx.test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+    lv_obj_t* card = lv_obj_find_by_name(fx.test_screen(), "context_menu");
+    REQUIRE(card != nullptr);
+    lv_obj_update_layout(lv_obj_get_screen(card));
+    // Every action this backend offers is on the card being measured.
+    for (const char* name : {"btn_gate_check", "btn_preload", "btn_spoolman", "btn_clear_spool"}) {
+        INFO(name);
+        lv_obj_t* btn = lv_obj_find_by_name(card, name);
+        REQUIRE(btn != nullptr);
+        CHECK_FALSE(lv_obj_has_flag(btn, LV_OBJ_FLAG_HIDDEN));
+    }
+    lv_obj_t* plugins = lv_obj_find_by_name(card, "col_plugins");
+    REQUIRE(plugins != nullptr);
+    CHECK(lv_obj_has_flag(plugins, LV_OBJ_FLAG_HIDDEN) == !with_plugins);
+
+    MenuFit fit;
+    lv_obj_t* columns = lv_obj_find_by_name(card, "menu_columns");
+    REQUIRE(columns != nullptr);
+    for (uint32_t i = 0; i < lv_obj_get_child_count(columns); ++i) {
+        lv_obj_t* col = lv_obj_get_child(columns, static_cast<int32_t>(i));
+        if (!lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN)) {
+            fit.layout += std::string(lv_obj_get_name(col)) + " " +
+                          std::to_string(lv_obj_get_width(col)) + "x" +
+                          std::to_string(lv_obj_get_height(col)) + "; ";
+        }
+    }
+    fit.card_h = lv_obj_get_height(card);
+    fit.available_h =
+        lv_obj_get_height(lv_obj_get_parent(card)) - 2 * theme_manager_get_spacing("space_md");
+    fit.scroll_bottom = lv_obj_get_scroll_bottom(card);
+    fit.scroll_right = lv_obj_get_scroll_right(card);
+    lv_obj_get_coords(card, &fit.card);
+    menu.hide();
+    fx.process_lvgl(20);
+    return fit;
+}
+
+void check_fits(const MenuFit& fit, int32_t w, int32_t h) {
+    CAPTURE(w, h, fit.card_h, fit.available_h, fit.scroll_bottom, fit.scroll_right, fit.layout);
+    CHECK(fit.card_h <= fit.available_h);
+    CHECK(fit.scroll_bottom <= 0);
+    CHECK(fit.scroll_right <= 0);
+    CHECK(fit.card.x1 >= 0);
+    CHECK(fit.card.y1 >= 0);
+    CHECK(fit.card.x2 < w);
+    CHECK(fit.card.y2 < h);
+}
+
+// The fixture's theme keeps the 800x480 body font at every size, so its rows
+// measure wider than a device's. The landscape screens absorb that; 320x480 does
+// not, so its flow is pinned with measured sizes in decide_column_flow's test.
+constexpr std::pair<int32_t, int32_t> kMenuSizes[] = {{800, 480}, {480, 320}, {480, 272}};
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: a lane menu is actions only",
+                 "[ui][ams][context_menu][slim]") {
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    ScopedSpoolman spoolman;
+    auto backend = fullest_lane_backend();
+    // The backend offers everything the menu's old rows were for: slot select,
+    // a writable tool map and an editable backup.
+    REQUIRE(backend->supports_gate_select());
+    REQUIRE(lane_settings::show_tool_row(backend.get()));
+    REQUIRE(lane_settings::show_backup_row(backend->get_endless_spool_capabilities(),
+                                           backend->get_endless_spool_config(), 2));
+
+    AmsContextMenu menu;
+    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+    for (const char* name :
+         {"btn_gate_select", "dropdown_divider", "tool_dropdown_row", "tool_dropdown",
+          "backup_dropdown_row", "backup_dropdown", "endless_status"}) {
+        INFO(name);
+        CHECK(lv_obj_find_by_name(test_screen(), name) == nullptr);
+    }
+    // Check Slot and Preload stay: they act on the lane the menu is open on.
+    for (const char* name : {"btn_gate_check", "btn_preload"}) {
+        INFO(name);
+        lv_obj_t* btn = lv_obj_find_by_name(test_screen(), name);
+        REQUIRE(btn != nullptr);
+        CHECK_FALSE(lv_obj_has_flag(btn, LV_OBJ_FLAG_HIDDEN));
+    }
+    menu.hide();
+    process_lvgl(20);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: a lane menu fits without scrolling",
+                 "[ui][ams][context_menu][slim]") {
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    ScopedSpoolman spoolman;
+    for (const auto& [w, h] : kMenuSizes) {
+        check_fits(measure_lane_menu(*this, w, h, /*with_plugins=*/false), w, h);
+    }
+    theme_manager_refresh_layout_constants(lv_display_get_default());
+}
+
+#if HELIX_HAS_PLUGINS
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AmsContextMenu: a lane menu with plugin items at the cap fits without scrolling",
+                 "[ui][ams][context_menu][slim][plugin]") {
+    // Two plugins with more filament_slot items between them than the cap
+    // allows, so the plugin column holds its most.
+    helix::plugin::test::TempDir tmp;
+    std::string four;
+    for (int i = 0; i < 4; ++i)
+        four += std::string(i ? "," : "") + R"({"id":"i)" + std::to_string(i) +
+                R"(","menu":"filament_slot","label":"Slot action )" + std::to_string(i) +
+                R"(","handler":"go"})";
+    for (const char* id : {"fit-a", "fit-b"}) {
+        std::filesystem::create_directories(tmp.path / id);
+        std::ofstream(tmp.path / id / "manifest.json")
+            << R"({"id":")" << id << R"(","name":")" << id
+            << R"(","version":"1.0.0","menu_items":[)" << four << "]}";
+        std::ofstream(tmp.path / id / "main.lua") << R"(helix.ui.on("go", function() end))";
+    }
+    helix::plugin::test::HostRig rig(
+        helix::plugin::test::enabled_all({{"fit-a", {}}, {"fit-b", {}}}));
+    rig.host->load_from(tmp.path.string());
+    REQUIRE(helix::plugin_menu::any_declared(helix::plugin_menu::MenuKind::FilamentSlot));
+
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    ScopedSpoolman spoolman;
+    for (const auto& [w, h] : kMenuSizes) {
+        check_fits(measure_lane_menu(*this, w, h, /*with_plugins=*/true), w, h);
+    }
+    theme_manager_refresh_layout_constants(lv_display_get_default());
+}
+#endif // HELIX_HAS_PLUGINS
+
+#if HELIX_HAS_PLUGINS
+namespace {
+
+/// One enabled plugin with two filament_slot items, the first long enough to
+/// ellipsize in a narrow column.
+struct SlotDemoPlugin {
+    helix::plugin::test::TempDir tmp;
+    std::unique_ptr<helix::plugin::test::HostRig> rig;
+
+    SlotDemoPlugin() {
+        std::filesystem::create_directories(tmp.path / "slot-demo");
+        std::ofstream(tmp.path / "slot-demo" / "manifest.json")
+            << R"({"id":"slot-demo","name":"Slot Demo","version":"1.0.0","menu_items":[
+                 {"id":"i","menu":"filament_slot","label":"Inspect this slot","icon":"tune",
+                  "handler":"go"},
+                 {"id":"t","menu":"filament_slot","label":"Tag slot","handler":"go"}]})";
+        std::ofstream(tmp.path / "slot-demo" / "main.lua")
+            << R"(helix.ui.on("go", function() end))";
+        rig = std::make_unique<helix::plugin::test::HostRig>(
+            helix::plugin::test::enabled("slot-demo", {}));
+        rig->host->load_from(tmp.path.string());
+    }
+};
+
+int32_t screen_top(lv_obj_t* obj) {
+    REQUIRE(obj != nullptr);
+    lv_area_t a;
+    lv_obj_get_coords(obj, &a);
+    return a.y1;
+}
+
+/// The column's visible children that are not its heading, in order.
+std::vector<lv_obj_t*> column_rows(lv_obj_t* col) {
+    std::vector<lv_obj_t*> rows;
+    for (uint32_t i = 0; i < lv_obj_get_child_count(col); ++i) {
+        lv_obj_t* child = lv_obj_get_child(col, static_cast<int32_t>(i));
+        if (!lv_obj_has_flag(child, LV_OBJ_FLAG_HIDDEN) &&
+            lv_obj_has_flag(child, LV_OBJ_FLAG_CLICKABLE)) {
+            rows.push_back(child);
+        }
+    }
+    return rows;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AmsContextMenu: the plugin column lines up with the action columns",
+                 "[ui][ams][context_menu][slim][plugin]") {
+    lv_display_t* disp = lv_display_get_default();
+    ScopedResolution res(disp, 800, 480);
+    theme_manager_refresh_layout_constants(disp);
+    SlotDemoPlugin plugin;
+    ScopedSpoolman spoolman;
+    auto backend = fullest_lane_backend();
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    AmsContextMenu menu;
+    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+    lv_obj_t* spool = lv_obj_find_by_name(test_screen(), "col_spool");
+    lv_obj_t* plugins = lv_obj_find_by_name(test_screen(), "col_plugins");
+    REQUIRE(spool);
+    REQUIRE(plugins);
+    lv_obj_update_layout(lv_obj_get_screen(plugins));
+    REQUIRE(screen_top(plugins) == screen_top(spool)); // side by side
+
+    // The same heading: its label and its rule at the same heights.
+    lv_obj_t* spool_heading = lv_obj_find_by_name(spool, "col_heading");
+    lv_obj_t* plugin_heading = lv_obj_get_child(plugins, 0);
+    REQUIRE(spool_heading);
+    CHECK(screen_top(lv_obj_find_by_name(plugin_heading, "heading_text")) ==
+          screen_top(lv_obj_find_by_name(spool_heading, "heading_text")));
+    REQUIRE(lv_obj_get_child_count(plugin_heading) == 2);
+    CHECK(screen_top(lv_obj_get_child(plugin_heading, 1)) ==
+          screen_top(lv_obj_get_child(spool_heading, 1)));
+    CHECK(lv_obj_get_height(lv_obj_get_child(plugin_heading, 1)) == 1);
+
+    // Row for row: same tops, same height.
+    const auto spool_rows = column_rows(spool);
+    const auto plugin_rows = column_rows(plugins);
+    REQUIRE(plugin_rows.size() == 2);
+    REQUIRE(spool_rows.size() >= 2);
+    for (size_t i = 0; i < plugin_rows.size(); ++i) {
+        INFO("row " << i);
+        CHECK(screen_top(plugin_rows[i]) == screen_top(spool_rows[i]));
+        CHECK(lv_obj_get_height(plugin_rows[i]) == lv_obj_get_height(spool_rows[i]));
+    }
+    menu.hide();
+    process_lvgl(20);
+    theme_manager_refresh_layout_constants(disp);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AmsContextMenu: a plugin column wrapped below the others takes the card's width",
+                 "[ui][ams][context_menu][slim][plugin]") {
+    lv_display_t* disp = lv_display_get_default();
+    {
+        ScopedResolution res(disp, 320, 480);
+        theme_manager_refresh_layout_constants(disp);
+        SlotDemoPlugin plugin;
+        ScopedSpoolman spoolman;
+        auto backend = fullest_lane_backend();
+        REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") ==
+                LV_RESULT_OK);
+        AmsContextMenu menu;
+        REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
+                                      /*is_loaded=*/false, backend.get()));
+        lv_obj_t* columns = lv_obj_find_by_name(test_screen(), "menu_columns");
+        lv_obj_t* filament = lv_obj_find_by_name(test_screen(), "col_filament");
+        lv_obj_t* plugins = lv_obj_find_by_name(test_screen(), "col_plugins");
+        REQUIRE(columns);
+        REQUIRE(filament);
+        REQUIRE(plugins);
+        lv_obj_update_layout(lv_obj_get_screen(columns));
+        REQUIRE(lv_obj_get_style_flex_flow(columns, LV_PART_MAIN) == LV_FLEX_FLOW_ROW_WRAP);
+        REQUIRE(screen_top(plugins) > screen_top(filament));
+
+        CHECK(lv_obj_get_width(plugins) == lv_obj_get_content_width(columns));
+        lv_obj_t* label = ui_button_get_label(lv_obj_find_by_name(plugins, "item_button"));
+        REQUIRE(label);
+        const int32_t need = helix::ui::text_width(
+            "Inspect this slot", lv_obj_get_style_text_font(label, LV_PART_MAIN),
+            lv_obj_get_style_text_letter_space(label, LV_PART_MAIN));
+        CAPTURE(lv_obj_get_width(plugins), lv_obj_get_width(label), need);
+        CHECK(lv_obj_get_width(label) >= need);
+        // Its text starts beside the icon, as the action rows' do, not centred
+        // in the wider row.
+        CHECK(lv_obj_get_style_text_align(label, LV_PART_MAIN) == LV_TEXT_ALIGN_LEFT);
+        menu.hide();
+        process_lvgl(20);
+    }
+    theme_manager_refresh_layout_constants(disp);
+}
+#endif // HELIX_HAS_PLUGINS

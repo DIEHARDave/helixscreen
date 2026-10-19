@@ -870,6 +870,7 @@ translations:
   Couldn't save the material name: '材料名を保存できませんでした'
   Couldn't save the printer's gate map: プリンターのゲートマップを保存できませんでした
   Couldn't save to Spoolman. Nothing changed on this printer.: Spoolman に保存できませんでした。このプリンターでは何も変更されていません。
+  Couldn't set the backup: 予備を設定できませんでした
   Cover open: カバーが開いています
   Crash Report: クラッシュレポート
   Crash report sent — thank you!: クラッシュレポートを送信しました — ありがとうございます！

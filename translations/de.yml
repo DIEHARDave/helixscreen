@@ -942,6 +942,7 @@ translations:
   Couldn't save the material name: 'Materialname konnte nicht gespeichert werden'
   Couldn't save the printer's gate map: Gate-Zuordnung des Druckers konnte nicht gespeichert werden
   Couldn't save to Spoolman. Nothing changed on this printer.: Speichern in Spoolman fehlgeschlagen. Auf diesem Drucker wurde nichts geändert.
+  Couldn't set the backup: Ersatz konnte nicht festgelegt werden
   Cover open: Abdeckung offen
   Crash Report: Absturzbericht
   Crash report sent — thank you!: Absturzbericht gesendet — vielen Dank!

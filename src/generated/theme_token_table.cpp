@@ -7,11 +7,6 @@
 namespace helix::theme_tokens {
 
 const TokenEntry k_token_table[] = {
-    {"px", "ams_context_dropdown_w_micro", "80"},
-    {"px", "ams_context_dropdown_w_tiny", "90"},
-    {"px", "ams_context_dropdown_w_small", "110"},
-    {"px", "ams_context_dropdown_w_medium", "110"},
-    {"px", "ams_context_dropdown_w_large", "110"},
     {"px", "ams_context_plugin_col_w_micro", "110"},
     {"px", "ams_context_plugin_col_w_tiny", "120"},
     {"px", "ams_context_plugin_col_w_small", "160"},
@@ -57,6 +52,16 @@ const TokenEntry k_token_table[] = {
     {"px", "ams_edit_color_col_w_small", "160"},
     {"px", "ams_edit_color_col_w_medium", "#ams_edit_color_col_w_small"},
     {"px", "ams_edit_color_col_w_large", "#ams_edit_color_col_w_small"},
+    {"px", "ams_edit_tool_dd_w_micro", "72"},
+    {"px", "ams_edit_tool_dd_w_tiny", "72"},
+    {"px", "ams_edit_tool_dd_w_small", "80"},
+    {"px", "ams_edit_tool_dd_w_medium", "96"},
+    {"px", "ams_edit_tool_dd_w_large", "110"},
+    {"px", "ams_edit_lane_dd_w_micro", "96"},
+    {"px", "ams_edit_lane_dd_w_tiny", "96"},
+    {"px", "ams_edit_lane_dd_w_small", "110"},
+    {"px", "ams_edit_lane_dd_w_medium", "130"},
+    {"px", "ams_edit_lane_dd_w_large", "150"},
     {"px", "ams_edit_pill_hit", "10"},
     {"px", "ams_edit_bar_hit_micro", "13"},
     {"px", "ams_edit_bar_hit_tiny", "13"},
