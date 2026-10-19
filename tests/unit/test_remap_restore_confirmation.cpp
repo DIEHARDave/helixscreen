@@ -19,6 +19,7 @@
 
 #include "ui_print_select_detail_view.h"
 #include "ui_print_start_controller.h"
+#include "ui_resume_dispatch.h"
 #include "ui_update_queue.h"
 
 #include "../lvgl_test_fixture.h"
@@ -808,7 +809,7 @@ TEST_CASE("reprint with spools latched on the bed never begins preparing",
 
 namespace {
 
-/// A revision 3 Fork box with boxes 1-3 on the bus and box 2 not answering.
+/// A revision 4 Fork box with boxes 1-3 on the bus and box 2 not answering.
 nlohmann::json fork_print_map_frame() {
     nlohmann::json slots = nlohmann::json::array();
     for (int i = 0; i < 12; ++i) {
@@ -820,7 +821,7 @@ nlohmann::json fork_print_map_frame() {
                          {"color", "#F2F2F2"}});
     }
     nlohmann::json box = {{"api_version", 1},
-                          {"api_revision", 3},
+                          {"api_revision", 4},
                           {"driver_ready", true},
                           {"loaded_slot", -1},
                           {"slots", slots},
@@ -884,6 +885,15 @@ TEST_CASE("pre-print send: a remap to a box that is not answering stops the prin
         CHECK(print_map_sent());
     }
 
+    SECTION("a file whose tools are unknown starts on a cleared map") {
+        PrintStartControllerTestAccess::send_preprint(
+            h.controller, {}, {}, [&] { done = true; }, [&] { aborted = true; });
+        helix::ui::UpdateQueue::instance().drain();
+        CHECK(done);
+        REQUIRE(h.client.gcode_script_history().size() == 1);
+        CHECK(h.client.gcode_script_history()[0] == "BOX_PRINT_MAP MAP=");
+    }
+
     helix::ui::set_test_notification_error_hook(nullptr);
     helix::ui::UpdateQueue::instance().drain();
     AmsState::instance().set_backend(nullptr);
@@ -915,7 +925,7 @@ TEST_CASE("reprint: a Fork print-map box sends the identity map for the file's t
         helix::ui::UpdateQueue::instance().drain();
     };
 
-    SECTION("revision 3 sends every used tool at its own slot") {
+    SECTION("revision 4 sends every used tool at its own slot") {
         CfsTestAccess::handle_status(*cfs, fork_print_map_frame());
         REQUIRE(cfs->requires_preprint_send());
         REQUIRE(cfs->last_print_tool_mapping().empty());
@@ -924,6 +934,27 @@ TEST_CASE("reprint: a Fork print-map box sends the identity map for the file's t
         const auto lines = print_map_lines(h);
         REQUIRE(lines.size() == 1);
         CHECK(lines[0] == "BOX_PRINT_MAP MAP=0:0,1:1");
+    }
+
+    SECTION("revision 4 with the file's tools unknown clears the pending map") {
+        CfsTestAccess::handle_status(*cfs, fork_print_map_frame());
+        Harness h;
+        h.client.clear_gcode_script_history();
+        h.controller.initiate_reprint("part.gcode", "part.gcode", {}, [] {}, [] {});
+        helix::ui::UpdateQueue::instance().drain();
+        const auto lines = print_map_lines(h);
+        REQUIRE(lines.size() == 1);
+        CHECK(lines[0] == "BOX_PRINT_MAP MAP=");
+    }
+
+    SECTION("revision 3 sends no print map") {
+        auto frame = fork_print_map_frame();
+        frame["params"][0]["box"]["api_revision"] = 3;
+        CfsTestAccess::handle_status(*cfs, frame);
+        REQUIRE_FALSE(cfs->requires_preprint_send());
+        Harness h;
+        reprint(h);
+        CHECK(print_map_lines(h).empty());
     }
 
     SECTION("revision 2 has no print map to send") {
@@ -942,6 +973,46 @@ TEST_CASE("reprint: a Fork print-map box sends the identity map for the file's t
         Harness h;
         reprint(h);
         CHECK(print_map_lines(h).empty());
+    }
+
+    helix::ui::UpdateQueue::instance().drain();
+    AmsState::instance().set_backend(nullptr);
+}
+
+// A restart from the beginning carries no routing, so on a Fork print-map box it
+// clears whatever map is pending rather than let it apply to the restarted file.
+TEST_CASE("restart from the beginning: a Fork print-map box clears the pending map",
+          "[print-start][print_map][reprint]") {
+    LVGLTestFixture fx;
+    AmsState::instance().init_subjects(true);
+    auto owned = std::make_unique<CapturingCfsBackend>();
+    auto* cfs = owned.get();
+    AmsState::instance().set_backend(std::move(owned));
+    Harness h;
+    h.client.clear_gcode_script_history();
+    const auto sent = [&h] {
+        std::string out;
+        for (const auto& script : h.client.gcode_script_history()) {
+            out += script + "\n";
+        }
+        return out;
+    };
+
+    SECTION("revision 4 sends the clear after the cancel") {
+        CfsTestAccess::handle_status(*cfs, fork_print_map_frame());
+        helix::ui::restart_print_from_beginning(&h.api, "part.gcode", "[test]", nullptr);
+        helix::ui::UpdateQueue::instance().drain();
+        CHECK(sent().find("CANCEL_PRINT_BASE\nBOX_PRINT_MAP MAP=\n") != std::string::npos);
+    }
+
+    SECTION("revision 3 sends no print map") {
+        auto frame = fork_print_map_frame();
+        frame["params"][0]["box"]["api_revision"] = 3;
+        CfsTestAccess::handle_status(*cfs, frame);
+        helix::ui::restart_print_from_beginning(&h.api, "part.gcode", "[test]", nullptr);
+        helix::ui::UpdateQueue::instance().drain();
+        REQUIRE(sent().find("CANCEL_PRINT_BASE") != std::string::npos);
+        CHECK(sent().find("BOX_PRINT_MAP") == std::string::npos);
     }
 
     helix::ui::UpdateQueue::instance().drain();

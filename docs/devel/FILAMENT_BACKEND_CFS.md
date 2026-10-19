@@ -41,7 +41,7 @@ reports stock again:
 |------------|--------------|--------------|
 | Print mapping (`fork_has_print_mapping`) | `api_revision >= 2`, or `print_mapping_version == 1` | Manual load, swap and external-spool load send `BOX_SELECT_SLOT SLOT=<n>` instead of `T<n>` (`fork_slot_gcode`). During a print started with `BOX_PRINT_START MAP=`, `T<n>` is the file's tool `n` and loads its mapped slot; `BOX_SELECT_SLOT` always names the slot |
 | Per-box readings | `api_revision >= 2` and a `boxes[]` array | Each unit's environment comes from its own `boxes[]` entry |
-| `BOX_PRINT_MAP` (`fork_has_print_map`) | `api_revision >= 3` | Tool remap is `RemapStrategy::PrePrintSend` |
+| `BOX_PRINT_MAP` (`fork_has_print_map`) | `api_revision >= 4` (`kForkPrintMapRevision`) | Tool remap is `RemapStrategy::PrePrintSend`. Revision 3 has the command without its `MAP=` clear and gets no remap |
 
 `SLOT=` and the slot side of `MAP=` take the firmware's global slot number,
 `(address - 1) * 4 + local`, which is already the bay's global index here, so a bay is
@@ -59,23 +59,26 @@ box. The per-box `fault` object is not read: no per-unit status or error surface
 to show its `title` and `message`.
 
 **Tool remap.** `BOX_PRINT_MAP MAP=<tool>:<slot>,...` sets the map for the next print
-only, so a revision 3 box declares `RemapStrategy::PrePrintSend` and
+only, so a revision 4 box declares `RemapStrategy::PrePrintSend` and
 `requires_preprint_send()`, and `build_preprint_gcode()` emits the line before the print
 starts (`AmsBackendCfs::print_map_gcode`). The firmware keeps the map for the next print
-file loaded within 10 minutes, uses it once, and has no clearing form, so a remapped
-start whose print never loads leaves a map that a later start would pick up. When the
-file's tools are known the map therefore goes out on every start, remapped or not: it
-names every tool the file uses, an unmapped one at its own slot (the firmware's default
+file loaded within 10 minutes and uses it once, so a remapped start whose print never
+loads leaves a map that a later start would pick up. Every start therefore sends one
+line. When the file's tools are known it is the full map, remapped or not: it names
+every tool the file uses, an unmapped one at its own slot (the firmware's default
 `T<n>` = slot `n`), and nothing else, since the firmware refuses a start whose map lists
-a tool the file does not use. With the file's tools unknown it carries only the remap's
-entries, and nothing goes out when none moves a tool. A remap whose target slot a manual load would refuse (`firmware_slot_locked()`), or that sits in a unit reading disconnected (a `boxes[]` entry with `online: false`, or the chain-wide `driver_ready: false`), is refused by `check_preprint_remap()`: nothing is sent and the print does not start, with the reason in the same "Print setup failed" dialog a printer-side refusal gets. `can_set_tool_mapping()` refuses on this route: `BOX_MODIFY_TN` is a
+a tool the file does not use. A full map replaces a pending one, so no clear goes in
+front of it. A start with nothing to map (the file's tools unknown and no remap moving a
+tool) sends the clearing form `BOX_PRINT_MAP MAP=` (`kClearPrintMapGcode`) instead. A remap whose target slot a manual load would refuse (`firmware_slot_locked()`), or that sits in a unit reading disconnected (a `boxes[]` entry with `online: false`, or the chain-wide `driver_ready: false`), is refused by `check_preprint_remap()`: nothing is sent and the print does not start, with the reason in the same "Print setup failed" dialog a printer-side refusal gets; `build_preprint_gcode()` called on a refused remap returns the clear. `can_set_tool_mapping()` refuses on this route: `BOX_MODIFY_TN` is a
 stock command. The revision is the only evidence the command exists: it is registered
-in Python, and the app has no registered-command lookup. Below revision 3 Fork has no
-remap route (`RemapStrategy::None`). A reprint has no recorded routing to replay
-(`last_print_tool_mapping()` is empty), but Fork answers
+in Python, and the app has no registered-command lookup. Below revision 4 Fork has no
+remap route (`RemapStrategy::None`) and sends no print map at all. A reprint has no
+recorded routing to replay (`last_print_tool_mapping()` is empty), but Fork answers
 `default_print_routing_is_identity()`, so the controller sends the identity map for the
 file's tools: the same line a start with no remap sends, overwriting any map a failed
-start left pending.
+start left pending, or the clear when the file's tools are unknown. A restart from the
+beginning (`restart_print_from_beginning()`) carries no routing and sends the clear
+after its cancel.
 
 A `Flat` box whose module we cannot identify still has its control paths refused by `reject_if_flat_schema()`. Full field mapping, command signatures and remaining gaps: `printer-research/CREALITY_CFS_K2_INTERNALS.md` § "Community Kalico port".
 
