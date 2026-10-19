@@ -597,23 +597,13 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   row under Advanced > Calibration opens it too. The Snapmaker U1 applies and keeps the
   value; on the FlashForge Creator 5 Pro you copy it into the slicer. Takes a few minutes and
   heats and purges. (thanks @Monstrofil)
-- **Belt tension is measured by plucking, not by a driven sweep (#1303, #1231)** - park the
-  gantry, pluck each belt by hand, and the tool listens on Klipper's live accelerometer
-  stream and reports the belt's fundamental, with a live waveform and spectrum. It reads the
-  fundamental off the whole harmonic series rather than the tallest peak, which is what the
-  old sweep got wrong: a belt whose 2nd harmonic dominates reported exactly one octave sharp.
-  The number you act on is the median of five accepted plucks. The `TEST_RESONANCES` sweep,
-  the strobe path and the never-measurable Z-belt path are deleted.
-
-  > **⚠ RELEASE BLOCKER - do not ship 1.1 with this marked done.** This is green in CI and
-  > has **never measured a real belt**. Its gate thresholds were measured against captures
-  > from one Voron 2.4 on one evening, and the algorithm was then tuned against that same
-  > set - circular, and not yet broken. It stays beta-gated and must not be promoted until
-  > the hardware matrix in `BELT_TUNER.md` § Validation status has actually been run.
-  > Delete this box only when that is done, not when the code looks finished.
-
-- **Guided belt tuning** (#1736) - after a Belt Tension path comparison (Advanced >
-  Belt Tension, the two-sweep check, not the pluck tuner above), Tune Belts walks you through
+- **Belt Tension check** (#1303, #1721) - on a CoreXY printer with an accelerometer,
+  Advanced > Belt Tension drives each belt path with the motors and compares the two
+  responses on one chart: a similarity score, the peaks both paths share and the ones only
+  one path has. Re-test A or B sweeps one path again and keeps the other, with the old curve
+  ghosted so you can see what your adjustment moved. Needs HelixScreen on the printer's own
+  computer, and warns first on boards with little memory.
+- **Guided belt tuning** (#1736) - after a Belt Tension check, Tune Belts walks you through
   closing the gap one belt at a time. It tells you when the belts already match, finds the
   zone to tune with one calibration turn instead of trusting the tallest peak, runs short
   settling laps before each sweep, and re-measures only the stretch of the spectrum that moved,
@@ -623,8 +613,13 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   other printers get direction-only advice. Tune Belts stays greyed out until the printer has
   reported its sweep range, so it never sends a sweep your machine cannot take. The screen fits
   small, portrait and very wide displays, with the chart beside the controls on a wide one, and
-  the chart's axis labels no longer clip. Beta, and the thresholds are provisional until it
-  has run on more hardware.
+  the chart's axis labels no longer clip. The thresholds are provisional until it has run on
+  more hardware.
+- **Live sweep graphs** (#1812) - the Input Shaper screen, the setup wizard's Input Shaper
+  step and Belt Tension draw the response live while the printer sweeps, instead of a bare
+  progress bar for minutes. Klipper's own analysis replaces the live curve when the sweep
+  ends, and every recommendation still comes from that analysis. Needs HelixScreen on the
+  printer's own computer; the smallest screens keep the progress bar alone.
 
 - **Switch a Kalico heater between PID and MPC** (#1237) - the method selector on Kalico
   printers is out of beta. It migrates your config in both directions, and cancelling a
@@ -844,6 +839,11 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   because none of these can be paused partway through.
 
 **Screens and settings**
+
+- **Beta features gates two things** - the Dev update channel and the prompt offering to install
+  the HelixPrint plugin. The Z Calibration button on Controls, the Macro Browser and
+  multi-printer management work without it, and so does everything new in 1.1: Belt Tension,
+  both pressure advance tools, Tool Offsets, pausing at a layer and choosing lanes to dry.
 
 - **Settings is one list of twelve pages in three groups** (#1023) - Screen (Display, Appearance,
   Touch & Input, Sound), Printer (Printing, Devices, Safety & Alerts, Connection) and HelixScreen
@@ -1469,6 +1469,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 ### Internal
 
+- The pluck-based belt tuner libraries (#1303, #1231: pluck detection, harmonic pitch
+  estimation, the five-pluck median) stay in the tree with no UI. They have never measured a
+  real belt and their thresholds come from one Voron's captures; `BELT_TUNER.md` § Validation
+  status lists the hardware runs needed before any screen uses them.
 - helix-xml warns on a style attribute written with `:` for its state selector
   (`style_bg_opa:checked`, which applies nothing) and on a negated const reference (`-#space_md`,
   which it drops), and the unknown-attribute check now covers misspelled `style_*` names on

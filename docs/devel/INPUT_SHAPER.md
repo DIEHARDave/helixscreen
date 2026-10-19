@@ -403,6 +403,11 @@ is not drawn, and the threading crossing).
   `is_measuring_chart_fits` (panel) and `wizard_input_shaper_chart_fits` (wizard) from the
   breakpoint, and `live_chart_layout_fits` reads them. Where it is hidden nothing arms, so
   nothing streams for a chart nobody sees.
+- **Rebuild.** A hot-reload rebuild frees the widget tree without `on_ui_destroyed()`, so
+  `InputShaperPanel::on_deactivating` calls it on `DeactivateReason::Rebuild` while the tree
+  is still alive: the live chart and both results charts are destroyed with their hosts,
+  `create()` makes the results charts again, and the next sweep makes the live chart. The
+  wizard step destroys its chart in `cleanup()`, before the wizard deletes the screen.
 - **No stream, no chart.** Without a reachable socket, a single chip, or with
   `HELIX_SWEEP_PREVIEW_OFF`, MEASURING shows the progress bar alone.
 - **Never a verdict.** Recommendations, the comparison table and the residual scoring read

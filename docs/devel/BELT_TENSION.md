@@ -174,6 +174,11 @@ chip. The socket path comes from the same probe the Start gate uses
 (`BeltTensionPanel::probe_klippy_socket`), the ramp and chip from the panel's
 `[resonance_tester]` answer (`sweep_cfg_`), and a narrowed tuning window from `run_window_`.
 
+**Rebuild.** A hot-reload rebuild frees the widget tree without `on_ui_destroyed()`, and the
+chart is a child of a host inside it, so `BeltTensionPanel::on_deactivating` calls
+`on_ui_destroyed()` on `DeactivateReason::Rebuild` while the tree is alive. The run is
+cancelled with it, and the next run makes the chart again.
+
 **Per-path series and the CSV swap.** Each path has its own preview series
 (`preview_series_`), drawn on its own 0-100% scale (the final curves share one, so the swap
 rescales). What happens when a path's sweep completes depends on `run_kind_`:

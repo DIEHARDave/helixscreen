@@ -1470,7 +1470,7 @@ override and not a setting. Logged once at info: `[LiveSweepPreview] HELIX_SWEEP
 
 ### `HELIX_BELT_CAPTURE_DIR`
 
-Write every resolved pluck event from the live belt tuner (`BeltListenSession`) to disk, in the
+Write every resolved pluck event from the pluck belt tuner's `BeltListenSession` to disk, in the
 same format `tests/fixtures/belt_plucks/` already uses. Diagnostic only, for the reference-machine
 hardware pass: every threshold in `PluckDetector` and `pitch_estimator` was measured against a
 small, fixed capture set, and the algorithm has since been tuned against that same set. This is
@@ -1492,12 +1492,9 @@ Filenames carry an incrementing sequence number so same-second events cannot col
 | **Default** | Unset |
 | **File** | `include/belt_capture.h`, `src/calibration/belt_capture.cpp`, `src/calibration/belt_listen_session.cpp` |
 
-```bash
-mkdir -p /tmp/belt-captures
-HELIX_BELT_CAPTURE_DIR=/tmp/belt-captures ./build/bin/helix-screen --test -vv
-# ... drive the belt tuner (ctl navigate belt_tension, or physically pluck on real hardware) ...
-ls /tmp/belt-captures
-```
+No screen runs a `BeltListenSession` (`BELT_TUNER.md`: the pluck libraries back no UI), so the
+app writes nothing here whatever the variable says; the writer serves a harness or test that
+drives a session itself. The Belt Tension screen's sweeps never pass through it.
 
 Each rendered file's header extends the existing `sample_rate_hz=` / `rms_over_noise_floor=` line
 with the verdict fields (`verdict=`, `onset_rise=`, `decay_end_ratio=`, `harmonic_concentration=`,
