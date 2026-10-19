@@ -68,7 +68,10 @@ class AddPrinterFixture : public LVGLUITestFixture {
         DisplaySettingsManager::instance().set_animations_enabled(animations_were_enabled_);
     }
 
+    /// Runs queued work, then the next tick, where a switch the queue requested runs.
     static void drain() {
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+        lv_timer_handler();
         helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     }
 

@@ -29,6 +29,7 @@
 #include "printer_state.h"
 #include "printer_switch_flow.h"
 
+#include <algorithm>
 #include <functional>
 #include <lvgl.h>
 #include <string>
@@ -157,6 +158,11 @@ class SwitchFlowFixture : public XMLTestFixture {
         lv_obj_send_event(btn, LV_EVENT_CLICKED, nullptr);
         UpdateQueue::instance().drain();
         UpdateQueue::instance().drain();
+        lv_timer_handler();
+    }
+
+    long teardowns() const {
+        return std::count(events_.begin(), events_.end(), "teardown");
     }
 
     helix::Config* cfg_ = nullptr;
@@ -479,7 +485,7 @@ TEST_CASE_METHOD(SwitchFlowFixture,
     const int streak = cfg_->get<int>(helix::kBootCrashStreakKey, -1);
 
     flow_.cancel_add_printer_wizard();
-    UpdateQueue::instance().drain();
+    lv_timer_handler();
 
     CHECK(cfg_->get_active_printer_id() == expected_active);
     CHECK(cfg_->get<std::string>(helix::kSwitchPreviousPrinterKey, "") == previous);
@@ -611,7 +617,7 @@ TEST_CASE_METHOD(SwitchFlowFixture,
     REQUIRE(switch_card() == "none");
 
     flow_.cancel_add_printer_wizard();
-    UpdateQueue::instance().drain();
+    lv_timer_handler();
 
     CHECK(card_at_teardown_ == "Switching to Alpha / Loading...");
     CHECK(switch_card() == "Switching to Alpha / Connecting...");
@@ -752,8 +758,98 @@ TEST_CASE_METHOD(SwitchFlowFixture,
         set_wizard_cancel_callback(nullptr);
         remote_verdict();
         flow_.cancel_add_printer_wizard();
+        lv_timer_handler();
     }
 
     // Read at the teardown: the rebuild after it can reconnect and settle a new verdict.
     CHECK(locality_at_teardown_ == helix::MoonrakerLocality::Unknown);
+}
+
+// Panel code drains the UpdateQueue from its own methods; a teardown run by that drain frees
+// the panel still on the stack under it.
+TEST_CASE_METHOD(SwitchFlowFixture,
+                 "Switch flow: a switch queued into an UpdateQueue drain waits for the next tick",
+                 "[multi-printer][switch_flow][lifecycle]") {
+    long inside_nested_drain = -1;
+    SECTION("a drain at the top") {
+        helix::ui::queue_update("test::request_switch", [this] { flow_.request_switch("beta"); });
+        UpdateQueue::instance().drain();
+    }
+    SECTION("a drain nested in a queued callback") {
+        helix::ui::queue_update("test::populate_page", [this, &inside_nested_drain] {
+            helix::ui::queue_update("test::request_switch",
+                                    [this] { flow_.request_switch("beta"); });
+            UpdateQueue::instance().drain();
+            inside_nested_drain = teardowns();
+        });
+        UpdateQueue::instance().drain();
+        CHECK(inside_nested_drain == 0);
+    }
+
+    CHECK(teardowns() == 0);
+    CHECK(cfg_->get_active_printer_id() == "alpha");
+
+    lv_timer_handler();
+
+    CHECK(teardowns() == 1);
+    CHECK(events_ == kFullRestart);
+    CHECK(cfg_->get_active_printer_id() == "beta");
+}
+
+TEST_CASE_METHOD(SwitchFlowFixture,
+                 "Switch flow: adding through the wizard from an UpdateQueue drain waits for the "
+                 "next tick",
+                 "[multi-printer][switch_flow][lifecycle]") {
+    helix::ui::queue_update("test::add_printer_via_wizard",
+                            [this] { flow_.add_printer_via_wizard(); });
+    UpdateQueue::instance().drain();
+    CHECK(teardowns() == 0);
+    CHECK(cfg_->get_active_printer_id() == "alpha");
+
+    lv_timer_handler();
+    set_wizard_cancel_callback(nullptr);
+
+    CHECK(teardowns() == 1);
+    CHECK(cfg_->get_active_printer_id() != "alpha");
+}
+
+TEST_CASE_METHOD(SwitchFlowFixture,
+                 "Switch flow: cancelling the add-printer wizard restarts on the next tick, not in "
+                 "a drain",
+                 "[multi-printer][switch_flow][lifecycle]") {
+    flow_.add_printer_via_wizard();
+    set_wizard_cancel_callback(nullptr);
+    REQUIRE(teardowns() == 1);
+
+    helix::ui::queue_update("test::cancel_add_printer_wizard",
+                            [this] { flow_.cancel_add_printer_wizard(); });
+    UpdateQueue::instance().drain();
+    UpdateQueue::instance().drain();
+    CHECK(teardowns() == 1);
+
+    lv_timer_handler();
+
+    CHECK(teardowns() == 2);
+    CHECK(cfg_->get_active_printer_id() == "alpha");
+}
+
+TEST_CASE_METHOD(SwitchFlowFixture,
+                 "Switch flow: a confirmed switch restarts on the next tick, not in a drain",
+                 "[multi-printer][switch_flow][lifecycle]") {
+    set_job(PrintJobState::PRINTING);
+    flow_.request_switch("beta");
+    lv_obj_t* dialog = Modal::get_top();
+    REQUIRE(dialog != nullptr);
+
+    lv_obj_t* btn = lv_obj_find_by_name(dialog, "btn_primary");
+    REQUIRE(btn != nullptr);
+    lv_obj_send_event(btn, LV_EVENT_CLICKED, nullptr);
+    UpdateQueue::instance().drain();
+    UpdateQueue::instance().drain();
+    CHECK(teardowns() == 0);
+
+    lv_timer_handler();
+
+    CHECK(events_ == kFullRestart);
+    CHECK(cfg_->get_active_printer_id() == "beta");
 }
