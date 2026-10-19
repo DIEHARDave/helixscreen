@@ -18,7 +18,7 @@ scripts/
   bundle-installer.sh         # Generates install.sh from modules
   bundle-uninstaller.sh       # Generates uninstall.sh from modules
   helix-launcher.sh           # Runtime launcher with watchdog supervision
-  lib/installer/              # 21 modules (subset shown)
+  lib/installer/              # 22 modules (subset shown)
     main.sh                   # Orchestrator: arg parsing, install flow, KIAUH call
     common.sh                 # Logging, colors, error handler, process killing
     host_profile.sh           # Mod-host probe + mod-owned path guard (see the payload-contract section)
@@ -34,7 +34,8 @@ scripts/
     klipper_include.sh         # Klipper config include management
     printer_seed.sh            # Seed default printer config
     audio.sh                   # Audio device setup
-    camera.sh                  # Camera setup
+    camera.sh                  # Camera setup, and the shared nginx edit helpers
+    remote_screen.sh           # nginx route for the built-in screen server
     recovery.sh                # Recovery/rollback support
     uninstall.sh               # Uninstall, clean, re-enable previous UIs
     kiauh.sh                   # KIAUH extension auto-detection and install
@@ -770,6 +771,19 @@ The `find_moonraker_conf()` function searches in this order:
 Moonraker update_manager is skipped on AD5M (typically no Mainsail/Fluidd web UI).
 
 ---
+
+## Remote Screen nginx Route
+
+`remote_screen.sh` (prestonbrown/helixscreen#1825) puts the app's built-in screen server behind the web UI's nginx where nginx fronts Moonraker. `install_remote_screen_route` runs on every platform, after the camera step, and inserts two locations into every `server {}` block that proxies Moonraker (a `location /websocket`, or a `proxy_pass` to port 7125 or to an `upstream` in the same file that points there):
+
+- `location /helixscreen/screen/` proxies to `127.0.0.1:7130` with `proxy_set_header Host $http_host` (the app's touch endpoint rejects an `Origin` that differs from `Host`), no buffering and no access log;
+- `location = /helixscreen/screen-auth` is the `auth_request` subrequest, sent to Moonraker's `/access/user` through the same upstream the block already uses (`127.0.0.1:7125` when none can be read). Whoever Moonraker would let send G-code may view and control.
+
+It edits `HELIX_NGINX_CONF` (default `/etc/nginx/nginx.conf`) and every file in `HELIX_NGINX_SITES_DIR` (default `/etc/nginx/sites-enabled`, where MainsailOS and KIAUH put the `mainsail`/`fluidd` sites). Every inserted line ends in `# helix-managed-remote-screen`. Each file goes through `_nginx_edit_validated` in `camera.sh`, the same helper the K2 `/webcam/` tuning uses: back up outside the nginx tree, write, `nginx -t`, reload; a rejected file is restored byte for byte and any file already edited in that run has its tagged lines stripped, so the configs are all-or-nothing.
+
+Only after nginx accepts the block does it write `config/.remote_screen_route` (contents `/helixscreen/screen/`) and the marker `config/.nginx_remote_screen`, both in `HELIX_USER_CONFIG_FILES`. The app binds `127.0.0.1` when the route file exists and binds the LAN with pairing when it does not, so every skip leaves the app in LAN mode. It skips, with a log line and no edit, when the marker exists, when nginx is not installed, when `nginx -V` lacks `http_auth_request_module`, when no server block proxies Moonraker, and when the firmware serves the screen itself (the deployed hooks file, `<install>/platform/hooks.sh`, defines `start_remote_screen`, as `assets/config/platform/hooks-snapmaker-u1.sh` does).
+
+`remove_remote_screen_route` (uninstall) strips the tagged lines from the same set of files when the marker exists and reloads nginx, deletes the route file and the marker, and sends `DELETE /server/webcams/item?name=HelixScreen%20Screen` to Moonraker (best effort) in case the app never ran to remove its webcam.
 
 ## Uninstaller
 
