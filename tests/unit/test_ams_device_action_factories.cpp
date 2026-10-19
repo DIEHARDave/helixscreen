@@ -1,6 +1,8 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "ui_icon_codepoints.h"
+
 #include "afc_defaults.h"
 #include "ams_backend_ace.h"
 #include "ams_backend_cfs.h"
@@ -83,12 +85,12 @@ TEST_CASE("AFC default actions keep their shipped field values", "[ams][afc][dev
     const auto& cut = by_id(actions, "hub_cut_enabled");
     CHECK(cut.type == ActionType::TOGGLE);
     CHECK(std::any_cast<bool>(cut.current_value) == false);
-    CHECK(cut.icon == "content-cut");
+    CHECK(cut.icon == "tune");
     CHECK(cut.section == "hub");
 
     const auto& park = by_id(actions, "park");
     CHECK(park.type == ActionType::BUTTON);
-    CHECK(park.icon == "parking");
+    CHECK(park.icon == "home_import");
     CHECK(park.description == "Park the AFC system");
     CHECK_FALSE(park.current_value.has_value());
 }
@@ -135,4 +137,16 @@ TEST_CASE("ACE and CFS device actions keep their shipped field values",
     CHECK(cfs[1].section == "maintenance");
     CHECK(cfs[3].label == "Communication Test");
     CHECK(cfs[3].enabled);
+}
+
+TEST_CASE("every default device action names an icon the font has",
+          "[ams][device_actions][icons]") {
+    for (const auto& actions : {afc_default_actions(), hh_default_actions()}) {
+        for (const auto& a : actions) {
+            if (!a.icon.empty()) {
+                INFO(a.id << " icon " << a.icon);
+                CHECK(helix::ui::icon::lookup_codepoint(a.icon.c_str()) != nullptr);
+            }
+        }
+    }
 }

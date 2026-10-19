@@ -41,13 +41,16 @@ std::vector<DeviceAction> hh_default_actions() {
 
         // --- Toolhead section ---
         DA::slider("toolhead_sensor_to_nozzle", "Sensor to Nozzle", "toolhead", 62.0, 1.0f, 200.0f,
-                   "mm"),
+                   "mm")
+            .with_step(0.1f),
         DA::slider("toolhead_extruder_to_nozzle", "Extruder to Nozzle", "toolhead", 72.0, 5.0f,
-                   200.0f, "mm"),
+                   200.0f, "mm")
+            .with_step(0.1f),
         DA::slider("toolhead_entry_to_extruder", "Entry to Extruder", "toolhead", 0.0, 0.0f, 200.0f,
-                   "mm"),
-        DA::slider("toolhead_ooze_reduction", "Ooze Reduction", "toolhead", 2.0, -5.0f, 20.0f,
-                   "mm"),
+                   "mm")
+            .with_step(0.1f),
+        DA::slider("toolhead_ooze_reduction", "Ooze Reduction", "toolhead", 2.0, -5.0f, 20.0f, "mm")
+            .with_step(0.1f),
 
         // --- Accessories section (v4) ---
         DA::dropdown("espooler_mode", "eSpooler Mode", "accessories", {"off", "rewind", "assist"},

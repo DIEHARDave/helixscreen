@@ -2574,6 +2574,7 @@ struct DeviceAction {
     std::vector<std::string> options; ///< Options for dropdown type
     float min_value = 0;              ///< Min value for slider type
     float max_value = 100;            ///< Max value for slider type
+    float step = 1;                   ///< Slider resolution: 1, 0.1 or 0.01
     std::string unit;                 ///< Display unit (e.g., "mm", "%")
     int slot_index = -1;              ///< If action is per-slot (-1 = system-wide)
     bool enabled = true;              ///< Whether action is currently available
@@ -2629,6 +2630,12 @@ struct DeviceAction {
         a.type = ActionType::DROPDOWN;
         a.options = std::move(options);
         return a;
+    }
+
+    /// This slider, moving in steps of @p resolution instead of whole units.
+    [[nodiscard]] DeviceAction with_step(float resolution) && {
+        step = resolution;
+        return std::move(*this);
     }
 };
 

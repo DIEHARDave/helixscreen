@@ -16,8 +16,10 @@
 #include "ui_utils.h"
 
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_helpers/device_action_controls.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_mock.h"
+#include "ams_device_action_value.h"
 #include "ams_error.h"
 #include "ams_state.h"
 #include "static_panel_registry.h"
@@ -96,6 +98,23 @@ class GuidedFlowFixture : public LVGLUITestFixture {
         lv_obj_t* btn = lv_obj_find_by_name(overlay.get_root(), id);
         REQUIRE(btn != nullptr);
         return btn;
+    }
+
+    /// Build the overlay for a "prefs" section holding @p actions; returns its root.
+    lv_obj_t* open_prefs(std::vector<DeviceAction> actions) {
+        backend->set_device_sections({DeviceSection{"prefs", "Preferences", 0, ""}});
+        backend->set_device_actions(std::move(actions));
+        auto& overlay = get_ams_device_section_detail_overlay();
+        overlay.init_subjects();
+        overlay.show(test_screen(), "prefs", "Preferences");
+        settle();
+        return overlay.get_root();
+    }
+
+    static std::string text_of(lv_obj_t* row, const char* name) {
+        lv_obj_t* label = lv_obj_find_by_name(row, name);
+        REQUIRE(label != nullptr);
+        return lv_label_get_text(label);
     }
 
     static DeviceAction button(const char* id, const char* flow) {
@@ -218,4 +237,94 @@ TEST_CASE_METHOD(GuidedFlowFixture, "section action buttons take the standard bu
     lv_obj_t* btn = open_section_and_find({button("a", ""), button("b", "")}, "a");
     lv_obj_update_layout(btn);
     CHECK(lv_obj_get_height(btn) == theme_manager_get_spacing("button_height"));
+}
+
+// ============================================================================
+// Controls come from the setting_*_row components and carry every field
+// ============================================================================
+
+TEST_CASE_METHOD(GuidedFlowFixture, "a disabled toggle is locked and says why",
+                 "[ams][device-section]") {
+    DeviceAction soft = DeviceAction::toggle("unload_t0", "Unload at end", "prefs", false, "",
+                                             "Unload this head when a print ends");
+    soft.enabled = false;
+    soft.disable_reason = "Soft filament is never unloaded";
+    lv_obj_t* root = open_prefs({soft});
+
+    lv_obj_t* row = lv_obj_find_by_name(root, "unload_t0");
+    REQUIRE(row != nullptr);
+    lv_obj_t* sw = helix::test::find_device_action_control(root, "unload_t0", &lv_switch_class);
+    REQUIRE(sw != nullptr);
+    CHECK(lv_obj_has_state(sw, LV_STATE_DISABLED));
+    CHECK(text_of(row, "description") == "Soft filament is never unloaded");
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture,
+                 "an enabled toggle shows its description, icon and value, and sends a bool",
+                 "[ams][device-section]") {
+    lv_obj_t* root = open_prefs({DeviceAction::toggle("purge", "Enable Purge", "prefs", true,
+                                                      "water", "Purge during tool changes")});
+    lv_obj_t* row = lv_obj_find_by_name(root, "purge");
+    REQUIRE(row != nullptr);
+    CHECK(text_of(row, "description") == "Purge during tool changes");
+    lv_obj_t* icon = lv_obj_find_by_name(row, "row_icon");
+    REQUIRE(icon != nullptr);
+    CHECK_FALSE(lv_obj_has_flag(icon, LV_OBJ_FLAG_HIDDEN));
+
+    lv_obj_t* sw = helix::test::find_device_action_control(root, "purge", &lv_switch_class);
+    REQUIRE(sw != nullptr);
+    CHECK(lv_obj_has_state(sw, LV_STATE_CHECKED));
+    CHECK_FALSE(lv_obj_has_state(sw, LV_STATE_DISABLED));
+
+    lv_obj_remove_state(sw, LV_STATE_CHECKED);
+    lv_obj_send_event(sw, LV_EVENT_VALUE_CHANGED, nullptr);
+    settle();
+    const auto [id, value] = backend->get_last_executed_action();
+    CHECK(id == "purge");
+    const bool* sent = std::any_cast<bool>(&value);
+    REQUIRE(sent != nullptr);
+    CHECK_FALSE(*sent);
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture,
+                 "a fractional slider moves in its step and sends the real value",
+                 "[ams][device-section]") {
+    lv_obj_t* root = open_prefs(
+        {DeviceAction::slider("speed_fwd", "Forward Multiplier", "prefs", 1.0f, 0.5f, 2.0f, "x")
+             .with_step(0.05f)});
+    lv_obj_t* slider = helix::test::find_device_action_slider(root, "speed_fwd");
+    REQUIRE(slider != nullptr);
+    CHECK(lv_slider_get_min_value(slider) == 10);
+    CHECK(lv_slider_get_max_value(slider) == 40);
+    CHECK(lv_slider_get_value(slider) == 20);
+    lv_obj_t* row = lv_obj_find_by_name(root, "speed_fwd");
+    CHECK(text_of(row, "value") == "1.00 x");
+
+    lv_slider_set_value(slider, 30, LV_ANIM_OFF);
+    lv_obj_send_event(slider, LV_EVENT_RELEASED, nullptr);
+    settle();
+    const auto [id, value] = backend->get_last_executed_action();
+    CHECK(id == "speed_fwd");
+    const auto sent = helix::printer::device_action_number(value);
+    REQUIRE(sent.has_value());
+    CHECK(*sent == Catch::Approx(1.5));
+    CHECK(text_of(row, "value") == "1.50 x");
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture, "a disabled slider and dropdown are locked",
+                 "[ams][device-section]") {
+    DeviceAction slider = DeviceAction::slider("len", "Length", "prefs", 50.0f, 0.0f, 100.0f, "mm");
+    slider.enabled = false;
+    DeviceAction dropdown =
+        DeviceAction::dropdown("mode", "Mode", "prefs", {"Off", "Auto"}, std::string("Auto"));
+    dropdown.enabled = false;
+    lv_obj_t* root = open_prefs({slider, dropdown});
+
+    lv_obj_t* s = helix::test::find_device_action_slider(root, "len");
+    REQUIRE(s != nullptr);
+    CHECK(lv_obj_has_state(s, LV_STATE_DISABLED));
+    lv_obj_t* d = helix::test::find_device_action_control(root, "mode", &lv_dropdown_class);
+    REQUIRE(d != nullptr);
+    CHECK(lv_obj_has_state(d, LV_STATE_DISABLED));
+    CHECK(lv_dropdown_get_selected(d) == 1);
 }
