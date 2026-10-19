@@ -23,6 +23,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -693,24 +694,37 @@ TEST_CASE_METHOD(DetectedK2Fixture, "PrinterImageManager detected image follows 
 }
 
 TEST_CASE_METHOD(DetectedK2Fixture,
-                 "PrinterImageManager every K2-family printer shows the CFS with a CFS connected",
+                 "PrinterImageManager every K2-family printer shows its own CFS picture",
                  "[printer_image_manager][printer_image_variants]") {
-    // Every K2 model takes a CFS on top, so each database entry carries the variant.
+    // Every K2 model takes a CFS on top. The models differ in size, so each one's
+    // picture shows the CFS in proportion to that printer.
+    const std::map<std::string, std::string> cfs_image = {
+        {"Creality K2", "creality-k2-cfs"},
+        {"Creality K2 Pro", "creality-k2-pro-cfs"},
+        {"Creality K2 Plus", "creality-k2-plus-cfs"},
+        {"Creality K2 Plus (k2-improvements)", "creality-k2-plus-cfs"},
+    };
     std::vector<std::string> k2_family;
     for (const auto& name : PrinterDetector::get_list_names()) {
         if (name.rfind("Creality K2", 0) == 0) {
             k2_family.push_back(name);
         }
     }
-    REQUIRE(k2_family.size() >= 4);
+    REQUIRE(k2_family.size() == cfs_image.size());
 
     AmsState::instance().add_backend(std::make_unique<test::TypedMockBackend>(AmsType::CFS));
     auto& pim = PrinterImageManager::instance();
     Config* config = Config::get_instance();
     for (const auto& name : k2_family) {
         INFO(name);
+        const auto expected = cfs_image.find(name);
+        REQUIRE(expected != cfs_image.end());
         config->set<std::string>(config->df() + helix::wizard::PRINTER_TYPE, name);
-        CHECK(pim.get_detected_image_path(800).find("creality-k2-cfs") != std::string::npos);
+        // The PNG, or a prerendered tier of it ("<name>-300.bin").
+        const std::string stem =
+            std::filesystem::path(pim.get_detected_image_path(800)).stem().string();
+        CHECK((stem == expected->second || stem == expected->second + "-300" ||
+               stem == expected->second + "-150"));
     }
 }
 

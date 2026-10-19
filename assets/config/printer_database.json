@@ -1735,7 +1735,7 @@
           "when": {
             "filament_system": "cfs"
           },
-          "image": "creality-k2-cfs.png"
+          "image": "creality-k2-plus-cfs.png"
         }
       ],
       "probe_type": "prtouch_v3",
@@ -1890,7 +1890,7 @@
           "when": {
             "filament_system": "cfs"
           },
-          "image": "creality-k2-cfs.png"
+          "image": "creality-k2-plus-cfs.png"
         }
       ],
       "probe_type": "cartographer",
@@ -2052,7 +2052,7 @@
           "when": {
             "filament_system": "cfs"
           },
-          "image": "creality-k2-cfs.png"
+          "image": "creality-k2-pro-cfs.png"
         }
       ],
       "probe_type": "prtouch_v3",
