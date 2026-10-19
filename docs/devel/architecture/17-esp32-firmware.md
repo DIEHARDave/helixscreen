@@ -27,7 +27,7 @@ flowchart TB
     end
     U3 -->|last step| NET["app_net pthread, 24KB<br/>WiFi bring-up, portal, exits"]
     NET -->|WiFi up + thread gone| CONN["connect on UI thread"]
-    CONN --> WS["websocket_task, 8KB internal<br/>frames, discovery, callbacks"]
+    CONN --> WS["websocket_task, 10KB internal<br/>frames, discovery, callbacks"]
     WS -->|ui_queue_update| U5
     U5 -.->|flush_cb stages chunks| SH[("PSRAM shadow FB")]
     PR["present task, prio 10<br/>vsync-aligned blit"] -->|only writer| FB[("scan-out FB, PSRAM")]
@@ -122,9 +122,9 @@ What must be internal, and why:
 - **The two 32KB RGB bounce buffers** and the presenter's 16KB staging band: DMA and the refill ISR read them.
 - **LVGL's 38.4KB draw buffer** (`firmware/helixscreen-esp32/main/lvgl_glue.c#"static uint8_t s_draw_buf1"`),
   static so it is reserved at link time.
-- **The WebSocket task's 8KB stack**
+- **The WebSocket task's 10KB stack**
   (`firmware/helixscreen-esp32/components/helixnet/esp_moonraker_client.h#kWsTaskStackBytes`), sized from a
-  measured ~6.5KB peak.
+  measured ~7.1KB peak that does not grow with the printer's object count.
 - **The WiFi driver's buffers**: `CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP` moves most of WiFi and lwIP to PSRAM, and
   static TX/RX buffer counts make the rest deterministic.
 
@@ -171,7 +171,7 @@ steady state.
 | `ui` pthread | 40KB internal | LVGL, every panel, every subject, `UpdateQueue` drain, `MoonrakerManager::process_notifications()`/`process_timeouts()` |
 | `present` | 4KB internal, prio 10 | The only writer of the scan-out framebuffer |
 | `app_net` pthread | 24KB internal, exits | WiFi bring-up, the provisioning portal, a bounded 20s wait for association |
-| `websocket_task` | 8KB internal | Frame reassembly, JSON-RPC dispatch, discovery steps, every client callback |
+| `websocket_task` | 10KB internal | Frame reassembly, JSON-RPC dispatch, discovery steps, every client callback |
 | `ws_transport` pthread | 6KB PSRAM | Every websocket stop, destroy, init and start, in order |
 | `http_lane` pthread | 16KB PSRAM | Capped GETs for thumbnails and small files |
 | `esp_timer` / `sys_evt` | 6KB / 4KB internal | Client housekeeping (timeouts, reconnect execution); WiFi events |
@@ -216,7 +216,7 @@ splits the heap for the next one. The order is chosen so the large, unavoidable 
 5. Once `app_boot_ui()` returns, `ota_health_confirm()` marks the image valid
    (`firmware/helixscreen-esp32/main/ota_health.c#ota_health_confirm`) and the render loop starts.
 6. The first Moonraker connect waits for **both** WiFi up and `app_net` gone (`include/boot_connect_handoff.h`):
-   the WebSocket task's 8KB stack allocated while `app_net`'s 24KB is still held would split the largest block for
+   the WebSocket task's 10KB stack allocated while `app_net`'s 24KB is still held would split the largest block for
    the rest of the session. A 20ms UI-thread poll answers Connect once, and the connect itself runs from the
    `UpdateQueue` drain like every other.
 

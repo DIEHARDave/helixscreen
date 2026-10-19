@@ -321,9 +321,9 @@ void apply_boot_crash_guard(helix::Config* config) {
     config->save();
 }
 
-// The WebSocket task's 8 KB internal stack plus headroom. The stopped task deleted itself and
+// The WebSocket task's internal stack plus headroom. The stopped task deleted itself and
 // the idle task frees its stack, which this thread outranks, so wait one beat before looking.
-constexpr size_t kWsStackReserveBytes = 10 * 1024;
+constexpr size_t kWsStackReserveBytes = helix::EspMoonrakerClient::kWsTaskStackBytes + 2 * 1024;
 
 bool ws_stack_available() {
     vTaskDelay(pdMS_TO_TICKS(20));
