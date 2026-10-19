@@ -463,6 +463,23 @@ HELIX_MOCK_MOONRAKER_VERSION=v0.8.0 ./build/bin/helix-screen --test -vv
 
 Confirm via the log: `Moonraker v0.8.0 is older than 0.9.0`.
 
+### `HELIX_MOCK_KLIPPER_VERSION`
+
+Override the Klipper version the mock reports in `printer.info`.
+
+| Property | Value |
+|----------|-------|
+| Values | any version string |
+| Default | `v0.12.0-mock` |
+| Affects | `printer.info` -> `software_version`: the firmware row in Printer Manager and Settings -> Help & About -> About |
+
+A real Kalico build reports a long `git describe` string. With `HELIX_MOCK_KALICO`
+it reproduces the widest firmware row:
+
+```bash
+HELIX_MOCK_KALICO=1 HELIX_MOCK_KLIPPER_VERSION=v2026.07.00-0-g30c65e09-dirty ./build/bin/helix-screen --test -vv
+```
+
 ### `HELIX_MOCK_AMS`
 
 Select the mock AMS topology/type.
