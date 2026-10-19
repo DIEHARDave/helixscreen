@@ -1087,11 +1087,13 @@ void AmsBackendSnapmaker::prepare_for_resume(int slot_index, ResumeReadyCallback
     // for the head it resumes on; any other head has to be loaded first, since
     // loading it would leave it picked up when RESUME runs.
     int unconfirmed = -1;
+    bool may_refeed = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         unconfirmed = unconfirmed_load_head_locked(slot);
+        may_refeed = slot >= 0 && slot < kNumTools && resume_may_refeed_locked(slot);
     }
-    if (unconfirmed >= 0 && unconfirmed == slot) {
+    if (unconfirmed >= 0 && unconfirmed == slot && may_refeed) {
         spdlog::warn("{} prepare_for_resume: tool {} last load unconfirmed — retrying it "
                      "before RESUME",
                      backend_log_tag(), slot);
@@ -1103,7 +1105,8 @@ void AmsBackendSnapmaker::prepare_for_resume(int slot_index, ResumeReadyCallback
                      "on tool {}",
                      backend_log_tag(), unconfirmed, slot);
         if (on_ready) {
-            on_ready(unconfirmed_load_error(unconfirmed, "load on another head unconfirmed"));
+            on_ready(unconfirmed_load_error(unconfirmed, "load unconfirmed, not refed here",
+                                            /*retry_on_resume=*/false));
         }
         return;
     }
@@ -1130,9 +1133,15 @@ void AmsBackendSnapmaker::prepare_for_resume(int slot_index, ResumeReadyCallback
         if (feeder_serves_head(snap) &&
             (snap.state != "load_finish" || channel_error_is_fault(snap.error))) {
             spdlog::warn("{} prepare_for_resume: tool {} sensor reads present but the feeder "
-                         "reads '{}' (error '{}') — loading before RESUME",
-                         backend_log_tag(), slot, snap.state, snap.error);
-            run_runout_refeed(slot, std::move(on_ready));
+                         "reads '{}' (error '{}') — {} before RESUME",
+                         backend_log_tag(), slot, snap.state, snap.error,
+                         may_refeed ? "loading" : "refusing");
+            if (may_refeed) {
+                run_runout_refeed(slot, std::move(on_ready));
+            } else if (on_ready) {
+                on_ready(unconfirmed_load_error(slot, "feeder has not confirmed a load",
+                                                /*retry_on_resume=*/false));
+            }
             return;
         }
     }
@@ -1287,7 +1296,8 @@ int AmsBackendSnapmaker::unconfirmed_load_head_locked(int preferred) const {
     return -1;
 }
 
-AmsError AmsBackendSnapmaker::unconfirmed_load_error(int head, std::string technical) const {
+AmsError AmsBackendSnapmaker::unconfirmed_load_error(int head, std::string technical,
+                                                     bool retry_on_resume) const {
     const std::string tool = helix::ui::tool_label_in_form(tool_noun(), helix::ui::tool_label(head),
                                                            head, helix::ui::ToolLabelForm::Full);
     return AmsError(
@@ -1295,8 +1305,10 @@ AmsError AmsBackendSnapmaker::unconfirmed_load_error(int head, std::string techn
         fmt::format(fmt::runtime(lv_tr("{} didn't load. Check that its hotend is seated and do a "
                                        "test extrude before resuming.")),
                     tool),
-        fmt::format(fmt::runtime(lv_tr("Tap Resume to try the load again from {}.")),
-                    AmsErrorHelper::position_label(lane_noun(), head)));
+        retry_on_resume
+            ? fmt::format(fmt::runtime(lv_tr("Tap Resume to try the load again from {}.")),
+                          AmsErrorHelper::position_label(lane_noun(), head))
+            : std::string(lv_tr("Load it in the filament panel, then tap Resume.")));
 }
 
 bool AmsBackendSnapmaker::print_in_progress_locked() const {

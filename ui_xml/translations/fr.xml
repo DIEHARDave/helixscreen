@@ -1825,6 +1825,7 @@
   <translation tag="Load filament" fr="Charger le filament"/>
   <translation tag="Load filament first" fr="Chargez d&apos;abord du filament"/>
   <translation tag="Load into which tool?" fr="Charger dans quel outil ?"/>
+  <translation tag="Load it in the filament panel, then tap Resume." fr="Chargez-le dans le panneau filament, puis touchez Reprendre."/>
   <translation tag="Load or unload filament." fr="Chargez ou déchargez du filament."/>
   <translation tag="Load stopped" fr="Chargement arrêté"/>
   <translation tag="Load the required filaments or start anyway?" fr="Charger les filaments requis ou démarrer quand même ?"/>

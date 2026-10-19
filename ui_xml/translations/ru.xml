@@ -1870,6 +1870,7 @@
   <translation tag="Load filament" ru="Загрузка филамента"/>
   <translation tag="Load filament first" ru="Сначала загрузите филамент"/>
   <translation tag="Load into which tool?" ru="В какой инструмент загрузить?"/>
+  <translation tag="Load it in the filament panel, then tap Resume." ru="Загрузите его на панели филамента, затем нажмите «Продолжить»."/>
   <translation tag="Load or unload filament." ru="Загружайте или выгружайте филамент."/>
   <translation tag="Load stopped" ru="Загрузка остановлена"/>
   <translation tag="Load the required filaments or start anyway?" ru="Загрузить нужные филаменты или начать без них?"/>

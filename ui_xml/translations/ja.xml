@@ -1825,6 +1825,7 @@
   <translation tag="Load filament" ja="フィラメントをロード"/>
   <translation tag="Load filament first" ja="先にフィラメントを装填してください"/>
   <translation tag="Load into which tool?" ja="どのツールにロードしますか？"/>
+  <translation tag="Load it in the filament panel, then tap Resume." ja="フィラメントパネルでロードしてから、再開をタップしてください。"/>
   <translation tag="Load or unload filament." ja="フィラメントを装填または排出します。"/>
   <translation tag="Load stopped" ja="ロードを停止しました"/>
   <translation tag="Load the required filaments or start anyway?" ja="必要なフィラメントを装填しますか？それともこのまま開始しますか？"/>

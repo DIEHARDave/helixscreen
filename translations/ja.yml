@@ -1902,6 +1902,7 @@ translations:
   Load filament: 'フィラメントをロード'
   Load filament first: 先にフィラメントを装填してください
   Load into which tool?: 'どのツールにロードしますか？'
+  Load it in the filament panel, then tap Resume.: 'フィラメントパネルでロードしてから、再開をタップしてください。'
   Load or unload filament.: フィラメントを装填または排出します。
   Load Profile: 'プロファイルを読み込む'
   Load the required filaments or start anyway?: 必要なフィラメントを装填しますか？それともこのまま開始しますか？

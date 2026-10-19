@@ -110,6 +110,8 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
 
     [[nodiscard]] bool head_is_upstream_fed_locked(int head) const override;
     [[nodiscard]] bool preload_finish_ends_unload_locked(int head) const override;
+    /// While the engine is active, Resume never sends the stock AUTO_FEEDING load.
+    [[nodiscard]] bool resume_may_refeed_locked(int head) const override;
     void apply_extension_locked(const nlohmann::json& status, bool& changed) override;
 
     /// The base frame parse, then the deferred bay load it may release.

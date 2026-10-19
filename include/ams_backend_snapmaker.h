@@ -1097,17 +1097,14 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         return snap.module_exist && !snap.disable_auto && !snap.state.empty();
     }
 
-    /// Record that a load on @p head ended unconfirmed. Only during a print
-    /// (printing or paused); outside one there is no Resume to hold.
-    /// Caller holds mutex_.
-    void mark_load_unconfirmed_locked(int head, std::string_view why);
-
     /// The head whose unconfirmed load holds Resume: @p preferred when it is
     /// one, else the lowest, else -1. Caller holds mutex_.
     [[nodiscard]] int unconfirmed_load_head_locked(int preferred) const;
 
-    /// Resume refused because @p head's last load is unconfirmed.
-    [[nodiscard]] AmsError unconfirmed_load_error(int head, std::string technical) const;
+    /// Resume refused because @p head's last load is unconfirmed. The detail
+    /// line offers Resume as the retry only when @p retry_on_resume.
+    [[nodiscard]] AmsError unconfirmed_load_error(int head, std::string technical,
+                                                  bool retry_on_resume = true) const;
 
     /// print_stats.state names a print in progress (printing or paused).
     [[nodiscard]] bool print_in_progress_locked() const;
@@ -1192,6 +1189,20 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// the same rule and the same tracker.
     void check_hardware_event_clear(SlotInfo& slot, int slot_index,
                                     const helix::ams::SpoolEvidence& observed);
+
+    /// Record that a load on @p head ended unconfirmed. Only during a print
+    /// (printing or paused); outside one there is no Resume to hold.
+    /// Caller holds mutex_. Protected: AmsBackendMultiAce records the
+    /// engine's own load_failed through it.
+    void mark_load_unconfirmed_locked(int head, std::string_view why);
+
+    /// Whether Resume may load @p head itself with AUTO_FEEDING before RESUME,
+    /// when the feeder has not confirmed it. False refuses Resume and leaves
+    /// the load to the user. Caller holds mutex_.
+    [[nodiscard]] virtual bool resume_may_refeed_locked(int head) const {
+        (void)head;
+        return true;
+    }
 
   private:
     /// Brand / total_weight_g are kept: firmware populates them from the RFID

@@ -1825,6 +1825,7 @@
   <translation tag="Load filament" zh="装载耗材"/>
   <translation tag="Load filament first" zh="请先装载耗材"/>
   <translation tag="Load into which tool?" zh="装入哪个工具？"/>
+  <translation tag="Load it in the filament panel, then tap Resume." zh="请在耗材面板中装载，然后点按恢复。"/>
   <translation tag="Load or unload filament." zh="装载或卸载耗材。"/>
   <translation tag="Load stopped" zh="装载已停止"/>
   <translation tag="Load the required filaments or start anyway?" zh="加载所需耗材还是直接开始？"/>
