@@ -101,6 +101,7 @@
   <translation tag="2. Jog Y until the nozzle is centered over the chute opening" en="2. Jog Y until the nozzle is centered over the chute opening"/>
   <translation tag="2. Place paper between nozzle and bed" en="2. Place paper between nozzle and bed"/>
   <translation tag="2. Results show how much to turn each screw" en="2. Results show how much to turn each screw"/>
+  <translation tag="2.4 GHz only" en="2.4 GHz only"/>
   <translation tag="20 minutes" en="20 minutes"/>
   <translation tag="24 Hour" en="24 Hour"/>
   <translation tag="24-hour" en="24-hour"/>
@@ -3004,7 +3005,6 @@
   <translation tag="Set up" en="Set up"/>
   <translation tag="Set up your label printer in Settings" en="Set up your label printer in Settings"/>
   <translation tag="Set what is really selected and loaded. Nothing moves." en="Set what is really selected and loaded. Nothing moves."/>
-  <translation tag="Set your country to find 5 GHz networks" en="Set your country to find 5 GHz networks"/>
   <translation tag="Settings" en="Settings"/>
   <translation tag="Settings Snapshot" en="Settings Snapshot"/>
   <translation tag="Settings reset to defaults. Restarting..." en="Settings reset to defaults. Restarting..."/>

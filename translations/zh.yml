@@ -102,6 +102,7 @@ translations:
 
   2. Place paper between nozzle and bed: 2. 将纸张放在喷嘴和热床之间
   2. Results show how much to turn each screw: 2. 结果显示每个螺丝需要旋转多少
+  2.4 GHz only: 仅 2.4 GHz
   20 minutes: 20分钟
   24 Hour: 24 小时
   24-hour: 24小时制
@@ -3108,7 +3109,6 @@ translations:
   Set up: 设置
   Set up your label printer in Settings: 在设置中配置标签打印机
   Set what is really selected and loaded. Nothing moves.: '设置实际选择和加载的状态。不会移动任何部件。'
-  Set your country to find 5 GHz networks: 设置地区以查找 5 GHz 网络
   Settings: 设置
   Settings Snapshot: 设置快照
   Settings reset to defaults. Restarting...: 设置已重置为默认值。正在重启...

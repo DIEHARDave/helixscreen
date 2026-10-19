@@ -20,6 +20,7 @@
 #include "wifi_manager.h"
 
 #include <memory>
+#include <string>
 
 #include "../catch_amalgamated.hpp"
 
@@ -97,11 +98,16 @@ TEST_CASE_METHOD(CapabilityFixture,
     NetworkSettingsOverlay overlay;
     lv_obj_t* root = open_overlay(overlay, std::make_unique<WifiBackendMock>());
 
-    // The country is read on the control lane; the hint lands with the answer.
-    CHECK_FALSE(hidden(root, "wifi_country_container"));
-    REQUIRE(wait_until([&] { return !hidden(root, "wifi_country_hint"); }));
+    // The country is read on the control lane; the not-set row's label lands
+    // with the answer.
+    CHECK_FALSE(hidden(root, "wifi_country_row"));
     lv_obj_t* dropdown = lv_obj_find_by_name(root, "wifi_country_dropdown");
     REQUIRE(dropdown != nullptr);
+    auto shown = [dropdown] {
+        const char* text = lv_dropdown_get_text(dropdown);
+        return std::string(text ? text : "");
+    };
+    REQUIRE(wait_until([&] { return shown() == "2.4 GHz only"; }));
     CHECK(lv_dropdown_get_selected(dropdown) == 0);
 }
 
@@ -117,10 +123,12 @@ TEST_CASE_METHOD(CapabilityFixture,
     const int de = helix::wifi::country::dropdown_index("DE");
     REQUIRE(
         wait_until([&] { return lv_subject_get_int(&Access::wifi_country_index(overlay)) == de; }));
-    CHECK(hidden(root, "wifi_country_hint"));
     lv_obj_t* dropdown = lv_obj_find_by_name(root, "wifi_country_dropdown");
     REQUIRE(dropdown != nullptr);
     CHECK(static_cast<int>(lv_dropdown_get_selected(dropdown)) == de);
+    // Closed, it shows the code alone; the open list carries the name.
+    REQUIRE(lv_dropdown_get_text(dropdown) != nullptr);
+    CHECK(std::string(lv_dropdown_get_text(dropdown)) == "DE");
 }
 
 TEST_CASE_METHOD(CapabilityFixture,
@@ -130,7 +138,7 @@ TEST_CASE_METHOD(CapabilityFixture,
     lv_obj_t* root = open_overlay(overlay, std::make_unique<NoForgetNoToggleBackend>());
     helix::ui::UpdateQueue::instance().drain();
 
-    CHECK(hidden(root, "wifi_country_container"));
+    CHECK(hidden(root, "wifi_country_row"));
 }
 
 TEST_CASE_METHOD(CapabilityFixture,

@@ -101,6 +101,7 @@
   <translation tag="2. Jog Y until the nozzle is centered over the chute opening" ja="2. Yをジョグして、ノズルがシュートの開口部の中心に来るようにします"/>
   <translation tag="2. Place paper between nozzle and bed" ja="2. ノズルとベッドの間に紙を置いてください"/>
   <translation tag="2. Results show how much to turn each screw" ja="2. 各ネジをどれだけ回すか結果が表示されます"/>
+  <translation tag="2.4 GHz only" ja="2.4 GHz のみ"/>
   <translation tag="20 minutes" ja="20分"/>
   <translation tag="24 Hour" ja="24時間"/>
   <translation tag="24-hour" ja="24時間制"/>
@@ -3004,7 +3005,6 @@
   <translation tag="Set up" ja="セットアップ"/>
   <translation tag="Set up your label printer in Settings" ja="設定でラベルプリンターをセットアップしてください"/>
   <translation tag="Set what is really selected and loaded. Nothing moves." ja="実際に選択・装填されている状態を設定します。何も動きません。"/>
-  <translation tag="Set your country to find 5 GHz networks" ja="5 GHz ネットワークを検出するには地域を設定してください"/>
   <translation tag="Settings" ja="設定"/>
   <translation tag="Settings Snapshot" ja="設定スナップショット"/>
   <translation tag="Settings reset to defaults. Restarting..." ja="設定をデフォルトにリセットしました。再起動中..."/>

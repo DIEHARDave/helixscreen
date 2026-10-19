@@ -101,6 +101,7 @@
   <translation tag="2. Jog Y until the nozzle is centered over the chute opening" it="2. Muovi Y finché l&apos;ugello non è centrato sull&apos;apertura del condotto"/>
   <translation tag="2. Place paper between nozzle and bed" it="2. Posizionare carta tra ugello e piano"/>
   <translation tag="2. Results show how much to turn each screw" it="2. I risultati mostrano quanto girare ogni vite"/>
+  <translation tag="2.4 GHz only" it="Solo 2,4 GHz"/>
   <translation tag="20 minutes" it="20 minuti"/>
   <translation tag="24 Hour" it="24 ore"/>
   <translation tag="24-hour" it="24 ore"/>
@@ -3004,7 +3005,6 @@
   <translation tag="Set up" it="Configura"/>
   <translation tag="Set up your label printer in Settings" it="Configura la stampante etichette nelle Impostazioni"/>
   <translation tag="Set what is really selected and loaded. Nothing moves." it="Imposta cosa è davvero selezionato e caricato. Nulla si muove."/>
-  <translation tag="Set your country to find 5 GHz networks" it="Imposta il tuo paese per trovare le reti a 5 GHz"/>
   <translation tag="Settings" it="Impostazioni"/>
   <translation tag="Settings Snapshot" it="Istantanea delle impostazioni"/>
   <translation tag="Settings reset to defaults. Restarting..." it="Impostazioni ripristinate ai valori predefiniti. Riavvio..."/>

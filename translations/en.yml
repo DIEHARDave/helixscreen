@@ -102,6 +102,7 @@ translations:
   2. Place paper between nozzle and bed: 2. Place paper between nozzle and bed
   2. Results show how much to turn each screw: 2. Results show how much to turn each
     screw
+  2.4 GHz only: 2.4 GHz only
   20 minutes: 20 minutes
   24 Hour: 24 Hour
   24-hour: 24-hour
@@ -3223,7 +3224,6 @@ translations:
   Set up: Set up
   Set up your label printer in Settings: Set up your label printer in Settings
   Set what is really selected and loaded. Nothing moves.: Set what is really selected and loaded. Nothing moves.
-  Set your country to find 5 GHz networks: Set your country to find 5 GHz networks
   Settings: Settings
   Settings Snapshot: Settings Snapshot
   Settings reset to defaults. Restarting...: Settings reset to defaults. Restarting...

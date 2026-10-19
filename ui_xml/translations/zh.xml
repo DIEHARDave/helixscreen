@@ -101,6 +101,7 @@
   <translation tag="2. Jog Y until the nozzle is centered over the chute opening" zh="2. 点动 Y 轴，直到喷嘴位于排料口开口中心"/>
   <translation tag="2. Place paper between nozzle and bed" zh="2. 将纸张放在喷嘴和热床之间"/>
   <translation tag="2. Results show how much to turn each screw" zh="2. 结果显示每个螺丝需要旋转多少"/>
+  <translation tag="2.4 GHz only" zh="仅 2.4 GHz"/>
   <translation tag="20 minutes" zh="20分钟"/>
   <translation tag="24 Hour" zh="24 小时"/>
   <translation tag="24-hour" zh="24小时制"/>
@@ -3004,7 +3005,6 @@
   <translation tag="Set up" zh="设置"/>
   <translation tag="Set up your label printer in Settings" zh="在设置中配置标签打印机"/>
   <translation tag="Set what is really selected and loaded. Nothing moves." zh="设置实际选择和加载的状态。不会移动任何部件。"/>
-  <translation tag="Set your country to find 5 GHz networks" zh="设置地区以查找 5 GHz 网络"/>
   <translation tag="Settings" zh="设置"/>
   <translation tag="Settings Snapshot" zh="设置快照"/>
   <translation tag="Settings reset to defaults. Restarting..." zh="设置已重置为默认值。正在重启..."/>

@@ -134,6 +134,7 @@
   <translation tag="2. Jog Y until the nozzle is centered over the chute opening" ru="2. Двигайте Y, пока сопло не встанет по центру отверстия жёлоба"/>
   <translation tag="2. Place paper between nozzle and bed" ru="2. Положите бумагу между соплом и столом"/>
   <translation tag="2. Results show how much to turn each screw" ru="2. Результаты покажут, насколько повернуть каждый винт"/>
+  <translation tag="2.4 GHz only" ru="Только 2,4 ГГц"/>
   <translation tag="20 minutes" ru="20 минут"/>
   <translation tag="24 Hour" ru="24 часа"/>
   <translation tag="24-hour" ru="24-часовой"/>
@@ -3058,7 +3059,6 @@
   <translation tag="Set up" ru="Настроить"/>
   <translation tag="Set up your label printer in Settings" ru="Настройте принтер этикеток в Настройках"/>
   <translation tag="Set what is really selected and loaded. Nothing moves." ru="Укажите, что на самом деле выбрано и загружено. Ничего не двигается."/>
-  <translation tag="Set your country to find 5 GHz networks" ru="Укажите страну, чтобы найти сети 5 ГГц"/>
   <translation tag="Settings" ru="Настройки"/>
   <translation tag="Settings Snapshot" ru="Снимок настроек"/>
   <translation tag="Settings reset to defaults. Restarting..." ru="Настройки сброшены к значениям по умолчанию. Перезапуск..."/>

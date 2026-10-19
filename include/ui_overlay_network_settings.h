@@ -188,7 +188,6 @@ class NetworkSettingsOverlay : public OverlayBase {
     lv_subject_t wifi_can_toggle_radio_{}; // 1 if the backend can move the radio
     lv_subject_t wifi_can_set_country_{};  // 1 if the backend can set the regulatory country
     lv_subject_t wifi_country_index_{};    // country dropdown selection (0 = not set)
-    lv_subject_t wifi_country_hint_{};     // 1: 5 GHz capable radio in the world domain
     lv_subject_t wifi_unresponsive_{};     // 1 while WiFi control stops answering (rows show
                                            // the last known state)
     lv_subject_t connected_ssid_{};
@@ -313,6 +312,11 @@ class NetworkSettingsOverlay : public OverlayBase {
     // Reads the radio's country off the UI thread and applies it to the
     // country row: selection, visibility and the 5 GHz hint.
     void refresh_country();
+    // What the closed country dropdown reads for selection @p index.
+    void show_country_choice(int index, bool hint_5ghz);
+    lv_obj_t* country_dropdown_ = nullptr;
+    std::string country_button_text_;
+    bool country_hint_5ghz_ = false; // 5 GHz radio left in the world domain
 
     /// Ethernet refresh coalescing: at most one daemon probe in flight, with
     /// one trailing refresh armed while one runs (a flapping link or a

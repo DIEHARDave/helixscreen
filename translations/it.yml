@@ -105,6 +105,7 @@ translations:
   2. Place paper between nozzle and bed: 2. Posizionare carta tra ugello e piano
   2. Results show how much to turn each screw: 2. I risultati mostrano quanto girare
     ogni vite
+  2.4 GHz only: Solo 2,4 GHz
   20 minutes: 20 minuti
   24 Hour: 24 ore
   24-hour: 24 ore
@@ -3299,7 +3300,6 @@ translations:
   Set up: Configura
   Set up your label printer in Settings: Configura la stampante etichette nelle Impostazioni
   Set what is really selected and loaded. Nothing moves.: 'Imposta cosa è davvero selezionato e caricato. Nulla si muove.'
-  Set your country to find 5 GHz networks: Imposta il tuo paese per trovare le reti a 5 GHz
   Settings: Impostazioni
   Settings Snapshot: Istantanea delle impostazioni
   Settings reset to defaults. Restarting...: Impostazioni ripristinate ai valori predefiniti.

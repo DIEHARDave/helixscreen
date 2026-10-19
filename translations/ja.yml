@@ -103,6 +103,7 @@ translations:
 
   2. Place paper between nozzle and bed: 2. ノズルとベッドの間に紙を置いてください
   2. Results show how much to turn each screw: 2. 各ネジをどれだけ回すか結果が表示されます
+  2.4 GHz only: 2.4 GHz のみ
   20 minutes: 20分
   24 Hour: 24時間
   24-hour: 24時間制
@@ -3117,7 +3118,6 @@ translations:
   Set up: セットアップ
   Set up your label printer in Settings: 設定でラベルプリンターをセットアップしてください
   Set what is really selected and loaded. Nothing moves.: '実際に選択・装填されている状態を設定します。何も動きません。'
-  Set your country to find 5 GHz networks: 5 GHz ネットワークを検出するには地域を設定してください
   Settings: 設定
   Settings Snapshot: 設定スナップショット
   Settings reset to defaults. Restarting...: 設定をデフォルトにリセットしました。再起動中...

@@ -149,6 +149,7 @@ translations:
   2. Place paper between nozzle and bed: 2. Положите бумагу между соплом и столом
   2. Results show how much to turn each screw: 2. Результаты покажут, насколько повернуть
     каждый винт
+  2.4 GHz only: Только 2,4 ГГц
   20 minutes: 20 минут
   24 Hour: 24 часа
   24-hour: 24-часовой
@@ -3344,7 +3345,6 @@ translations:
   Set up: Настроить
   Set up your label printer in Settings: Настройте принтер этикеток в Настройках
   Set what is really selected and loaded. Nothing moves.: 'Укажите, что на самом деле выбрано и загружено. Ничего не двигается.'
-  Set your country to find 5 GHz networks: Укажите страну, чтобы найти сети 5 ГГц
   Settings: Настройки
   Settings Snapshot: Снимок настроек
   Settings reset to defaults. Restarting...: Настройки сброшены к значениям по умолчанию.

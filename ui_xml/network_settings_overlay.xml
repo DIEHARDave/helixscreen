@@ -6,6 +6,14 @@
 <component>
   <!-- NOTE: All subjects for this overlay are managed by C++ (NetworkSettingsOverlay::init_subjects).
        Do NOT declare subjects here - XML declarations shadow C++ subjects [L046]. -->
+  <styles>
+    <!-- Country row: label beside the dropdown, or above it where the portrait card is too narrow -->
+    <style name="country_row_beside"
+           layout="flex" flex_flow="row" flex_main_place="space_between" flex_cross_place="center"/>
+    <style name="country_row_stacked" layout="flex" flex_flow="column" flex_main_place="start" flex_cross_place="start"/>
+    <style name="country_dropdown_beside" flex_grow="1"/>
+    <style name="country_dropdown_stacked" width="100%" flex_grow="0"/>
+  </styles>
   <view name="network_settings_overlay" extends="overlay_panel" title="Network Settings" bg_color="#screen_bg">
     <!-- Two-Column Content Area -->
     <lv_obj name="overlay_content"
@@ -48,6 +56,24 @@
               <event_cb trigger="value_changed" callback="on_wlan_toggle_changed"/>
             </ui_switch>
           </lv_obj>
+          <!-- Regulatory country (hidden where the backend cannot set it). Options come from C++,
+               and the not-set option says when the radio is held to 2.4 GHz. -->
+          <lv_obj name="wifi_country_row"
+                  width="100%" height="content" style_pad_all="0" scrollable="false" style_pad_gap="#space_xs">
+            <bind_flag_if_eq subject="wifi_can_set_country" flag="hidden" ref_value="0"/>
+            <bind_style_if_eq name="country_row_beside" subject="ui_is_portrait" ref_value="0"/>
+            <bind_style_if_eq name="country_row_stacked" subject="ui_is_portrait" ref_value="1"/>
+            <text_small text="Country"/>
+            <lv_dropdown name="wifi_country_dropdown"
+                         height="#button_height_sm" options="" bind_selected="wifi_country_index"
+                         style_radius="#border_radius" style_text_font="#font_small" style_pad_top="0"
+                         style_pad_bottom="0">
+              <bind_style_if_eq name="country_dropdown_beside" subject="ui_is_portrait" ref_value="0"/>
+              <bind_style_if_eq name="country_dropdown_stacked" subject="ui_is_portrait" ref_value="1"/>
+              <bind_state_if_eq subject="wifi_hardware_available" state="disabled" ref_value="0"/>
+              <event_cb trigger="value_changed" callback="on_network_settings_country_changed"/>
+            </lv_dropdown>
+          </lv_obj>
           <!-- Divider line -->
           <divider_horizontal/>
           <!-- WiFi Status Container - only ONE child visible at a time -->
@@ -89,10 +115,11 @@
                 <text_small text="IP:"/>
                 <text_small name="ip_label" bind_text="ip_address"/>
               </lv_obj>
-              <!-- MAC Address -->
+              <!-- MAC Address: the line micro screens give up for the Country row -->
               <lv_obj width="100%"
                       height="content" style_pad_all="0" scrollable="false" flex_flow="row"
                       style_flex_cross_place="center" style_pad_gap="#space_xs">
+                <bind_flag_if_eq subject="ui_breakpoint" flag="hidden" ref_value="0"/>
                 <text_small text="MAC:"/>
                 <text_small name="mac_label" bind_text="mac_address"/>
               </lv_obj>
@@ -154,10 +181,11 @@
                 <text_small text="IP:"/>
                 <text_small name="eth_ip_label" bind_text="eth_ip_address"/>
               </lv_obj>
-              <!-- MAC Address -->
+              <!-- MAC Address: the line micro screens give up for the Country row -->
               <lv_obj width="100%"
                       height="content" style_pad_all="0" scrollable="false" flex_flow="row"
                       style_flex_cross_place="center" style_pad_gap="#space_xs">
+                <bind_flag_if_eq subject="ui_breakpoint" flag="hidden" ref_value="0"/>
                 <text_small text="MAC:"/>
                 <text_small name="eth_mac_label" bind_text="eth_mac_address"/>
               </lv_obj>
@@ -247,29 +275,6 @@
             <spinner size="md"/>
             <text_small text="Scanning for networks..." style_margin_top="#space_sm"/>
           </lv_obj>
-        </lv_obj>
-        <!-- Regulatory country, under the list it governs (hidden where the backend cannot set it).
-             Options come from C++; the selection is bound to wifi_country_index. -->
-        <lv_obj name="wifi_country_container"
-                width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
-                style_pad_gap="#space_xs">
-          <bind_flag_if_eq subject="wifi_can_set_country" flag="hidden" ref_value="0"/>
-          <lv_obj name="row_wifi_country"
-                  width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="row"
-                  style_flex_main_place="space_between" style_flex_cross_place="center" style_pad_gap="#space_sm">
-            <text_body text="Country"/>
-            <lv_dropdown name="wifi_country_dropdown"
-                         width="60%" height="content" options="" bind_selected="wifi_country_index"
-                         style_radius="#border_radius">
-              <bind_state_if_eq subject="wifi_hardware_available" state="disabled" ref_value="0"/>
-              <event_cb trigger="value_changed" callback="on_network_settings_country_changed"/>
-            </lv_dropdown>
-          </lv_obj>
-          <!-- A dual-band radio in the world domain cannot actively scan 5 GHz -->
-          <text_small name="wifi_country_hint"
-                      width="100%" long_mode="wrap" text="Set your country to find 5 GHz networks">
-            <bind_flag_if_eq subject="wifi_country_hint" flag="hidden" ref_value="0"/>
-          </text_small>
         </lv_obj>
         <!-- Add Hidden Network Button -->
         <ui_button name="add_other_btn" width="100%" height="content" icon="wifi" text="Add Hidden Network">
