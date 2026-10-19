@@ -31,11 +31,15 @@ constexpr std::array<const char*, 5> kPerHeadHooks = {"HEAT", "AUTO_CLEAN", "MAN
 /// Runners in this process that are mid-run.
 std::atomic<int> s_live_runs{0};
 
+/// What a run here left behind on a printer.
+enum class ExitLeft { NeverSent, SentUnconfirmed };
+
 /// The printer reconcile_on_connect() last named (its URL), and the printer a
-/// run here left its EXIT unconfirmed on. Replies land on the WebSocket thread.
+/// run here left its EXIT outstanding on. Replies land on the WebSocket thread.
 std::mutex s_pending_mutex;
 std::string s_printer;
 std::optional<std::string> s_pending_for;
+ExitLeft s_pending_kind = ExitLeft::NeverSent;
 
 /// The Runner most recently gone live. Main thread only.
 Runner* s_live_runner = nullptr;
@@ -201,11 +205,24 @@ HeldState held_state_action(const nlohmann::json& response, bool live, bool pend
 void mark_exit_pending() {
     std::lock_guard<std::mutex> lock(s_pending_mutex);
     s_pending_for = s_printer;
+    s_pending_kind = ExitLeft::NeverSent;
 }
 
 bool exit_pending() {
     std::lock_guard<std::mutex> lock(s_pending_mutex);
-    return s_pending_for && *s_pending_for == s_printer;
+    return s_pending_for && *s_pending_for == s_printer && s_pending_kind == ExitLeft::NeverSent;
+}
+
+void mark_exit_unconfirmed() {
+    std::lock_guard<std::mutex> lock(s_pending_mutex);
+    s_pending_for = s_printer;
+    s_pending_kind = ExitLeft::SentUnconfirmed;
+}
+
+bool exit_unconfirmed() {
+    std::lock_guard<std::mutex> lock(s_pending_mutex);
+    return s_pending_for && *s_pending_for == s_printer &&
+           s_pending_kind == ExitLeft::SentUnconfirmed;
 }
 
 void clear_exit_pending() {
@@ -262,7 +279,8 @@ void reconcile_on_connect(helix::IMoonrakerClient& client, std::function<void()>
                 send_exit(client);
                 return;
             case HeldState::AskUser:
-                spdlog::info("[NozzleOffsetCal] A calibration state no run here owns is held");
+                spdlog::info("[NozzleOffsetCal] A calibration state no run here owns is held{}",
+                             exit_unconfirmed() ? " (our exit went out unconfirmed)" : "");
                 if (ask_user) {
                     ask_user();
                 }
@@ -302,7 +320,8 @@ bool send_exit_and_wait(helix::IMoonrakerClient& client, uint32_t timeout_ms) {
             finish();
         },
         [finish](const MoonrakerError& err) {
-            mark_exit_pending();
+            // Sent: a disconnect failing it does not say the firmware never ran it.
+            mark_exit_unconfirmed();
             spdlog::warn("[NozzleOffsetCal] {} failed: {}", kExitGcode, err.message);
             finish();
         },
@@ -337,7 +356,7 @@ void leave_live_run(helix::IMoonrakerClient* client) {
     if (!send_exit_and_wait(*client, kTeardownExitWaitMs)) {
         spdlog::warn("[NozzleOffsetCal] No reply to {} within {}ms", kExitGcode,
                      kTeardownExitWaitMs);
-        mark_exit_pending();
+        mark_exit_unconfirmed();
     }
 }
 

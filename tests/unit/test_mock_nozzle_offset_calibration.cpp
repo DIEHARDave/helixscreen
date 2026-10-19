@@ -233,6 +233,9 @@ TEST_CASE_METHOD(NozzleCalFixture, "mock: leaving a live run before disconnect e
     SECTION("connected: EXIT goes out and the run ends") {
         leave_live_run(&client);
         CHECK(runner.phase() == Runner::Phase::Cancelled);
+        // The mock answers on this thread, so the bounded wait sees no reply.
+        CHECK(exit_unconfirmed());
+        CHECK_FALSE(exit_pending());
         process_lvgl(1300);
         CHECK_FALSE(client.nozzle_calibration_active());
         CHECK_FALSE(client.sent(kProbeAbortMethod));
@@ -277,6 +280,19 @@ TEST_CASE_METHOD(NozzleCalFixture, "mock: reconcile forgets a pending exit once 
     CHECK_FALSE(exit_pending());
 
     // So a later run from another screen is asked about, not ended.
+    enter_state_elsewhere();
+    reconcile();
+    CHECK(asked == 1);
+    CHECK(client.nozzle_calibration_active());
+}
+
+TEST_CASE_METHOD(NozzleCalFixture, "mock: an exit sent but unconfirmed is asked about, not resent",
+                 "[mock][snapmaker][nozzle_offset][reconcile]") {
+    reconcile();
+    mark_exit_unconfirmed();
+    REQUIRE_FALSE(exit_pending());
+
+    // Another screen may have started its own run since our EXIT went out.
     enter_state_elsewhere();
     reconcile();
     CHECK(asked == 1);

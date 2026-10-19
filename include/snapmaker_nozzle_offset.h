@@ -140,13 +140,20 @@ enum class HeldState {
 [[nodiscard]] HeldState held_state_action(const nlohmann::json& response, bool run_live,
                                           bool exit_pending);
 
-/// A run in this process ended without its EXIT confirmed: the firmware may
-/// still hold the state on our behalf. Recorded against the printer the last
-/// reconcile_on_connect() named, so another printer's held state never reads
-/// as ours. In memory only; a restart forgets it.
+/// A run in this process ended without its EXIT ever sent: the firmware still
+/// holds the state on our behalf, so the next reconcile ends it unasked.
+/// Recorded against the printer the last reconcile_on_connect() named, so
+/// another printer's held state never reads as ours. In memory only; a
+/// restart forgets it.
 void mark_exit_pending();
-/// True when the pending exit belongs to the printer last connected.
+/// True when an unsent exit belongs to the printer last connected.
 [[nodiscard]] bool exit_pending();
+/// EXIT went out but no reply confirmed it. The firmware may have ended the
+/// state and another screen started its own since, so a held state then is
+/// asked about, never ended unasked. Same printer keying as mark_exit_pending().
+void mark_exit_unconfirmed();
+/// True when an unconfirmed exit belongs to the printer last connected.
+[[nodiscard]] bool exit_unconfirmed();
 /// Called wherever the state is seen not held: nothing is left to end.
 void clear_exit_pending();
 
@@ -175,7 +182,9 @@ inline constexpr uint32_t kTeardownExitWaitMs = 1000;
  *
  * A run left behind holds the heaters on. With @p client connected this aborts
  * a probe pass in progress, sends EXIT and waits up to kTeardownExitWaitMs for
- * the reply; otherwise it marks the exit pending. Either way the run ends here,
+ * the reply, marking it unconfirmed when none comes; otherwise it marks the
+ * exit pending. Either way the run ends here (its changed hook refreshes the
+ * overlay's subjects),
  * without sending anything further. No-op when no run is live. Main thread;
  * replies must arrive on another thread for the wait to see them.
  */
