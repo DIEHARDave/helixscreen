@@ -97,9 +97,13 @@ if sudo -n docker inspect "$CONTAINER" >/dev/null 2>&1; then
     sudo -n docker inspect -f '{{range .Mounts}}{{.Source}}:{{.Destination}} {{end}}' "$CONTAINER" |
         grep -qF "\$abs:$WORK" || {
             echo "✗ $CONTAINER does not mount \$abs at $WORK; --recreate replaces it" >&2; exit 1; }
+    # Without an init, every process docker exec leaves behind stays a zombie, and
+    # anything that walks /proc (the wpa backend's tests do) slows by orders of magnitude.
+    [ "\$(sudo -n docker inspect -f '{{.HostConfig.Init}}' "$CONTAINER")" = true ] ||
+        echo "⚠ $CONTAINER runs without --init and accumulates zombies; --recreate replaces it" >&2
 else
-    # CMD in the image is sleep infinity.
-    sudo -n docker run -d --name "$CONTAINER" -v "\$abs:$WORK" -w "$WORK" "$IMAGE" >/dev/null
+    # CMD in the image is sleep infinity, which reaps nothing: --init does.
+    sudo -n docker run -d --init --name "$CONTAINER" -v "\$abs:$WORK" -w "$WORK" "$IMAGE" >/dev/null
 fi
 sudo -n docker start "$CONTAINER" >/dev/null
 REMOTE
