@@ -700,3 +700,24 @@ TEST_CASE_METHOD(ActionPromptLayoutFixture,
 
     modal_.hide();
 }
+
+// A grid cell is a fixed share of the row, so its label ends in an ellipsis too.
+TEST_CASE_METHOD(ActionPromptLayoutFixture,
+                 "ActionPromptModal: a grid label wider than its cell ends in an ellipsis",
+                 "[action_prompt][layout][ui_integration]") {
+    helix::PromptData data = make_regular_prompt(helix::ui::kPromptGridMinButtons + 1);
+    data.buttons[0].label = std::string(120, 'W');
+    REQUIRE(modal_.show_prompt(test_screen(), data));
+    lv_obj_update_layout(test_screen());
+
+    const auto& btns = ActionPromptModalTestAccess::buttons(modal_);
+    REQUIRE(btns.size() == data.buttons.size());
+    // Equal cells: the long label did not stretch its button.
+    REQUIRE(lv_obj_get_width(btns[0]) == lv_obj_get_width(btns[1]));
+    lv_obj_t* label = lv_obj_get_child_by_type(btns[0], 0, &lv_label_class);
+    REQUIRE(label != nullptr);
+    CHECK(lv_obj_get_width(label) <= lv_obj_get_content_width(btns[0]));
+    CHECK(lv_label_get_long_mode(label) == LV_LABEL_LONG_MODE_DOTS);
+
+    modal_.hide();
+}

@@ -4476,6 +4476,38 @@ TEST_CASE_METHOD(LVGLTestFixture,
     ams.set_backend(nullptr);
 }
 
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "Happy Hare narration: a phase outside the current template lands when the "
+                 "operation settles",
+                 "[ams][happy_hare][narration][ui_integration]") {
+    // The sidebar can start a toolchange as UNLOAD and upgrade it to LOAD_SWAP once
+    // it learns a load follows. A phase reported in between belongs to the operation
+    // the step bar settles on.
+    auto& ams = helix::AmsState::instance();
+    ams.init_subjects(true);
+    ams.set_active_step_operation(StepOperationType::LOAD_SWAP);
+    ams.set_narration_phase(-1, "");
+    ams.set_active_step_operation(StepOperationType::UNLOAD);
+
+    auto hh = std::make_unique<AmsBackendHappyHareTestHelper>();
+    hh->initialize_test_gates(4);
+    auto* hh_raw = hh.get();
+    ams.set_backend(std::move(hh));
+
+    nlohmann::json mmu;
+    mmu["action"] = "Selecting";
+    hh_raw->test_parse_mmu_state(mmu);
+    helix::ui::UpdateQueue::instance().drain();
+    // UNLOAD has no "select" step, so nothing lights yet.
+    CHECK(lv_subject_get_int(ams.get_toolchange_step_subject()) == -1);
+
+    ams.set_active_step_operation(StepOperationType::LOAD_SWAP);
+    CHECK(lv_subject_get_int(ams.get_toolchange_step_subject()) == 4); // "select" = index 4
+
+    ams.set_narration_phase(-1, "");
+    ams.set_backend(nullptr);
+}
+
 // ============================================================================
 // Override store — user identity Happy Hare's gate map cannot hold
 // ============================================================================

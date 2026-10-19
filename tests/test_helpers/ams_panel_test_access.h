@@ -22,6 +22,10 @@ class AmsPanelTestAccess {
     static lv_obj_t* path_canvas(const AmsPanel& p) {
         return p.path_canvas_;
     }
+    /// Re-read the endless-spool relation from the backend into the arrows widget.
+    static void update_endless_arrows(AmsPanel& p) {
+        p.update_endless_arrows_from_backend();
+    }
     /// A tap on the path canvas's head for @p slot, as the canvas hit-test reports it.
     static void tap_toolhead(AmsPanel& p, int slot) {
         AmsPanel::on_path_toolhead_clicked(slot, &p);
