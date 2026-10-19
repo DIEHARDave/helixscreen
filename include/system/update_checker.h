@@ -907,8 +907,14 @@ bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInf
 bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
                             std::string& error, const std::vector<std::string>& asset_keys);
 
-/// True when @p info carries a download for this build's board. A release without one
-/// cannot be installed here, and borrowing another board's asset would brick it.
+/// True when @p info carries a download under one of @p asset_keys, or the build has
+/// no asset keys at all (an Android APK updates outside the release assets). A release
+/// without one cannot be installed here, and borrowing another board's asset would
+/// brick it.
+bool release_has_build_for(const UpdateChecker::ReleaseInfo& info,
+                           const std::vector<std::string>& asset_keys);
+
+/// release_has_build_for() with this build's helix::platform::release_asset_keys().
 bool release_has_build_for_this_board(const UpdateChecker::ReleaseInfo& info);
 
 /// The refusal shown for release @p version when it has no download for @p board_name
@@ -924,6 +930,11 @@ struct CheckOutcome {
 };
 CheckOutcome decide_check_outcome(const std::string& installed,
                                   const UpdateChecker::ReleaseInfo& info);
+
+/// decide_check_outcome() for a build whose asset may sit under any of @p asset_keys.
+CheckOutcome decide_check_outcome(const std::string& installed,
+                                  const UpdateChecker::ReleaseInfo& info,
+                                  const std::vector<std::string>& asset_keys);
 
 /**
  * @brief Strip a leading 'v' or 'V' from a GitHub release tag

@@ -248,6 +248,7 @@ export function isVersionShapeValid(version: string): boolean {
 const KNOWN_PLATFORMS = new Set([
   // Current keys (get_platform_key()).
   "ad5m",
+  "android",
   "cc1",
   "esp32",
   "k2",

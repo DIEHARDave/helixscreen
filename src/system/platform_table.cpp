@@ -33,6 +33,8 @@ const std::vector<Info> kPlatforms = {
     {"snapmaker-u1", "Snapmaker U1", true, ELF64, LE, EM_AARCH64_, {}},
     // The K-Touch ships a firmware image, never an ELF release zip.
     {"esp32", "BTT K-Touch", false, 0, 0, 0, {}},
+    // The app arrives as an APK, from Google Play or the release page.
+    {"android", "Android", false, 0, 0, 0, {}},
 };
 
 } // namespace
@@ -46,7 +48,14 @@ const Info* find(const std::string& key) {
     return nullptr;
 }
 
+bool installs_from_release_asset(const std::string& key) {
+    return key != "android";
+}
+
 std::vector<std::string> release_asset_keys(const std::string& key, board::Board board) {
+    if (!installs_from_release_asset(key)) {
+        return {};
+    }
     std::vector<std::string> keys{key};
     const char* legacy = board::info(board).legacy_release_asset;
     if (legacy != nullptr && key != legacy) {
@@ -99,6 +108,8 @@ std::string current_key() {
     return "pi32";
 #elif defined(HELIX_PLATFORM_ESP32)
     return "esp32";
+#elif defined(HELIX_PLATFORM_ANDROID)
+    return "android";
 #else
     return "pi";
 #endif

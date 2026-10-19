@@ -18,6 +18,7 @@ import { isKnownPlatform } from "../index";
 /** Every key get_platform_key() can return today. */
 const RELEASE_PLATFORMS = [
   "ad5m",
+  "android",
   "cc1",
   "esp32",
   "k2",
