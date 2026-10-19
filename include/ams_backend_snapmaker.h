@@ -1104,6 +1104,11 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// access under mutex_.
     std::string batch_macro_object_;
 
+    /// The firmware ships the multi-toolhead offset calibration macros
+    /// (snapmaker::nozzle_offset::supported), cached by set_discovery(). All
+    /// access under mutex_.
+    bool nozzle_offset_supported_ = false;
+
     /// The batch do_filament_batch() dispatched, verified head-by-head in
     /// handle_status's channel_state parse. All access under mutex_.
     BatchPlan batch_;

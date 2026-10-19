@@ -6,7 +6,9 @@
 #include "../test_helpers/snapmaker_test_access.h"
 #include "ams_backend_snapmaker.h"
 #include "config.h"
+#include "printer_discovery.h"
 #include "settings_manager.h"
+#include "snapmaker_nozzle_offset.h"
 
 #include <algorithm>
 #include <any>
@@ -323,4 +325,69 @@ TEST_CASE("a value whose type does not match the action is refused, not thrown",
     // than let the exception cross the virtual.
     const AmsError err = backend.execute_device_action("snapmaker_end_led_off", std::any(1));
     REQUIRE(err.result == AmsResult::NOT_SUPPORTED);
+}
+
+namespace {
+/// The objects a stock U1 lists for its toolhead offset calibration.
+helix::PrinterDiscovery nozzle_offset_discovery() {
+    nlohmann::json objects = nlohmann::json::array({"gcode_macro _EXTRUDER_OFFSET_ACTION_PRESTART",
+                                                    "gcode_macro _EXTRUDER_OFFSET_ACTION_EXIT"});
+    for (int t = 0; t < 4; ++t) {
+        for (const char* step :
+             {"HEAT", "AUTO_CLEAN", "MANUAL_CLEAN", "WAIT_COOL", "PROBE_CALIBRATE"}) {
+            objects.push_back(std::string("gcode_macro _EXTRUDER_OFFSET_ACTION_") + step + "_T" +
+                              std::to_string(t));
+        }
+    }
+    helix::PrinterDiscovery d;
+    d.parse_objects(objects);
+    return d;
+}
+} // namespace
+
+TEST_CASE("toolhead offset calibration is offered when the firmware has it",
+          "[ams][snapmaker][actions][nozzle_offset]") {
+    HelixTestFixture fixture;
+    AmsBackendSnapmaker backend(nullptr, nullptr);
+
+    SECTION("absent without the macros") {
+        backend.set_discovery(helix::PrinterDiscovery{});
+        REQUIRE(find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId) ==
+                nullptr);
+        REQUIRE(backend.get_device_sections().empty());
+    }
+
+    SECTION("a button that starts the guided flow, in its own section") {
+        backend.set_discovery(nozzle_offset_discovery());
+        const auto actions = backend.get_device_actions();
+        const DeviceAction* cal = find_action(actions, snapmaker::nozzle_offset::kActionId);
+        REQUIRE(cal != nullptr);
+        REQUIRE(cal->type == ActionType::BUTTON);
+        REQUIRE(cal->guided_flow == snapmaker::nozzle_offset::kGuidedFlowId);
+        REQUIRE(cal->section == snapmaker::nozzle_offset::kSectionId);
+        REQUIRE(cal->enabled);
+
+        // The section stands even before the firmware reports its print
+        // preferences, which is what the other section waits for.
+        const auto sections = backend.get_device_sections();
+        REQUIRE(sections.size() == 1);
+        REQUIRE(sections[0].id == snapmaker::nozzle_offset::kSectionId);
+    }
+
+    SECTION("greyed out while a print holds the heads") {
+        backend.set_discovery(nozzle_offset_discovery());
+        for (const char* state : {"printing", "paused"}) {
+            SnapmakerTestAccess::handle_status(backend,
+                                               nlohmann::json{{"print_stats", {{"state", state}}}});
+            const DeviceAction* cal =
+                find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId);
+            REQUIRE(cal != nullptr);
+            REQUIRE_FALSE(cal->enabled);
+            REQUIRE_FALSE(cal->disable_reason.empty());
+        }
+        SnapmakerTestAccess::handle_status(
+            backend, nlohmann::json{{"print_stats", {{"state", "complete"}}}});
+        REQUIRE(find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId)
+                    ->enabled);
+    }
 }
