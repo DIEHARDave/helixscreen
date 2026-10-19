@@ -18,6 +18,7 @@
 #include "ui_update_queue.h"
 
 #include "ams_bypass_policy.h"
+#include "ams_device_action_value.h"
 #include "exception_policy.h"
 #include "helix_thread.h"
 #include "i_moonraker_api.h"
@@ -1924,14 +1925,10 @@ AmsError AmsBackendAce::execute_device_action(const std::string& action_id, cons
         if (slot < 0)
             slot = 0;
 
-        bool enable = true;
-        if (value.has_value()) {
-            // Default to enable if cast fails
-            if (const auto* v = std::any_cast<bool>(&value)) {
-                enable = *v;
-            }
+        const auto [enable, err] = printer::device_action_value<bool>(value, "feed assist state");
+        if (!err) {
+            return err;
         }
-
         if (enable) {
             return execute_gcode("ACE_ENABLE_FEED_ASSIST INDEX=" + std::to_string(slot));
         } else {
@@ -1950,11 +1947,14 @@ AmsError AmsBackendAce::execute_device_action(const std::string& action_id, cons
     }
 
     if (action_id == "ace_endless_spool_mode") {
-        const auto* mode = std::any_cast<std::string>(&value);
-        if (!mode || (*mode != "exact" && *mode != "material" && *mode != "next")) {
+        const auto [mode, err] = printer::device_action_value<std::string>(value, "match mode");
+        if (!err) {
+            return err;
+        }
+        if (mode != "exact" && mode != "material" && mode != "next") {
             return AmsErrorHelper::invalid_parameter("Unknown endless spool match mode");
         }
-        return execute_gcode("ACE_SET_ENDLESS_SPOOL_MODE MODE=" + *mode);
+        return execute_gcode("ACE_SET_ENDLESS_SPOOL_MODE MODE=" + mode);
     }
 
     return AmsErrorHelper::not_supported("Unknown ACE action: " + action_id);

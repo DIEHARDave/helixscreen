@@ -7,6 +7,7 @@
 #include "ui_snapmaker_nozzle_offset_overlay.h"
 #include "ui_toast_manager.h"
 
+#include "ams_device_action_value.h"
 #include "ams_error.h"
 #include "ams_fault_event.h"
 #include "ams_state.h"
@@ -3495,29 +3496,29 @@ std::string AmsBackendSnapmaker::build_preference_gcode(const std::string& actio
             return {};
         }
     } else if (action_id == "snapmaker_replenish_ignore_color") {
-        if (const auto* v = std::any_cast<bool>(&value)) {
-            changes.replenish_ignore_color = *v;
-        } else {
+        const auto [v, err] = printer::device_action_value<bool>(value, "setting");
+        if (!err) {
             return {};
         }
+        changes.replenish_ignore_color = v;
     } else if (action_id == "snapmaker_entangle_detect") {
-        if (const auto* v = std::any_cast<bool>(&value)) {
-            changes.filament_entangle_detect = *v;
-        } else {
+        const auto [v, err] = printer::device_action_value<bool>(value, "setting");
+        if (!err) {
             return {};
         }
+        changes.filament_entangle_detect = v;
     } else if (action_id == "snapmaker_end_led_off") {
-        if (const auto* v = std::any_cast<bool>(&value)) {
-            changes.end_led_turn_off = *v;
-        } else {
+        const auto [v, err] = printer::device_action_value<bool>(value, "setting");
+        if (!err) {
             return {};
         }
+        changes.end_led_turn_off = v;
     } else if (action_id == "snapmaker_entangle_sen") {
-        if (const auto* v = std::any_cast<std::string>(&value)) {
-            changes.filament_entangle_sen = *v;
-        } else {
+        const auto [v, err] = printer::device_action_value<std::string>(value, "sensitivity");
+        if (!err) {
             return {};
         }
+        changes.filament_entangle_sen = v;
     } else if (const auto tool = end_unload_tool(action_id)) {
         // END_UNLOAD_FILAMENT takes the whole list, so the untouched tools
         // travel at their saved values or they are cleared. The firmware's
@@ -3529,15 +3530,15 @@ std::string AmsBackendSnapmaker::build_preference_gcode(const std::string& actio
         if (*tool >= prefs.end_unload_filament.size()) {
             return {};
         }
-        const auto* v = std::any_cast<bool>(&value);
+        const auto [v, err] = printer::device_action_value<bool>(value, "setting");
         // The end macro skips a soft-filament head, so turning it on would
         // promise an unload that never happens.
         const auto soft = soft_heads();
-        if (v == nullptr || (*v && head_is_soft(soft, *tool))) {
+        if (!err || (v && head_is_soft(soft, *tool))) {
             return {};
         }
         auto list = end_unload_list(prefs, soft);
-        list[*tool] = *v;
+        list[*tool] = v;
         changes.end_unload_filament = std::move(list);
     } else {
         return {};
@@ -3554,8 +3555,8 @@ AmsError AmsBackendSnapmaker::execute_device_action(const std::string& action_id
     if (const auto tool = end_unload_tool(action_id)) {
         // The saved choice is what every print start sends, so it is written
         // whether or not the firmware can take it now.
-        SettingsManager::instance().set_end_of_print_unload_tool(static_cast<int>(*tool),
-                                                                 *std::any_cast<bool>(&value));
+        SettingsManager::instance().set_end_of_print_unload_tool(
+            static_cast<int>(*tool), printer::device_action_value<bool>(value, "setting").first);
         // The firmware refuses END_UNLOAD_FILAMENT while printing or paused
         // unless FORCE=1, which we do not pass; the next print start carries it.
         bool heads_free = false;
