@@ -1823,16 +1823,39 @@ void PrintStatusPanel::handle_reprint_button() {
     // Disable button immediately to prevent double-press
     ui_set_button_enabled(btn_cancel_, false);
 
-    // Route through PrintStartController so reprint gets the Snapmaker U1 native
-    // pre-print send (SET_PRINT_USED_EXTRUDERS ...) that suppresses a spurious
-    // filament-feed runout. The controller owns the U1 logic; this panel only
-    // supplies tools_used and re-enables its own button on failure.
+    reprint_through(reprint_controller(), target);
+}
+
+helix::ui::PrintStartController& PrintStatusPanel::reprint_controller() {
     auto* select_panel = get_print_select_panel(printer_state_, api_);
-    auto* controller = select_panel ? select_panel->get_print_start_controller() : nullptr;
-    if (controller) {
-        auto tok = lifetime_.token();
-        controller->initiate_reprint(
-            filename, /*path=*/"", get_tools_used(),
+    if (auto* controller = select_panel ? select_panel->get_print_start_controller() : nullptr) {
+        return *controller;
+    }
+    return own_reprint_controller();
+}
+
+helix::ui::PrintStartController& PrintStatusPanel::own_reprint_controller() {
+    if (!own_reprint_controller_) {
+        spdlog::info("[{}] Print Files not built yet; reprinting through this panel's own "
+                     "print controller",
+                     get_name());
+        own_reprint_controller_ =
+            std::make_unique<helix::ui::PrintStartController>(printer_state_, api_);
+    }
+    own_reprint_controller_->set_api(api_);
+    return *own_reprint_controller_;
+}
+
+void PrintStatusPanel::reprint_through(helix::ui::PrintStartController& controller,
+                                       const helix::gcode::ReprintTarget& target) {
+    // The controller owns the pre-print step (the U1's used heads, without which
+    // its firmware neither feeds nor unloads a head) and the preparing window;
+    // this panel only supplies tools_used and re-enables its own button on
+    // failure.
+    auto tok = lifetime_.token();
+    {
+        controller.initiate_reprint(
+            target.file, /*path=*/"", get_tools_used(),
             // on_started: nothing — the PrinterState observer flips the button to Cancel
             // mode when Moonraker confirms Printing (same as the old success callback,
             // which only logged).
@@ -1845,40 +1868,7 @@ void PrintStatusPanel::handle_reprint_button() {
                           [this]() { ui_set_button_enabled(btn_cancel_, true); });
             },
             target.archive_plate);
-    } else {
-        reprint_without_controller(target);
     }
-}
-
-void PrintStatusPanel::reprint_without_controller(const helix::gcode::ReprintTarget& target) {
-    const std::string& filename = target.file;
-    if (target.archive_plate > 0) {
-        // A plate prints only extracted, which takes the controller; started
-        // directly, the printer would print the .3mf instead.
-        spdlog::warn("[{}] Not reprinting plate {} of {}: no print controller", get_name(),
-                     target.archive_plate, filename);
-        NOTIFY_WARNING(lv_tr("Open the .3mf in Print Files to print this plate again."));
-        ui_set_button_enabled(btn_cancel_, true);
-        return;
-    }
-    // Controller unreachable: a direct start (no U1 pre-send).
-    spdlog::warn("[{}] No print controller for reprint — using direct start (no U1 pre-send)",
-                 get_name());
-    helix::warn_printer_stop_check_skipped("a reprint", filename,
-                                           "a reprint does not scan the file");
-    api_->job().start_print(
-        filename,
-        lifetime_.bg_cb(
-            "PrintStatusPanel::reprint_ok",
-            [this, filename]() { spdlog::info("[{}] Reprint started: {}", get_name(), filename); }),
-        [this, token = lifetime_.token()](const MoonrakerError& err) {
-            // Runs on libhv WS event loop — marshal LVGL work to main.
-            token.defer("PrintStatusPanel::reprint_err", [this, err]() {
-                spdlog::error("[{}] Failed to reprint: {}", get_name(), err.message);
-                helix::ui::notify_error_tr(TR_NOOP("Failed to reprint: {}"), err);
-                ui_set_button_enabled(btn_cancel_, true);
-            });
-        });
 }
 
 void PrintStatusPanel::handle_files_click() {

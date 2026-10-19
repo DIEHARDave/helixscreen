@@ -14,12 +14,15 @@
 #include "../test_helpers/print_status_panel_test_access.h"
 #include "../test_helpers/printer_state_test_access.h"
 #include "../test_helpers/scoped_env.h"
+#include "../test_helpers/snapmaker_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
+#include "ams_backend_snapmaker.h"
 #include "app_globals.h"
 #include "moonraker_api_mock.h"
 #include "print_start_checks.h"
 #include "printer_state.h"
+#include "test_helpers/registered_backend.h"
 #include "three_mf_reader.h"
 
 #include <filesystem>
@@ -529,17 +532,49 @@ TEST_CASE("a cancelled read_entry_head answers nothing", "[three_mf][reader][sca
     CHECK_FALSE(answered);
 }
 
-TEST_CASE_METHOD(ArchiveStart, "a plate reprint with no print controller is refused",
+TEST_CASE_METHOD(ArchiveStart, "a reprint before Print Files is built runs the pre-print step",
+                 "[print_status][reprint][task_config_notice]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(&printer.api, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+    SnapmakerTestAccess::set_file_tools_probe(
+        backend, [](const std::string&, std::function<void(bool)> answer) { answer(true); });
+    std::vector<std::string> warnings;
+    helix::ui::set_test_notification_sticky_warning_hook(
+        [&warnings](const std::string& m) { warnings.push_back(m); });
+
+    PrintStatusPanel panel{printer.state, &printer.api};
+    panel.init_subjects();
+    PrintStatusPanelTestAccess::reprint_with_own_controller(
+        panel, helix::gcode::ReprintTarget{"benchy.gcode", 0});
+    drain_until_quiet();
+    REQUIRE(printer.api.job_mock().started_prints().size() == 1);
+
+    // The start went through the pre-print step, so the print it began is
+    // known as this screen's: never "started outside HelixScreen".
+    SnapmakerTestAccess::handle_status(
+        backend,
+        nlohmann::json{{"print_task_config", {{"extruders_used", {false, false, false, false}}}},
+                       {"print_stats", {{"state", "printing"}, {"filename", "benchy.gcode"}}}});
+    drain_until_quiet();
+    REQUIRE(warnings.size() == 1);
+    CHECK(warnings[0].find("outside HelixScreen") == std::string::npos);
+    CHECK(warnings[0].find("couldn't read which toolheads") != std::string::npos);
+
+    helix::ui::set_test_notification_sticky_warning_hook(nullptr);
+    panel.deinit_subjects();
+}
+
+TEST_CASE_METHOD(ArchiveStart, "a plate reprint before Print Files is built is refused",
                  "[print_status][reprint][three_mf]") {
     PrintStatusPanel panel{printer.state, &printer.api};
     panel.init_subjects();
-    PrintStatusPanelTestAccess::reprint_without_controller(
+    PrintStatusPanelTestAccess::reprint_with_own_controller(
         panel, helix::gcode::ReprintTarget{kArchive, 9});
     drain_until_quiet();
     CHECK(printer.api.job_mock().started_prints().empty());
 
-    SECTION("a plain file still starts directly") {
-        PrintStatusPanelTestAccess::reprint_without_controller(
+    SECTION("a plain file still starts") {
+        PrintStatusPanelTestAccess::reprint_with_own_controller(
             panel, helix::gcode::ReprintTarget{"benchy.gcode", 0});
         drain_until_quiet();
         REQUIRE(printer.api.job_mock().started_prints().size() == 1);
