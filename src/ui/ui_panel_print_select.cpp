@@ -840,8 +840,7 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
                 if (plugin_state == 0 && self->plugin_installer_.should_prompt_install()) {
                     spdlog::info("[PrintSelectPanel] helix_print plugin not available, showing "
                                  "install prompt");
-                    self->plugin_install_modal_.set_installer(&self->plugin_installer_);
-                    self->plugin_install_modal_.show(lv_screen_active());
+                    self->show_plugin_install_modal();
                 }
             },
             printer_state_.get_subjects_lifetime());
@@ -2831,10 +2830,7 @@ void PrintSelectPanel::create_detail_view() {
     detail_view_->set_on_remap_requested([this]() { open_remap_modal(); });
     // The card's Set up tap. Same modal the boot-time prompt uses, so a user who
     // dismissed that one still has a way in from the place the refusal is shown.
-    detail_view_->set_on_plugin_setup_requested([this]() {
-        plugin_install_modal_.set_installer(&plugin_installer_);
-        plugin_install_modal_.show(lv_screen_active());
-    });
+    detail_view_->set_on_plugin_setup_requested([this]() { show_plugin_install_modal(); });
 
     if (print_controller_) {
         print_controller_->set_detail_view(detail_view_.get());
@@ -3505,6 +3501,13 @@ void PrintSelectPanel::on_preflight_remap() {
 // apply_remap(), dispatched on RemapStrategy. Print-start is likewise already
 // strategy-dispatched (PrintStartController), so Native and PrePrintSend both
 // read the same shared card store and need no special opener.
+void PrintSelectPanel::show_plugin_install_modal() {
+    plugin_install_modal_.set_installer(&plugin_installer_);
+    plugin_install_modal_.set_moonraker_restarter(
+        [this]() { return helix::ui::request_moonraker_restart_for_plugin(api_); });
+    plugin_install_modal_.show(lv_screen_active());
+}
+
 void PrintSelectPanel::show_plugin_actions() {
     if (detail_view_) {
         detail_view_->show_plugin_actions();

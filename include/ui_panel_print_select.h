@@ -1022,6 +1022,10 @@ class PrintSelectPanel : public PanelBase {
     helix::HelixPluginInstaller plugin_installer_;
     PluginInstallModal plugin_install_modal_;
 
+    /// The install modal, from the boot-time prompt or the card's Set up tap.
+    /// A successful install restarts Moonraker so the plugin loads.
+    void show_plugin_install_modal();
+
     //
     // === Internal Methods ===
     //

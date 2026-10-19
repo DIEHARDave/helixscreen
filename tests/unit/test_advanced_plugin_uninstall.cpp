@@ -24,6 +24,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/advanced_panel_test_access.h"
+#include "../test_helpers/plugin_script_sandbox.h"
 #include "app_globals.h"
 #include "printer_state.h"
 
@@ -92,6 +93,22 @@ struct PluginUninstallFixture : LVGLUITestFixture {
         lv_obj_send_event(button, LV_EVENT_CLICKED, nullptr);
         process_lvgl(50);
         UpdateQueue::instance().drain();
+    }
+
+    /// The install row, then the modal's Install button, with a stub install.sh
+    /// running @p script_body. Returns the result text the modal shows.
+    std::string install_with_script(const std::string& script_body) {
+        helix::test::PluginScriptSandbox scripts(AdvancedPanelTestAccess::plugin_installer(panel));
+        scripts.write_script(script_body);
+        AdvancedPanelTestAccess::tap_install_row(panel);
+        process_lvgl(50);
+        answer_modal("btn_install");
+        REQUIRE(scripts.script_args() == "--no-restart --auto ");
+        lv_obj_t* dialog = ModalStack::instance().top_dialog();
+        REQUIRE(dialog != nullptr);
+        lv_obj_t* message = lv_obj_find_by_name(dialog, "result_message");
+        REQUIRE(message != nullptr);
+        return lv_label_get_text(message);
     }
 
     /// A backdrop tap: the dismissal path no button answers.
@@ -173,6 +190,7 @@ TEST_CASE_METHOD(PluginUninstallFixture, "a needs-attention uninstall still clea
 
     CHECK(uninstall_runs == 1);
     CHECK(plugin_installed() == 0);
+    CHECK(restarts == 1);
 }
 
 TEST_CASE_METHOD(PluginUninstallFixture,
@@ -182,10 +200,11 @@ TEST_CASE_METHOD(PluginUninstallFixture,
     UpdateQueue::instance().drain();
     REQUIRE(plugin_installed() == 0);
 
-    AdvancedPanelTestAccess::finish_install(panel, true);
-    UpdateQueue::instance().drain();
+    const std::string message = install_with_script("exit 0");
 
     CHECK(restarts == 1);
+    CHECK(message.find("restarting") != std::string::npos);
+    // Files on disk are not a loaded plugin: the reconnect's check decides.
     CHECK(plugin_installed() == 0);
 }
 
@@ -194,9 +213,9 @@ TEST_CASE_METHOD(PluginUninstallFixture, "a failed install restarts nothing",
     get_printer_state().set_helix_plugin_installed(false);
     UpdateQueue::instance().drain();
 
-    AdvancedPanelTestAccess::finish_install(panel, false);
-    UpdateQueue::instance().drain();
+    const std::string message = install_with_script("exit 1");
 
     CHECK(restarts == 0);
+    CHECK(message.find("restarting") == std::string::npos);
     CHECK(plugin_installed() == 0);
 }

@@ -17,7 +17,7 @@
 #include "../../include/config.h"
 #include "../../include/helix_plugin_installer.h"
 #include "../test_helpers/helix_plugin_installer_test_access.h"
-#include "../test_helpers/unique_temp_dir.h"
+#include "../test_helpers/plugin_script_sandbox.h"
 
 #include <chrono>
 #include <filesystem>
@@ -31,43 +31,18 @@ using namespace helix;
 
 namespace {
 
-/// An installer whose install.sh lookup is confined to an empty temp dir, so
-/// nothing a test does can reach the repository's moonraker-plugin/install.sh.
-/// write_script() puts a stub there that records its arguments and then runs
-/// the given body.
-struct SandboxedInstaller {
-    SandboxedInstaller() : root(helix::test::unique_temp_dir("helix_plugin_installer")) {
-        std::filesystem::create_directories(root + "/moonraker-plugin");
-        HelixPluginInstallerTestAccess::set_script_search_root(installer, root);
-        installer.set_websocket_url("ws://localhost:7125/websocket");
-    }
-
-    ~SandboxedInstaller() {
-        std::error_code ec;
-        std::filesystem::remove_all(root, ec);
-    }
-
-    std::string script_path() const {
-        return root + "/moonraker-plugin/install.sh";
-    }
-
-    void write_script(const std::string& body) const {
-        std::ofstream(script_path()) << "#!/bin/sh\n"
-                                     << "printf '%s ' \"$@\" > '" << root << "/args'\n"
-                                     << body << "\n";
-    }
-
-    /// The arguments the stub was run with, space-separated; empty if it never ran.
-    std::string script_args() const {
-        std::ifstream in(root + "/args");
-        return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-    }
-
-    std::string root;
+struct InstallerHolder {
     HelixPluginInstaller installer;
 };
 
+/// An installer whose install.sh lookup is confined to an empty temp dir, so
+/// nothing a test does can reach the repository's moonraker-plugin/install.sh.
+struct SandboxedInstaller : InstallerHolder, helix::test::PluginScriptSandbox {
+    SandboxedInstaller() : PluginScriptSandbox(installer) {}
+};
+
 } // namespace
+
 TEST_CASE("HelixPluginInstaller is_local_moonraker WSS handling", "[plugin_installer]") {
     SECTION("is_local_moonraker answers from the URL the installer was given") {
         // The predicate itself is tested once, in test_host_identity.cpp. What

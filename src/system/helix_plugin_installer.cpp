@@ -323,7 +323,7 @@ HelixPluginInstaller::SyncInstallResult HelixPluginInstaller::install_local_sync
     if (result.exit_code == 0) {
         state_.store(PluginInstallState::SUCCESS);
         spdlog::info("[PluginInstaller] Installation completed successfully");
-        return {true, lv_tr("Plugin installed successfully. Moonraker is restarting...")};
+        return {true, lv_tr("Plugin installed successfully.")};
     }
 
     state_.store(PluginInstallState::FAILED);

@@ -11,6 +11,25 @@
 #include <functional>
 #include <string>
 
+namespace helix {
+class IMoonrakerAPI;
+}
+
+namespace helix::ui {
+
+/**
+ * @brief Ask Moonraker to restart so it loads or drops the helix_print plugin
+ *
+ * install.sh runs under the service's NoNewPrivileges and cannot sudo, so it is
+ * always run with --no-restart and Moonraker is asked to restart itself. A
+ * request Moonraker rejects is reported with a toast.
+ *
+ * @return true when a restart was requested; false with no API to ask
+ */
+bool request_moonraker_restart_for_plugin(IMoonrakerAPI* api);
+
+} // namespace helix::ui
+
 /**
  * @brief Modal dialog prompting user to install the helix_print plugin
  *
@@ -30,7 +49,9 @@
  */
 class PluginInstallModal : public Modal {
   public:
-    using InstallCompleteCallback = std::function<void(bool success)>;
+    /// Gets Moonraker to load a freshly installed plugin; returns whether a
+    /// restart was requested.
+    using MoonrakerRestarter = std::function<bool()>;
 
     PluginInstallModal();
     ~PluginInstallModal() override {
@@ -54,9 +75,13 @@ class PluginInstallModal : public Modal {
     void set_installer(helix::HelixPluginInstaller* installer);
 
     /**
-     * @brief Set callback for when installation completes (local mode only)
+     * @brief Set what a successful local install calls to load the plugin
+     *
+     * Files on disk are not a loaded plugin: Moonraker loads it on restart.
+     * Without a restarter, or when it requests none, the result says a
+     * restart is still needed instead of claiming one is under way.
      */
-    void set_on_install_complete(InstallCompleteCallback cb);
+    void set_moonraker_restarter(MoonrakerRestarter restarter);
 
   protected:
     void on_show() override;
@@ -69,7 +94,7 @@ class PluginInstallModal : public Modal {
 
   private:
     helix::HelixPluginInstaller* installer_ = nullptr;
-    InstallCompleteCallback on_install_complete_cb_;
+    MoonrakerRestarter moonraker_restarter_;
 
     // Destruction guard - prevents async callbacks from accessing destroyed object
     std::atomic<bool> is_destroying_{false};

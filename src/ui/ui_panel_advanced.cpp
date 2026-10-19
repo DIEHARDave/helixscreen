@@ -526,42 +526,17 @@ void AdvancedPanel::handle_helix_plugin_install_clicked() {
 
     // Show the install modal
     plugin_install_modal_.set_installer(&plugin_installer_);
-    plugin_install_modal_.set_on_install_complete(
-        [this](bool success) { on_helix_plugin_install_finished(success); });
+    plugin_install_modal_.set_moonraker_restarter(
+        [this]() { return restart_moonraker_for_plugin(); });
     plugin_install_modal_.show(lv_screen_active());
 }
 
-void AdvancedPanel::on_helix_plugin_install_finished(bool success) {
-    if (!success) {
-        return;
-    }
-    // Files on disk are not a loaded plugin: installed stays as discovery
-    // last saw it until Moonraker comes back and the plugin check answers.
-    restart_moonraker_for_plugin();
-    ToastManager::instance().show(ToastSeverity::SUCCESS, lv_tr("Plugin installed successfully"),
-                                  2000);
-}
-
-void AdvancedPanel::restart_moonraker_for_plugin() {
+bool AdvancedPanel::restart_moonraker_for_plugin() {
     if (moonraker_restarter_) {
         moonraker_restarter_();
-        return;
+        return true;
     }
-    if (!api_) {
-        spdlog::warn("[{}] No Moonraker API - cannot restart Moonraker for the plugin", get_name());
-        return;
-    }
-    api_->restart_moonraker(
-        []() { spdlog::info("[AdvancedPanel] Moonraker restart requested for the plugin"); },
-        [](const MoonrakerError& error) {
-            spdlog::warn("[AdvancedPanel] Moonraker restart for the plugin failed: {}",
-                         error.message);
-            helix::ui::queue_update("AdvancedPanel::plugin_restart_failed", []() {
-                ToastManager::instance().show(
-                    ToastSeverity::WARNING, lv_tr("Restart Moonraker to finish the plugin change"),
-                    5000);
-            });
-        });
+    return helix::ui::request_moonraker_restart_for_plugin(api_);
 }
 
 void AdvancedPanel::handle_helix_plugin_uninstall_clicked() {
