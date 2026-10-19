@@ -180,6 +180,7 @@ each screen maps to a navigation recipe in `screenshot-recipes.sh`, the single s
 | `generate-test-data.py` | Generate mock test data for test suites |
 | `test_clean_shutdown.sh` | Verify clean shutdown behavior |
 | `afc-test.sh` | AFC live smoke test against a real printer |
+| `plugin-state-snapshot.sh` | Read-only record of what a HelixPrint plugin install or uninstall touches on one printer (`--ssh USER@HOST DEVICE LABEL`, `--port`, `--chroot`, `--sshpass-env VAR`): the paths `moonraker-plugin/install.sh` would find, found by running its own discovery functions on the printer, copies of moonraker.conf and every include, the components dir, unit hardening, version, and the Moonraker HTTP state. `--diff A B` compares two; `--root DIR` reads a fixture tree instead of ssh. Tests: `tests/shell/test_plugin_state_snapshot.bats` |
 
 ### Developer Tools
 | Script | Purpose |
