@@ -744,6 +744,36 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
     /// have been applied. Caller holds mutex_.
     void apply_action_timeout_latch_locked();
 
+    // === Toolchange hold ====================================================
+    //
+    // One CHANGE_TOOL reports Idle between its legs: at the end of TOOL_UNLOAD,
+    // through the next extruder's heat wait, and between a toolchanger's dock
+    // and pickup. Published as-is, that Idle ends the operation mid change:
+    // AmsState clears the narration and the step bar restarts for the load.
+    // AFC.next_lane is set for exactly the CHANGE_TOOL span (assigned at its
+    // top, cleared in its finally block, so an exception clears it too), and
+    // while it is set an Idle keeps the busy action the change was already in.
+
+    /// AFC.next_lane names a lane: a CHANGE_TOOL is in progress.
+    bool toolchange_in_progress_{false};
+    /// The busy action held over AFC's mid-change Idle, and the detail shown
+    /// with it. Empty while nothing is held.
+    std::optional<AmsAction> toolchange_hold_;
+    std::string toolchange_hold_detail_;
+    /// When the current hold began; bounds it by kHeatingTimeoutSeconds, since
+    /// the gap it covers is a heater wait or a tool pickup.
+    std::chrono::steady_clock::time_point toolchange_hold_since_{};
+
+    /// Hold, keep or release the toolchange hold once the frame's fields are
+    /// all parsed. Released by next_lane clearing, by AFC's error_state, by
+    /// AFC reporting a busy state of its own, and by the budget above. Caller
+    /// holds mutex_.
+    void apply_toolchange_hold_locked(AmsAction action_at_frame_start,
+                                      const std::string& detail_at_frame_start);
+
+    /// Drop the hold and show the Idle AFC reported. Caller holds mutex_.
+    void release_toolchange_hold_locked();
+
     // === Optimistic dispatch + macro-ack resolution ========================
     //
     // AFC answers a command it has nothing to do about — "lane3 already
