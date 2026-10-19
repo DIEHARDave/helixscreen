@@ -254,3 +254,34 @@ TEST_CASE_METHOD(ControlsCalibGridFixture,
         CHECK(s.rows * s.max_columns >= 6);
     }
 }
+
+TEST_CASE_METHOD(
+    ControlsCalibGridFixture,
+    "the Tool Offsets tile waits for the beta switch only where the calibration is beta",
+    "[controls][calib-grid][tool_offset_cal]") {
+    build();
+    show(0, 0, 0, 0, 1);
+    lv_obj_t* tile = lv_obj_find_by_name(panel_obj, "btn_tool_offsets");
+    REQUIRE(tile != nullptr);
+    auto shown = [&] {
+        for (lv_obj_t* o = tile; o && o != panel_obj; o = lv_obj_get_parent(o)) {
+            if (lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN)) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    set("show_beta_features", 0);
+    set("printer_tool_offset_cal_is_beta", 0);
+    settle();
+    CHECK(shown());
+
+    set("printer_tool_offset_cal_is_beta", 1);
+    settle();
+    CHECK_FALSE(shown());
+
+    set("show_beta_features", 1);
+    settle();
+    CHECK(shown());
+}

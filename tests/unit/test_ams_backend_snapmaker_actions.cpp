@@ -377,40 +377,14 @@ helix::PrinterDiscovery nozzle_offset_discovery() {
 }
 } // namespace
 
-TEST_CASE("toolhead offset calibration is offered when the firmware has it",
+TEST_CASE("toolhead offset calibration is not a Multi-Filament setting",
           "[ams][snapmaker][actions][nozzle_offset]") {
+    // It lives under Controls > Calibration, through helix::tool_offset_calibration.
     HelixTestFixture fixture;
     AmsBackendSnapmaker backend(nullptr, nullptr);
-
-    SECTION("absent without the macros") {
-        backend.set_discovery(helix::PrinterDiscovery{});
-        REQUIRE(find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId) ==
-                nullptr);
-        REQUIRE(backend.get_device_sections().empty());
+    backend.set_discovery(nozzle_offset_discovery());
+    for (const auto& a : backend.get_device_actions()) {
+        CHECK(a.guided_flow != snapmaker::nozzle_offset::kGuidedFlowId);
     }
-
-    SECTION("a button that starts the guided flow, in its own section") {
-        backend.set_discovery(nozzle_offset_discovery());
-        const auto actions = backend.get_device_actions();
-        const DeviceAction* cal = find_action(actions, snapmaker::nozzle_offset::kActionId);
-        REQUIRE(cal != nullptr);
-        REQUIRE(cal->type == ActionType::BUTTON);
-        REQUIRE(cal->guided_flow == snapmaker::nozzle_offset::kGuidedFlowId);
-        REQUIRE(cal->section == snapmaker::nozzle_offset::kSectionId);
-        REQUIRE(cal->enabled);
-
-        // The section stands even before the firmware reports its print
-        // preferences, which is what the other section waits for.
-        const auto sections = backend.get_device_sections();
-        REQUIRE(sections.size() == 1);
-        REQUIRE(sections[0].id == snapmaker::nozzle_offset::kSectionId);
-    }
-
-    SECTION("marked as moving the machine, so the UI greys it while a print holds the heads") {
-        backend.set_discovery(nozzle_offset_discovery());
-        const DeviceAction* cal =
-            find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId);
-        REQUIRE(cal != nullptr);
-        REQUIRE(cal->moves_machine);
-    }
+    CHECK(backend.get_device_sections().empty());
 }

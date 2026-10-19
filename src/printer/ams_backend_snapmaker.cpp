@@ -3399,14 +3399,6 @@ std::vector<helix::printer::DeviceSection> AmsBackendSnapmaker::get_device_secti
     if (!print_preferences().empty()) {
         out.push_back(helix::printer::device_section(kPrintPrefsSection, 50, ""));
     }
-    bool nozzle_offset = false;
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        nozzle_offset = nozzle_offset_supported_;
-    }
-    if (nozzle_offset) {
-        out.push_back(snapmaker::nozzle_offset::device_section());
-    }
     return out;
 }
 
@@ -3462,15 +3454,6 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
             a.disable_reason = TR_NOOP("Soft filament is never unloaded");
         }
         out.push_back(std::move(a));
-    }
-
-    bool nozzle_offset = false;
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        nozzle_offset = nozzle_offset_supported_;
-    }
-    if (nozzle_offset) {
-        out.push_back(snapmaker::nozzle_offset::device_action());
     }
     return out;
 }

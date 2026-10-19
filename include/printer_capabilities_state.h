@@ -50,6 +50,7 @@ enum class Capability : uint8_t {
     HasExcludeObject,            ///< [exclude_object]
     HasLayerPause,               ///< macros that pause a running print at a layer
     HasToolOffsetCal,            ///< automatic tool offset calibration
+    ToolOffsetCalIsBeta,         ///< that calibration is still behind the beta switch
     HideManualZCalibration,      ///< tool offset calibration also sets the reference tool's Z
     HasPaCal,                    ///< firmware measures pressure advance
     HasWebcam,                   ///< an enabled webcam is configured

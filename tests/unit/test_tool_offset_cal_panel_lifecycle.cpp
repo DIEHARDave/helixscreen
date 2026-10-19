@@ -10,6 +10,7 @@
  * ride on a guard that Stop, cleanup() and destruction expire instead.
  */
 
+#include "ui_guided_device_flow.h"
 #include "ui_panel_calibration_tool_offset.h"
 #include "ui_update_queue.h"
 
@@ -19,8 +20,10 @@
 #include "../toolchanger_panel_fixture.h"
 #include "app_globals.h"
 #include "moonraker_error.h"
+#include "printer_discovery.h"
 #include "printer_state.h"
 #include "settings_manager.h"
+#include "snapmaker_nozzle_offset.h"
 #include "tool_state.h"
 #include "z_offset_utils.h"
 
@@ -380,4 +383,34 @@ TEST_CASE_METHOD(ToolCalPanelFixture, "tool offset panel: Save with nothing dirt
 
     panel.on_deactivate(DeactivateReason::NavigateAway);
     panel.cleanup();
+}
+
+TEST_CASE_METHOD(ToolCalPanelFixture,
+                 "the Calibration entry starts a printer's own guided flow instead of the panel",
+                 "[tool_offset_cal][guided-flow]") {
+    nlohmann::json objects = nlohmann::json::array({"gcode_macro _EXTRUDER_OFFSET_ACTION_PRESTART",
+                                                    "gcode_macro _EXTRUDER_OFFSET_ACTION_EXIT"});
+    for (int t = 0; t < 4; ++t) {
+        for (const char* step :
+             {"HEAT", "AUTO_CLEAN", "MANUAL_CLEAN", "WAIT_COOL", "PROBE_CALIBRATE"}) {
+            objects.push_back(std::string("gcode_macro _EXTRUDER_OFFSET_ACTION_") + step + "_T" +
+                              std::to_string(t));
+        }
+    }
+    helix::PrinterDiscovery u1;
+    u1.parse_objects(objects);
+    get_printer_state().set_hardware(u1);
+
+    int starts = 0;
+    helix::ui::register_guided_device_flow(helix::snapmaker::nozzle_offset::kGuidedFlowId,
+                                           {nullptr, [&](const std::string&) { ++starts; }});
+    helix::ui::open_tool_offset_cal_panel(test_screen());
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(starts == 1);
+    auto& caps = get_printer_state().capabilities_state();
+    CHECK(lv_subject_get_int(caps.subject(helix::Capability::HasToolOffsetCal)) == 1);
+    CHECK(lv_subject_get_int(caps.subject(helix::Capability::ToolOffsetCalIsBeta)) == 0);
+
+    helix::ui::unregister_guided_device_flow(helix::snapmaker::nozzle_offset::kGuidedFlowId);
+    get_printer_state().set_hardware(helix::PrinterDiscovery{});
 }
