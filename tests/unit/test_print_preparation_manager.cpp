@@ -6,13 +6,16 @@
 #include "ui_pre_print_options_renderer.h"
 #include "ui_print_preparation_manager.h"
 
+#include "../fake_moonraker_client.h"
 #include "../helix_test_fixture.h"
 #include "../lvgl_test_fixture.h"
 #include "../mocks/mock_websocket_server.h"
 #include "../test_helpers/mock_printer.h"
+#include "../test_helpers/moonraker_manager_test_access.h"
 #include "../test_helpers/planted_gcode.h"
 #include "../test_helpers/preprint_config_scope.h"
 #include "../test_helpers/print_preparation_manager_test_access.h"
+#include "../test_helpers/print_start_collector_test_access.h"
 #include "../test_helpers/printer_state_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
@@ -27,11 +30,13 @@
 #include "moonraker_client.h"
 #include "moonraker_client_mock.h"
 #include "moonraker_error.h"
+#include "moonraker_manager.h"
 #include "operation_registry.h"
 #include "pre_start_exclude.h"
 #include "preprint_predictor.h"
 #include "print_start_analyzer.h"
 #include "print_start_checks.h"
+#include "print_start_collector.h"
 #include "printer_detector.h"
 #include "printer_discovery.h"
 #include "printer_state.h"
@@ -4593,4 +4598,43 @@ TEST_CASE_METHOD(HelixTestFixture,
     });
     CHECK(PrintPreparationManagerTestAccess::skipped_preprint_phases(manager) ==
           std::set<int>{static_cast<int>(helix::PrintStartPhase::BED_MESH)});
+}
+
+TEST_CASE_METHOD(HelixTestFixture,
+                 "PrintPreparationManager: starting a print hands its skipped phases to the "
+                 "collector",
+                 "[print_preparation][estimate]") {
+    lv_init_safe();
+    MoonrakerManager moonraker;
+    MoonrakerManagerTestAccess::install_client(
+        moonraker, std::make_unique<helix::test::FakeMoonrakerClient>());
+    moonraker.init_print_start_collector();
+    const auto collector = moonraker.print_start_collector();
+    REQUIRE(collector);
+    set_moonraker_manager(&moonraker);
+    struct Uninstall {
+        ~Uninstall() {
+            set_moonraker_manager(nullptr);
+        }
+    } uninstall;
+    REQUIRE_FALSE(PrintStartCollectorTestAccess::skipped_phases(*collector).has_value());
+
+    MockPrinter mock_printer;
+    PrintPreparationManager manager;
+    manager.set_dependencies(&mock_printer.api, &mock_printer.state);
+    // bed_mesh off, qgl on, the rest not shown.
+    manager.set_option_state_provider([](const std::string& id) {
+        return id == "bed_mesh" ? 0 : id == "qgl" ? 1 : -1;
+    });
+
+    // The file's own scan, so the start can act on the steps turned off.
+    PrintPreparationManagerTestAccess::keep_scan(manager, "part.gcode", gcode::ScanResult{});
+
+    manager.start_print("part.gcode", "", []() {}, [](bool, const std::string&) {});
+    helix::ui::UpdateQueue::instance().drain();
+
+    const auto told = PrintStartCollectorTestAccess::skipped_phases(*collector);
+    REQUIRE(told.has_value());
+    CHECK(*told == std::set<int>{static_cast<int>(helix::PrintStartPhase::BED_MESH)});
+    manager.set_dependencies(nullptr, nullptr);
 }

@@ -49,6 +49,9 @@
 #include "gcode_ops_detector.h"
 #include "gcode_parser.h"
 #include "helix-xml/src/xml/lv_xml.h"
+#include "moonraker_api_mock.h"
+#include "moonraker_client_mock.h"
+#include "moonraker_file_api.h"
 #include "pre_print_option.h"
 #include "preflight_validator.h"
 #include "printer_discovery.h"
@@ -1495,6 +1498,117 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a file's late metadata never lands on the n
     view.hide();
     helix::ui::UpdateQueue::instance().drain();
     lv_timer_handler();
+}
+
+namespace {
+
+/// Holds every metadata request until the test answers it by path.
+class HeldMetadataFileAPI : public MoonrakerFileAPI {
+  public:
+    using MoonrakerFileAPI::MoonrakerFileAPI;
+
+    void get_file_metadata(const std::string& filename, FileMetadataCallback on_success,
+                           ErrorCallback /*on_error*/, bool /*silent*/ = false) override {
+        held.emplace_back(filename, std::move(on_success));
+    }
+
+    /// Answers every held request for @p filename; returns how many there were.
+    int answer(const std::string& filename, const FileMetadata& metadata) {
+        int answered = 0;
+        for (const auto& [name, on_success] : held) {
+            if (name == filename && on_success) {
+                on_success(metadata);
+                ++answered;
+            }
+        }
+        return answered;
+    }
+
+    std::vector<std::pair<std::string, FileMetadataCallback>> held;
+};
+
+class HeldMetadataAPI : public MoonrakerAPIMock {
+  public:
+    HeldMetadataAPI(MoonrakerClientMock& client, helix::PrinterState& state)
+        : MoonrakerAPIMock(client, state) {
+        file_api_ = std::make_unique<HeldMetadataFileAPI>(client);
+    }
+
+    HeldMetadataFileAPI& metadata() {
+        return static_cast<HeldMetadataFileAPI&>(*file_api_);
+    }
+};
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "the metadata fetch sets the estimate for the file shown, and only that file",
+                 "[print_select][detail][xml][estimate]") {
+    CacheDirGuard guard;
+
+    register_xml_callbacks({
+        {"on_print_select_detail_backdrop", detail_noop_cb},
+        {"on_print_select_print_button", detail_noop_cb},
+        {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
+        {"on_print_detail_back_clicked", detail_noop_cb},
+        {"on_toggle_sliced_colors", detail_noop_cb},
+        {"on_print_select_detail_objects", detail_noop_cb},
+    });
+
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24);
+    helix::PrinterState state;
+    state.init_subjects(false);
+    HeldMetadataAPI api(client, state);
+
+    helix::ui::PrintSelectDetailView view;
+    view.init_subjects();
+    lv_obj_t* const root = view.create(test_screen());
+    REQUIRE(root != nullptr);
+    REQUIRE(PrintSelectDetailViewTestAccess::gcode_viewer(view) != nullptr);
+    view.set_dependencies(&api, &state);
+    struct CloseOnExit {
+        helix::ui::PrintSelectDetailView& v;
+        ~CloseOnExit() {
+            v.hide();
+            helix::ui::UpdateQueue::instance().drain();
+            lv_timer_handler();
+            v.set_dependencies(nullptr, &get_printer_state());
+        }
+    } closer{view};
+    lv_subject_t* const estimate = view.get_prep_manager()->get_preprint_estimate_subject();
+
+    FileMetadata a;
+    a.filename = "sub/a.gcode";
+    a.first_layer_bed_temp = 110.0;
+    a.first_layer_extr_temp = 280.0;
+
+    view.show("a.gcode", "sub", "PLA");
+    helix::ui::UpdateQueue::instance().drain();
+    process_lvgl(20);
+    REQUIRE(lv_subject_get_int(estimate) == 0);
+
+    SECTION("the shown file's answer sets its metadata and estimate") {
+        REQUIRE(api.metadata().answer("sub/a.gcode", a) > 0);
+        helix::ui::UpdateQueue::instance().drain();
+        process_lvgl(20);
+        REQUIRE(view.get_file_metadata().has_value());
+        CHECK(view.get_file_metadata()->first_layer_bed_temp == 110.0);
+        CHECK(lv_subject_get_int(estimate) > 0);
+    }
+
+    SECTION("an answer arriving after the view moved on to another file is dropped") {
+        view.show("b.gcode", "sub", "PLA");
+        helix::ui::UpdateQueue::instance().drain();
+        process_lvgl(20);
+        REQUIRE(view.current_file_key() == "sub/b.gcode");
+
+        REQUIRE(api.metadata().answer("sub/a.gcode", a) > 0);
+        helix::ui::UpdateQueue::instance().drain();
+        process_lvgl(20);
+        CHECK_FALSE(view.get_file_metadata().has_value());
+        CHECK(lv_subject_get_int(estimate) == 0);
+    }
 }
 
 namespace {
