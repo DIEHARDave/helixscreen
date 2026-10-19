@@ -132,6 +132,30 @@ TEST_CASE("goertzel_psd removes the mean", "[sweep_preview]") {
     CHECK(d == Approx(c).epsilon(0.01));
 }
 
+TEST_CASE("goertzel_psd and compute_psd read one windowed DFT at a bin", "[sweep_preview]") {
+    // Both spectra read their bins off HannWindowedSignal and differ only in
+    // scale: 2 |X|^2 / (rate sum w^2) against |X|^2 / (n rate).
+    constexpr size_t kN = 2048;
+    constexpr float kRate = 3200.0f;
+    const auto x = sine(kN, 800.0f, 51.0f, kRate, 9810.0f);
+    std::vector<AccelSample> samples(kN);
+    for (size_t i = 0; i < kN; ++i) {
+        samples[i] = {static_cast<float>(i) / kRate, x[i], 0.0f, 0.0f};
+    }
+    const auto belt = compute_psd(samples, kRate, 200.0f);
+    const double sum_w2 = HannWindowedSignal(x.data(), kN).sum_w2();
+    REQUIRE(sum_w2 > 0.0);
+
+    for (size_t k : {20u, 33u, 60u}) {
+        REQUIRE(k - 1 < belt.size());
+        const float freq = static_cast<float>(k) * kRate / static_cast<float>(kN);
+        const double preview = goertzel_psd(x.data(), kN, freq, kRate);
+        REQUIRE(preview > 0.0);
+        CHECK(belt[k - 1].second ==
+              Approx(preview * sum_w2 / (2.0 * static_cast<double>(kN))).epsilon(1e-4));
+    }
+}
+
 TEST_CASE("goertzel_psd is 0 for empty or meaningless input", "[sweep_preview]") {
     const std::vector<float> zeros(3200, 0.0f);
     CHECK(goertzel_psd(zeros.data(), zeros.size(), 50.0f, 3200.0f) == 0.0f);

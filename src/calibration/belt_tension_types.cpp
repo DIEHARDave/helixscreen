@@ -342,6 +342,61 @@ std::vector<AccelSample> parse_accel_csv(const std::string& csv_data) {
 }
 
 // ============================================================================
+// HannWindowedSignal
+// ============================================================================
+
+HannWindowedSignal::HannWindowedSignal(const float* x, size_t n) {
+    if (x == nullptr || n < 2) {
+        return;
+    }
+
+    double mean = 0.0;
+    for (size_t i = 0; i < n; ++i) {
+        mean += x[i];
+    }
+    mean /= static_cast<double>(n);
+
+    // The window's cosine advances by a fixed rotation per sample, so the loop
+    // needs no cos call.
+    const double window_step = 2.0 * M_PI / static_cast<double>(n - 1);
+    const double wc = std::cos(window_step);
+    const double ws = std::sin(window_step);
+    double win_re = 1.0; // cos(window_step * i)
+    double win_im = 0.0;
+    v_.resize(n);
+    for (size_t i = 0; i < n; ++i) {
+        const double w = 0.5 - 0.5 * win_re;
+        v_[i] = (static_cast<double>(x[i]) - mean) * w;
+        sum_w2_ += w * w;
+
+        const double nwr = win_re * wc - win_im * ws;
+        win_im = win_re * ws + win_im * wc;
+        win_re = nwr;
+    }
+}
+
+double HannWindowedSignal::power(double omega) const {
+    // exp(-j omega i) advances by complex multiplication rather than a cos/sin
+    // per sample (5.8x faster on an Allwinner H616). It is double because a
+    // float phasor accumulates enough rotation error over thousands of samples
+    // to smear the peak.
+    const double bc = std::cos(omega);
+    const double bs = std::sin(omega);
+    double ph_re = 1.0;
+    double ph_im = 0.0;
+    double acc_re = 0.0;
+    double acc_im = 0.0;
+    for (const double v : v_) {
+        acc_re += v * ph_re;
+        acc_im += v * ph_im;
+        const double npr = ph_re * bc + ph_im * bs;
+        ph_im = ph_im * bc - ph_re * bs;
+        ph_re = npr;
+    }
+    return acc_re * acc_re + acc_im * acc_im;
+}
+
+// ============================================================================
 // compute_psd()
 // ============================================================================
 
@@ -386,55 +441,17 @@ std::vector<std::pair<float, float>> compute_psd(const std::vector<AccelSample>&
 
     psd.resize(max_bin, {0.0f, 0.0f});
 
-    // Process each axis independently: extract signal, remove DC, apply window, DFT
+    // Process each axis independently, accumulating power into psd.
+    std::vector<float> signal(n);
     auto process_axis = [&](auto accessor) {
-        std::vector<float> signal(n);
         for (size_t i = 0; i < n; ++i) {
             signal[i] = accessor(samples[i]);
         }
-
-        // Remove DC offset
-        float mean = std::accumulate(signal.begin(), signal.end(), 0.0f) / static_cast<float>(n);
-        for (auto& s : signal) {
-            s -= mean;
-        }
-
-        // Apply Hanning window
-        for (size_t i = 0; i < n; ++i) {
-            float window =
-                0.5f * (1.0f - std::cos(2.0f * static_cast<float>(M_PI) * static_cast<float>(i) /
-                                        static_cast<float>(n - 1)));
-            signal[i] *= window;
-        }
-
-        // DFT for this axis, accumulate power into psd.
-        //
-        // exp(-j*omega*i) is advanced by complex multiplication rather than
-        // recomputed per sample. Measured 5.8x faster on an Allwinner H616.
-        // The accumulators are double deliberately: a float phasor accumulates
-        // enough rotation error over thousands of samples to smear the peak.
+        const HannWindowedSignal windowed(signal.data(), n);
+        const double scale = static_cast<double>(n) * sample_rate;
         for (size_t k = 1; k <= max_bin; ++k) {
             const double omega = 2.0 * M_PI * static_cast<double>(k) / static_cast<double>(n);
-            const double step_cos = std::cos(omega);
-            const double step_sin = std::sin(omega);
-
-            double phasor_cos = 1.0; // angle 0
-            double phasor_sin = 0.0;
-            double real = 0.0;
-            double imag = 0.0;
-
-            for (size_t i = 0; i < n; ++i) {
-                const double s = signal[i];
-                real += s * phasor_cos;
-                imag -= s * phasor_sin;
-                const double next_cos = phasor_cos * step_cos - phasor_sin * step_sin;
-                phasor_sin = phasor_cos * step_sin + phasor_sin * step_cos;
-                phasor_cos = next_cos;
-            }
-
-            const double power =
-                (real * real + imag * imag) / (static_cast<double>(n) * sample_rate);
-            psd[k - 1].second += static_cast<float>(power);
+            psd[k - 1].second += static_cast<float>(windowed.power(omega) / scale);
         }
     };
 

@@ -54,53 +54,25 @@ float sweep_column_value(const SweepPoint& point, SweepColumn column) {
     return kNaNf;
 }
 
+namespace {
+
+/// goertzel_psd()'s density at `freq_hz` from an already windowed signal.
+float windowed_psd(const HannWindowedSignal& signal, float freq_hz, float rate_hz) {
+    if (signal.size() < 2 || !(rate_hz > 0.0f) || !(freq_hz > 0.0f) || signal.sum_w2() <= 0.0) {
+        return 0.0f;
+    }
+    const double omega = 2.0 * kPi * static_cast<double>(freq_hz) / static_cast<double>(rate_hz);
+    return static_cast<float>(2.0 * signal.power(omega) /
+                              (static_cast<double>(rate_hz) * signal.sum_w2()));
+}
+
+} // namespace
+
 float goertzel_psd(const float* x, size_t n, float freq_hz, float rate_hz) {
     if (n < 2 || !(rate_hz > 0.0f) || !(freq_hz > 0.0f)) {
         return 0.0f;
     }
-
-    double mean = 0.0;
-    for (size_t i = 0; i < n; ++i) {
-        mean += x[i];
-    }
-    mean /= static_cast<double>(n);
-
-    // Hann window and the bin's phasor both advance by a fixed rotation per
-    // sample, so neither needs a cos/sin call inside the loop.
-    const double window_step = 2.0 * kPi / static_cast<double>(n - 1);
-    const double bin_step = 2.0 * kPi * static_cast<double>(freq_hz) / static_cast<double>(rate_hz);
-    const double wc = std::cos(window_step);
-    const double ws = std::sin(window_step);
-    const double bc = std::cos(bin_step);
-    const double bs = std::sin(bin_step);
-
-    double win_re = 1.0; // cos(window_step * i)
-    double win_im = 0.0;
-    double ph_re = 1.0; // e^{-j bin_step i}
-    double ph_im = 0.0;
-    double acc_re = 0.0;
-    double acc_im = 0.0;
-    double sum_w2 = 0.0;
-    for (size_t i = 0; i < n; ++i) {
-        const double w = 0.5 - 0.5 * win_re;
-        const double v = (static_cast<double>(x[i]) - mean) * w;
-        acc_re += v * ph_re;
-        acc_im += v * ph_im;
-        sum_w2 += w * w;
-
-        const double nwr = win_re * wc - win_im * ws;
-        win_im = win_re * ws + win_im * wc;
-        win_re = nwr;
-        const double npr = ph_re * bc + ph_im * bs;
-        ph_im = ph_im * bc - ph_re * bs;
-        ph_re = npr;
-    }
-    if (sum_w2 <= 0.0) {
-        return 0.0f;
-    }
-    const double power =
-        2.0 * (acc_re * acc_re + acc_im * acc_im) / (static_cast<double>(rate_hz) * sum_w2);
-    return static_cast<float>(power);
+    return windowed_psd(HannWindowedSignal(x, n), freq_hz, rate_hz);
 }
 
 std::optional<float> find_drive_hz(const AccelSample* samples, size_t n, float rate_hz,
@@ -127,19 +99,21 @@ std::optional<float> find_drive_hz(const AccelSample* samples, size_t n, float r
         return std::nullopt;
     }
 
-    std::array<std::vector<float>, 3> axes;
-    for (auto& a : axes) {
-        a.resize(n);
-    }
-    for (size_t i = 0; i < n; ++i) {
-        axes[0][i] = samples[i].x;
-        axes[1][i] = samples[i].y;
-        axes[2][i] = samples[i].z;
-    }
+    // Each axis is windowed once and read at every grid and reference frequency.
+    std::vector<float> axis(n);
+    auto windowed_axis = [&](float AccelSample::*field) {
+        for (size_t i = 0; i < n; ++i) {
+            axis[i] = samples[i].*field;
+        }
+        return HannWindowedSignal(axis.data(), n);
+    };
+    const std::array<HannWindowedSignal, 3> axes{windowed_axis(&AccelSample::x),
+                                                 windowed_axis(&AccelSample::y),
+                                                 windowed_axis(&AccelSample::z)};
     auto power_at = [&](float f) {
         double p = 0.0;
         for (const auto& a : axes) {
-            p += goertzel_psd(a.data(), n, f, rate_hz);
+            p += windowed_psd(a, f, rate_hz);
         }
         return p;
     };
