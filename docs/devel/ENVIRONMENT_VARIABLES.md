@@ -145,7 +145,7 @@ Override the automatic display backend detection.
 |----------|-------|
 | **Values** | `sdl`, `drm`, `fbdev`, `egl` |
 | **Default** | `fbdev` (CPU rendering, maximum compatibility) |
-| **File** | `src/api/display_backend.cpp`, `scripts/helix-launcher.sh#select_binary` |
+| **File** | `src/api/display_backend.cpp`, `scripts/helix-launcher.sh#app_display_backend` |
 
 **Backend comparison:**
 
@@ -158,9 +158,11 @@ Override the automatic display backend detection.
 
 The `drm` backend uses DRM (Direct Rendering Manager) dumb buffers with a vsynced page flip, which avoids tearing that a plain memory copy can show. Rendering itself is CPU-based on both `drm` and `fbdev`. The `fbdev` backend is the safe default that works everywhere, including SPI displays that lack DRM support.
 
-`egl` is different in kind from the other three: it names a **separate binary**, `helix-screen-egl`, not a runtime switch inside one. Which of LVGL's two DRM drivers a binary carries is compiled in, so the launcher picks a binary rather than a mode. Setting `HELIX_DISPLAY_BACKEND=egl` tells `scripts/helix-launcher.sh` to run that binary without probing first; the launcher then exports `HELIX_DISPLAY_BACKEND=drm` for the app itself, because the EGL binary still presents through LVGL's DRM driver.
+`egl` is the DRM backend presenting through LVGL's EGL driver instead of dumb buffers. The Pi builds link both drivers into `helix-screen`, and the app picks one from this variable; a binary without the EGL path (x86, every single-binary platform) logs that and auto-detects. Setting `HELIX_DISPLAY_BACKEND=egl` tells `scripts/helix-launcher.sh` to take the EGL rung without probing first.
 
-Left unset, the launcher runs `helix-screen-egl --probe-egl` and takes the EGL rung only when that exits 0, which requires a hardware renderer — a context that resolves to llvmpipe is refused, since it would spend CPU to save CPU. A board whose probe declines steps down to `drm`, never straight to `fbdev`. See `docs/devel/GPU_ACCELERATION.md` for what the rung is worth per board.
+Left unset on a board with a `/dev/dri/card*`, the launcher runs `helix-screen --probe-egl` and exports `egl` only when that exits 0, which requires a hardware renderer — a context that resolves to llvmpipe is refused, since it would spend CPU to save CPU. A board whose probe declines steps down to `drm`, never straight to `fbdev`; a crash steps down one rung the same way (`egl` to `drm`, `drm` to `fbdev`). A build with no rungs answers the probe with 2 and auto-detects. See `docs/devel/GPU_ACCELERATION.md` for what the rung is worth per board.
+
+The Pi and x86 builds are one binary with no load-time dependency on libdrm, libinput, libEGL, libGLESv2 or libgbm: they load at runtime (`mk/implib.mk`, `include/gpu_libs.h`). On a system missing any of them, `drm` and `egl` report unavailable and the app falls back to `fbdev` in-process. `HELIX_DRI_DIR` replaces `/dev/dri` for the launcher's card check, for tests.
 
 ```bash
 # Force SDL backend (useful for debugging on embedded systems)
@@ -683,7 +685,7 @@ Shortest sleep the main loop takes between `lv_timer_handler()` calls. The loop 
 
 ### `HELIX_EGL_VSYNC`
 
-EGL presentation mode on the DRM backend (`helix-screen-egl`). By default the flush waits for the in-flight flip, so every rendered frame reaches the screen; the cost is that the LVGL thread blocks for up to one refresh interval inside the flush. `0` turns the wait off: a frame finished while the previous page flip is still in flight then waits as pending, and the next frame replaces it before it is ever shown, so an animation can skip frames or leave its last frame unshown. Flips are latched to vblank either way, so neither mode tears.
+EGL presentation mode on the DRM backend (`HELIX_DISPLAY_BACKEND=egl`). By default the flush waits for the in-flight flip, so every rendered frame reaches the screen; the cost is that the LVGL thread blocks for up to one refresh interval inside the flush. `0` turns the wait off: a frame finished while the previous page flip is still in flight then waits as pending, and the next frame replaces it before it is ever shown, so an animation can skip frames or leave its last frame unshown. Flips are latched to vblank either way, so neither mode tears.
 
 | Property | Value |
 |----------|-------|
@@ -696,7 +698,7 @@ The dumb-buffer DRM binary (`helix-screen`) already waits for every page flip; t
 
 ### `HELIX_EGL_PARTIAL_UPLOAD`
 
-How much of each frame the EGL presentation path (`helix-screen-egl`) copies into the display texture. By default only the areas LVGL flushed are uploaded. `0` uploads the whole buffer every frame, however little of it changed. The first frame, a frame into a recreated or resized texture, and the frame after pixels changed outside the flush path still upload the whole buffer: the flush callback put back after the splash or a panel power-off, and a color transform change.
+How much of each frame the EGL presentation path (`HELIX_DISPLAY_BACKEND=egl`) copies into the display texture. By default only the areas LVGL flushed are uploaded. `0` uploads the whole buffer every frame, however little of it changed. The first frame, a frame into a recreated or resized texture, and the frame after pixels changed outside the flush path still upload the whole buffer: the flush callback put back after the splash or a panel power-off, and a color transform change.
 
 Uploading a sub-rectangle needs `GL_UNPACK_ROW_LENGTH` (OpenGL ES 3, or `GL_EXT_unpack_subimage` on OpenGL ES 2). A GL driver without it keeps uploading whole frames and logs a warning. A driver may also make an upload wait while the previous frame still draws from the texture; `0` is the way out on such a driver.
 
@@ -711,7 +713,7 @@ A stale region after waking the panel or leaving the splash is the failure to lo
 
 ### `HELIX_EGL_XRGB`
 
-Pixel format of the display on the EGL presentation path (`helix-screen-egl`). LVGL's 32 bpp format is XRGB8888, whose fourth byte LVGL leaves undefined, and this path would present that byte as alpha (`docs/devel/GPU_ACCELERATION.md` § "The alpha trap"). By default the display stays XRGB8888 and the display shader ignores the fourth byte, and LVGL then skips clearing each area before redrawing it. `0` switches the display to ARGB8888 so LVGL keeps the byte a real alpha instead.
+Pixel format of the display on the EGL presentation path (`HELIX_DISPLAY_BACKEND=egl`). LVGL's 32 bpp format is XRGB8888, whose fourth byte LVGL leaves undefined, and this path would present that byte as alpha (`docs/devel/GPU_ACCELERATION.md` § "The alpha trap"). By default the display stays XRGB8888 and the display shader ignores the fourth byte, and LVGL then skips clearing each area before redrawing it. `0` switches the display to ARGB8888 so LVGL keeps the byte a real alpha instead.
 
 | Property | Value |
 |----------|-------|

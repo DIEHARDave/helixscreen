@@ -382,6 +382,37 @@ TEST_CASE("Virtual dispatch: is_gpu_accelerated reflects the override, defaults 
     }
 }
 
+TEST_CASE("HELIX_DISPLAY_BACKEND names a display path", "[display][fallback]") {
+    CHECK(helix::parse_forced_display_backend(nullptr) == helix::ForcedDisplayBackend::None);
+    CHECK(helix::parse_forced_display_backend("drm") == helix::ForcedDisplayBackend::Drm);
+    // The launcher's EGL rung: the same binary, presenting through EGL.
+    CHECK(helix::parse_forced_display_backend("egl") == helix::ForcedDisplayBackend::DrmEgl);
+    CHECK(helix::parse_forced_display_backend("fbdev") == helix::ForcedDisplayBackend::Fbdev);
+    CHECK(helix::parse_forced_display_backend("fb") == helix::ForcedDisplayBackend::Fbdev);
+    CHECK(helix::parse_forced_display_backend("sdl") == helix::ForcedDisplayBackend::Sdl);
+    CHECK(helix::parse_forced_display_backend("") == helix::ForcedDisplayBackend::Unknown);
+    CHECK(helix::parse_forced_display_backend("EGL") == helix::ForcedDisplayBackend::Unknown);
+    CHECK(helix::parse_forced_display_backend("drm ") == helix::ForcedDisplayBackend::Unknown);
+}
+
+TEST_CASE("The watchdog's splash decision: DRM owns the panel only when it is available",
+          "[display][fallback]") {
+    using helix::drm_will_own_panel;
+    using helix::ForcedDisplayBackend;
+    // Both DRM presentation paths skip the fbdev splash when DRM is usable.
+    CHECK(drm_will_own_panel(ForcedDisplayBackend::Drm, true));
+    CHECK(drm_will_own_panel(ForcedDisplayBackend::DrmEgl, true));
+    CHECK(drm_will_own_panel(ForcedDisplayBackend::None, true));
+    CHECK(drm_will_own_panel(ForcedDisplayBackend::Unknown, true));
+    // A forced drm or egl rung without DRM falls back to fbdev, which needs the splash.
+    CHECK_FALSE(drm_will_own_panel(ForcedDisplayBackend::Drm, false));
+    CHECK_FALSE(drm_will_own_panel(ForcedDisplayBackend::DrmEgl, false));
+    CHECK_FALSE(drm_will_own_panel(ForcedDisplayBackend::None, false));
+    // fbdev and SDL never present through DRM.
+    CHECK_FALSE(drm_will_own_panel(ForcedDisplayBackend::Fbdev, true));
+    CHECK_FALSE(drm_will_own_panel(ForcedDisplayBackend::Sdl, true));
+}
+
 TEST_CASE("Backend fallback: all backends exhausted returns failure",
           "[display][fallback][crash_hardening]") {
     // When both DRM and fbdev fail, init() should return false

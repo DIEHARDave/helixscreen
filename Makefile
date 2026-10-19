@@ -933,8 +933,9 @@ else ifneq ($(CROSS_COMPILE)$(filter x86 x86-fbdev x86-both,$(PLATFORM_TARGET)),
     endif
     # Add target-specific linker flags (e.g., -lstdc++fs for GCC 8)
     LDFLAGS += $(TARGET_LDFLAGS)
-    # DRM backend requires libdrm for display; libinput for LVGL input drivers
-    ifeq ($(DISPLAY_BACKEND),drm)
+    # DRM backend requires libdrm for display; libinput for LVGL input drivers.
+    # A DLOPEN_GPU_LIBS build loads all of them at runtime instead (mk/implib.mk).
+    ifeq ($(DISPLAY_BACKEND)-$(DLOPEN_GPU_LIBS),drm-)
         LDFLAGS += -ldrm
         ifneq ($(SNAPMAKER_SKIP_LIBINPUT),yes)
             LDFLAGS += -linput
@@ -996,7 +997,7 @@ else
     LDFLAGS := $(LDFLAGS_COMMON) $(WPA_CLIENT_LIB) $(SYSTEMD_LIBS) -lusb-1.0 $(LINUX_SSL_LIBS) -ldl -lstdc++fs
     CXXFLAGS += -isystem /usr/include/libusb-1.0 -DHELIX_HAS_LIBUSB=1
     # The 3D G-code renderer gets GLES2 from the context SDL creates
-    # (gles2_sdl_loader.h), so no -lGLESv2: a desktop without it still starts.
+    # (gles2_loader.h), so no -lGLESv2: a desktop without it still starts.
     PLATFORM := Linux
     WPA_DEPS := $(WPA_CLIENT_LIB)
 endif
@@ -1387,13 +1388,31 @@ screenshots: $(BIN)
 #   .debug  — DWARF debug info for addr2line (file:line, inlined frames)
 # =============================================================================
 OBJCOPY_CMD := $(CROSS_COMPILE)objcopy
+READELF_CMD := $(CROSS_COMPILE)readelf
+
+# Writes $(1).sym and $(1).debug from binary $(1) while it still has a symbol
+# table. Every build reaches this step, including one that relinked nothing, and
+# by then the binary is the stripped one from the last build: reading it again
+# would overwrite the maps with empty files. So a stripped binary keeps the maps
+# its link wrote, and a stripped binary with no map, or an empty map, fails the
+# build, since crash reports from it could not be symbolized.
+define extract-symbols
+	@if $(READELF_CMD) -S $(1) | grep -q '\.symtab'; then \
+		$(NM_CMD) -nC $(1) > $(1).sym && \
+		$(OBJCOPY_CMD) --only-keep-debug $(1) $(1).debug && \
+		echo "Symbol map: $(1).sym, debug info: $(1).debug"; \
+	elif [ -s $(1).sym ]; then \
+		echo "$(1) is already stripped; keeping the symbol map from its link"; \
+	else \
+		echo "$(RED)$(BOLD)ERROR: $(1) has no symbol table and no symbol map from its link$(RESET)"; \
+		exit 1; \
+	fi
+	@test -s $(1).sym || { echo "$(RED)$(BOLD)ERROR: $(1).sym is empty$(RESET)"; exit 1; }
+endef
 
 symbols: $(TARGET)
 ifeq ($(STRIP_BINARY),yes)
-	$(NM_CMD) -nC $(TARGET) > $(TARGET).sym
-	@echo "Symbol map: $(TARGET).sym"
-	$(OBJCOPY_CMD) --only-keep-debug $(TARGET) $(TARGET).debug
-	@echo "Debug info: $(TARGET).debug ($(shell du -h $(TARGET).debug 2>/dev/null | cut -f1 || echo '?'))"
+	$(call extract-symbols,$(TARGET))
 else
 	@echo "STRIP_BINARY not set — skipping symbol extraction"
 endif
@@ -1480,6 +1499,7 @@ include mk/tests.mk
 include mk/images.mk
 include mk/format.mk
 include mk/tools.mk
+include mk/implib.mk
 include mk/display-lib.mk
 include mk/bluetooth.mk
 include mk/splash.mk
@@ -1491,6 +1511,9 @@ endif
 ifdef PI_DUAL_LINK
 include mk/pi-dual-link.mk
 endif
+# The objects the EGL presentation path adds to the DRM link; empty where the
+# binary carries none.
+EGL_PATH_OBJS :=
 ifeq ($(ENABLE_EGL_RUNG),yes)
 include mk/egl-link.mk
 endif

@@ -48,8 +48,8 @@ start)
         sleep 1
     done
     echo "DEVICE_VERSION $("$INSTALL/bin/helix-screen" --version 2>&1 | head -n 1)"
-    echo "DEVICE_RUNG $(ps -eo args | grep -o "[/]${INSTALL#/}/bin/helix-screen[-a-z]*" | grep -v watchdog | sort -u | tr '\n' ' ')"
-    echo "DEVICE_EGL_SHA $(sha256sum "$INSTALL/bin/helix-screen-egl" | cut -c1-16)"
+    echo "DEVICE_RUNG $(sudo_ cat "/proc/$(helix_pid)/environ" 2>/dev/null | tr '\0' '\n' | sed -n 's/^HELIX_DISPLAY_BACKEND=//p')"
+    echo "DEVICE_SHA $(sha256sum "$INSTALL/bin/helix-screen" | cut -c1-16)"
     if ctl_answers; then
         echo DEPLOY_OK
     else
