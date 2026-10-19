@@ -3499,11 +3499,17 @@ CPP
 }
 
 # A device action naming a guided flow is refused when the flow is unregistered, so every
-# boot path that registers XML components must also register the flows.
+# boot path that registers XML components must also register every family of flows the
+# guided-flow header declares.
 @test "every boot path registers the guided device flows" {
-    local f
+    local f fn
+    local -a families
+    mapfile -t families < <(grep -oE 'register_[a-z0-9_]+_device_flows\(\);' include/ui_guided_device_flow.h)
+    [ "${#families[@]}" -ge 2 ] || fail "found ${#families[@]} flow families in include/ui_guided_device_flow.h"
     for f in src/application/application.cpp firmware/helixscreen-esp32/components/helixapp/app_boot.cpp; do
-        run grep -c 'register_cfs_device_flows();' "$f"
-        [ "$output" = "1" ] || fail "$f does not register the CFS guided flows"
+        for fn in "${families[@]}"; do
+            run grep -cF "$fn" "$f"
+            [ "$output" = "1" ] || fail "$f does not call ${fn%;}"
+        done
     done
 }
