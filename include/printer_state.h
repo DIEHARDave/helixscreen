@@ -89,6 +89,9 @@ enum class KlippyState {
  */
 std::optional<KlippyState> parse_klippy_state(std::string_view state);
 
+/// The inverse of parse_klippy_state(): Klipper's own name for `state`.
+const char* klippy_state_name(KlippyState state);
+
 /**
  * @brief Print job state (from Moonraker print_stats.state)
  *

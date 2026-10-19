@@ -609,7 +609,8 @@ Fields (`src/plugin/lua_bind_printer.cpp#printer_fields`):
 
 | Name | Type |
 |---|---|
-| `connected` | boolean |
+| `connected` | boolean: the Moonraker connection |
+| `klippy_state` | string: Klipper's own state, `"ready"`, `"startup"`, `"shutdown"` or `"error"` |
 | `print_state` | string |
 | `progress` | integer (percent) |
 | `filename` | string |
@@ -619,6 +620,20 @@ Fields (`src/plugin/lua_bind_printer.cpp#printer_fields`):
 
 The table is the contract: these Lua names stay stable while the subjects behind them can
 change. No permission is needed for either call.
+
+`connected` and `klippy_state` answer different questions. Klipper can restart, shut down
+or lose its MCU while Moonraker stays connected, so `connected` stays `true` through all
+of it; `klippy_state` is what tells you Klipper itself is gone. A Klipper that disconnects
+from Moonraker reads `"shutdown"` until it reports again. Anything other than `"ready"`
+means status values may be stale and commands will fail; the value is only meaningful
+while `connected` is `true`. You do not need to re-query on the way back: every
+subscription gets a fresh snapshot when Klipper returns to ready (below).
+
+```lua
+helix.printer.watch("klippy_state", function(state)
+    if state ~= "ready" then show_unavailable() end
+end)
+```
 
 ### helix.moonraker and helix.gcode (`src/plugin/lua_bind_moonraker.cpp`)
 
@@ -651,9 +666,21 @@ and spools-on-bed refusals apply to it too. `err` is the refusal's English messa
 example `Homing is disabled while a print is in progress`.
 
 `subscribe` mirrors Klipper's status subscription: `objects` maps an object name to
-`true` or a field-name list, and `fn(status)` receives a table `{[object] = {field = value}}`.
-The first delivery carries the queried current values; later ones carry each change, so
-the tile always shows what Klipper reports, including changes made elsewhere. The
+`true` or a field-name list, and `fn(status, snapshot)` receives a table
+`{[object] = {field = value}}` and a boolean.
+
+- `snapshot == true`: a full snapshot. It holds every subscribed field of every subscribed
+  object Klipper reports right now, so replace your state with it instead of merging. An
+  object missing from it is not available (not configured, or Klipper is not ready).
+- `snapshot == false`: a change. It holds only the fields that changed; merge it into
+  what you have.
+
+The first delivery is a snapshot of the current values. Every subscription gets another
+whenever the app re-reads the printer: after Moonraker reconnects, after Klipper restarts
+and comes back to ready (`FIRMWARE_RESTART`, a config change, recovery from shutdown),
+and when the app's own subscription changes. So the values a tile shows stay what Klipper
+reports, including changes made elsewhere and fields that never change, with no polling.
+A field you did not subscribe to is never delivered, even when Klipper sends it. The
 returned handle's `cancel` method (`handle:cancel()`) stops it. Limits, each raising an error that names it: at
 most 8 subscriptions per plugin totalling 16 objects, 32 fields per object, object names
 at most 64 bytes of printable ASCII.

@@ -34,6 +34,20 @@ std::optional<KlippyState> parse_klippy_state(std::string_view state) {
     return std::nullopt;
 }
 
+const char* klippy_state_name(KlippyState state) {
+    switch (state) {
+    case KlippyState::READY:
+        return "ready";
+    case KlippyState::STARTUP:
+        return "startup";
+    case KlippyState::SHUTDOWN:
+        return "shutdown";
+    case KlippyState::ERROR:
+        return "error";
+    }
+    return "error";
+}
+
 PrinterNetworkState::PrinterNetworkState() {
     // Initialize string buffer
     std::memset(printer_connection_message_buf_, 0, sizeof(printer_connection_message_buf_));

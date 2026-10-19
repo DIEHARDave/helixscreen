@@ -38,6 +38,9 @@ TEST_CASE("app backend reports no connection instead of crashing", "[plugin][bac
     auto off = b.on_notify("notify_agent_event", [](const json&) {});
     REQUIRE(off);
     off();
+    auto status_off = b.on_status([](const json&) {});
+    REQUIRE(status_off);
+    status_off();
 }
 
 TEST_CASE("app backend rejects roots other than gcodes and config", "[plugin][backend]") {

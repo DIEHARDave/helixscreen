@@ -13,6 +13,7 @@
 #include "hv/requests.h"
 #include "i_moonraker_api.h"
 #include "i_moonraker_client.h"
+#include "json_utils.h"
 #include "moonraker_error.h"
 #include "moonraker_subscription_merge.h"
 #include "plugin_backend.h"
@@ -329,6 +330,22 @@ PluginBackend make_app_backend() {
         return [method, name]() {
             if (auto* a = get_moonraker_api())
                 a->unregister_method_callback(method, name);
+        };
+    };
+
+    b.on_status = [](std::function<void(const json&)> handler) -> std::function<void()> {
+        auto* api = get_moonraker_api();
+        if (!api)
+            return [] {};
+        // The client's status subscribers also see notify_filelist_changed.
+        helix::SubscriptionId id =
+            api->subscribe_notifications([handler = std::move(handler)](const json& msg) {
+                if (helix::json_util::safe_string(msg, "method", "") == "notify_status_update")
+                    handler(msg);
+            });
+        return [id]() {
+            if (auto* a = get_moonraker_api())
+                a->unsubscribe_notifications(id);
         };
     };
 

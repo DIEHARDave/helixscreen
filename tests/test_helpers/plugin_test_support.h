@@ -5,6 +5,7 @@
 
 #if HELIX_HAS_PLUGINS
 
+#include "i_moonraker_client.h"
 #include "lua_bindings.h"
 #include "lua_runtime.h"
 #include "plugin_backend.h"
@@ -19,6 +20,24 @@
 #include <vector>
 
 namespace helix::plugin::test {
+
+/// A printer.objects.query reply as the backend hands it over: the whole JSON-RPC message.
+inline json query_reply(const json& status) {
+    return json{
+        {"jsonrpc", "2.0"}, {"result", {{"eventtime", 1.5}, {"status", status}}}, {"id", 7}};
+}
+
+/// A live notify_status_update frame carrying `status`.
+inline json delta_frame(const json& status) {
+    return json{{"jsonrpc", "2.0"},
+                {"method", "notify_status_update"},
+                {"params", json::array({status, 12.3})}};
+}
+
+/// The whole-object frame the client dispatches after discovery or a subscription refresh.
+inline json whole_objects_frame(const json& status, bool cached) {
+    return helix::make_status_notification(status, cached, /*whole_objects=*/true);
+}
 
 /// A runtime whose faults are recorded instead of acted on.
 struct TestRuntime {
@@ -59,9 +78,12 @@ struct FakeBackend {
     };
     std::vector<Request> requests;
     std::vector<std::pair<std::string, std::function<void(const json&)>>> notify;
+    /// Every on_status handler, which sees every notify_status_update frame.
+    std::vector<std::function<void(const json&)>> status;
     /// Every set_plugin_objects call: (plugin id, its objects map).
     std::vector<std::pair<std::string, json>> object_sets;
     int notify_unregistered = 0;
+    int status_unregistered = 0;
 
     PluginBackend backend() {
         PluginBackend b;
@@ -86,6 +108,10 @@ struct FakeBackend {
         b.on_notify = [this](const std::string& m, std::function<void(const json&)> h) {
             notify.emplace_back(m, std::move(h));
             return std::function<void()>([this] { ++notify_unregistered; });
+        };
+        b.on_status = [this](std::function<void(const json&)> h) {
+            status.push_back(std::move(h));
+            return std::function<void()>([this] { ++status_unregistered; });
         };
         b.set_plugin_objects = [this](const std::string& id, const json& objects) {
             object_sets.emplace_back(id, objects);
