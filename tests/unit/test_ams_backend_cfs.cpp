@@ -3303,7 +3303,7 @@ template <typename BackendT = AmsBackendCfs> struct CfsOverrideRig {
     MoonrakerClientMock client{MoonrakerClientMock::PrinterType::VORON_24};
     helix::PrinterState state;
     std::unique_ptr<MoonrakerAPIMock> api;
-    // Registered, because lane_id() answers INVALID_LANE_ID for a backend
+    // Registered, because lane_id() answers kInvalidLaneId for a backend
     // AmsState does not know, and every lane funnel drops a record addressed
     // to that. Declared after api_ so it is torn down first: clear_backends()
     // destroys the backend, which still holds the api pointer.
@@ -4534,7 +4534,7 @@ json make_unbranded_bay_box(const std::string& bay_a_remain_len) {
                                   {bay_a_remain_len, "-1", "-1", "-1"});
 }
 
-constexpr float EDITED_REMAINING_G = 750.0f;
+constexpr float kEditedRemainingG = 750.0f;
 
 } // namespace
 
@@ -4545,14 +4545,14 @@ TEST_CASE("CFS: a weights-only edit is cleared when its bay reads EMPTY",
     REQUIRE(rig.backend->get_slot_info(0).status == SlotStatus::AVAILABLE);
 
     SlotInfo edit = rig.backend->get_slot_info(0);
-    edit.remaining_weight_g = EDITED_REMAINING_G;
+    edit.remaining_weight_g = kEditedRemainingG;
     helix::test::edit_slot_as_user(*rig.backend, 0, edit);
 
     // The edit stored a record that declares the weight and nothing else, so
     // neither lock nor any identity field can speak for it.
     const auto staged = CfsTestAccess::get_override(*rig.backend, 0);
     REQUIRE(staged.has_value());
-    REQUIRE(staged->remaining_weight_g == EDITED_REMAINING_G);
+    REQUIRE(staged->remaining_weight_g == kEditedRemainingG);
     REQUIRE_FALSE(helix::ams::declares_color(*staged));
     REQUIRE_FALSE(helix::ams::declares_material(*staged));
     REQUIRE(staged->material.empty());
@@ -4565,7 +4565,7 @@ TEST_CASE("CFS: a weights-only edit is cleared when its bay reads EMPTY",
 
     const helix::ams::LaneSources before = helix::ams::lane_sources(rig.registration->lane(0));
     REQUIRE(before.local_user.has_value());
-    REQUIRE(before.local_user->remaining_weight_g == EDITED_REMAINING_G);
+    REQUIRE(before.local_user->remaining_weight_g == kEditedRemainingG);
     REQUIRE_FALSE(before.local_user->color_rgb.has_value());
     REQUIRE_FALSE(before.local_user->material.has_value());
     REQUIRE_FALSE(before.local_user->brand.has_value());
@@ -4585,7 +4585,7 @@ TEST_CASE("CFS: a weight edit that also names a brand survives its bay reading E
     REQUIRE(rig.backend->get_slot_info(0).status == SlotStatus::AVAILABLE);
 
     SlotInfo edit = rig.backend->get_slot_info(0);
-    edit.remaining_weight_g = EDITED_REMAINING_G;
+    edit.remaining_weight_g = kEditedRemainingG;
     edit.brand = "Sunlu";
     helix::test::edit_slot_as_user(*rig.backend, 0, edit);
 
@@ -4602,7 +4602,7 @@ TEST_CASE("CFS: a weight edit that also names a brand survives its bay reading E
     const auto kept = CfsTestAccess::get_override(*rig.backend, 0);
     REQUIRE(kept.has_value());
     CHECK(kept->brand == "Sunlu");
-    CHECK(kept->remaining_weight_g == EDITED_REMAINING_G);
+    CHECK(kept->remaining_weight_g == kEditedRemainingG);
     const helix::ams::LaneSources after = helix::ams::lane_sources(rig.registration->lane(0));
     REQUIRE(after.local_user.has_value());
     CHECK(after.local_user->brand == "Sunlu");
@@ -5068,7 +5068,7 @@ TEST_CASE("CFS load routes the bypass sentinel instead of refusing it", "[ams][c
         // The regression: slot_to_tnn(-2) has no answer, so this refused
         // outright and an external spool could never be loaded from the app —
         // which also left no way to reach the state the bypass UNLOAD needs.
-        REQUIRE(backend.load_filament(helix::ui::EXTERNAL_SPOOL_SLOT).result == AmsResult::SUCCESS);
+        REQUIRE(backend.load_filament(helix::ui::kExternalSpoolSlot).result == AmsResult::SUCCESS);
         REQUIRE(backend.dispatched.size() == 1);
         CHECK(backend.dispatched[0].find("G0 E80 F600") != std::string::npos);
     }
@@ -5193,7 +5193,7 @@ TEST_CASE("CFS unload routes the bypass sentinel away from the bay script", "[am
         backend.mark_running();
         CfsTestAccess::set_loaded_state(backend, /*filament_loaded=*/true, /*current_slot=*/-2);
 
-        REQUIRE(backend.unload_filament(helix::ui::EXTERNAL_SPOOL_SLOT).result ==
+        REQUIRE(backend.unload_filament(helix::ui::kExternalSpoolSlot).result ==
                 AmsResult::SUCCESS);
         REQUIRE(backend.dispatched.size() == 1);
         // The regression: CR_BOX_RETRUDE is keyed on a TNN and silently no-ops
@@ -5220,7 +5220,7 @@ TEST_CASE("CFS unload routes the bypass sentinel away from the bay script", "[am
         CfsTestAccess::set_macro_variant_fork(backend);
         CfsTestAccess::set_loaded_state(backend, true, -2);
 
-        REQUIRE(backend.unload_filament(helix::ui::EXTERNAL_SPOOL_SLOT).result ==
+        REQUIRE(backend.unload_filament(helix::ui::kExternalSpoolSlot).result ==
                 AmsResult::SUCCESS);
         REQUIRE(backend.dispatched.size() == 1);
         CHECK(backend.dispatched[0] == "BOX_UNLOAD");
@@ -5235,7 +5235,7 @@ TEST_CASE("CFS bypass unload completes instead of erroring with filament still d
     CfsRemapHelper backend;
     backend.mark_running();
     CfsTestAccess::set_loaded_state(backend, /*filament_loaded=*/true, /*current_slot=*/-2);
-    REQUIRE(backend.unload_filament(helix::ui::EXTERNAL_SPOOL_SLOT).result == AmsResult::SUCCESS);
+    REQUIRE(backend.unload_filament(helix::ui::kExternalSpoolSlot).result == AmsResult::SUCCESS);
 
     // The end state a bypass unload actually leaves: tip clear of the melt zone,
     // filament still across the toolhead switch, waiting on the user's hand.
@@ -6324,6 +6324,207 @@ TEST_CASE("CFS fork: commands name the firmware slot, not the bay position",
         base.clear_slot_override(6);
         CHECK(backend.captured == std::vector<std::string>{"_BOX_SLOT_CLEAR SLOT=6"});
     }
+}
+
+// Firmware with print mapping registers BOX_SELECT_SLOT, which always names a
+// slot. T<n> names the file's tool during a mapped print, so a manual load sent
+// as T<n> mid-print would feed whatever slot that tool maps to.
+TEST_CASE("CFS fork: manual loads select the slot when the firmware has print mapping",
+          "[ams][cfs][fork][select_slot]") {
+    CfsRemapHelper backend;
+    backend.mark_running();
+    json box = make_gapped_fork_box();
+
+    SECTION("revision 2") {
+        box["api_revision"] = 2;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+
+        SECTION("load") {
+            REQUIRE(backend.load_filament(7).result == AmsResult::SUCCESS);
+            CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=7"});
+        }
+        SECTION("swap") {
+            REQUIRE(backend.change_tool(8).result == AmsResult::SUCCESS);
+            CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=8"});
+        }
+        SECTION("external spool") {
+            box["loaded_slot"] = -1;
+            box["runout"] = nullptr;
+            CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+            REQUIRE(backend.enable_bypass().result == AmsResult::SUCCESS);
+            CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=12"});
+        }
+    }
+
+    SECTION("revision 1 with print_mapping_version 1") {
+        box["print_mapping_version"] = 1;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        REQUIRE(backend.load_filament(7).result == AmsResult::SUCCESS);
+        CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=7"});
+    }
+
+    SECTION("revision 1 without print mapping keeps T<n>") {
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        REQUIRE(backend.load_filament(7).result == AmsResult::SUCCESS);
+        CHECK(backend.dispatched == std::vector<std::string>{"T7"});
+    }
+
+    SECTION("revision 1 without print mapping keeps T<external>") {
+        box["loaded_slot"] = -1;
+        box["runout"] = nullptr;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        REQUIRE(backend.enable_bypass().result == AmsResult::SUCCESS);
+        CHECK(backend.dispatched == std::vector<std::string>{"T12"});
+    }
+
+    SECTION("a delta without the version fields keeps the capability") {
+        box["api_revision"] = 2;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CfsTestAccess::handle_status(backend, make_cfs_notification(json{{"temp_c", 25}}));
+        REQUIRE(backend.load_filament(7).result == AmsResult::SUCCESS);
+        CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=7"});
+    }
+
+    SECTION("stock dialect is unchanged") {
+        CHECK(AmsBackendCfs::load_gcode(7, CfsMacroVariant::K2).find("BOX_SELECT_SLOT") ==
+              std::string::npos);
+        CHECK(AmsBackendCfs::swap_gcode(7, CfsMacroVariant::K1).find("BOX_SELECT_SLOT") ==
+              std::string::npos);
+    }
+}
+
+// BOX_PRINT_MAP sets the tool->slot map for the next print only, so the Fork
+// remap is a pre-print send. Its MAP= is BOX_PRINT_START's: file tool, then
+// global slot, which is our bay index.
+TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
+          "[ams][cfs][fork][print_map]") {
+    CfsRemapHelper backend;
+    backend.mark_running();
+    json box = make_gapped_fork_box();
+
+    SECTION("revision 3 sends the map") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+
+        CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::PrePrintSend);
+        CHECK(backend.requires_preprint_send());
+        CHECK(helix::printer::can_remap(backend));
+        CHECK_FALSE(helix::printer::remap_is_persistent(backend.get_remap_strategy()));
+
+        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 5}, {1, 6}}) ==
+              "BOX_PRINT_MAP MAP=0:5,1:6");
+
+        // The format, apart from which slots this box set can feed.
+        CHECK(AmsBackendCfs::print_map_gcode({0, 1}, {{0, 5}, {1, 2}}) ==
+              "BOX_PRINT_MAP MAP=0:5,1:2");
+        // A used tool the user left alone is still named, at its own slot, so
+        // the map says what the whole print means.
+        CHECK(AmsBackendCfs::print_map_gcode({0, 1, 2}, {{0, 5}}) ==
+              "BOX_PRINT_MAP MAP=0:5,1:1,2:2");
+        // Tool order is the file's, not the remap's insertion order.
+        CHECK(AmsBackendCfs::print_map_gcode({}, {{3, 9}, {1, 6}}) == "BOX_PRINT_MAP MAP=1:6,3:9");
+    }
+
+    SECTION("no remap still sends the identity map for the file's tools") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CHECK(AmsBackendCfs::print_map_gcode({0, 1}, {}) == "BOX_PRINT_MAP MAP=0:0,1:1");
+        CHECK(backend.build_preprint_gcode({0, 1}, {}) == "BOX_PRINT_MAP MAP=0:0,1:1");
+        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 0}, {1, 1}}) ==
+              "BOX_PRINT_MAP MAP=0:0,1:1");
+    }
+
+    SECTION("with the file's tools unknown, no remap sends nothing") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CHECK(backend.build_preprint_gcode({}, {}).empty());
+        CHECK(backend.build_preprint_gcode({}, {{2, 2}}).empty());
+    }
+
+    SECTION("the map names only the file's tools") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CHECK(AmsBackendCfs::print_map_gcode({0}, {{0, 2}, {3, 1}}) == "BOX_PRINT_MAP MAP=0:2");
+        // A tool the file does not use cannot refuse the print either: slot 1
+        // sits in a box this chain does not have.
+        CHECK(backend.check_preprint_remap({0}, {{0, 9}, {3, 1}}).success());
+        CHECK(backend.build_preprint_gcode({0}, {{0, 9}, {3, 1}}) == "BOX_PRINT_MAP MAP=0:9");
+    }
+
+    SECTION("an unremapped start after a remapped one overwrites the pending map") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        REQUIRE(backend.build_preprint_gcode({0, 1}, {{0, 9}, {1, 10}}) ==
+                "BOX_PRINT_MAP MAP=0:9,1:10");
+        CHECK(backend.build_preprint_gcode({0, 1}, {}) == "BOX_PRINT_MAP MAP=0:0,1:1");
+    }
+
+    SECTION("a remap to a slot that cannot feed sends nothing and says why") {
+        box["api_revision"] = 3;
+        box["boxes"] = json::array(
+            {json{{"address", 2}, {"online", false}}, json{{"address", 3}, {"online", true}}});
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+
+        // Box 2 (slots 4-7) is not answering.
+        auto err = backend.check_preprint_remap({0}, {{0, 5}});
+        CHECK(err.result == AmsResult::WRONG_STATE);
+        CHECK(err.slot_index == 5);
+        CHECK(err.user_msg.find("Disconnected") != std::string::npos);
+        CHECK(backend.build_preprint_gcode({0}, {{0, 5}}).empty());
+
+        // Box 1 (slots 0-3) is not on the bus at all.
+        err = backend.check_preprint_remap({0}, {{0, 1}});
+        CHECK(err.result == AmsResult::INVALID_SLOT);
+        CHECK(err.slot_index == 1);
+        CHECK(backend.build_preprint_gcode({0}, {{0, 1}}).empty());
+
+        // One bad target refuses the whole map, not just its own entry.
+        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 9}, {1, 5}}).empty());
+
+        // Box 3 answers.
+        CHECK(backend.check_preprint_remap({0}, {{0, 9}}).success());
+        CHECK(backend.build_preprint_gcode({0}, {{0, 9}}) == "BOX_PRINT_MAP MAP=0:9");
+    }
+
+    SECTION("the pre-print send is not a BOX_MODIFY_TN table write") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CHECK(backend.can_set_tool_mapping(0, 5).result == AmsResult::NOT_SUPPORTED);
+        CHECK(backend.set_tool_mapping(0, 5).result == AmsResult::NOT_SUPPORTED);
+        CHECK(backend.captured.empty());
+    }
+
+    SECTION("revision 2 has no BOX_PRINT_MAP: no remap, no pre-print send") {
+        box["api_revision"] = 2;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::None);
+        CHECK_FALSE(backend.requires_preprint_send());
+        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 5}, {1, 2}}).empty());
+        CHECK(backend.build_preprint_gcode({0, 1}, {}).empty());
+    }
+
+    SECTION("revision 1 has none either") {
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::None);
+        CHECK_FALSE(backend.requires_preprint_send());
+    }
+
+    SECTION("a box that turns stock drops it") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        REQUIRE(backend.requires_preprint_send());
+        CfsTestAccess::handle_status(backend, make_cfs_notification(make_cfs_status_json()["box"]));
+        CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::Native);
+        CHECK_FALSE(backend.requires_preprint_send());
+    }
+}
+
+TEST_CASE("CFS stock keeps its native remap and no pre-print send", "[ams][cfs][print_map]") {
+    CfsRemapHelper backend;
+    CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::Native);
+    CHECK_FALSE(backend.requires_preprint_send());
+    CHECK(backend.build_preprint_gcode({0, 1}, {{0, 5}, {1, 2}}).empty());
+    CHECK(backend.build_preprint_gcode({0, 1}, {}).empty());
 }
 
 // A bay in a box missing from the chain is refused, not sent: box.py registers

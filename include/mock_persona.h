@@ -35,19 +35,19 @@ enum class PrinterType {
 using DefaultObjects = std::uint32_t;
 namespace default_object {
 inline constexpr DefaultObjects NONE = 0;
-inline constexpr DefaultObjects HAPPY_HARE_MMU = 1u << 0; // "mmu"
+inline constexpr DefaultObjects kHappyHareMmu = 1u << 0; // "mmu"
 /// Probe objects when HELIX_MOCK_PROBE_TYPE is unset.
 inline constexpr DefaultObjects CARTOGRAPHER = 1u << 1;
-inline constexpr DefaultObjects BME280_CHAMBER = 1u << 2; // "bme280 chamber"
-inline constexpr DefaultObjects HTU21D_DRYER = 1u << 3;   // "htu21d dryer"
-inline constexpr DefaultObjects EBB_CAN_MCU = 1u << 4;    // "mcu EBBCan"
+inline constexpr DefaultObjects kBme280Chamber = 1u << 2; // "bme280 chamber"
+inline constexpr DefaultObjects kHtu21dDryer = 1u << 3;   // "htu21d dryer"
+inline constexpr DefaultObjects kEbbCanMcu = 1u << 4;     // "mcu EBBCan"
 /// "temperature_sensor chamber" (the unconditional push).
 inline constexpr DefaultObjects CHAMBER_SENSOR = 1u << 5;
-inline constexpr DefaultObjects WIDTH_SENSOR = 1u << 6; // "hall_filament_width_sensor"
+inline constexpr DefaultObjects kWidthSensor = 1u << 6; // "hall_filament_width_sensor"
 /// The default "filament_switch_sensor runout_sensor".
-inline constexpr DefaultObjects RUNOUT_SENSOR = 1u << 7;
+inline constexpr DefaultObjects kRunoutSensor = 1u << 7;
 /// led_effect objects + LIGHTS_* / LED_* macros.
-inline constexpr DefaultObjects LED_EFFECTS = 1u << 8;
+inline constexpr DefaultObjects kLedEffects = 1u << 8;
 } // namespace default_object
 
 struct AxisMax {
@@ -86,8 +86,8 @@ struct PersonaDescriptor {
         return {"cosmos",
                 {256.0, 265.0, 258.0},
                 "corexy",
-                HAPPY_HARE_MMU | CARTOGRAPHER | BME280_CHAMBER | HTU21D_DRYER | EBB_CAN_MCU |
-                    WIDTH_SENSOR | RUNOUT_SENSOR | LED_EFFECTS,
+                kHappyHareMmu | CARTOGRAPHER | kBme280Chamber | kHtu21dDryer | kEbbCanMcu |
+                    kWidthSensor | kRunoutSensor | kLedEffects,
                 "",
                 false,
                 "load_cell_probe"};
@@ -95,8 +95,8 @@ struct PersonaDescriptor {
         return {"ad5x-mock",
                 {220.0, 220.0, 220.0},
                 "corexy",
-                HAPPY_HARE_MMU | CARTOGRAPHER | BME280_CHAMBER | HTU21D_DRYER | EBB_CAN_MCU |
-                    WIDTH_SENSOR | RUNOUT_SENSOR | LED_EFFECTS,
+                kHappyHareMmu | CARTOGRAPHER | kBme280Chamber | kHtu21dDryer | kEbbCanMcu |
+                    kWidthSensor | kRunoutSensor | kLedEffects,
                 "ifs",
                 false,
                 "loadcell"};
@@ -105,20 +105,20 @@ struct PersonaDescriptor {
         return {"K2Plus-50C1",
                 {352.5, 400.0, 360.0},
                 "corexy",
-                HAPPY_HARE_MMU | CARTOGRAPHER | BME280_CHAMBER | HTU21D_DRYER | EBB_CAN_MCU |
-                    CHAMBER_SENSOR | WIDTH_SENSOR | RUNOUT_SENSOR | LED_EFFECTS,
+                kHappyHareMmu | CARTOGRAPHER | kBme280Chamber | kHtu21dDryer | kEbbCanMcu |
+                    CHAMBER_SENSOR | kWidthSensor | kRunoutSensor | kLedEffects,
                 "cfs",
                 false};
     case PrinterType::SNAPMAKER_U1:
         return {"snapmaker-u1",
                 {270.0, 270.0, 400.0},
                 "cartesian",
-                HAPPY_HARE_MMU | CARTOGRAPHER | BME280_CHAMBER | HTU21D_DRYER | EBB_CAN_MCU |
-                    CHAMBER_SENSOR | WIDTH_SENSOR | RUNOUT_SENSOR,
+                kHappyHareMmu | CARTOGRAPHER | kBme280Chamber | kHtu21dDryer | kEbbCanMcu |
+                    CHAMBER_SENSOR | kWidthSensor | kRunoutSensor,
                 "snapmaker",
                 false};
     case PrinterType::FLASHFORGE_CREATOR5_ZMOD:
-        return {"mock-printer", standard, "corexy", HAPPY_HARE_MMU, "", true};
+        return {"mock-printer", standard, "corexy", kHappyHareMmu, "", true};
     case PrinterType::VORON_24:
     case PrinterType::VORON_TRIDENT:
     case PrinterType::GENERIC_COREXY:

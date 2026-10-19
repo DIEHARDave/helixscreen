@@ -47,7 +47,7 @@ namespace helix {
 using json = nlohmann::json;
 
 /// Max consecutive /server/ace/info failures before giving up on REST fallback
-static constexpr int MAX_INFO_FETCH_FAILURES = 3;
+static constexpr int kMaxInfoFetchFailures = 3;
 
 // ============================================================================
 // Construction / Destruction
@@ -554,7 +554,7 @@ namespace {
 
 /// Parse passes an insert whose tag read has not landed stays pending before
 /// the no-read fallback verdict runs. The REST poll brings every bay through
-/// the parse each POLL_INTERVAL_MS, so this bounds the wait on that path; the
+/// the parse each kPollIntervalMs, so this bounds the wait on that path; the
 /// WebSocket path is change-driven, where a read that never lands can leave
 /// the insert pending until the next frame of any kind arrives - harmless,
 /// since a late verdict is still judged against the occupant that was in the
@@ -673,7 +673,7 @@ AmsError AmsBackendAce::apply_user_edit(int slot_index, const SlotInfo& info,
                                             backend_log_tag(), "Override");
     }
 
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     return AmsErrorHelper::success();
 }
 
@@ -691,7 +691,7 @@ AmsError AmsBackendAce::sync_external_identity(int slot_index, const SlotInfo& i
     }
 
     spdlog::info("[ACE] Synced slot {} info: {} {}", slot_index, info.material, info.color_name);
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     return AmsErrorHelper::success();
 }
 
@@ -1223,7 +1223,7 @@ void AmsBackendAce::parse_ace_object(const json& data) {
                 // doesn't carry brand/spool_name/weights at all and the user
                 // edit is the authoritative source for color/material too.
                 // The REST poll brings every slot through here each
-                // POLL_INTERVAL_MS, so ACE names no slot to cached_slot_locked().
+                // kPollIntervalMs, so ACE names no slot to cached_slot_locked().
                 apply_resolved_lane(slot, idx);
             }
         }
@@ -1456,13 +1456,12 @@ void AmsBackendAce::rest_polling_loop() {
         // model/version it can supply, but its absence is NOT fatal: the Kobra
         // S1 fork ships /status + /slots (which carry model + slots) but NOT
         // /info (#1069). Give up quietly after the cap.
-        if (!info_fetched_.load() && info_fetch_failures_.load() < MAX_INFO_FETCH_FAILURES) {
+        if (!info_fetched_.load() && info_fetch_failures_.load() < kMaxInfoFetchFailures) {
             poll_info();
-        } else if (!info_fetched_.load() &&
-                   info_fetch_failures_.load() == MAX_INFO_FETCH_FAILURES) {
+        } else if (!info_fetched_.load() && info_fetch_failures_.load() == kMaxInfoFetchFailures) {
             spdlog::info("[ACE] /server/ace/info unavailable after {} attempts — "
                          "using /status + /slots (this fork has no /info endpoint).",
-                         MAX_INFO_FETCH_FAILURES);
+                         kMaxInfoFetchFailures);
             ++info_fetch_failures_;
         }
 
@@ -1474,7 +1473,7 @@ void AmsBackendAce::rest_polling_loop() {
 
         // Interruptible sleep
         std::unique_lock<std::mutex> lock(rest_stop_mutex_);
-        rest_stop_cv_.wait_for(lock, std::chrono::milliseconds(POLL_INTERVAL_MS),
+        rest_stop_cv_.wait_for(lock, std::chrono::milliseconds(kPollIntervalMs),
                                [this] { return rest_stop_requested_.load(); });
     }
 
@@ -1556,11 +1555,11 @@ void AmsBackendAce::poll_status() {
                 // nothing has ever succeeded. Surface it once. A working /slots
                 // resets data_fetch_failures_, so this only fires when BOTH
                 // /status and /slots are unavailable (#1069).
-                if (failures == MAX_DATA_FETCH_FAILURES && !rest_data_ok_.load()) {
+                if (failures == kMaxDataFetchFailures && !rest_data_ok_.load()) {
                     spdlog::warn("[ACE] Moonraker ACE bridge not responding at /server/ace/status "
                                  "after {} attempts — no ACE data endpoints available.",
                                  failures);
-                    emit_event(EVENT_ERROR,
+                    emit_event(kEventError,
                                "ACE detected but Moonraker bridge not found. "
                                "Install the ace_status.py component for full ACE support.");
                     helix::ui::queue_update("AmsBackendAce::poll_status", []() {
@@ -1902,22 +1901,22 @@ AmsError AmsBackendAce::execute_device_action(const std::string& action_id, cons
         int slot = get_current_slot();
         if (slot < 0)
             slot = 0;
-        static constexpr int MANUAL_FEED_LENGTH = 50;
-        static constexpr int MANUAL_FEED_SPEED = 50;
+        static constexpr int kManualFeedLength = 50;
+        static constexpr int kManualFeedSpeed = 50;
         return execute_gcode("ACE_FEED INDEX=" + std::to_string(slot) +
-                             " LENGTH=" + std::to_string(MANUAL_FEED_LENGTH) +
-                             " SPEED=" + std::to_string(MANUAL_FEED_SPEED));
+                             " LENGTH=" + std::to_string(kManualFeedLength) +
+                             " SPEED=" + std::to_string(kManualFeedSpeed));
     }
 
     if (action_id == "ace_manual_retract") {
         int slot = get_current_slot();
         if (slot < 0)
             slot = 0;
-        static constexpr int MANUAL_RETRACT_LENGTH = 50;
-        static constexpr int MANUAL_RETRACT_SPEED = 50;
+        static constexpr int kManualRetractLength = 50;
+        static constexpr int kManualRetractSpeed = 50;
         return execute_gcode("ACE_RETRACT INDEX=" + std::to_string(slot) +
-                             " LENGTH=" + std::to_string(MANUAL_RETRACT_LENGTH) +
-                             " SPEED=" + std::to_string(MANUAL_RETRACT_SPEED));
+                             " LENGTH=" + std::to_string(kManualRetractLength) +
+                             " SPEED=" + std::to_string(kManualRetractSpeed));
     }
 
     if (action_id == "ace_feed_assist_toggle") {
@@ -2153,7 +2152,7 @@ void AmsBackendAce::clear_slot_override(int slot_index) {
         forget_user_temps_locked(slot_index);
     }
 
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
 }
 
 } // namespace helix

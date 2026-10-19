@@ -99,7 +99,7 @@ TEST_CASE("Brother QL protocol - horizontal flip verification", "[label][brother
     size_t raster_start = 0;
     for (size_t i = 0; i + 2 < data.size(); i++) {
         if (data[i] == 0x67 && data[i + 1] == 0x00 &&
-            data[i + 2] == static_cast<uint8_t>(BROTHER_QL_RASTER_ROW_BYTES)) {
+            data[i + 2] == static_cast<uint8_t>(kBrotherQlRasterRowBytes)) {
             found_raster = true;
             raster_start = i + 3; // skip header, data starts here
             break;
@@ -135,7 +135,7 @@ TEST_CASE("Brother QL protocol - 38mm narrow label right-justified with flip", "
     size_t raster_start = 0;
     for (size_t i = 0; i + 2 < data.size(); i++) {
         if (data[i] == 0x67 && data[i + 1] == 0x00 &&
-            data[i + 2] == static_cast<uint8_t>(BROTHER_QL_RASTER_ROW_BYTES)) {
+            data[i + 2] == static_cast<uint8_t>(kBrotherQlRasterRowBytes)) {
             found_raster = true;
             raster_start = i + 3;
             break;
@@ -143,8 +143,8 @@ TEST_CASE("Brother QL protocol - 38mm narrow label right-justified with flip", "
     }
     REQUIRE(found_raster);
 
-    int label_byte_width = (413 + 7) / 8;                           // 52
-    int right_pad = BROTHER_QL_RASTER_ROW_BYTES - label_byte_width; // 38
+    int label_byte_width = (413 + 7) / 8;                        // 52
+    int right_pad = kBrotherQlRasterRowBytes - label_byte_width; // 38
 
     // Data is left-justified, right padding bytes should be zero
     for (int i = 0; i < right_pad; i++) {

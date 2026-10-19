@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/screensaver_sim_kit.h"
@@ -68,13 +68,7 @@ using helix::ui::ClockPrintPhase;
 using helix::ui::ClockReading;
 using helix::ui::DirtyRect;
 using helix::ui::FrameTarget;
-using helix::ui::HIGHFLY_FIELD;
 using helix::ui::highfly_layer_visibility;
-using helix::ui::HIGHFLY_LEVEL_COUNT;
-using helix::ui::HIGHFLY_LEVELS;
-using helix::ui::HIGHFLY_TALUS;
-using helix::ui::HIGHFLY_TEXELS_PER_UNIT;
-using helix::ui::HIGHFLY_TOWER_VARIANTS;
 using helix::ui::highfly_whiteout;
 using helix::ui::HighFlyClockLayout;
 using helix::ui::HighFlyField;
@@ -82,6 +76,12 @@ using helix::ui::HighFlyScreensaver;
 using helix::ui::HighFlyScreensaverTestAccess;
 using helix::ui::HighFlySim;
 using helix::ui::HighFlySimTestAccess;
+using helix::ui::kHighflyField;
+using helix::ui::kHighflyLevelCount;
+using helix::ui::kHighflyLevels;
+using helix::ui::kHighflyTalus;
+using helix::ui::kHighflyTexelsPerUnit;
+using helix::ui::kHighflyTowerVariants;
 using helix::ui::layout_highfly_clock;
 using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
@@ -111,8 +111,8 @@ TEST_CASE("the cloud field tiles and never steps more than the talus slope",
     std::minstd_rand rng(7);
     HighFlyField field;
     build_highfly_field(rng, field);
-    REQUIRE(field.height.size() == static_cast<size_t>(HIGHFLY_FIELD) * HIGHFLY_FIELD);
-    const int32_t n = HIGHFLY_FIELD;
+    REQUIRE(field.height.size() == static_cast<size_t>(kHighflyField) * kHighflyField);
+    const int32_t n = kHighflyField;
     float steepest = 0.0f;
     for (int32_t y = 0; y < n; y++) {
         for (int32_t x = 0; x < n; x++) {
@@ -122,7 +122,7 @@ TEST_CASE("the cloud field tiles and never steps more than the talus slope",
             steepest = std::max({steepest, std::fabs(h - right), std::fabs(h - down)});
         }
     }
-    CHECK(steepest <= HIGHFLY_TALUS + 1e-4f);
+    CHECK(steepest <= kHighflyTalus + 1e-4f);
     CHECK(steepest > 0.5f);
 }
 
@@ -132,8 +132,8 @@ TEST_CASE("the cloud field has billows tall enough to break the skyline",
     HighFlyField field;
     build_highfly_field(rng, field);
     const auto [lo, hi] = std::minmax_element(field.height.begin(), field.height.end());
-    CHECK(*hi / HIGHFLY_TEXELS_PER_UNIT > 15.0f);
-    CHECK(*lo / HIGHFLY_TEXELS_PER_UNIT < 15.0f);
+    CHECK(*hi / kHighflyTexelsPerUnit > 15.0f);
+    CHECK(*lo / kHighflyTexelsPerUnit < 15.0f);
 }
 
 TEST_CASE("crevices shade darker than tops", "[screensaver][highfly]") {
@@ -279,7 +279,7 @@ TEST_CASE("a high fly run replays exactly from a seed, and another seed differs"
 
 TEST_CASE("the sky above the cloud band repaints only for the clock without towers",
           "[screensaver][highfly]") {
-    REQUIRE_FALSE(HIGHFLY_LEVELS[3].towers);
+    REQUIRE_FALSE(kHighflyLevels[3].towers);
     TestFrame frame(400, 240, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     HighFlySim sim;
@@ -444,8 +444,8 @@ TEST_CASE("towers come every 13 to 14 seconds, at most two at once, in more than
         CHECK(gap >= 13.0f - 1e-3f);
         CHECK(gap <= 14.0f + 1e-3f);
     }
-    for (size_t a = 0; a < HIGHFLY_TOWER_VARIANTS; a++) {
-        for (size_t b = a + 1; b < HIGHFLY_TOWER_VARIANTS; b++) {
+    for (size_t a = 0; a < kHighflyTowerVariants; a++) {
+        for (size_t b = a + 1; b < kHighflyTowerVariants; b++) {
             const auto& ta = sim.tower_texture(a).rgba;
             const auto& tb = sim.tower_texture(b).rgba;
             REQUIRE(ta.size() == tb.size());
@@ -512,7 +512,7 @@ TEST_CASE("a tower visibly moves from the moment it appears until it leaves",
 
 TEST_CASE("over the clock the interior and the wisps together leave the numerals readable",
           "[screensaver][highfly]") {
-    const float most = helix::ui::HIGHFLY_CLOCK_COVER_MAX;
+    const float most = helix::ui::kHighflyClockCoverMax;
     for (const float wisp : {0.0f, 0.3f, 0.7f, 1.0f}) {
         for (const float amt : {0.3f, 1.0f}) {
             CAPTURE(wisp, amt);
@@ -524,7 +524,7 @@ TEST_CASE("over the clock the interior and the wisps together leave the numerals
             // Away from the clock the wisp is not held back.
             const Rgb free_dark = helix::ui::highfly_inside(Rgb{0, 0, 0}, amt, wisp);
             const Rgb free_light = helix::ui::highfly_inside(Rgb{255, 255, 255}, amt, wisp);
-            const float k = amt * helix::ui::HIGHFLY_WHITEOUT_MAX;
+            const float k = amt * helix::ui::kHighflyWhiteoutMax;
             CHECK(static_cast<float>(free_light.g - free_dark.g) / 255.0f ==
                   Catch::Approx((1.0f - k) * (1.0f - wisp)).margin(0.01f));
         }
@@ -556,7 +556,7 @@ TEST_CASE("high fly still moves smoothly thirty days into a run", "[screensaver]
         }
         return sum / static_cast<double>(v.size());
     };
-    REQUIRE(HIGHFLY_LEVELS[2].layers == 0);
+    REQUIRE(kHighflyLevels[2].layers == 0);
     TestFrame frame(400, 240, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     HighFlySim sim;
@@ -708,24 +708,24 @@ TEST_CASE("wisps sample smoothly, without radial seams", "[screensaver][highfly]
 
 TEST_CASE("the ladder drops layers before coarsening the deck, slows, and ends standing still",
           "[screensaver][highfly]") {
-    CHECK(HIGHFLY_LEVELS[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
-    size_t first_no_layers = HIGHFLY_LEVEL_COUNT;
-    size_t first_coarse = HIGHFLY_LEVEL_COUNT;
-    for (size_t i = 0; i < HIGHFLY_LEVEL_COUNT; i++) {
+    CHECK(kHighflyLevels[0].period_ms == helix::ui::kSaverFastPeriod);
+    size_t first_no_layers = kHighflyLevelCount;
+    size_t first_coarse = kHighflyLevelCount;
+    for (size_t i = 0; i < kHighflyLevelCount; i++) {
         if (i > 0) {
-            CHECK(HIGHFLY_LEVELS[i].period_ms >= HIGHFLY_LEVELS[i - 1].period_ms);
+            CHECK(kHighflyLevels[i].period_ms >= kHighflyLevels[i - 1].period_ms);
         }
-        if (HIGHFLY_LEVELS[i].layers == 0 && first_no_layers == HIGHFLY_LEVEL_COUNT) {
+        if (kHighflyLevels[i].layers == 0 && first_no_layers == kHighflyLevelCount) {
             first_no_layers = i;
         }
-        if (HIGHFLY_LEVELS[i].scale == 4 && first_coarse == HIGHFLY_LEVEL_COUNT) {
+        if (kHighflyLevels[i].scale == 4 && first_coarse == kHighflyLevelCount) {
             first_coarse = i;
         }
     }
     CHECK(first_no_layers < first_coarse);
-    CHECK(HIGHFLY_LEVELS[HIGHFLY_LEVEL_COUNT - 1].still);
+    CHECK(kHighflyLevels[kHighflyLevelCount - 1].still);
     // Before it stands still the coarse deck still drifts, at 5 to 10 frames a second.
-    const helix::ui::HighFlyLevel& slow = HIGHFLY_LEVELS[HIGHFLY_LEVEL_COUNT - 2];
+    const helix::ui::HighFlyLevel& slow = kHighflyLevels[kHighflyLevelCount - 2];
     CHECK_FALSE(slow.still);
     CHECK(slow.scale == 4);
     CHECK(slow.period_ms >= 100);
@@ -735,7 +735,7 @@ TEST_CASE("the ladder drops layers before coarsening the deck, slows, and ends s
     std::minstd_rand rng(3);
     HighFlySim sim;
     int32_t sod = 10 * 3600 + 15 * 60;
-    sim.init(frame.target, rng, HIGHFLY_LEVEL_COUNT - 1, reading_at(sod));
+    sim.init(frame.target, rng, kHighflyLevelCount - 1, reading_at(sod));
     std::vector<DirtyRect> dirty;
     sim.step(250, frame.target, rng, reading_at(sod), dirty);
     for (int i = 0; i < 10; i++) {
@@ -760,7 +760,7 @@ TEST_CASE("the ladder drops layers before coarsening the deck, slows, and ends s
 TEST_CASE(
     "high fly frames and step-downs never grow the heap, and the still rung keeps only the clock",
     "[screensaver][highfly]") {
-    const size_t start = GENERATE(range(size_t{0}, HIGHFLY_LEVEL_COUNT));
+    const size_t start = GENERATE(range(size_t{0}, kHighflyLevelCount));
     CAPTURE(start);
     TestFrame frame(800, 480, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
@@ -770,16 +770,16 @@ TEST_CASE(
     std::vector<DirtyRect> dirty;
     const size_t heap = sim.heap_bytes();
     CHECK(heap <= 4608u * 1024u);
-    for (size_t level = start; level < HIGHFLY_LEVEL_COUNT; level++) {
+    for (size_t level = start; level < kHighflyLevelCount; level++) {
         sim.request_level(level);
         for (int i = 0; i < 20; i++) {
-            sim.step(level + 1 == HIGHFLY_LEVEL_COUNT ? 250 : 33, frame.target, rng, r, dirty);
+            sim.step(level + 1 == kHighflyLevelCount ? 250 : 33, frame.target, rng, r, dirty);
             CHECK(sim.heap_bytes() <= heap);
         }
     }
     // The still rung has painted its scene and holds just what redraws the clock.
     const size_t still = sim.heap_bytes();
-    if (start + 1 < HIGHFLY_LEVEL_COUNT) {
+    if (start + 1 < kHighflyLevelCount) {
         CHECK(still * 2 < heap);
     }
 
@@ -826,7 +826,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     ss.set_input_source([&reported] { return reported; });
     // The still rung repaints only when the clock face changes, so a frame with the same
     // time repaints nothing.
-    ss.set_start_level(HIGHFLY_LEVEL_COUNT - 1);
+    ss.set_start_level(kHighflyLevelCount - 1);
     ss.start();
     REQUIRE(ss.is_active());
     advance_saver(ss, 250);

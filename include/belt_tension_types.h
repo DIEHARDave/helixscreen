@@ -74,16 +74,24 @@ struct BeltTensionHardware {
 /// One path's response: (frequency Hz, psd_xyz) pairs, ascending frequency.
 using BeltCurve = std::vector<std::pair<float, float>>;
 
+/// One sweep's response on one frequency grid: psd_xyz for the similarity
+/// summary, psd_x + psd_y for tuning. Belt modes move the toolhead in the XY
+/// plane; Z motion in a band is the frame, not the belt.
+struct BeltResponse {
+    BeltCurve xyz;
+    BeltCurve in_plane; ///< empty when the CSV carried no psd_x and psd_y columns
+};
+
 enum class BeltVerdict { MATCHED, CLOSE, ADJUST };
 
 /// Provisional: they sort every real capture in tests/fixtures/belt_sweeps/
 /// plausibly, but no known-good reference exists yet for a printer that reads
 /// Poor (prestonbrown/helixscreen#1737).
 namespace belt_verdict {
-inline constexpr float PEAK_THRESHOLD_FRACTION = 0.10f; ///< of the in-band maximum
-inline constexpr float PAIR_MAX_HZ = 10.0f;             ///< pairing distance ceiling
-inline constexpr float MATCHED_SIMILARITY = 90.0f;
-inline constexpr float CLOSE_SIMILARITY = 75.0f;
+inline constexpr float kPeakThresholdFraction = 0.10f; ///< of the in-band maximum
+inline constexpr float kPairMaxHz = 10.0f;             ///< pairing distance ceiling
+inline constexpr float kMatchedSimilarity = 90.0f;
+inline constexpr float kCloseSimilarity = 75.0f;
 } // namespace belt_verdict
 
 /// One local maximum of a curve inside the analysis band.
@@ -124,12 +132,12 @@ struct BeltComparison {
                                     float band_max_hz);
 
 /// Local maxima inside the band: value > left neighbour, value >= right neighbour,
-/// value >= PEAK_THRESHOLD_FRACTION * the in-band maximum. Ascending frequency.
+/// value >= kPeakThresholdFraction * the in-band maximum. Ascending frequency.
 [[nodiscard]] std::vector<BeltPeak> detect_belt_peaks(const BeltCurve& curve, float band_min_hz,
                                                       float band_max_hz);
 
 /// Greedy closest-first pairing of two peak lists. The distance threshold is
-/// min(median + 1.5 * IQR over all |fa - fb|, PAIR_MAX_HZ) - PAIR_MAX_HZ when
+/// min(median + 1.5 * IQR over all |fa - fb|, kPairMaxHz) - kPairMaxHz when
 /// there are no distances at all.
 [[nodiscard]] BeltPeakPairing pair_belt_peaks(const std::vector<BeltPeak>& a,
                                               const std::vector<BeltPeak>& b);

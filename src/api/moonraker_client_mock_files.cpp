@@ -21,7 +21,7 @@
 #include <sys/stat.h>
 
 // Directory path for thumbnail cache (test G-code dir comes from RuntimeConfig::TEST_GCODE_DIR)
-static constexpr const char* THUMBNAIL_CACHE_DIR = "build/thumbnail_cache";
+static constexpr const char* kThumbnailCacheDir = "build/thumbnail_cache";
 
 // Alias for cleaner code - use shared constant from RuntimeConfig
 #define TEST_GCODE_DIR RuntimeConfig::TEST_GCODE_DIR
@@ -69,7 +69,13 @@ static std::vector<std::string> scan_mock_gcode_files(const std::string& subdir 
     const std::string& planted = helix::mock::planted_gcode_dir();
     const bool planted_found = !planted.empty() && scan_gcode_dir(planted + suffix, files);
     if (!scan_gcode_dir(dir_path, files) && !planted_found) {
-        spdlog::warn("[MoonrakerClientMock] Cannot open test G-code directory: {}", dir_path);
+        // The app probes subdirectories (usb, .helix_temp, ...) that a fixture tree
+        // may simply not have; only a missing root means the mock has no files.
+        if (subdir.empty()) {
+            spdlog::warn("[MoonrakerClientMock] Cannot open test G-code directory: {}", dir_path);
+        } else {
+            spdlog::debug("[MoonrakerClientMock] No test G-code subdirectory: {}", dir_path);
+        }
         return files;
     }
     std::sort(files.begin(), files.end());
@@ -275,7 +281,7 @@ static json build_mock_file_metadata_response(const std::string& filename) {
     auto header_meta = helix::gcode::extract_header_metadata(full_path);
 
     // Get cached thumbnail path (creates cache if needed)
-    std::string thumbnail_path = helix::gcode::get_cached_thumbnail(full_path, THUMBNAIL_CACHE_DIR);
+    std::string thumbnail_path = helix::gcode::get_cached_thumbnail(full_path, kThumbnailCacheDir);
 
     // HELIX_MOCK_REMOTE_THUMBS=1 — advertise a Moonraker-relative path instead
     // of the local cache file. PrintSelectPanel branches on whether the

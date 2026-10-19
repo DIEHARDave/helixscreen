@@ -68,7 +68,7 @@ using namespace helix;
 // Preset slot count (0=PLA-position, 1=PETG-position, 2=ABS-position, 3=TPU-position).
 // The material each slot represents is runtime-reassignable; slot identity comes
 // from helix::presets (backed by MaterialSettingsManager), never a local copy.
-static constexpr int PRESET_COUNT = 4;
+static constexpr int kPresetCount = 4;
 
 namespace helix::filament_presets {
 bool validate_reassignment(int slot, const std::string& material) {
@@ -883,7 +883,7 @@ void FilamentPanel::check_and_auto_select_preset() {
     // generally won't equal the generic material's recommended temps.
     auto& mgr = helix::MaterialSettingsManager::instance();
     int matching_preset = -1;
-    for (int i = 0; i < PRESET_COUNT; i++) {
+    for (int i = 0; i < kPresetCount; i++) {
         auto branded = mgr.get_preset_filament(i);
         if (branded && branded->is_branded()) {
             if (nozzle_target_ == branded->nozzle && bed_target_ == branded->bed) {
@@ -1069,7 +1069,7 @@ void FilamentPanel::reset_presets_to_defaults() {
 }
 
 void FilamentPanel::handle_preset_longpress(int slot) {
-    if (slot < 0 || slot >= PRESET_COUNT || !preset_buttons_[slot]) {
+    if (slot < 0 || slot >= kPresetCount || !preset_buttons_[slot]) {
         return;
     }
     lv_obj_t* screen = lv_obj_get_screen(preset_buttons_[slot]);
@@ -1335,8 +1335,8 @@ void FilamentPanel::handle_extrude_length_select(int amount) {
 // background thread).
 // ============================================================================
 
-constexpr uint32_t OP_DONE_REVERT_MS = 1500;     ///< how long the "done" checkmark shows
-constexpr uint32_t MIN_SPINNER_VISIBLE_MS = 500; ///< floor so instant ops still flash a spinner
+constexpr uint32_t kOpDoneRevertMs = 1500;     ///< how long the "done" checkmark shows
+constexpr uint32_t kMinSpinnerVisibleMs = 500; ///< floor so instant ops still flash a spinner
 
 lv_subject_t* FilamentPanel::op_state_subject(FilamentOp op) {
     switch (op) {
@@ -1382,7 +1382,7 @@ void FilamentPanel::schedule_op_timer(uint32_t delay_ms, lv_timer_cb_t cb) {
 void FilamentPanel::enter_op_done_state(FilamentOp op) {
     set_op_state(op, 2); // done → checkmark
     op_revert_target_ = op;
-    schedule_op_timer(OP_DONE_REVERT_MS, [](lv_timer_t* t) {
+    schedule_op_timer(kOpDoneRevertMs, [](lv_timer_t* t) {
         auto* self = static_cast<FilamentPanel*>(lv_timer_get_user_data(t));
         self->op_revert_timer_ = nullptr;
         self->set_op_state(self->op_revert_target_, 0);
@@ -1427,12 +1427,12 @@ void FilamentPanel::op_succeeded(FilamentOp op) {
     // ops too) would flip spinner→check within a frame. Hold the spinner for a
     // minimum visible duration before showing the checkmark.
     uint32_t elapsed = lv_tick_elaps(op_busy_started_tick_);
-    if (elapsed >= MIN_SPINNER_VISIBLE_MS) {
+    if (elapsed >= kMinSpinnerVisibleMs) {
         enter_op_done_state(op);
         return;
     }
     op_revert_target_ = op; // reused by the deferred-done timer to know the op
-    schedule_op_timer(MIN_SPINNER_VISIBLE_MS - elapsed, [](lv_timer_t* t) {
+    schedule_op_timer(kMinSpinnerVisibleMs - elapsed, [](lv_timer_t* t) {
         auto* self = static_cast<FilamentPanel*>(lv_timer_get_user_data(t));
         self->op_revert_timer_ = nullptr;
         self->enter_op_done_state(self->op_revert_target_);
@@ -1457,7 +1457,7 @@ void FilamentPanel::op_failed(FilamentOp op) {
 void FilamentPanel::begin_operation_guard() {
     // Capturing `this` is safe: operation_guard_ is a member and ~OperationTimeoutGuard
     // cancels the timer, so the callback cannot outlive the panel.
-    operation_guard_.begin(OPERATION_TIMEOUT_MS, [this] { handle_operation_timeout(); });
+    operation_guard_.begin(kOperationTimeoutMs, [this] { handle_operation_timeout(); });
 }
 
 // Runs on the main thread from the guard's one-shot timer. OperationTimeoutGuard
@@ -1643,7 +1643,7 @@ void FilamentPanel::execute_extrude() {
                     helix::ui::notify_error_tr(TR_NOOP("Extrude failed: {}"), error);
                 }
             }),
-        IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+        IMoonrakerAPI::kExtrusionTimeoutMs);
 }
 
 void FilamentPanel::handle_purge_button() {
@@ -1707,7 +1707,7 @@ void FilamentPanel::execute_purge() {
                                     helix::ui::notify_error_tr(TR_NOOP("Purge failed: {}"), error);
                                 }
                             }),
-                        IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+                        IMoonrakerAPI::kExtrusionTimeoutMs);
 }
 
 void FilamentPanel::handle_retract_button() {
@@ -1757,7 +1757,7 @@ void FilamentPanel::execute_retract() {
                     helix::ui::notify_error_tr(TR_NOOP("Retract failed: {}"), error);
                 }
             }),
-        IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+        IMoonrakerAPI::kExtrusionTimeoutMs);
 }
 
 // ============================================================================
@@ -2103,7 +2103,7 @@ void FilamentPanel::update_filament_op_buttons() {
     // only - Load keeps its slot-picker redirect for an unresolved slot.
     state.unload_available = state.slot_is_loaded ||
                              backend->slot_filament_parked_in_toolhead(slot) ||
-                             (slot == helix::ui::ACTIVE_HEAD_SLOT &&
+                             (slot == helix::ui::kActiveHeadSlot &&
                               backend->toolhead_filament_unaccounted().value_or(false));
     state.unload_is_cold_lane_op = false;
 
@@ -2244,7 +2244,7 @@ void FilamentPanel::update_spool_preset() {
     const auto& active = *cached_active_material_;
 
     // Check if material matches an existing preset — if so, don't show spool button
-    for (int i = 0; i < PRESET_COUNT; i++) {
+    for (int i = 0; i < kPresetCount; i++) {
         std::string preset_lower(helix::presets::name(i));
         std::string mat_lower(active.material_name);
         preset_lower = helix::text_io::to_lower(preset_lower);
@@ -2338,9 +2338,9 @@ void FilamentPanel::get_temp(int* current, int* target) const {
 }
 
 void FilamentPanel::set_material(int material_id) {
-    if (material_id < 0 || material_id >= PRESET_COUNT) {
+    if (material_id < 0 || material_id >= kPresetCount) {
         spdlog::error("[{}] Invalid material ID {} (valid: 0-{})", get_name(), material_id,
-                      PRESET_COUNT - 1);
+                      kPresetCount - 1);
         return;
     }
 
@@ -2425,7 +2425,7 @@ FilamentPanel::resolve_material_preheat_temp(int target_slot) const {
 std::optional<helix::ui::PreheatTarget> FilamentPanel::preset_preheat_material() const {
     // The panel's own tail: only reached when neither the target lane nor an
     // external spool names a material.
-    if (selected_material_ < 0 || selected_material_ >= PRESET_COUNT) {
+    if (selected_material_ < 0 || selected_material_ >= kPresetCount) {
         return std::nullopt;
     }
     auto mat = filament::find_material(helix::presets::name(selected_material_));
@@ -2823,7 +2823,7 @@ void FilamentPanel::run_filament_macro(const std::string& macro_name, const std:
                                     helix::ui::notify_error_tr(TR_NOOP("Macro failed: {}"), error);
                                 }
                             }),
-                        IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+                        IMoonrakerAPI::kExtrusionTimeoutMs);
 }
 
 void FilamentPanel::show_load_warning() {

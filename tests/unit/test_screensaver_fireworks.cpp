@@ -1,7 +1,7 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
@@ -21,11 +21,11 @@ using helix::test::diff_against;
 using helix::test::FrameDiff;
 using helix::test::non_opaque_pixels;
 using helix::ui::DirtyRect;
-using helix::ui::FIREWORKS_LEVEL_COUNT;
-using helix::ui::FIREWORKS_LEVELS;
 using helix::ui::FireworksPacing;
 using helix::ui::FireworksSim;
 using helix::ui::FrameTarget;
+using helix::ui::kFireworksLevelCount;
+using helix::ui::kFireworksLevels;
 using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
 using helix::ui::Rgb;
@@ -125,7 +125,7 @@ TEST_CASE("the fireworks sky is a gradient with faint stars over rolling hills, 
     CHECK(highest_top > lowest_top);                 // rolling, not flat
     CHECK(lowest_top > static_cast<int32_t>(H) / 2); // the hills stay low
     CHECK(stars > 0);
-    CHECK(stars <= static_cast<size_t>(FireworksSim::STAR_COUNT));
+    CHECK(stars <= static_cast<size_t>(FireworksSim::kStarCount));
     REQUIRE(starless_column >= 0);
     // Darker at the top of the sky than just above the hills.
     CHECK(brightness(sim.sky_at(starless_column, 0)) <
@@ -147,9 +147,9 @@ TEST_CASE("a fireworks show replays exactly from a seed, and another seed differ
         sim.init(frame.target, rng, 0, busy_pacing());
         std::vector<std::vector<DirtyRect>> boxes;
         std::vector<DirtyRect> dirty;
-        constexpr uint32_t FRAME_MS[] = {16, 33, 50, 7, 100};
+        constexpr uint32_t kFrameMs[] = {16, 33, 50, 7, 100};
         for (int i = 0; i < 400; i++) {
-            sim.step(FRAME_MS[i % 5], frame.target, rng, dirty);
+            sim.step(kFrameMs[i % 5], frame.target, rng, dirty);
             boxes.push_back(dirty);
         }
         return std::make_pair(frame.bytes, boxes);
@@ -161,7 +161,7 @@ TEST_CASE("every pixel a fireworks frame changes lies in one of its dirty boxes"
           "[screensaver][fireworks_sim]") {
     using Kind = FireworksSim::BurstKind;
     const PixelFormat format = GENERATE(PixelFormat::XRGB8888, PixelFormat::RGB565);
-    const uint8_t kinds = GENERATE(FireworksSim::ALL_KINDS, only(Kind::PALM), only(Kind::CROSSETTE),
+    const uint8_t kinds = GENERATE(FireworksSim::kAllKinds, only(Kind::PALM), only(Kind::CROSSETTE),
                                    only(Kind::STROBE));
     CAPTURE(static_cast<int>(format), static_cast<int>(kinds));
     std::minstd_rand rng(21);
@@ -192,7 +192,7 @@ TEST_CASE("every pixel a fireworks frame changes lies in one of its dirty boxes"
     REQUIRE(most_sparks > 0);
     CHECK(uncovered == 0);
     CHECK(most_boxes > 1);
-    CHECK(most_boxes <= 2 * FireworksSim::MAX_BURSTS);
+    CHECK(most_boxes <= 2 * FireworksSim::kMaxBursts);
     CHECK(most_lit > 0);
 }
 
@@ -216,14 +216,14 @@ TEST_CASE("each crossette star splits into a cross of four fragments",
     }
     REQUIRE(stars > 0);
     // A few stars, far fewer than the level's sparks per burst, so the split has room.
-    CHECK(stars <= FIREWORKS_LEVELS[0].sparks_per_burst / 4);
+    CHECK(stars <= kFireworksLevels[0].sparks_per_burst / 4);
     // Every star has split before the first fragment burns out.
     CHECK(most == 4 * stars);
     CHECK(sim.sparks_in_use() == 0);
 }
 
 TEST_CASE("a palm throws a few comets with long tails", "[screensaver][fireworks_sim]") {
-    const size_t level = GENERATE(as<size_t>{}, 0, FIREWORKS_LEVEL_COUNT - 1);
+    const size_t level = GENERATE(as<size_t>{}, 0, kFireworksLevelCount - 1);
     CAPTURE(level);
     std::minstd_rand rng(17);
     FireworksSim sim;
@@ -301,15 +301,15 @@ TEST_CASE("the spark pool is sized at start, never grows, and a full pool drops 
     SimFrame frame(PixelFormat::XRGB8888);
 
     sim.init(frame.target, rng, 0, busy_pacing());
-    CHECK(sim.spark_capacity() == static_cast<size_t>(FIREWORKS_LEVELS[0].sparks_per_burst) *
-                                      FIREWORKS_LEVELS[0].bursts_at_once);
+    CHECK(sim.spark_capacity() == static_cast<size_t>(kFireworksLevels[0].sparks_per_burst) *
+                                      kFireworksLevels[0].bursts_at_once);
 
     // Sized for the cheapest level, then asked for the most expensive: one burst fills the pool.
-    const size_t cheapest = FIREWORKS_LEVEL_COUNT - 1;
+    const size_t cheapest = kFireworksLevelCount - 1;
     sim.init(frame.target, rng, cheapest, busy_pacing());
     const size_t capacity = sim.spark_capacity();
-    REQUIRE(capacity == static_cast<size_t>(FIREWORKS_LEVELS[cheapest].sparks_per_burst) *
-                            FIREWORKS_LEVELS[cheapest].bursts_at_once);
+    REQUIRE(capacity == static_cast<size_t>(kFireworksLevels[cheapest].sparks_per_burst) *
+                            kFireworksLevels[cheapest].bursts_at_once);
     sim.request_level(0);
 
     std::vector<DirtyRect> dirty;
@@ -356,7 +356,7 @@ TEST_CASE("a fireworks level request waits for the next shell launch",
     run_ms(800);          // 2200 ms
     CHECK(sim.level() == 2);
     run_ms(200); // 2400 ms
-    CHECK(sim.level() == FIREWORKS_LEVEL_COUNT - 1);
+    CHECK(sim.level() == kFireworksLevelCount - 1);
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

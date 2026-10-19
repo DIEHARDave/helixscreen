@@ -594,7 +594,7 @@ void dispatch_load(AmsBackend* backend, int slot, const FilamentOpSurface& surfa
                                     unwind_async(s, plan, ticket);
                                     report_op_error(err, "load");
                                 },
-                                IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+                                IMoonrakerAPI::kExtrusionTimeoutMs);
                             if (!dispatched) {
                                 // Empty slot or no API: neither callback will ever fire,
                                 // so nothing else would release what begin() armed.
@@ -629,7 +629,7 @@ void dispatch_load(AmsBackend* backend, int slot, const FilamentOpSurface& surfa
                 unwind_async(s, plan, ticket);
                 report_op_error(err, "load");
             },
-            IMoonrakerAPI::EXTRUSION_TIMEOUT_MS, /*silent=*/false, /*on_queued=*/nullptr,
+            IMoonrakerAPI::kExtrusionTimeoutMs, /*silent=*/false, /*on_queued=*/nullptr,
             /*caller_surfaces_errors=*/true); // report_op_error() toasts the failure
         return;
     }
@@ -759,7 +759,7 @@ void dispatch_unload(AmsBackend* backend, int slot, const FilamentOpSurface& sur
                                     unwind_async(s, plan, ticket);
                                     report_op_error(err, "unload");
                                 },
-                                IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+                                IMoonrakerAPI::kExtrusionTimeoutMs);
                             if (!dispatched) {
                                 spdlog::warn("{} Unload macro did not dispatch", s.log_tag);
                                 unwind_async(s, plan, ticket);
@@ -792,7 +792,7 @@ void dispatch_unload(AmsBackend* backend, int slot, const FilamentOpSurface& sur
                 unwind_async(s, plan, ticket);
                 report_op_error(err, "unload");
             },
-            IMoonrakerAPI::EXTRUSION_TIMEOUT_MS, /*silent=*/false, /*on_queued=*/nullptr,
+            IMoonrakerAPI::kExtrusionTimeoutMs, /*silent=*/false, /*on_queued=*/nullptr,
             /*caller_surfaces_errors=*/true); // report_op_error() toasts the failure
         return;
     }
@@ -880,7 +880,7 @@ void dispatch_purge(const char* log_tag, FilamentOpTicket ticket) {
             spdlog::error("{} Purge fallback failed: {}", log_tag, err.message);
             helix::ui::notify_error_tr(TR_NOOP("Failed to purge: {}"), err);
         },
-        IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+        IMoonrakerAPI::kExtrusionTimeoutMs);
 }
 
 } // namespace

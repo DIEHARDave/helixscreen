@@ -118,8 +118,7 @@ void PrintSelectFileProvider::refresh_files(const std::string& current_path,
 
             // Add ".." parent directory entry if not at root
             if (!path_copy.empty()) {
-                file_list.push_back(
-                    PrintFileData::make_directory("..", self->FOLDER_UP_ICON, true));
+                file_list.push_back(PrintFileData::make_directory("..", self->kFolderUpIcon, true));
             }
 
             // Convert FileInfo to PrintFileData, preserving existing data where available
@@ -177,7 +176,7 @@ void PrintSelectFileProvider::refresh_files(const std::string& current_path,
                 if (file.is_dir) {
                     // Directory - use folder icon
                     file_list.push_back(PrintFileData::make_directory(
-                        file.filename, PrintSelectCardView::FOLDER_ICON, false));
+                        file.filename, PrintSelectCardView::kFolderIcon, false));
                 } else {
                     // Only show printable files (.gcode, .gco, .g, .3mf) — the
                     // same predicate the USB stick scanner uses.

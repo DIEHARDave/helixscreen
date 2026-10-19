@@ -111,7 +111,7 @@ TEST_CASE("aux fan role: descriptor is fans/aux, resolves live value, never inve
     REQUIRE(std::string(desc->canonical_default).empty());
 
     Config* cfg = Config::get_instance();
-    const std::string key = cfg->df() + helix::wizard::AUX_FAN;
+    const std::string key = cfg->df() + helix::wizard::kAuxFan;
     const std::string orig = cfg->get<std::string>(key, "");
 
     cfg->set<std::string>(key, std::string("fan_generic internal_fan"));
@@ -134,7 +134,7 @@ TEST_CASE("FanRoleConfig::from_config resolves the aux fan role", "[hwrole][conf
 
     const char* keys[] = {helix::wizard::PART_FAN, helix::wizard::HOTEND_FAN,
                           helix::wizard::CHAMBER_FAN, helix::wizard::EXHAUST_FAN,
-                          helix::wizard::AUX_FAN};
+                          helix::wizard::kAuxFan};
     std::vector<std::string> saved;
     for (const char* k : keys) {
         saved.push_back(cfg->get<std::string>(cfg->df() + k, ""));
@@ -144,7 +144,7 @@ TEST_CASE("FanRoleConfig::from_config resolves the aux fan role", "[hwrole][conf
     for (const char* k : keys) {
         cfg->set<std::string>(cfg->df() + k, std::string(""));
     }
-    cfg->set<std::string>(cfg->df() + helix::wizard::AUX_FAN,
+    cfg->set<std::string>(cfg->df() + helix::wizard::kAuxFan,
                           std::string("fan_generic internal_fan"));
 
     auto roles = FanRoleConfig::from_config(cfg, {"fan", "fan_generic internal_fan"});
@@ -202,7 +202,7 @@ struct GuidedKeyStash {
     explicit GuidedKeyStash(Config* c) : cfg(c) {
         for (const char* suffix :
              {helix::wizard::PART_FAN, helix::wizard::HOTEND_FAN, helix::wizard::CHAMBER_FAN,
-              helix::wizard::EXHAUST_FAN, helix::wizard::AUX_FAN, helix::wizard::HOTEND_HEATER,
+              helix::wizard::EXHAUST_FAN, helix::wizard::kAuxFan, helix::wizard::HOTEND_HEATER,
               helix::wizard::BED_HEATER}) {
             std::string k = cfg->df() + suffix;
             saved.push_back({k, cfg->get<std::string>(k, "")});
@@ -367,7 +367,7 @@ TEST_CASE("settle_targeted_reconfig: finishing declines guided roles the session
     Config* cfg = Config::get_instance();
     GuidedKeyStash stash(cfg);
     stash.clear_all();
-    stash.set(helix::wizard::AUX_FAN, "fan_generic internal_fan");
+    stash.set(helix::wizard::kAuxFan, "fan_generic internal_fan");
     stash.set(helix::wizard::PART_FAN, "fan"); // resolvable: the step has a control for it
 
     MoonrakerClientMock client;

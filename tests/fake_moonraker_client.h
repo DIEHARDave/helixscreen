@@ -248,7 +248,7 @@ class FakeMoonrakerClient : public helix::IMoonrakerClient {
     void set_bed_mesh_callback(std::function<void(const nlohmann::json&)>) override {}
     helix::SubscriptionId
     register_notify_update(std::function<void(const nlohmann::json&)>) override {
-        return helix::INVALID_SUBSCRIPTION_ID;
+        return helix::kInvalidSubscriptionId;
     }
     bool unsubscribe_notify_update(helix::SubscriptionId) override {
         return false;

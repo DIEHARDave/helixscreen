@@ -510,6 +510,7 @@ TEST_CASE("PrintStart: typical noise lines should not match phases", "[print][ne
 // - HELIX:PHASE:COMPLETE -> sets COMPLETE phase
 // - Various phase transitions
 
+#include "ui_print_preparation_manager.h"
 #include "ui_update_queue.h"
 
 #include "../lvgl_test_fixture.h"
@@ -540,10 +541,10 @@ using namespace helix::ui;
  * when the signal is not recognized.
  */
 static std::pair<PrintStartPhase, std::string> parse_helix_phase_signal(const std::string& line) {
-    static const char* HELIX_PHASE_PREFIX = "HELIX:PHASE:";
+    static const char* kHelixPhasePrefix = "HELIX:PHASE:";
     constexpr size_t PREFIX_LEN = 12;
 
-    size_t pos = line.find(HELIX_PHASE_PREFIX);
+    size_t pos = line.find(kHelixPhasePrefix);
     if (pos == std::string::npos) {
         return {PrintStartPhase::IDLE, ""};
     }
@@ -559,7 +560,7 @@ static std::pair<PrintStartPhase, std::string> parse_helix_phase_signal(const st
         return {PrintStartPhase::IDLE, ""};
     }
 
-    static const std::map<PrintStartPhase, std::string> MESSAGES = {
+    static const std::map<PrintStartPhase, std::string> kMessages = {
         {PrintStartPhase::INITIALIZING, "Preparing Print..."},
         {PrintStartPhase::HOMING, "Homing..."},
         {PrintStartPhase::HEATING_BED, "Heating Bed..."},
@@ -572,8 +573,8 @@ static std::pair<PrintStartPhase, std::string> parse_helix_phase_signal(const st
         {PrintStartPhase::PURGING, "Purging..."},
         {PrintStartPhase::COMPLETE, "Starting Print..."},
     };
-    auto it = MESSAGES.find(*phase);
-    return {*phase, it != MESSAGES.end() ? it->second : ""};
+    auto it = kMessages.find(*phase);
+    return {*phase, it != kMessages.end() ? it->second : ""};
 }
 
 /**
@@ -1323,7 +1324,7 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
     }
 
     SECTION("Bed at target (within tolerance), nozzle heating") {
-        // TEMP_TOLERANCE_DECIDEGREES = 50 (5C)
+        // kTempToleranceDecidegrees = 50 (5C)
         // Bed at 58C/60C (within 5C tolerance = at target)
         // Nozzle at 100C/210C
         set_all_temps(580, 600, 1000, 2100);
@@ -1345,7 +1346,7 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
 }
 
 // ============================================================================
-// Temperature Tolerance Edge Cases (TEMP_TOLERANCE_DECIDEGREES = 50)
+// Temperature Tolerance Edge Cases (kTempToleranceDecidegrees = 50)
 // ============================================================================
 
 TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
@@ -2184,6 +2185,34 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
 }
 
 TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
+                 "Print details estimate and the countdown total agree",
+                 "[print][collector][eta][estimate]") {
+    // Same printer, same temperatures, same targets: the number the details
+    // screen shows before Print is the total the countdown starts from.
+    PreprintConfigScope config;
+    auto& rates = ThermalRateManager::instance();
+    rates.reset();
+    rates.get_model("extruder").set_default_rate(0.5f);
+    rates.get_model("heater_bed").set_default_rate(2.0f);
+
+    set_all_temps(250, 600, 250, 2200); // bed 25/60C, nozzle 25/220C
+    PrintPreparationManager details;
+    details.set_dependencies(nullptr, &state());
+    FileMetadata file;
+    file.first_layer_bed_temp = 60.0;
+    file.first_layer_extr_temp = 220.0;
+    details.recalculate_estimate(&file, "countdown.gcode");
+    const int shown = lv_subject_get_int(details.get_preprint_estimate_subject());
+
+    collector().start();
+    const float countdown_total = PrintStartCollectorTestAccess::get_predicted_total(collector());
+
+    REQUIRE(shown > 300);
+    REQUIRE(shown == static_cast<int>(countdown_total));
+    rates.reset();
+}
+
+TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
                  "ETA re-baselines when nozzle target rises in stages", "[print][collector][eta]") {
     // K1C heats the nozzle to ~130°C for probing, then to print temp. The
     // second stage is a genuine new input: the recompute (and the anchor
@@ -2685,12 +2714,12 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
     reset_collector_to_idle();
     collector().enable_fallbacks();
 
-    // Force no predictions so FALLBACK_TIMEOUT (300s) applies directly
+    // Force no predictions so kFallbackTimeout (300s) applies directly
     PrintStartCollectorTestAccess::set_predicted_total(collector(), 0.0f);
 
     // Bed at target (105°C), nozzle target = 0 (M109 not issued yet)
     set_all_temps(1050, 1050, 500, 0);
-    // Simulate 400s elapsed (well past FALLBACK_TIMEOUT of 300s)
+    // Simulate 400s elapsed (well past kFallbackTimeout of 300s)
     PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), 400);
 
     collector().check_fallback_completion();
@@ -2710,12 +2739,12 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
     collector().enable_fallbacks();
     REQUIRE(collector().is_active());
 
-    // Force no predictions so FALLBACK_TIMEOUT (300s) applies directly
+    // Force no predictions so kFallbackTimeout (300s) applies directly
     PrintStartCollectorTestAccess::set_predicted_total(collector(), 0.0f);
 
     // Both heaters at their targets (within 2°C)
     set_all_temps(1050, 1050, 2640, 2650);
-    // Simulate 310s elapsed (past FALLBACK_TIMEOUT of 300s)
+    // Simulate 310s elapsed (past kFallbackTimeout of 300s)
     PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), 310);
 
     collector().check_fallback_completion();
@@ -2740,7 +2769,7 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
     set_all_temps(1050, 1050, 2650, 2650);
 
     SECTION("Does not fire before adaptive timeout") {
-        // 400s elapsed — past FALLBACK_TIMEOUT but before adaptive (750s)
+        // 400s elapsed — past kFallbackTimeout but before adaptive (750s)
         PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), 400);
         collector().check_fallback_completion();
         drain_async_updates();
@@ -2799,10 +2828,10 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture, "Absolute max timeout fires w
     reset_collector_to_idle();
     collector().enable_fallbacks();
 
-    // Force no predictions — FALLBACK_TIMEOUT (300s) applies
+    // Force no predictions — kFallbackTimeout (300s) applies
     PrintStartCollectorTestAccess::set_predicted_total(collector(), 0.0f);
 
-    // Nozzle target = 0 — temps_near stays false, FALLBACK_TIMEOUT won't fire
+    // Nozzle target = 0 — temps_near stays false, kFallbackTimeout won't fire
     set_all_temps(1050, 1050, 500, 0);
 
     SECTION("FALLBACK_TIMEOUT does not fire with unknown nozzle target") {
@@ -2853,7 +2882,7 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
     reset_collector_to_idle();
     collector().enable_fallbacks();
 
-    // Force no predictions so FALLBACK_TIMEOUT (300s) applies directly
+    // Force no predictions so kFallbackTimeout (300s) applies directly
     PrintStartCollectorTestAccess::set_predicted_total(collector(), 0.0f);
 
     // Nozzle at 264°C with target 265°C: inside the 2°C at-target band.
@@ -6869,7 +6898,7 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
                  "PrintStartCollector: the stuck-pre-print ceiling is simulated seconds too",
                  "[print][collector][simclock][timeout]") {
     // Elapsed and the timeout constants must share one unit, or a fast-forwarded
-    // run either never gives up or gives up instantly. FALLBACK_TIMEOUT is 300
+    // run either never gives up or gives up instantly. kFallbackTimeout is 300
     // simulated seconds; the boundary is walked from both sides so the negative
     // half cannot pass by the collector simply not running.
     helix::sim::SimulatedClock::ManualScope clock(helix::sim::SimSpeed::of(1.0));
@@ -6881,7 +6910,7 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
 
     // Temps at target and nothing being said: the quiet path. The first call
     // recomputes weights off the freshly-set targets, so the predicted total is
-    // cleared afterwards to reach FALLBACK_TIMEOUT rather than the adaptive
+    // cleared afterwards to reach kFallbackTimeout rather than the adaptive
     // ceiling derived from it.
     set_all_temps(600, 600, 2100, 2100);
     collector().check_fallback_completion();
@@ -7064,7 +7093,7 @@ class CosmosPrintStartReplayFixture : public PrintStartCollectorHeaterFixture {
             int bed, bed_target, ext, ext_target; // decidegrees
         };
         // clang-format off
-        static constexpr Sample SAMPLES[] = {
+        static constexpr Sample kSamples[] = {
         {0, 245, 0, 266, 0}, {5, 250, 1050, 384, 1400}, {10, 261, 1050, 628, 1400}, {15, 274, 1050, 830, 1400},
         {20, 289, 1050, 1027, 1400}, {25, 304, 1050, 1210, 1400}, {30, 320, 1050, 1358, 1400}, {35, 332, 1050, 1404, 1400},
         {40, 347, 1050, 1412, 1400}, {45, 359, 1050, 1423, 1400}, {50, 373, 1050, 1403, 1400}, {55, 385, 1050, 1403, 1400},
@@ -7107,14 +7136,14 @@ class CosmosPrintStartReplayFixture : public PrintStartCollectorHeaterFixture {
         };
         // The recorded soak narrates at 484.4s and holds the heaters through the
         // 540s sample; a longer soak moves everything after it later.
-        constexpr int SOAK_NARRATION_MS = 484400;
-        constexpr int SOAK_HELD_THROUGH_S = 540;
+        constexpr int kSoakNarrationMs = 484400;
+        constexpr int kSoakHeldThroughS = 540;
         const int extra_s =
             static_cast<int>(std::lround((std::stod(variant.heatsoak_minutes) - 1.0) * 60.0));
         const int extra_ms = extra_s * 1000;
         const std::string soak = std::string("Heatsoak: ") + variant.heatsoak_minutes + "m";
         std::vector<Narration> narration = {
-            {SOAK_NARRATION_MS, "// " + soak, soak},
+            {kSoakNarrationMs, "// " + soak, soak},
             {542500 + extra_ms, "// Using default bed mesh", "Using default bed mesh"},
             {542600 + extra_ms, "// Smart Park location: 41.0714,33.0046.", ""},
             {605600 + extra_ms,
@@ -7140,13 +7169,13 @@ class CosmosPrintStartReplayFixture : public PrintStartCollectorHeaterFixture {
         }
         // Through the extra soak time the heaters read what they read at 540s.
         std::vector<Sample> timeline;
-        for (const Sample& s : SAMPLES) {
-            if (s.t_s > SOAK_HELD_THROUGH_S) {
+        for (const Sample& s : kSamples) {
+            if (s.t_s > kSoakHeldThroughS) {
                 timeline.push_back({s.t_s + extra_s, s.bed, s.bed_target, s.ext, s.ext_target});
                 continue;
             }
             timeline.push_back(s);
-            if (s.t_s == SOAK_HELD_THROUGH_S) {
+            if (s.t_s == kSoakHeldThroughS) {
                 for (int t = s.t_s + 5; t <= s.t_s + extra_s; t += 5) {
                     timeline.push_back({t, s.bed, s.bed_target, s.ext, s.ext_target});
                 }
@@ -7154,7 +7183,7 @@ class CosmosPrintStartReplayFixture : public PrintStartCollectorHeaterFixture {
         }
         // The M190 wait releases just before the heat soak narration; M109
         // starts with the smart park and reports until the nozzle arrives.
-        constexpr int BED_WAIT_END_MS = 484400;
+        constexpr int kBedWaitEndMs = 484400;
         const int nozzle_wait_start_ms = 543600 + extra_ms;
         const int nozzle_wait_end_ms = 587600 + extra_ms;
 
@@ -7183,7 +7212,7 @@ class CosmosPrintStartReplayFixture : public PrintStartCollectorHeaterFixture {
             }
         };
 
-        const Sample& first = SAMPLES[0];
+        const Sample& first = kSamples[0];
         set_all_temps(first.bed, first.bed_target, first.ext, first.ext_target);
         collector().start();
         collector().enable_fallbacks();
@@ -7206,7 +7235,7 @@ class CosmosPrintStartReplayFixture : public PrintStartCollectorHeaterFixture {
 
             advance_to(s.t_s * 1000);
             set_all_temps(s.bed, s.bed_target, s.ext, s.ext_target);
-            const bool waiting = (s.bed_target > 0 && now_ms < BED_WAIT_END_MS) ||
+            const bool waiting = (s.bed_target > 0 && now_ms < kBedWaitEndMs) ||
                                  (now_ms >= nozzle_wait_start_ms && now_ms <= nozzle_wait_end_ms);
             if (waiting) {
                 char report[64];
@@ -7237,18 +7266,17 @@ TEST_CASE_METHOD(CosmosPrintStartReplayFixture,
                  "[print][collector][cosmos][integration]") {
     REQUIRE(have_profile_);
     // bed_x_max 256 reads as a medium bed to the size guess.
-    constexpr float BED_X_MAX = 256.0f;
+    constexpr float kBedXMax = 256.0f;
     float min_prediction_s = 0.0f;
 
     SECTION("with the size-guess heating rates") {
         // 1.5 s/C predicts about a third of the real pre-print, so every
         // elapsed-time threshold short of the ceiling is spent before the bed
         // nears its target.
-        ThermalRateManager::instance().apply_archetype_defaults(BED_X_MAX, "");
+        ThermalRateManager::instance().apply_archetype_defaults(kBedXMax, "");
     }
     SECTION("with the heating rates from the printer database") {
-        ThermalRateManager::instance().apply_archetype_defaults(BED_X_MAX,
-                                                                "Elegoo Centauri Carbon");
+        ThermalRateManager::instance().apply_archetype_defaults(kBedXMax, "Elegoo Centauri Carbon");
         // The first print is predicted within 10% of the 618s it took.
         min_prediction_s = 618.0f * 0.9f;
     }
@@ -7559,18 +7587,18 @@ class ForgeXPrintStartReplayFixture : public ForgeXCollectorFixture {
 TEST_CASE_METHOD(ForgeXPrintStartReplayFixture,
                  "PrintStartCollector: real Forge-X 1.4.2 pre-print completes at PRINTING",
                  "[print][collector][forge_x][integration]") {
-    constexpr float BED_X_MAX = 220.0f;
+    constexpr float kBedXMax = 220.0f;
     int history_total_s = 0;
     float min_prediction_s = 0.0f;
     float max_prediction_s = 1.0e6f;
     float max_whole_run_s = 849.0f * 1.3f;
 
     SECTION("with the size-guess heating rates") {
-        ThermalRateManager::instance().apply_archetype_defaults(BED_X_MAX, "");
+        ThermalRateManager::instance().apply_archetype_defaults(kBedXMax, "");
     }
     SECTION("with the heating rates from the printer database") {
         ThermalRateManager::instance().apply_archetype_defaults(
-            BED_X_MAX, "FlashForge Adventurer 5M Pro (ForgeX)");
+            kBedXMax, "FlashForge Adventurer 5M Pro (ForgeX)");
         // The first print is predicted within 15% of the 849s it took.
         min_prediction_s = 849.0f * 0.85f;
         max_prediction_s = 849.0f * 1.15f;
@@ -7578,7 +7606,7 @@ TEST_CASE_METHOD(ForgeXPrintStartReplayFixture,
     SECTION("with a history shorter than this pre-print") {
         // A saved pre-print a timeout cut short: its deadline passes while
         // the nozzle cools silently for probing, heaters near their targets.
-        ThermalRateManager::instance().apply_archetype_defaults(BED_X_MAX, "");
+        ThermalRateManager::instance().apply_archetype_defaults(kBedXMax, "");
         history_total_s = 380;
     }
 
@@ -7672,8 +7700,8 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
     CAPTURE(nozzle_set_at, done_at, max_prediction);
     // The generic default phases (homing, mesh, QGL, Z tilt, clean, purge:
     // 260s) count toward the total whether or not this start runs them.
-    constexpr float GENERIC_DEFAULT_PHASES_S = 260.0f;
-    REQUIRE(max_prediction <= 1.3f * static_cast<float>(done_at) + GENERIC_DEFAULT_PHASES_S);
+    constexpr float kGenericDefaultPhasesS = 260.0f;
+    REQUIRE(max_prediction <= 1.3f * static_cast<float>(done_at) + kGenericDefaultPhasesS);
 }
 
 TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
@@ -7754,12 +7782,12 @@ class SilentVoronReplayFixture : public PrintStartCollectorHeaterFixture {
         int progress{0};
     };
 
-    static constexpr int BED_TARGET_S = 15;     // 22:48:30
-    static constexpr int BED_AT_TARGET_S = 350; // 22:54:05
-    static constexpr int EXT_TARGET_S = 352;    // 22:54:07
-    static constexpr int EXT_AT_TARGET_S = 406; // 22:55:01
-    static constexpr int PURGE_START_S = 407;   // 22:55:02
-    static constexpr int FIRST_LAYER_S = 415;   // 22:55:10
+    static constexpr int kBedTargetS = 15;    // 22:48:30
+    static constexpr int kBedAtTargetS = 350; // 22:54:05
+    static constexpr int kExtTargetS = 352;   // 22:54:07
+    static constexpr int kExtAtTargetS = 406; // 22:55:01
+    static constexpr int kPurgeStartS = 407;  // 22:55:02
+    static constexpr int kFirstLayerS = 415;  // 22:55:10
 
     SilentVoronReplayFixture() {
         ThermalRateManager::instance().reset();
@@ -7793,7 +7821,7 @@ class SilentVoronReplayFixture : public PrintStartCollectorHeaterFixture {
 
     /// Runs the capture to layer 1 and returns what the panel showed each second.
     std::vector<Snapshot> replay() {
-        std::vector<Snapshot> shown(FIRST_LAYER_S + 1);
+        std::vector<Snapshot> shown(kFirstLayerS + 1);
         const auto lerp = [](int t, int t0, int t1, double v0, double v1) {
             if (t <= t0) {
                 return v0;
@@ -7811,14 +7839,14 @@ class SilentVoronReplayFixture : public PrintStartCollectorHeaterFixture {
         collector().note_current_layer(0);
         settle();
 
-        for (int t = 0; t <= FIRST_LAYER_S; ++t) {
+        for (int t = 0; t <= kFirstLayerS; ++t) {
             if (t > 0) {
                 clock_.advance(std::chrono::seconds(1));
             }
-            const double bed = lerp(t, BED_TARGET_S, BED_AT_TARGET_S, 30.0, 90.0);
-            const double ext = lerp(t, EXT_TARGET_S, EXT_AT_TARGET_S, 32.0, 270.0);
-            const int bed_target = t >= BED_TARGET_S ? 90 : 0;
-            const int ext_target = t >= EXT_TARGET_S ? 270 : 0;
+            const double bed = lerp(t, kBedTargetS, kBedAtTargetS, 30.0, 90.0);
+            const double ext = lerp(t, kExtTargetS, kExtAtTargetS, 32.0, 270.0);
+            const int bed_target = t >= kBedTargetS ? 90 : 0;
+            const int ext_target = t >= kExtTargetS ? 270 : 0;
 
             if (t == 3) {
                 set_homed("xy");
@@ -7826,7 +7854,7 @@ class SilentVoronReplayFixture : public PrintStartCollectorHeaterFixture {
                 set_homed("xyz");
             } else if (t == 12) {
                 display("Bed: 90c");
-            } else if (t == EXT_TARGET_S - 1) {
+            } else if (t == kExtTargetS - 1) {
                 display("Hotend: 270c");
             }
 
@@ -7835,26 +7863,26 @@ class SilentVoronReplayFixture : public PrintStartCollectorHeaterFixture {
             client().dispatch_status_update(
                 {{"heater_bed", {{"temperature", bed}, {"target", bed_target}}},
                  {"extruder", {{"temperature", ext}, {"target", ext_target}}}});
-            const bool bed_wait = t >= BED_TARGET_S && t <= BED_AT_TARGET_S;
-            const bool ext_wait = t >= EXT_TARGET_S && t <= EXT_AT_TARGET_S;
+            const bool bed_wait = t >= kBedTargetS && t <= kBedAtTargetS;
+            const bool ext_wait = t >= kExtTargetS && t <= kExtAtTargetS;
             if (bed_wait || ext_wait) {
                 char report[64];
                 std::snprintf(report, sizeof(report), "B:%.1f /%d.0 T0:%.1f /%d.0", bed, bed_target,
                               ext, ext_target);
                 send_gcode_response(report);
             }
-            if (t >= PURGE_START_S && t < FIRST_LAYER_S) {
+            if (t >= kPurgeStartS && t < kFirstLayerS) {
                 client().dispatch_status_update(
                     {{"motion_report",
                       {{"live_extruder_velocity", 2.5}, {"live_velocity", 50.0}}}});
-            } else if (t == FIRST_LAYER_S) {
+            } else if (t == kFirstLayerS) {
                 client().dispatch_status_update(
                     {{"motion_report", {{"live_extruder_velocity", 0.0}}}});
             }
             settle();
 
             // The heater-target observers run the fallback check on a new target.
-            if (t == BED_TARGET_S || t == EXT_TARGET_S) {
+            if (t == kBedTargetS || t == kExtTargetS) {
                 tick_fallbacks();
             }
             if (t % 5 == 0) {
@@ -7862,7 +7890,7 @@ class SilentVoronReplayFixture : public PrintStartCollectorHeaterFixture {
                 tick_fallbacks();
             }
 
-            if (t == FIRST_LAYER_S) {
+            if (t == kFirstLayerS) {
                 collector().note_current_layer(1);
                 collector().complete_from_external_signal("first layer");
                 settle();
@@ -7892,25 +7920,25 @@ TEST_CASE_METHOD(SilentVoronReplayFixture,
 
     // At 22:51 the bed has about 3 minutes left and the nozzle another minute:
     // the countdown follows the bed's measured rate, not the size guess.
-    const int actual_remaining_at_165 = FIRST_LAYER_S - 165;
+    const int actual_remaining_at_165 = kFirstLayerS - 165;
     CHECK(shown[165].phase == PrintStartPhase::HEATING_BED);
     CHECK(shown[165].remaining >= actual_remaining_at_165 * 9 / 10);
     CHECK(shown[165].remaining <= actual_remaining_at_165 * 3 / 2);
 
-    CHECK(shown[EXT_TARGET_S - 1].phase == PrintStartPhase::HEATING_NOZZLE);
+    CHECK(shown[kExtTargetS - 1].phase == PrintStartPhase::HEATING_NOZZLE);
 
     // Once the nozzle is at temperature only the purge is left, and the bar
     // credits the mesh and cleaning this macro never ran.
-    CHECK(shown[PURGE_START_S + 3].phase == PrintStartPhase::PURGING);
-    CHECK(shown[PURGE_START_S + 3].remaining <= 15);
-    CHECK(shown[PURGE_START_S + 3].progress >= 90);
+    CHECK(shown[kPurgeStartS + 3].phase == PrintStartPhase::PURGING);
+    CHECK(shown[kPurgeStartS + 3].remaining <= 15);
+    CHECK(shown[kPurgeStartS + 3].progress >= 90);
 
-    REQUIRE(shown[FIRST_LAYER_S].phase == PrintStartPhase::COMPLETE);
+    REQUIRE(shown[kFirstLayerS].phase == PrintStartPhase::COMPLETE);
 
     // The finished start is history, and the bed's measured rate is saved.
     const auto entries = helix::PreprintPredictor::load_entries_from_config();
     REQUIRE(entries.size() == 1);
-    CHECK(entries[0].total_seconds == FIRST_LAYER_S);
+    CHECK(entries[0].total_seconds == kFirstLayerS);
     helix::Config* cfg = helix::Config::get_instance();
     CHECK(cfg->get<float>("/thermal/rates/heater_bed/heat_rate", 0.0f) ==
           Catch::Approx(5.6f).margin(0.6f));
@@ -7924,7 +7952,7 @@ TEST_CASE_METHOD(SilentVoronReplayFixture,
     PrintStartCollectorTestAccess::run_eta_update(collector());
     settle();
     CHECK(PrintStartCollectorTestAccess::get_predicted_total(collector()) ==
-          Catch::Approx(FIRST_LAYER_S).margin(10));
+          Catch::Approx(kFirstLayerS).margin(10));
     CHECK(remaining() >= 6 * 60);
 }
 
@@ -7955,6 +7983,37 @@ TEST_CASE_METHOD(SilentVoronReplayFixture,
     helix::Config* cfg = helix::Config::get_instance();
     CHECK(cfg->get<float>("/thermal/rates/heater_bed/heat_rate", 0.0f) ==
           Catch::Approx(5.0f).margin(0.5f));
+}
+
+TEST_CASE_METHOD(SilentVoronReplayFixture,
+                 "PrintStartCollector: the history entry records the phases its start skipped",
+                 "[print][collector][preprint][silent_voron]") {
+    const int mesh = static_cast<int>(PrintStartPhase::BED_MESH);
+    const auto run = [&](const std::optional<std::set<int>>& told) {
+        set_all_temps(300, 900, 320, 0);
+        collector().start();
+        collector().enable_fallbacks();
+        if (told) {
+            collector().note_skipped_phases(*told);
+        }
+        settle();
+        clock_.advance(std::chrono::seconds(60));
+        tick_fallbacks();
+        settle();
+        collector().complete_from_external_signal("first layer");
+        settle();
+        collector().stop();
+        settle();
+    };
+
+    run(std::set<int>{mesh});
+    run(std::nullopt); // a start nothing told: the last run's list does not carry over
+
+    const auto entries = helix::PreprintPredictor::load_entries_from_config();
+    REQUIRE(entries.size() == 2);
+    REQUIRE(entries[0].skipped_phases.has_value());
+    CHECK(*entries[0].skipped_phases == std::set<int>{mesh});
+    CHECK_FALSE(entries[1].skipped_phases.has_value());
 }
 
 TEST_CASE_METHOD(SilentVoronReplayFixture,

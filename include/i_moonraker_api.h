@@ -23,6 +23,18 @@ class IMoonrakerClient; // returned by get_client()
 class PrinterState;     // returned by printer_state()
 class PrinterDiscovery; // returned by hardware()
 
+/// Klippy's state as Moonraker's printer.info reports it. `state` is the raw
+/// string: Klipper's ready/startup/shutdown/error (parse_klippy_state() maps
+/// those), or Moonraker's own "disconnected" while it has no Klippy connection.
+struct KlippyStatus {
+    std::string state;
+    std::string state_message;
+};
+
+/// Read state and state_message from a printer.info `result` object; either is
+/// empty when absent or not a string.
+KlippyStatus parse_klippy_status(const nlohmann::json& info);
+
 /**
  * @brief Abstract interface for the high-level Moonraker API façade.
  *
@@ -48,6 +60,7 @@ class IMoonrakerAPI {
     using BoolCallback = std::function<void(bool)>;
     using StringCallback = std::function<void(const std::string&)>;
     using JsonCallback = std::function<void(const json&)>;
+    using KlippyStatusCallback = std::function<void(const KlippyStatus&)>;
 
     using PowerDevicesCallback = std::function<void(const std::vector<PowerDevice>&)>;
     using SensorsCallback =
@@ -56,25 +69,25 @@ class IMoonrakerAPI {
     // ========== G-code execute_gcode timeout constants ==========
     // Default (timeout_ms = 0) is MoonrakerRequestTracker's 60s. These are for
     // long-running commands.
-    static constexpr uint32_t HOMING_TIMEOUT_MS = 300000;        // 5 min — G28 on large printers
-    static constexpr uint32_t AMS_OPERATION_TIMEOUT_MS = 300000; // 5 min — MMU/AFC/tool change ops
-    static constexpr uint32_t EXTRUSION_TIMEOUT_MS =
+    static constexpr uint32_t kHomingTimeoutMs = 300000;       // 5 min — G28 on large printers
+    static constexpr uint32_t kAmsOperationTimeoutMs = 300000; // 5 min — MMU/AFC/tool change ops
+    static constexpr uint32_t kExtrusionTimeoutMs =
         120000; // 2 min — filament purge/load at slow feedrate
-    static constexpr uint32_t MACRO_TIMEOUT_MS =
+    static constexpr uint32_t kMacroTimeoutMs =
         300000; // 5 min — user macros can do anything (homing, leveling, filament ops)
     /// 20 min — a pre-print macro chain that the print start must WAIT for.
     /// Creality's BED_MESH_CALIBRATE_START_PRINT homes, wipes, heats the bed to
     /// print temp and then runs a full adaptive mesh; measured at ~10 min on a
-    /// warm K2 Plus, and a cold ASA soak to 105C pushes it past MACRO_TIMEOUT_MS.
+    /// warm K2 Plus, and a cold ASA soak to 105C pushes it past kMacroTimeoutMs.
     /// If even this ceiling expires while the printer still reports busy,
     /// PrintPreparationManager waits for the busy->idle edge instead of failing;
     /// only a printer that never goes idle aborts the start.
-    static constexpr uint32_t PRE_START_MACRO_TIMEOUT_MS = 1200000;
+    static constexpr uint32_t kPreStartMacroTimeoutMs = 1200000;
 
     /// Moonraker's default API port. When the HTTP base points here we assume a
     /// "direct to Moonraker" connection, where the webcam is served by a separate
     /// reverse proxy (conventionally nginx on :80) rather than the API port.
-    static constexpr int MOONRAKER_DEFAULT_PORT = 7125;
+    static constexpr int kMoonrakerDefaultPort = 7125;
 
     virtual ~IMoonrakerAPI() = default;
 
@@ -271,8 +284,8 @@ class IMoonrakerAPI {
     // Query Operations
     // ========================================================================
 
-    /// @brief Query if printer is ready for commands
-    virtual void is_printer_ready(BoolCallback on_result, ErrorCallback on_error) = 0;
+    /// @brief Query Klippy's state and state message (printer.info)
+    virtual void get_klippy_status(KlippyStatusCallback on_result, ErrorCallback on_error) = 0;
 
     /// @brief Get current print state
     virtual void get_print_state(StringCallback on_result, ErrorCallback on_error) = 0;

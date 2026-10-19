@@ -1955,7 +1955,7 @@ TEST_CASE_METHOD(LedControllerFixture, "LedController: draft macro is not a sele
     // A bare "macro:" chip would render as an unnamed button that dispatches
     // nothing when tapped.
     for (const auto& strip : ctrl.all_selectable_strips()) {
-        CHECK(strip.id != helix::led::MACRO_STRIP_PREFIX);
+        CHECK(strip.id != helix::led::kMacroStripPrefix);
         CHECK(!strip.name.empty());
     }
     REQUIRE(ctrl.all_selectable_strips().empty());

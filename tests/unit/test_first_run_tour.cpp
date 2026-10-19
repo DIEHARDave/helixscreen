@@ -39,7 +39,7 @@ void reset_tour_settings() {
 TEST_CASE("FirstRunTour gate: blocks when tour already completed", "[tour]") {
     reset_tour_settings();
     Config::get_instance()->set<bool>("/tour/completed", true);
-    Config::get_instance()->set<int>("/tour/last_seen_version", helix::tour::TOUR_VERSION);
+    Config::get_instance()->set<int>("/tour/last_seen_version", helix::tour::kTourVersion);
     REQUIRE(FirstRunTour::should_auto_start() == false);
 }
 
@@ -59,7 +59,7 @@ TEST_CASE("FirstRunTour gate: re-triggers when last_seen_version is behind TOUR_
     reset_tour_settings();
     Config::get_instance()->set<bool>("/tour/completed", true);
     Config::get_instance()->set<int>("/tour/last_seen_version", 0);
-    // TOUR_VERSION is 1; last_seen=0 < 1, so tour should re-trigger.
+    // kTourVersion is 1; last_seen=0 < 1, so tour should re-trigger.
     REQUIRE(FirstRunTour::should_auto_start() == true);
 }
 
@@ -104,7 +104,7 @@ TEST_CASE("FirstRunTour mark_completed writes both flags", "[tour]") {
     FirstRunTour::mark_completed();
     auto* cfg = Config::get_instance();
     REQUIRE(cfg->get<bool>("/tour/completed", false) == true);
-    REQUIRE(cfg->get<int>("/tour/last_seen_version", 0) == helix::tour::TOUR_VERSION);
+    REQUIRE(cfg->get<int>("/tour/last_seen_version", 0) == helix::tour::kTourVersion);
 }
 
 TEST_CASE("Tour steps: always 8 steps regardless of AMS", "[tour]") {

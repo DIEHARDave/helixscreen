@@ -133,7 +133,7 @@ void attach_sources() {
     if (ams.are_subjects_initialized()) {
         const SubjectLifetime ams_life = ams.get_subjects_lifetime();
         watch(ams.get_units_dryer_version_subject(), ams_life);
-        for (int i = 0; i < AmsState::MAX_UNITS; ++i) {
+        for (int i = 0; i < AmsState::kMaxUnits; ++i) {
             watch(ams.get_unit_humidity_subject(i), ams_life);
             watch(ams.get_env_ind_visible_subject(i), ams_life);
             watch(ams.get_env_ind_drying_active_subject(i), ams_life);

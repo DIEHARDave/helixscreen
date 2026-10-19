@@ -55,8 +55,8 @@ using namespace helix::widget_size;
 
 namespace {
 
-constexpr uint32_t TEST_SPOOL_COLOR = 0x00FF00; // distinct green, != DEFAULT_COLOR
-constexpr uint32_t DEFAULT_WHITE = 0xE0E0E0;    // ui_spool_canvas.cpp DEFAULT_COLOR
+constexpr uint32_t kTestSpoolColor = 0x00FF00; // distinct green, != DEFAULT_COLOR
+constexpr uint32_t kDefaultWhite = 0xE0E0E0;   // ui_spool_canvas.cpp DEFAULT_COLOR
 
 bool color_is(lv_color_t c, uint32_t rgb) {
     return c.red == ((rgb >> 16) & 0xFF) && c.green == ((rgb >> 8) & 0xFF) &&
@@ -69,7 +69,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                  "active_spool hidden flags and canvas color follow pixels, not spans",
                  "[widget_size][active_spool][panel_widget]") {
     SlotInfo ext;
-    ext.color_rgb = TEST_SPOOL_COLOR;
+    ext.color_rgb = kTestSpoolColor;
     ext.material = "PLA";
     ext.brand = "TestBrand";
     ext.total_weight_g = 1000.0f;
@@ -89,19 +89,19 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     // and colors the compact canvas immediately.
     CHECK(lv_obj_has_flag(wide_layout, LV_OBJ_FLAG_HIDDEN));
     CHECK_FALSE(lv_obj_has_flag(spool_compact, LV_OBJ_FLAG_HIDDEN));
-    CHECK(color_is(ui_spool_canvas_get_color(spool_compact), TEST_SPOOL_COLOR));
+    CHECK(color_is(ui_spool_canvas_get_color(spool_compact), kTestSpoolColor));
 
     // Wide by pixel, contradicting span (colspan=1 -> old predicate stays compact).
     h.resize(1, 1, w_normal(), h_tall());
     CHECK_FALSE(lv_obj_has_flag(wide_layout, LV_OBJ_FLAG_HIDDEN));
     CHECK(lv_obj_has_flag(spool_compact, LV_OBJ_FLAG_HIDDEN));
-    CHECK(color_is(ui_spool_canvas_get_color(spool_wide), TEST_SPOOL_COLOR));
+    CHECK(color_is(ui_spool_canvas_get_color(spool_wide), kTestSpoolColor));
 
     // Back to compact by pixel, contradicting span (colspan=3 -> old predicate goes wide).
     h.resize(3, 3, w_normal() - 1, h_tall() - 1);
     CHECK(lv_obj_has_flag(wide_layout, LV_OBJ_FLAG_HIDDEN));
     CHECK_FALSE(lv_obj_has_flag(spool_compact, LV_OBJ_FLAG_HIDDEN));
-    CHECK(color_is(ui_spool_canvas_get_color(spool_compact), TEST_SPOOL_COLOR));
+    CHECK(color_is(ui_spool_canvas_get_color(spool_compact), kTestSpoolColor));
 
     AmsState::instance().clear_external_spool_info();
 }
@@ -143,7 +143,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 TEST_CASE_METHOD(LVGLUITestFixture, "active_spool stays colored after a wide instance is recycled",
                  "[active_spool][panel_widget][1109]") {
     SlotInfo ext;
-    ext.color_rgb = TEST_SPOOL_COLOR;
+    ext.color_rgb = kTestSpoolColor;
     ext.material = "PLA";
     ext.total_weight_g = 1000.0f;
     ext.remaining_weight_g = 500.0f;
@@ -183,8 +183,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "active_spool stays colored after a wide ins
                                << lv_obj_has_flag(compact2, LV_OBJ_FLAG_HIDDEN));
     REQUIRE_FALSE(lv_obj_has_flag(wide_layout2, LV_OBJ_FLAG_HIDDEN));
     REQUIRE(lv_obj_has_flag(compact2, LV_OBJ_FLAG_HIDDEN));
-    REQUIRE_FALSE(color_is(ui_spool_canvas_get_color(wide2), DEFAULT_WHITE));
-    REQUIRE(color_is(ui_spool_canvas_get_color(wide2), TEST_SPOOL_COLOR));
+    REQUIRE_FALSE(color_is(ui_spool_canvas_get_color(wide2), kDefaultWhite));
+    REQUIRE(color_is(ui_spool_canvas_get_color(wide2), kTestSpoolColor));
 
     AmsState::instance().clear_external_spool_info();
 }

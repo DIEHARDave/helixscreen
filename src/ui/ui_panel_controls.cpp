@@ -1044,7 +1044,7 @@ ControlsPanel::QuickActionText ControlsPanel::homing_text(const char* started) {
 void ControlsPanel::home_axes_action(const char* axes, const char* started_toast) {
     spdlog::debug("[{}] Home {} clicked", get_name(), axes[0] ? axes : "All");
     run_quick_action(
-        IMoonrakerAPI::HOMING_TIMEOUT_MS, homing_text(started_toast),
+        IMoonrakerAPI::kHomingTimeoutMs, homing_text(started_toast),
         [this, axes](IMoonrakerAPI::SuccessCallback ok, IMoonrakerAPI::ErrorCallback err) {
             api_->motion().home_axes(axes, std::move(ok), std::move(err));
         });
@@ -1072,27 +1072,27 @@ void ControlsPanel::handle_home_z() {
 
 void ControlsPanel::handle_qgl() {
     spdlog::debug("[{}] QGL clicked", get_name());
-    run_quick_action(IAdvancedAPI::LEVELING_TIMEOUT_MS,
+    run_quick_action(IAdvancedAPI::kLevelingTimeoutMs,
                      {lv_tr("Quad Gantry Level started..."), lv_tr("Quad Gantry Level complete"),
                       lv_tr("QGL timed out"),
                       lv_tr("QGL may still be running — response timed out"),
                       lv_tr("QGL failed: {}")},
                      [this](IMoonrakerAPI::SuccessCallback ok, IMoonrakerAPI::ErrorCallback err) {
                          api_->execute_gcode("QUAD_GANTRY_LEVEL", std::move(ok), std::move(err),
-                                             IAdvancedAPI::LEVELING_TIMEOUT_MS);
+                                             IAdvancedAPI::kLevelingTimeoutMs);
                      });
 }
 
 void ControlsPanel::handle_z_tilt() {
     spdlog::debug("[{}] Z-Tilt clicked", get_name());
-    run_quick_action(IAdvancedAPI::LEVELING_TIMEOUT_MS,
+    run_quick_action(IAdvancedAPI::kLevelingTimeoutMs,
                      {lv_tr("Z-Tilt Adjust started..."), lv_tr("Z-Tilt Adjust complete"),
                       lv_tr("Z-Tilt timed out"),
                       lv_tr("Z-Tilt may still be running — response timed out"),
                       lv_tr("Z-Tilt failed: {}")},
                      [this](IMoonrakerAPI::SuccessCallback ok, IMoonrakerAPI::ErrorCallback err) {
                          api_->execute_gcode("Z_TILT_ADJUST", std::move(ok), std::move(err),
-                                             IAdvancedAPI::LEVELING_TIMEOUT_MS);
+                                             IAdvancedAPI::kLevelingTimeoutMs);
                      });
 }
 
@@ -1188,26 +1188,25 @@ void ControlsPanel::handle_calibration_bed_mesh() {
     // Bed-mesh calibration is excluded from the v1 Core+AMS cut; its panel is a
     // null-vtable link stub. Toast instead of the LoadProhibited crash.
     helix::ui::show_feature_unavailable_toast();
-    return;
+#else
+    helix::ui::open_bed_mesh_panel(parent_screen_);
 #endif
-    get_global_bed_mesh_panel().show(parent_screen_);
 }
 
 void ControlsPanel::handle_calibration_tool_offsets() {
 #if defined(HELIX_PLATFORM_ESP32)
     helix::ui::show_feature_unavailable_toast();
-    return;
+#else
+    helix::ui::open_tool_offset_cal_panel(parent_screen_);
 #endif
-    helix::ui::get_global_tool_offset_cal_panel().show(parent_screen_);
 }
 
 void ControlsPanel::handle_calibration_pa() {
 #if defined(HELIX_PLATFORM_ESP32)
     helix::ui::show_feature_unavailable_toast();
-    return;
+#else
+    helix::ui::open_pa_cal_panel(parent_screen_);
 #endif
-    helix::ui::get_global_pa_cal_panel().set_api(get_moonraker_api());
-    helix::ui::get_global_pa_cal_panel().show(parent_screen_);
 }
 
 void ControlsPanel::handle_calibration_zoffset() {
@@ -1223,10 +1222,9 @@ void ControlsPanel::handle_calibration_zoffset() {
 void ControlsPanel::handle_calibration_screws() {
 #if defined(HELIX_PLATFORM_ESP32)
     helix::ui::show_feature_unavailable_toast();
-    return;
+#else
+    helix::ui::open_screws_tilt_panel(parent_screen_);
 #endif
-    get_global_screws_tilt_panel().set_client(get_moonraker_client(), get_moonraker_api());
-    get_global_screws_tilt_panel().show(parent_screen_);
 }
 
 void ControlsPanel::handle_calibration_motors() {

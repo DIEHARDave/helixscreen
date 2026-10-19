@@ -40,11 +40,11 @@ struct MockSweepResponse {
 };
 
 /// Off-peak level, as a fraction of the peak's power.
-inline constexpr float MOCK_FLOOR = 0.02f;
+inline constexpr float kMockFloor = 0.02f;
 /// Hiss amplitude as a fraction of drive_mm_s2.
-inline constexpr float MOCK_NOISE_FRACTION = 0.05f;
+inline constexpr float kMockNoiseFraction = 0.05f;
 
-/// Per-axis drive amplitude in mm/s^2: drive_mm_s2 * sqrt(MOCK_FLOOR +
+/// Per-axis drive amplitude in mm/s^2: drive_mm_s2 * sqrt(kMockFloor +
 /// 1 / (1 + ((drive_hz - peak_hz) / half_width_hz)^2)) * axis_weight, the
 /// Lorentzian term dropped for a NaN peak.
 [[nodiscard]] std::array<float, 3> mock_sweep_axis_gain(const MockSweepResponse& response,
@@ -53,10 +53,10 @@ inline constexpr float MOCK_NOISE_FRACTION = 0.05f;
 class MockAccelBatchSource final : public IAccelBatchSource {
   public:
     /// Wall milliseconds between batches.
-    static constexpr uint32_t BATCH_INTERVAL_MS = 100;
+    static constexpr uint32_t kBatchIntervalMs = 100;
     /// The ramp starts this long after the stream does, as a real one trails
     /// the console line the preview attaches on.
-    static constexpr double DRIVE_LEAD_S = 1.5;
+    static constexpr double kDriveLeadS = 1.5;
 
     /// @param sim_speed stream seconds per wall second (the mock's --sim-speed)
     MockAccelBatchSource(SweepPlan plan, MockSweepResponse response, double sim_speed);

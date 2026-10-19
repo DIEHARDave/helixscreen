@@ -780,10 +780,10 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// toward the other path's, so the defaults start with a visible delta.
     void set_belt_peaks_hz(float a_hz, float b_hz);
 
-    /// Script one path's peak across successive WINDOWED sweeps (FREQ_START/
-    /// FREQ_END given); the last entry holds once the list runs out. A NaN
-    /// entry writes a featureless curve (floor plus noise, no peak). Full
-    /// sweeps ignore the script and keep the re-measure walk.
+    /// Script one path's peak across its sweeps after the first, full or
+    /// windowed; the last entry holds once the list runs out. A NaN entry
+    /// writes a featureless curve (floor plus noise, no peak). While either
+    /// path has a script, no sweep applies the re-measure walk.
     void set_belt_tune_script(char path_letter, std::vector<float> peaks_hz);
 
     /// Parse and apply a `<A|B>:<hz|flat>,...` script (HELIX_MOCK_BELT_TUNE_SCRIPT).
@@ -2233,15 +2233,15 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     std::unordered_map<std::string, mock_internal::MethodHandler> method_handlers_;
 
     // Simulation parameters (realistic heating rates)
-    static constexpr double ROOM_TEMP = 25.0;
-    static constexpr double EXTRUDER_HEAT_RATE = 3.0;     // °C/sec when heating
-    static constexpr double EXTRUDER_COOL_RATE = 1.5;     // °C/sec when cooling
-    static constexpr double BED_HEAT_RATE = 1.0;          // °C/sec when heating
-    static constexpr double BED_COOL_RATE = 0.3;          // °C/sec when cooling
-    static constexpr double CHAMBER_HEAT_RATE = 0.3;      // °C/sec when heating (slower than bed)
-    static constexpr double CHAMBER_COOL_RATE = 0.1;      // °C/sec when cooling
-    static constexpr int SIMULATION_INTERVAL_MS = 250;    // Physics tick interval
-    static constexpr int NOTIFICATION_INTERVAL_TICKS = 4; // Dispatch every 4 ticks (~1s)
+    static constexpr double kRoomTemp = 25.0;
+    static constexpr double kExtruderHeatRate = 3.0;     // °C/sec when heating
+    static constexpr double kExtruderCoolRate = 1.5;     // °C/sec when cooling
+    static constexpr double kBedHeatRate = 1.0;          // °C/sec when heating
+    static constexpr double kBedCoolRate = 0.3;          // °C/sec when cooling
+    static constexpr double kChamberHeatRate = 0.3;      // °C/sec when heating (slower than bed)
+    static constexpr double kChamberCoolRate = 0.1;      // °C/sec when cooling
+    static constexpr int kSimulationIntervalMs = 250;    // Physics tick interval
+    static constexpr int kNotificationIntervalTicks = 4; // Dispatch every 4 ticks (~1s)
 
     // Mock service availability flags (initialized from env vars in constructor)
     bool mock_spoolman_enabled_{true};     ///< Controlled by HELIX_MOCK_SPOOLMAN env var
@@ -2271,8 +2271,8 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// Measurements taken per path; every one after the first walks that
     /// path's peak toward the other's, so repeated tuning converges.
     int belt_measure_count_[2]{0, 0};
-    /// Per-path scripted peaks for windowed sweeps (NaN = flat) and the next
-    /// entry to play.
+    /// Per-path scripted peaks for every sweep after the first (NaN = flat)
+    /// and the next entry to play.
     std::vector<float> belt_script_[2];
     size_t belt_script_pos_[2]{0, 0};
     BeltMockFailure belt_failure_{BeltMockFailure::NONE};
@@ -2325,10 +2325,10 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     // status parse sees the same transitions a real U1 sends. State starts at
     // the rig's resting mix (heads 0/2 loaded, 1/3 preloaded) so the sibling
     // channel each frame carries alongside the touched one reads plausibly.
-    static constexpr int U1_CHANNELS = 4;
-    std::array<std::string, static_cast<size_t>(U1_CHANNELS)> u1_channel_state_{
+    static constexpr int kU1Channels = 4;
+    std::array<std::string, static_cast<size_t>(kU1Channels)> u1_channel_state_{
         "load_finish", "preload_finish", "load_finish", "preload_finish"};
-    std::array<bool, static_cast<size_t>(U1_CHANNELS)> u1_filament_detected_{true, true, true,
+    std::array<bool, static_cast<size_t>(kU1Channels)> u1_filament_detected_{true, true, true,
                                                                              true};
     /// defect_detection main_enable and clean_bed.enable, switched by
     /// DEFECT_DETECTION_CONFIG.
@@ -2387,6 +2387,12 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     int multiace_units_{1};
     /// HELIX_MOCK_MULTIACE_MODE, read once at start ("head" | "multi").
     std::string multiace_mode_{"head"};
+    /// Whether @p head is fed from the side feeder: head mode wires one unit
+    /// per head, so heads past the unit count have no ACE. Caller holds
+    /// multiace_mutex_.
+    [[nodiscard]] bool multiace_head_is_feeder(int head) const {
+        return multiace_mode_ != "multi" && head >= multiace_units_;
+    }
     /// Guards the fields above across the simulation and gcode threads.
     mutable std::mutex multiace_mutex_;
     /// Read the two HELIX_MOCK_MULTIACE_* knobs into the members (idempotent).

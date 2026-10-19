@@ -82,35 +82,35 @@ TemperatureService::TemperatureService(PrinterState& printer_state, IMoonrakerAP
     auto& nozzle = heaters_[idx(HeaterType::Nozzle)];
     nozzle.config = {.type = HeaterType::Nozzle,
                      .name = "Nozzle",
-                     .color = helix::TEMP_GRAPH_SERIES_COLORS[0], // nozzle
+                     .color = helix::kTempGraphSeriesColors[0], // nozzle
                      .temp_range_max = 320.0f,
                      .y_axis_increment = 80,
                      .presets = nozzle_presets,
                      .keypad_range = {0.0f, 350.0f}};
     nozzle.cooling_threshold_deci = 400; // 40°C
     nozzle.klipper_name = "extruder";    // Updated dynamically for multi-extruder
-    nozzle.min_temp = app_constants::temperature::DEFAULT_MIN_TEMP;
-    nozzle.max_temp = app_constants::temperature::DEFAULT_NOZZLE_MAX;
+    nozzle.min_temp = app_constants::temperature::kDefaultMinTemp;
+    nozzle.max_temp = app_constants::temperature::kDefaultNozzleMax;
 
     // ── Bed config ──────────────────────────────────────────────────────
     auto& bed = heaters_[idx(HeaterType::Bed)];
     bed.config = {.type = HeaterType::Bed,
                   .name = "Bed",
-                  .color = helix::TEMP_GRAPH_SERIES_COLORS[1], // bed
+                  .color = helix::kTempGraphSeriesColors[1], // bed
                   .temp_range_max = 140.0f,
                   .y_axis_increment = 35,
                   .presets = bed_presets,
                   .keypad_range = {0.0f, 150.0f}};
     bed.cooling_threshold_deci = 350; // 35°C
     bed.klipper_name = "heater_bed";
-    bed.min_temp = app_constants::temperature::DEFAULT_MIN_TEMP;
-    bed.max_temp = app_constants::temperature::DEFAULT_BED_MAX;
+    bed.min_temp = app_constants::temperature::kDefaultMinTemp;
+    bed.max_temp = app_constants::temperature::kDefaultBedMax;
 
     // ── Chamber config ──────────────────────────────────────────────────
     auto& chamber = heaters_[idx(HeaterType::Chamber)];
     chamber.config = {.type = HeaterType::Chamber,
                       .name = "Chamber",
-                      .color = helix::TEMP_GRAPH_SERIES_COLORS[2], // chamber
+                      .color = helix::kTempGraphSeriesColors[2], // chamber
                       .temp_range_max = 80.0f,
                       .y_axis_increment = 20,
                       .presets = chamber_presets,
@@ -215,7 +215,7 @@ void TemperatureService::on_temp_changed(HeaterType type, int temp_deci) {
     }
 
     // Throttle live graph updates to 1 Hz
-    if (now_ms - h.last_graph_update_ms < GRAPH_SAMPLE_INTERVAL_MS) {
+    if (now_ms - h.last_graph_update_ms < kGraphSampleIntervalMs) {
         return;
     }
     h.last_graph_update_ms = now_ms;
@@ -353,7 +353,7 @@ void TemperatureService::init_subjects() {
                                         "chamber_status_state"};
     const char* heating_names[] = {"nozzle_heating", "bed_heating", "chamber_heating"};
 
-    for (int i = 0; i < helix::HEATER_TYPE_COUNT; ++i) {
+    for (int i = 0; i < helix::kHeaterTypeCount; ++i) {
         auto& h = heaters_[i];
 
         // Format initial display string
@@ -371,7 +371,7 @@ void TemperatureService::init_subjects() {
     }
 
     subjects_initialized_ = true;
-    spdlog::debug("[TempPanel] Subjects initialized for {} heater types", helix::HEATER_TYPE_COUNT);
+    spdlog::debug("[TempPanel] Subjects initialized for {} heater types", helix::kHeaterTypeCount);
 }
 
 void TemperatureService::deinit_subjects() {
@@ -552,10 +552,10 @@ void TemperatureService::setup_mini_combined_graph(lv_obj_t* container) {
     // pinned to whichever extruder was active at first setup.
     mini_graph_container_ = container;
 
-    static constexpr int MINI_GRAPH_POINTS = 300;
+    static constexpr int kMiniGraphPoints = 300;
 
     helix::TempGraphControllerConfig config;
-    config.point_count = MINI_GRAPH_POINTS;
+    config.point_count = kMiniGraphPoints;
     config.axis_size = "xs";
     uint32_t features = TEMP_GRAPH_FEATURE_LINES | TEMP_GRAPH_FEATURE_TARGET_LINES |
                         TEMP_GRAPH_FEATURE_Y_AXIS | TEMP_GRAPH_FEATURE_X_AXIS |
@@ -616,7 +616,7 @@ void TemperatureService::setup_mini_combined_graph(lv_obj_t* container) {
         std::make_unique<helix::TempGraphController>(container, std::move(config));
 
     spdlog::debug("[TempPanel] Mini combined graph created with {} point capacity",
-                  MINI_GRAPH_POINTS);
+                  kMiniGraphPoints);
 }
 
 void TemperatureService::register_heater_graph(ui_temp_graph_t* graph, SeriesId series_id,

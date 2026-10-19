@@ -147,12 +147,12 @@ void PrintStartController::initiate() {
     // Safety: reject print starts during startup grace period.
     // Ghost touch events during app initialization can trigger the full print chain
     // (file select → detail view → print button → filament warning confirm) in seconds.
-    auto elapsed = std::chrono::steady_clock::now() - app_constants::startup::PROCESS_START_TIME;
-    if (elapsed < app_constants::startup::PRINT_START_GRACE_PERIOD) {
+    auto elapsed = std::chrono::steady_clock::now() - app_constants::startup::kProcessStartTime;
+    if (elapsed < app_constants::startup::kPrintStartGracePeriod) {
         auto secs = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
         spdlog::warn("[PrintStartController] Rejected print start during startup grace period "
                      "({}s < {}s)",
-                     secs, app_constants::startup::PRINT_START_GRACE_PERIOD.count());
+                     secs, app_constants::startup::kPrintStartGracePeriod.count());
         end_without_print();
         return;
     }
@@ -404,6 +404,19 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
         return;
     }
 
+    // A remap the backend cannot honor stops the print here, before anything
+    // is sent, with the same report a printer-side refusal gets below.
+    if (const AmsError refused = backend->check_preprint_remap(tools_used, remap);
+        !refused.success()) {
+        LOG_ERROR_INTERNAL("[PrintStartController] pre-print remap refused: {}",
+                           refused.technical_msg);
+        report_preprint_failure(refused.user_msg);
+        if (on_abort) {
+            on_abort();
+        }
+        return;
+    }
+
     std::string gcode = backend->build_preprint_gcode(tools_used, remap);
 
     if (gcode.empty()) {
@@ -446,12 +459,7 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
             std::string local = err.message_tag ? err.localized_message() : std::string{};
             tok.defer("PrintStartController::preprint.err", [msg, local, on_abort]() {
                 LOG_ERROR_INTERNAL("[PrintStartController] pre-print config rejected: {}", msg);
-                NOTIFY_ERROR_MODAL(
-                    lv_tr("Print setup failed"), "{}",
-                    !local.empty()
-                        ? local
-                        : std::string(lv_tr("The printer rejected the filament configuration. "
-                                            "The print was not started.")));
+                report_preprint_failure(local);
                 // Notify caller to re-enable UI state — do NOT start.
                 if (on_abort) {
                     on_abort();
@@ -459,6 +467,14 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
             });
         },
         15000);
+}
+
+void PrintStartController::report_preprint_failure(const std::string& reason) {
+    NOTIFY_ERROR_MODAL(lv_tr("Print setup failed"), "{}",
+                       !reason.empty()
+                           ? reason
+                           : std::string(lv_tr("The printer rejected the filament configuration. "
+                                               "The print was not started.")));
 }
 
 bool PrintStartController::divert_to_spool_removal() {
@@ -1249,10 +1265,10 @@ void PrintStartController::check_restore_confirmed() {
 // Crash Recovery Persistence
 // ============================================================================
 
-static constexpr const char* PENDING_REMAP_FILENAME = "pending_remap.json";
+static constexpr const char* kPendingRemapFilename = "pending_remap.json";
 
 static std::string pending_remap_path() {
-    return hfs::join_path(helix::get_user_config_dir(), PENDING_REMAP_FILENAME);
+    return hfs::join_path(helix::get_user_config_dir(), kPendingRemapFilename);
 }
 
 void PrintStartController::persist_remap_state() {

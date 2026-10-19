@@ -98,7 +98,8 @@ class CfsErrorDecoder {
 /// K1-series printer. Issue #968.
 ///
 /// Fork — community Kalico ports of the K2 whose reimplemented `box` module
-/// replaces Creality's closed one. `T<n>` and `BOX_UNLOAD` are high-level and
+/// replaces Creality's closed one. `BOX_SELECT_SLOT` (`T<n>` on firmware
+/// without print mapping) and `BOX_UNLOAD` are high-level and
 /// self-contained: box.py owns the whole feed/purge/park sequence, so
 /// HelixScreen sends no stock envelope. Detected by `api_version` in the box
 /// payload. See docs/devel/printer-research/CREALITY_CFS_K2_INTERNALS.md §
@@ -198,8 +199,11 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
         t.raises_runout_fault_during_job = true;
         return t;
     }();
+    /// kTraits, plus the pre-print send on Fork firmware with BOX_PRINT_MAP.
     [[nodiscard]] BackendTraits traits() const override {
-        return kTraits;
+        BackendTraits t = kTraits;
+        t.requires_preprint_send = fork_print_map_;
+        return t;
     }
 
   protected:
@@ -263,9 +267,9 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// firmware involvement.
     void publish_external_spool_lane(const SlotInfo* spool) override;
 
-    // Bypass / external spool. Fork firmware owns the flow (`T<external>` to
-    // feed, BOX_UNLOAD to eject — box.py registers T for the external slot
-    // alongside the bays); stock K1/K2 firmware has no command for the holder,
+    // Bypass / external spool. Fork firmware owns the flow (selecting the
+    // external slot to feed, BOX_UNLOAD to eject — box.py numbers the external
+    // slot alongside the bays); stock K1/K2 firmware has no command for the holder,
     // so enabling is a declaration backed by toolhead-sensor confirmation and
     // the state is derived from the sensor + active-lane pair.
     AmsError enable_bypass() override;
@@ -316,11 +320,54 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
         return false;
     }
     /// Native via BOX_MODIFY_TN, except on the Fork dialect: box.py registers
-    /// no such command and exposes no tool->slot table to write.
+    /// no such command and exposes no tool->slot table to write. Fork firmware
+    /// with BOX_PRINT_MAP takes the map for the next print as a pre-print send
+    /// (build_preprint_gcode()); without it Fork has no remap route.
     [[nodiscard]] RemapStrategy get_remap_strategy() const override {
-        return macro_variant_ == CfsMacroVariant::Fork ? RemapStrategy::None
-                                                       : RemapStrategy::Native;
+        if (macro_variant_ != CfsMacroVariant::Fork) {
+            return RemapStrategy::Native;
+        }
+        return fork_print_map_ ? RemapStrategy::PrePrintSend : RemapStrategy::None;
     }
+
+    /// `BOX_PRINT_MAP MAP=<tool>:<slot>,...` for the next print, or "" when
+    /// the firmware has no BOX_PRINT_MAP or check_preprint_remap() refuses.
+    /// See print_map_gcode().
+    [[nodiscard]] std::string build_preprint_gcode(const std::set<int>& tools_used,
+                                                   const std::map<int, int>& remap) const override;
+
+    /// Refuses a remap whose target slot is not one a manual load could
+    /// feed (firmware_slot_locked()) or sits in a box that is not answering.
+    /// Only entries print_map_gcode() would send are checked: a tool left at
+    /// its own slot, or one the file does not use, cannot refuse the print.
+    /// @note Takes `mutex_`; callers must NOT hold it.
+    [[nodiscard]] AmsError check_preprint_remap(const std::set<int>& tools_used,
+                                                const std::map<int, int>& remap) const override;
+
+    /// The Fork map for the next print, in BOX_PRINT_START's MAP= format: file
+    /// tool, then global slot (our bay index).
+    ///
+    /// With @p tools_used known the map names exactly those tools, a tool
+    /// @p remap leaves out at its own slot (box.py's default T<n> = slot n),
+    /// and it goes out even when nothing is remapped. The firmware keeps a map
+    /// for the next print loaded within 10 minutes and has no clearing form,
+    /// so only a full map overwrites one a start that never loaded left
+    /// pending. Remap entries for tools the file does not use are dropped: the
+    /// firmware refuses a start whose map disagrees with the file's tools.
+    ///
+    /// With @p tools_used empty (the file's tools are unknown) the map is the
+    /// remap's entries alone, and "" when none moves a tool off its own slot.
+    [[nodiscard]] static std::string print_map_gcode(const std::set<int>& tools_used,
+                                                     const std::map<int, int>& remap);
+
+    /// Whether the print map carries @p tool: every tool when the file's
+    /// tools are unknown, else only the ones it uses.
+    [[nodiscard]] static bool print_map_names_tool(const std::set<int>& tools_used, int tool);
+
+    /// The firmware registers BOX_PRINT_MAP: revision 3 and later. The command
+    /// is registered in Python, so no gcode_macro lookup can see it, and the
+    /// revision is the only positive evidence the app has.
+    [[nodiscard]] static bool fork_has_print_map(const nlohmann::json& box_json);
 
     /// The CFS owns its own tool->slot table and get_tool_mapping() returns it.
     [[nodiscard]] bool owns_tool_mapping_table() const override {
@@ -476,9 +523,29 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
                                       uint32_t color_rgb, const std::string& brand,
                                       const std::string& name, int spoolman_id);
 
+    /// The Fork command that loads firmware slot @p slot as one operation.
+    ///
+    /// `BOX_SELECT_SLOT SLOT=<n>` when @p select_slot, else `T<n>`. Firmware
+    /// with print mapping reads `T<n>` as the file's tool during a mapped
+    /// print, so a manual load sent as `T<n>` would feed the slot that tool is
+    /// mapped to; BOX_SELECT_SLOT always names the slot. Firmware without print
+    /// mapping registers no BOX_SELECT_SLOT, and there `T<n>` is the slot.
+    static std::string fork_slot_gcode(int slot, bool select_slot);
+
+    /// The payload's `api_revision`, 1 when absent (the revision that predates
+    /// the field).
+    [[nodiscard]] static int fork_api_revision(const nlohmann::json& box_json);
+
+    /// The firmware registers BOX_SELECT_SLOT and the rest of print mapping:
+    /// always from revision 2, and on revision 1 when `print_mapping_version`
+    /// is 1.
+    [[nodiscard]] static bool fork_has_print_mapping(const nlohmann::json& box_json);
+
     // GCode helpers (public for testing)
+    /// @param fork_select_slot Fork only: see fork_slot_gcode().
     static std::string load_gcode(int global_slot_index,
-                                  CfsMacroVariant variant = CfsMacroVariant::K2);
+                                  CfsMacroVariant variant = CfsMacroVariant::K2,
+                                  bool fork_select_slot = false);
     static std::string unload_gcode(CfsMacroVariant variant = CfsMacroVariant::K2);
 
     /// Unload the external / bypass spool on the stock (K1/K2) dialect.
@@ -523,7 +590,8 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// @param has_load_material `LOAD_MATERIAL` is defined on this printer.
     static std::string bypass_load_gcode(CfsMacroVariant variant, bool has_load_material);
     static std::string swap_gcode(int global_slot_index,
-                                  CfsMacroVariant variant = CfsMacroVariant::K2);
+                                  CfsMacroVariant variant = CfsMacroVariant::K2,
+                                  bool fork_select_slot = false);
     static std::string reset_gcode();
 
     /// Resume the box after an error. Dialect-dependent: K1's box extension
@@ -749,6 +817,15 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// configured box_count) — this records what the payload actually said
     /// rather than recomputing the arithmetic.
     int external_slot_index_ = -1;
+
+    /// Fork firmware registers BOX_SELECT_SLOT (fork_has_print_mapping() of the
+    /// merged flat state), so manual loads name the slot rather than T<n>.
+    /// Written by handle_status on the main thread; read by command builders.
+    std::atomic<bool> fork_select_slot_{false};
+
+    /// Fork firmware registers BOX_PRINT_MAP (fork_has_print_map() of the
+    /// merged flat state). Same writer and lifetime as fork_select_slot_.
+    std::atomic<bool> fork_print_map_{false};
 
     /// Stock dialect only: the user has declared bypass intent (sidebar toggle
     /// ON after the chained unload). Paired with BOX_ENABLE_CFS_PRINT ENABLE=0

@@ -15,7 +15,7 @@ namespace helix {
  * reported as released, at the point the pointer last rested, so LVGL never sees a
  * press, a drag or a long press it could act on.
  *
- * The latch ends on a raw release, unless that release comes inside REARM_MS of the
+ * The latch ends on a raw release, unless that release comes inside kRearmMs of the
  * waking press. A finger landing on a resistive or noisy panel chatters (press,
  * release, press), and a panel just powered back on can report a stray contact, so a
  * release that early keeps the latch armed and a re-press inside the window is
@@ -37,7 +37,7 @@ class WakeTouchLatch {
     /// The chatter window after the waking press. A deliberate second tap takes longer
     /// than this to land, and a contact bounce or a panel's power-on glitch settles
     /// within it.
-    static constexpr uint32_t REARM_MS = 200;
+    static constexpr uint32_t kRearmMs = 200;
 
     /**
      * @brief Rewrite one raw read taken at @p now_ms
@@ -49,7 +49,7 @@ class WakeTouchLatch {
     template <typename PressWakes>
     Sample filter(Sample raw, uint32_t now_ms, PressWakes&& press_wakes) {
         if (m_swallowing) {
-            const bool in_window = now_ms - m_wake_ms < REARM_MS;
+            const bool in_window = now_ms - m_wake_ms < kRearmMs;
             if (raw.pressed && (in_window || !m_lifted)) {
                 m_lifted = false; // a chatter re-press held past the window stays swallowed
                 return {false, m_rest.x, m_rest.y};

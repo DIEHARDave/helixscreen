@@ -68,7 +68,7 @@ TEST_CASE("send_jsonrpc 5-arg refuses send when not connected and fires error_cb
             *error_type = err.type;
         });
 
-    REQUIRE(id == INVALID_REQUEST_ID);
+    REQUIRE(id == kInvalidRequestId);
     REQUIRE(error_fired->load() == true);
     REQUIRE(*error_method == "server.files.get_directory");
     REQUIRE(*error_type == MoonrakerErrorType::CONNECTION_LOST);
@@ -95,5 +95,5 @@ TEST_CASE("send_jsonrpc with null error_cb refuses cleanly when not connected",
     // 4-arg overload — no error callback at all. Must not crash.
     auto id =
         u.client_->send_jsonrpc("printer.info", json(), [](const json&) { /* should not fire */ });
-    REQUIRE(id == INVALID_REQUEST_ID);
+    REQUIRE(id == kInvalidRequestId);
 }

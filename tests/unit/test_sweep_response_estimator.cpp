@@ -324,7 +324,7 @@ TEST_CASE("DriveLock counts a reading exactly LOCK_LOST_HZ off as agreeing",
     for (double at = 10.0; at <= 20.0; at += 0.25) {
         const float model = lock.model_hz(at);
         REQUIRE(model == static_cast<float>(5.0 + (at - 1.5)));
-        lock.observe(at, model + sweep_preview::LOCK_LOST_HZ);
+        lock.observe(at, model + sweep_preview::kLockLostHz);
     }
     CHECK(lock.locked());
 }

@@ -260,7 +260,7 @@ follows with `TEMPERATURE_WAIT` on the chamber waits forever.
   `include/chamber_wait_line.h`; read again whenever the position moves). With no chamber
   heater, `M191` is some macro's wait and names nothing. Otherwise, with
   the nozzle and bed at target: the device reports its own wait (its target), the chamber
-  heater is heating toward a target, or, once the wait has outlasted `CHAMBER_WAIT_SETTLE`
+  heater is heating toward a target, or, once the wait has outlasted `kChamberWaitSettle`
   (M109 settling) with the chamber heater at 0 ("Waiting for chamber <cur>°C"), the heater
   refused its target. Any other wait (a heat soak on a chamber sensor, with or without a
   heater beside it, or a probe coil) keeps the announced phase. It raises
@@ -300,7 +300,7 @@ One file + one registry line + one test + one mock shape. The vendor-abstraction
 
 1. **Create `src/printer/chamber_heater_backend_<name>.cpp`** — subclass `ChamberHeaterBackend` (see `chamber_heater_backend_panda_breath.cpp` for the minimal shape, `chamber_heater_backend_dragonbreath.cpp` for the full diagnostics parse). Implement `id()`, `discovery_confidence()`, and the capability questions; return `std::nullopt` from `parse_diagnostics()` until the status schema is hardware-verified. Give the file a `// VENDOR_OK:` header comment.
 
-2. **Register it** in the `REG` vector in `chamber_heater_backend_generic.cpp` (`registry()`), plus the `<name>_backend_instance()` free-function pattern the existing backends use. The Makefile picks the new `.cpp` up by wildcard; also add it to `components/helixapp/app_srcs.txt` (ESP32 manifest — the pre-commit gate fails the link otherwise).
+2. **Register it** in the `kReg` vector in `chamber_heater_backend_generic.cpp` (`registry()`), plus the `<name>_backend_instance()` free-function pattern the existing backends use. The Makefile picks the new `.cpp` up by wildcard; also add it to `components/helixapp/app_srcs.txt` (ESP32 manifest — the pre-commit gate fails the link otherwise).
 
 3. **Add a `parse_diagnostics` test** in `tests/unit/test_chamber_heater_backend.cpp` — a live nominal payload, a faulted/edge variant, and a foreign-payload rejection (mirror the three DragonBreath cases).
 

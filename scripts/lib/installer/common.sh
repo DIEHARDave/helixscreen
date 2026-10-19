@@ -897,7 +897,7 @@ _user_dir_name_ok() {
 }
 
 # Accept only scratch directories the installer created, or the staging dir the
-# in-app updater hands over via TMP_DIR (update_checker.cpp STAGING_NAME).
+# in-app updater hands over via TMP_DIR (update_checker.cpp kStagingName).
 # Mod-owned refusal is NOT here: common.sh is the bundle's first module and
 # must not call into later ones, so that guard rides detect_tmp_dir's user
 # override branch in platform.sh.

@@ -256,7 +256,7 @@ int64_t spool_recency_key(const SpoolInfo& spool) {
         return *used;
     if (made)
         return *made;
-    return SPOOL_RECENCY_NONE;
+    return kSpoolRecencyNone;
 }
 
 void sort_spools_by_recency(std::vector<SpoolInfo>& spools) {

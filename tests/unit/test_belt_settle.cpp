@@ -60,7 +60,7 @@ TEST_CASE("a Voron 2.4 300 laps 21 mm inside its 300x305 travel at 300 mm/s", "[
     CHECK(plan.inset_x_mm == Catch::Approx(21.0f));
     CHECK(plan.inset_y_mm == Catch::Approx(21.35f));
     const auto lines = helix::test::script_lines(plan.gcode);
-    REQUIRE(lines.size() == 4 + 4 * belt_settle::LAPS + 3);
+    REQUIRE(lines.size() == 4 + 4 * belt_settle::kLaps + 3);
     CHECK(lines[3] == "G1 X21.0 Y21.4 F18000");
     CHECK(lines[5] == "G1 X279.0 Y283.6");
 }
@@ -108,7 +108,7 @@ TEST_CASE("a homing origin shifts every coordinate", "[belt][settle]") {
     const auto plan = plan_belt_settle(in);
     REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
     const auto lines = helix::test::script_lines(plan.gcode);
-    REQUIRE(lines.size() == 4 + 4 * belt_settle::LAPS + 3);
+    REQUIRE(lines.size() == 4 + 4 * belt_settle::kLaps + 3);
     CHECK(lines[2] == "G1 Z19.8 F18000");
     CHECK(lines[3] == "G1 X19.5 Y27.5 F18000");
     CHECK(lines[lines.size() - 3] == "G1 X170.0 Y178.0");
@@ -175,7 +175,7 @@ TEST_CASE("a 4-tool printer laps the central half, clear of its docks", "[belt][
     CHECK(plan.inset_y_mm == Catch::Approx(67.5f));
     CHECK(plan.speed_mm_s == Catch::Approx(300.0f));
     const auto lines = helix::test::script_lines(plan.gcode);
-    REQUIRE(lines.size() == 4 + 4 * belt_settle::LAPS + 3);
+    REQUIRE(lines.size() == 4 + 4 * belt_settle::kLaps + 3);
     CHECK(lines[2] == "G1 Z20.0 F18000");
     CHECK(lines[3] == "G1 X67.5 Y67.5 F18000");
     CHECK(lines[5] == "G1 X202.5 Y202.5");

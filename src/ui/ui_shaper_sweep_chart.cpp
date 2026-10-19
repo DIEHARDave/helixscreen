@@ -62,10 +62,10 @@ bool ShaperSweepChart::begin(lv_obj_t* host, char axis,
         host_ = host;
         ui_frequency_response_chart_configure_for_platform(chart_,
                                                            PlatformCapabilities::detect().tier);
-        ui_frequency_response_chart_set_freq_range(chart_, 0.0f, SHAPER_CHART_MAX_HZ);
+        ui_frequency_response_chart_set_freq_range(chart_, 0.0f, kShaperChartMaxHz);
         series_ =
             ui_frequency_response_chart_add_series(chart_, "Live PSD", shaper_raw_psd_color());
-        ui_frequency_response_chart_set_series_style(chart_, series_, SHAPER_MEASURED_STYLE);
+        ui_frequency_response_chart_set_series_style(chart_, series_, kShaperMeasuredStyle);
     }
 
     column_ = (axis == 'Y' || axis == 'y') ? SweepColumn::Y : SweepColumn::X;
@@ -145,7 +145,7 @@ const LiveSweepPreview& ShaperSweepChart::preview() const {
 }
 
 void ShaperSweepChart::on_points(const std::vector<SweepPoint>& points) {
-    const auto series = layout_preview(points, column_, 0.0f, SHAPER_CHART_MAX_HZ);
+    const auto series = layout_preview(points, column_, 0.0f, kShaperChartMaxHz);
     // Until a finite point exists, whatever is drawn (the previous axis's
     // curve) stays up.
     if (series.max_amp <= 0.0f) {
@@ -161,7 +161,7 @@ void ShaperSweepChart::draw(const std::vector<float>& freqs, const std::vector<f
         return;
     }
     ui_frequency_response_chart_set_amplitude_range(
-        chart_, 0.0f, max_amp > 0.0f ? max_amp * SHAPER_CHART_HEADROOM : 1.0f);
+        chart_, 0.0f, max_amp > 0.0f ? max_amp * kShaperChartHeadroom : 1.0f);
     ui_frequency_response_chart_set_data(chart_, series_, freqs.data(), amps.data(), freqs.size());
 }
 

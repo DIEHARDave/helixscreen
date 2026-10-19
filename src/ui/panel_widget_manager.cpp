@@ -414,10 +414,10 @@ void log_if_slow_build(const char* what, std::chrono::steady_clock::time_point t
                        std::chrono::steady_clock::time_point t_split) {
     using std::chrono::duration_cast;
     using std::chrono::milliseconds;
-    constexpr long SLOW_BUILD_MS = 100;
+    constexpr long kSlowBuildMs = 100;
     const auto now = std::chrono::steady_clock::now();
     const long total = static_cast<long>(duration_cast<milliseconds>(now - t0).count());
-    if (total < SLOW_BUILD_MS)
+    if (total < kSlowBuildMs)
         return;
     spdlog::info("[PanelWidgetManager] slow build '{}': {}ms (xml {}ms, rest {}ms)", what, total,
                  static_cast<long>(duration_cast<milliseconds>(t_split - t0).count()),
@@ -451,7 +451,7 @@ const char* gate_hint_if_gated(const PanelWidgetDef* def, bool& gated) {
 }
 
 std::string visible_id(const std::string& widget_id, bool gated) {
-    return gated ? widget_id + GATED_ID_SUFFIX : widget_id;
+    return gated ? widget_id + kGatedIdSuffix : widget_id;
 }
 
 // Resolve one enabled config entry: its gate state, and its PanelWidget (taken
@@ -576,8 +576,8 @@ lv_obj_t* create_tile(lv_obj_t* container, WidgetSlot& slot, const TileCell& cel
     lv_obj_set_name(widget, slot.widget_id.c_str());
 
     // Mark the tile root so tree walks that only make sense at page
-    // level stop here. See PANEL_WIDGET_TILE_FLAG in panel_widget.h.
-    lv_obj_add_flag(widget, PANEL_WIDGET_TILE_FLAG);
+    // level stop here. See kPanelWidgetTileFlag in panel_widget.h.
+    lv_obj_add_flag(widget, kPanelWidgetTileFlag);
 
     spdlog::debug("[PanelWidgetManager] Placed widget '{}' at ({},{} {}x{})", slot.widget_id,
                   cell.col, cell.row, cell.colspan, cell.rowspan);
@@ -806,7 +806,7 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
         // Nothing legitimate produces this; a container that measures empty
         // after an explicit layout pass is detached or zero-sized. Fall back to
         // the panel extent, which oversizes the grid slightly but keeps the
-        // dashboard usable, rather than collapsing to the MIN_TRACKS floor and
+        // dashboard usable, rather than collapsing to the kMinTracks floor and
         // silently disabling every widget too large for a 4x4 grid.
         auto& lm = LayoutManager::instance();
         spdlog::error("[PanelWidgetManager] '{}' content box measured {}x{} after layout; "
@@ -1288,7 +1288,7 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
                     placed.push_back(
                         {slot_idx, pos->first, pos->second, kCell, kCell, kCell, kCell});
                 } else {
-                    // A one-cell widget fits any grid by definition — MIN_TRACKS
+                    // A one-cell widget fits any grid by definition — kMinTracks
                     // is a whole number of cells — so the only way to get here
                     // is that every cell is taken.
                     failures.push_back({slot.widget_id, GridLayout::PlacementFailure::GridFull});
@@ -1564,7 +1564,7 @@ PanelWidgetManager::gate_flips_only(const std::vector<std::string>& before,
     if (before.size() != after.size()) {
         return std::nullopt;
     }
-    const std::string_view suffix = GATED_ID_SUFFIX;
+    const std::string_view suffix = kGatedIdSuffix;
     auto split = [suffix](std::string_view id) {
         const bool gated =
             id.size() >= suffix.size() && id.substr(id.size() - suffix.size()) == suffix;
@@ -1618,7 +1618,7 @@ PanelWidgetManager::swap_gated_tiles(const std::string& panel_id, lv_obj_t* cont
         }
         std::string id = visible_ids[flip.index];
         if (flip.now_gated) {
-            id.resize(id.size() - std::strlen(GATED_ID_SUFFIX));
+            id.resize(id.size() - std::strlen(kGatedIdSuffix));
         }
         auto entry = std::find_if(entries.begin(), entries.end(),
                                   [&id](const auto& e) { return e.enabled && e.id == id; });
@@ -1630,7 +1630,7 @@ PanelWidgetManager::swap_gated_tiles(const std::string& panel_id, lv_obj_t* cont
         for (uint32_t i = 0; i < count && !tile; ++i) {
             lv_obj_t* child = lv_obj_get_child(container, static_cast<int32_t>(i));
             const char* name = lv_obj_get_name(child);
-            if (lv_obj_has_flag(child, PANEL_WIDGET_TILE_FLAG) && name && id == name) {
+            if (lv_obj_has_flag(child, kPanelWidgetTileFlag) && name && id == name) {
                 tile = child;
             }
         }
@@ -1763,7 +1763,7 @@ bool PanelWidgetManager::relayout_tiles_impl(const std::string& panel_id, lv_obj
             continue;
         }
         const char* name = lv_obj_get_name(child);
-        if (!lv_obj_has_flag(child, PANEL_WIDGET_TILE_FLAG)) {
+        if (!lv_obj_has_flag(child, kPanelWidgetTileFlag)) {
             // Card backgrounds are the unnamed grid children; edit mode's own
             // objects float.
             if (!name && !lv_obj_has_flag(child, LV_OBJ_FLAG_FLOATING)) {

@@ -1192,7 +1192,7 @@ TEST_CASE_METHOD(XMLTestFixture,
 TEST_CASE("gate_flips_only accepts only hardware-gate flips",
           "[panel_widget][manager][gate_swap]") {
     using Ids = std::vector<std::string>;
-    const std::string g = GATED_ID_SUFFIX;
+    const std::string g = kGatedIdSuffix;
 
     SECTION("identical lists flip nothing") {
         auto flips =

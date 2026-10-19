@@ -1953,6 +1953,9 @@ Every successful config save maintains rolling backups in two locations:
 - `/var/lib/helixscreen/settings.json.backup` (primary — survives app reinstalls)
 - `~/.helixscreen/settings.json.backup` (fallback)
 
+The Android app keeps both copies in its own storage instead, where an app update leaves
+them alone.
+
 If `settings.json` is missing at startup (e.g., after a Moonraker update wipe),
 HelixScreen automatically restores from the most recent backup.
 

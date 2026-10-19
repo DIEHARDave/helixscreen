@@ -858,7 +858,7 @@ TEST_CASE_METHOD(HelixTestFixture, "default_layout: reset_all clears leaked ams_
 namespace {
 
 /// A layout file with a distinguishable base anchor and portrait variant.
-constexpr const char* VARIANT_LAYOUT = R"({
+constexpr const char* kVariantLayout = R"({
     "anchors": [
         {
             "id": "printer_image",
@@ -894,7 +894,7 @@ class LayoutTypeGuard {
 TEST_CASE("default_layout: portrait uses the portrait anchor variant",
           "[default_layout][portrait]") {
     TempCwdGuard guard;
-    guard.write_layout(VARIANT_LAYOUT);
+    guard.write_layout(kVariantLayout);
     LayoutTypeGuard portrait(480, 800);
     REQUIRE(helix::LayoutManager::instance().type() == helix::LayoutType::PORTRAIT);
 
@@ -916,7 +916,7 @@ TEST_CASE("default_layout: portrait uses the portrait anchor variant",
 TEST_CASE("default_layout: landscape ignores the portrait anchor variant",
           "[default_layout][portrait]") {
     TempCwdGuard guard;
-    guard.write_layout(VARIANT_LAYOUT);
+    guard.write_layout(kVariantLayout);
     LayoutTypeGuard landscape(800, 480);
     REQUIRE(helix::LayoutManager::instance().type() == helix::LayoutType::STANDARD);
 
@@ -936,7 +936,7 @@ TEST_CASE("default_layout: landscape ignores the portrait anchor variant",
 TEST_CASE("default_layout: portrait sub-classes inherit the shared portrait variant",
           "[default_layout][portrait]") {
     TempCwdGuard guard;
-    guard.write_layout(VARIANT_LAYOUT);
+    guard.write_layout(kVariantLayout);
     // 320x480 is TINY_PORTRAIT, whose variant chain is {tiny_portrait, portrait}
     // — exactly like ui_xml/ overrides. With no tiny_portrait table it must fall
     // through to portrait, not to the landscape base.
@@ -972,7 +972,7 @@ TEST_CASE("default_layout: portrait falls back to the base anchors when no varia
 
 TEST_CASE("default_layout: portrait keeps tips enabled", "[default_layout][portrait]") {
     TempCwdGuard guard;
-    guard.write_layout(VARIANT_LAYOUT);
+    guard.write_layout(kVariantLayout);
 
     {
         LayoutTypeGuard portrait(480, 800);

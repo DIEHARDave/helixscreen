@@ -69,7 +69,7 @@ static lv_obj_t* keypad_parent = nullptr;
 
 // Decimals offered once a decimal point is entered. Two covers retraction
 // distances (0.85mm) and half-step square corner velocity alike.
-static constexpr int KEYPAD_FRACTION_DIGITS = 2;
+static constexpr int kKeypadFractionDigits = 2;
 
 // Current config and input state
 static ui_keypad_config_t current_config;
@@ -209,7 +209,7 @@ void ui_keypad_show(const ui_keypad_config_t* config) {
     // temperature-shaped and cannot express a max accel of 50000; deriving the
     // cap means a new caller cannot forget to widen it.
     input.max_int_digits = helix::ui::keypad_int_digits_for(config->max_value);
-    input.max_total_digits = input.max_int_digits + KEYPAD_FRACTION_DIGITS;
+    input.max_total_digits = input.max_int_digits + kKeypadFractionDigits;
     input.allow_dot = config->allow_decimal;
     lv_subject_set_int(&keypad_allow_decimal_subject, config->allow_decimal ? 1 : 0);
 

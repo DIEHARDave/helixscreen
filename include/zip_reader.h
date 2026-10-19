@@ -50,14 +50,14 @@ const char* zip_error_name(ZipError error);
 
 /// Bytes of the archive's tail that cover the end record of any archive whose
 /// comment and central directory fit in it; 3MF archives keep both small.
-inline constexpr size_t ZIP_TAIL_READ_BYTES = 64 * 1024;
+inline constexpr size_t kZipTailReadBytes = 64 * 1024;
 
 /// Fixed part of a local file header; the name and extra field follow it.
-inline constexpr size_t ZIP_LOCAL_HEADER_BYTES = 30;
+inline constexpr size_t kZipLocalHeaderBytes = 30;
 
 /// Room a ranged read allows for a local header's variable part beyond the
 /// entry name, which the central record does not give: the extra field.
-inline constexpr size_t ZIP_LOCAL_EXTRA_SLACK = 512;
+inline constexpr size_t kZipLocalExtraSlack = 512;
 
 /**
  * @brief Parses the central directory out of the last @p n bytes of an archive.

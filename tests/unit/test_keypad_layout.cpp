@@ -32,7 +32,7 @@ struct KeypadLayoutFixture : LVGLUITestFixture {
     KeypadLayoutFixture() {
         SettingsManager::instance().init_subjects();
         helix_test::reset_input_settings_to_defaults();
-        std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+        std::array<lv_obj_t*, kUiPanelCount> panels{};
         for (auto& p : panels) {
             p = lv_obj_create(lv_screen_active());
         }

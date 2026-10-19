@@ -295,7 +295,7 @@ void LoadCellManager::update_subjects() {
             // it show over a stale user edit.
             helix::ams::Observation measured(helix::ams::ObservationSource::Metered);
             measured.remaining_weight_g = *spool_weight;
-            helix::ams::ingest(helix::ams::BYPASS_LANE_ID, measured);
+            helix::ams::ingest(helix::ams::kBypassLaneId, measured);
 
             spdlog::debug("[LoadCellManager] Publishing updated spool weight to AmsState: {} g",
                           *spool_weight);

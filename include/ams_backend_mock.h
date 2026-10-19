@@ -36,7 +36,7 @@ class AmsBackendMock : public AmsBackend {
 
     /**
      * @brief Construct mock backend with specified slot count
-     * @param slot_count Number of simulated slots (1-16, default 4)
+     * @param slot_count Number of simulated slots (1 to ams::kLanesPerBackend, default 4)
      */
     explicit AmsBackendMock(int slot_count = 4);
 
@@ -921,7 +921,7 @@ class AmsBackendMock : public AmsBackend {
      * The dryer's own multiplier composed with --sim-speed, so fast-forwarding the
      * simulated clock carries the drying cycle with it instead of leaving it at 60x.
      * The product is a composed rate, so it is bounded by
-     * helix::sim::MAX_COMPOSED_SPEED rather than by the flag's own MAX_SPEED:
+     * helix::sim::kMaxComposedSpeed rather than by the flag's own MAX_SPEED:
      * at the 60x base, --sim-speed 1000 really does dry at 60000x.
      * Caller must hold mutex_.
      */
@@ -943,7 +943,7 @@ class AmsBackendMock : public AmsBackend {
      * @brief File this backend's simulated slot population as lane observations
      *
      * The simulated population is this backend's firmware: the constructor seeds
-     * it from SAMPLE_FILAMENTS and each rig mode rebuilds it, which is the same
+     * it from kSampleFilaments and each rig mode rebuilds it, which is the same
      * signal a real backend gets from a parse. Presence is Sensed; colour and
      * material are VendorCache.
      *
@@ -957,7 +957,7 @@ class AmsBackendMock : public AmsBackend {
      * to file, not this backend's.
      *
      * Called from start(), which AmsState reaches only after registration has
-     * stamped a backend index; an earlier call files onto INVALID_LANE_ID and
+     * stamped a backend index; an earlier call files onto kInvalidLaneId and
      * is dropped.
      *
      * Takes mutex_ itself, so the caller must not hold it.

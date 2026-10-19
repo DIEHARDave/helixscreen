@@ -23,6 +23,8 @@
 #include "helix_thread.h"
 #include "helix_version.h"
 #include "host_identity.h"
+#include "i_moonraker_api.h"
+#include "json_utils.h"
 #include "printer_state.h"
 #include "system/telemetry_manager.h"
 #include "translation_loader.h"
@@ -39,7 +41,7 @@ std::atomic<bool> g_already_notified_disconnect{false};
 // How long disconnect() waits for in-flight callbacks to drain before giving up.
 // Generous enough that a merely slow callback still wins the race, short enough
 // that a wedged one costs a visible stutter instead of a dead touchscreen.
-constexpr std::chrono::milliseconds CALLBACK_DRAIN_TIMEOUT{3000};
+constexpr std::chrono::milliseconds kCallbackDrainTimeout{3000};
 
 // "ws://192.168.1.171:7125/websocket" -> "192.168.1.171:7125". The bare
 // host:port is what a user can act on: compare it against the printer, or find
@@ -103,7 +105,7 @@ void MoonrakerClient::start_health_timer() {
     if (!l) {
         return;
     }
-    health_timer_id_ = l->setInterval(HEALTH_CHECK_INTERVAL_MS, [this](hv::TimerID) {
+    health_timer_id_ = l->setInterval(kHealthCheckIntervalMs, [this](hv::TimerID) {
         // Acquire shared lock to prevent destructor from proceeding while we execute.
         // try_to_lock ensures we never block if destructor holds the exclusive lock.
         // Without this lock, the destructor can destroy members (logger, tracker_)
@@ -113,23 +115,28 @@ void MoonrakerClient::start_health_timer() {
             return;
         }
 
-        // Check pending request timeouts
-        process_timeouts();
-
-        // Check for stalled reconnection
-        ConnectionState state = connection_state_.load();
-        if (state == ConnectionState::RECONNECTING) {
-            auto elapsed = steady_ms_since(reconnect_started_at_.load(std::memory_order_relaxed));
-            if (elapsed > MAX_RECONNECT_STALL_MS) {
-                spdlog::error("[Moonraker Client] Reconnection stalled for {}ms, giving up",
-                              elapsed);
-                set_connection_state(ConnectionState::FAILED);
-                emit_event(moonraker_event::reconnect_stalled());
-            }
-        }
+        on_health_tick();
     });
     spdlog::debug("[Moonraker Client] Health check timer started ({}ms interval)",
-                  HEALTH_CHECK_INTERVAL_MS);
+                  kHealthCheckIntervalMs);
+}
+
+void MoonrakerClient::on_health_tick() {
+    // Check pending request timeouts
+    process_timeouts();
+
+    poll_klippy_state();
+
+    // Check for stalled reconnection
+    ConnectionState state = connection_state_.load();
+    if (state == ConnectionState::RECONNECTING) {
+        auto elapsed = steady_ms_since(reconnect_started_at_.load(std::memory_order_relaxed));
+        if (elapsed > kMaxReconnectStallMs) {
+            spdlog::error("[Moonraker Client] Reconnection stalled for {}ms, giving up", elapsed);
+            set_connection_state(ConnectionState::FAILED);
+            emit_event(moonraker_event::reconnect_stalled());
+        }
+    }
 }
 
 void MoonrakerClient::stop_health_timer() {
@@ -142,6 +149,82 @@ void MoonrakerClient::stop_health_timer() {
     }
     health_timer_id_ = 0;
     spdlog::debug("[Moonraker Client] Health check timer stopped");
+}
+
+void MoonrakerClient::start_klippy_state_poll() {
+    klippy_state_poll_->generation.fetch_add(1);
+    klippy_state_poll_->in_flight.store(false);
+    klippy_state_poll_->started_at.store(steady_ticks_now());
+    spdlog::debug("[Moonraker Client] Polling printer.info until Klippy's state settles");
+}
+
+void MoonrakerClient::stop_klippy_state_poll(const char* why) {
+    if (klippy_state_poll_->started_at.exchange(0) == 0) {
+        return;
+    }
+    klippy_state_poll_->generation.fetch_add(1);
+    spdlog::debug("[Moonraker Client] Klippy state poll stopped: {}", why);
+}
+
+void MoonrakerClient::poll_klippy_state() {
+    auto poll = klippy_state_poll_;
+    const SteadyTicks started = poll->started_at.load();
+    if (started == 0) {
+        return;
+    }
+    if (const long long elapsed = steady_ms_since(started); elapsed > kKlippyStatePollMaxMs) {
+        spdlog::warn("[Moonraker Client] Klippy state still unsettled {}ms after disconnect — "
+                     "no longer polling printer.info",
+                     elapsed);
+        stop_klippy_state_poll("unsettled");
+        return;
+    }
+    if (poll->in_flight.exchange(true)) {
+        return;
+    }
+
+    const uint64_t generation = poll->generation.load();
+    send_jsonrpc(
+        "printer.info", json::object(),
+        [poll, generation](const json& response) {
+            poll->in_flight.store(false);
+            const json* result = helix::json_util::find_member(response, "result");
+            const KlippyStatus status = result ? parse_klippy_status(*result) : KlippyStatus{};
+            const std::string& state = status.state;
+            const std::string& message = status.state_message;
+
+            // "disconnected" (Moonraker's own) and "startup" are Klippy still on its way.
+            const std::optional<KlippyState> parsed = parse_klippy_state(state);
+            if (!parsed || *parsed == KlippyState::STARTUP) {
+                spdlog::debug("[Moonraker Client] Klippy state poll: '{}', still waiting", state);
+                return;
+            }
+            // Only the poll that is still current may settle it: a notify_klippy_ready
+            // or a socket close since this request was sent owns the state now.
+            uint64_t expected = generation;
+            if (!poll->generation.compare_exchange_strong(expected, generation + 1)) {
+                return;
+            }
+            poll->started_at.store(0);
+
+            spdlog::info("[Moonraker Client] Klippy state after disconnect: '{}' ({})", state,
+                         message);
+            json webhooks = {{"state", state}, {"state_message", message}};
+            const uint64_t epoch = get_printer_state().network_state().klippy_epoch();
+            helix::ui::queue_update("MoonrakerClient::klippy_state_poll", [webhooks, epoch]() {
+                // A frame from before the socket last closed describes a session
+                // that is gone.
+                if (get_printer_state().network_state().klippy_epoch() != epoch) {
+                    return;
+                }
+                get_printer_state().apply_klippy_status(webhooks, 0.0, false, epoch);
+            });
+        },
+        [poll](const MoonrakerError& err) {
+            poll->in_flight.store(false);
+            spdlog::debug("[Moonraker Client] Klippy state poll failed: {}", err.message);
+        },
+        0, /*silent=*/true);
 }
 
 MoonrakerClient::~MoonrakerClient() {
@@ -308,10 +391,10 @@ void MoonrakerClient::disconnect() {
     // outlasts the drain keeps running straight through the close() below and a
     // dispatch arriving afterwards is admitted as usual. The error log is the only
     // signal that happened, which is why it is an error rather than a silent carry-on.
-    if (!helix::drain_shared_holders(callback_lifecycle_mutex_, CALLBACK_DRAIN_TIMEOUT)) {
+    if (!helix::drain_shared_holders(callback_lifecycle_mutex_, kCallbackDrainTimeout)) {
         spdlog::error("[Moonraker Client] In-flight callbacks still running after {}ms — "
                       "proceeding with disconnect anyway",
-                      CALLBACK_DRAIN_TIMEOUT.count());
+                      kCallbackDrainTimeout.count());
     }
 
     // Stop the timer and close. A successful drain means no callback is running at
@@ -321,6 +404,7 @@ void MoonrakerClient::disconnect() {
 
     // Clean up any pending requests (invokes error callbacks)
     tracker_.cleanup_all();
+    stop_klippy_state_poll("disconnect");
 
     // Reset discovery state for next connection
     discovery_.reset_identified();
@@ -565,10 +649,10 @@ void MoonrakerClient::on_ws_message(const std::string& msg) {
 
     try {
         // Validate message size to prevent memory exhaustion
-        static constexpr size_t MAX_MESSAGE_SIZE = 5 * 1024 * 1024; // 5 MB
-        if (msg.size() > MAX_MESSAGE_SIZE) {
+        static constexpr size_t kMaxMessageSize = 5 * 1024 * 1024; // 5 MB
+        if (msg.size() > kMaxMessageSize) {
             spdlog::error("[Moonraker Client] Message too large: {} bytes (max: {})", msg.size(),
-                          MAX_MESSAGE_SIZE);
+                          kMaxMessageSize);
 
             // Emit event - this indicates a protocol problem
             emit_event(MoonrakerEvent::translatable(
@@ -699,6 +783,8 @@ void MoonrakerClient::on_ws_message(const std::string& msg) {
                 // Clear pending requests — Klippy can't process them anymore
                 tracker_.cleanup_all();
 
+                start_klippy_state_poll();
+
                 // Emit event for UI layer to handle
                 emit_event(MoonrakerEvent::translatable(
                     MoonrakerEventType::KLIPPY_DISCONNECTED,
@@ -745,6 +831,7 @@ void MoonrakerClient::on_ws_message(const std::string& msg) {
             // Klippy reconnected to Moonraker
             else if (method == "notify_klippy_ready") {
                 spdlog::info("[Moonraker Client] Klipper ready");
+                stop_klippy_state_poll("Klippy ready");
 
                 helix::ui::queue_update("MoonrakerClient::notify_klippy_ready", []() {
                     get_printer_state().set_klippy_state_sync(KlippyState::READY);
@@ -793,6 +880,7 @@ void MoonrakerClient::on_ws_close() {
 
         // Cleanup all pending requests (invoke error callbacks) — unconditional.
         tracker_.cleanup_all();
+        stop_klippy_state_poll("socket closed");
 
         // Drop the klippy-state freshness watermark, also unconditionally — this
         // is the one point every close funnels through, intentional teardown and
@@ -924,7 +1012,7 @@ void MoonrakerClient::on_ws_close() {
 SubscriptionId MoonrakerClient::register_notify_update(std::function<void(const json&)> cb) {
     if (!cb) {
         spdlog::warn("[Moonraker Client] register_notify_update called with null callback");
-        return INVALID_SUBSCRIPTION_ID;
+        return kInvalidSubscriptionId;
     }
 
     SubscriptionId id = next_subscription_id_.fetch_add(1);
@@ -937,7 +1025,7 @@ SubscriptionId MoonrakerClient::register_notify_update(std::function<void(const 
 }
 
 bool MoonrakerClient::unsubscribe_notify_update(SubscriptionId id) {
-    if (id == INVALID_SUBSCRIPTION_ID) {
+    if (id == kInvalidSubscriptionId) {
         return false;
     }
 
@@ -1175,7 +1263,7 @@ RequestId MoonrakerClient::send_jsonrpc(const std::string& method, const json& p
                               e.what());
             }
         }
-        return INVALID_REQUEST_ID;
+        return kInvalidRequestId;
     }
     return tracker_.send(*this, method, params, success_cb, error_cb, timeout_ms, silent, intent);
 }

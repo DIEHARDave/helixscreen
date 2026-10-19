@@ -34,8 +34,8 @@ StartBlockStepKind homing_kind(std::string_view line) {
 /// keywords. The detector matches a macro keyword anywhere in the line, a
 /// comment included; the step must be the command the line runs.
 bool command_is(const std::string& word, OperationCategory category) {
-    for (size_t i = 0; i < OPERATION_KEYWORDS_COUNT; ++i) {
-        const OperationKeyword& kw = OPERATION_KEYWORDS[i];
+    for (size_t i = 0; i < kOperationKeywordsCount; ++i) {
+        const OperationKeyword& kw = kOperationKeywords[i];
         if (kw.category != category) {
             continue;
         }

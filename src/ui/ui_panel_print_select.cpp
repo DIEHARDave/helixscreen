@@ -343,6 +343,8 @@ void PrintSelectPanel::init_subjects() {
          [](lv_event_t*) { get_global_print_select_panel().start_print(); }},
         {"on_print_select_delete_button",
          [](lv_event_t*) { get_global_print_select_panel().show_delete_confirmation(); }},
+        {"on_print_select_more_button",
+         [](lv_event_t*) { get_global_print_select_panel().show_plugin_actions(); }},
         {"on_print_select_plate_prev",
          [](lv_event_t*) { get_global_print_select_panel().step_archive_plate(-1); }},
         {"on_print_select_plate_next",
@@ -572,9 +574,9 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
             // every 5s and frequently returns identical data, and
             // ToastManager has no dedup, so toasting here unconditionally
             // would spam the same message on every poll (review finding).
-            constexpr size_t ESP32_MAX_FILE_COUNT = 50;
+            constexpr size_t kEsp32MaxFileCount = 50;
             bool esp32_list_capped =
-                cap_print_file_list_to_newest(panel->file_list_, ESP32_MAX_FILE_COUNT);
+                cap_print_file_list_to_newest(panel->file_list_, kEsp32MaxFileCount);
 #endif
 
             panel->merge_history_into_file_list(); // Populate history status for each file
@@ -1592,7 +1594,7 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
                         self->thumbnail_alive_, &self->nav_generation_);
 
                     helix::fetch_thumbnail_from_gcode(
-                        gcode_path, helix::GCODE_THUMBNAIL_HEADER_BYTES, panel_api,
+                        gcode_path, helix::kGcodeThumbnailHeaderBytes, panel_api,
                         helix::ThumbnailProcessor::get_target_for_display(), ctx,
                         [self, panel_tok, file_idx, filename_copy](const std::string& optimized,
                                                                    bool /*degraded*/) {
@@ -1826,10 +1828,10 @@ void PrintSelectPanel::set_api(IMoonrakerAPI* api) {
                     panel->refresh_files();
                 }
             },
-            FILE_POLL_INTERVAL_MS, self);
+            kFilePollIntervalMs, self);
         lv_timer_pause(file_poll_timer_);
         spdlog::debug("[{}] Created file list polling timer ({}ms, paused)", get_name(),
-                      FILE_POLL_INTERVAL_MS);
+                      kFilePollIntervalMs);
     }
 }
 
@@ -2336,7 +2338,7 @@ CardDimensions PrintSelectPanel::calculate_card_dimensions() {
 
     if (!card_view_container_) {
         spdlog::error("[{}] Cannot calculate dimensions: container is null", get_name());
-        return publish({4, 2, CARD_MIN_WIDTH, CARD_DEFAULT_HEIGHT});
+        return publish({4, 2, kCardMinWidth, kCardDefaultHeight});
     }
 
     // Read gap from container's XML-defined style (respects design tokens)
@@ -2355,7 +2357,7 @@ CardDimensions PrintSelectPanel::calculate_card_dimensions() {
     CardDimensions dims;
 
     // Determine optimal number of rows based on available height
-    dims.num_rows = (available_height >= ROW_COUNT_3_MIN_HEIGHT) ? 3 : 2;
+    dims.num_rows = (available_height >= kRowCount3MinHeight) ? 3 : 2;
 
     // Calculate card height based on rows
     // Each row takes card_height + gap (LVGL flex adds gap after each row)
@@ -2383,10 +2385,10 @@ CardDimensions PrintSelectPanel::calculate_card_dimensions() {
     }
 
     // Fallback
-    dims.num_columns = container_width / (CARD_MIN_WIDTH + card_gap);
+    dims.num_columns = container_width / (kCardMinWidth + card_gap);
     if (dims.num_columns < 1)
         dims.num_columns = 1;
-    dims.card_width = CARD_MIN_WIDTH;
+    dims.card_width = kCardMinWidth;
 
     spdlog::warn("[{}] No optimal card layout found, using fallback: {} columns", get_name(),
                  dims.num_columns);
@@ -2427,7 +2429,7 @@ void PrintSelectPanel::schedule_view_refresh() {
                 // asynchronously
                 panel->refresh_visible_content();
             },
-            REFRESH_DEBOUNCE_MS, self);
+            kRefreshDebounceMs, self);
 
         // Make it a one-shot timer
         lv_timer_set_repeat_count(self->refresh_timer_, 1);
@@ -2483,7 +2485,7 @@ void PrintSelectPanel::animate_view_entrance(lv_obj_t* container) {
     }
 
     // Animation constants for view transition
-    constexpr int32_t FADE_DURATION_MS = 150;
+    constexpr int32_t kFadeDurationMs = 150;
 
     // Start container transparent
     lv_obj_set_style_opa(container, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -2493,7 +2495,7 @@ void PrintSelectPanel::animate_view_entrance(lv_obj_t* container) {
     lv_anim_init(&fade_anim);
     lv_anim_set_var(&fade_anim, container);
     lv_anim_set_values(&fade_anim, LV_OPA_TRANSP, LV_OPA_COVER);
-    lv_anim_set_duration(&fade_anim, FADE_DURATION_MS);
+    lv_anim_set_duration(&fade_anim, kFadeDurationMs);
     lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_out);
     lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
         lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
@@ -2648,7 +2650,7 @@ void PrintSelectPanel::update_sort_indicators() {
                                        PrintSelectSortColumn::PRINT_TIME};
 
     // Animation constants for sort indicator transition
-    constexpr int32_t FADE_DURATION_MS = 200;
+    constexpr int32_t kFadeDurationMs = 200;
 
     // Check if animations are enabled
     bool animations_enabled = DisplaySettingsManager::instance().get_animations_enabled();
@@ -2675,7 +2677,7 @@ void PrintSelectPanel::update_sort_indicators() {
             lv_anim_init(&fade_in);
             lv_anim_set_var(&fade_in, icon);
             lv_anim_set_values(&fade_in, LV_OPA_TRANSP, LV_OPA_COVER);
-            lv_anim_set_duration(&fade_in, FADE_DURATION_MS);
+            lv_anim_set_duration(&fade_in, kFadeDurationMs);
             lv_anim_set_path_cb(&fade_in, lv_anim_path_ease_out);
             lv_anim_set_exec_cb(&fade_in, [](void* obj, int32_t value) {
                 lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
@@ -2697,7 +2699,7 @@ void PrintSelectPanel::update_sort_indicators() {
                 lv_anim_init(&fade_out);
                 lv_anim_set_var(&fade_out, icon);
                 lv_anim_set_values(&fade_out, LV_OPA_COVER, LV_OPA_TRANSP);
-                lv_anim_set_duration(&fade_out, FADE_DURATION_MS);
+                lv_anim_set_duration(&fade_out, kFadeDurationMs);
                 lv_anim_set_path_cb(&fade_out, lv_anim_path_ease_in);
                 lv_anim_set_exec_cb(&fade_out, [](void* obj, int32_t value) {
                     lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
@@ -3503,6 +3505,12 @@ void PrintSelectPanel::on_preflight_remap() {
 // apply_remap(), dispatched on RemapStrategy. Print-start is likewise already
 // strategy-dispatched (PrintStartController), so Native and PrePrintSend both
 // read the same shared card store and need no special opener.
+void PrintSelectPanel::show_plugin_actions() {
+    if (detail_view_) {
+        detail_view_->show_plugin_actions();
+    }
+}
+
 void PrintSelectPanel::show_remap_help() {
     if (detail_view_) {
         detail_view_->show_remap_help_modal();
@@ -3650,9 +3658,9 @@ void PrintSelectPanel::apply_remap(const std::vector<helix::ToolMapping>& update
     }
 
     case AmsBackend::RemapStrategy::PrePrintSend: {
-        // Snapmaker U1: log each non-identity choice for on-device confirmation,
+        // Log each non-identity choice for on-device confirmation,
         // then push the full vector into the shared card store. The backend send
-        // (SET_PRINT_EXTRUDER_MAP via build_preprint_gcode) happens at print-start
+        // (build_preprint_gcode) happens at print-start
         // through PrintStartController, which reads get_effective_remap() — that
         // identity-filters, so only changed tools emit a line.
         // The same routing get_effective_remap()'s identity filter asks, so this
@@ -3662,8 +3670,8 @@ void PrintSelectPanel::apply_remap(const std::vector<helix::ToolMapping>& update
         for (const auto& m : updated) {
             if (m.tool_index >= 0 && m.mapped_slot >= 0 &&
                 m.mapped_slot != routing.head(m.tool_index)) {
-                spdlog::debug("[{}] U1 remap applied: tool {} -> head {}", get_name(), m.tool_index,
-                              m.mapped_slot);
+                spdlog::debug("[{}] pre-print remap applied: tool {} -> slot {}", get_name(),
+                              m.tool_index, m.mapped_slot);
             }
         }
         if (detail_view_) {
@@ -3895,7 +3903,7 @@ void PrintSelectPanel::on_usb_drive_removed() {
 PrintSelectPanel::EspThumbnailFetch
 PrintSelectPanel::fetch_esp_thumbnail(size_t index, const std::string& filename,
                                       const std::string& thumb_path) {
-    constexpr size_t ESP32_THUMBNAIL_MAX_BYTES = 512 * 1024;
+    constexpr size_t kEsp32ThumbnailMaxBytes = 512 * 1024;
     // An error reported before the download call returns means nothing was
     // started: either the lane's queue was full, or the request was invalid.
     auto submitting = std::make_shared<std::atomic<bool>>(true);
@@ -4004,15 +4012,14 @@ PrintSelectPanel::fetch_esp_thumbnail(size_t index, const std::string& filename,
                 // state and window in PSRAM: about 43KB beside the PNG.
                 helix::zip::ZipError err = helix::zip::ZipError::None;
                 std::string png;
-                if (!helix::three_mf::entry_payload(bytes, e, ESP32_THUMBNAIL_MAX_BYTES, png,
-                                                    err)) {
+                if (!helix::three_mf::entry_payload(bytes, e, kEsp32ThumbnailMaxBytes, png, err)) {
                     png.clear();
                 }
                 on_png(png);
             },
             on_fail, cancelled);
     } else {
-        api_->transfers().download_file_partial("gcodes", thumb_path, ESP32_THUMBNAIL_MAX_BYTES,
+        api_->transfers().download_file_partial("gcodes", thumb_path, kEsp32ThumbnailMaxBytes,
                                                 on_png, on_fail, cancelled);
     }
     submitting->store(false);
@@ -4107,11 +4114,11 @@ void PrintSelectPanel::sync_esp_thumbnails(size_t first, size_t end, bool keep_o
     }
     const helix::CardThumbnailPlan plan = helix::plan_card_thumbnails(
         states, first, end, static_cast<size_t>(std::max(esp_thumbnails_in_flight_, 0)), estimate,
-        helix::CARD_THUMBNAIL_BUDGET, esp_lane_refused_, keep_off_screen);
+        helix::kCardThumbnailBudget, esp_lane_refused_, keep_off_screen);
     if (!plan.fetch.empty() && !esp_slots_) {
         // One slot per card the budget allows.
         esp_slots_ = std::make_shared<helix::ThumbnailSlotPool>(
-            estimate, helix::CARD_THUMBNAIL_BUDGET / estimate,
+            estimate, helix::kCardThumbnailBudget / estimate,
             [](size_t n) { return heap_caps_malloc(n, MALLOC_CAP_SPIRAM); },
             [](void* p) { heap_caps_free(p); });
     }
@@ -4143,7 +4150,7 @@ void PrintSelectPanel::sync_esp_thumbnails(size_t first, size_t end, bool keep_o
                         self->esp_lane_refused_ = false;
                         self->sync_esp_thumbnails(self->esp_window_first_, self->esp_window_end_);
                     },
-                    ESP_LANE_RETRY_MS, this));
+                    kEspLaneRetryMs, this));
                 lv_timer_set_repeat_count(esp_lane_retry_timer_.get(), 1);
             }
             break;

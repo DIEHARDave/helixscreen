@@ -98,7 +98,7 @@ using namespace helix;
 class MockBehaviorTestFixture {
   public:
     /// Default speedup for tests (100x makes 250ms connect delay → 2.5ms)
-    static constexpr double TEST_SPEEDUP = 100.0;
+    static constexpr double kTestSpeedup = 100.0;
 
     MockBehaviorTestFixture() = default;
 
@@ -107,7 +107,7 @@ class MockBehaviorTestFixture {
      */
     std::unique_ptr<MoonrakerClientMock> create_mock(
         MoonrakerClientMock::PrinterType type = MoonrakerClientMock::PrinterType::VORON_24) {
-        return std::make_unique<MoonrakerClientMock>(type, TEST_SPEEDUP);
+        return std::make_unique<MoonrakerClientMock>(type, kTestSpeedup);
     }
 
     /**
@@ -1474,7 +1474,7 @@ TEST_CASE("MoonrakerClientMock send_jsonrpc methods", "[connection][jsonrpc]") {
         });
 
         // Verify valid request ID returned
-        REQUIRE(id != INVALID_REQUEST_ID);
+        REQUIRE(id != kInvalidRequestId);
 
         // Verify callback was invoked (printer.info is a registered handler)
         REQUIRE(callback_invoked);
@@ -1504,7 +1504,7 @@ TEST_CASE("MoonrakerClientMock send_jsonrpc methods", "[connection][jsonrpc]") {
             [&](const MoonrakerError&) { error_invoked = true; }, 5000);
 
         // Verify valid request ID returned
-        REQUIRE(id != INVALID_REQUEST_ID);
+        REQUIRE(id != kInvalidRequestId);
 
         // Verify success callback was invoked, not error callback
         REQUIRE(success_invoked);
@@ -3066,7 +3066,7 @@ TEST_CASE("MoonrakerClientMock restart simulation", "[slow][mock][restart]") {
         //
         // Time to the webhooks "ready" notification, NOT to an arbitrary notification
         // count: the mock's physics thread dispatches a status update every
-        // SIMULATION_INTERVAL_MS (250ms of REAL time — the speedup scales the physics
+        // kSimulationIntervalMs (250ms of REAL time — the speedup scales the physics
         // step, not the tick period), so a stray temperature tick can push the
         // notification count past a threshold while the restart is still in flight.
         auto start = std::chrono::steady_clock::now();
@@ -3702,7 +3702,7 @@ TEST_CASE("MoonrakerClientMock: periodic broadcasts carry each print-start step'
 //
 // Commit 959bb0140's central design property: once a user sends M117, that
 // message must survive the mock's own periodic status broadcast (fired every
-// NOTIFICATION_INTERVAL_TICKS ticks from temperature_simulation_loop()) even
+// kNotificationIntervalTicks ticks from temperature_simulation_loop()) even
 // while the print is in a phase that would otherwise emit a canned string
 // ("Heating...", "Purging nozzle"). The SECTIONs above only ever inspect the
 // notification dispatched by the M117 call itself - they never drive the

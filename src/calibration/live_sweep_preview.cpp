@@ -100,9 +100,9 @@ PreviewSeries layout_preview(const std::vector<SweepPoint>& points, SweepColumn 
     }
     const double lo = axis_lo_hz;
     const double hi = axis_hi_hz;
-    const auto n = static_cast<size_t>(std::lround((hi - lo) / sweep_preview::STEP_HZ)) + 1;
+    const auto n = static_cast<size_t>(std::lround((hi - lo) / sweep_preview::kStepHz)) + 1;
     const double spacing = n > 1 ? (hi - lo) / static_cast<double>(n - 1) : 0.0;
-    const double reach = sweep_preview::STEP_HZ / 2.0;
+    const double reach = sweep_preview::kStepHz / 2.0;
     out.freqs.resize(n);
     out.amps.assign(n, std::numeric_limits<float>::quiet_NaN());
 
@@ -328,7 +328,7 @@ void LiveSweepPreview::on_batch(const AccelBatch& batch) {
         niced_ = true;
 #ifdef __linux__
         const auto tid = static_cast<id_t>(::syscall(SYS_gettid));
-        if (::setpriority(PRIO_PROCESS, tid, PREVIEW_LOOP_NICE) != 0) {
+        if (::setpriority(PRIO_PROCESS, tid, kPreviewLoopNice) != 0) {
             spdlog::debug("[LiveSweepPreview] could not renice the stream thread");
         }
 #endif
@@ -352,7 +352,7 @@ void LiveSweepPreview::on_batch(const AccelBatch& batch) {
     }
 
     if (!no_lock_logged_ && !accumulator_->locked() && std::isnan(accumulator_->drive_start_s()) &&
-        stream_s >= PREVIEW_NO_LOCK_LOG_S) {
+        stream_s >= kPreviewNoLockLogS) {
         no_lock_logged_ = true;
         spdlog::debug("[LiveSweepPreview] no lock on the drive after {:.0f} s of stream", stream_s);
     }
@@ -360,7 +360,7 @@ void LiveSweepPreview::on_batch(const AccelBatch& batch) {
     bool done = accumulator_->complete();
     if (finishing_.load()) {
         if (finish_deadline_s_ <= 0.0) {
-            finish_deadline_s_ = stream_s + PREVIEW_FINISH_GRACE_S;
+            finish_deadline_s_ = stream_s + kPreviewFinishGraceS;
         } else if (stream_s >= finish_deadline_s_) {
             done = true;
         }

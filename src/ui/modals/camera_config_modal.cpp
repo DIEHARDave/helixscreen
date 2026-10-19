@@ -60,11 +60,11 @@ void CameraConfigModal::init_subjects() {
         std::snprintf(key, sizeof(key), "cam_source_%zu_active", i);
         subjects_.publish(key, &source_active_[i]);
         lv_subject_init_string(&source_name_[i], source_name_buf_[i].data(), nullptr,
-                               SOURCE_TEXT_LEN, "");
+                               kSourceTextLen, "");
         std::snprintf(key, sizeof(key), "cam_source_%zu_name", i);
         subjects_.publish(key, &source_name_[i]);
         lv_subject_init_string(&source_note_[i], source_note_buf_[i].data(), nullptr,
-                               SOURCE_TEXT_LEN, "");
+                               kSourceTextLen, "");
         std::snprintf(key, sizeof(key), "cam_source_%zu_note", i);
         subjects_.publish(key, &source_note_[i]);
     }
@@ -147,7 +147,7 @@ void CameraConfigModal::publish_sources(const std::vector<WebcamInfo>& cams) {
 
     source_names_.clear();
     for (const auto& cam : cams) {
-        if (cam.name.empty() || source_names_.size() >= MAX_SOURCES)
+        if (cam.name.empty() || source_names_.size() >= kMaxSources)
             continue; // The local-probe entry has no name; nothing to pick
         source_names_.push_back(cam.name);
         size_t row = source_names_.size();

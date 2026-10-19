@@ -106,7 +106,7 @@ TEST_CASE_METHOD(NavigationTestFixture, "Repeated panel selection", "[core][navi
 }
 
 TEST_CASE_METHOD(NavigationTestFixture, "All panels are accessible", "[core][navigation]") {
-    for (int i = 0; i < UI_PANEL_COUNT; i++) {
+    for (int i = 0; i < kUiPanelCount; i++) {
         NavigationManager::instance().set_active((PanelId)i);
         REQUIRE(NavigationManager::instance().get_active() == (PanelId)i);
     }
@@ -673,7 +673,7 @@ TEST_CASE_METHOD(NavbarIconTestFixture, "Out-of-band backdrop deletion scrubs ov
     // builds a backdrop when it sees itself as the first overlay.
     lv_obj_t* base = lv_obj_create(test_screen());
     REQUIRE(base != nullptr);
-    lv_obj_t* panels[UI_PANEL_COUNT] = {nullptr};
+    lv_obj_t* panels[kUiPanelCount] = {nullptr};
     panels[static_cast<int>(PanelId::Home)] = base;
     nav.set_panels(panels);
 
@@ -711,7 +711,7 @@ TEST_CASE_METHOD(NavbarIconTestFixture, "Out-of-band widget deletion scrubs pane
     // push_overlay's is_first_overlay logic assumes a non-empty base stack.
     lv_obj_t* base = lv_obj_create(test_screen());
     REQUIRE(base != nullptr);
-    lv_obj_t* panels[UI_PANEL_COUNT] = {nullptr};
+    lv_obj_t* panels[kUiPanelCount] = {nullptr};
     panels[static_cast<int>(PanelId::Home)] = base; // active panel is Home by default
     nav.set_panels(panels);
     REQUIRE(nav.is_panel_in_stack(base) == true);
@@ -771,7 +771,7 @@ TEST_CASE_METHOD(NavbarIconTestFixture,
 
     lv_obj_t* base = lv_obj_create(test_screen());
     REQUIRE(base != nullptr);
-    lv_obj_t* panels[UI_PANEL_COUNT] = {nullptr};
+    lv_obj_t* panels[kUiPanelCount] = {nullptr};
     panels[static_cast<int>(PanelId::Home)] = base;
     nav.set_panels(panels);
 
@@ -828,7 +828,7 @@ TEST_CASE_METHOD(NavbarIconTestFixture,
     // Seed a base panel so push_overlay's is_first_overlay logic has a stack.
     lv_obj_t* base = lv_obj_create(test_screen());
     REQUIRE(base != nullptr);
-    lv_obj_t* panels[UI_PANEL_COUNT] = {nullptr};
+    lv_obj_t* panels[kUiPanelCount] = {nullptr};
     panels[static_cast<int>(PanelId::Home)] = base;
     nav.set_panels(panels);
 
@@ -884,7 +884,7 @@ TEST_CASE_METHOD(NavbarIconTestFixture,
     // non-empty base stack (matches production: slot 0 holds the active panel).
     lv_obj_t* base = lv_obj_create(test_screen());
     REQUIRE(base != nullptr);
-    lv_obj_t* panels[UI_PANEL_COUNT] = {nullptr};
+    lv_obj_t* panels[kUiPanelCount] = {nullptr};
     panels[static_cast<int>(PanelId::Home)] = base;
     nav.set_panels(panels);
     REQUIRE(nav.is_panel_in_stack(base) == true);
@@ -966,7 +966,7 @@ TEST_CASE_METHOD(NavbarIconTestFixture, "is_panel_on_top distinguishes top from 
 
     lv_obj_t* base = lv_obj_create(test_screen());
     REQUIRE(base != nullptr);
-    lv_obj_t* panels[UI_PANEL_COUNT] = {nullptr};
+    lv_obj_t* panels[kUiPanelCount] = {nullptr};
     panels[static_cast<int>(PanelId::Home)] = base;
     nav.set_panels(panels);
 

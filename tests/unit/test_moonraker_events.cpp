@@ -277,17 +277,17 @@ TEST_CASE_METHOD(EventTestFixture, "MoonrakerClient can emit multiple events seq
     }
 
     SECTION("rapid fire events all captured") {
-        constexpr int NUM_EVENTS = 100;
-        for (int i = 0; i < NUM_EVENTS; i++) {
+        constexpr int kNumEvents = 100;
+        for (int i = 0; i < kNumEvents; i++) {
             client_->test_emit_event(MoonrakerEventType::RPC_ERROR, "Event " + std::to_string(i),
                                      true);
         }
 
-        REQUIRE(event_count() == NUM_EVENTS);
+        REQUIRE(event_count() == kNumEvents);
 
         // Verify sequence
         auto events = get_events();
-        for (int i = 0; i < NUM_EVENTS; i++) {
+        for (int i = 0; i < kNumEvents; i++) {
             CHECK(events[i].message == "Event " + std::to_string(i));
         }
     }
@@ -451,8 +451,8 @@ TEST_CASE_METHOD(EventTestFixture, "MoonrakerClient event emission is thread-saf
         });
 
         // Main thread emits events
-        constexpr int NUM_EVENTS = 50;
-        for (int i = 0; i < NUM_EVENTS; i++) {
+        constexpr int kNumEvents = 50;
+        for (int i = 0; i < kNumEvents; i++) {
             REQUIRE_NOTHROW(client_->test_emit_event(MoonrakerEventType::RPC_ERROR,
                                                      "Event " + std::to_string(i), true));
         }
@@ -465,7 +465,7 @@ TEST_CASE_METHOD(EventTestFixture, "MoonrakerClient event emission is thread-saf
         // replaces), so the count cannot exceed the number of emits either.
         int received = received_count.load();
         CHECK(received > 0);
-        CHECK(received <= NUM_EVENTS);
+        CHECK(received <= kNumEvents);
     }
 }
 

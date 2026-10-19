@@ -20,7 +20,7 @@
 namespace helix {
 
 namespace {
-constexpr const char* HISTORY_PATH = "/print_start_history/entries";
+constexpr const char* kHistoryPath = "/print_start_history/entries";
 }
 
 void PreprintPredictor::load_entries(const std::vector<PreprintEntry>& entries,
@@ -114,6 +114,10 @@ std::vector<PreprintEntry> PreprintPredictor::get_entries() const {
     return entries_;
 }
 
+int PreprintPredictor::temp_bucket_for(float bed_c) {
+    return bed_c >= kWarmBedC ? 2 : 1;
+}
+
 bool PreprintPredictor::has_predictions() const {
     return !entries_.empty();
 }
@@ -149,8 +153,12 @@ std::map<int, int> PreprintPredictor::default_phase_durations() {
         }
     }
 
-    // Generic ceiling used when the DB has no override — tuned so a printer
-    // that actually runs all six phases still gets a ballpark first-print ETA.
+    return generic_phase_durations();
+}
+
+std::map<int, int> PreprintPredictor::generic_phase_durations() {
+    // Tuned so a printer that actually runs all six phases still gets a
+    // ballpark first-print ETA.
     return {
         {static_cast<int>(PrintStartPhase::HOMING), 30},
         {static_cast<int>(PrintStartPhase::BED_MESH), 90},
@@ -246,7 +254,82 @@ int PreprintPredictor::predicted_homing_seconds() const {
     const auto phases = predicted_phases();
     const auto it = phases.find(static_cast<int>(PrintStartPhase::HOMING));
     const int predicted = it != phases.end() ? it->second : 0;
-    return std::max(predicted, MIN_HOMING_SECONDS);
+    return std::max(predicted, kMinHomingSeconds);
+}
+
+PreprintEstimate PreprintPredictor::estimate(const PreprintHeating& heating,
+                                             const PreprintPhaseOverrides& overrides) const {
+    const int nozzle_phase = static_cast<int>(PrintStartPhase::HEATING_NOZZLE);
+    const int bed_phase = static_cast<int>(PrintStartPhase::HEATING_BED);
+
+    PreprintEstimate result;
+    auto& durations = result.durations;
+    if (heating.nozzle_seconds > 0.0f)
+        durations[nozzle_phase] = heating.nozzle_seconds;
+    if (heating.bed_seconds > 0.0f)
+        durations[bed_phase] = heating.bed_seconds;
+
+    for (const auto& [phase, secs] : predicted_phases()) {
+        if (phase != nozzle_phase && phase != bed_phase) {
+            durations[phase] = static_cast<float>(secs);
+        }
+    }
+    durations[static_cast<int>(PrintStartPhase::HOMING)] =
+        static_cast<float>(predicted_homing_seconds());
+
+    // With history the recorded wall clock already holds every phase the
+    // start ran, including ones the matcher never named, so a run phase adds
+    // to it only when every start in the window recorded skipping it, and a
+    // skipped one takes off what it averaged across the window. Without
+    // history the durations are the total, and a run phase the defaults lack
+    // joins them.
+    const bool history = has_predictions();
+    float wall_clock_delta = 0.0f;
+    std::map<int, int> generic;
+    for (const auto& [phase, runs] : overrides) {
+        const auto it = durations.find(phase);
+        if (!runs) {
+            if (it == durations.end())
+                continue;
+            durations.erase(it);
+            if (history) {
+                wall_clock_delta -=
+                    static_cast<float>(weighted_entry_mean([p = phase](const PreprintEntry& e) {
+                        const auto d = e.phase_durations.find(p);
+                        return d != e.phase_durations.end() ? static_cast<double>(d->second) : 0.0;
+                    }));
+            }
+        } else if (it == durations.end() && (!history || every_entry_skipped(phase))) {
+            if (generic.empty())
+                generic = generic_phase_durations();
+            const auto g = generic.find(phase);
+            if (g != generic.end()) {
+                durations[phase] = static_cast<float>(g->second);
+                if (history)
+                    wall_clock_delta += static_cast<float>(g->second);
+            }
+        }
+    }
+
+    // A bed-first macro issues its M109 after homing and leveling; without a
+    // placeholder the known phases would carry all the weight.
+    if (!heating.nozzle_target_known && durations.find(nozzle_phase) == durations.end()) {
+        durations[nozzle_phase] = kUnknownNozzleHeatSeconds;
+    }
+
+    float durations_sum = 0.0f;
+    for (const auto& [_, dur] : durations) {
+        durations_sum += dur;
+    }
+
+    // The recorded wall clock is the honest total whenever history exists: it
+    // holds heating and any macro time the phase matcher never mapped. The
+    // durations sum swings both ways - short when phases go undetected, long
+    // when the thermal model overshoots - so it supplies only the shape.
+    result.total_seconds =
+        history ? std::max(0.0f, static_cast<float>(predicted_total()) + wall_clock_delta)
+                : durations_sum;
+    return result;
 }
 
 int PreprintPredictor::predicted_total() const {
@@ -266,18 +349,31 @@ int PreprintPredictor::predicted_total() const {
     // PrintStartPhase. Summing predicted_phases() would silently lose that
     // unmapped time (on AD5M-style printers the phase map captures <40% of
     // real elapsed time).
-    auto weights = compute_weights();
+    return static_cast<int>(std::round(weighted_entry_mean(
+        [](const PreprintEntry& e) { return static_cast<double>(e.total_seconds); })));
+}
+
+bool PreprintPredictor::every_entry_skipped(int phase) const {
+    return !entries_.empty() &&
+           std::all_of(entries_.begin(), entries_.end(), [phase](const PreprintEntry& e) {
+               return e.skipped_phases && e.skipped_phases->count(phase) > 0;
+           });
+}
+
+double PreprintPredictor::weighted_entry_mean(
+    const std::function<double(const PreprintEntry&)>& value) const {
+    const auto weights = compute_weights();
     double weighted_sum = 0.0;
     for (size_t i = 0; i < entries_.size(); ++i) {
-        weighted_sum += weights[i] * static_cast<double>(entries_[i].total_seconds);
+        weighted_sum += weights[i] * value(entries_[i]);
     }
-    return static_cast<int>(std::round(weighted_sum));
+    return weighted_sum;
 }
 
 std::vector<PreprintEntry> PreprintPredictor::load_entries_from_config() {
     auto* cfg = Config::get_instance();
 
-    auto entries_json = cfg->get<nlohmann::json>(HISTORY_PATH, nlohmann::json::array());
+    auto entries_json = cfg->get<nlohmann::json>(kHistoryPath, nlohmann::json::array());
     if (!entries_json.is_array() || entries_json.empty()) {
         return {};
     }
@@ -328,6 +424,20 @@ std::vector<PreprintEntry> PreprintPredictor::load_entries_from_config() {
                 entry.phase_durations[static_cast<int>(*phase)] = val.get<int>();
             }
         }
+        if (ej.contains("skipped") && ej["skipped"].is_array()) {
+            std::set<int> skipped;
+            for (const auto& name : ej["skipped"]) {
+                const auto phase = name.is_string()
+                                       ? print_start_phase_from_name(name.get<std::string>())
+                                       : std::nullopt;
+                if (phase) {
+                    skipped.insert(static_cast<int>(*phase));
+                } else {
+                    ++dropped_phases;
+                }
+            }
+            entry.skipped_phases = std::move(skipped);
+        }
         entries.push_back(std::move(entry));
     }
     if (dropped_legacy > 0) {
@@ -368,6 +478,17 @@ json PreprintPredictor::entries_to_json(const std::vector<PreprintEntry>& entrie
         if (e.window != PreprintWindow::Unknown) {
             entry_json["window"] = static_cast<int>(e.window);
         }
+        // Omitted when unknown, so an absent field and an empty list differ.
+        if (e.skipped_phases) {
+            json skipped_json = json::array();
+            for (const int phase : *e.skipped_phases) {
+                const auto name = print_start_phase_name(static_cast<PrintStartPhase>(phase));
+                if (!name.empty()) {
+                    skipped_json.push_back(std::string(name));
+                }
+            }
+            entry_json["skipped"] = std::move(skipped_json);
+        }
         entries_json.push_back(std::move(entry_json));
     }
     return entries_json;
@@ -389,10 +510,10 @@ void PreprintPredictor::append_to_config(const PreprintEntry& entry) {
             ++it;
         }
     }
-    while (entries.size() > MAX_STORED_ENTRIES) {
+    while (entries.size() > kMaxStoredEntries) {
         entries.erase(entries.begin());
     }
-    Config::get_instance()->set<json>(HISTORY_PATH, entries_to_json(entries));
+    Config::get_instance()->set<json>(kHistoryPath, entries_to_json(entries));
 }
 
 int PreprintPredictor::predicted_total_from_config() {

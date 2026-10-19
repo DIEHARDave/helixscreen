@@ -217,17 +217,26 @@ class PrinterFanState {
     /// Returns empty strings for roles with no detected fan.
     PrimaryFans classify_primary_fans() const;
 
-  private:
-    friend class PrinterFanStateTestAccess;
-
-    /// Classify fan type from object name (considers configured part fan)
-    FanType classify_fan_type(const std::string& object_name) const;
+    /// Classify a fan object by name. @p configured_part_fan, when set, is the
+    /// object the user assigned the part cooling role.
+    static FanType classify_fan_type(const std::string& object_name,
+                                     const std::string& configured_part_fan);
 
     /// Check if fan type is user-controllable, i.e. M106-commandable and thus
     /// eligible to be the part cooling fan: PART_COOLING, GENERIC_FAN,
     /// OUTPUT_PIN_FAN. Auto-controlled fans (heater/controller/temperature) are
     /// excluded — they can never be driven as a part fan.
     static bool is_fan_controllable(FanType type);
+
+    /// Fans in @p fan_objects the user can control besides part cooling.
+    static int count_extra_controllable_fans(const std::vector<std::string>& fan_objects,
+                                             const std::string& configured_part_fan = {});
+
+  private:
+    friend class PrinterFanStateTestAccess;
+
+    /// Classify fan type from object name (considers configured part fan)
+    FanType classify_fan_type(const std::string& object_name) const;
 
     /// Check if fan type belongs in the aux slot (anything that isn't the part
     /// cooling or hotend fan): CONTROLLER_FAN, TEMPERATURE_FAN, GENERIC_FAN,

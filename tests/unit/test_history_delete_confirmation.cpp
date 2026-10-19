@@ -64,7 +64,7 @@ class RecordingClient : public MoonrakerClientMock {
     std::vector<std::string> methods;
 };
 
-constexpr const char* DELETE_JOB = "server.history.delete_job";
+constexpr const char* kDeleteJob = "server.history.delete_job";
 
 PrintHistoryJob job(const std::string& filename) {
     PrintHistoryJob j;
@@ -128,7 +128,7 @@ TEST_CASE_METHOD(HistoryDeleteFixture, "History delete asks before touching the 
     lv_obj_t* dialog = HistoryListPanelTestAccess::delete_dialog(panel);
     REQUIRE(dialog != nullptr);
     CHECK(Modal::get_top() == dialog);
-    CHECK(client.count(DELETE_JOB) == 0);
+    CHECK(client.count(kDeleteJob) == 0);
 
     // A second tap while the dialog is up must not stack another one.
     HistoryListPanelTestAccess::handle_delete(panel);
@@ -137,7 +137,7 @@ TEST_CASE_METHOD(HistoryDeleteFixture, "History delete asks before touching the 
     press(dialog, "btn_primary");
     settle();
 
-    CHECK(client.count(DELETE_JOB) == 1);
+    CHECK(client.count(kDeleteJob) == 1);
     CHECK(HistoryListPanelTestAccess::delete_dialog(panel) == nullptr);
 }
 
@@ -160,7 +160,7 @@ TEST_CASE_METHOD(HistoryDeleteFixture,
     process_lvgl(50);
     settle();
 
-    CHECK(client.count(DELETE_JOB) == 0);
+    CHECK(client.count(kDeleteJob) == 0);
     // The guard is released, so the button works again.
     CHECK(HistoryListPanelTestAccess::delete_dialog(panel) == nullptr);
     HistoryListPanelTestAccess::handle_delete(panel);

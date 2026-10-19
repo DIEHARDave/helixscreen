@@ -53,13 +53,13 @@ static void apply_axis_pads(lv_obj_t* chart_obj, bool y_labels_visible) {
 }
 
 // Maximum number of series supported: raw PSD + every fitted shaper curve the
-// panel can overlay (MAX_SHAPERS = 11) + the live-before "was" curve. Fitted
+// panel can overlay (kMaxShapers = 11) + the live-before "was" curve. Fitted
 // CSVs from Kalico carry up to 11 columns; too few slots here silently drops
 // the last-added series (chips without curves, no "was" overlay).
-static constexpr int MAX_SERIES = 13;
+static constexpr int kMaxSeries = 13;
 
 // Maximum series name length
-static constexpr size_t MAX_NAME_LEN = 32;
+static constexpr size_t kMaxNameLen = 32;
 
 /**
  * @brief What a tier may draw (pure)
@@ -82,11 +82,11 @@ FrChartSeriesStyle fr_chart_effective_style(const FrChartSeriesStyle& requested,
  * @brief Internal series data structure
  */
 struct FrequencySeriesData {
-    int id = -1;                   ///< Series ID (-1 = unused slot)
-    char name[MAX_NAME_LEN] = {0}; ///< Series name
-    lv_color_t color = {};         ///< Line color
-    bool visible = true;           ///< Visibility state
-    bool muted = false;            ///< Draw thin/translucent instead of via the LVGL series
+    int id = -1;                  ///< Series ID (-1 = unused slot)
+    char name[kMaxNameLen] = {0}; ///< Series name
+    lv_color_t color = {};        ///< Line color
+    bool visible = true;          ///< Visibility state
+    bool muted = false;           ///< Draw thin/translucent instead of via the LVGL series
     FrChartSeriesStyle requested_style = {}; ///< Style the caller asked for
     FrChartSeriesStyle style = {};           ///< Effective draw style (muted series ignore it)
     lv_chart_series_t* lv_series = nullptr;  ///< LVGL chart series (chart mode only)
@@ -129,7 +129,7 @@ struct ui_frequency_response_chart_t {
     float amp_min = 0.0f;
     float amp_max = 1e9f;
 
-    FrequencySeriesData series[MAX_SERIES];
+    FrequencySeriesData series[kMaxSeries];
     int next_series_id = 0;
 
     // Peak dot pulse animation state (0-255 opacity cycle)
@@ -151,7 +151,7 @@ static FrequencySeriesData* find_series(ui_frequency_response_chart_t* chart, in
         return nullptr;
     }
 
-    for (int i = 0; i < MAX_SERIES; i++) {
+    for (int i = 0; i < kMaxSeries; i++) {
         if (chart->series[i].id == series_id) {
             return &chart->series[i];
         }
@@ -198,7 +198,7 @@ static int find_empty_slot(ui_frequency_response_chart_t* chart) {
         return -1;
     }
 
-    for (int i = 0; i < MAX_SERIES; i++) {
+    for (int i = 0; i < kMaxSeries; i++) {
         if (chart->series[i].id == -1) {
             return i;
         }
@@ -397,7 +397,7 @@ ui_frequency_response_chart_t* ui_frequency_response_chart_create(lv_obj_t* pare
     ui_frequency_response_chart_t* chart = chart_ptr.get();
 
     // Initialize all series slots to unused
-    for (int i = 0; i < MAX_SERIES; i++) {
+    for (int i = 0; i < kMaxSeries; i++) {
         chart->series[i].id = -1;
     }
 
@@ -443,7 +443,7 @@ void ui_frequency_response_chart_destroy(ui_frequency_response_chart_t* chart) {
     std::unique_ptr<ui_frequency_response_chart_t> chart_ptr(chart);
 
     // Remove all series
-    for (int i = 0; i < MAX_SERIES; i++) {
+    for (int i = 0; i < kMaxSeries; i++) {
         if (chart_ptr->series[i].id != -1 && chart_ptr->series[i].lv_series && chart_ptr->chart) {
             lv_chart_remove_series(chart_ptr->chart, chart_ptr->series[i].lv_series);
         }
@@ -498,8 +498,8 @@ int ui_frequency_response_chart_add_series(ui_frequency_response_chart_t* chart,
     series->amplitudes.clear();
 
     // Copy name with truncation
-    strncpy(series->name, name, MAX_NAME_LEN - 1);
-    series->name[MAX_NAME_LEN - 1] = '\0';
+    strncpy(series->name, name, kMaxNameLen - 1);
+    series->name[kMaxNameLen - 1] = '\0';
 
     // Create LVGL series if in chart mode
     if (chart->chart_mode && chart->chart) {
@@ -814,7 +814,7 @@ void ui_frequency_response_chart_clear(ui_frequency_response_chart_t* chart) {
         return;
     }
 
-    for (int i = 0; i < MAX_SERIES; i++) {
+    for (int i = 0; i < kMaxSeries; i++) {
         if (chart->series[i].id != -1) {
             chart->series[i].frequencies.clear();
             chart->series[i].amplitudes.clear();
@@ -916,7 +916,7 @@ void ui_frequency_response_chart_clear_peak(ui_frequency_response_chart_t* chart
     // Stop pulse animation if no series have peaks remaining
     if (chart->pulse_active) {
         bool any_peak = false;
-        for (int j = 0; j < MAX_SERIES; j++) {
+        for (int j = 0; j < kMaxSeries; j++) {
             if (chart->series[j].id != -1 && chart->series[j].has_peak) {
                 any_peak = true;
                 break;
@@ -1024,9 +1024,9 @@ static void draw_freq_grid_lines_cb(lv_event_t* e) {
     line_dsc.opa = static_cast<lv_opa_t>(38); // ~15% opacity
 
     // Horizontal grid lines: 4 divisions (amplitude)
-    constexpr int H_DIVISIONS = 4;
-    for (int i = 1; i < H_DIVISIONS; i++) {
-        int32_t y = content_y1 + (content_height * i) / H_DIVISIONS;
+    constexpr int kHDivisions = 4;
+    for (int i = 1; i < kHDivisions; i++) {
+        int32_t y = content_y1 + (content_height * i) / kHDivisions;
         line_dsc.p1.x = content_x1;
         line_dsc.p1.y = y;
         line_dsc.p2.x = content_x2;
@@ -1040,8 +1040,8 @@ static void draw_freq_grid_lines_cb(lv_event_t* e) {
         return;
     }
 
-    static constexpr float GRID_FREQS[] = {25.0f, 50.0f, 75.0f, 100.0f};
-    for (float freq : GRID_FREQS) {
+    static constexpr float kGridFreqs[] = {25.0f, 50.0f, 75.0f, 100.0f};
+    for (float freq : kGridFreqs) {
         if (freq <= chart->freq_min || freq >= chart->freq_max) {
             continue;
         }
@@ -1096,7 +1096,7 @@ static void draw_peak_dots_cb(lv_event_t* e) {
         return;
     }
 
-    for (int i = 0; i < MAX_SERIES; i++) {
+    for (int i = 0; i < kMaxSeries; i++) {
         FrequencySeriesData* series = &chart->series[i];
         if (series->id == -1 || !series->has_peak || !series->visible || !series->lv_series) {
             continue;
@@ -1127,7 +1127,7 @@ static void draw_peak_dots_cb(lv_event_t* e) {
         int32_t abs_y = content_y2 - static_cast<int32_t>(amp_frac * content_height);
 
         // Glow circle: larger, semi-transparent, lighter tint, pulsing opacity
-        constexpr int32_t GLOW_RADIUS = 10;
+        constexpr int32_t kGlowRadius = 10;
         lv_draw_rect_dsc_t glow_dsc;
         lv_draw_rect_dsc_init(&glow_dsc);
         glow_dsc.bg_color = lv_color_mix(series->color, lv_color_white(), LV_OPA_40);
@@ -1136,14 +1136,14 @@ static void draw_peak_dots_cb(lv_event_t* e) {
         glow_dsc.border_width = 0;
 
         lv_area_t glow_area;
-        glow_area.x1 = abs_x - GLOW_RADIUS;
-        glow_area.y1 = abs_y - GLOW_RADIUS;
-        glow_area.x2 = abs_x + GLOW_RADIUS;
-        glow_area.y2 = abs_y + GLOW_RADIUS;
+        glow_area.x1 = abs_x - kGlowRadius;
+        glow_area.y1 = abs_y - kGlowRadius;
+        glow_area.x2 = abs_x + kGlowRadius;
+        glow_area.y2 = abs_y + kGlowRadius;
         lv_draw_rect(layer, &glow_dsc, &glow_area);
 
         // Solid dot: smaller, fully opaque, series color
-        constexpr int32_t DOT_RADIUS = 5;
+        constexpr int32_t kDotRadius = 5;
         lv_draw_rect_dsc_t dot_dsc;
         lv_draw_rect_dsc_init(&dot_dsc);
         dot_dsc.bg_color = series->color;
@@ -1152,10 +1152,10 @@ static void draw_peak_dots_cb(lv_event_t* e) {
         dot_dsc.border_width = 0;
 
         lv_area_t dot_area;
-        dot_area.x1 = abs_x - DOT_RADIUS;
-        dot_area.y1 = abs_y - DOT_RADIUS;
-        dot_area.x2 = abs_x + DOT_RADIUS;
-        dot_area.y2 = abs_y + DOT_RADIUS;
+        dot_area.x1 = abs_x - kDotRadius;
+        dot_area.y1 = abs_y - kDotRadius;
+        dot_area.x2 = abs_x + kDotRadius;
+        dot_area.y2 = abs_y + kDotRadius;
         lv_draw_rect(layer, &dot_dsc, &dot_area);
 
         spdlog::trace("[FreqChart] Drew peak dot for series {} at ({}, {})", series->id, abs_x,
@@ -1273,7 +1273,7 @@ static void draw_muted_series_cb(lv_event_t* e) {
     line_dsc.width = 1;
     line_dsc.opa = 170; // ~66% - present but behind the 2px fitted curves
 
-    for (int i = 0; i < MAX_SERIES; i++) {
+    for (int i = 0; i < kMaxSeries; i++) {
         const FrequencySeriesData* series = &chart->series[i];
         if (series->id == -1 || !series->muted || !series->visible) {
             continue;
@@ -1355,7 +1355,7 @@ static void draw_styled_series_cb(lv_event_t* e) {
         return;
     }
 
-    for (int i = 0; i < MAX_SERIES; i++) {
+    for (int i = 0; i < kMaxSeries; i++) {
         const FrequencySeriesData* series = &chart->series[i];
         // Muted series keep their 1px treatment in draw_muted_series_cb().
         if (series->id == -1 || !series->visible || series->muted) {
@@ -1463,12 +1463,12 @@ static void draw_markers_cb(lv_event_t* e) {
     }
 
     // String literals, not buffers: LVGL may draw the label after this returns.
-    static const char* const DIGITS[] = {"", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
+    static const char* const kDigits[] = {"", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
     const lv_font_t* font = theme_manager_get_font("font_small");
     const int32_t radius = theme_manager_get_font_height(font) / 2 + 2;
     const lv_color_t ink = theme_manager_get_color("screen_bg");
 
-    for (int i = 0; i < MAX_SERIES; i++) {
+    for (int i = 0; i < kMaxSeries; i++) {
         const FrequencySeriesData* series = &chart->series[i];
         const size_t total_pts = series->amplitudes.size();
         if (series->id == -1 || !series->visible || series->markers.empty() || total_pts == 0) {
@@ -1515,7 +1515,7 @@ static void draw_markers_cb(lv_event_t* e) {
                 label.font = font;
                 label.color = ink;
                 label.align = LV_TEXT_ALIGN_CENTER;
-                label.text = DIGITS[marker.number];
+                label.text = kDigits[marker.number];
                 const int32_t font_h = theme_manager_get_font_height(font);
                 const lv_area_t text_area = {area.x1, static_cast<int32_t>(p.y) - font_h / 2,
                                              area.x2, static_cast<int32_t>(p.y) + font_h / 2};
@@ -1541,19 +1541,19 @@ int32_t text_width(const lv_font_t* font, const char* text) {
 // NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
 int32_t ui_frequency_response_chart_y_gutter_width(const lv_font_t* font) {
     // The 36 px floor is the gutter the smaller tiers are laid out against.
-    constexpr int32_t MIN_GUTTER = 36;
+    constexpr int32_t kMinGutter = 36;
     int32_t widest = 0;
     // Every shape the amplitude formatter emits, at its widest.
     for (const char* sample : {"100%", "99.5k", "99.5m", "99.5u", "100e9"}) {
         widest = std::max(widest, text_width(font, sample));
     }
-    return std::max(MIN_GUTTER, widest);
+    return std::max(kMinGutter, widest);
 }
 
 // NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
 int32_t ui_frequency_response_chart_x_label_half_width(const lv_font_t* font) {
-    constexpr int32_t MIN_HALF = 32;
-    return std::max(MIN_HALF, text_width(font, "100 Hz") / 2 + 2);
+    constexpr int32_t kMinHalf = 32;
+    return std::max(kMinHalf, text_width(font, "100 Hz") / 2 + 2);
 }
 
 // NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
@@ -1706,15 +1706,15 @@ static void draw_y_axis_labels_cb(lv_event_t* e) {
     }
 
     // Draw labels at each horizontal division (matching grid lines)
-    constexpr int H_DIVISIONS = 4;
+    constexpr int kHDivisions = 4;
 
     // Persistent label buffers: LVGL may draw a label after this returns.
-    static char amp_labels[H_DIVISIONS + 1][12];
-    const auto labels = fr_chart_amplitude_labels(chart->amp_min, chart->amp_max, H_DIVISIONS,
+    static char amp_labels[kHDivisions + 1][12];
+    const auto labels = fr_chart_amplitude_labels(chart->amp_min, chart->amp_max, kHDivisions,
                                                   chart->y_labels_percent);
 
-    for (int i = 0; i <= H_DIVISIONS; i++) {
-        int32_t y = content_y1 + (content_height * i) / H_DIVISIONS;
+    for (int i = 0; i <= kHDivisions; i++) {
+        int32_t y = content_y1 + (content_height * i) / kHDivisions;
 
         char* buf = amp_labels[i];
         snprintf(buf, sizeof(amp_labels[i]), "%s", labels[static_cast<size_t>(i)].c_str());
@@ -1756,16 +1756,16 @@ void ui_frequency_response_chart_configure_for_platform(ui_frequency_response_ch
     // Determine capabilities based on tier
     switch (tier) {
     case helix::PlatformTier::STANDARD:
-        chart->max_points = helix::PlatformCapabilities::STANDARD_CHART_POINTS;
+        chart->max_points = helix::PlatformCapabilities::kStandardChartPoints;
         chart->chart_mode = true;
         break;
     case helix::PlatformTier::BASIC:
-        chart->max_points = helix::PlatformCapabilities::BASIC_CHART_POINTS;
+        chart->max_points = helix::PlatformCapabilities::kBasicChartPoints;
         chart->chart_mode = true;
         break;
     case helix::PlatformTier::EMBEDDED:
     default:
-        chart->max_points = helix::PlatformCapabilities::BASIC_CHART_POINTS;
+        chart->max_points = helix::PlatformCapabilities::kBasicChartPoints;
         chart->chart_mode = true;
         break;
     }
@@ -1816,7 +1816,7 @@ void ui_frequency_response_chart_configure_for_platform(ui_frequency_response_ch
             lv_obj_add_event_cb(chart->chart, draw_muted_series_cb, LV_EVENT_DRAW_POST, chart);
 
             // Create LVGL series for existing series data
-            for (int i = 0; i < MAX_SERIES; i++) {
+            for (int i = 0; i < kMaxSeries; i++) {
                 if (chart->series[i].id != -1 && !chart->series[i].lv_series) {
                     chart->series[i].lv_series = lv_chart_add_series(
                         chart->chart, chart->series[i].color, LV_CHART_AXIS_PRIMARY_Y);
@@ -1835,7 +1835,7 @@ void ui_frequency_response_chart_configure_for_platform(ui_frequency_response_ch
         }
     } else if (!chart->chart_mode && chart->chart) {
         // Remove existing chart series
-        for (int i = 0; i < MAX_SERIES; i++) {
+        for (int i = 0; i < kMaxSeries; i++) {
             if (chart->series[i].lv_series) {
                 lv_chart_remove_series(chart->chart, chart->series[i].lv_series);
                 chart->series[i].lv_series = nullptr;

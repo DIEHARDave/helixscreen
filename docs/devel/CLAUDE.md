@@ -25,7 +25,7 @@ All developer documentation lives here. When working on features, look up the re
 | `CHANGELOG_1_1_DRAFT.md` | Running release notes for everything on `main` that is not in the 1.0 release. Kept out of `CHANGELOG.md` so the release tooling owns that file; becomes the `## [1.1]` entry at release, then delete |
 | `CI_CD_GUIDE.md` | CI pipeline, GitHub Actions |
 | `ANDROID_PLAY_STORE.md` | Play Store publishing pipeline, one-time setup, promotion flow |
-| `ANDROID_ASSETS.md` | How `ui_xml/`/`assets/`/`config/` reach the APK. Read before touching anything under `android/app/src/main/assets/` — it is a Gradle build output, not source |
+| `ANDROID_ASSETS.md` | How `ui_xml/`/`assets/`/`config/` reach the APK, what stays out, the on-device storage layout (seed-only `config/`, settings backups) and the Auto Backup rules. Read before touching anything under `android/app/src/main/assets/` — it is a Gradle build output, not source |
 
 ## UI & XML
 
@@ -38,7 +38,7 @@ All developer documentation lives here. When working on features, look up the re
 | `LVGL9_XML_GUIDE.md` | XML syntax, all widgets (ui_card, ui_button, ui_markdown, etc.), bindings |
 | `DEVELOPER_QUICK_REFERENCE.md` | Quick code patterns: modals, CSV parser, layout, migration |
 | `MODAL_SYSTEM.md` | ui_dialog, modal_button_row, Modal subclass pattern |
-| `COLOR_SWATCHES.md` | Every colour swatch: the one painter (`ui_swatch.h`), shape/edge/selection rules, multi-colour split, finishes from the filament name, `color_swatch` / `color_dot` / `swatch_paint`, the hand-rolled-swatch gate |
+| `COLOR_SWATCHES.md` | Every colour swatch: the one painter (`ui_swatch.h`), shape/edge/selection rules, multi-colour split, finishes from the filament name, `color_swatch` / `color_dot` / `swatch_paint`, the preset `color_swatch_grid` (both palettes) and `custom_color_swatch`, the 7 mm grid tiers, the hand-rolled-swatch gate |
 | `THEME_SYSTEM.md` | Theme internals: ThemeManager style architecture, StyleRole roles, adding themed widgets |
 | `THEME_CONTRIBUTOR_GUIDE.md` | For people **creating themes** — JSON schema, palette design, testing. No C++ needed. |
 | `LAYOUT_SYSTEM.md` | Layout system internals: LayoutManager C++ API, auto-detection logic, and the home widget grid (`GridLayout` sizing, `assets/config/default_layout.json` anchors, candidate slots and live defaults, widget span/`min_colspan` authoring) |
@@ -77,7 +77,7 @@ All developer documentation lives here. When working on features, look up the re
 | `INPUT_SHAPER.md` | Calibration panels, frequency response charts, CSV parser, PID |
 | `PRESSURE_ADVANCE_TUNING.md` | Pressure advance tuned by eye on a live test print: tower generator, host-driven ramp, band picker, Spoolman extra field, the `helix-screen`/`pressure_advance` Moonraker key a slicer plugin can read |
 | `BELT_TUNER.md` | Pluck-based belt tension tuner: Klipper UDS accel stream, pluck detection, harmonic pitch estimation. **Read its Validation status section first - the feature is green in CI and has never measured a real belt, and its thresholds are circular** |
-| `BELT_TENSION.md` | Belt Tension check: two `TEST_RESONANCES` sweeps compared as curves, the Start gate, provisional verdict constants, mock knobs |
+| `BELT_TENSION.md` | Belt Tension: two `TEST_RESONANCES` sweeps compared as curves, the Start gate, provisional verdict constants, the guided tuning loop (settling laps, calibration turn, zone tracking, gap gauge, compact/portrait/ultrawide layouts), mock knobs |
 | `PREPRINT_PREDICTION.md` | ETA prediction engine, phase timing, weighted history |
 | `EXCLUDE_OBJECTS.md` | Object exclusion, per-object thumbnails, slicer setup, the read-only home tile and the map's Mini mode |
 | `PRINT_STATE_MACHINE.md` | Print lifecycle state machine: states, transitions, guards, resource lifecycle |

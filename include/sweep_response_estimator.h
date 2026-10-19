@@ -28,31 +28,31 @@ namespace helix::calibration {
 
 namespace sweep_preview {
 /// One point per this many Hz of the ramp.
-inline constexpr float STEP_HZ = 1.0f;
+inline constexpr float kStepHz = 1.0f;
 /// Stream seconds between drive-frequency readings.
-inline constexpr double LOCK_INTERVAL_S = 0.25;
+inline constexpr double kLockIntervalS = 0.25;
 /// Samples each reading looks at, ending at the reading's time.
-inline constexpr double LOCK_WINDOW_S = 0.5;
+inline constexpr double kLockWindowS = 0.5;
 /// The search grid spans [hint - LEAD * hz_per_sec, hint + LAG * hz_per_sec].
-inline constexpr double LOCK_SEARCH_LEAD_S = 3.0;
-inline constexpr double LOCK_SEARCH_LAG_S = 0.5;
-inline constexpr float LOCK_GRID_STEP_HZ = 0.25f;
+inline constexpr double kLockSearchLeadS = 3.0;
+inline constexpr double kLockSearchLagS = 0.5;
+inline constexpr float kLockGridStepHz = 0.25f;
 /// Off-drive reference frequencies, Hz from the grid's argmax. Outside a 0.5 s
 /// window's main lobe, so a real drive stands far above them and noise does not.
-inline constexpr float LOCK_REFERENCE_OFFSETS_HZ[] = {-12.0f, -8.0f, 8.0f, 12.0f};
+inline constexpr float kLockReferenceOffsetsHz[] = {-12.0f, -8.0f, 8.0f, 12.0f};
 /// The argmax's xyz power over the mean reference power, at least.
-inline constexpr float LOCK_MIN_CONTRAST = 4.0f;
-/// A lock needs this many retained estimates of t0 within LOCK_AGREE_S of one another.
-inline constexpr size_t LOCK_AGREE_COUNT = 5;
-inline constexpr double LOCK_AGREE_S = 0.15;
+inline constexpr float kLockMinContrast = 4.0f;
+/// A lock needs this many retained estimates of t0 within kLockAgreeS of one another.
+inline constexpr size_t kLockAgreeCount = 5;
+inline constexpr double kLockAgreeS = 0.15;
 /// Most recent t0 estimates retained while unlocked.
-inline constexpr size_t LOCK_HISTORY = 16;
+inline constexpr size_t kLockHistory = 16;
 /// A locked model is dropped after readings disagree with it by more than
-/// LOCK_LOST_HZ for LOCK_LOST_S of stream time without a single agreeing reading.
-inline constexpr float LOCK_LOST_HZ = 1.5f;
-inline constexpr double LOCK_LOST_S = 3.0;
+/// kLockLostHz for kLockLostS of stream time without a single agreeing reading.
+inline constexpr float kLockLostHz = 1.5f;
+inline constexpr double kLockLostS = 3.0;
 /// Stream seconds of samples kept for steps that finish before the lock does.
-inline constexpr double BUFFER_S = 8.0;
+inline constexpr double kBufferS = 8.0;
 } // namespace sweep_preview
 
 /// The ramp one sweep drives.
@@ -63,9 +63,9 @@ struct SweepPlan {
 
     /// All finite, freq_start_hz > 0, freq_end_hz > freq_start_hz, hz_per_sec > 0.
     [[nodiscard]] bool valid() const;
-    /// floor((end - start) / STEP_HZ) + 1, or 0 when !valid().
+    /// floor((end - start) / kStepHz) + 1, or 0 when !valid().
     [[nodiscard]] size_t point_count() const;
-    /// freq_start_hz + index * STEP_HZ.
+    /// freq_start_hz + index * kStepHz.
     [[nodiscard]] float point_hz(size_t index) const;
 };
 
@@ -109,14 +109,14 @@ enum class SweepColumn {
 /**
  * @brief The drive frequency in one window of samples, if one stands out
  *
- * Grid from hint_hz - LOCK_SEARCH_LEAD_S * hz_per_sec to hint_hz +
- * LOCK_SEARCH_LAG_S * hz_per_sec at LOCK_GRID_STEP_HZ, positive frequencies
+ * Grid from hint_hz - kLockSearchLeadS * hz_per_sec to hint_hz +
+ * kLockSearchLagS * hz_per_sec at kLockGridStepHz, positive frequencies
  * only; power is goertzel_psd summed over x, y and z. The argmax is refined by
  * a parabola through it and its two neighbours.
  *
  * @return nullopt when the grid has fewer than 3 points, the argmax sits on
- *         either end of the grid, or its power is under LOCK_MIN_CONTRAST times
- *         the mean power at LOCK_REFERENCE_OFFSETS_HZ from it (positive ones only)
+ *         either end of the grid, or its power is under kLockMinContrast times
+ *         the mean power at kLockReferenceOffsetsHz from it (positive ones only)
  */
 [[nodiscard]] std::optional<float> find_drive_hz(const AccelSample* samples, size_t n,
                                                  float rate_hz, float hint_hz, float hz_per_sec);
@@ -125,8 +125,8 @@ enum class SweepColumn {
  * @brief The sweep's start time, from drive-frequency readings
  *
  * Each reading (at_s, drive_hz) estimates t0 = at_s - (drive_hz -
- * freq_start_hz) / hz_per_sec. Locks once LOCK_AGREE_COUNT of the retained
- * estimates sit within LOCK_AGREE_S of one of them; t0 is the median of that
+ * freq_start_hz) / hz_per_sec. Locks once kLockAgreeCount of the retained
+ * estimates sit within kLockAgreeS of one of them; t0 is the median of that
  * densest cluster and stays fixed while locked. A resonance that captures the
  * argmax for a second or two lands outside the cluster.
  */
@@ -157,9 +157,9 @@ class DriveLock {
 /**
  * @brief Samples in, finished sweep points out
  *
- * Takes a drive-frequency reading every LOCK_INTERVAL_S of stream time once a
+ * Takes a drive-frequency reading every kLockIntervalS of stream time once a
  * console hint exists. Once DriveLock holds, step k covers drive frequencies
- * [point_hz(k) - STEP_HZ / 2, point_hz(k) + STEP_HZ / 2] clipped to the plan,
+ * [point_hz(k) - kStepHz / 2, point_hz(k) + kStepHz / 2] clipped to the plan,
  * and is emitted when the newest sample passes its end time: goertzel_psd of
  * x, y and z at point_hz(k) over the samples in that span. Every step is
  * emitted exactly once and in order. A step finishing while the lock is lost,

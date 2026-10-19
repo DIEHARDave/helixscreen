@@ -17,9 +17,9 @@ std::vector<TerminalMatcher> snapmaker_terminal_matchers() {
         TerminalMatcher{/*message_substr=*/"dirty bed", /*exception_id=*/-1,
                         /*require_sdcard_inactive=*/false},
         TerminalMatcher{/*message_substr=*/"",
-                        /*exception_id=*/detection::U1_DEFECT_EXCEPTION_ID,
+                        /*exception_id=*/detection::kU1DefectExceptionId,
                         /*require_sdcard_inactive=*/false,
-                        /*exception_code=*/detection::U1_DEFECT_CODE_DIRTY_BED},
+                        /*exception_code=*/detection::kU1DefectCodeDirtyBed},
     };
 }
 

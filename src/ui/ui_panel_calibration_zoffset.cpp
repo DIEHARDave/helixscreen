@@ -48,7 +48,7 @@ static lv_subject_t s_zoffset_warm_bed;
 static bool s_callbacks_registered = false;
 
 /// Default bed temperature for calibration warm-up (°C)
-static constexpr int DEFAULT_WARM_BED_TEMP = 45;
+static constexpr int kDefaultWarmBedTemp = 45;
 
 // ============================================================================
 // CONSTRUCTOR / DESTRUCTOR
@@ -329,14 +329,14 @@ void ZOffsetCalibrationPanel::set_state(State new_state) {
     // Manage operation timeout guard based on state transitions
     switch (new_state) {
     case State::WARMING:
-        operation_guard_.begin(WARMING_TIMEOUT_MS, [this] {
+        operation_guard_.begin(kWarmingTimeoutMs, [this] {
             turn_off_bed_if_needed();
             set_state(State::ERROR);
             NOTIFY_WARNING(lv_tr("Bed warming timed out"));
         });
         break;
     case State::PROBING:
-        operation_guard_.begin(IAdvancedAPI::PROBING_TIMEOUT_MS, [this] {
+        operation_guard_.begin(IAdvancedAPI::kProbingTimeoutMs, [this] {
             set_state(State::ERROR);
             NOTIFY_WARNING(lv_tr("Z-offset calibration timed out"));
         });
@@ -403,7 +403,7 @@ void ZOffsetCalibrationPanel::end_saving_restart_watch() {
 }
 
 void ZOffsetCalibrationPanel::arm_saving_timeout() {
-    operation_guard_.begin(SAVING_TIMEOUT_MS, [this] {
+    operation_guard_.begin(kSavingTimeoutMs, [this] {
         // Fold in the suppression window as a second latch source, in case the
         // klippy observer never saw the dip. Monotonic within this save.
         save_restart_latch_.note_restart_expected(
@@ -411,11 +411,11 @@ void ZOffsetCalibrationPanel::arm_saving_timeout() {
 
         if (helix::ui::should_extend_save_timeout(save_restart_latch_.restart_latched(),
                                                   saving_timeout_extensions_,
-                                                  SAVING_TIMEOUT_MAX_EXTENSIONS)) {
+                                                  kSavingTimeoutMaxExtensions)) {
             saving_timeout_extensions_++;
             spdlog::info("[ZOffsetCal] Save still pending across an expected Klipper restart — "
                          "extending timeout ({}/{})",
-                         saving_timeout_extensions_, SAVING_TIMEOUT_MAX_EXTENSIONS);
+                         saving_timeout_extensions_, kSavingTimeoutMaxExtensions);
 
             // Re-arm on the next main-thread tick, NOT here: OperationTimeoutGuard::begin()
             // assigns over on_timeout_, which would destroy this very closure mid-call.
@@ -462,7 +462,7 @@ void ZOffsetCalibrationPanel::start_calibration() {
     bool warm_bed = lv_subject_get_int(&s_zoffset_warm_bed) == 1;
     if (warm_bed) {
         auto* cfg = Config::get_instance();
-        int temp = cfg->get<int>("/calibration/warm_bed_temp", DEFAULT_WARM_BED_TEMP);
+        int temp = cfg->get<int>("/calibration/warm_bed_temp", kDefaultWarmBedTemp);
         warm_bed_target_deci_ =
             helix::ui::temperature::degrees_to_deci(temp); // Convert °C to decidegrees
 
@@ -565,7 +565,7 @@ void ZOffsetCalibrationPanel::begin_probe_sequence() {
                               });
                 }
             },
-            IAdvancedAPI::PROBING_TIMEOUT_MS);
+            IAdvancedAPI::kProbingTimeoutMs);
     } else {
         // Probe calibrate or endstop strategy
         if (!all_homed) {
@@ -624,7 +624,7 @@ void ZOffsetCalibrationPanel::begin_probe_sequence() {
                     });
                 }
             },
-            IAdvancedAPI::PROBING_TIMEOUT_MS + prep_timeout_ms);
+            IAdvancedAPI::kProbingTimeoutMs + prep_timeout_ms);
     }
 }
 

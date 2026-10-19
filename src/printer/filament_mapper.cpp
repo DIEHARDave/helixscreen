@@ -74,7 +74,7 @@ int FilamentMapper::color_distance(uint32_t a, uint32_t b) {
 }
 
 bool FilamentMapper::colors_match(uint32_t color_a, uint32_t color_b) {
-    return color_distance(color_a, color_b) <= COLOR_MATCH_TOLERANCE;
+    return color_distance(color_a, color_b) <= kColorMatchTolerance;
 }
 
 bool FilamentMapper::materials_match(const std::string& a, const std::string& b) {
@@ -125,7 +125,7 @@ SlotKey FilamentMapper::find_closest_color_slot(uint32_t target_color,
                                                 const std::string& target_material,
                                                 const std::vector<AvailableSlot>& slots) {
     SlotKey best_key{-1, -1};
-    int best_distance = COLOR_MATCH_TOLERANCE + 1; // Must be within tolerance
+    int best_distance = kColorMatchTolerance + 1; // Must be within tolerance
 
     for (const auto& slot : slots) {
         // Empty slots have no filament — their reported color is stale (left over
@@ -198,7 +198,7 @@ std::vector<ToolMapping> FilamentMapper::compute_defaults(const std::vector<Gcod
         // protection: with four ASA lanes loaded it just picks whichever ASA
         // happens to sit closest to grey. The positional fallback below is the
         // honest answer, and it is already what runs when nothing lands within
-        // COLOR_MATCH_TOLERANCE. Firmware mappings (Priority 1, above) are
+        // kColorMatchTolerance. Firmware mappings (Priority 1, above) are
         // unaffected — those are the printer's own statement, not a guess.
         SlotKey color_key{-1, -1};
         if (tool.color_known) {
@@ -213,7 +213,7 @@ std::vector<ToolMapping> FilamentMapper::compute_defaults(const std::vector<Gcod
 
             // Find the lane the match landed on and classify the pairing. The
             // colour half can only come back clear here - this lane is within
-            // COLOR_MATCH_TOLERANCE by construction - which is the point: a lane
+            // kColorMatchTolerance by construction - which is the point: a lane
             // the matcher chose never draws a warning.
             for (const auto& slot : slots) {
                 if (slot.slot_index == slot_idx && slot.backend_index == backend_idx) {

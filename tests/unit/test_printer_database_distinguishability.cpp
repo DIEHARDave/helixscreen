@@ -8,7 +8,7 @@
 // snapshot carrying every signal the entry's own heuristics look for, and
 // nothing else - and PrinterDetector::detect() has to answer with that entry's
 // machine, leading every candidate picturing a different machine by
-// DETECT_MIN_MARGIN. An entry whose own best case ends in a tie is never
+// kDetectMinMargin. An entry whose own best case ends in a tie is never
 // auto-saved (the tie is resolved by heuristic count and database order, which
 // meets_autosave_threshold refuses to persist); one whose own best case is won
 // by another entry is worse, because that owner's printer is saved as the
@@ -37,12 +37,12 @@ using json = nlohmann::json;
 
 namespace {
 
-constexpr const char* DB_PATH = "assets/config/printer_database.json";
+constexpr const char* kDbPath = "assets/config/printer_database.json";
 
 json load_database() {
-    INFO("reading " << DB_PATH << " (tests must run from the repo root)");
-    REQUIRE(fs::exists(DB_PATH));
-    std::ifstream in(DB_PATH);
+    INFO("reading " << kDbPath << " (tests must run from the repo root)");
+    REQUIRE(fs::exists(kDbPath));
+    std::ifstream in(kDbPath);
     REQUIRE(in.good());
     return json::parse(in);
 }

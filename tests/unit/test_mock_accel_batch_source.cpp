@@ -52,7 +52,7 @@ TEST_CASE("MockAccelBatchSource streams a sweep the estimator can follow",
         [](const std::string&) {}));
 
     // 1.5 + 25 s of ramp plus the last steps, at 5 stream seconds per batch.
-    const double needed_s = MockAccelBatchSource::DRIVE_LEAD_S + 25.0 + 2.0;
+    const double needed_s = MockAccelBatchSource::kDriveLeadS + 25.0 + 2.0;
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
     while (std::chrono::steady_clock::now() < deadline) {
         {
@@ -86,7 +86,7 @@ TEST_CASE("MockAccelBatchSource streams a sweep the estimator can follow",
     std::vector<AccelSample> chunk;
     auto flush = [&]() {
         const double t = chunk.front().time;
-        const double drive = plan.freq_start_hz + (t + 1.5 - MockAccelBatchSource::DRIVE_LEAD_S);
+        const double drive = plan.freq_start_hz + (t + 1.5 - MockAccelBatchSource::kDriveLeadS);
         if (drive >= plan.freq_start_hz) {
             acc.note_console_frequency(
                 std::floor(std::min(static_cast<float>(drive), plan.freq_end_hz)));
@@ -105,7 +105,7 @@ TEST_CASE("MockAccelBatchSource streams a sweep the estimator can follow",
         }
     }
     REQUIRE(acc.locked());
-    CHECK(std::abs(acc.drive_start_s() - MockAccelBatchSource::DRIVE_LEAD_S) < 0.1);
+    CHECK(std::abs(acc.drive_start_s() - MockAccelBatchSource::kDriveLeadS) < 0.1);
     REQUIRE(points.size() == 26);
     float best_hz = 0.0f;
     float best = -1.0f;

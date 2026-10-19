@@ -88,6 +88,7 @@ Tune vibration compensation for smoother, faster prints:
 3. Pre-flight check verifies accelerometer is connected
 4. Select axis to test (X or Y)
 5. Tap **Calibrate** to run the resonance test. While the printer sweeps, a progress bar fills from 0 to 100%; the sweep covers the frequency range your printer's own resonance-tester config specifies, so progress tracks the real sweep rather than a fixed span. Once the sweep finishes it is replaced by a spinner with an "Analyzing data... Ns" counter while the printer's host crunches the samples. On slower printers the analysis alone can take a few minutes per axis; that wait is why the whole run gets a 10-minute timeout
+   **Stop** (the red button with an octagon icon, also shown in the setup wizard's Input Shaper step) ends a running test. It is an emergency stop followed by a firmware restart, because the printer cannot cancel a resonance test partway through. Use it only when something is wrong.
 6. View the **frequency response chart**; tap a shaper's chip to select it - the chart highlights what that shaper would leave behind
 7. Review the **comparison table** showing recommended shaper and alternatives (frequency, vibration reduction, smoothing)
 8. Check the **change summary** under the table: it shows what was active before the run ("ei @ 69.8 Hz -> mzv @ 53.8 Hz") and, when the chart has data, how much vibration the old setting would leave on today's measurements versus the new one ("Old setting on today's data: 8.4% residual - now: 7.8%")
@@ -227,7 +228,7 @@ The row appears under **Advanced > Calibration** once [beta features are enabled
 
 1. Navigate to **Advanced > Belt Tension**
 2. The panel shows what it found: your kinematics, your accelerometer, and the frequency range the sweep will cover. If a requirement is not met, the reason appears above the Start button
-3. Tap **Start check**. The printer homes first if it needs to, then sweeps each belt path in turn: the toolhead moves back and forth along one diagonal while the accelerometer listens, then the other. Two full sweeps take about 5 minutes at Klipper's default settings - keep clear of the printer while it moves
+3. Tap **Start Check**. The printer homes first if it needs to, runs three quick laps to settle the belts, then sweeps each belt path in turn: the toolhead moves back and forth along one diagonal while the accelerometer listens, then the other. Two full sweeps take about 5 minutes at Klipper's default settings - keep clear of the printer while it moves
 4. Both curves appear on one chart, each path in its own color
 
 The check always uses Klipper's plain pulse test, even on printers set up for the newer sweeping test: the sweeping test smooths over exactly the kind of mechanical difference a belt comparison looks for.
@@ -251,38 +252,54 @@ HelixScreen's similarity reads lower than Shake&Tune's for the same printer. Sha
 After adjusting a belt, you do not need to re-run both paths:
 
 - **Re-test A** / **Re-test B** sweeps just that one path and keeps the other's previous result. The path's old curve stays on the chart as a faint line, so you can see which way, and how far, your adjustment moved it
-- **Test both** discards both and starts a fresh run of the full check
+- **Test Both** discards both and starts a fresh run of the full check
 
 ### Tuning Your Belts
 
-When the results show the paths differ, **Tune Belts** (**Fine-tune** if they already match well) walks you through closing the gap one belt at a time. Instead of repeating the full check after every adjustment, it re-measures only the stretch of the spectrum where the two paths disagree, which takes a fraction of the time. The same requirements as the full check apply, and each Re-measure, Next Zone and Confirm checks them again: if a print has started or Klipper has dropped out, the sweep is refused with the reason.
+When the results show the paths differ, **Tune Belts** (**Fine-tune** if they already match well) walks you through closing the gap one belt at a time. Instead of repeating the full check after every adjustment, it re-measures only the stretch of the spectrum where the two paths disagree, which takes a fraction of the time. The same requirements as the full check apply, and every Measure, Re-measure, Next Zone and Confirm checks them again: if a print has started or Klipper has dropped out, the sweep is refused with the reason. Tuning needs to know your printer's sweep range, so Tune Belts stays disabled until the printer has reported its `[resonance_tester]` settings.
+
+Before every sweep that can follow a belt adjustment, the toolhead runs three quick laps around the bed. A turned tensioner first changes only the stretch of belt next to it; the laps spread the change around the whole belt so the reading reflects it. On a printer with several toolheads the laps stay in the middle of the bed, clear of the parked tools.
+
+**If your belts already match.** Tune Belts tells you so ("Belts already match", with how close they are) and asks nothing of you. **Good Enough** goes back to your results; **Calibrate Anyway** carries on to the calibration turn below if you want to tune further.
+
+**The calibration turn.** Your printer may show several peaks, and the tallest one is not always the belt: it can be a frame resonance that tension hardly moves. So HelixScreen first asks you to tighten the looser belt one full turn ("Tighten B one full turn"; on printers it does not recognise, "Tighten B noticeably"), then tap **Measure**. It sweeps both paths in full and looks for the peaks that moved with your turn; those are the ones it tunes.
+
+- "That turn didn't register yet": the readings did not move enough to tell. Tighten the same belt one more full turn and Measure again. On some printers this is normal for the first turn
+- "Nothing followed 2 turns of B. Turn B back 2 turns, then check the mechanics": nothing moved with your turns. Undo them and look for a mechanical problem (see below) before tuning further
+
+Once a turn registers, HelixScreen measures the chosen zone twice straight away, to check that the readings repeat, and then shows its first advice.
 
 What the screen shows:
 
-- **The instruction** at the top: which path to adjust and which way ("Tighten A", "Loosen B"). A higher peak means a tighter belt, and clockwise tightens
-- **The amount**, on printers HelixScreen knows have screw tensioners (the Voron 2.4 and Trident): how far to turn, in eighths of a turn. Use the plus and minus buttons to match what you actually turned, down to 0 if you re-measure without turning anything (the note then just reports how far the gap moved). After a round or two HelixScreen learns how many Hz a turn moves on your machine and sizes the advice to it
-- **The gap gauge**: the distance between the two paths' peaks. The middle band is "matched". The solid marker is this round's gap and the hollow one is last round's, so you can see which way it moved. The colour tells you how far off you are
-- **The chart**: only the zone being tuned, with the adjusted path's earlier rounds fading behind it
+- **The instruction** at the top: which path to adjust and which way ("Tighten A", "Loosen B"). A higher frequency means a tighter belt, and clockwise tightens
+- **The amount**, on printers HelixScreen knows have screw tensioners (the Voron 2.4 and Trident): how far to turn, in quarter turns, from half a turn up to two. The calibration turn gives a first idea of how many Hz a turn moves on your machine, and later rounds refine it
+- **The gap gauge**: the distance between the two paths. The middle band is "matched". The solid marker is this round's gap and the hollow one is last round's, so you can see which way it moved. The colour tells you how far off you are
+- **The chart**: the zone being tuned, with the adjusted path's earlier rounds fading behind it
 
 To work through it:
 
-1. Tap **Tune Belts**. The first zone comes straight from your results, so the instruction is ready at once
-2. Follow the instruction: turn the named tensioner by the amount shown, set what you actually turned on the stepper below it, then tap **Re-measure**. The printer sweeps both paths over the zone only. Leaving the stepper at "Not turned" makes the round a repeat check: it shows how much the reading wanders on its own, and nothing is counted as a turn
-3. Read the note under the gauge:
+1. Follow the instruction: turn the named tensioner by the amount shown, use the plus and minus buttons to set what you actually turned, then tap **Re-measure**. The printer settles the belts and sweeps both paths over the zone only. Leaving the stepper at "Not turned" makes the round a repeat check: it shows how much the reading wanders on its own, and nothing is counted as a turn
+2. Read the note under the gauge:
    - "last turn: N Hz closer": keep going
-   - "No turn: the gap moved N Hz": a repeat check with the stepper at "Not turned"; that is how far a reading wanders by itself
+   - "No turn: the gap moved N Hz": a repeat check; that is how far a reading wanders by itself
    - "Went past X": the turn was too big, back it off a little
    - "The gap didn't close": try a bigger turn
    - "The gap grew after tightening": the other belt, or the other direction, probably moved. Check which tensioner you turned
    - "Path X's peak left the zone": the belt you were not adjusting moved. Check that only the named tensioner was turned
+   - "That reading jumped too far to trust": a measurement glitch. Re-measure without turning anything; your last turn still counts
    - "No clear peak in this zone": the sweep found nothing to compare there. Try again, or see below
    - "peak moved out of the zone. Widening it.": nothing to do, the next sweep covers the wider range
-4. When the gap is inside the matched band, the zone is **matched**. If more mismatched peaks remain, **Next Zone** moves on to the next one and sweeps it at once, so on larger screens the button shows how long that takes (its first sweep is a baseline, because the earlier turns moved it). Otherwise **Confirm** runs a full two-path check and shows the result against the one you started from, with the rounds taken and the total turns per belt
-5. **Adjust X instead** switches which belt you are tuning, if the other one is easier to reach or you turned the wrong one. **Good Enough** leaves tuning with your starting results
+3. When the gap is inside the matched band, the zone is **matched**. Three things can follow:
+   - **Keep Tuning** goes back to the same zone if you want to close the gap further. The turn counter starts again at "Not turned"
+   - **Next Zone**, if another zone moved with your calibration turn, moves on to it and measures it at once (twice, as above); on larger screens the button shows how long that takes
+   - **Confirm**, when there is no other zone, runs a full two-path check and shows the result against the one you started from, with the rounds taken and the total turns per belt, calibration turns included. The round count only counts the rounds where you adjusted a belt. If the belts already matched when the zone was first measured, no count is shown
+4. **Adjust X instead** switches which belt you are tuning, if the other one is easier to reach or you turned the wrong one. During the calibration turn it is offered only before your first Measure, and it turns the instruction into loosening the tighter belt instead. **Good Enough** leaves tuning with your starting results
 
 The screen can dim or show the screensaver while you are at the tensioner; waking it returns you to the same round. On printers with little memory the low-memory warning is asked once, at the first sweep of a tuning session.
 
-**"Curves differ in shape"** means the tallest peak on one path has no partner on the other. Tuning can still steer by each path's tallest peak, but something besides tension may be shaping the response. Check for:
+**"These readings aren't repeatable"** means two sweeps of the same zone, with nothing turned in between, disagreed. Tuning advice would only chase noise, so none is given. Check the mechanics (below), then **Re-measure** for a fresh pair, or leave with **Good Enough**.
+
+**"Curves differ in shape"** means the tallest peak on one path has no partner on the other. Tuning still follows the zone that moved with your turn, but something besides tension may be shaping the response. **"Path B resonates much more than A"** means the tuned zone is far stronger on one path than the other, which also points at a mechanical difference rather than tension. Tap either warning for the list of things to check:
 
 - a worn, frayed or mis-tracking belt
 - a loose or slipping pulley grub screw
@@ -290,9 +307,11 @@ The screen can dim or show the screensaver while you are at the tensioner; wakin
 - debris in the belt teeth, or a belt rubbing a flange
 - a loose accelerometer mount
 
-The same hint appears if the gap is not closing after many rounds.
+The shape warning also appears if the gap is not closing after many rounds.
 
-**Spring-tensioned and unrecognised printers** get direction-only advice, with no amount in turns, since HelixScreen cannot know what your tensioner does per turn. For a spring tensioner the instruction is to release it, let the spring settle and lock it again, which resets the belt to whatever the spring gives. If two re-seats in a row do not improve things, the mechanical hint appears.
+**Spring-tensioned and unrecognised printers** get direction-only advice, with no amount in turns, since HelixScreen cannot know what your tensioner does per turn. A spring-tensioned printer skips the calibration turn and starts measuring at once; its instruction is to release the tensioner, let the spring settle and lock it again, which resets the belt to whatever the spring gives. If two re-seats in a row do not improve things, the mechanical hint appears.
+
+**On small, tall and very wide screens.** The same steps apply, laid out to fit. On a small or tall (portrait) screen the instruction, amount and gap gauge collapse into one line: tap the thin gauge to adjust the other path instead, and the two Re-test buttons share one **Re-test** menu. Buttons wrap onto their own lines in portrait so every label stays readable. On a very wide screen the chart takes the left side and the buttons and status sit in a column on the right.
 
 The matched band and the other limits are provisional while they are being checked against more printers, so treat a "matched" result as a good sign and the final full check as the verdict.
 
@@ -365,7 +384,7 @@ Calibrate temperature controllers for stable heating. HelixScreen supports two c
 **During calibration:**
 - **Live temperature graph** shows the heater cycling in real-time
 - **Progress percentage** updates as calibration proceeds
-- **Abort button** available if you need to stop early
+- **Stop** ends the run early. It is an emergency stop followed by a firmware restart, because the heater test cannot be paused partway through, so use it only when something is wrong
 - A **20-minute timeout** acts as a safety net for stuck calibrations (slow-cooling beds can legitimately take longer than 15 minutes, so the limit sits above that)
 
 **When complete:**

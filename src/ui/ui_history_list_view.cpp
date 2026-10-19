@@ -133,12 +133,12 @@ void HistoryListView::init_pool() {
         return;
     }
 
-    spdlog::debug("[HistoryListView] Creating {} row widgets", POOL_SIZE);
+    spdlog::debug("[HistoryListView] Creating {} row widgets", kPoolSize);
 
-    pool_.reserve(POOL_SIZE);
-    pool_indices_.resize(POOL_SIZE, -1);
+    pool_.reserve(kPoolSize);
+    pool_indices_.resize(kPoolSize, -1);
 
-    for (int i = 0; i < POOL_SIZE; i++) {
+    for (int i = 0; i < kPoolSize; i++) {
         lv_obj_t* row =
             static_cast<lv_obj_t*>(lv_xml_create(container_, "history_list_row", nullptr));
 
@@ -349,7 +349,7 @@ void HistoryListView::update_visible(const std::vector<PrintHistoryJob>& jobs) {
     int row_stride = row_height + cached_row_gap_;
 
     const VirtualWindow win =
-        compute_window(scroll_y, viewport_height, row_stride, total_rows, BUFFER_ROWS);
+        compute_window(scroll_y, viewport_height, row_stride, total_rows, kBufferRows);
     const int first_visible = win.first;
     const int last_visible = win.last;
 

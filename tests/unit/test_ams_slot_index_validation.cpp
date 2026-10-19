@@ -60,8 +60,8 @@ TEMPLATE_TEST_CASE("Every subscription backend bounds slot indices through the b
                    printer::AmsBackendCfs) {
     HelixTestFixture fixture;
     SlotIndexProbe<TestType> backend;
-    // 3 matches no backend's hardware constant, so a copy bounded by NUM_TOOLS
-    // or NUM_PORTS answers differently from the base.
+    // 3 matches no backend's hardware constant, so a copy bounded by kNumTools
+    // or kNumPorts answers differently from the base.
     backend.set_total_slots(3);
 
     CHECK(backend.check(0).success());

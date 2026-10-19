@@ -21,7 +21,7 @@
                          more draw the spool's multi-colour split
        finish_subject    string subject naming the filament ("PLA Silk"); its
                          finish (silk, matte, marble, sparkle) is drawn
-       fill              a style for the disc (a gradient fill: the LED Custom swatch)
+       fill              a style for the disc (a gradient fill: custom_color_swatch)
        selected_subject  int subject naming the ringed index; empty for no ring
        callback          click handler
        clickable         "false" for a swatch that only shows a colour
@@ -62,7 +62,7 @@
   </gradients>
   <styles>
     <style name="disc_plain" border_width="0"/>
-    <!-- The hue wheel of the LED Custom swatch. -->
+    <!-- The hue wheel of custom_color_swatch. -->
     <style name="disc_rainbow" border_width="0" bg_grad="swatch_rainbow"/>
   </styles>
   <view extends="lv_obj"

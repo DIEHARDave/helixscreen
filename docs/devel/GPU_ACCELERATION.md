@@ -365,7 +365,7 @@ triangles, sharp in ~1.0 s) pass the timing gates, but the GPU allocates from
 the 256 MB CMA pool, of which ~99 MB is free with the app idle, and the bigger
 builds left 9 MB and 3 MB of it free. Free CMA that low starves anything else
 asking the GPU for memory, so the cap stays at 1M
-(`include/gcode_gl_fallback.h#VC4_TRIANGLE_BUDGET`).
+(`include/gcode_gl_fallback.h#kVc4TriangleBudget`).
 
 A file the cap alone refuses (its bytes fit tier 3) still gets 3D: a banded
 still, the moving mesh's banding sized to the cap

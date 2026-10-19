@@ -108,13 +108,13 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: real drag lands on the gutter-aw
     // = 115px per side its center sits far outside the resize-edge grab band
     // (edge_hit_band() in grid_edit_mode.cpp, which derives it from the cell size
     // and caps it at 32px) — this test wants a plain move, not a resize.
-    constexpr int COLSPAN = GridLayout::TRACKS_PER_CELL;
-    constexpr int ROWSPAN = GridLayout::TRACKS_PER_CELL;
+    constexpr int kColspan = GridLayout::TRACKS_PER_CELL;
+    constexpr int kRowspan = GridLayout::TRACKS_PER_CELL;
     lv_obj_t* widget = lv_obj_create(container);
     lv_obj_set_name(widget, "humidity");
     lv_obj_remove_flag(widget, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_grid_cell(widget, LV_GRID_ALIGN_STRETCH, 0, COLSPAN, LV_GRID_ALIGN_STRETCH, 0,
-                         ROWSPAN);
+    lv_obj_set_grid_cell(widget, LV_GRID_ALIGN_STRETCH, 0, kColspan, LV_GRID_ALIGN_STRETCH, 0,
+                         kRowspan);
     lv_obj_update_layout(container);
 
     // Config: put the widget on a SECOND page. PanelWidgetConfig::load()
@@ -137,8 +137,8 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: real drag lands on the gutter-aw
                              {"enabled", true},
                              {"col", 0},
                              {"row", 0},
-                             {"colspan", COLSPAN},
-                             {"rowspan", ROWSPAN}}}}}}}});
+                             {"colspan", kColspan},
+                             {"rowspan", kRowspan}}}}}}}});
 
     auto& mgr = PanelWidgetManager::instance();
     mgr.get_widget_config(panel_id).mark_dirty();
@@ -194,16 +194,16 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: real drag lands on the gutter-aw
     const float pitch_correct_col =
         static_cast<float>(content_w + gutter) / static_cast<float>(ncols);
     const float pitch_buggy_col = static_cast<float>(content_w) / static_cast<float>(ncols);
-    constexpr int EXPECTED_COL = 4 * STEP;
+    constexpr int kExpectedCol = 4 * STEP;
     const int target_px_x = static_cast<int>(
-        std::lround((EXPECTED_COL + STEP * 0.5f) * (pitch_correct_col + pitch_buggy_col) / 2.0f));
+        std::lround((kExpectedCol + STEP * 0.5f) * (pitch_correct_col + pitch_buggy_col) / 2.0f));
 
     // Row target = track 2, landing exactly on the correct track origin. The
     // row axis isn't the boundary-straddling case above (that needs only one
     // axis to prove the point) but it still exercises real gutter-aware pixel
     // math, and a bug that only broke rows would still fail it.
-    constexpr int EXPECTED_ROW = 1 * STEP;
-    const int target_px_y = EXPECTED_ROW * (CELL_PX + gutter);
+    constexpr int kExpectedRow = 1 * STEP;
+    const int target_px_y = kExpectedRow * (CELL_PX + gutter);
 
     lv_area_t content_area;
     lv_obj_get_content_coords(container, &content_area);
@@ -223,7 +223,7 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: real drag lands on the gutter-aw
     REQUIRE_FALSE(em.is_catalog_open());
 
     // Frame 2: move to the widget's exact top-left corner (still >12px from
-    // press_origin_, so this crosses DRAG_THRESHOLD_PX and starts the real
+    // press_origin_, so this crosses kDragThresholdPx and starts the real
     // drag) — chosen so drag_offset_ becomes (0,0), which makes frame 3's
     // point equal the widget's new top-left directly, with no extra offset
     // arithmetic to carry through the hand computation above.
@@ -244,8 +244,8 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: real drag lands on the gutter-aw
     // failure mode cannot be mistaken for a passing target of -1.
     REQUIRE(snap_col >= 0);
     REQUIRE(snap_row >= 0);
-    CHECK(snap_col == EXPECTED_COL);
-    CHECK(snap_row == EXPECTED_ROW);
+    CHECK(snap_col == kExpectedCol);
+    CHECK(snap_row == kExpectedRow);
 
     em.exit();
     mgr.clear_panel_config(panel_id);
@@ -271,9 +271,9 @@ TEST_CASE_METHOD(XMLTestFixture,
     REQUIRE(as_breakpoint(lv_subject_get_int(bp_subj)) == UiBreakpoint::Medium);
     // Same 12-column content width as the test above; the row axis is the point
     // of divergence, so the container gets a single row track regardless.
-    constexpr int CONTENT_W = 715;
-    const int ncols = GridLayout::get_cols(UiBreakpoint::Medium, CONTENT_W, CONTENT_W);
-    const int breakpoint_rows = GridLayout::get_rows(UiBreakpoint::Medium, CONTENT_W, CONTENT_W);
+    constexpr int kContentW = 715;
+    const int ncols = GridLayout::get_cols(UiBreakpoint::Medium, kContentW, kContentW);
+    const int breakpoint_rows = GridLayout::get_rows(UiBreakpoint::Medium, kContentW, kContentW);
     REQUIRE(ncols == 12);
     // The whole point of this test: the container we are about to build has
     // fewer rows than the breakpoint table, so a fix that still reads
@@ -288,9 +288,9 @@ TEST_CASE_METHOD(XMLTestFixture,
     // container's single row is this height, so it must clear the edge zone
     // on its own with no gutter to help.
     constexpr int CELL_PX = 80;
-    constexpr int COLSPAN = 2;
-    constexpr int ROWSPAN = 1;
-    const int content_w = CONTENT_W;
+    constexpr int kColspan = 2;
+    constexpr int kRowspan = 1;
+    const int content_w = kContentW;
     // Exactly one row's worth of content — no interior gutter since there is
     // only one track.
     const int content_h = CELL_PX;
@@ -315,8 +315,8 @@ TEST_CASE_METHOD(XMLTestFixture,
     lv_obj_t* widget = lv_obj_create(container);
     lv_obj_set_name(widget, "humidity");
     lv_obj_remove_flag(widget, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_grid_cell(widget, LV_GRID_ALIGN_STRETCH, 0, COLSPAN, LV_GRID_ALIGN_STRETCH, 0,
-                         ROWSPAN);
+    lv_obj_set_grid_cell(widget, LV_GRID_ALIGN_STRETCH, 0, kColspan, LV_GRID_ALIGN_STRETCH, 0,
+                         kRowspan);
     lv_obj_update_layout(container);
 
     const std::string panel_id = "test_grid_edit_drag_path_row_divergence";
@@ -333,8 +333,8 @@ TEST_CASE_METHOD(XMLTestFixture,
                              {"enabled", true},
                              {"col", 0},
                              {"row", 0},
-                             {"colspan", COLSPAN},
-                             {"rowspan", ROWSPAN}}}}}}}});
+                             {"colspan", kColspan},
+                             {"rowspan", kRowspan}}}}}}}});
 
     auto& mgr = PanelWidgetManager::instance();
     mgr.get_widget_config(panel_id).mark_dirty();
@@ -366,7 +366,7 @@ TEST_CASE_METHOD(XMLTestFixture,
     indev.send(center.x, center.y, LV_INDEV_STATE_PRESSED);
     REQUIRE_FALSE(em.is_catalog_open());
 
-    // Frame 2: move to the widget's top-left corner — crosses DRAG_THRESHOLD_PX
+    // Frame 2: move to the widget's top-left corner — crosses kDragThresholdPx
     // and starts the real drag, drag_offset_ becomes (0,0).
     indev.send(sel_area.x1, sel_area.y1, LV_INDEV_STATE_PRESSED);
 
@@ -459,13 +459,13 @@ GuardFixture make_guard_fixture(lv_obj_t* parent, const std::string& panel_id) {
     lv_obj_set_style_pad_column(f.container, gutter, 0);
     lv_obj_set_style_pad_row(f.container, gutter, 0);
 
-    constexpr int COLSPAN = GridLayout::TRACKS_PER_CELL;
-    constexpr int ROWSPAN = GridLayout::TRACKS_PER_CELL;
+    constexpr int kColspan = GridLayout::TRACKS_PER_CELL;
+    constexpr int kRowspan = GridLayout::TRACKS_PER_CELL;
     f.widget = lv_obj_create(f.container);
     lv_obj_set_name(f.widget, "humidity");
     lv_obj_remove_flag(f.widget, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_grid_cell(f.widget, LV_GRID_ALIGN_STRETCH, 0, COLSPAN, LV_GRID_ALIGN_STRETCH, 0,
-                         ROWSPAN);
+    lv_obj_set_grid_cell(f.widget, LV_GRID_ALIGN_STRETCH, 0, kColspan, LV_GRID_ALIGN_STRETCH, 0,
+                         kRowspan);
     lv_obj_update_layout(f.container);
 
     auto* cfg = Config::get_instance();
@@ -481,8 +481,8 @@ GuardFixture make_guard_fixture(lv_obj_t* parent, const std::string& panel_id) {
                              {"enabled", true},
                              {"col", 0},
                              {"row", 0},
-                             {"colspan", COLSPAN},
-                             {"rowspan", ROWSPAN}}}}}}}});
+                             {"colspan", kColspan},
+                             {"rowspan", kRowspan}}}}}}}});
 
     auto& mgr = PanelWidgetManager::instance();
     mgr.get_widget_config(panel_id).mark_dirty();
@@ -501,7 +501,7 @@ TEST_CASE_METHOD(XMLTestFixture,
                  "GridEditMode: a grow-resize whose pointer leaves the widget still resizes",
                  "[grid_edit][grid_edit_drag][resize][1169]") {
     // Growing a widget drags AWAY from it: the finger starts on the edge and
-    // travels outward. By the time DRAG_THRESHOLD_PX is crossed the live
+    // travels outward. By the time kDragThresholdPx is crossed the live
     // pointer is legitimately off-widget, so a guard that tested the live
     // pointer would drop exactly the gestures that should become resizes,
     // while a shrink, which drags inward, would still pass.
@@ -532,7 +532,7 @@ TEST_CASE_METHOD(XMLTestFixture,
     indev.send(origin.x, origin.y, LV_INDEV_STATE_PRESSED);
 
     // Frame 2: drag outward to grow — 40px past the right edge, well beyond
-    // the grab band, and >12px of travel so DRAG_THRESHOLD_PX is crossed and
+    // the grab band, and >12px of travel so kDragThresholdPx is crossed and
     // handle_drag_start() runs on this frame.
     const int far_x = sel_area.x2 + 40;
     REQUIRE(far_x - origin.x > 12);

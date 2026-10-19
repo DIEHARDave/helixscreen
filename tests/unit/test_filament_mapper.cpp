@@ -1286,7 +1286,7 @@ TEST_CASE("colour mismatch: set only when the comparison is real",
 
     GcodeToolInfo red{};
     red.tool_index = 0;
-    red.color_rgb = 0xFE0101; // within COLOR_MATCH_TOLERANCE of the lane
+    red.color_rgb = 0xFE0101; // within kColorMatchTolerance of the lane
     red.color_known = true;
     red.material = "PLA";
 
@@ -1820,7 +1820,8 @@ TEST_CASE("routed_tool_colors: a deliberate one-head routing is the answer, not 
     };
 
     SECTION("four tools deliberately sharing one lane publish that lane's colour") {
-        const auto colors = FilamentMapper::routed_tool_colors({0, 0, 0, 0}, one_loaded, Deliberate);
+        const auto colors =
+            FilamentMapper::routed_tool_colors({0, 0, 0, 0}, one_loaded, Deliberate);
         REQUIRE(colors.size() == 4);
         CHECK(colors[0] == 0xA03CF7);
         CHECK(colors[1] == 0xA03CF7);
@@ -1864,7 +1865,7 @@ TEST_CASE("routed_tool_colors: provenance cannot conjure a colour out of nothing
 // lane on the strength of a value the file never stated.
 //
 // Positional fallback is the honest answer there: it is what the mapper already
-// does when no lane is within COLOR_MATCH_TOLERANCE, and it does not pretend the
+// does when no lane is within kColorMatchTolerance, and it does not pretend the
 // file expressed a preference. Firmware mappings still win — those are the
 // printer's own statement of fact and owe nothing to the palette.
 

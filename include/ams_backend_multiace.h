@@ -56,6 +56,11 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
     [[nodiscard]] bool needs_unload_before_load(const AmsSystemInfo& info,
                                                 int target_slot) const override;
 
+    /// A batch load is refused into ACE-fed heads (the engine sequences its
+    /// own swaps), so the picker must not offer them as eligible.
+    [[nodiscard]] FilamentOpEligibility slot_op_eligibility(int slot_index,
+                                                            bool load) const override;
+
     /// A head slot feeds itself; a bay feeds the head its mode routes it to,
     /// and an unrouted bay feeds none.
     [[nodiscard]] std::optional<int> head_for_slot(int slot) const override;
@@ -164,7 +169,7 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
     void cancel_pending_load(const char* why);
 
     /// Sends the pending bay load when this frame shows its head empty, and
-    /// drops it, raising EVENT_ERROR, once its grace window has closed, the
+    /// drops it, raising kEventError, once its grace window has closed, the
     /// engine stops driving the units, or a print holds the heads. Main
     /// thread, mutex_ not held.
     void advance_pending_load();
@@ -193,6 +198,11 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
     /// Under mutex_.
     std::optional<PendingBayLoad> pending_load_;
     uint64_t next_pending_id_ = 1;
+
+    /// head_source load-failure notices staged under mutex_ by
+    /// apply_extension_locked() and emitted by handle_status() outside it.
+    /// Under mutex_.
+    std::vector<std::string> pending_load_failed_errors_;
 
   protected:
     /// kPendingLoadGrace, held per backend so a test can close the window.

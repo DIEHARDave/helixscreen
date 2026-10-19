@@ -156,7 +156,7 @@ class FilamentMapper {
 
     /// Check if two colors are within matching tolerance.
     /// Uses weighted RGB distance (luminance-weighted) with tolerance of
-    /// COLOR_MATCH_TOLERANCE (50) units.
+    /// kColorMatchTolerance (50) units.
     static bool colors_match(uint32_t color_a, uint32_t color_b);
 
     /// The warnings that apply to pairing @p tool with the lane it resolved to.
@@ -368,7 +368,7 @@ class FilamentMapper {
     [[nodiscard]] static const AvailableSlot*
     resolve_mapped_slot(const ToolMapping& mapping, const std::vector<AvailableSlot>& slots);
 
-    static constexpr int COLOR_MATCH_TOLERANCE = 50;
+    static constexpr int kColorMatchTolerance = 50;
 };
 
 } // namespace helix

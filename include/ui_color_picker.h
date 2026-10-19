@@ -63,8 +63,8 @@ class ColorPicker : public Modal {
      * they are editing.
      */
     enum class Palette : int {
-        General = 0, ///< color_swatch_grid — filament, LED, general use
-        Theme = 1,   ///< theme_swatch_grid — surface ramp + hue families
+        General = 0, ///< color_swatch_grid palette="general" — filament, LED, general use
+        Theme = 1,   ///< color_swatch_grid palette="theme" — surface ramp + hue families
     };
 
     ColorPicker();

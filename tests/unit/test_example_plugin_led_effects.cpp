@@ -28,7 +28,7 @@ namespace {
 /// matches the conditions the temp-spark cases run under.
 class LedFx : public XMLTestFixture {
   public:
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
 
     LedFx() {
         DisplaySettingsManager::instance().set_animations_enabled(false);

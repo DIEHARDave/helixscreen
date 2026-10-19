@@ -183,7 +183,7 @@ The `PrintExcludeObjectManager` implements a state machine with three states:
 
 ### Step-by-step
 
-1. **Initiation**: User long-presses an object in the G-code viewer (1000ms threshold — `LONG_PRESS_THRESHOLD_MS` in `src/ui/gcode_viewer_input.cpp#LONG_PRESS_THRESHOLD_MS`, deliberately double the app-wide 500ms gesture timeout because the gesture cancels printing the object) or taps an object in the Print Objects side list.
+1. **Initiation**: User long-presses an object in the G-code viewer (1000ms threshold — `kLongPressThresholdMs` in `src/ui/gcode_viewer_input.cpp#kLongPressThresholdMs`, deliberately double the app-wide 500ms gesture timeout because the gesture cancels printing the object) or taps an object in the Print Objects side list.
 
 2. **Guard checks**: Empty names, already-excluded objects, and pending exclusions are rejected.
 
@@ -350,7 +350,7 @@ second model for this: details owns a private `PrinterExcludedObjectsState`
 
 - **Objects.** `src/ui/ui_print_select_detail_view.cpp#refresh_exclude_objects`
   fills the defined objects from the file scan's `ScanResult::objects` (the first
-  `PRINTER_STOP_SCAN_BYTES` of the file), merged with any the viewer's full parse found
+  `kPrinterStopScanBytes` of the file), merged with any the viewer's full parse found
   (`src/ui/pre_start_exclude.cpp#merge_defined_objects`).
 - **Taps.** Exclude mode is the same `ExcludeModeController` print status uses, opened with
   `ExcludeTapMode::Toggle`: a tap picks or un-picks an object, with no confirmation modal.

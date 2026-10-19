@@ -236,7 +236,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "#1183: AmsAction::ERROR ends the operation 
     REQUIRE(TA::operation_active(*h.panel));
 
     h.publish_action(AmsAction::LOADING, 10);
-    h.publish_action(AmsAction::ERROR, 600); // > MIN_SPINNER_VISIBLE_MS, so a
+    h.publish_action(AmsAction::ERROR, 600); // > kMinSpinnerVisibleMs, so a
                                              // mistaken op_succeeded() would have
                                              // reached the done state by now
 
@@ -383,7 +383,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "unknown-command abort survives the macro's 
     // op's success callback still arrives.
     TA::op_succeeded_extrude(*h.panel);
 
-    // Past MIN_SPINNER_VISIBLE_MS, so a success that got through would have
+    // Past kMinSpinnerVisibleMs, so a success that got through would have
     // reached the done state by now.
     process_lvgl(700);
     CHECK(TA::op_extrude_state(*h.panel) == 0); // still idle, never 2/done

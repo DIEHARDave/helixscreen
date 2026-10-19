@@ -74,7 +74,7 @@ static constexpr uint32_t EXTRA = 30000; ///< Multi-step operations (PID→MPC m
 /// did - hides every subsequent shutdown for the life of the process. Same
 /// preference as the LONG comment above: a spurious dialog over a silently-eaten
 /// shutdown.
-static constexpr uint32_t RESTART_FLAG_TIMEOUT = EXTRA;
+static constexpr uint32_t kRestartFlagTimeout = EXTRA;
 } // namespace helix::recovery_suppression
 
 /**
@@ -337,7 +337,7 @@ class EmergencyStopOverlay {
     void show_recovery_dialog();
 
     /// Start treating klippy's next SHUTDOWN as a user-initiated restart, for
-    /// recovery_suppression::RESTART_FLAG_TIMEOUT or until klippy reports READY,
+    /// recovery_suppression::kRestartFlagTimeout or until klippy reports READY,
     /// whichever comes first. Safe from any thread - one atomic store.
     void begin_restart_window();
 
@@ -399,7 +399,7 @@ namespace ui {
 /// Mirrors recovery_suppression::LONG - the reconnect blip from a klippy restart
 /// resolves in roughly the same span as the recovery-dialog window. 15 s is the
 /// value input-shaper armed before the helper existed; it is uniform now.
-constexpr uint32_t EXPECTED_RESTART_DISCONNECT_MODAL_MS = 15000;
+constexpr uint32_t kExpectedRestartDisconnectModalMs = 15000;
 
 /**
  * @brief Initiate an action that will restart Klipper

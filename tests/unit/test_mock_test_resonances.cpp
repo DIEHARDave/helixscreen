@@ -114,9 +114,9 @@ TEST_CASE_METHOD(BeltMockFixture, "mock failure modes", "[belt][mock]") {
 }
 
 namespace {
-constexpr const char* WINDOW_B =
+constexpr const char* kWindowB =
     "TEST_RESONANCES AXIS=1,1 FREQ_START=88 FREQ_END=120 OUTPUT=resonances NAME=helix_belt_b";
-constexpr const char* WINDOW_A =
+constexpr const char* kWindowA =
     "TEST_RESONANCES AXIS=1,-1 FREQ_START=88 FREQ_END=120 OUTPUT=resonances NAME=helix_belt_a";
 
 float csv_peak(const std::string& path) {
@@ -128,7 +128,7 @@ float csv_peak(const std::string& path) {
 
 TEST_CASE_METHOD(BeltMockFixture, "a windowed mock sweep emits lines only inside the window",
                  "[belt][mock]") {
-    auto path = run(WINDOW_B);
+    auto path = run(kWindowB);
     REQUIRE(path);
     CHECK(lines.front() == "Testing frequency 88 Hz");
     CHECK(lines[lines.size() - 2] == "Testing frequency 120 Hz");
@@ -137,43 +137,64 @@ TEST_CASE_METHOD(BeltMockFixture, "a windowed mock sweep emits lines only inside
 }
 
 TEST_CASE_METHOD(BeltMockFixture,
-                 "the tune script moves the scripted path's peak per windowed sweep",
+                 "the tune script moves the scripted path's peak per sweep after the first",
                  "[belt][mock]") {
     mock.set_belt_tune_script('B', {102.1f, 107.6f, 109.8f});
-    for (float expected : {102.1f, 107.6f, 109.8f}) {
-        auto path = run(WINDOW_B);
+    // The first sweep reads the seeded peak; the script starts on the second.
+    for (float expected : {98.0f, 102.1f, 107.6f, 109.8f}) {
+        auto path = run(kWindowB);
         REQUIRE(path);
         CHECK(csv_peak(*path) == Catch::Approx(expected).margin(0.8f));
     }
     // Exhausted: the last value holds.
-    auto path = run(WINDOW_B);
+    auto path = run(kWindowB);
     REQUIRE(path);
     CHECK(csv_peak(*path) == Catch::Approx(109.8f).margin(0.8f));
 
-    auto a = run(WINDOW_A);
+    auto a = run(kWindowA);
     REQUIRE(a);
     CHECK(csv_peak(*a) == Catch::Approx(110.0f).margin(0.8f));
 }
 
-TEST_CASE_METHOD(BeltMockFixture, "full sweeps keep the re-measure walk when a script is set",
+TEST_CASE_METHOD(BeltMockFixture,
+                 "a script turns the walk off and plays on every sweep after the first",
                  "[belt][mock]") {
     mock.set_belt_peaks_hz(110.0f, 98.0f);
-    mock.set_belt_tune_script('A', {101.0f, 103.0f});
-    const char* full = "TEST_RESONANCES AXIS=1,-1 OUTPUT=resonances NAME=helix_belt_a";
-    run(full);
-    run(full);
-    CHECK(mock.belt_peak_hz('A') == Catch::Approx(106.0f)); // the walk still applies
-    // The full sweeps consumed none of the script.
-    auto path = run(WINDOW_A);
-    REQUIRE(path);
-    CHECK(csv_peak(*path) == Catch::Approx(101.0f).margin(0.8f));
+    mock.set_belt_tune_script('B', {98.3f, 102.1f});
+    const char* full_a = "TEST_RESONANCES AXIS=1,-1 OUTPUT=resonances NAME=helix_belt_a";
+    const char* full_b = "TEST_RESONANCES AXIS=1,1 OUTPUT=resonances NAME=helix_belt_b";
+
+    auto a0 = run(full_a);
+    REQUIRE(a0);
+    CHECK(csv_peak(*a0) == Catch::Approx(110.0f).margin(0.8f));
+    auto b0 = run(full_b);
+    REQUIRE(b0);
+    CHECK(csv_peak(*b0) == Catch::Approx(98.0f).margin(0.8f));
+
+    // A full sweep plays the script, then a windowed one plays the next entry.
+    auto b1 = run(full_b);
+    REQUIRE(b1);
+    CHECK(mock.belt_peak_hz('B') == Catch::Approx(98.3f));
+    CHECK(csv_peak(*b1) == Catch::Approx(98.3f).margin(0.8f));
+    auto b2 = run(kWindowB);
+    REQUIRE(b2);
+    CHECK(mock.belt_peak_hz('B') == Catch::Approx(102.1f));
+    CHECK(csv_peak(*b2) == Catch::Approx(102.1f).margin(0.8f));
+
+    // A has no script, but a script on B switches the walk off for both paths.
+    for (int i = 0; i < 2; ++i) {
+        auto a = run(full_a);
+        REQUIRE(a);
+        CHECK(csv_peak(*a) == Catch::Approx(110.0f).margin(0.8f));
+    }
+    CHECK(mock.belt_peak_hz('A') == Catch::Approx(110.0f));
 }
 
 TEST_CASE_METHOD(BeltMockFixture, "windowed sweeps never apply the re-measure walk",
                  "[belt][mock]") {
     mock.set_belt_peaks_hz(110.0f, 98.0f);
     for (int i = 0; i < 4; ++i) {
-        auto path = run(WINDOW_A);
+        auto path = run(kWindowA);
         REQUIRE(path);
         CHECK(csv_peak(*path) == Catch::Approx(110.0f).margin(0.8f));
     }
@@ -182,16 +203,17 @@ TEST_CASE_METHOD(BeltMockFixture, "windowed sweeps never apply the re-measure wa
 
 TEST_CASE_METHOD(BeltMockFixture, "a malformed script is ignored item by item", "[belt][mock]") {
     mock.apply_belt_tune_script("B:102,abc,,109");
-    auto first = run(WINDOW_B);
+    REQUIRE(run(kWindowB)); // the first sweep reads the seeded peak
+    auto first = run(kWindowB);
     REQUIRE(first);
     CHECK(csv_peak(*first) == Catch::Approx(102.0f).margin(0.8f));
-    auto second = run(WINDOW_B);
+    auto second = run(kWindowB);
     REQUIRE(second);
     CHECK(csv_peak(*second) == Catch::Approx(109.0f).margin(0.8f));
 
     // A letter other than A/B drops the whole spec; the paths keep their peaks.
     mock.apply_belt_tune_script("Q:50,60");
-    auto third = run(WINDOW_B);
+    auto third = run(kWindowB);
     REQUIRE(third);
     CHECK(csv_peak(*third) == Catch::Approx(109.0f).margin(0.8f));
 }
@@ -213,19 +235,22 @@ TEST_CASE_METHOD(BeltMockFixture, "a flat script item writes a curve with no pea
 
     SECTION("env-string form") {
         mock.apply_belt_tune_script("B:flat");
-        auto path = run(WINDOW_B);
+        REQUIRE(run(kWindowB)); // the first sweep reads the seeded peak
+        auto path = run(kWindowB);
         REQUIRE(path);
         CHECK(in_window_flatness(*path) < 1.25f);
     }
     SECTION("setter form with NaN") {
         mock.set_belt_tune_script('B', {std::numeric_limits<float>::quiet_NaN()});
-        auto path = run(WINDOW_B);
+        REQUIRE(run(kWindowB));
+        auto path = run(kWindowB);
         REQUIRE(path);
         CHECK(in_window_flatness(*path) < 1.25f);
     }
     SECTION("a scripted peak is not flat") {
         mock.apply_belt_tune_script("B:104");
-        auto path = run(WINDOW_B);
+        REQUIRE(run(kWindowB));
+        auto path = run(kWindowB);
         REQUIRE(path);
         CHECK(in_window_flatness(*path) > 2.0f);
     }

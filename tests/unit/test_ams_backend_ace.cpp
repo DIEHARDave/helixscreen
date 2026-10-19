@@ -2853,7 +2853,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     // No error event surfaced — /status is succeeding, so the "install
     // ace_status.py from ValgACE" toast must NOT fire (the user already has a
     // working bridge; #1069).
-    CHECK(std::count(events.begin(), events.end(), std::string(AmsBackend::EVENT_ERROR)) == 0);
+    CHECK(std::count(events.begin(), events.end(), std::string(AmsBackend::kEventError)) == 0);
 
     // Backend populated model + slots purely from /status + /slots.
     auto info = backend.get_system_info();
@@ -2884,7 +2884,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "ACE surfaces an error when the data endpoints
 
     int error_events = 0;
     backend.set_event_callback([&error_events](const std::string& ev, const std::string&) {
-        if (ev == AmsBackend::EVENT_ERROR)
+        if (ev == AmsBackend::kEventError)
             ++error_events;
     });
 

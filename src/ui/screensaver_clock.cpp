@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_clock.h"
 
@@ -24,7 +24,7 @@ namespace helix::ui {
 namespace {
 
 /// Breakpoint fonts a clock line may use, largest first.
-constexpr const char* CLOCK_FONTS[] = {"font_heading", "font_body", "font_small", "font_xs"};
+constexpr const char* kClockFonts[] = {"font_heading", "font_body", "font_small", "font_xs"};
 
 /// A local struct tm at `minute_of_day` today, for the app's time formatters.
 struct tm tm_at_minute(int32_t minute_of_day) {
@@ -163,7 +163,7 @@ std::string clock_meridiem_text(ClockMeridiem meridiem) {
 
 const lv_font_t* clock_font_fitting(int32_t height) {
     const lv_font_t* chosen = nullptr;
-    for (const char* token : CLOCK_FONTS) {
+    for (const char* token : kClockFonts) {
         const lv_font_t* font = theme_manager_get_font(token);
         if (font == nullptr) {
             continue;

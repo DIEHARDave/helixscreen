@@ -43,7 +43,7 @@ namespace {
 /// action dispatched is that warning's own, exactly as its history entry's is.
 void review_toast_clicked(void* user_data) {
     const auto generation = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(user_data));
-    const std::string action = fmt::format("{}:{}", REVIEW_PRINTER_TYPE_ACTION, generation);
+    const std::string action = fmt::format("{}:{}", kReviewPrinterTypeAction, generation);
     if (auto review = helix::ui::notification_action_handler(action)) {
         review();
     }
@@ -84,7 +84,7 @@ HardwareSetupPrompter::~HardwareSetupPrompter() {
     // The handler holds `this`; a toast or history row outliving the prompter then
     // finds nothing to call.
     if (review_handler_registered_) {
-        helix::ui::set_notification_action_handler(REVIEW_PRINTER_TYPE_ACTION, nullptr);
+        helix::ui::set_notification_action_handler(kReviewPrinterTypeAction, nullptr);
     }
 }
 
@@ -386,7 +386,7 @@ void HardwareSetupPrompter::maybe_warn_type_mismatch(const helix::PrinterDiscove
             "margin >={} - {}",
             detected.type_name, detected.confidence, detected.runner_up_type_name,
             detected.runner_up_confidence, detected.margin(), detected.tied_count, saved, flag,
-            PrinterDetector::MISMATCH_MIN_CONFIDENCE, PrinterDetector::DETECT_MIN_MARGIN,
+            PrinterDetector::kMismatchMinConfidence, PrinterDetector::kDetectMinMargin,
             PrinterDetector::mismatch_decision_name(decision));
         return;
     }
@@ -410,7 +410,7 @@ void HardwareSetupPrompter::warn_type_mismatch(TypeMismatchReview review) {
     // neither holds the prompter: the destructor removes it. Each carries its own
     // generation, which the handler checks.
     helix::ui::set_notification_action_handler(
-        REVIEW_PRINTER_TYPE_ACTION, [this](const std::string& arg) {
+        kReviewPrinterTypeAction, [this](const std::string& arg) {
             uint32_t gen = 0;
             const auto parsed = std::from_chars(arg.data(), arg.data() + arg.size(), gen);
             if (parsed.ec != std::errc{} || parsed.ptr != arg.data() + arg.size()) {
@@ -421,7 +421,7 @@ void HardwareSetupPrompter::warn_type_mismatch(TypeMismatchReview review) {
         });
     review_handler_registered_ = true;
 
-    const std::string action = fmt::format("{}:{}", REVIEW_PRINTER_TYPE_ACTION, generation);
+    const std::string action = fmt::format("{}:{}", kReviewPrinterTypeAction, generation);
     ui_notification_warning_with_action(lv_tr("Printer type mismatch"), message.c_str(),
                                         action.c_str());
     // Sticky: a wrong type applies wrong pre-print options to every print, so the

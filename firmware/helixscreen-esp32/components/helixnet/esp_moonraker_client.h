@@ -152,9 +152,9 @@ class EspMoonrakerClient final : public IMoonrakerClient {
     // --- Transport worker ---
     // Every websocket stop, destroy, init and start runs on this one thread, in order, so
     // neither the UI thread nor the housekeeping timer ever waits on a websocket task.
-    static constexpr uint32_t TRANSPORT_WORKER_STACK_BYTES = 6 * 1024;
-    static constexpr int64_t TRANSPORT_STALL_US = 10LL * 1000 * 1000;
-    static constexpr int64_t TRANSPORT_STALL_UNCONNECTED_US = 30LL * 1000 * 1000;
+    static constexpr uint32_t kTransportWorkerStackBytes = 6 * 1024;
+    static constexpr int64_t kTransportStallUs = 10LL * 1000 * 1000;
+    static constexpr int64_t kTransportStallUnconnectedUs = 30LL * 1000 * 1000;
     void post_transport_job(const char* what, std::function<void()> job);
     static void* transport_worker_main(void* self);
     void transport_worker_loop();
@@ -176,13 +176,13 @@ class EspMoonrakerClient final : public IMoonrakerClient {
     // Reassembly cap: a single WS message larger than this is dropped whole.
     // Moonraker does not chunk at the protocol level, so an oversized response's
     // RPC will simply time out (see brief). 256 KiB.
-    static constexpr size_t MAX_MESSAGE_BYTES = 262144;
+    static constexpr size_t kMaxMessageBytes = 262144;
     /// Reassembly capacity kept between messages; anything larger is released.
-    static constexpr size_t RX_BUF_KEEP_BYTES = 32768;
+    static constexpr size_t kRxBufKeepBytes = 32768;
     // Own request-tracker cap — far below desktop's 500 (RAM-bound). On overflow
     // the error callback fires synchronously with a CONNECTION_LOST error.
-    static constexpr size_t MAX_PENDING_REQUESTS = 64;
-    static constexpr uint32_t DEFAULT_REQUEST_TIMEOUT_MS = 60000;
+    static constexpr size_t kMaxPendingRequests = 64;
+    static constexpr uint32_t kDefaultRequestTimeoutMs = 60000;
     // The two bounds below both exist for one reason: no transport call may
     // stall the LVGL thread long enough for the screen to look dead. The task
     // watchdog is NOT the constraint — it watches the idle tasks only and
@@ -191,7 +191,7 @@ class EspMoonrakerClient final : public IMoonrakerClient {
     // UX judgement: long enough that an ordinary LAN operation never trips it,
     // short enough that a tap on an unreachable printer reads as slow rather
     // than crashed.
-    static constexpr uint32_t UI_STALL_BUDGET_MS = 3000;
+    static constexpr uint32_t kUiStallBudgetMs = 3000;
 
     // How long esp_websocket_client_send_text() may block the CALLING task
     // waiting for the transport lock and the socket write. Every UI event
@@ -199,7 +199,7 @@ class EspMoonrakerClient final : public IMoonrakerClient {
     // Deliberately NOT connection_timeout_ms_, which
     // MoonrakerManager::configure_timeouts() sets to 10s from
     // moonraker_connection_timeout_ms.
-    static constexpr uint32_t SEND_TIMEOUT_MS = UI_STALL_BUDGET_MS;
+    static constexpr uint32_t kSendTimeoutMs = kUiStallBudgetMs;
 
     // Ceiling applied to cfg.network_timeout_ms in connect(). The websocket
     // task spends that budget inside esp_transport_connect() when the address
@@ -219,11 +219,11 @@ class EspMoonrakerClient final : public IMoonrakerClient {
     // on MainsailOS/Fluidd), so a stop() issued while a slow or failing
     // resolution is in progress can still exceed this cap by the DNS time.
     // The cap is a real improvement for the address case, not a guarantee.
-    static constexpr uint32_t MAX_NETWORK_TIMEOUT_MS = UI_STALL_BUDGET_MS;
+    static constexpr uint32_t kMaxNetworkTimeoutMs = kUiStallBudgetMs;
     // How long RECONNECTING persists before the informational FAILED transition.
-    static constexpr int64_t RECONNECTING_TO_FAILED_US = 60LL * 1000 * 1000;
+    static constexpr int64_t kReconnectingToFailedUs = 60LL * 1000 * 1000;
     // Period of the owned esp_timer that drives timeout + FAILED bookkeeping.
-    static constexpr uint64_t HOUSEKEEPING_PERIOD_US = 5LL * 1000 * 1000;
+    static constexpr uint64_t kHousekeepingPeriodUs = 5LL * 1000 * 1000;
     // esp_websocket_client's own task stack (connect()'s cfg.task_stack).
     // Named so the discovery-complete watermark log (discovery_subscribe)
     // reports headroom against the SAME value connect() actually configures.
@@ -232,15 +232,15 @@ class EspMoonrakerClient final : public IMoonrakerClient {
     // 16384), so 8192 carries ~1.7KB headroom — and this stack is INTERNAL
     // DRAM (a 16KB trial cost exactly 8KB of steady-state internal free,
     // breaking the >=100KB budget). The watermark log guards the margin.
-    static constexpr uint32_t WS_TASK_STACK_BYTES = 8192;
+    static constexpr uint32_t kWsTaskStackBytes = 8192;
     // connect()'s cfg.pingpong_timeout_sec (Defect 1, Task 9 confirm soak).
-    // Must stay comfortably below DEFAULT_REQUEST_TIMEOUT_MS (60s) so a
+    // Must stay comfortably below kDefaultRequestTimeoutMs (60s) so a
     // silently-dead connection is caught by ping/pong first, not by the
     // slower per-request timeout — see connect()'s comment for the soak
     // evidence (5 separate requests across 3 different methods each sat the
     // full 60s with no disconnect ever observed in between).
-    static constexpr int PING_PONG_TIMEOUT_SEC = 20;
-    static constexpr int64_t SLOW_DISPATCH_LOG_MS = 500;
+    static constexpr int kPingPongTimeoutSec = 20;
+    static constexpr int64_t kSlowDispatchLogMs = 500;
     // Websocket-task only: reported when a connection drops.
     unsigned pongs_this_connection_ = 0;
     /// Last PONG for one of our PINGs (the connect time until the first), read by the
@@ -250,7 +250,7 @@ class EspMoonrakerClient final : public IMoonrakerClient {
     /// A connection with no PONG and no other frame for this long is dead, whatever the
     /// websocket task believes; the client reconnects. Above Moonraker's 25 s pong
     /// timeout, so a link Moonraker gives up on closes before this fires.
-    static constexpr int64_t LINK_DEAD_US = 40LL * 1000 * 1000;
+    static constexpr int64_t kLinkDeadUs = 40LL * 1000 * 1000;
     int64_t connected_us_ = 0;
     // Any frame received (websocket task writes, timer task reads) and the last
     // stall report, for the rx-stall tripwire in process_timeouts().
@@ -262,8 +262,8 @@ class EspMoonrakerClient final : public IMoonrakerClient {
     /// connection_lost callbacks for requests a disconnect failed, delivered by
     /// process_timeouts(); guarded by requests_mutex_.
     std::vector<std::function<void()>> failed_callbacks_;
-    static constexpr int64_t RX_STALL_LOG_US = 5 * 1000 * 1000;
-    static_assert(PING_PONG_TIMEOUT_SEC * 1000u < DEFAULT_REQUEST_TIMEOUT_MS,
+    static constexpr int64_t kRxStallLogUs = 5 * 1000 * 1000;
+    static_assert(kPingPongTimeoutSec * 1000u < kDefaultRequestTimeoutMs,
                   "ping/pong must detect a dead link before the per-request timeout fires — "
                   "otherwise silent connection death stalls requests for the full request "
                   "timeout with no disconnect in between (Task 9 confirm-soak defect)");
@@ -427,13 +427,13 @@ class EspMoonrakerClient final : public IMoonrakerClient {
     std::mutex requests_mutex_;
     std::map<uint64_t, Pending> pending_;
     std::atomic<uint64_t> next_request_id_{0};
-    uint32_t default_request_timeout_ms_ = DEFAULT_REQUEST_TIMEOUT_MS;
+    uint32_t default_request_timeout_ms_ = kDefaultRequestTimeoutMs;
     // Feeds cfg.network_timeout_ms only — the transport's per-operation budget,
-    // spent on the websocket task — and is capped at MAX_NETWORK_TIMEOUT_MS on
+    // spent on the websocket task — and is capped at kMaxNetworkTimeoutMs on
     // the way in. MoonrakerManager::configure_timeouts() overwrites this from
     // moonraker_connection_timeout_ms at init, so the value here is only the
     // pre-configuration default. The UI-thread send wait is bounded separately
-    // by SEND_TIMEOUT_MS.
+    // by kSendTimeoutMs.
     uint32_t connection_timeout_ms_ = 10000;
 
     // Callback maps.

@@ -129,7 +129,7 @@ inline constexpr double LOCK_SEARCH_LAG_S = 0.5;
 inline constexpr float LOCK_GRID_STEP_HZ = 0.25f;
 /// Off-drive reference frequencies, Hz from the grid's argmax. Outside a 0.5 s
 /// window's main lobe, so a real drive stands far above them and noise does not.
-inline constexpr float LOCK_REFERENCE_OFFSETS_HZ[] = {-12.0f, -8.0f, 8.0f, 12.0f};
+inline constexpr float kLockReferenceOffsetsHz[] = {-12.0f, -8.0f, 8.0f, 12.0f};
 /// The argmax's xyz power over the mean reference power, at least.
 inline constexpr float LOCK_MIN_CONTRAST = 4.0f;
 /// A lock needs this many retained estimates of t0 within LOCK_AGREE_S of one another.
@@ -206,7 +206,7 @@ enum class SweepColumn {
  *
  * @return nullopt when the grid has fewer than 3 points, the argmax sits on
  *         either end of the grid, or its power is under LOCK_MIN_CONTRAST times
- *         the mean power at LOCK_REFERENCE_OFFSETS_HZ from it (positive ones only)
+ *         the mean power at kLockReferenceOffsetsHz from it (positive ones only)
  */
 [[nodiscard]] std::optional<float> find_drive_hz(const AccelSample* samples, size_t n,
                                                  float rate_hz, float hint_hz, float hz_per_sec);
@@ -877,7 +877,7 @@ The changed headers' diffs are in the task that changes them.
   - Relock: after the loss above, five readings estimating 6.70 lock at 6.70.
   - Rate: plan `{5,135,2}`, five readings `(3.0 + 0.25k, 7.6 + 0.5k)` lock at 1.70.
 - [ ] **Step 2: Run** `make t F='[lock]'`; expect FAIL.
-- [ ] **Step 3: Implement** both per their header comments. `find_drive_hz`: grid points `lo + k * LOCK_GRID_STEP_HZ` up to `hi`, positives only; power = sum of `goertzel_psd` over the three axes (copy each axis into a scratch `std::vector<float>` once per call); argmax interior check; reference = mean power at `argmax + LOCK_REFERENCE_OFFSETS_HZ` (positive frequencies only; nullopt if none or reference <= 0); parabola `offset = 0.5 (a - c) / (a - 2b + c)` clamped to [-0.5, 0.5] grid steps. `DriveLock::observe`: unlocked, push the estimate (drop the oldest past `LOCK_HISTORY`), find the estimate with the most others within `LOCK_AGREE_S` (inclusive), lock at the median of that cluster when it holds `LOCK_AGREE_COUNT`; locked, compare against `model_hz(at_s)` and run the loss timer; on loss clear the estimates.
+- [ ] **Step 3: Implement** both per their header comments. `find_drive_hz`: grid points `lo + k * LOCK_GRID_STEP_HZ` up to `hi`, positives only; power = sum of `goertzel_psd` over the three axes (copy each axis into a scratch `std::vector<float>` once per call); argmax interior check; reference = mean power at `argmax + kLockReferenceOffsetsHz` (positive frequencies only; nullopt if none or reference <= 0); parabola `offset = 0.5 (a - c) / (a - 2b + c)` clamped to [-0.5, 0.5] grid steps. `DriveLock::observe`: unlocked, push the estimate (drop the oldest past `LOCK_HISTORY`), find the estimate with the most others within `LOCK_AGREE_S` (inclusive), lock at the median of that cluster when it holds `LOCK_AGREE_COUNT`; locked, compare against `model_hz(at_s)` and run the loss timer; on loss clear the estimates.
 - [ ] **Step 4: Run** `make t F='[sweep_preview]'` (PASS).
 - [ ] **Step 5: Commit** `feat(calibration): lock a sweep's start time from the accelerometer (prestonbrown/helixscreen#1812)`
 

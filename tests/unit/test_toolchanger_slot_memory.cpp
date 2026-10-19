@@ -14,7 +14,7 @@
  * parse_tool_state() reads `mounted` and `active` and nothing else - so unlike
  * every other backend there is no firmware reading underneath for the user's
  * edit to layer over. initialize_tools() then resets every slot to
- * AMS_DEFAULT_SLOT_COLOR with the tool name as a placeholder spool_name, and
+ * kAmsDefaultSlotColor with the tool name as a placeholder spool_name, and
  * that runs on every set_discovered_tools(), i.e. on every rediscovery. On a
  * 4-hotend changer that is the whole per-tool colour scheme, gone.
  *
@@ -198,7 +198,7 @@ TEST_CASE("Rediscovery does not leak one tool's spool onto another",
     // Slot 0 was never edited: it must still read the untouched default, not
     // slot 1's colour.
     auto untouched = h.get_slot_info(0);
-    CHECK(untouched.color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    CHECK(untouched.color_rgb == helix::kAmsDefaultSlotColor);
     CHECK(untouched.material.empty());
 }
 
@@ -220,7 +220,7 @@ TEST_CASE("Clear Spool blanks a tool's record live and after rediscovery",
     // whole - the half that makes live agree with a restart.
     helix::SlotInfo cleared = h.get_slot_info(1);
     cleared.material.clear();
-    cleared.color_rgb = helix::AMS_DEFAULT_SLOT_COLOR;
+    cleared.color_rgb = helix::kAmsDefaultSlotColor;
     cleared.color_name.clear();
     cleared.multi_color_hexes.clear();
     cleared.brand.clear();
@@ -234,7 +234,7 @@ TEST_CASE("Clear Spool blanks a tool's record live and after rediscovery",
 
     // Blank on the very next read.
     auto slot = h.get_slot_info(1);
-    CHECK(slot.color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    CHECK(slot.color_rgb == helix::kAmsDefaultSlotColor);
     CHECK(slot.material.empty());
     CHECK(slot.color_name.empty());
     CHECK(slot.brand.empty());
@@ -243,7 +243,7 @@ TEST_CASE("Clear Spool blanks a tool's record live and after rediscovery",
     // And blank after the reconnect wipe: no record survives to re-layer.
     h.set_tools(4);
     slot = h.get_slot_info(1);
-    CHECK(slot.color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    CHECK(slot.color_rgb == helix::kAmsDefaultSlotColor);
     CHECK(slot.material.empty());
     CHECK(slot.color_name.empty());
     CHECK(slot.remaining_weight_g == -1);
@@ -265,7 +265,7 @@ TEST_CASE("A clear without a preceding commit still drops the record",
     h.set_tools(4);
 
     auto slot = h.get_slot_info(1);
-    CHECK(slot.color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    CHECK(slot.color_rgb == helix::kAmsDefaultSlotColor);
     CHECK(slot.material.empty());
     CHECK(slot.remaining_weight_g == -1);
 }
@@ -296,7 +296,7 @@ TEST_CASE("persist=false is a preview, not a memory", "[ams][toolchanger][slot_m
 
     // But nothing was staged, so the wipe takes it.
     h.set_tools(4);
-    CHECK(h.get_slot_info(1).color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    CHECK(h.get_slot_info(1).color_rgb == helix::kAmsDefaultSlotColor);
 }
 
 TEST_CASE("An identity sync never remaps a tool", "[ams][toolchanger][slot_memory][1652]") {
@@ -425,7 +425,7 @@ TEST_CASE_METHOD(PublishedToolChanger,
     ams.sync_from_backend();
     settle();
     REQUIRE(lv_subject_get_int(ams.get_slot_color_subject(1)) ==
-            static_cast<int>(helix::AMS_DEFAULT_SLOT_COLOR));
+            static_cast<int>(helix::kAmsDefaultSlotColor));
 
     SECTION("an identity edit") {
         helix::test::edit_slot_as_user(h, 1, blue_petg());
@@ -531,7 +531,7 @@ TEST_CASE("Tool-changer slot metadata round-trips through Moonraker",
         helix::test::RegisteredBackend<StoreBackedHelper> fresh_reg(&api, 4);
         StoreBackedHelper& fresh = *fresh_reg;
         // Before the load, the slot is whatever initialize_tools() built.
-        CHECK(fresh.get_slot_info(1).color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+        CHECK(fresh.get_slot_info(1).color_rgb == helix::kAmsDefaultSlotColor);
 
         helix::ToolChangerTestAccess::call_on_started(fresh);
 
@@ -545,7 +545,7 @@ TEST_CASE("Tool-changer slot metadata round-trips through Moonraker",
         CHECK(slot.spoolman_id == 42);
 
         // A tool the user never touched stays untouched.
-        CHECK(fresh.get_slot_info(0).color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+        CHECK(fresh.get_slot_info(0).color_rgb == helix::kAmsDefaultSlotColor);
     }
 }
 
@@ -567,7 +567,7 @@ TEST_CASE("A cleared tool-changer record is gone after a reload",
         REQUIRE(h.get_slot_info(1).color_rgb == 0x1E5AA8);
 
         h.clear_slot_override(1);
-        CHECK(h.get_slot_info(1).color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+        CHECK(h.get_slot_info(1).color_rgb == helix::kAmsDefaultSlotColor);
         CHECK(h.get_slot_info(1).material.empty());
     }
 
@@ -580,7 +580,7 @@ TEST_CASE("A cleared tool-changer record is gone after a reload",
         helix::test::RegisteredBackend<StoreBackedHelper> fresh_reg(&api, 4);
         StoreBackedHelper& fresh = *fresh_reg;
         helix::ToolChangerTestAccess::call_on_started(fresh);
-        CHECK(fresh.get_slot_info(1).color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+        CHECK(fresh.get_slot_info(1).color_rgb == helix::kAmsDefaultSlotColor);
         CHECK(fresh.get_slot_info(1).material.empty());
         CHECK(fresh.get_slot_info(1).spoolman_id == 0);
     }
@@ -669,7 +669,7 @@ TEST_CASE("a tool changer start paints a lane whose only identity is its Spoolma
     helix::test::RegisteredBackend<StoreBackedHelper> h_reg(&api, 4);
     StoreBackedHelper& h = *h_reg;
     file_spoolman_colour(h_reg.lane(1));
-    REQUIRE(h.get_slot_info(1).color_rgb == helix::AMS_DEFAULT_SLOT_COLOR);
+    REQUIRE(h.get_slot_info(1).color_rgb == helix::kAmsDefaultSlotColor);
 
     helix::ToolChangerTestAccess::call_on_started(h);
 

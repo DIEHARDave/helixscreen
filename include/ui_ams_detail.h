@@ -22,7 +22,7 @@
  */
 
 /// Maximum slots supported in a single detail view
-static constexpr int AMS_DETAIL_MAX_SLOTS = 16;
+static constexpr int kAmsDetailMaxSlots = helix::kAmsMaxSlots;
 
 /// Widget pointers resolved from an ams_unit_detail component
 struct AmsDetailWidgets {
@@ -49,7 +49,7 @@ AmsDetailWidgets ams_detail_find_widgets(lv_obj_t* root);
  *
  * @param w           Widget pointers from ams_detail_find_widgets()
  * @param slot_widgets Output array of created slot widget pointers
- * @param max_slots   Size of slot_widgets array (use AMS_DETAIL_MAX_SLOTS)
+ * @param max_slots   Size of slot_widgets array (use kAmsDetailMaxSlots)
  * @param unit_index  Backend unit index (-1 = whole backend for single-unit panels)
  * @param click_cb    Per-slot click callback (panel-specific)
  * @param user_data   User data for click callback (typically panel pointer)

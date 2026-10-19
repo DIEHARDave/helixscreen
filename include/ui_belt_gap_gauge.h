@@ -28,7 +28,7 @@ int belt_gap_gauge_x(float gap_hz, float range_hz, int track_px);
 
 enum class GapSeverity { MATCHED, NEAR, FAR };
 
-/// MATCHED within tolerance, NEAR up to belt_tune::GAUGE_WARN_HZ, FAR beyond.
+/// MATCHED within tolerance, NEAR up to belt_tune::kGaugeWarnHz, FAR beyond.
 GapSeverity belt_gap_severity(float gap_hz, float tolerance_hz);
 
 } // namespace helix::ui

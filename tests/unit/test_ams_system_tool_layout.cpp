@@ -326,8 +326,12 @@ TEST_CASE("SystemToolLayout: HUB with no mapped_tool data", "[ams][tool_layout]"
 
     auto layout = compute_system_tool_layout(info, nullptr);
 
-    CHECK(layout.total_physical_tools == 1);
-    CHECK(layout.units[0].tool_count == 1);
+    // No lane names a tool, an extruder or a label: the hub converges on no
+    // head at all, so it places no nozzle (an unwired unit draws as a hub
+    // whose lanes end there, never a phantom toolhead).
+    CHECK(layout.total_physical_tools == 0);
+    CHECK(layout.units[0].tool_count == 0);
+    CHECK(layout.units[0].hub_group == -1);
 }
 
 // ============================================================================

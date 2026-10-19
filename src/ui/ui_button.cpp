@@ -40,8 +40,8 @@ namespace {
 // address can be reallocated to a *different* live ui_button before the deferred
 // tick, passing both checks. The id catches that foreign-button case (#924).
 struct UiButtonData {
-    static constexpr uint32_t MAGIC = 0x42544E31; // "BTN1"
-    uint32_t magic{MAGIC};
+    static constexpr uint32_t kMagic = 0x42544E31; // "BTN1"
+    uint32_t magic{kMagic};
 
     uint64_t id{0};     // Defer-time identity token (see note above, #924)
     lv_obj_t* icon;     // Icon widget (or nullptr if none)
@@ -194,10 +194,10 @@ static const lv_font_t* get_button_icon_font() {
 // ---------------------------------------------------------------------------
 namespace op_spinner_anim {
 
-constexpr uint32_t ROTATION_DURATION_MS = 1568;
-constexpr uint32_t SWEEP_DURATION_MS = 667;
-constexpr int32_t ARC_MIN_SWEEP = 45;
-constexpr int32_t ARC_MAX_SWEEP = 270;
+constexpr uint32_t kRotationDurationMs = 1568;
+constexpr uint32_t kSweepDurationMs = 667;
+constexpr int32_t kArcMinSweep = 45;
+constexpr int32_t kArcMaxSweep = 270;
 
 int32_t g_last_start = 0;
 int32_t g_last_end = 0;
@@ -206,10 +206,10 @@ int32_t clamp_sweep(int32_t angle, int32_t reference, bool angle_is_start) {
     int32_t sweep = angle_is_start ? (reference - angle) : (angle - reference);
     if (sweep < 0)
         sweep += 360;
-    if (sweep >= ARC_MIN_SWEEP)
+    if (sweep >= kArcMinSweep)
         return angle;
 
-    int32_t clamped = angle_is_start ? (reference - ARC_MIN_SWEEP) : (reference + ARC_MIN_SWEEP);
+    int32_t clamped = angle_is_start ? (reference - kArcMinSweep) : (reference + kArcMinSweep);
     if (clamped < 0)
         clamped += 360;
     if (clamped >= 360)
@@ -238,8 +238,8 @@ void start(lv_obj_t* arc) {
     lv_anim_init(&a_end);
     lv_anim_set_var(&a_end, arc);
     lv_anim_set_exec_cb(&a_end, end_angle);
-    lv_anim_set_duration(&a_end, SWEEP_DURATION_MS * 2);
-    lv_anim_set_values(&a_end, ARC_MIN_SWEEP, ARC_MIN_SWEEP + 360);
+    lv_anim_set_duration(&a_end, kSweepDurationMs * 2);
+    lv_anim_set_values(&a_end, kArcMinSweep, kArcMinSweep + 360);
     lv_anim_set_repeat_count(&a_end, LV_ANIM_REPEAT_INFINITE);
     lv_anim_set_path_cb(&a_end, lv_anim_path_custom_bezier3);
     lv_anim_set_bezier3_param(&a_end, LV_BEZIER_VAL_FLOAT(0.0), LV_BEZIER_VAL_FLOAT(0.0),
@@ -250,7 +250,7 @@ void start(lv_obj_t* arc) {
     lv_anim_init(&a_start);
     lv_anim_set_var(&a_start, arc);
     lv_anim_set_exec_cb(&a_start, start_angle);
-    lv_anim_set_duration(&a_start, SWEEP_DURATION_MS * 2);
+    lv_anim_set_duration(&a_start, kSweepDurationMs * 2);
     lv_anim_set_values(&a_start, 0, 360);
     lv_anim_set_repeat_count(&a_start, LV_ANIM_REPEAT_INFINITE);
     lv_anim_set_path_cb(&a_start, lv_anim_path_custom_bezier3);
@@ -262,7 +262,7 @@ void start(lv_obj_t* arc) {
     lv_anim_init(&a_rot);
     lv_anim_set_var(&a_rot, arc);
     lv_anim_set_exec_cb(&a_rot, rotation);
-    lv_anim_set_duration(&a_rot, ROTATION_DURATION_MS);
+    lv_anim_set_duration(&a_rot, kRotationDurationMs);
     lv_anim_set_values(&a_rot, 270, 270 + 360);
     lv_anim_set_repeat_count(&a_rot, LV_ANIM_REPEAT_INFINITE);
     lv_anim_set_path_cb(&a_rot, lv_anim_path_linear);
@@ -313,7 +313,7 @@ void set_local_text_color(lv_obj_t* obj, lv_color_t color) {
 void update_button_text_contrast(lv_obj_t* btn) {
     // Check magic to ensure user_data hasn't been overwritten (e.g., by Modal::wire_button)
     UiButtonData* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
-    if (!data || data->magic != UiButtonData::MAGIC) {
+    if (!data || data->magic != UiButtonData::kMagic) {
         // Normal for buttons whose user_data was repurposed (e.g., Modal::wire_button)
         return;
     }
@@ -414,7 +414,7 @@ void drain_pending_contrast() {
         if (!live_ui_buttons().count(p.btn))
             continue;
         UiButtonData* d = static_cast<UiButtonData*>(lv_obj_get_user_data(p.btn));
-        if (!d || d->magic != UiButtonData::MAGIC || d->id != p.gen)
+        if (!d || d->magic != UiButtonData::kMagic || d->id != p.gen)
             continue;
         update_button_text_contrast(p.btn);
         // A style bound after create (bind_style, bind_style_if) can bring a
@@ -434,7 +434,7 @@ void contrast_render_start_cb(lv_event_t* /*e*/) {
 // a display that renders nothing, and is a no-op once the render-start one ran.
 void defer_button_contrast_update(lv_obj_t* btn) {
     UiButtonData* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
-    if (!data || data->magic != UiButtonData::MAGIC)
+    if (!data || data->magic != UiButtonData::kMagic)
         return;
     pending_contrast().push_back({btn, data->id});
 
@@ -538,7 +538,7 @@ void part_resized_cb(lv_event_t* e) {
         return;
     }
     auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
-    if (data && data->magic == UiButtonData::MAGIC && data->min_width_content &&
+    if (data && data->magic == UiButtonData::kMagic && data->min_width_content &&
         (data->label == part || data->icon == part) && is_column(btn)) {
         apply_stacked_min_width(btn, data);
         lv_obj_mark_layout_as_dirty(row);
@@ -562,7 +562,7 @@ void button_delete_cb(lv_event_t* e) {
     UiButtonData* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
     // Only delete if magic matches - user_data may have been overwritten
     // by Modal::wire_button with a Modal* pointer
-    if (data && data->magic == UiButtonData::MAGIC) {
+    if (data && data->magic == UiButtonData::kMagic) {
         delete data;
         lv_obj_set_user_data(btn, nullptr);
     }
@@ -733,7 +733,7 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
     }
 
     // Allocate user data to track icon/label
-    UiButtonData* data = new UiButtonData{.magic = UiButtonData::MAGIC,
+    UiButtonData* data = new UiButtonData{.magic = UiButtonData::kMagic,
                                           .id = next_button_id(),
                                           .icon = nullptr,
                                           .label = nullptr,
@@ -986,7 +986,7 @@ lv_obj_t* ensure_op_spinner(lv_obj_t* btn, UiButtonData* data) {
     lv_obj_set_style_arc_width(arc, arc_width, LV_PART_INDICATOR);
     lv_obj_set_style_arc_rounded(arc, true, LV_PART_INDICATOR);
     lv_obj_set_style_arc_opa(arc, LV_OPA_0, LV_PART_MAIN);
-    lv_arc_set_angles(arc, 0, op_spinner_anim::ARC_MAX_SWEEP);
+    lv_arc_set_angles(arc, 0, op_spinner_anim::kArcMaxSweep);
 
     // Occupy the icon's slot in the flex flow.
     int32_t icon_index = lv_obj_get_index(data->icon);
@@ -1003,7 +1003,7 @@ lv_obj_t* ensure_op_spinner(lv_obj_t* btn, UiButtonData* data) {
  * @brief Render an op-state value (0=idle, 1=busy, 2=done) on the button
  */
 void apply_op_state(lv_obj_t* btn, UiButtonData* data, int op_state) {
-    if (!data || data->magic != UiButtonData::MAGIC || !data->icon) {
+    if (!data || data->magic != UiButtonData::kMagic || !data->icon) {
         return;
     }
 
@@ -1076,7 +1076,7 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
     void* item = lv_xml_state_get_item(state);
     lv_obj_t* btn = static_cast<lv_obj_t*>(item);
     UiButtonData* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
-    if (data && data->magic == UiButtonData::MAGIC) {
+    if (data && data->magic == UiButtonData::kMagic) {
         // icon_position="top" or layout="column" with style_min_width="content"
         fit_column_min_width(btn, data);
     }
@@ -1104,7 +1104,7 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
         fmt_attr = lv_xml_get_value_of(attrs, "text-fmt");
     }
 
-    if (subject_name && subject_name[0] != '\0' && data && data->magic == UiButtonData::MAGIC) {
+    if (subject_name && subject_name[0] != '\0' && data && data->magic == UiButtonData::kMagic) {
         if (!data->label) {
             data->label = lv_label_create(btn);
             lv_obj_center(data->label);
@@ -1146,7 +1146,7 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
 
     // Handle bind_icon - bind the internal icon to a string subject
     const char* bind_icon = lv_xml_get_value_of(attrs, "bind_icon");
-    if (bind_icon && data && data->magic == UiButtonData::MAGIC) {
+    if (bind_icon && data && data->magic == UiButtonData::kMagic) {
         lv_subject_t* subject = lv_xml_get_subject(&state->scope, bind_icon);
         if (subject) {
             // If button has no icon yet, create one now
@@ -1233,7 +1233,7 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
     // 0=idle (original icon glyph), 1=busy (animated spinner in the icon slot),
     // 2=done ("check" glyph). Requires an icon to render into.
     const char* bind_op_state = lv_xml_get_value_of(attrs, "bind_op_state");
-    if (bind_op_state && bind_op_state[0] != '\0' && data && data->magic == UiButtonData::MAGIC) {
+    if (bind_op_state && bind_op_state[0] != '\0' && data && data->magic == UiButtonData::kMagic) {
         if (!data->icon) {
             spdlog::warn("[ui_button] bind_op_state '{}' ignored — button has no icon",
                          bind_op_state);
@@ -1260,7 +1260,7 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
 
     // Handle long_mode - set label text truncation mode (dots, clip, scroll, etc.)
     const char* long_mode = lv_xml_get_value_of(attrs, "long_mode");
-    if (long_mode && data && data->magic == UiButtonData::MAGIC && data->label) {
+    if (long_mode && data && data->magic == UiButtonData::kMagic && data->label) {
         lv_label_long_mode_t mode = LV_LABEL_LONG_MODE_WRAP; // default
         if (strcmp(long_mode, "dots") == 0)
             mode = LV_LABEL_LONG_MODE_DOTS;
@@ -1284,7 +1284,7 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
     // If button has a name, give icon a derived name so it can be found
     const char* btn_name = lv_obj_get_name(btn);
     if (btn_name && strlen(btn_name) > 0) {
-        if (data && data->magic == UiButtonData::MAGIC && data->icon) {
+        if (data && data->magic == UiButtonData::kMagic && data->icon) {
             // Set icon name as "{button_name}_icon"
             char icon_name[128];
             snprintf(icon_name, sizeof(icon_name), "%s_icon", btn_name);
@@ -1305,7 +1305,7 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
         label_hidden_subject = "ui_breakpoint";
         label_hidden_ref = label_hidden_bp;
     }
-    if (data && data->magic == UiButtonData::MAGIC && data->label) {
+    if (data && data->magic == UiButtonData::kMagic && data->label) {
         bind_part_hidden(state, btn, label_hidden_subject, label_hidden_ref, "label",
                          [](lv_observer_t* o, lv_subject_t* s) {
                              auto* target = static_cast<lv_obj_t*>(lv_observer_get_target_obj(o));
@@ -1319,7 +1319,7 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
     // hides the label while the condition holds, resolved in this button's scope.
     const char* label_hidden_cond = lv_xml_get_value_of(attrs, "label_hidden_cond");
     if (label_hidden_cond && label_hidden_cond[0] != '\0' && data &&
-        data->magic == UiButtonData::MAGIC && data->label) {
+        data->magic == UiButtonData::kMagic && data->label) {
         lv_xml_expr_t* expr = lv_xml_expr_compile(
             label_hidden_cond,
             [](void* ctx, const char* name) -> lv_subject_t* {
@@ -1340,7 +1340,7 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
 
     // The icon's spelling of label_hidden_subject: a button that reads as text
     // alone at some sizes keeps one declaration instead of two instances.
-    if (data && data->magic == UiButtonData::MAGIC && data->icon) {
+    if (data && data->magic == UiButtonData::kMagic && data->icon) {
         bind_part_hidden(state, btn, lv_xml_get_value_of(attrs, "icon_hidden_subject"),
                          lv_xml_get_value_of(attrs, "icon_hidden_if_eq"), "icon",
                          [](lv_observer_t* o, lv_subject_t* s) {
@@ -1358,11 +1358,11 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
     // returns to the row layout it declared at create time.
     const char* stacked_bp = lv_xml_get_value_of(attrs, "stacked_if_bp_lte");
     if ((stacked_bp || lv_xml_get_value_of(attrs, "stacked_subject")) && data &&
-        data->magic == UiButtonData::MAGIC) {
+        data->magic == UiButtonData::kMagic) {
         data->row_height = lv_obj_get_style_height(btn, LV_PART_MAIN);
         data->row_height_set = true;
     }
-    if (stacked_bp && data && data->magic == UiButtonData::MAGIC && data->icon && data->label) {
+    if (stacked_bp && data && data->magic == UiButtonData::kMagic && data->icon && data->label) {
         lv_subject_t* bp_subject = lv_xml_get_subject(&state->scope, "ui_breakpoint");
         if (bp_subject) {
             intptr_t ref_val = static_cast<intptr_t>(atoi(stacked_bp));
@@ -1388,7 +1388,7 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
     const char* stacked_subject = lv_xml_get_value_of(attrs, "stacked_subject");
     const char* stacked_ref = lv_xml_get_value_of(attrs, "stacked_if_eq");
     if (stacked_subject && stacked_subject[0] != '\0' && data &&
-        data->magic == UiButtonData::MAGIC && data->icon && data->label) {
+        data->magic == UiButtonData::kMagic && data->icon && data->label) {
         lv_subject_t* subject = lv_xml_get_subject(&state->scope, stacked_subject);
         if (subject && stacked_ref) {
             intptr_t ref_val = static_cast<intptr_t>(atoi(stacked_ref));
@@ -1420,7 +1420,7 @@ bool ui_button_owns_user_data(const lv_obj_t* obj) {
     }
     const auto* data =
         static_cast<const UiButtonData*>(lv_obj_get_user_data(const_cast<lv_obj_t*>(obj)));
-    return data && data->magic == UiButtonData::MAGIC;
+    return data && data->magic == UiButtonData::kMagic;
 }
 
 void ui_button_init() {
@@ -1437,7 +1437,7 @@ void ui_button_set_text(lv_obj_t* btn, const char* text) {
         return;
     }
     auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
-    if (!data || data->magic != UiButtonData::MAGIC || !data->label) {
+    if (!data || data->magic != UiButtonData::kMagic || !data->label) {
         return;
     }
     lv_label_set_text(data->label, text);
@@ -1451,7 +1451,7 @@ void ui_button_set_icon(lv_obj_t* btn, const char* icon_name) {
         return;
     }
     auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
-    if (!data || data->magic != UiButtonData::MAGIC || !data->icon) {
+    if (!data || data->magic != UiButtonData::kMagic || !data->icon) {
         return;
     }
 
@@ -1476,7 +1476,7 @@ void ui_button_set_label_hidden(lv_obj_t* btn, bool hidden) {
         return;
     }
     auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
-    if (!data || data->magic != UiButtonData::MAGIC || !data->label) {
+    if (!data || data->magic != UiButtonData::kMagic || !data->label) {
         return;
     }
     if (hidden) {
@@ -1495,7 +1495,7 @@ void ui_button_set_icon_hidden(lv_obj_t* btn, bool hidden) {
         return;
     }
     auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
-    if (!data || data->magic != UiButtonData::MAGIC || !data->icon) {
+    if (!data || data->magic != UiButtonData::kMagic || !data->icon) {
         return;
     }
     if (hidden) {
@@ -1514,7 +1514,7 @@ void ui_button_set_stacked(lv_obj_t* btn, bool stacked) {
         return;
     }
     auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
-    if (!data || data->magic != UiButtonData::MAGIC || !data->icon || !data->label) {
+    if (!data || data->magic != UiButtonData::kMagic || !data->icon || !data->label) {
         return;
     }
     if (stacked) {
@@ -1560,7 +1560,7 @@ lv_obj_t* ui_button_get_icon(lv_obj_t* btn) {
         return nullptr;
     }
     auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
-    if (!data || data->magic != UiButtonData::MAGIC) {
+    if (!data || data->magic != UiButtonData::kMagic) {
         return nullptr;
     }
     return data->icon;
@@ -1572,7 +1572,7 @@ lv_obj_t* ui_button_get_label(lv_obj_t* btn) {
         return nullptr;
     }
     auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
-    if (!data || data->magic != UiButtonData::MAGIC) {
+    if (!data || data->magic != UiButtonData::kMagic) {
         return nullptr;
     }
     return data->label;
@@ -1583,7 +1583,7 @@ lv_obj_t* ui_button_get_op_spinner(lv_obj_t* btn) {
         return nullptr;
     }
     auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
-    if (!data || data->magic != UiButtonData::MAGIC) {
+    if (!data || data->magic != UiButtonData::kMagic) {
         return nullptr;
     }
     return data->op_spinner;

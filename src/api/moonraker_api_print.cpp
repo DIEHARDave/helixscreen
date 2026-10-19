@@ -20,17 +20,17 @@ using namespace moonraker_internal;
 // Query Operations
 // ============================================================================
 
-void MoonrakerAPI::is_printer_ready(BoolCallback on_result, ErrorCallback on_error) {
+helix::KlippyStatus helix::parse_klippy_status(const json& info) {
+    return {helix::json_util::safe_string(info, "state", ""),
+            helix::json_util::safe_string(info, "state_message", "")};
+}
+
+void MoonrakerAPI::get_klippy_status(KlippyStatusCallback on_result, ErrorCallback on_error) {
     client_.send_jsonrpc(
         "printer.info", json::object(),
         [on_result](const json& response) {
-            bool ready = false;
-            if (response.contains("result") && response["result"].contains("state") &&
-                response["result"]["state"].is_string()) {
-                std::string state = response["result"]["state"].get<std::string>();
-                ready = (state == "ready");
-            }
-            on_result(ready);
+            const json* result = helix::json_util::find_member(response, "result");
+            on_result(result ? helix::parse_klippy_status(*result) : helix::KlippyStatus{});
         },
         on_error);
 }
@@ -62,10 +62,10 @@ void MoonrakerAPI::check_continue_print_state(
     // Deliberately logged at info: this is a SIDE-EFFECTFUL, at-most-once-per-
     // connection call, so a second line in a session's log is itself a bug
     // report. See the header warning and docs/devel/POWER_LOSS_RECOVERY.md.
-    spdlog::info("[Moonraker API] Creality PLR probe -> {}", helix::CREALITY_DETECT_RPC);
+    spdlog::info("[Moonraker API] Creality PLR probe -> {}", helix::kCrealityDetectRpc);
 
     client_.send_jsonrpc(
-        helix::CREALITY_DETECT_RPC, json::object(),
+        helix::kCrealityDetectRpc, json::object(),
         [on_result](const json& response) {
             helix::PlrDetectResult result;
             if (!helix::plr_parse_check_continue_response(response, result)) {
@@ -85,9 +85,9 @@ void MoonrakerAPI::check_continue_print_state(
 
 void MoonrakerAPI::cancel_continue_print(SuccessCallback on_success, ErrorCallback on_error) {
     spdlog::info("[Moonraker API] Discarding Creality PLR snapshot -> {}",
-                 helix::CREALITY_DISCARD_RPC);
+                 helix::kCrealityDiscardRpc);
     client_.send_jsonrpc(
-        helix::CREALITY_DISCARD_RPC, json::object(),
+        helix::kCrealityDiscardRpc, json::object(),
         [on_success](const json&) {
             if (on_success) {
                 on_success();

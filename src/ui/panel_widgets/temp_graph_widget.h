@@ -167,7 +167,7 @@ class TempGraphWidget : public PanelWidget {
             std::string name;    ///< Klipper sensor key
             std::string display; ///< Human-readable name
             bool enabled = true;
-            int color_idx = 0; ///< Index into TEMP_GRAPH_SERIES_COLORS palette
+            int color_idx = 0; ///< Index into kTempGraphSeriesColors palette
             lv_obj_t* swatch = nullptr;
             lv_obj_t* sw = nullptr;
         };

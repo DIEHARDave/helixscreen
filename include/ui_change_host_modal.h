@@ -79,7 +79,7 @@ void show_connection_failed_modal(const std::string& title, const std::string& m
 /// How long the connection-failed prompt browses mDNS before it shows.
 /// Under MdnsDiscovery's 3.5s query cycle, so the stop lands in its idle wait rather than
 /// a socket read, and the first query's answers are all in.
-constexpr uint32_t REDISCOVERY_WINDOW_MS = 3000;
+constexpr uint32_t kRediscoveryWindowMs = 3000;
 
 /**
  * @brief The one discovered Moonraker that is the saved printer at another address

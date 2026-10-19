@@ -120,7 +120,7 @@ class LedSettingsOverlay : public OverlayBase {
     lv_subject_t auto_preset_count_{};
     helix::xml::IndexedSubjectPool auto_preset_color_pool_{
         "led_auto_preset_color", helix::xml::IndexedSubjectPool::Type::Color};
-    /// One per STATE_ROWS entry: the preset index ringed, or -1.
+    /// One per kStateRows entry: the preset index ringed, or -1.
     helix::xml::IndexedSubjectPool auto_color_selected_pool_{
         "led_auto_color_sel", helix::xml::IndexedSubjectPool::Type::Int};
     std::vector<std::string> action_type_options_; // Maps dropdown index to action type string

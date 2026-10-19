@@ -179,11 +179,11 @@ std::string slot_card_name(const SlotInfo& slot, const SpoolIdentity* identity);
 
 /// Slot counts above this share the row too tightly for a name line; the card
 /// keeps its single, truncated material line.
-inline constexpr int SLOT_CARD_MAX_TWO_LINE_COUNT = 4;
+inline constexpr int kSlotCardMaxTwoLineCount = 4;
 
-/// Bytes a material keeps when more than SLOT_CARD_MAX_TWO_LINE_COUNT slots
+/// Bytes a material keeps when more than kSlotCardMaxTwoLineCount slots
 /// share the row.
-inline constexpr size_t SLOT_CARD_CROWDED_MATERIAL_BYTES = 4;
+inline constexpr size_t kSlotCardCrowdedMaterialBytes = 4;
 
 /**
  * @brief The two lines of an AMS slot card's filament label
@@ -199,9 +199,9 @@ struct SlotCardLines {
 /**
  * @brief Decide what an AMS slot card's filament label reads
  *
- * - Empty lane, more than SLOT_CARD_MAX_TWO_LINE_COUNT slots, or no name: one
+ * - Empty lane, more than kSlotCardMaxTwoLineCount slots, or no name: one
  *   line, @p material_text. A crowded row cuts a non-Empty material to
- *   SLOT_CARD_CROWDED_MATERIAL_BYTES bytes.
+ *   kSlotCardCrowdedMaterialBytes bytes.
  * - A name that already states the material, or a lane with no material: one
  *   line, the name.
  * - Otherwise the name over @p material_text.

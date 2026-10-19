@@ -54,15 +54,15 @@ TemperatureController::TemperatureController(PrinterState& state, IMoonrakerAPI*
  * The first three rungs preserve the long-standing 40/50/60 values so existing
  * behavior is unchanged; the fourth extends the ladder for the fourth slot.
  */
-inline constexpr std::array<int, presets::PRESET_COUNT> CHAMBER_PRESET_LADDER_C{40, 50, 60, 70};
+inline constexpr std::array<int, presets::kPresetCount> kChamberPresetLadderC{40, 50, 60, 70};
 
 HeaterPresets compute_heater_presets(HeaterType type) {
     HeaterPresets out{};
     out.off = 0;
 
-    for (int i = 0; i < presets::PRESET_COUNT; ++i) {
+    for (int i = 0; i < presets::kPresetCount; ++i) {
         if (type == HeaterType::Chamber) {
-            out.material[i] = CHAMBER_PRESET_LADDER_C[i];
+            out.material[i] = kChamberPresetLadderC[i];
             continue;
         }
 
@@ -87,7 +87,7 @@ HeaterPresets compute_heater_presets(HeaterType type) {
 }
 
 void TemperatureController::refresh_presets() {
-    for (int t = 0; t < HEATER_TYPE_COUNT; ++t) {
+    for (int t = 0; t < kHeaterTypeCount; ++t) {
         model_[t].presets = compute_heater_presets(static_cast<HeaterType>(t));
     }
     spdlog::debug("[TempController] Presets refreshed for slots [{}, {}, {}, {}]", presets::name(0),

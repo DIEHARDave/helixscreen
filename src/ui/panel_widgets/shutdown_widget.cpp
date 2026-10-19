@@ -34,7 +34,7 @@ namespace {
 // OS-level shutdown can silently no-op on some firmwares (observed on SonicPad
 // Jpe230 — logind.PowerOff returns without initiating the shutdown). If the
 // WebSocket has reconnected within this window, the host is clearly still up.
-constexpr uint32_t VERIFICATION_WINDOW_MS = 20000;
+constexpr uint32_t kVerificationWindowMs = 20000;
 
 struct VerifyCtx {
     IMoonrakerAPI* api;
@@ -51,7 +51,7 @@ void verify_host_down_timer_cb(lv_timer_t* timer) {
 
     const char* action = ctx->is_reboot ? "reboot" : "shutdown";
     spdlog::warn("[ShutdownDialog] Host still reachable {}s after {} — {} silently failed",
-                 VERIFICATION_WINDOW_MS / 1000, action, action);
+                 kVerificationWindowMs / 1000, action, action);
 
     const char* msg = ctx->is_reboot ? lv_tr("Reboot failed — host is still reachable")
                                      : lv_tr("Shutdown failed — host is still reachable");
@@ -66,7 +66,7 @@ void schedule_host_down_verification(IMoonrakerAPI* api, bool is_reboot) {
     }
     helix::ui::queue_update("ShutdownDialog::verify", [api, is_reboot]() {
         auto* ctx = new VerifyCtx{api, is_reboot};
-        lv_timer_create(verify_host_down_timer_cb, VERIFICATION_WINDOW_MS, ctx);
+        lv_timer_create(verify_host_down_timer_cb, kVerificationWindowMs, ctx);
     });
 }
 
@@ -80,13 +80,13 @@ void schedule_host_down_verification(IMoonrakerAPI* api, bool is_reboot) {
 // button itself. We don't depend on which descendant emitted the event; the
 // walk-up only needs to reach the named view-root ancestor (per L069).
 ShutdownModal* find_shutdown_modal(lv_event_t* e) {
-    constexpr const char* VIEW_NAME = "shutdown_modal";
-    constexpr size_t VIEW_NAME_LEN = 14;
+    constexpr const char* kViewName = "shutdown_modal";
+    constexpr size_t kViewNameLen = 14;
     lv_obj_t* obj = lv_event_get_current_target_obj(e);
     while (obj) {
         const char* name = lv_obj_get_name(obj);
-        if (name && std::strncmp(name, VIEW_NAME, VIEW_NAME_LEN) == 0 &&
-            (name[VIEW_NAME_LEN] == '\0' || name[VIEW_NAME_LEN] == '_')) {
+        if (name && std::strncmp(name, kViewName, kViewNameLen) == 0 &&
+            (name[kViewNameLen] == '\0' || name[kViewNameLen] == '_')) {
             return static_cast<ShutdownModal*>(lv_obj_get_user_data(obj));
         }
         obj = lv_obj_get_parent(obj);

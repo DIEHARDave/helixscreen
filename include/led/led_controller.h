@@ -412,10 +412,10 @@ class LedController {
     }
 
     /// How long a WLED discovery may go unanswered before it counts as settled.
-    static constexpr uint32_t WLED_DISCOVERY_TIMEOUT_MS = 5000;
+    static constexpr uint32_t kWledDiscoveryTimeoutMs = 5000;
 
     /// True from discover_wled_strips() until that discovery settles: strips
-    /// arrive, none are configured, it fails, or WLED_DISCOVERY_TIMEOUT_MS passes.
+    /// arrive, none are configured, it fails, or kWledDiscoveryTimeoutMs passes.
     [[nodiscard]] bool wled_discovery_pending() const {
         return wled_discovery_pending_;
     }

@@ -63,15 +63,14 @@ class SubscriptionGuard {
     }
 
     SubscriptionGuard(SubscriptionGuard&& other) noexcept
-        : subscription_id_(std::exchange(other.subscription_id_, helix::INVALID_SUBSCRIPTION_ID)),
+        : subscription_id_(std::exchange(other.subscription_id_, helix::kInvalidSubscriptionId)),
           lifetime_(std::exchange(other.lifetime_, {})),
           unsubscribe_fn_(std::exchange(other.unsubscribe_fn_, {})) {}
 
     SubscriptionGuard& operator=(SubscriptionGuard&& other) noexcept {
         if (this != &other) {
             reset();
-            subscription_id_ =
-                std::exchange(other.subscription_id_, helix::INVALID_SUBSCRIPTION_ID);
+            subscription_id_ = std::exchange(other.subscription_id_, helix::kInvalidSubscriptionId);
             lifetime_ = std::exchange(other.lifetime_, {});
             unsubscribe_fn_ = std::exchange(other.unsubscribe_fn_, {});
         }
@@ -88,7 +87,7 @@ class SubscriptionGuard {
      * is skipped with a warning log. This prevents crashes from shutdown ordering.
      */
     void reset() {
-        if (unsubscribe_fn_ && subscription_id_ != helix::INVALID_SUBSCRIPTION_ID) {
+        if (unsubscribe_fn_ && subscription_id_ != helix::kInvalidSubscriptionId) {
             if (lifetime_.expired()) {
                 spdlog::warn("[SubscriptionGuard] Client destroyed before unsubscribe (id={}), "
                              "releasing",
@@ -96,7 +95,7 @@ class SubscriptionGuard {
             } else {
                 unsubscribe_fn_(subscription_id_);
             }
-            subscription_id_ = helix::INVALID_SUBSCRIPTION_ID;
+            subscription_id_ = helix::kInvalidSubscriptionId;
         }
         unsubscribe_fn_ = {};
         lifetime_.reset();
@@ -111,14 +110,14 @@ class SubscriptionGuard {
     void release() {
         unsubscribe_fn_ = {};
         lifetime_.reset();
-        subscription_id_ = helix::INVALID_SUBSCRIPTION_ID;
+        subscription_id_ = helix::kInvalidSubscriptionId;
     }
 
     /**
      * @brief Check if guard holds a valid subscription
      */
     explicit operator bool() const {
-        return unsubscribe_fn_ && subscription_id_ != helix::INVALID_SUBSCRIPTION_ID;
+        return unsubscribe_fn_ && subscription_id_ != helix::kInvalidSubscriptionId;
     }
 
     /**
@@ -129,7 +128,7 @@ class SubscriptionGuard {
     }
 
   private:
-    helix::SubscriptionId subscription_id_ = helix::INVALID_SUBSCRIPTION_ID;
+    helix::SubscriptionId subscription_id_ = helix::kInvalidSubscriptionId;
     std::weak_ptr<bool> lifetime_; ///< Tracks client lifetime — expired = client destroyed
     std::function<void(helix::SubscriptionId)> unsubscribe_fn_;
 };

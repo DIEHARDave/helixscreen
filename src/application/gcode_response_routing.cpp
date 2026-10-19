@@ -58,7 +58,7 @@ void GcodeResponseRouting::attach(IMoonrakerClient* client, IMoonrakerAPI* api) 
                         ui::report_action_prompt_gcode_failure(err.localized_message());
                     });
                 },
-                IMoonrakerAPI::MACRO_TIMEOUT_MS);
+                IMoonrakerAPI::kMacroTimeoutMs);
         });
     }
 
@@ -70,7 +70,7 @@ void GcodeResponseRouting::attach(IMoonrakerClient* client, IMoonrakerAPI* api) 
         }
         spdlog::info("[ActionPrompt] Closed on screen, sending prompt_end");
         api->execute_gcode(
-            ActionPromptManager::PROMPT_END_GCODE, nullptr,
+            ActionPromptManager::kPromptEndGcode, nullptr,
             [](const MoonrakerError& err) {
                 spdlog::warn("[ActionPrompt] prompt_end failed: {}", err.message);
             },

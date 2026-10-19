@@ -103,7 +103,7 @@ void DisplaySettingsOverlay::register_callbacks() {
          [](lv_event_t* e) {
              DisplaySettingsManager::instance().set_sleep_while_printing(event_checked(e));
          }},
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
         {"on_screensaver_changed",
          [](lv_event_t* e) {
              get_display_settings_overlay().handle_screensaver_changed(event_selected(e));
@@ -138,14 +138,8 @@ void DisplaySettingsOverlay::on_activate() {
     init_sleep_dropdown();
     init_ui_scale_dropdown();
 
-// The firmware defines HELIX_ENABLE_SCREENSAVER as 0 and links no ScreensaverManager, so these
-// test its value, not whether it is defined.
 #if HELIX_ENABLE_SCREENSAVER
     init_screensaver_dropdown();
-#else
-    if (lv_obj_t* ss_row = helix::ui::find_required(overlay_root_, "row_screensaver", get_name())) {
-        lv_obj_add_flag(ss_row, LV_OBJ_FLAG_HIDDEN);
-    }
 #endif
 }
 
@@ -179,16 +173,18 @@ void DisplaySettingsOverlay::init_brightness_controls() {
     }
 }
 
+// Both rows edit the dim timeout; settings_dim_row_kind shows at most one of them.
 void DisplaySettingsOverlay::init_dim_dropdown() {
-    lv_obj_t* dim_row = helix::ui::find_required(overlay_root_, "row_display_dim", get_name());
-    if (lv_obj_t* dim_dropdown = helix::ui::find_required(dim_row, "dropdown", get_name())) {
-        int current_sec = DisplaySettingsManager::instance().get_display_dim_sec();
-        int index = DisplaySettingsManager::dim_seconds_to_index(current_sec);
-        lv_dropdown_set_selected(dim_dropdown, index);
-
-        spdlog::debug("[{}] Dim dropdown initialized to index {} ({}s)", get_name(), index,
-                      current_sec);
+    int current_sec = DisplaySettingsManager::instance().get_display_dim_sec();
+    int index = DisplaySettingsManager::dim_seconds_to_index(current_sec);
+    for (const char* row_name : {"row_display_dim", "row_screensaver_after"}) {
+        lv_obj_t* row = helix::ui::find_required(overlay_root_, row_name, get_name());
+        if (lv_obj_t* dropdown = helix::ui::find_required(row, "dropdown", get_name())) {
+            lv_dropdown_set_selected(dropdown, index);
+        }
     }
+    spdlog::debug("[{}] Dim dropdowns initialized to index {} ({}s)", get_name(), index,
+                  current_sec);
 }
 
 void DisplaySettingsOverlay::init_sleep_dropdown() {
@@ -290,7 +286,7 @@ void DisplaySettingsOverlay::init_screensaver_dropdown() {
         if (!options.empty()) {
             options += "\n";
         }
-        const char* label = lv_tr(info ? info->label_key : helix::ui::SCREENSAVER_OFF_LABEL_KEY);
+        const char* label = lv_tr(info ? info->label_key : helix::ui::kScreensaverOffLabelKey);
         options += label;
         if (type == runs && runs_too_heavy) {
             options += std::string(" (") + lv_tr("too slow") + ")";
@@ -305,13 +301,13 @@ void DisplaySettingsOverlay::init_screensaver_dropdown() {
     lv_dropdown_set_selected(dropdown, static_cast<uint32_t>(index));
 
     spdlog::debug("[{}] Screensaver dropdown: {} of {} savers offered, stored type {} runs as {}",
-                  get_name(), screensaver_choices_.size() - 1, helix::ui::SCREENSAVER_COUNT,
+                  get_name(), screensaver_choices_.size() - 1, helix::ui::kScreensaverCount,
                   static_cast<int>(configured), static_cast<int>(runs));
 #endif
 }
 
 void DisplaySettingsOverlay::handle_screensaver_changed(int index) {
-#ifndef HELIX_ENABLE_SCREENSAVER
+#if !HELIX_ENABLE_SCREENSAVER
     (void)index;
 #else
     if (index < 0 || static_cast<size_t>(index) >= screensaver_choices_.size()) {

@@ -188,13 +188,13 @@ TEST_CASE_METHOD(HelixTestFixture, "apply_resolved_lane reads the backend's own 
 TEST_CASE_METHOD(HelixTestFixture, "An unregistered backend resolves nothing onto its slot",
                  "[lane][readpath]") {
     // backend_index_ rests at -1 until AmsState stamps it, which makes
-    // lane_id() INVALID_LANE_ID. Nothing is filed there and nothing resolves
+    // lane_id() kInvalidLaneId. Nothing is filed there and nothing resolves
     // from there, so a backend reading before registration leaves its own
     // values standing rather than painting the resolver's defaults across
     // every slot it owns.
     ProbeBackend unregistered(4);
     REQUIRE(unregistered.backend_index() == -1);
-    REQUIRE(unregistered.lane_id(0) == helix::ams::INVALID_LANE_ID);
+    REQUIRE(unregistered.lane_id(0) == helix::ams::kInvalidLaneId);
 
     const SlotInfo built = firmware_built_slot();
     SlotInfo slot = built;

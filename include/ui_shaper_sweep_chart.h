@@ -20,9 +20,9 @@ namespace helix::ui {
 
 /// The input shaper charts' frequency axis, Hz. The results charts and the
 /// live chart share it so a curve sits at the same x on both.
-inline constexpr float SHAPER_CHART_MAX_HZ = 200.0f;
+inline constexpr float kShaperChartMaxHz = 200.0f;
 /// Amplitude axis ceiling over the tallest point.
-inline constexpr float SHAPER_CHART_HEADROOM = 1.1f;
+inline constexpr float kShaperChartHeadroom = 1.1f;
 
 /// The results charts' raw PSD series color; the live curve uses it too.
 [[nodiscard]] lv_color_t shaper_raw_psd_color();
@@ -38,7 +38,7 @@ inline constexpr float SHAPER_CHART_HEADROOM = 1.1f;
 
 /// The measured curve's look on every input shaper chart, live and final:
 /// the belt chart's filled, glowing curve, so the swap to the CSV is seamless.
-inline constexpr FrChartSeriesStyle SHAPER_MEASURED_STYLE{3, true, true};
+inline constexpr FrChartSeriesStyle kShaperMeasuredStyle{3, true, true};
 
 /**
  * @brief The input shaper's live sweep chart
@@ -93,7 +93,7 @@ class ShaperSweepChart {
 
   private:
     void on_points(const std::vector<helix::calibration::SweepPoint>& points);
-    /// Main thread: one set_data, amplitude range 0..max * SHAPER_CHART_HEADROOM.
+    /// Main thread: one set_data, amplitude range 0..max * kShaperChartHeadroom.
     void draw(const std::vector<float>& freqs, const std::vector<float>& amps, float max_amp);
     void set_has_curve(bool has_curve);
 

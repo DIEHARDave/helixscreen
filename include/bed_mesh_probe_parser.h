@@ -152,7 +152,7 @@ inline std::optional<ProbePosition> parse_probe_position(const std::string& line
 /// 0.5mm apart. Real grid spacing is millimetres at the very tightest (tens of
 /// mm on the beds that actually run re-check passes), so 0.5 separates
 /// neighbours with room to spare.
-inline constexpr double PROBE_POSITION_TOLERANCE_MM = 0.5;
+inline constexpr double kProbePositionToleranceMm = 0.5;
 
 /**
  * @brief Counts distinct mesh points from Klipper's per-sample probe output
@@ -256,8 +256,8 @@ class ProbePointCounter {
 
   private:
     static bool same_point(const ProbePosition& a, const ProbePosition& b) {
-        return std::fabs(a.x - b.x) <= PROBE_POSITION_TOLERANCE_MM &&
-               std::fabs(a.y - b.y) <= PROBE_POSITION_TOLERANCE_MM;
+        return std::fabs(a.x - b.x) <= kProbePositionToleranceMm &&
+               std::fabs(a.y - b.y) <= kProbePositionToleranceMm;
     }
 
     /// Take back everything the samples before a "Result is z=" line added.

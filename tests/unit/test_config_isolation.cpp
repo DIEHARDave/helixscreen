@@ -36,7 +36,7 @@ bool under_sandbox(const std::string& path) {
     return !sandbox.empty() && path.rfind(sandbox, 0) == 0;
 }
 
-constexpr const char* PROBE_STRIP = "neopixel:config_isolation_probe";
+constexpr const char* kProbeStrip = "neopixel:config_isolation_probe";
 
 std::string probe_key(Config* cfg) {
     return cfg->df() + "leds/selected_strips";
@@ -80,7 +80,7 @@ TEST_CASE_METHOD(HelixTestFixture, "Config singleton is sandboxed and reset per 
     // with a fresh fixture in between. That is the cross-test contamination
     // this pair proves is gone.
     SECTION("writer: persists a distinctive LED selection") {
-        cfg->set(probe_key(cfg), json::array({PROBE_STRIP}));
+        cfg->set(probe_key(cfg), json::array({kProbeStrip}));
         REQUIRE(cfg->get_string_array(probe_key(cfg)).size() == 1);
         REQUIRE(cfg->save());
     }

@@ -24,7 +24,7 @@ namespace {
 constexpr const char* ROOT = "gcodes";
 
 /// Summaries kept at once; a folder of archives scrolls through a few dozen.
-constexpr size_t CACHE_ENTRIES = 64;
+constexpr size_t kCacheEntries = 64;
 
 std::string error_text(const std::string& path, zip::ZipError error) {
     return path + ": " + zip::zip_error_name(error);
@@ -79,7 +79,7 @@ void apply_slice_info(const std::shared_ptr<SummaryJob>& job, const zip::ZipEntr
     const std::string_view data = zip::entry_bytes(lh, n, entry, err);
     std::string xml;
     if (err == zip::ZipError::None) {
-        zip::inflate_entry_to_string<RawInflate>(entry, data, SLICE_INFO_MAX_BYTES, xml, err);
+        zip::inflate_entry_to_string<RawInflate>(entry, data, kSliceInfoMaxBytes, xml, err);
     }
     if (err != zip::ZipError::None) {
         // The plates still print; only their time and filament go unknown.
@@ -108,7 +108,7 @@ void read_plates(const std::shared_ptr<SummaryJob>& job) {
         }
         job->summary.plates.push_back(std::move(plate));
     }
-    const zip::ZipEntry* info = find_archive_entry(job->entries, SLICE_INFO_ENTRY);
+    const zip::ZipEntry* info = find_archive_entry(job->entries, kSliceInfoEntry);
     if (job->summary.plates.empty() || !info) {
         finish(job);
         return;
@@ -125,7 +125,7 @@ void read_plates(const std::shared_ptr<SummaryJob>& job) {
             return;
         }
     }
-    if (!zip::entry_fits(*info, SLICE_INFO_MAX_BYTES)) {
+    if (!zip::entry_fits(*info, kSliceInfoMaxBytes)) {
         spdlog::warn("[ThreeMfReader] slice_info in {} is too large to read", job->path);
         finish(job);
         return;
@@ -160,7 +160,7 @@ void read_tail_unsized(const std::shared_ptr<SummaryJob>& job) {
         return;
     }
     job->transfers->download_file_tail(
-        ROOT, job->path, zip::ZIP_TAIL_READ_BYTES,
+        ROOT, job->path, zip::kZipTailReadBytes,
         [job](const std::string& bytes) {
             if (abandoned(job)) {
                 return;
@@ -206,7 +206,7 @@ void parse_tail(const std::shared_ptr<SummaryJob>& job, uint64_t len, bool may_g
     if (!zip::parse_central_directory(bytes_of(job->tail), job->tail.size(), job->size,
                                       job->entries, err, &needed)) {
         if (err == zip::ZipError::Truncated && may_grow && needed > len &&
-            needed <= MAX_CENTRAL_DIRECTORY_BYTES) {
+            needed <= kMaxCentralDirectoryBytes) {
             read_tail(job, needed, false);
             return;
         }
@@ -250,7 +250,7 @@ std::string lower_hex(std::string_view s) {
 
 zip::ZipError extract_from(FILE* in, uint64_t size, int plate_index, FILE* out) {
     std::string tail;
-    const uint64_t tail_len = std::min<uint64_t>(size, zip::ZIP_TAIL_READ_BYTES);
+    const uint64_t tail_len = std::min<uint64_t>(size, zip::kZipTailReadBytes);
     if (!read_at(in, size - tail_len, static_cast<size_t>(tail_len), tail)) {
         return zip::ZipError::Io;
     }
@@ -259,7 +259,7 @@ zip::ZipError extract_from(FILE* in, uint64_t size, int plate_index, FILE* out) 
     uint64_t needed = 0;
     if (!zip::parse_central_directory(bytes_of(tail), tail.size(), size, entries, err, &needed)) {
         if (err != zip::ZipError::Truncated || needed <= tail_len ||
-            needed > MAX_CENTRAL_DIRECTORY_BYTES ||
+            needed > kMaxCentralDirectoryBytes ||
             !read_at(in, size - needed, static_cast<size_t>(needed), tail) ||
             !zip::parse_central_directory(bytes_of(tail), tail.size(), size, entries, err)) {
             return err == zip::ZipError::None ? zip::ZipError::Io : err;
@@ -298,9 +298,9 @@ zip::ZipError extract_from(FILE* in, uint64_t size, int plate_index, FILE* out) 
 
     const zip::ZipEntry& gcode = *plate->gcode;
     std::string header;
-    const size_t header_len = static_cast<size_t>(std::min<uint64_t>(
-        zip::ZIP_LOCAL_HEADER_BYTES + gcode.name.size() + zip::ZIP_LOCAL_EXTRA_SLACK,
-        size - std::min(size, gcode.lh_offset)));
+    const size_t header_len = static_cast<size_t>(
+        std::min<uint64_t>(zip::kZipLocalHeaderBytes + gcode.name.size() + zip::kZipLocalExtraSlack,
+                           size - std::min(size, gcode.lh_offset)));
     read_at(in, gcode.lh_offset, header_len, header);
     const auto data_offset = zip::entry_data_offset(bytes_of(header), header.size(), gcode);
     if (!data_offset) {
@@ -469,19 +469,19 @@ void ThreeMfReader::read_summary(const std::string& path, uint64_t size, double 
         }
         std::lock_guard<std::mutex> lock(cache->mutex);
         cache->summaries.put(path, version, summary);
-        cache->summaries.evict(CACHE_ENTRIES); // the least recently used go first
+        cache->summaries.evict(kCacheEntries); // the least recently used go first
     };
     if (size == 0) {
         read_tail_unsized(job);
         return;
     }
-    read_tail(job, std::min<uint64_t>(size, zip::ZIP_TAIL_READ_BYTES), true);
+    read_tail(job, std::min<uint64_t>(size, zip::kZipTailReadBytes), true);
 }
 
 void ThreeMfReader::read_entry(ITransfersAPI& transfers, const std::string& path,
                                const zip::ZipEntry& entry, BytesCallback on_done,
                                ErrorCallback on_error, ITransfersAPI::CancelFlag cancelled) {
-    if (!zip::entry_fits(entry, MAX_ENTRY_BYTES)) {
+    if (!zip::entry_fits(entry, kMaxEntryBytes)) {
         on_error(error_text(path + "/" + entry.name, zip::ZipError::Truncated));
         return;
     }
@@ -493,7 +493,7 @@ void ThreeMfReader::read_entry(ITransfersAPI& transfers, const std::string& path
             }
             zip::ZipError err = zip::ZipError::None;
             std::string out;
-            if (!entry_payload(bytes, entry, MAX_ENTRY_BYTES, out, err)) {
+            if (!entry_payload(bytes, entry, kMaxEntryBytes, out, err)) {
                 on_error(error_text(path + "/" + entry.name, err));
                 return;
             }
@@ -515,7 +515,7 @@ void ThreeMfReader::read_entry_head(ITransfersAPI& transfers, const std::string&
     // max_bytes of the compressed stream inflate to at least max_bytes.
     const uint64_t take = std::min<uint64_t>(entry.csize, max_bytes);
     const uint64_t span =
-        zip::ZIP_LOCAL_HEADER_BYTES + entry.name.size() + zip::ZIP_LOCAL_EXTRA_SLACK + take;
+        zip::kZipLocalHeaderBytes + entry.name.size() + zip::kZipLocalExtraSlack + take;
     auto stopped = [cancelled]() { return cancelled && cancelled->load(); };
     transfers.download_file_range(
         ROOT, path, entry.lh_offset, static_cast<size_t>(span),

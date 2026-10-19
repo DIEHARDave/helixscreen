@@ -53,24 +53,24 @@ void register_fan_stack_widget() {
 namespace {
 
 // Fan-related icons available in the font
-static const char* const FAN_ICONS[] = {
+static const char* const kFanIcons[] = {
     // clang-format off
     "fan",       "fan_off",    "cooldown",   "heat_wave",
     // clang-format on
 };
-static constexpr size_t FAN_ICON_COUNT = std::size(FAN_ICONS);
-static constexpr const char* DEFAULT_FAN_ICON = "fan";
+static constexpr size_t kFanIconCount = std::size(kFanIcons);
+static constexpr const char* kDefaultFanIcon = "fan";
 
 } // namespace
 
 namespace {
 // Text font token for the stacked icon-above layout, and the token the fit is
 // measured at. One name so the measurement and the applied font cannot drift.
-constexpr const char* FONT_STACKED = "font_body";
+constexpr const char* kFontStacked = "font_body";
 
 // Widest speed the label ever shows. Measured instead of the live value so the
 // name beside it does not reflow when a fan spins up from 0% to 100%.
-constexpr const char* WIDEST_SPEED_TEXT = "100%";
+constexpr const char* kWidestSpeedText = "100%";
 
 // How much of a fan's name a row has room for, longest first. Letter is the
 // floor: it is used when nothing longer fits.
@@ -236,7 +236,7 @@ void FanStackWidget::on_size_changed(int colspan, int rowspan, int width_px, int
     if (!widget_obj_ || is_carousel_mode())
         return;
 
-    static_assert(ICON_ABOVE_MIN_ROWSPAN == GridLayout::TRACKS_PER_CELL + 1,
+    static_assert(kIconAboveMinRowspan == GridLayout::TRACKS_PER_CELL + 1,
                   "The stacked layout starts one track above a whole authored cell");
 
     const char* row_names[] = {"fan_stack_part_row", "fan_stack_hotend_row", "fan_stack_aux_row"};
@@ -271,7 +271,7 @@ void FanStackWidget::on_size_changed(int colspan, int rowspan, int width_px, int
 
     // Measure the layout being considered, not the one on screen: stacking
     // buys its vertical room back as type, so ask whether the LARGER text fits.
-    const lv_font_t* stacked_font = theme_manager_get_font(FONT_STACKED);
+    const lv_font_t* stacked_font = theme_manager_get_font(kFontStacked);
     const StackedRowMetrics stacked_row{
         static_cast<int>(mdi_icons_24.line_height),
         stacked_font ? static_cast<int>(stacked_font->line_height) : 0, icon_gap_px};
@@ -279,7 +279,7 @@ void FanStackWidget::on_size_changed(int colspan, int rowspan, int width_px, int
     const bool icon_above =
         wants_icon_above(rowspan, height_px, visible_rows, stacked_row, row_gap_px);
 
-    const char* font_token = icon_above ? FONT_STACKED : (bigger ? "font_small" : "font_xs");
+    const char* font_token = icon_above ? kFontStacked : (bigger ? "font_small" : "font_xs");
     const lv_font_t* text_font = theme_manager_get_font(font_token);
     if (!text_font)
         return;
@@ -346,7 +346,7 @@ void FanStackWidget::on_size_changed(int colspan, int rowspan, int width_px, int
         int content_w = lv_obj_get_content_width(widget_obj_);
         if (content_w <= 0)
             content_w = width_px;
-        const int avail_px = content_w - measure_text_px(WIDEST_SPEED_TEXT, text_font) - row_gap_px;
+        const int avail_px = content_w - measure_text_px(kWidestSpeedText, text_font) - row_gap_px;
 
         auto fits_every_row = [&](NameForm f) {
             for (const auto& m : name_map) {
@@ -420,7 +420,7 @@ void FanStackWidget::on_size_changed(int colspan, int rowspan, int width_px, int
             if (!label)
                 continue;
             lv_point_t worst = {0, 0};
-            lv_text_get_size(&worst, WIDEST_SPEED_TEXT, text_font,
+            lv_text_get_size(&worst, kWidestSpeedText, text_font,
                              lv_obj_get_style_text_letter_space(label, LV_PART_MAIN), 0,
                              LV_COORD_MAX, LV_TEXT_FLAG_NONE);
             lv_obj_set_style_min_width(label, worst.x, 0);
@@ -747,9 +747,9 @@ void FanStackWidget::bind_carousel_fans() {
 
             // Don't let stale telemetry overwrite the user's optimistic value
             // during the Moonraker round-trip (mirrors FanDial).
-            constexpr uint32_t POST_INPUT_SUPPRESSION_MS = 400;
+            constexpr uint32_t kPostInputSuppressionMs = 400;
             if (cp.last_user_input_ms != 0 &&
-                (lv_tick_get() - cp.last_user_input_ms) < POST_INPUT_SUPPRESSION_MS)
+                (lv_tick_get() - cp.last_user_input_ms) < kPostInputSuppressionMs)
                 return;
 
             if (cp.arc) {
@@ -771,7 +771,7 @@ void FanStackWidget::bind_carousel_fans() {
     // Attach auto-resize AFTER all pages are reparented into the carousel.
     // Doing it inside the loop above would trigger an initial resize before the
     // carousel layout is finalized, resulting in 0x0 container dimensions and
-    // the arc collapsing to MIN_ARC_SIZE.
+    // the arc collapsing to kMinArcSize.
     lv_obj_update_layout(carousel);
     auto* state = ui_carousel_get_state(carousel);
     if (state && state->scroll_container) {
@@ -1029,12 +1029,12 @@ void FanStackWidget::ConfigurePicker::on_created(lv_obj_t* backdrop) {
         return;
     }
 
-    std::string effective_icon = owner_.icon_name_.empty() ? DEFAULT_FAN_ICON : owner_.icon_name_;
+    std::string effective_icon = owner_.icon_name_.empty() ? kDefaultFanIcon : owner_.icon_name_;
 
-    helix::ui::populate_icon_grid(icon_grid, FAN_ICONS, FAN_ICON_COUNT, effective_icon,
+    helix::ui::populate_icon_grid(icon_grid, kFanIcons, kFanIconCount, effective_icon,
                                   [this](const char* name) { owner_.select_icon(name); });
 
-    spdlog::debug("[FanStackWidget] Picker built with {} icons", FAN_ICON_COUNT);
+    spdlog::debug("[FanStackWidget] Picker built with {} icons", kFanIconCount);
 }
 
 // DECLARATIVE_OK: the grid cells are created in C++, so their selection border has
@@ -1049,7 +1049,7 @@ void FanStackWidget::ConfigurePicker::refresh_icon_highlights() {
         return;
     }
 
-    std::string effective = owner_.icon_name_.empty() ? DEFAULT_FAN_ICON : owner_.icon_name_;
+    std::string effective = owner_.icon_name_.empty() ? kDefaultFanIcon : owner_.icon_name_;
     helix::ui::refresh_icon_grid(icon_grid, effective);
 }
 
@@ -1061,7 +1061,7 @@ void FanStackWidget::select_fan(const std::string& object_name) {
 }
 
 void FanStackWidget::select_icon(const std::string& name) {
-    icon_name_ = (name == DEFAULT_FAN_ICON) ? "" : name;
+    icon_name_ = (name == kDefaultFanIcon) ? "" : name;
     save_fan_config();
     picker_.refresh_icon_highlights();
 
@@ -1078,5 +1078,5 @@ void FanStackWidget::save_fan_config() {
     save_widget_config(config);
     spdlog::debug("[FanStackWidget] Saved config: {} fan={} icon={}", instance_id_,
                   selected_fan_.empty() ? "(auto)" : selected_fan_,
-                  icon_name_.empty() ? DEFAULT_FAN_ICON : icon_name_);
+                  icon_name_.empty() ? kDefaultFanIcon : icon_name_);
 }

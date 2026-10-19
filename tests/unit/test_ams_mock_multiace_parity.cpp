@@ -84,6 +84,20 @@ TEST_CASE_METHOD(MultiaceMockEnv, "mock multiace frame parses as head mode", "[m
     CHECK(d.head_source->at(0)->color_hex == "FF0000");
     CHECK_FALSE(d.head_source->at(1).has_value());
 
+    // One unit wires one head; the heads past it are side-feeder heads, the
+    // engine's own 1:1 rule.
+    REQUIRE(d.head_ace.has_value());
+    CHECK((*d.head_ace)[0] == 0);
+    for (int h = 1; h < 4; ++h) {
+        CHECK((*d.head_ace)[static_cast<size_t>(h)] == -1);
+    }
+    REQUIRE(d.head_feeder.has_value());
+    for (int h = 1; h < 4; ++h) {
+        CHECK((*d.head_feeder)[static_cast<size_t>(h)]);
+    }
+    REQUIRE(d.ace_heads.has_value());
+    CHECK(*d.ace_heads == std::vector<int>{0});
+
     // Head mode: head h loads the four bays of the unit wired to it.
     const std::array<multiace::HeadFeed, 4> feed{};
     REQUIRE(d.head_ace.has_value());
@@ -143,15 +157,35 @@ TEST_CASE_METHOD(MultiaceMockEnv, "mock multiace clamps out-of-range ACE and SLO
                  "[multiace][mock]") {
     MoonrakerClientMock client(MoonrakerClientMock::PrinterType::SNAPMAKER_U1);
     // A malformed command must not reach the route table or the bay seeds:
-    // ACE 99 clamps to the one unit, SLOT 99 to the last bay.
-    REQUIRE(client.gcode_script("ACE_LOAD_HEAD HEAD=1 ACE=99 SLOT=99") == 0);
+    // ACE 99 clamps to the one unit, SLOT 99 to the last bay. Head 1 is the
+    // one head the single unit wires, and its resting route has to go first.
+    REQUIRE(client.gcode_script("ACE_UNLOAD_HEAD HEAD=0") == 0);
+    REQUIRE(client.gcode_script("ACE_LOAD_HEAD HEAD=0 ACE=99 SLOT=99") == 0);
 
     const multiace::StatusDelta d = multiace::parse_ace_status(client.multiace_status_json());
     REQUIRE(d.head_source.has_value());
-    REQUIRE(d.head_source->at(1).has_value());
-    CHECK(d.head_source->at(1)->ace == 0);
-    CHECK(d.head_source->at(1)->slot == 3);
-    CHECK(d.head_source->at(1)->type == "PLA");
+    REQUIRE(d.head_source->at(0).has_value());
+    CHECK(d.head_source->at(0)->ace == 0);
+    CHECK(d.head_source->at(0)->slot == 3);
+    CHECK(d.head_source->at(0)->type == "PLA");
+}
+
+TEST_CASE_METHOD(MultiaceMockEnv, "mock multiace feeds a feeder head from its side port",
+                 "[multiace][mock]") {
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::SNAPMAKER_U1);
+
+    // A feeder head loads and unloads through the engine like any head, but
+    // no bay is routed to it and head_source stays null.
+    REQUIRE(client.gcode_script("ACE_LOAD_HEAD HEAD=2") == 0);
+    multiace::StatusDelta d = multiace::parse_ace_status(client.multiace_status_json());
+    REQUIRE(d.head_source.has_value());
+    CHECK_FALSE(d.head_source->at(2).has_value());
+
+    // The engine's unload-all walks every head whose sensor sees filament,
+    // feeder heads included.
+    LogCapture log;
+    REQUIRE(client.gcode_script("ACE_UNLOAD_ALL_HEADS") == 0);
+    CHECK(log.count_containing("unload head 2") > 0);
 }
 
 namespace {

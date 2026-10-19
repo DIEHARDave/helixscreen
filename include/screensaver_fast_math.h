@@ -16,13 +16,13 @@
 namespace helix::ui {
 
 /// pi and 2 pi as floats, for every saver's angles.
-inline constexpr float SAVER_PI = 3.14159265358979f;
-inline constexpr float SAVER_TWO_PI = 2.0f * SAVER_PI;
+inline constexpr float kSaverPi = 3.14159265358979f;
+inline constexpr float kSaverTwoPi = 2.0f * kSaverPi;
 
-inline constexpr int FAST_SIN_N = 1024;
-inline constexpr int FAST_EXP_N = 512;
+inline constexpr int kFastSinN = 1024;
+inline constexpr int kFastExpN = 512;
 /// e^-s reads as 0 past this.
-inline constexpr double FAST_EXP_MAX = 9.0;
+inline constexpr double kFastExpMax = 9.0;
 
 namespace fast_math_detail {
 
@@ -50,14 +50,14 @@ constexpr double exp_series(double x) {
 } // namespace fast_math_detail
 
 struct FastSinTable {
-    float v[FAST_SIN_N + 1];
+    float v[kFastSinN + 1];
 };
 
 constexpr FastSinTable make_fast_sin_table() {
     FastSinTable t{};
     constexpr double pi = 3.14159265358979323846;
-    for (int i = 0; i <= FAST_SIN_N; i++) {
-        double a = 2.0 * pi * static_cast<double>(i) / FAST_SIN_N;
+    for (int i = 0; i <= kFastSinN; i++) {
+        double a = 2.0 * pi * static_cast<double>(i) / kFastSinN;
         if (a > pi) {
             a -= 2.0 * pi;
         }
@@ -67,48 +67,48 @@ constexpr FastSinTable make_fast_sin_table() {
 }
 
 struct FastExpTable {
-    float v[FAST_EXP_N + 1];
+    float v[kFastExpN + 1];
 };
 
 constexpr FastExpTable make_fast_exp_table() {
     FastExpTable t{};
-    for (int i = 0; i <= FAST_EXP_N; i++) {
+    for (int i = 0; i <= kFastExpN; i++) {
         t.v[i] = static_cast<float>(
-            1.0 / fast_math_detail::exp_series(FAST_EXP_MAX * static_cast<double>(i) / FAST_EXP_N));
+            1.0 / fast_math_detail::exp_series(kFastExpMax * static_cast<double>(i) / kFastExpN));
     }
     return t;
 }
 
-/// sin over one turn in FAST_SIN_N steps, one entry past the end for interpolation.
-inline constexpr FastSinTable FAST_SIN_TABLE = make_fast_sin_table();
-/// e^-s for s from 0 to FAST_EXP_MAX in FAST_EXP_N steps.
-inline constexpr FastExpTable FAST_EXP_TABLE = make_fast_exp_table();
+/// sin over one turn in kFastSinN steps, one entry past the end for interpolation.
+inline constexpr FastSinTable kFastSinTable = make_fast_sin_table();
+/// e^-s for s from 0 to kFastExpMax in kFastExpN steps.
+inline constexpr FastExpTable kFastExpTable = make_fast_exp_table();
 
 inline float fast_sin(float x) {
-    constexpr float steps_per_radian = static_cast<float>(FAST_SIN_N) / 6.28318530717958f;
+    constexpr float steps_per_radian = static_cast<float>(kFastSinN) / 6.28318530717958f;
     const float f = x * steps_per_radian;
     const float fl = std::floor(f);
     const float frac = f - fl;
-    const int i = static_cast<int>(static_cast<int64_t>(fl) & (FAST_SIN_N - 1));
-    return FAST_SIN_TABLE.v[i] + (FAST_SIN_TABLE.v[i + 1] - FAST_SIN_TABLE.v[i]) * frac;
+    const int i = static_cast<int>(static_cast<int64_t>(fl) & (kFastSinN - 1));
+    return kFastSinTable.v[i] + (kFastSinTable.v[i + 1] - kFastSinTable.v[i]) * frac;
 }
 
 inline float fast_cos(float x) {
     return fast_sin(x + 1.57079632679490f);
 }
 
-/// e^-s for s >= 0, 0 past FAST_EXP_MAX.
+/// e^-s for s >= 0, 0 past kFastExpMax.
 inline float fast_exp_neg(float s) {
     if (s <= 0.0f) {
         return 1.0f;
     }
-    const float f = s * (static_cast<float>(FAST_EXP_N) / static_cast<float>(FAST_EXP_MAX));
-    if (f >= static_cast<float>(FAST_EXP_N)) {
+    const float f = s * (static_cast<float>(kFastExpN) / static_cast<float>(kFastExpMax));
+    if (f >= static_cast<float>(kFastExpN)) {
         return 0.0f;
     }
     const auto i = static_cast<int>(f);
-    return FAST_EXP_TABLE.v[i] +
-           (FAST_EXP_TABLE.v[i + 1] - FAST_EXP_TABLE.v[i]) * (f - static_cast<float>(i));
+    return kFastExpTable.v[i] +
+           (kFastExpTable.v[i + 1] - kFastExpTable.v[i]) * (f - static_cast<float>(i));
 }
 
 /// e^-(q^2): a Gaussian of `q` standard-ish widths.

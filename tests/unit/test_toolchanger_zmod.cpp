@@ -199,7 +199,7 @@ void wire_material_source(ToolChangerHelper& tc) {
 
 TEST_CASE("Z-Mod publishes each head's material and colour", "[toolchanger][zmod][material]") {
     helix::ams::reset_lane_sources();
-    // Registered, because lane_id() answers INVALID_LANE_ID for a backend
+    // Registered, because lane_id() answers kInvalidLaneId for a backend
     // AmsState does not know, and the lane funnels drop what that id names.
     helix::test::RegisteredBackend<ToolChangerHelper> tc_reg(4);
     ToolChangerHelper& tc = *tc_reg;

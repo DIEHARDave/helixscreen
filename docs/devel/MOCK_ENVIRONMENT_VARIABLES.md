@@ -55,7 +55,7 @@ Force a hard ceiling on the thumbnail cache so eviction is reachable on demand.
 | **Default** | unset (config `/cache/thumbnail_max_mb`, default 20 MB) |
 | **File** | `src/print/thumbnail_cache.cpp` (`ThumbnailCache` constructor) |
 
-Applied **after** `calculate_dynamic_max_size()` and deliberately not through it: that function clamps its result up to `MIN_CACHE_SIZE` (5 MB), so a small value fed in via config gets raised straight back and eviction still never fires. Setting it below the cache's real usage (~1.7 MB for the mock's file list) makes eviction run every pass.
+Applied **after** `calculate_dynamic_max_size()` and deliberately not through it: that function clamps its result up to `kMinCacheSize` (5 MB), so a small value fed in via config gets raised straight back and eviction still never fires. Setting it below the cache's real usage (~1.7 MB for the mock's file list) makes eviction run every pass.
 
 ```bash
 # Cold fetch with eviction live — the decode-vs-evict interaction from #960
@@ -453,7 +453,7 @@ Override the Moonraker version the mock reports in `server.info`.
 | Default | `v0.9.3-mock` |
 | Affects | `server.info` -> `moonraker_version`, Settings -> Help & About -> About, and the startup too-old warning |
 
-The default is deliberately above `Application::MIN_MOONRAKER_VERSION` so no
+The default is deliberately above `Application::kMinMoonrakerVersion` so no
 `--test` run trips the warning. Set an older version to reach the warning, which
 is otherwise unreachable in mock:
 
@@ -1513,7 +1513,7 @@ INPUT_SHAPER_DEMO_KALICO=1 ./build/bin/helix-screen --test -vv &
 
 ### `HELIX_MOCK_BELT_A_HZ`
 
-Set belt path A's simulated resonance peak (Hz) in the mock's `TEST_RESONANCES` simulation. Path A is the `AXIS=1,-1` diagonal (Voron/Shake&Tune naming). Re-measuring a path walks its peak toward the other path's by up to 4 Hz per run, so the tuning loop converges the way cranking a belt tensioner does.
+Set belt path A's simulated resonance peak (Hz) in the mock's `TEST_RESONANCES` simulation. Path A is the `AXIS=1,-1` diagonal (Voron/Shake&Tune naming). Re-measuring a path with a full sweep, while no tune script is set, walks its peak toward the other path's by up to 4 Hz per run, so the tuning loop converges the way cranking a belt tensioner does.
 
 | Property | Value |
 |----------|-------|
@@ -1543,19 +1543,22 @@ HELIX_MOCK_BELT_A_HZ=115 HELIX_MOCK_BELT_B_HZ=95 ./build/bin/helix-screen --test
 
 ### `HELIX_MOCK_BELT_TUNE_SCRIPT`
 
-Script one belt path's peak across the guided tuning loop. The loop sweeps a narrowed band (`TEST_RESONANCES ... FREQ_START= FREQ_END=`), and each such windowed sweep of the named path plays the next value in the list; the last value holds once the list runs out. Windowed sweeps never apply the re-measure walk described under `HELIX_MOCK_BELT_A_HZ`; full sweeps keep it. The CSV always spans the configured range, as Klipper's does. Read once at mock construction. An empty or non-numeric item is skipped with a warning, and a prefix other than `A:` or `B:` drops the whole value.
+Script one belt path's peak across the guided tuning loop. A path's first sweep reads its seeded peak (`HELIX_MOCK_BELT_A_HZ` / `_B_HZ`); every sweep of the named path after that, full or windowed (`TEST_RESONANCES ... FREQ_START= FREQ_END=`), plays the next value in the list, and the last value holds once the list runs out. So the calibration turn's full sweeps and the narrow rounds after it can all be scripted. While either path has a script, no sweep applies the re-measure walk described under `HELIX_MOCK_BELT_A_HZ`. The CSV always spans the configured range, as Klipper's does. Read once at mock construction. An empty or non-numeric item is skipped with a warning, and a prefix other than `A:` or `B:` drops the whole value.
+
+Without a script the walk runs on full re-measures, so a plain `--test` run still registers the calibration turn: A's 110 Hz and B's 98 Hz walk to 106 and 102 on the calibration sweep.
 
 | Property | Value |
 |----------|-------|
 | **Values** | `<A\|B>:<hz>,<hz>,...`; the item `flat` writes a featureless curve (noise floor, no peak) for that sweep, which reaches the no-peak round |
-| **Default** | unset — windowed sweeps use the path's current peak |
+| **Default** | unset: sweeps after the first walk the peaks as `HELIX_MOCK_BELT_A_HZ` describes |
 | **File** | `src/api/moonraker_client_mock.cpp` (`apply_belt_tune_script`, `dispatch_test_resonances_response`) |
 
 ```bash
-# B tightens toward A (110 Hz) over three windowed sweeps
-HELIX_MOCK_BELT_TUNE_SCRIPT="B:102.1,107.6,109.8" ./build/bin/helix-screen --test --sim-speed 6 -vv
+# B: the calibration sweep barely moves (98.3), a second turn registers (102.1),
+# then the narrow rounds climb toward A (110 Hz)
+HELIX_MOCK_BELT_TUNE_SCRIPT="B:98.3,102.1,102.1,105.0,108.5,109.9" ./build/bin/helix-screen --test --sim-speed 6 -vv
 
-# B's first windowed sweep finds no peak
+# B's second sweep finds no peak
 HELIX_MOCK_BELT_TUNE_SCRIPT="B:flat,104" ./build/bin/helix-screen --test --sim-speed 6 -vv
 ```
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_highfly.h"
 
@@ -11,8 +11,8 @@ namespace {
 /// The date block and AM/PM: the numerals' pale blue-white, a little more see-through.
 constexpr Rgb TEXT_COLOR{226, 238, 250};
 /// Their soft shadow, the numerals' deep blue.
-constexpr Rgb TEXT_HALO{10, 50, 92};
-constexpr lv_opa_t TEXT_HALO_OPA = LV_OPA_60;
+constexpr Rgb kTextHalo{10, 50, 92};
+constexpr lv_opa_t kTextHaloOpa = LV_OPA_60;
 
 } // namespace
 
@@ -38,7 +38,7 @@ void HighFlyScreensaver::reset_clock_text() {
     date_line_.reset();
     day_line_.reset();
     meridiem_.reset();
-    const SaverLabelHalo halo{TEXT_HALO, TEXT_HALO_OPA, sim_.clock_layout().text_halo};
+    const SaverLabelHalo halo{kTextHalo, kTextHaloOpa, sim_.clock_layout().text_halo};
     date_line_.set_halo(halo);
     day_line_.set_halo(halo);
     meridiem_.set_halo(halo);

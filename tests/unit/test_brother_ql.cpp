@@ -74,7 +74,7 @@ TEST_CASE("BrotherQLPrinter::build_raster_commands raster row format", "[label]"
     bool found_raster = false;
     for (size_t i = 0; i + 2 < commands.size(); i++) {
         if (commands[i] == 0x67 && commands[i + 1] == 0x00) {
-            // Byte count should be 90 (RASTER_ROW_BYTES)
+            // Byte count should be 90 (kRasterRowBytes)
             REQUIRE(commands[i + 2] == 90);
             found_raster = true;
             break;

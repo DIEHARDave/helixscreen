@@ -1,7 +1,7 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "ui_settings_display.h"
 
@@ -40,7 +40,7 @@ using helix::ui::SaverLevelEntry;
 
 namespace {
 
-constexpr const char* LEVELS_PATH = "/display/screensaver_levels";
+constexpr const char* kLevelsPath = "/display/screensaver_levels";
 
 /// Drives the shared manager's gate with a scripted CPU clock, and puts the clock, the host,
 /// the stored levels and the gate environment back however the test ends.
@@ -49,7 +49,7 @@ class GateHarness {
     GateHarness() {
         mgr.stop();
         helix::Config* config = helix::Config::get_instance();
-        if (const nlohmann::json* levels = config->try_get_json(LEVELS_PATH)) {
+        if (const nlohmann::json* levels = config->try_get_json(kLevelsPath)) {
             saved_levels_ = *levels;
         }
         clear_levels();
@@ -68,7 +68,7 @@ class GateHarness {
         mgr.set_host(SaverHost{});
         clear_levels();
         if (saved_levels_) {
-            helix::Config::get_instance()->set<nlohmann::json>(LEVELS_PATH, *saved_levels_);
+            helix::Config::get_instance()->set<nlohmann::json>(kLevelsPath, *saved_levels_);
         }
     }
 
@@ -78,11 +78,11 @@ class GateHarness {
     /// Advances both clocks by `seconds` in 250 ms steps with the process using `cores` of CPU,
     /// calling the idle-check tick after each step.
     void run(double seconds, double cores) {
-        constexpr uint64_t STEP_NS = 250000000ULL;
+        constexpr uint64_t kStepNs = 250000000ULL;
         const int steps = static_cast<int>(seconds * 4.0 + 0.5);
         for (int i = 0; i < steps; i++) {
-            wall_ns += STEP_NS;
-            cpu_ns += static_cast<uint64_t>(cores * static_cast<double>(STEP_NS));
+            wall_ns += kStepNs;
+            cpu_ns += static_cast<uint64_t>(cores * static_cast<double>(kStepNs));
             mgr.on_idle_check_tick();
         }
     }
@@ -109,7 +109,7 @@ class GateHarness {
   private:
     static void clear_levels() {
         helix::Config* config = helix::Config::get_instance();
-        if (config->try_get_json(LEVELS_PATH) != nullptr) {
+        if (config->try_get_json(kLevelsPath) != nullptr) {
             config->get_json("/display").erase("screensaver_levels");
         }
     }
@@ -225,7 +225,7 @@ void run_past_bottom(GateHarness& gate, helix::ui::SaverBase& saver) {
 /// Stores every registered saver except `except` as too heavy on this board and version.
 void store_all_too_heavy_except(GateHarness& gate, ScreensaverType except) {
     const std::string board = ScreensaverManagerTestAccess::current_board(gate.mgr);
-    for (const helix::ui::ScreensaverInfo& info : helix::ui::SCREENSAVERS) {
+    for (const helix::ui::ScreensaverInfo& info : helix::ui::kScreensavers) {
         if (info.type != except) {
             gate.store(info.name, {0, true, helix_version_full(), board});
         }
@@ -257,7 +257,7 @@ TEST_CASE_METHOD(
     // The default saver takes over at once, measured from its own level 0.
     helix::ui::SaverBase* fallback = gate.running();
     REQUIRE(fallback != nullptr);
-    CHECK(fallback->type() == helix::ui::DEFAULT_SCREENSAVER_TYPE);
+    CHECK(fallback->type() == helix::ui::kDefaultScreensaverType);
     CHECK(fallback->is_active());
     CHECK(fallback->level() == 0);
     CHECK_FALSE(ScreensaverManagerTestAccess::showing_black_screen(gate.mgr));
@@ -269,7 +269,7 @@ TEST_CASE_METHOD(
     CHECK_FALSE(helix::active_screen_hide_hold().is_held());
     gate.mgr.start(ScreensaverType::MAZE_3D);
     REQUIRE(gate.running() != nullptr);
-    CHECK(gate.running()->type() == helix::ui::DEFAULT_SCREENSAVER_TYPE);
+    CHECK(gate.running()->type() == helix::ui::kDefaultScreensaverType);
     CHECK_FALSE(maze->is_active());
     CHECK(helix::active_screen_hide_hold().is_held());
 }
@@ -284,13 +284,13 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     SECTION("the default runs in its place") {
         CHECK(gate.mgr.runnable_type(ScreensaverType::MAZE_3D) ==
-              helix::ui::DEFAULT_SCREENSAVER_TYPE);
+              helix::ui::kDefaultScreensaverType);
         gate.mgr.start(ScreensaverType::MAZE_3D);
         REQUIRE(gate.running() != nullptr);
-        CHECK(gate.running()->type() == helix::ui::DEFAULT_SCREENSAVER_TYPE);
+        CHECK(gate.running()->type() == helix::ui::kDefaultScreensaverType);
     }
     SECTION("with the default too heavy as well, the first registry saver that is not") {
-        gate.store(helix::ui::find_screensaver(helix::ui::DEFAULT_SCREENSAVER_TYPE)->name,
+        gate.store(helix::ui::find_screensaver(helix::ui::kDefaultScreensaverType)->name,
                    {2, true, version, board});
         CHECK(gate.mgr.runnable_type(ScreensaverType::MAZE_3D) == ScreensaverType::FLYING_TOASTERS);
         gate.mgr.start(ScreensaverType::MAZE_3D);
@@ -493,8 +493,8 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         lv_obj_find_by_name(lv_obj_find_by_name(root, "row_screensaver"), "dropdown");
     REQUIRE(dropdown != nullptr);
 
-    std::vector<std::string> expected{helix::ui::SCREENSAVER_OFF_LABEL_KEY};
-    for (const helix::ui::ScreensaverInfo& info : helix::ui::SCREENSAVERS) {
+    std::vector<std::string> expected{helix::ui::kScreensaverOffLabelKey};
+    for (const helix::ui::ScreensaverInfo& info : helix::ui::kScreensavers) {
         if (info.type != ScreensaverType::MAZE_3D && info.type != ScreensaverType::HYPERSPACE) {
             expected.emplace_back(info.label_key);
         }
@@ -503,7 +503,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
     // The stored maze shows as the saver that runs in its place, and stays stored.
     const helix::ui::ScreensaverInfo* fallback =
-        helix::ui::find_screensaver(helix::ui::DEFAULT_SCREENSAVER_TYPE);
+        helix::ui::find_screensaver(helix::ui::kDefaultScreensaverType);
     REQUIRE(fallback != nullptr);
     const uint32_t selected = lv_dropdown_get_selected(dropdown);
     REQUIRE(selected < expected.size());
@@ -645,11 +645,11 @@ TEST_CASE_METHOD(LVGLTestFixture,
     REQUIRE(maze != nullptr);
     run_past_bottom(gate, *maze);
     REQUIRE(gate.running() != nullptr);
-    REQUIRE(gate.running()->type() == helix::ui::DEFAULT_SCREENSAVER_TYPE);
+    REQUIRE(gate.running()->type() == helix::ui::kDefaultScreensaverType);
     gate.mgr.stop(helix::SaverRunEnd::TOUCH);
 
     const std::string fallback =
-        helix::ui::find_screensaver(helix::ui::DEFAULT_SCREENSAVER_TYPE)->name;
+        helix::ui::find_screensaver(helix::ui::kDefaultScreensaverType)->name;
     const std::string bottom = "maze:" + std::to_string(maze->level_count() - 1);
     const helix::SaverUsageWindow w = usage_now(gate.mgr);
     CHECK(w.starts == std::map<std::string, int>{{"maze", 1}, {fallback, 1}});
@@ -663,7 +663,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "usage counts the black screen under its own n
                  "[screensaver][screensaver_gate][screensaver_usage]") {
     GateHarness gate;
     const std::string board = ScreensaverManagerTestAccess::current_board(gate.mgr);
-    for (const helix::ui::ScreensaverInfo& row : helix::ui::SCREENSAVERS) {
+    for (const helix::ui::ScreensaverInfo& row : helix::ui::kScreensavers) {
         gate.store(row.name, {0, true, helix_version_full(), board});
     }
     clear_usage(gate.mgr);
@@ -673,8 +673,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "usage counts the black screen under its own n
     gate.mgr.stop(helix::SaverRunEnd::TOUCH);
 
     const helix::SaverUsageWindow w = usage_now(gate.mgr);
-    CHECK(w.starts == std::map<std::string, int>{{helix::SAVER_USAGE_BLACK_SCREEN, 1}});
-    CHECK(w.woke_by_touch == std::map<std::string, int>{{helix::SAVER_USAGE_BLACK_SCREEN, 1}});
+    CHECK(w.starts == std::map<std::string, int>{{helix::kSaverUsageBlackScreen, 1}});
+    CHECK(w.woke_by_touch == std::map<std::string, int>{{helix::kSaverUsageBlackScreen, 1}});
     CHECK(w.settled_levels.empty());
 }
 
@@ -701,7 +701,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "usage leaves a settings preview out",
 TEST_CASE_METHOD(LVGLTestFixture,
                  "every saver the registry marks for this colour depth is registered",
                  "[screensaver][screensaver_gate][depth_wiring]") {
-    // Four hand-kept lists decide this: SCREENSAVERS::depths, the Makefile source filter, and
+    // Four hand-kept lists decide this: kScreensavers::depths, the Makefile source filter, and
     // the manager's include and registration guards. A saver missing here is selectable and
     // starts nothing.
     const std::vector<const char*> missing =

@@ -105,17 +105,17 @@ class BeltTensionCalibrator {
      * @brief Home if needed, then sweep one belt path
      *
      * Runs TEST_RESONANCES on the path's diagonal and reports the parsed
-     * curve. All three callbacks run on the LVGL thread. A run already in
+     * curves. All three callbacks run on the LVGL thread. A run already in
      * progress is cancelled first.
      *
      * @param path Which belt diagonal to sweep
      * @param on_progress (percent 0-100, current sweep frequency Hz)
-     * @param on_complete Parsed (frequency_hz, psd_xyz) curve, ascending
+     * @param on_complete The parsed curves: psd_xyz and psd_x + psd_y, ascending
      * @param on_error Error message on failure (homing or sweep)
      * @param window Optional frequency range to limit the sweep to
      */
     void measure_path(BeltPath path, std::function<void(int percent, float freq_hz)> on_progress,
-                      std::function<void(BeltCurve)> on_complete, BeltErrorCallback on_error,
+                      std::function<void(BeltResponse)> on_complete, BeltErrorCallback on_error,
                       std::optional<BeltSweepWindow> window = std::nullopt);
 
     /**

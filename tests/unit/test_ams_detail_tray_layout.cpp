@@ -195,7 +195,7 @@ TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit with a reading: spools in the bo
     build("passive");
     REQUIRE(lid_ == tray::LidMode::Unit);
     const int32_t space_md = theme_manager_get_spacing("space_md");
-    const float skew = tray::DEPTH_SKEW * box_.depth;
+    const float skew = tray::kDepthSkew * box_.depth;
 
     float first_x = 0, last_x = 0;
     for (int i = 0; i < 4; ++i) {
@@ -206,7 +206,7 @@ TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit with a reading: spools in the bo
         lv_obj_get_coords(spool, &a);
         const float cx = (a.x1 + a.x2 + 1) / 2.0f - origin_.x;
         const float cy = (a.y1 + a.y2 + 1) / 2.0f - origin_.y;
-        const float ry = tray::SPOOL_FLANGE_RADIUS * lv_area_get_width(&a);
+        const float ry = tray::kSpoolFlangeRadius * lv_area_get_width(&a);
         const tray::PointF want = tray::spool_center(box_, cx - skew / 2, ry);
         CHECK(std::fabs(cx - want.x) <= 1);
         CHECK(std::fabs(cy - want.y) <= 1);
@@ -255,7 +255,7 @@ TEST_CASE_METHOD(AmsTrayPanelFixture,
         lv_obj_get_coords(label, &la);
         lv_obj_get_coords(spool, &sa);
         const float spool_top = (sa.y1 + sa.y2 + 1) / 2.0f - origin_.y -
-                                tray::SPOOL_FLANGE_RADIUS * lv_area_get_width(&sa);
+                                tray::kSpoolFlangeRadius * lv_area_get_width(&sa);
         CHECK((float)(la.y2 - origin_.y) <= wall_top - space_md + 1);
         CHECK((float)(la.y2 - origin_.y) <= spool_top - space_md + 1);
     }
@@ -419,7 +419,7 @@ TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS tool changer: each tube hangs from ju
         lv_area_t a;
         lv_obj_get_coords(spool, &a);
         const float flange_bottom =
-            (a.y1 + a.y2 + 1) / 2.0f + tray::SPOOL_FLANGE_RADIUS * lv_area_get_width(&a);
+            (a.y1 + a.y2 + 1) / 2.0f + tray::kSpoolFlangeRadius * lv_area_get_width(&a);
         CAPTURE(a.y1, a.y2, flange_bottom, tube_top);
         // The tube's cap stands on the flange: clear of the spool, with no gap.
         CHECK((float)tube_top >= flange_bottom - 1);

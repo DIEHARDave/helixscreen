@@ -19,7 +19,7 @@
 #include <spdlog/spdlog.h>
 
 // Signal polling interval (5 seconds)
-static constexpr uint32_t SIGNAL_POLL_INTERVAL_MS = 5000;
+static constexpr uint32_t kSignalPollIntervalMs = 5000;
 
 // Subjects owned by NetworkWidget module — created before XML bindings resolve
 static lv_subject_t s_network_icon_state;
@@ -137,8 +137,8 @@ void NetworkWidget::ensure_signal_poll_timer() {
     if (!active_ || signal_poll_timer_ || current_network_ != NetworkType::Wifi) {
         return;
     }
-    signal_poll_timer_ = lv_timer_create(signal_poll_timer_cb, SIGNAL_POLL_INTERVAL_MS, this);
-    spdlog::debug("[NetworkWidget] Started signal polling timer ({}ms)", SIGNAL_POLL_INTERVAL_MS);
+    signal_poll_timer_ = lv_timer_create(signal_poll_timer_cb, kSignalPollIntervalMs, this);
+    spdlog::debug("[NetworkWidget] Started signal polling timer ({}ms)", kSignalPollIntervalMs);
 }
 
 void NetworkWidget::cancel_signal_poll_timer() {

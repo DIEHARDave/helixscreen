@@ -62,8 +62,8 @@ using helix::ui::UpdateQueue;
 
 namespace {
 
-constexpr const char* THERMISTOR_SENSOR_A = "temperature_sensor helix_teardown_a";
-constexpr const char* THERMISTOR_SENSOR_B = "temperature_sensor helix_teardown_b";
+constexpr const char* kThermistorSensorA = "temperature_sensor helix_teardown_a";
+constexpr const char* kThermistorSensorB = "temperature_sensor helix_teardown_b";
 
 /// LVGLUITestFixture does not own ToolState's subjects, and the tests below
 /// seed it (tool_switcher needs tools to publish; nozzle_temps needs the
@@ -359,10 +359,10 @@ TEST_CASE_METHOD(HomeWidgetTeardownFixture,
 TEST_CASE_METHOD(HomeWidgetTeardownFixture,
                  "thermistor drops cached labels when the page tree is deleted raw",
                  "[thermistor][teardown][uaf]") {
-    helix::sensors::TemperatureSensorManager::instance().discover({THERMISTOR_SENSOR_A});
+    helix::sensors::TemperatureSensorManager::instance().discover({kThermistorSensorA});
 
     auto widget = std::make_unique<ThermistorWidget>("thermistor");
-    widget->set_config({{"sensors", std::vector<std::string>{THERMISTOR_SENSOR_A}}});
+    widget->set_config({{"sensors", std::vector<std::string>{kThermistorSensorA}}});
     lv_obj_t* page = make_page();
     widget->attach(make_tile(page, "panel_widget_thermistor"), test_screen());
     UpdateQueue::instance().drain();
@@ -377,10 +377,10 @@ TEST_CASE_METHOD(HomeWidgetTeardownFixture,
 TEST_CASE_METHOD(HomeWidgetTeardownFixture,
                  "thermistor queued temp apply survives a drain after the tree dies",
                  "[thermistor][teardown][uaf]") {
-    helix::sensors::TemperatureSensorManager::instance().discover({THERMISTOR_SENSOR_A});
+    helix::sensors::TemperatureSensorManager::instance().discover({kThermistorSensorA});
 
     auto widget = std::make_unique<ThermistorWidget>("thermistor");
-    widget->set_config({{"sensors", std::vector<std::string>{THERMISTOR_SENSOR_A}}});
+    widget->set_config({{"sensors", std::vector<std::string>{kThermistorSensorA}}});
     lv_obj_t* page = make_page();
     widget->attach(make_tile(page, "panel_widget_thermistor"), test_screen());
     UpdateQueue::instance().drain();
@@ -389,7 +389,7 @@ TEST_CASE_METHOD(HomeWidgetTeardownFixture,
     // The sensor's temp subject fires temp_observer_ synchronously; the handler
     // (on_temp_changed) is queued.
     lv_subject_t* subject =
-        helix::sensors::TemperatureSensorManager::instance().get_temp_subject(THERMISTOR_SENSOR_A);
+        helix::sensors::TemperatureSensorManager::instance().get_temp_subject(kThermistorSensorA);
     REQUIRE(subject != nullptr);
     lv_subject_set_int(subject, 425);
 
@@ -404,10 +404,10 @@ TEST_CASE_METHOD(HomeWidgetTeardownFixture,
 TEST_CASE_METHOD(HomeWidgetTeardownFixture,
                  "thermistor uninstalls its delete hook when destroyed before its tree",
                  "[thermistor][teardown][uaf]") {
-    helix::sensors::TemperatureSensorManager::instance().discover({THERMISTOR_SENSOR_A});
+    helix::sensors::TemperatureSensorManager::instance().discover({kThermistorSensorA});
 
     auto widget = std::make_unique<ThermistorWidget>("thermistor");
-    widget->set_config({{"sensors", std::vector<std::string>{THERMISTOR_SENSOR_A}}});
+    widget->set_config({{"sensors", std::vector<std::string>{kThermistorSensorA}}});
     lv_obj_t* page = make_page();
     lv_obj_t* tile = make_tile(page, "panel_widget_thermistor");
     widget->attach(tile, test_screen());
@@ -432,11 +432,11 @@ TEST_CASE_METHOD(HomeWidgetTeardownFixture,
                  "thermistor drops carousel page labels when the page tree is deleted raw",
                  "[thermistor][teardown][uaf][carousel]") {
     helix::sensors::TemperatureSensorManager::instance().discover(
-        {THERMISTOR_SENSOR_A, THERMISTOR_SENSOR_B});
+        {kThermistorSensorA, kThermistorSensorB});
 
     auto widget = std::make_unique<ThermistorWidget>("thermistor");
     widget->set_config(
-        {{"sensors", std::vector<std::string>{THERMISTOR_SENSOR_A, THERMISTOR_SENSOR_B}},
+        {{"sensors", std::vector<std::string>{kThermistorSensorA, kThermistorSensorB}},
          {"display_mode", "carousel"}});
     lv_obj_t* page = make_page();
     widget->attach(make_tile(page, "panel_widget_thermistor_carousel"), test_screen());

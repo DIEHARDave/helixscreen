@@ -270,24 +270,24 @@ class IHistoryAPI {
 class IAdvancedAPI {
   public:
     // ========== Timeout constants for long-running G-code commands ==========
-    static constexpr uint32_t CALIBRATION_TIMEOUT_MS =
+    static constexpr uint32_t kCalibrationTimeoutMs =
         300000; // 5 min - BED_MESH_CALIBRATE, SCREWS_TILT_CALCULATE
     /// A printer-shipped calibration sequence does its own heating, homing and
     /// wipe inside the one script, so its clock starts at heat-begin rather than
-    /// at probe-begin. CALIBRATION_TIMEOUT_MS measures only the probing and
+    /// at probe-begin. kCalibrationTimeoutMs measures only the probing and
     /// times out mid-probe here — which flips the panel to ERROR and cools the
     /// machine while it is still measuring.
-    static constexpr uint32_t SELF_PREPARED_CALIBRATION_TIMEOUT_MS = 900000; // 15 min
-    static constexpr uint32_t LEVELING_TIMEOUT_MS = 600000; // 10 min - QGL, Z_TILT_ADJUST
-    static constexpr uint32_t SHAPER_TIMEOUT_MS =
+    static constexpr uint32_t kSelfPreparedCalibrationTimeoutMs = 900000; // 15 min
+    static constexpr uint32_t kLevelingTimeoutMs = 600000; // 10 min - QGL, Z_TILT_ADJUST
+    static constexpr uint32_t kShaperTimeoutMs =
         600000; // 10 min - SHAPER_CALIBRATE, MEASURE_AXES_NOISE. Analysis alone
                 // measured ~3m50s per axis on a Creality K1C host; the analysis
                 // phase shows a spinner + elapsed time, so the longer wait is
                 // not silent.
-    static constexpr uint32_t PID_TIMEOUT_MS =
+    static constexpr uint32_t kPidTimeoutMs =
         1200000; // 20 min - PID_CALIBRATE (slow-cooling beds, e.g. AD5M Pro, exceed 15 min)
-    static constexpr uint32_t MPC_TIMEOUT_MS = 1200000; // 20 min - MPC_CALIBRATE
-    static constexpr uint32_t PROBING_TIMEOUT_MS =
+    static constexpr uint32_t kMpcTimeoutMs = 1200000; // 20 min - MPC_CALIBRATE
+    static constexpr uint32_t kProbingTimeoutMs =
         180000; // 3 min - PROBE_CALIBRATE, Z_ENDSTOP_CALIBRATE
 
     using SuccessCallback = std::function<void()>;
@@ -320,8 +320,9 @@ class IAdvancedAPI {
         std::function<void(int phase, int total_phases, const std::string& description)>;
     /// (percent 0-100, current sweep frequency Hz). Fires off the LVGL thread.
     using BeltSweepProgressCallback = std::function<void(int percent, float freq_hz)>;
-    /// Fires off the LVGL thread with the parsed curve.
-    using BeltCurveCallback = std::function<void(const helix::calibration::BeltCurve& curve)>;
+    /// Fires off the LVGL thread with the parsed curves.
+    using BeltResponseCallback =
+        std::function<void(const helix::calibration::BeltResponse& response)>;
     /// Stops listening and suppresses every later callback. Idempotent.
     using BeltRunCancel = std::function<void()>;
     using BeltHardwareCallback =
@@ -449,7 +450,7 @@ class IAdvancedAPI {
     /// overall deadline (the caller owns stall detection and cancels).
     [[nodiscard]] virtual BeltRunCancel test_belt_resonance(
         const std::string& axis_param, const std::string& output_name,
-        BeltSweepProgressCallback on_progress, BeltCurveCallback on_complete,
+        BeltSweepProgressCallback on_progress, BeltResponseCallback on_complete,
         ErrorCallback on_error,
         std::optional<helix::calibration::BeltSweepWindow> window = std::nullopt) = 0;
 };

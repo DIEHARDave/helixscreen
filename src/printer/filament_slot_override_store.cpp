@@ -1785,7 +1785,7 @@ std::optional<int> FilamentSlotOverrideStore::load_seated_slot_blocking() {
 
     if (!got_copy)
         return std::nullopt;
-    // Must be a plain non-negative integer. The store doesn't know NUM_PORTS,
+    // Must be a plain non-negative integer. The store doesn't know kNumPorts,
     // so the caller is responsible for the upper-bound range check.
     if (!received_copy.is_number_integer())
         return std::nullopt;

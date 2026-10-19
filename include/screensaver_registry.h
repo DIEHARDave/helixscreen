@@ -22,7 +22,7 @@
  * @brief Available screensaver types
  *
  * In-app identity only. Config, HELIX_SCREENSAVER_NOW, ctl and the level store name a saver
- * by its stable SCREENSAVERS name instead, so reordering or compiling out a saver never
+ * by its stable kScreensavers name instead, so reordering or compiling out a saver never
  * changes what a stored value means.
  */
 enum class ScreensaverType : int {
@@ -63,7 +63,7 @@ struct ScreensaverInfo {
 /// Every screensaver, in type order starting at 1: row i has type i + 1. The settings
 /// dropdown in ui_xml/settings_display_overlay.xml lists "Off" and then these labels in
 /// this order, which a test checks.
-inline constexpr ScreensaverInfo SCREENSAVERS[] = {
+inline constexpr ScreensaverInfo kScreensavers[] = {
     {ScreensaverType::FLYING_TOASTERS, "toasters", "Flying Toasters",
      SAVER_DEPTH_16 | SAVER_DEPTH_32},
     {ScreensaverType::STARFIELD, "starfield", "Starfield", SAVER_DEPTH_16 | SAVER_DEPTH_32},
@@ -80,29 +80,29 @@ inline constexpr ScreensaverInfo SCREENSAVERS[] = {
     {ScreensaverType::HIGHFLY, "highfly", "High Fly", SAVER_DEPTH_16 | SAVER_DEPTH_32},
 };
 
-inline constexpr size_t SCREENSAVER_COUNT = std::size(SCREENSAVERS);
+inline constexpr size_t kScreensaverCount = std::size(kScreensavers);
 
 /// Translation key and English label of the dropdown's first option.
-inline constexpr const char* SCREENSAVER_OFF_LABEL_KEY = "Off";
+inline constexpr const char* kScreensaverOffLabelKey = "Off";
 
 /// Stable name of OFF, the persisted value of a screensaver turned off.
-inline constexpr const char* SCREENSAVER_OFF_NAME = "off";
+inline constexpr const char* kScreensaverOffName = "off";
 
 /// What each integer /display/screensaver_type value meant, indexed by that number. Frozen:
 /// these numbers live on in old configs and backups, so the table never reorders or grows,
-/// whatever happens to ScreensaverType or SCREENSAVERS.
-inline constexpr const char* LEGACY_SCREENSAVER_TYPE_NAMES[] = {
+/// whatever happens to ScreensaverType or kScreensavers.
+inline constexpr const char* kLegacyScreensaverTypeNames[] = {
     "off",       "toasters", "starfield", "pipes",      "bounce",
     "fireworks", "logo",     "maze",      "hyperspace", "flipclock",
 };
 
 /// Type a fresh install prefers, when this build can draw it. The screensaver gate measures it
 /// and steps it down, or runs a lighter saver in its place, when it costs too much.
-inline constexpr ScreensaverType DEFAULT_SCREENSAVER_TYPE = ScreensaverType::FLIP_CLOCK;
+inline constexpr ScreensaverType kDefaultScreensaverType = ScreensaverType::FLIP_CLOCK;
 
 /// Highest valid type value.
 constexpr int screensaver_last_type() {
-    return static_cast<int>(SCREENSAVERS[SCREENSAVER_COUNT - 1].type);
+    return static_cast<int>(kScreensavers[kScreensaverCount - 1].type);
 }
 
 /// A stored type made valid: below OFF reads as OFF, past the last type as the last type.
@@ -118,7 +118,7 @@ constexpr int clamp_screensaver_type(int value) {
 
 /// The row for `type`, or nullptr for OFF and unregistered values.
 constexpr const ScreensaverInfo* find_screensaver(ScreensaverType type) {
-    for (const ScreensaverInfo& info : SCREENSAVERS) {
+    for (const ScreensaverInfo& info : kScreensavers) {
         if (info.type == type) {
             return &info;
         }
@@ -130,11 +130,11 @@ constexpr const ScreensaverInfo* find_screensaver(ScreensaverType type) {
 /// draws at that depth, otherwise the first registered saver that does, and OFF if none do.
 /// A 16 bpp build excludes the 32 bpp-only savers, so a default naming one would start nothing.
 constexpr ScreensaverType default_screensaver_type(uint8_t build_depth) {
-    const ScreensaverInfo* preferred = find_screensaver(DEFAULT_SCREENSAVER_TYPE);
+    const ScreensaverInfo* preferred = find_screensaver(kDefaultScreensaverType);
     if (preferred != nullptr && (preferred->depths & build_depth) != 0U) {
-        return DEFAULT_SCREENSAVER_TYPE;
+        return kDefaultScreensaverType;
     }
-    for (const ScreensaverInfo& row : SCREENSAVERS) {
+    for (const ScreensaverInfo& row : kScreensavers) {
         if ((row.depths & build_depth) != 0U) {
             return row.type;
         }
@@ -144,7 +144,7 @@ constexpr ScreensaverType default_screensaver_type(uint8_t build_depth) {
 
 /// The row whose stable name is `name`, or nullptr.
 constexpr const ScreensaverInfo* find_screensaver_by_name(std::string_view name) {
-    for (const ScreensaverInfo& info : SCREENSAVERS) {
+    for (const ScreensaverInfo& info : kScreensavers) {
         if (name == info.name) {
             return &info;
         }
@@ -155,7 +155,7 @@ constexpr const ScreensaverInfo* find_screensaver_by_name(std::string_view name)
 /// Persisted name of `type`: its row's stable name, or "off" for OFF and unregistered values.
 constexpr const char* screensaver_name(ScreensaverType type) {
     const ScreensaverInfo* info = find_screensaver(type);
-    return info != nullptr ? info->name : SCREENSAVER_OFF_NAME;
+    return info != nullptr ? info->name : kScreensaverOffName;
 }
 
 /// ASCII case-insensitive equality.
@@ -176,10 +176,10 @@ constexpr bool equals_ignoring_case(std::string_view a, std::string_view b) {
 /// The type a stored name selects, ignoring case: "off" or a registered name. nullopt for
 /// anything else.
 constexpr std::optional<ScreensaverType> screensaver_from_name(std::string_view name) {
-    if (equals_ignoring_case(name, SCREENSAVER_OFF_NAME)) {
+    if (equals_ignoring_case(name, kScreensaverOffName)) {
         return ScreensaverType::OFF;
     }
-    for (const ScreensaverInfo& info : SCREENSAVERS) {
+    for (const ScreensaverInfo& info : kScreensavers) {
         if (equals_ignoring_case(name, info.name)) {
             return info.type;
         }
@@ -189,10 +189,10 @@ constexpr std::optional<ScreensaverType> screensaver_from_name(std::string_view 
 
 /// The name a legacy integer screensaver_type value stood for, or nullptr out of range.
 constexpr const char* legacy_screensaver_name(long long value) {
-    if (value < 0 || value >= static_cast<long long>(std::size(LEGACY_SCREENSAVER_TYPE_NAMES))) {
+    if (value < 0 || value >= static_cast<long long>(std::size(kLegacyScreensaverTypeNames))) {
         return nullptr;
     }
-    return LEGACY_SCREENSAVER_TYPE_NAMES[value];
+    return kLegacyScreensaverTypeNames[value];
 }
 
 /**
@@ -220,14 +220,14 @@ constexpr ScreensaverType resolve_screensaver_now(std::string_view value,
 template <typename TooHeavy>
 constexpr ScreensaverType
 runnable_screensaver(ScreensaverType configured, TooHeavy&& too_heavy,
-                     ScreensaverType preferred = DEFAULT_SCREENSAVER_TYPE) {
+                     ScreensaverType preferred = kDefaultScreensaverType) {
     if (configured == ScreensaverType::OFF || !too_heavy(configured)) {
         return configured;
     }
     if (!too_heavy(preferred)) {
         return preferred;
     }
-    for (const ScreensaverInfo& row : SCREENSAVERS) {
+    for (const ScreensaverInfo& row : kScreensavers) {
         if (!too_heavy(row.type)) {
             return row.type;
         }
@@ -243,7 +243,7 @@ template <typename TooHeavy>
 std::vector<ScreensaverType> screensaver_choices(TooHeavy&& too_heavy, ScreensaverType configured) {
     const ScreensaverType runs = runnable_screensaver(configured, too_heavy);
     std::vector<ScreensaverType> choices{ScreensaverType::OFF};
-    for (const ScreensaverInfo& row : SCREENSAVERS) {
+    for (const ScreensaverInfo& row : kScreensavers) {
         if (row.type == runs || !too_heavy(row.type)) {
             choices.push_back(row.type);
         }

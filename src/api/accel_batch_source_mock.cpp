@@ -13,21 +13,21 @@ namespace helix::calibration {
 
 namespace {
 
-constexpr float MOCK_RATE_HZ = 3053.0f;
+constexpr float kMockRateHz = 3053.0f;
 
 SweepSynthSpec mock_spec(const SweepPlan& plan, const MockSweepResponse& response) {
     SweepSynthSpec spec;
     spec.plan = plan;
-    spec.drive_start_s = MockAccelBatchSource::DRIVE_LEAD_S;
-    spec.rate_hz = MOCK_RATE_HZ;
-    spec.noise_mm_s2 = MOCK_NOISE_FRACTION * response.drive_mm_s2;
+    spec.drive_start_s = MockAccelBatchSource::kDriveLeadS;
+    spec.rate_hz = kMockRateHz;
+    spec.noise_mm_s2 = kMockNoiseFraction * response.drive_mm_s2;
     return spec;
 }
 
 } // namespace
 
 std::array<float, 3> mock_sweep_axis_gain(const MockSweepResponse& response, float drive_hz) {
-    float level = MOCK_FLOOR;
+    float level = kMockFloor;
     if (std::isfinite(response.peak_hz)) {
         const float d = (drive_hz - response.peak_hz) / response.half_width_hz;
         level += 1.0f / (1.0f + d * d);
@@ -58,7 +58,7 @@ bool MockAccelBatchSource::start(const std::string& /*socket_path*/, const std::
                  sim_speed_);
     loop_thread_ = std::make_unique<hv::EventLoopThread>();
     loop_thread_->start(true, [this]() -> int {
-        loop_thread_->loop()->setInterval(static_cast<int>(BATCH_INTERVAL_MS),
+        loop_thread_->loop()->setInterval(static_cast<int>(kBatchIntervalMs),
                                           [this](hv::TimerID) { emit_batch(); });
         return 0;
     });
@@ -75,7 +75,7 @@ void MockAccelBatchSource::stop() {
 }
 
 float MockAccelBatchSource::sample_rate_hz() const {
-    return running_.load() ? MOCK_RATE_HZ : 0.0f;
+    return running_.load() ? kMockRateHz : 0.0f;
 }
 
 void MockAccelBatchSource::emit_batch() {
@@ -83,7 +83,7 @@ void MockAccelBatchSource::emit_batch() {
         return;
     }
     const auto count =
-        static_cast<size_t>(std::lround(MOCK_RATE_HZ * (BATCH_INTERVAL_MS / 1000.0) * sim_speed_));
+        static_cast<size_t>(std::lround(kMockRateHz * (kBatchIntervalMs / 1000.0) * sim_speed_));
     AccelBatch batch;
     batch.samples = synth_.next(count);
     on_batch_(batch);

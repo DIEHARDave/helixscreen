@@ -62,18 +62,18 @@ using namespace helix;
 
 namespace {
 
-constexpr const char* PRINTER_A = "printer-a";
-constexpr const char* PRINTER_B = "printer-b";
+constexpr const char* kPrinterA = "printer-a";
+constexpr const char* kPrinterB = "printer-b";
 
 // Mirrors the shipped shape: `show_printer_switcher` is a bool SIBLING of the
 // printer objects inside the printers map (config.cpp:1139), not a child of one.
 json two_printer_config() {
-    json c = {{"config_version", CURRENT_CONFIG_VERSION},
-              {"active_printer_id", PRINTER_A},
+    json c = {{"config_version", kCurrentConfigVersion},
+              {"active_printer_id", kPrinterA},
               {"printers",
                {{"show_printer_switcher", false},
-                {PRINTER_A, {{"moonraker_host", "192.168.1.10"}}},
-                {PRINTER_B, {{"moonraker_host", "192.168.1.11"}}}}}};
+                {kPrinterA, {{"moonraker_host", "192.168.1.10"}}},
+                {kPrinterB, {{"moonraker_host", "192.168.1.11"}}}}}};
     return c;
 }
 
@@ -84,7 +84,7 @@ class SettingsScopeFixture : public HelixTestFixture {
 
     SettingsScopeFixture() {
         ConfigTestAccess::data(*cfg) = two_printer_config();
-        ConfigTestAccess::active_printer_id(*cfg) = PRINTER_A;
+        ConfigTestAccess::active_printer_id(*cfg) = kPrinterA;
         reload();
     }
 
@@ -115,10 +115,10 @@ class SettingsScopeFixture : public HelixTestFixture {
     }
 
     static std::string a(const std::string& leaf) {
-        return std::string("/printers/") + PRINTER_A + "/" + leaf;
+        return std::string("/printers/") + kPrinterA + "/" + leaf;
     }
     static std::string b(const std::string& leaf) {
-        return std::string("/printers/") + PRINTER_B + "/" + leaf;
+        return std::string("/printers/") + kPrinterB + "/" + leaf;
     }
 };
 
@@ -130,7 +130,7 @@ TEST_CASE_METHOD(
     SettingsScopeFixture,
     "SettingsManager: hidden macros are per-printer, console user filters have a global layer",
     "[settings][multi-printer]") {
-    REQUIRE(cfg->get_active_printer_id() == PRINTER_A);
+    REQUIRE(cfg->get_active_printer_id() == kPrinterA);
 
     const std::vector<std::string> a_macros{"A_ONLY"};
     const std::vector<std::string> b_macros{"B_ONLY", "B_ALSO"};
@@ -143,7 +143,7 @@ TEST_CASE_METHOD(
     REQUIRE(sm.hidden_macros_key_exists());
     CHECK(sm.get_hidden_macros() == a_macros);
 
-    activate(PRINTER_B);
+    activate(kPrinterB);
 
     // Per-printer: B has never been configured, so it must NOT inherit A's set.
     // hidden_macros_key_exists() is the distinction the macro panel relies on to
@@ -158,7 +158,7 @@ TEST_CASE_METHOD(
     sm.set_hidden_macros(b_macros);
     sm.set_console_filter_user_add(shared_second);
 
-    activate(PRINTER_A);
+    activate(kPrinterA);
 
     // A's set survived B being configured...
     CHECK(sm.get_hidden_macros() == a_macros);
@@ -191,7 +191,7 @@ TEST_CASE_METHOD(SettingsScopeFixture,
     CHECK(sm.get_console_filter_user_add() == a_add);
     CHECK(sm.get_console_filter_user_remove() == a_remove);
 
-    activate(PRINTER_B);
+    activate(kPrinterB);
 
     // On B: the global entry is still in force, A's per-printer one is not.
     const std::vector<std::string> global_only_add{"prefix:EVERYWHERE"};
@@ -204,7 +204,7 @@ TEST_CASE_METHOD(SettingsScopeFixture,
     const std::vector<std::string> b_add{"prefix:EVERYWHERE", "regex:B_ONLY.*"};
     CHECK(sm.get_console_filter_user_add() == b_add);
 
-    activate(PRINTER_A);
+    activate(kPrinterA);
     CHECK(sm.get_console_filter_user_add() == a_add);
 
     // Single-layer reads, so a settings UI can show which list an entry is in.
@@ -245,7 +245,7 @@ TEST_CASE_METHOD(SettingsScopeFixture,
     CHECK(on_a->material == "PETG");
     CHECK(on_a->slot_index == -2); // external-spool sentinel
 
-    activate(PRINTER_B);
+    activate(kPrinterB);
 
     // The bypass spool is physically loaded on ONE machine. If this ever reads
     // A's spool, the other printer's filament panel shows a spool that is not
@@ -255,7 +255,7 @@ TEST_CASE_METHOD(SettingsScopeFixture,
     // Clearing on B must not reach into A's section.
     sm.clear_external_spool_info();
 
-    activate(PRINTER_A);
+    activate(kPrinterA);
     auto back_on_a = sm.get_external_spool_info();
     REQUIRE(back_on_a.has_value());
     CHECK(back_on_a->brand == "Acme");
@@ -279,7 +279,7 @@ TEST_CASE_METHOD(SettingsScopeFixture,
     sm.set_detection_enabled(false);
     sm.set_console_filter_temps(false);
 
-    switch_to(PRINTER_B);
+    switch_to(kPrinterB);
 
     // Per-printer: B falls back to the built-in defaults, NOT A's values.
     CHECK(sm.get_extrude_speed() == 5);
@@ -292,7 +292,7 @@ TEST_CASE_METHOD(SettingsScopeFixture,
     sm.set_qidi_eject_distance(1200);
     sm.set_detection_enabled(true);
 
-    switch_to(PRINTER_A);
+    switch_to(kPrinterA);
 
     // A's values survived B being configured.
     CHECK(sm.get_extrude_speed() == 17);
@@ -330,7 +330,7 @@ TEST_CASE_METHOD(SettingsScopeFixture,
     sm.set_chamber_heater_assignment("heater_generic chamber");
     sm.set_chamber_sensor_assignment("temperature_sensor chamber");
 
-    switch_to(PRINTER_B);
+    switch_to(kPrinterB);
 
     // Global: the scanner survives the switch rather than resetting to defaults.
     CHECK(sm.get_scanner_keymap() == "qwertz");
@@ -344,7 +344,7 @@ TEST_CASE_METHOD(SettingsScopeFixture,
     // Re-plugging the scanner on B is a change for the whole install.
     sm.set_scanner_keymap("azerty");
 
-    switch_to(PRINTER_A);
+    switch_to(kPrinterA);
 
     CHECK(sm.get_scanner_keymap() == "azerty"); // B's write, seen from A
     CHECK(sm.get_scanner_device_id() == "1a2b:3c4d");
@@ -380,13 +380,13 @@ TEST_CASE_METHOD(SettingsScopeFixture,
     CHECK_FALSE(cfg->exists(b("show_printer_switcher")));
     CHECK_FALSE(cfg->exists("/show_printer_switcher"));
 
-    switch_to(PRINTER_B);
+    switch_to(kPrinterB);
     // Shared: not reset to the false default on the other printer.
     CHECK(sm.get_show_printer_switcher() == true);
 
     sm.set_show_printer_switcher(false);
 
-    switch_to(PRINTER_A);
+    switch_to(kPrinterA);
     CHECK(sm.get_show_printer_switcher() == false);
     CHECK(cfg->get<bool>("/printers/show_printer_switcher", true) == false);
 
@@ -395,10 +395,10 @@ TEST_CASE_METHOD(SettingsScopeFixture,
     // storage location safe.
     auto ids = cfg->get_printer_ids();
     std::sort(ids.begin(), ids.end());
-    const std::vector<std::string> expected{PRINTER_A, PRINTER_B};
+    const std::vector<std::string> expected{kPrinterA, kPrinterB};
     CHECK(ids == expected);
     CHECK_FALSE(cfg->set_active_printer("show_printer_switcher"));
-    CHECK(cfg->get_active_printer_id() == PRINTER_A);
+    CHECK(cfg->get_active_printer_id() == kPrinterA);
 }
 
 // ============================================================================
@@ -526,7 +526,7 @@ TEST_CASE_METHOD(SettingsScopeFixture,
           static_cast<int>(ToolheadStyle::A4T));
     CHECK_FALSE(cfg->exists("/appearance/toolhead_style"));
 
-    switch_to(PRINTER_B);
+    switch_to(kPrinterB);
     // B never had an override set, so it resolves on its own rather than
     // inheriting A's.
     CHECK(sm.get_toolhead_style() == ToolheadStyle::AUTO);
@@ -538,7 +538,7 @@ TEST_CASE_METHOD(SettingsScopeFixture,
 
     // The AUTO resolution input follows the active printer the same way.
     CHECK(cfg->get<std::string>(cfg->df() + wizard::PRINTER_TYPE, "") == "creality_k1");
-    switch_to(PRINTER_A);
+    switch_to(kPrinterA);
     CHECK(cfg->get<std::string>(cfg->df() + wizard::PRINTER_TYPE, "") == "voron_v2");
 
     // A's override survived B being configured.
@@ -599,7 +599,7 @@ TEST_CASE_METHOD(SettingsPersistenceFixture,
     sm.set_detection_policy_u1(0);
     sm.set_scanner_keymap("qwertz");
 
-    switch_to(PRINTER_B);
+    switch_to(kPrinterB);
     sm.set_extrude_speed(44);
     REQUIRE(cfg->save());
 
@@ -608,27 +608,27 @@ TEST_CASE_METHOD(SettingsPersistenceFixture,
     Config second;
     second.init(config_path);
 
-    CHECK(second.get_active_printer_id() == PRINTER_B);
+    CHECK(second.get_active_printer_id() == kPrinterB);
 
-    CHECK(second.get<int>(std::string("/printers/") + PRINTER_A + "/filament/extrude_speed", -1) ==
+    CHECK(second.get<int>(std::string("/printers/") + kPrinterA + "/filament/extrude_speed", -1) ==
           21);
-    CHECK(second.get<int>(std::string("/printers/") + PRINTER_B + "/filament/extrude_speed", -1) ==
+    CHECK(second.get<int>(std::string("/printers/") + kPrinterB + "/filament/extrude_speed", -1) ==
           44);
 
     const std::vector<std::string> expected_hidden{"A_ONLY"};
     CHECK(second.get<std::vector<std::string>>(
-              std::string("/printers/") + PRINTER_A + "/macros/hidden", {}) == expected_hidden);
-    CHECK_FALSE(second.exists(std::string("/printers/") + PRINTER_B + "/macros/hidden"));
+              std::string("/printers/") + kPrinterA + "/macros/hidden", {}) == expected_hidden);
+    CHECK_FALSE(second.exists(std::string("/printers/") + kPrinterB + "/macros/hidden"));
 
     // Globals stayed at the root (and, for the switcher, at the printers-map root).
     CHECK(second.get<bool>("/printers/show_printer_switcher", false) == true);
     CHECK(second.get<std::string>("/scanner/keymap", "") == "qwertz");
-    CHECK_FALSE(second.exists(std::string("/printers/") + PRINTER_A + "/scanner/keymap"));
+    CHECK_FALSE(second.exists(std::string("/printers/") + kPrinterA + "/scanner/keymap"));
 
     // The U1 detection policy serialized under the printer it was set on, and
     // only that one.
-    CHECK(second.get<int>(std::string("/printers/") + PRINTER_A + "/detection/policy_u1", -1) == 0);
-    CHECK_FALSE(second.exists(std::string("/printers/") + PRINTER_B + "/detection/policy_u1"));
+    CHECK(second.get<int>(std::string("/printers/") + kPrinterA + "/detection/policy_u1", -1) == 0);
+    CHECK_FALSE(second.exists(std::string("/printers/") + kPrinterB + "/detection/policy_u1"));
     CHECK_FALSE(second.exists("/detection/policy_u1"));
 
     // df() on the reloaded instance routes at printer-b, so the live read

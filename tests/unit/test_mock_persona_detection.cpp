@@ -45,7 +45,7 @@ struct Expectation {
 };
 
 // clang-format off
-constexpr Expectation EXPECTED[] = {
+constexpr Expectation kExpected[] = {
     {"voron_24",           "Voron 2.4",                 "",             true},
     {"voron_trident",      "Voron Trident",             "",             false},
     {"k1",                 "Creality K1C",              "k1c",          true},
@@ -90,12 +90,12 @@ void check_mirrors_capture(const helix::PrinterDiscovery& hw, const std::string&
 TEST_CASE("Every persona has a detection expectation", "[mock][persona][detect]") {
     for (const auto& p : helix::mock::PERSONAS) {
         bool listed = false;
-        for (const auto& e : EXPECTED)
+        for (const auto& e : kExpected)
             listed = listed || e.id == p.id;
         INFO(p.id);
         CHECK(listed);
     }
-    for (const auto& e : EXPECTED) {
+    for (const auto& e : kExpected) {
         INFO(e.id);
         CHECK(helix::mock::find_persona(e.id) != nullptr);
     }
@@ -103,7 +103,7 @@ TEST_CASE("Every persona has a detection expectation", "[mock][persona][detect]"
 
 TEST_CASE_METHOD(HelixTestFixture, "Each mock persona auto-detects as the printer it impersonates",
                  "[mock][persona][detect]") {
-    for (const auto& e : EXPECTED) {
+    for (const auto& e : kExpected) {
         DYNAMIC_SECTION(e.id) {
             const auto* p = helix::mock::find_persona(e.id);
             REQUIRE(p != nullptr);

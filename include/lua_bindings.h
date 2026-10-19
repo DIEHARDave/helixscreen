@@ -61,6 +61,17 @@ PluginContext& context(lua_State* L);
 /// by the cap check instead of landing whole in the Lua state.
 size_t memory_remaining(const LuaRuntime& rt);
 
+/// luaL_newmetatable for a binding's userdata type, with `__metatable` set so plugin
+/// code sees a string from getmetatable and cannot edit the table (a `__gc` added to it
+/// would be armed on the next userdata C creates, outside every time budget). Leaves
+/// the metatable on the stack. Every binding metatable is made through this.
+void new_locked_metatable(lua_State* L, const char* name);
+
+/// Raises "<call> is not allowed in a menu check" while the runtime runs a check
+/// (LuaRuntime::call_sync). The first statement of every binding with a side effect;
+/// async bindings are refused by await_async.
+void forbid_in_check(lua_State* L, const char* call);
+
 /// Raises "<call> needs the '<permission>' permission in manifest.json" unless granted.
 void require_permission(lua_State* L, Permission p, const char* call);
 
@@ -122,6 +133,15 @@ PluginEventTarget parse_plugin_event(std::string_view user_data);
 /// Runs the helix.ui.on handler `name` of `rt` with `arg` (or nil). False if there is none.
 bool dispatch_ui_handler(LuaRuntime& rt, const std::string& name,
                          const std::optional<std::string>& arg);
+
+/// Runs the helix.ui.on handler `name` of `rt` with `args`. False if there is none.
+bool dispatch_ui_handler(LuaRuntime& rt, const std::string& name, const LuaRuntime::PushFn& args);
+
+/// Runs the helix.ui.on handler `name` of `rt` through LuaRuntime::call_sync, as a menu
+/// check. False, after report_error, when there is no such handler; otherwise
+/// call_sync's result.
+bool call_ui_handler_sync(LuaRuntime& rt, const std::string& name, const LuaRuntime::PushFn& args,
+                          const LuaRuntime::ReadFn& read);
 
 /// One lifecycle hook a plugin may register on a widget it declares.
 enum class WidgetHook { Attach, Detach, Size, Activate, Deactivate };

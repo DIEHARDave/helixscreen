@@ -11,10 +11,10 @@ draws its own.
 | Rule | What it means |
 |------|---------------|
 | Shape | A pure colour is a **circle**. A labelled chip (colour with text on it, the mapping row's `T0`) is a **rounded rect**. Colour preview **areas** (the colour pickers' previews) and the AMS sidebar's tall loaded bar stay rounded rects: they are areas, not swatches. Bands that are part of a larger chip (`filament_swatch`, `tool_switcher_band`) keep their own geometry. |
-| Edge | One rule: a swatch gets a `#border` edge when any of its colours has a WCAG contrast ratio under `SWATCH_EDGE_CONTRAST_RATIO` (1.75) against what it sits on: its nearest ancestor with an opaque background, judged at draw time, else the theme's `screen_bg` and `elevated_bg` (`swatch_edge_surfaces()`). Nothing republishes on a theme switch; the theme colours are cached per theme generation. No swatch carries a border of its own and no rule keys on dark mode. |
+| Edge | One rule: a swatch gets a `#border` edge when any of its colours has a WCAG contrast ratio under `kSwatchEdgeContrastRatio` (1.75) against what it sits on: its nearest ancestor with an opaque background, judged at draw time, else the theme's `screen_bg` and `elevated_bg` (`swatch_edge_surfaces()`). Nothing republishes on a theme switch; the theme colours are cached per theme generation. No swatch carries a border of its own and no rule keys on dark mode. |
 | Selection | One mark: `color_swatch`'s inside ring (`selected_subject` + `index`). |
 | Multi-colour | A filament with two or more colours (`SlotInfo::multi_color_hexes`, Spoolman's `multi_color_hexes`) shows them everywhere its colour shows, as equal-area bands across the top-left to bottom-right diagonal, clipped to the shape. A lane spool repaints on `AmsState::get_slot_paint_subject()` (`SlotInfo::paint_key()`) as well as its colour, so a new split or finish under the same colour shows. |
-| Finish | Silk, matte, marble and sparkle come from the filament's names, never from a widget. A swatch with less area than a `SWATCH_FINISH_MIN_PX` (16 px) square cannot show a finish and paints plain; a long thin band or a spool body of the same short side keeps it. |
+| Finish | Silk, matte, marble and sparkle come from the filament's names, never from a widget. A swatch with less area than a `kSwatchFinishMinPx` (16 px) square cannot show a finish and paints plain; a long thin band or a spool body of the same short side keeps it. |
 
 ## Finishes
 
@@ -40,11 +40,53 @@ back by `filament_finish_of()`.
 
 | Component | When |
 |-----------|------|
-| `<color_swatch>` | A swatch the user picks: a touch target with a selection ring. Props `color_subject` or `color`, `colors_subject` (CSV), `finish_subject` (a filament name), `fill` (a style; the LED Custom swatch's hue wheel), `selected_subject` + `index`, `callback`, `clickable`, `bubble`, `size`, `hit`, `reach`, `ring`. Grids repeat it (`color_swatch_grid.xml`). |
+| `<color_swatch>` | A swatch the user picks: a touch target with a selection ring. Props `color_subject` or `color`, `colors_subject` (CSV), `finish_subject` (a filament name), `fill` (a style; the LED Custom swatch's hue wheel), `selected_subject` + `index`, `callback`, `clickable`, `bubble`, `size`, `hit`, `reach`, `ring`. Grids repeat it (`<color_swatch_grid>`, below). |
+| `<color_swatch_grid>` | The 30-swatch preset grid, for either palette. Props `swatch_callback` (required), `palette` (`general` default, or `theme`), `selected_subject`, `swatch_size` / `gap` / `gap_half` (the `swatch_grid_*` tokens by default), `lead_hidden` + `lead_callback` (a leading `custom_color_swatch`, hidden by default). |
+| `<custom_color_swatch>` | The rainbow custom-colour swatch (hue wheel, centre glyph, `index` -2) that opens a colour editor: leading a preset grid, closing the LED colour row. Props `icon` (`pencil` default, `plus`), `selected_subject`, `callback`, `size`, `hit`, `reach`, `ring`; sizing defaults to the preset grids' tokens. |
 | `<color_dot>` | A colour that is only shown (a spool in a list, a slot in a row, a tool's dot): no ring, no reach, clicks go to the row. Same colour props plus `size`. |
 | `<swatch_paint>` | The bare painter, for a rounded rect (set `style_radius`) or a fill inside another control (the LED power button). Attributes `color`, `bind_color`, `colors`, `bind_colors`, `finish`, `bind_finish`, `edge="off"`. With no colour it paints nothing. |
 
 A click handler reads the tapped colour with `helix::ui::swatch_color_of(target)`.
+
+### Preset grids and touch targets
+
+`color_swatch_grid` is the one preset grid. Its swatches read
+`<palette>_swatch_color_<i>`, published from `swatch_palette()`
+(`include/ui_color_picker.h`): `general` for filament, LED and general colours, `theme` for
+the theme editor's ramp and hue families (`tests/unit/test_theme_swatch_grid.cpp` pins the
+order). The colour picker shows one or the other; the spool editor's colour view shows
+`general`.
+
+**Every pickable swatch is at least a 44px touch target**, however small its disc. That
+swatch floor sits below the 48px `#touch_target_min` that buttons and other tappable controls
+use, so a grid never outranks the controls around it. A swatch's target is the disc plus `hit`
+on each side, so in a grid `size + 2 * hit >= 44`, and the gap between swatches is at least
+`2 * hit`, so neighbouring targets abut instead of overlapping (LVGL gives an overlapped tap to
+the topmost widget, which makes taps land unpredictably). In `color_swatch_grid`, `hit` is
+`swatch_grid_gap_half`, so the pitch `swatch_grid_size + swatch_grid_gap` is the target, and
+every tier keeps that pitch at 7 mm or more on its panel:
+
+| Tier | Swatch | Gap | Pitch | Grid width |
+|------|--------|-----|-------|------------|
+| micro | 26 | 18 | 44 | 246 |
+| tiny (3.5" 480x320, 165 dpi) | 28 | 18 | 46 | 258 |
+| small | 28 | 16 | 44 | 248 |
+| medium, large | 32 | 12 | 44 | 252 |
+
+The tabbed picker (micro and tiny) gives its presets a whole tab and passes the larger
+`picker_tab_swatch_*` tokens (40 + 6). A host that places its own row of `color_swatch`es
+(the spool editor's inline grids) uses the same `swatch_grid_*` tokens and pads its container
+by `swatch_grid_gap_half`, so the outer row and column are hit-testable: LVGL only hit-tests
+a child inside its parent's box.
+
+The shared token ladders (`swatch_grid_*`, `picker_tab_swatch_*` and the LED preset rows'
+`led_swatch_*`) hold the 44px floor and the abutting gap at every size class, and
+`tests/unit/test_color_swatch_grid.cpp` checks them per class. A grid that needs more room
+widens its container (the colour picker modal's `color_picker_modal_width`), never shrinks the
+target.
+
+`custom_color_swatch` defaults to those tokens too, so it tiles as one more grid cell where
+it leads a row; the LED colour row passes its own sizes.
 
 ### C++
 

@@ -58,7 +58,7 @@ static void strip_temperature_suffix(std::string& name) {
 namespace {
 
 // Thermistor-related icons for the picker grid
-static const char* const THERMISTOR_ICONS[] = {
+static const char* const kThermistorIcons[] = {
     // clang-format off
     "thermometer", "thermometer_lines", "thermometer_plus", "thermometer_minus",
     "thermometer_probe", "thermometer_off",
@@ -66,8 +66,8 @@ static const char* const THERMISTOR_ICONS[] = {
     "heat_wave", "heater", "radiator", "cooldown",
     // clang-format on
 };
-static constexpr size_t THERMISTOR_ICON_COUNT = std::size(THERMISTOR_ICONS);
-static constexpr const char* DEFAULT_ICON = "thermometer";
+static constexpr size_t kThermistorIconCount = std::size(kThermistorIcons);
+static constexpr const char* kDefaultIcon = "thermometer";
 
 // Icons with distinct on/off glyphs. Config stores the ON variant;
 // resolve_icon_for_state() derives the OFF variant from this table.
@@ -75,14 +75,14 @@ struct IconPair {
     const char* on_icon;
     const char* off_icon;
 };
-static const IconPair ICON_PAIRS[] = {
+static const IconPair kIconPairs[] = {
     {"thermometer", "thermometer_off"},
 };
 
 /// Map an off-variant icon name to its on-variant (e.g., "thermometer_off" -> "thermometer").
 /// Returns the input unchanged if it's not an off-variant.
 static const char* to_on_variant(const char* icon) {
-    for (const auto& pair : ICON_PAIRS) {
+    for (const auto& pair : kIconPairs) {
         if (std::strcmp(icon, pair.off_icon) == 0)
             return pair.on_icon;
     }
@@ -201,7 +201,7 @@ void ThermistorWidget::attach_single() {
     // Apply custom icon
     lv_obj_t* icon_obj = lv_obj_find_by_name(widget_obj_, "thermistor_icon");
     if (icon_obj) {
-        const char* icon = icon_name_.empty() ? DEFAULT_ICON : icon_name_.c_str();
+        const char* icon = icon_name_.empty() ? kDefaultIcon : icon_name_.c_str();
         helix::ui::icon::set_source(icon_obj, icon);
     }
 
@@ -329,7 +329,7 @@ void ThermistorWidget::bind_carousel_sensors() {
         lv_obj_remove_flag(page, LV_OBJ_FLAG_SCROLLABLE);
 
         // Thermometer icon (use custom icon if configured)
-        const char* icon_src = icon_name_.empty() ? DEFAULT_ICON : icon_name_.c_str();
+        const char* icon_src = icon_name_.empty() ? kDefaultIcon : icon_name_.c_str();
         const char* icon_attrs[] = {"src", icon_src, "size", "sm", "variant", "secondary", nullptr};
         lv_xml_create(page, "icon", icon_attrs);
 
@@ -542,7 +542,7 @@ namespace {
 /// The heater the open target keypad sends to. One keypad shows at a time.
 std::string g_target_keypad_heater;
 /// Keypad ceiling when the heater's configured max_temp is not known.
-constexpr float TARGET_KEYPAD_FALLBACK_MAX = 120.0f;
+constexpr float kTargetKeypadFallbackMax = 120.0f;
 } // namespace
 
 void ThermistorWidget::open_target_keypad() {
@@ -553,8 +553,8 @@ void ThermistorWidget::open_target_keypad() {
     g_target_keypad_heater = selected_sensor_;
 
     const float max_value =
-        controller ? controller->keypad_max_for(selected_sensor_, TARGET_KEYPAD_FALLBACK_MAX)
-                   : TARGET_KEYPAD_FALLBACK_MAX;
+        controller ? controller->keypad_max_for(selected_sensor_, kTargetKeypadFallbackMax)
+                   : kTargetKeypadFallbackMax;
     ui_keypad_config_t config = {
         .initial_value = target ? deci_to_degrees_f(lv_subject_get_int(target)) : 0.0f,
         .min_value = 0.0f,
@@ -581,14 +581,14 @@ void ThermistorWidget::target_keypad_cb(float value, void* /*user_data*/) {
 void ThermistorWidget::select_icon(const std::string& name) {
     // Store the ON variant so display can derive the OFF icon from the pair table
     std::string canonical(to_on_variant(name.c_str()));
-    icon_name_ = (canonical == DEFAULT_ICON) ? "" : canonical;
+    icon_name_ = (canonical == kDefaultIcon) ? "" : canonical;
     save_config();
 
     // Update the widget icon immediately (single mode)
     lv_obj_t* icon_obj =
         widget_obj_ ? lv_obj_find_by_name(widget_obj_, "thermistor_icon") : nullptr;
     if (icon_obj) {
-        const char* effective = icon_name_.empty() ? DEFAULT_ICON : icon_name_.c_str();
+        const char* effective = icon_name_.empty() ? kDefaultIcon : icon_name_.c_str();
         helix::ui::icon::set_source(icon_obj, effective);
     }
 
@@ -655,7 +655,7 @@ void ThermistorWidget::set_config(const nlohmann::json& config) {
         }
         spdlog::debug("[ThermistorWidget] Config: {} sensors, mode={} icon={}", sensors_.size(),
                       is_carousel_mode() ? "carousel" : "single",
-                      icon_name_.empty() ? DEFAULT_ICON : icon_name_);
+                      icon_name_.empty() ? kDefaultIcon : icon_name_);
     }
 }
 
@@ -696,7 +696,7 @@ void ThermistorWidget::save_config() {
     save_widget_config(config);
     spdlog::debug("[ThermistorWidget] Saved config: {} sensors, mode={} icon={}", sensors_.size(),
                   is_carousel_mode() ? "carousel" : "single",
-                  icon_name_.empty() ? DEFAULT_ICON : icon_name_);
+                  icon_name_.empty() ? kDefaultIcon : icon_name_);
 }
 
 void ThermistorWidget::show_sensor_picker() {
@@ -877,9 +877,9 @@ void ThermistorWidget::ConfigurePicker::on_created(lv_obj_t* backdrop) {
         lv_obj_remove_flag(icon_grid, LV_OBJ_FLAG_SCROLLABLE);
 
         std::string effective_icon =
-            owner_.icon_name_.empty() ? std::string(DEFAULT_ICON) : owner_.icon_name_;
+            owner_.icon_name_.empty() ? std::string(kDefaultIcon) : owner_.icon_name_;
 
-        helix::ui::populate_icon_grid(icon_grid, THERMISTOR_ICONS, THERMISTOR_ICON_COUNT,
+        helix::ui::populate_icon_grid(icon_grid, kThermistorIcons, kThermistorIconCount,
                                       effective_icon,
                                       [this](const char* name) { owner_.select_icon(name); });
     }
@@ -898,7 +898,7 @@ void ThermistorWidget::ConfigurePicker::refresh_icon_highlights() {
     }
 
     std::string effective_icon =
-        owner_.icon_name_.empty() ? std::string(DEFAULT_ICON) : owner_.icon_name_;
+        owner_.icon_name_.empty() ? std::string(kDefaultIcon) : owner_.icon_name_;
     helix::ui::refresh_icon_grid(icon_grid, effective_icon);
 }
 

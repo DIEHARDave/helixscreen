@@ -232,11 +232,11 @@ bool PrintStartProfile::match_pattern_list(const std::vector<ResponsePattern>& p
                 static_cast<size_t>(rp.hold_minutes_group) < match.size()) {
                 // Firmware prints the number with a '.' whatever the UI locale.
                 // A day bounds the seconds well inside an int.
-                constexpr double MAX_HOLD_MINUTES = 24.0 * 60.0;
+                constexpr double kMaxHoldMinutes = 24.0 * 60.0;
                 auto minutes = helix::text_io::parse_double(match[rp.hold_minutes_group].view);
                 if (minutes && std::isfinite(*minutes) && *minutes > 0.0) {
                     result.hold_seconds =
-                        static_cast<int>(std::lround(std::min(*minutes, MAX_HOLD_MINUTES) * 60.0));
+                        static_cast<int>(std::lround(std::min(*minutes, kMaxHoldMinutes) * 60.0));
                 }
             }
             spdlog::trace("[PrintStartProfile] Pattern match: '{}' -> phase={}, msg='{}'", text,

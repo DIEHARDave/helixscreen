@@ -557,13 +557,6 @@ std::vector<const EffectiveFilament*> FilamentCatalog::products_for(const std::s
 
 namespace {
 
-bool iequals_str(const std::string& a, const std::string& b) {
-    return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](char x, char y) {
-               return std::tolower(static_cast<unsigned char>(x)) ==
-                      std::tolower(static_cast<unsigned char>(y));
-           });
-}
-
 /// insert-if-absent over a case-insensitive key, preserving the first spelling.
 template <typename T>
 bool insert_ci(std::set<std::string>& keys, std::vector<T>& out, const std::string& key, T value) {
@@ -595,7 +588,7 @@ FilamentCatalog::variants_in_family(const std::string& family) const {
     std::vector<FamilyVariant> out;
     for (const auto& p : products_) {
         const std::string fam = filament::display_family(p.type);
-        if (!iequals_str(fam, family)) {
+        if (!tio::equals_ignore_case(fam, family)) {
             continue;
         }
         FamilyVariant fv{filament::variant_label(p.type, fam), p.type};
@@ -623,7 +616,7 @@ std::vector<std::string> FilamentCatalog::brands_in_family(const std::string& fa
     std::set<std::string> keys;
     std::vector<std::string> out;
     for (const auto& p : products_) {
-        if (iequals_str(filament::display_family(p.type), family)) {
+        if (tio::equals_ignore_case(filament::display_family(p.type), family)) {
             insert_ci(keys, out, p.brand, p.brand);
         }
     }
@@ -637,7 +630,8 @@ std::vector<const EffectiveFilament*>
 FilamentCatalog::products_in_family(const std::string& brand, const std::string& family) const {
     std::vector<const EffectiveFilament*> out;
     for (const auto& p : products_) {
-        if (iequals_str(p.brand, brand) && iequals_str(filament::display_family(p.type), family)) {
+        if (tio::equals_ignore_case(p.brand, brand) &&
+            tio::equals_ignore_case(filament::display_family(p.type), family)) {
             out.push_back(&p);
         }
     }

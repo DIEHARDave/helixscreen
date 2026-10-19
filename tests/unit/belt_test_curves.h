@@ -44,4 +44,32 @@ inline BeltCurve windowed(const BeltCurve& full, BeltSweepWindow window, float f
     return c;
 }
 
+/// A response whose in-plane curve is `in_plane` and whose psd_xyz is
+/// in_plane / in_plane_share at every bin.
+inline BeltResponse response_from(const BeltCurve& in_plane, float in_plane_share = 0.9f) {
+    BeltResponse r;
+    r.in_plane = in_plane;
+    r.xyz = in_plane;
+    for (auto& bin : r.xyz) {
+        bin.second /= in_plane_share;
+    }
+    return r;
+}
+
+/// windowed() applied to both curves of a response.
+inline BeltResponse windowed(const BeltResponse& full, BeltSweepWindow window, float floor) {
+    return BeltResponse{windowed(full.xyz, window, floor), windowed(full.in_plane, window, floor)};
+}
+
+/// Every bin of both curves moved by `hz`: a capture's shape at another tension.
+inline BeltResponse shifted(const BeltResponse& r, float hz) {
+    BeltResponse out = r;
+    for (BeltCurve* c : {&out.xyz, &out.in_plane}) {
+        for (auto& bin : *c) {
+            bin.first += hz;
+        }
+    }
+    return out;
+}
+
 } // namespace helix::calibration::test

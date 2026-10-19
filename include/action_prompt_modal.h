@@ -38,6 +38,45 @@ struct ActionPromptModalTestAccess;
 
 namespace helix::ui {
 
+/// How one row of regular (non-footer) prompt buttons is laid out.
+enum class ButtonRowKind {
+    Wrap,     ///< content-sized buttons, row_wrap takes the lines they need
+    EqualRow, ///< one non-wrapping line of equal-width cells
+    Grid,     ///< equal-width cells, `cols` to a line
+};
+
+struct ButtonRowLayout {
+    ButtonRowKind kind = ButtonRowKind::Wrap;
+    int32_t cols = 0; ///< cells per line; 0 for Wrap
+};
+
+/// Measured inputs for choose_button_row_layout(), in pixels.
+struct ButtonRowMeasure {
+    int32_t count = 0;
+    bool all_swatches = false; ///< every button is a label-less color tile
+    int32_t widest_label = 0;
+    int32_t available = 0; ///< the row's content width
+    int32_t gap = 0;       ///< column gap between cells
+    int32_t cell_pad = 0;  ///< horizontal padding on each side of a cell's label
+};
+
+/// Rows of at least this many labelled buttons become a grid.
+inline constexpr int32_t kPromptGridMinButtons = 5;
+
+/**
+ * @brief Pick the layout for one row of prompt buttons.
+ *
+ * Four buttons whose labels fit an even share sit on one equal-width line
+ * (AFC's "Lane 1".."Lane 4"). Five or more labelled buttons become a grid of
+ * three columns, or two when the widest label does not fit a third: a label
+ * cut to an ellipsis can lose the suffix that tells two units apart
+ * ("HTLF_claymore_1" / "_2"), so the grid gives up a column before it
+ * truncates. Swatch rows never become a grid; they keep one line of tiles.
+ * Everything else wraps, which never clips. An unmeasured row (available <= 0)
+ * wraps.
+ */
+ButtonRowLayout choose_button_row_layout(const ButtonRowMeasure& m);
+
 /**
  * @brief Modal dialog for Klipper action:prompt messages
  *
@@ -109,6 +148,17 @@ class ActionPromptModal : public Modal {
     void on_hide() override;
 
   private:
+    /// Points the AFC diagram at this prompt's own text, so a prompt that names no
+    /// fault never shows one an earlier modal published, and remembers the value it
+    /// replaced.
+    void publish_fault_path();
+    /// Hands the diagram back to the modal underneath, unless a later modal
+    /// published over this prompt's value.
+    void restore_fault_path();
+    int fault_path_before_ = 0;    ///< afc_fault_segment when this prompt published
+    int fault_path_published_ = 0; ///< the value this prompt published
+    bool fault_path_held_ = false; ///< published and not yet handed back
+
     // Grants white-box access to button widgets / containers for layout tests.
     friend struct ::ActionPromptModalTestAccess;
 
@@ -141,30 +191,42 @@ class ActionPromptModal : public Modal {
     void create_text_lines();
     void create_buttons();
 
+    /// A row laid out as a Grid of `cols` equal-width cells.
+    struct GridRow {
+        lv_obj_t* row = nullptr;
+        int32_t cols = 0;
+    };
+
+    /// The rows fit_rows() sizes once every row exists.
+    struct RowFit {
+        std::vector<GridRow> grid_rows;
+        std::vector<lv_obj_t*> swatch_rows; ///< rows holding only swatch tiles
+        int32_t swatch_cols = 0;            ///< most swatches in any of them
+        std::vector<lv_obj_t*> wrap_rows;   ///< content-sized rows, capped at their width
+    };
+
     /**
-     * @brief Size the card and the swatch rows to the room the screen has
+     * @brief Size the card, grid cells and swatch tiles, and cap the scroll area
      *
-     * @param button_container Parent of the rows; scrolls when they cannot fit
-     * @param rows Rows holding only swatch tiles, laid out as equal-width cells
-     * @param cols Most swatches in any of those rows
+     * The card widens for swatch tiles, grid cells split their row, a wrap-row label
+     * wider than its row ends in an ellipsis, swatch tiles
+     * take the height left under the card's cap, and prompt_scroll is capped at
+     * that height so text and buttons scroll while the footer stays on the card.
      */
-    void fit_swatch_rows(lv_obj_t* button_container, const std::vector<lv_obj_t*>& rows,
-                         int32_t cols);
+    void fit_rows(const RowFit& rows);
 
     /// Fit each swatch tile's circle to the tile's shorter side.
     void size_swatch_discs();
 
     /**
-     * @brief Create a single button inside @p container.
+     * @brief Create a single button inside @p container, laid out for @p kind
      *
-     * @param equal_width When true (>= 4 buttons in the row whose labels all fit
-     *        an even share of it) the button is laid out as an equal-width flex
-     *        cell (grow=1, width 0) so several short labels share one
-     *        non-wrapping row. When false the legacy content-sized layout is
-     *        used, which row_wrap then spreads over as many lines as the labels
-     *        need.
+     * Wrap buttons are content-sized; EqualRow and Grid buttons are equal-width
+     * cells (a Grid cell's width is set later by fit_rows()). Footer buttons
+     * ignore @p kind.
      */
-    void create_button(const PromptButton& btn, lv_obj_t* container, bool equal_width = false);
+    void create_button(const PromptButton& btn, lv_obj_t* container,
+                       ButtonRowKind kind = ButtonRowKind::Wrap);
     lv_color_t get_button_color(const std::string& color_name);
     void clear_dynamic_content();
 

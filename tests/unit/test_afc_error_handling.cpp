@@ -342,12 +342,12 @@ class ToastCapture {
     std::vector<std::pair<std::string, std::string>> events_;
 };
 
-constexpr const char* PRINTER_A = "printer-a";
-constexpr const char* PRINTER_B = "printer-b";
+constexpr const char* kPrinterA = "printer-a";
+constexpr const char* kPrinterB = "printer-b";
 
 /// A config dir holding an AfcMessageDedup seed, standing in for "the
 /// previous session". Writing a non-empty seed plants what that session
-/// surfaced for PRINTER_A; an empty one is a first boot (or a cleared latch).
+/// surfaced for kPrinterA; an empty one is a first boot (or a cleared latch).
 ///
 /// Records are keyed by the active printer, so the fixture pins one for its
 /// lifetime and restores whatever the rest of the binary had set.
@@ -355,7 +355,7 @@ class DedupSeedDir {
   public:
     explicit DedupSeedDir(const std::string& persisted_error) {
         previous_printer_ = ConfigTestAccess::active_printer_id(*Config::get_instance());
-        activate_printer(PRINTER_A);
+        activate_printer(kPrinterA);
         dir_ = (std::filesystem::temp_directory_path() /
                 ("afc-dedup-" + std::to_string(++counter_) + "-" +
                  std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())))
@@ -363,7 +363,7 @@ class DedupSeedDir {
         std::filesystem::create_directories(dir_);
         if (!persisted_error.empty()) {
             std::ofstream out(seed_path(), std::ios::trunc);
-            out << nlohmann::json{{"printers", {{PRINTER_A, persisted_error}}}}.dump() << "\n";
+            out << nlohmann::json{{"printers", {{kPrinterA, persisted_error}}}}.dump() << "\n";
         }
         helix::AfcMessageDedup::instance().init(dir_);
     }
@@ -400,7 +400,7 @@ class DedupSeedDir {
     /// size cap, as a corrupted flash file would be.
     void plant_oversized_seed(const std::string& persisted_error) const {
         std::ofstream out(seed_path(), std::ios::trunc);
-        out << nlohmann::json{{"printers", {{PRINTER_A, persisted_error}}},
+        out << nlohmann::json{{"printers", {{kPrinterA, persisted_error}}},
                               {"pad", std::string(512 * 1024, 'x')}}
                    .dump()
             << "\n";
@@ -533,7 +533,7 @@ TEST_CASE("AFC Error Handling: a message a previous session surfaced is not re-t
     }
 
     SECTION("A record belongs to one printer: another printer's identical text toasts") {
-        DedupSeedDir seed(latched); // recorded against PRINTER_A
+        DedupSeedDir seed(latched); // recorded against kPrinterA
         {
             AfcErrorHandlingHelper afc_a;
             ToastCapture toasts_a;
@@ -543,16 +543,16 @@ TEST_CASE("AFC Error Handling: a message a previous session surfaced is not re-t
 
         // One config dir serves every configured printer. A switch
         // reconstructs the backend, which re-reads the seed.
-        DedupSeedDir::activate_printer(PRINTER_B);
+        DedupSeedDir::activate_printer(kPrinterB);
         AfcErrorHandlingHelper afc_b;
         ToastCapture toasts_b;
         afc_b.feed_afc_message(latched, "error");
         REQUIRE(toasts_b.count("error") == 1);
 
-        // ...and recording for PRINTER_B leaves PRINTER_A's record standing.
+        // ...and recording for kPrinterB leaves kPrinterA's record standing.
         const std::string on_disk = seed.read_seed_file();
-        REQUIRE(on_disk.find(PRINTER_A) != std::string::npos);
-        REQUIRE(on_disk.find(PRINTER_B) != std::string::npos);
+        REQUIRE(on_disk.find(kPrinterA) != std::string::npos);
+        REQUIRE(on_disk.find(kPrinterB) != std::string::npos);
     }
 
     SECTION("A corrupt seed file fails open: the message toasts") {

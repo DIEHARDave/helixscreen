@@ -78,8 +78,8 @@ CameraFrame acquire_camera_frame(const CameraFrameSources& src, int max_w, int m
 namespace {
 
 /// Snapshots are a few hundred KB; anything near this is not a camera still.
-constexpr size_t MAX_SNAPSHOT_BYTES = 4 * 1024 * 1024;
-constexpr int SNAPSHOT_TIMEOUT_SEC = 5;
+constexpr size_t kMaxSnapshotBytes = 4 * 1024 * 1024;
+constexpr int kSnapshotTimeoutSec = 5;
 
 /// The camera the camera widget shows: its configured source (the auto-pick
 /// when none is configured) and the widget's own config for rotation/flips.
@@ -123,10 +123,10 @@ CameraFrameSources live_camera_sources() {
             auto req = std::make_shared<HttpRequest>();
             req->method = HTTP_GET;
             req->url = url;
-            req->timeout = SNAPSHOT_TIMEOUT_SEC;
+            req->timeout = kSnapshotTimeoutSec;
             auto resp = requests::request(req);
             if (resp && resp->status_code >= 200 && resp->status_code < 300 &&
-                resp->body.size() <= MAX_SNAPSHOT_BYTES)
+                resp->body.size() <= kMaxSnapshotBytes)
                 done(std::move(resp->body));
             else
                 done({});

@@ -26,7 +26,7 @@ using ParamValues = std::map<std::string, std::string>;
 
 namespace {
 
-const char* const PARAMS_TEMPLATE = "M117 T{params.TEMP|default(200)} S{params.SPEED|default(60)}";
+const char* const kParamsTemplate = "M117 T{params.TEMP|default(200)} S{params.SPEED|default(60)}";
 
 } // namespace
 
@@ -67,7 +67,7 @@ class SaveModeFixture : public LVGLUITestFixture {
     }
 
     static std::vector<helix::MacroParam> params() {
-        auto parsed = helix::parse_macro_params(PARAMS_TEMPLATE);
+        auto parsed = helix::parse_macro_params(kParamsTemplate);
         REQUIRE(parsed.size() == 2);
         return parsed;
     }

@@ -53,7 +53,7 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: an unchanged snap preview repain
     GridEditMode em;
     em.enter(scene.container, scene.config, static_cast<int>(GridEditScene::PAGE_INDEX));
 
-    constexpr int SPAN = GridEditScene::COLSPAN;
+    constexpr int SPAN = GridEditScene::kColspan;
     GridEditModeTestAccess::update_snap_preview(em, 0, 0, SPAN, SPAN, true);
     lv_obj_t* preview = GridEditModeTestAccess::snap_preview(em);
     REQUIRE(preview != nullptr);
@@ -248,8 +248,8 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: a resize step leaves the page's 
     GridEditMode em;
     em.enter(scene.container, scene.config, static_cast<int>(GridEditScene::PAGE_INDEX));
     GridEditModeTestAccess::make_resize_preview(em, 0, 0, 200, 150);
-    GridEditModeTestAccess::update_snap_preview(em, 0, 0, GridEditScene::COLSPAN,
-                                                GridEditScene::ROWSPAN, true);
+    GridEditModeTestAccess::update_snap_preview(em, 0, 0, GridEditScene::kColspan,
+                                                GridEditScene::kRowspan, true);
     flush_invalidation();
     lv_obj_t* screen = lv_obj_get_screen(scene.container);
     REQUIRE_FALSE(screen->scr_layout_inv);
@@ -258,7 +258,7 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: a resize step leaves the page's 
     // and the next refresh lays out every object on the screen for it.
     GridEditModeTestAccess::make_resize_preview(em, 0, 0, 260, 150);
     GridEditModeTestAccess::update_snap_preview(
-        em, GridEditScene::COLSPAN, 0, GridEditScene::COLSPAN, GridEditScene::ROWSPAN, true);
+        em, GridEditScene::kColspan, 0, GridEditScene::kColspan, GridEditScene::kRowspan, true);
     CHECK_FALSE(screen->scr_layout_inv);
 
     em.exit();

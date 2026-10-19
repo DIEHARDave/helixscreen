@@ -44,12 +44,12 @@ namespace {
 /// reads clearly. Hue is kept (low wash) so it still reads as the object's color.
 /// Combined with the reduced blit opacity in blit_ghost_cache(), this gives the ghostly
 /// look. Dial these to taste: lower infill/opacity = fainter, higher wash = paler.
-constexpr int GHOST_INFILL_BRIGHT_PERCENT = 12; // sparse infill nearly vanishes → see-through
-constexpr int GHOST_WALL_BRIGHT_PERCENT = 100;  // solid surfaces = visible washed shell
+constexpr int kGhostInfillBrightPercent = 12; // sparse infill nearly vanishes → see-through
+constexpr int kGhostWallBrightPercent = 100;  // solid surfaces = visible washed shell
 
 /// Ghost wash factor: % blend of the base/tool color toward white. Kept low so the ghost
 /// keeps its hue (teal stays teal) rather than graying out — just a touch of lift.
-constexpr int GHOST_WASH_PERCENT = 15;
+constexpr int kGhostWashPercent = 15;
 
 /// Lerp a single 8-bit channel toward white (255) by pct%.
 inline uint8_t wash_to_white(uint8_t c, int pct) {
@@ -79,11 +79,11 @@ inline bool is_ghost_solid_surface(FeatureType t) {
 }
 
 /// Default extrusion width when metadata is unavailable (mm)
-constexpr float DEFAULT_EXTRUSION_WIDTH_MM = 0.4f;
+constexpr float kDefaultExtrusionWidthMm = 0.4f;
 
 /// Extrusion pixel width clamp range
-constexpr int MIN_EXTRUSION_PIXEL_WIDTH = 1;
-constexpr int MAX_EXTRUSION_PIXEL_WIDTH = 8;
+constexpr int kMinExtrusionPixelWidth = 1;
+constexpr int kMaxExtrusionPixelWidth = 8;
 
 } // namespace
 
@@ -118,7 +118,7 @@ void GCodeLayerRenderer::set_gcode(const ParsedGCodeFile* gcode) {
     streaming_controller_ = nullptr; // Clear streaming mode
     bounds_valid_ = false;
     current_layer_ = 0;
-    warmup_frames_remaining_ = WARMUP_FRAMES; // Allow panel to render before heavy caching
+    warmup_frames_remaining_ = kWarmupFrames; // Allow panel to render before heavy caching
     refresh_selection_index_map(/*force=*/true);
     invalidate_cache();
 
@@ -135,7 +135,7 @@ void GCodeLayerRenderer::set_streaming_controller(GCodeStreamingController* cont
     gcode_ = nullptr; // Clear full-file mode
     bounds_valid_ = false;
     current_layer_ = 0;
-    warmup_frames_remaining_ = WARMUP_FRAMES; // Allow panel to render before heavy caching
+    warmup_frames_remaining_ = kWarmupFrames; // Allow panel to render before heavy caching
     refresh_selection_index_map(/*force=*/true);
     invalidate_cache();
 
@@ -824,7 +824,7 @@ void GCodeLayerRenderer::apply_ssao() {
     // pixel it has already rewritten still answers every later neighbour test
     // identically, so no second buffer is needed.
     // =========================================================================
-    constexpr float OUTLINE_DARKEN = 0.3f; // Outline brightness (0=black, 1=original)
+    constexpr float kOutlineDarken = 0.3f; // Outline brightness (0=black, 1=original)
 
     size_t filled_px = 0; // pixels with any coverage at all
 
@@ -856,9 +856,9 @@ void GCodeLayerRenderer::apply_ssao() {
 
                 if (on_edge) {
                     ssao_undo_.push_back(SsaoUndoEntry{offset, pixel});
-                    const uint8_t r = static_cast<uint8_t>(((pixel >> 16) & 0xFF) * OUTLINE_DARKEN);
-                    const uint8_t g = static_cast<uint8_t>(((pixel >> 8) & 0xFF) * OUTLINE_DARKEN);
-                    const uint8_t b = static_cast<uint8_t>((pixel & 0xFF) * OUTLINE_DARKEN);
+                    const uint8_t r = static_cast<uint8_t>(((pixel >> 16) & 0xFF) * kOutlineDarken);
+                    const uint8_t g = static_cast<uint8_t>(((pixel >> 8) & 0xFF) * kOutlineDarken);
+                    const uint8_t b = static_cast<uint8_t>((pixel & 0xFF) * kOutlineDarken);
                     px[offset] = (static_cast<uint32_t>(alpha) << 24) |
                                  (static_cast<uint32_t>(r) << 16) |
                                  (static_cast<uint32_t>(g) << 8) | b;
@@ -934,7 +934,7 @@ int GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
     size_t segments_rendered = 0;
     int last_rendered = from_layer - 1;
     const auto batch_deadline =
-        std::chrono::steady_clock::now() + std::chrono::milliseconds(SOLID_BATCH_BUDGET_MS);
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(kSolidBatchBudgetMs);
 
     // Breadcrumb the streaming render range. A SIGBUS has been seen here when
     // the gcode object-name lookup table held a corrupted node (bundle
@@ -1013,18 +1013,18 @@ int GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
                 unreadable_layer_ = layer_idx;
                 unreadable_retries_ = 0;
             }
-            if (unreadable_retries_ < MAX_UNREADABLE_RETRIES) {
+            if (unreadable_retries_ < kMaxUnreadableRetries) {
                 // Drop the cached empty result and stop here, exactly as for a
                 // null load: the next frame reads the layer again.
                 ++unreadable_retries_;
                 streaming_controller_->evict_layer(static_cast<size_t>(layer_idx));
                 spdlog::debug(
                     "[GCodeLayerRenderer] Read of layer {} failed, retry {}/{} next frame",
-                    layer_idx, unreadable_retries_, MAX_UNREADABLE_RETRIES);
+                    layer_idx, unreadable_retries_, kMaxUnreadableRetries);
                 break;
             }
             spdlog::warn("[GCodeLayerRenderer] Layer {} unreadable after {} retries, skipping it",
-                         layer_idx, MAX_UNREADABLE_RETRIES);
+                         layer_idx, kMaxUnreadableRetries);
             last_rendered = layer_idx;
             continue;
         }
@@ -1083,12 +1083,12 @@ int GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
                         float nx = -dy / len;
                         float ny = dx / len;
                         // Dot product with light direction (-0.707, -0.707)
-                        constexpr float LIGHT_X = -0.707f;
-                        constexpr float LIGHT_Y = -0.707f;
-                        float ndotl = nx * LIGHT_X + ny * LIGHT_Y;
+                        constexpr float kLightX = -0.707f;
+                        constexpr float kLightY = -0.707f;
+                        float ndotl = nx * kLightX + ny * kLightY;
                         // Map [-1, 1] → brightness modifier
-                        constexpr float NORMAL_STRENGTH = 0.12f;
-                        float normal_mod = 1.0f + ndotl * NORMAL_STRENGTH;
+                        constexpr float kNormalStrength = 0.12f;
+                        float normal_mod = 1.0f + ndotl * kNormalStrength;
                         brightness *= normal_mod;
                         if (brightness > 1.0f)
                             brightness = 1.0f;
@@ -1494,14 +1494,14 @@ std::string GCodeLayerRenderer::resolve_object_name(int16_t index) const {
 /// Used by both the main-thread member function and the background ghost thread.
 static bool name_looks_like_support(const std::string& name) {
     static constexpr const char SUPPORT[] = "support";
-    static constexpr size_t SUPPORT_LEN = 7;
+    static constexpr size_t kSupportLen = 7;
 
-    if (name.size() < SUPPORT_LEN)
+    if (name.size() < kSupportLen)
         return false;
 
-    for (size_t i = 0; i <= name.size() - SUPPORT_LEN; ++i) {
+    for (size_t i = 0; i <= name.size() - kSupportLen; ++i) {
         bool match = true;
-        for (size_t j = 0; j < SUPPORT_LEN; ++j) {
+        for (size_t j = 0; j < kSupportLen; ++j) {
             if (std::tolower(static_cast<unsigned char>(name[i + j])) != SUPPORT[j]) {
                 match = false;
                 break;
@@ -1549,8 +1549,8 @@ std::optional<std::string> GCodeLayerRenderer::pick_object_at(int screen_x, int 
     // Streaming mode has no object list (set_streaming_controller() clears
     // gcode_), so it falls through to the segment walk with no filter.
     // ------------------------------------------------------------------
-    constexpr size_t MAX_CANDIDATES = 32;
-    const std::string* candidate_names[MAX_CANDIDATES];
+    constexpr size_t kMaxCandidates = 32;
+    const std::string* candidate_names[kMaxCandidates];
     size_t candidate_count = 0;
     bool candidate_overflow = false;
     const bool objects_known = gcode_ && !gcode_->objects.empty() &&
@@ -1563,9 +1563,9 @@ std::optional<std::string> GCodeLayerRenderer::pick_object_at(int screen_x, int 
         // the Z the parser stored for a layer versus the Z it stored on that
         // layer's segments - orders of magnitude below the thinnest layer
         // height anyone slices, so it can never admit an undrawn layer.
-        constexpr float Z_VISIBLE_EPSILON_MM = 1e-4f;
+        constexpr float kZVisibleEpsilonMm = 1e-4f;
         const float visible_top_z =
-            gcode_->layers[static_cast<size_t>(current_layer_)].z_height + Z_VISIBLE_EPSILON_MM;
+            gcode_->layers[static_cast<size_t>(current_layer_)].z_height + kZVisibleEpsilonMm;
         const bool supports_hidden = !show_supports_.load(std::memory_order_relaxed);
 
         for (const auto& [name, obj] : gcode_->objects) {
@@ -1616,7 +1616,7 @@ std::optional<std::string> GCodeLayerRenderer::pick_object_at(int screen_x, int 
                 click_pos.y > max_sy + selection::kPickThresholdPx)
                 continue;
 
-            if (candidate_count < MAX_CANDIDATES) {
+            if (candidate_count < kMaxCandidates) {
                 candidate_names[candidate_count++] = &name;
             } else {
                 candidate_overflow = true;
@@ -1638,7 +1638,7 @@ std::optional<std::string> GCodeLayerRenderer::pick_object_at(int screen_x, int 
     // Overlapping footprints only. On overflow (a degenerate plate with >32
     // objects under one tap) fall back to an unfiltered walk rather than
     // dropping objects on the floor.
-    int16_t candidate_indices[MAX_CANDIDATES];
+    int16_t candidate_indices[kMaxCandidates];
     size_t candidate_index_count = 0;
     const bool restrict_to_candidates = objects_known && !candidate_overflow && candidate_count > 1;
 
@@ -2048,19 +2048,19 @@ void GCodeLayerRenderer::background_ghost_render_thread(GhostSnapshot snap) {
     // then apply per-feature brightness. ARGB8888: A in high byte, RGB lower. Full
     // alpha here — the translucency is applied at blit time. Infill is dimmed;
     // walls keep full washed brightness (silhouette).
-    const uint8_t wash_r = wash_to_white(local_color_extrusion.red, GHOST_WASH_PERCENT);
-    const uint8_t wash_g = wash_to_white(local_color_extrusion.green, GHOST_WASH_PERCENT);
-    const uint8_t wash_b = wash_to_white(local_color_extrusion.blue, GHOST_WASH_PERCENT);
+    const uint8_t wash_r = wash_to_white(local_color_extrusion.red, kGhostWashPercent);
+    const uint8_t wash_g = wash_to_white(local_color_extrusion.green, kGhostWashPercent);
+    const uint8_t wash_b = wash_to_white(local_color_extrusion.blue, kGhostWashPercent);
 
-    uint8_t ghost_r = wash_r * GHOST_INFILL_BRIGHT_PERCENT / 100;
-    uint8_t ghost_g = wash_g * GHOST_INFILL_BRIGHT_PERCENT / 100;
-    uint8_t ghost_b = wash_b * GHOST_INFILL_BRIGHT_PERCENT / 100;
+    uint8_t ghost_r = wash_r * kGhostInfillBrightPercent / 100;
+    uint8_t ghost_g = wash_g * kGhostInfillBrightPercent / 100;
+    uint8_t ghost_b = wash_b * kGhostInfillBrightPercent / 100;
     uint8_t ghost_a = 255; // Full alpha; blit_ghost_cache() applies the translucency
     uint32_t ghost_color = (ghost_a << 24) | (ghost_r << 16) | (ghost_g << 8) | ghost_b;
 
-    uint8_t wall_r = wash_r * GHOST_WALL_BRIGHT_PERCENT / 100;
-    uint8_t wall_g = wash_g * GHOST_WALL_BRIGHT_PERCENT / 100;
-    uint8_t wall_b = wash_b * GHOST_WALL_BRIGHT_PERCENT / 100;
+    uint8_t wall_r = wash_r * kGhostWallBrightPercent / 100;
+    uint8_t wall_g = wash_g * kGhostWallBrightPercent / 100;
+    uint8_t wall_b = wash_b * kGhostWallBrightPercent / 100;
     uint32_t ghost_wall_color = (255u << 24) | (wall_r << 16) | (wall_g << 8) | wall_b;
 
     // Render the ghost to the raw buffer.
@@ -2144,16 +2144,15 @@ void GCodeLayerRenderer::background_ghost_render_thread(GhostSnapshot snap) {
             // Solid/visible surfaces stay at full washed brightness; only sparse infill
             // is dimmed to near-invisible so the shell reads as see-through.
             const bool is_solid = is_ghost_solid_surface(seg.feature_type);
-            const int bright_pct =
-                is_solid ? GHOST_WALL_BRIGHT_PERCENT : GHOST_INFILL_BRIGHT_PERCENT;
+            const int bright_pct = is_solid ? kGhostWallBrightPercent : kGhostInfillBrightPercent;
 
             // Per-segment ghost color (tool palette or single color)
             uint32_t seg_color = is_solid ? ghost_wall_color : ghost_color;
             if (local_tool_palette.has_tool_colors()) {
                 lv_color_t tc = local_tool_palette.resolve(seg.tool_index, local_color_extrusion);
-                uint8_t tr = wash_to_white(tc.red, GHOST_WASH_PERCENT) * bright_pct / 100;
-                uint8_t tg = wash_to_white(tc.green, GHOST_WASH_PERCENT) * bright_pct / 100;
-                uint8_t tb = wash_to_white(tc.blue, GHOST_WASH_PERCENT) * bright_pct / 100;
+                uint8_t tr = wash_to_white(tc.red, kGhostWashPercent) * bright_pct / 100;
+                uint8_t tg = wash_to_white(tc.green, kGhostWashPercent) * bright_pct / 100;
+                uint8_t tb = wash_to_white(tc.blue, kGhostWashPercent) * bright_pct / 100;
                 seg_color = (255u << 24) | (tr << 16) | (tg << 8) | tb;
             }
             // Same tags the solid cache applies, for the same reason: the rim and
@@ -2179,7 +2178,7 @@ void GCodeLayerRenderer::background_ghost_render_thread(GhostSnapshot snap) {
         // an uninterrupted pass leaves touch unserviced for its whole duration.
         // Full load walks resident memory and needs no such yield.
         if (local_streaming) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(GHOST_STREAM_YIELD_MS));
+            std::this_thread::sleep_for(std::chrono::milliseconds(kGhostStreamYieldMs));
         }
         ghost_layers_done_.store(sample + 1);
     }
@@ -2283,7 +2282,7 @@ helix::gcode::RasterTarget GCodeLayerRenderer::ghost_target() const {
 }
 
 int GCodeLayerRenderer::get_extrusion_pixel_width() const {
-    float width_mm = DEFAULT_EXTRUSION_WIDTH_MM;
+    float width_mm = kDefaultExtrusionWidthMm;
 
     if (gcode_) {
         // Full-file mode: prefer extrusion_width_mm, then nozzle_diameter_mm
@@ -2296,8 +2295,7 @@ int GCodeLayerRenderer::get_extrusion_pixel_width() const {
     // Streaming mode: no metadata available, use default 0.4mm
 
     int pixel_width = static_cast<int>(std::round(width_mm * scale_));
-    const int clamped =
-        std::clamp(pixel_width, MIN_EXTRUSION_PIXEL_WIDTH, MAX_EXTRUSION_PIXEL_WIDTH);
+    const int clamped = std::clamp(pixel_width, kMinExtrusionPixelWidth, kMaxExtrusionPixelWidth);
     spdlog::trace("[GCodeLayerRenderer] extrusion width: {}mm * scale {} = {}px (clamped {})",
                   width_mm, scale_, pixel_width, clamped);
     return clamped;
@@ -2312,23 +2310,23 @@ void GCodeLayerRenderer::load_config() {
 
     // Load layers_per_frame: 0 = adaptive, 1-100 = fixed
     config_layers_per_frame_ = config->get<int>("/gcode_viewer/layers_per_frame", 0);
-    config_layers_per_frame_ = std::clamp(config_layers_per_frame_, 0, MAX_LAYERS_PER_FRAME);
+    config_layers_per_frame_ = std::clamp(config_layers_per_frame_, 0, kMaxLayersPerFrame);
 
     if (config_layers_per_frame_ > 0) {
         // Fixed value from config
         layers_per_frame_ =
-            std::clamp(config_layers_per_frame_, MIN_LAYERS_PER_FRAME, MAX_LAYERS_PER_FRAME);
+            std::clamp(config_layers_per_frame_, kMinLayersPerFrame, kMaxLayersPerFrame);
         spdlog::info("[GCodeLayerRenderer] Using fixed layers_per_frame: {}", layers_per_frame_);
     } else {
         // Adaptive mode - start with default, adjust based on render time
-        layers_per_frame_ = DEFAULT_LAYERS_PER_FRAME;
+        layers_per_frame_ = kDefaultLayersPerFrame;
         spdlog::debug("[GCodeLayerRenderer] Using adaptive layers_per_frame (starting at {})",
                       layers_per_frame_);
     }
 
     // Load adaptive target (only used when config_layers_per_frame_ == 0)
     adaptive_target_ms_ =
-        config->get<int>("/gcode_viewer/adaptive_layer_target_ms", DEFAULT_ADAPTIVE_TARGET_MS);
+        config->get<int>("/gcode_viewer/adaptive_layer_target_ms", kDefaultAdaptiveTargetMs);
     adaptive_target_ms_ = std::clamp(adaptive_target_ms_, 1, 100); // Sensible bounds
 
     spdlog::debug("[GCodeLayerRenderer] Adaptive target: {}ms", adaptive_target_ms_);
@@ -2338,9 +2336,9 @@ void GCodeLayerRenderer::load_config() {
     is_constrained_device_ = mem_info.is_constrained_device();
 
     if (is_constrained_device_) {
-        max_layers_per_frame_ = CONSTRAINED_MAX_LPF;
+        max_layers_per_frame_ = kConstrainedMaxLpf;
         if (config_layers_per_frame_ == 0) { // Adaptive mode
-            layers_per_frame_ = CONSTRAINED_START_LPF;
+            layers_per_frame_ = kConstrainedStartLpf;
         }
         spdlog::info(
             "[GCodeLayerRenderer] Constrained device detected: lpf capped at {}, starting at {}",
@@ -2370,7 +2368,7 @@ void GCodeLayerRenderer::adapt_layers_per_frame() {
         // Under budget - can render more layers
         // Scale up proportionally but cap growth (conservative on constrained devices)
         float ratio = static_cast<float>(adaptive_target_ms_) / std::max(1u, last_frame_render_ms_);
-        float max_growth = is_constrained_device_ ? CONSTRAINED_GROWTH_CAP : 2.0f;
+        float max_growth = is_constrained_device_ ? kConstrainedGrowthCap : 2.0f;
         ratio = std::min(ratio, max_growth);
         int new_lpf = static_cast<int>(layers_per_frame_ * ratio);
         // Smooth increase (take average of current and target)
@@ -2385,7 +2383,7 @@ void GCodeLayerRenderer::adapt_layers_per_frame() {
     }
 
     // Clamp to valid range (using device-aware max)
-    layers_per_frame_ = std::clamp(layers_per_frame_, MIN_LAYERS_PER_FRAME, max_layers_per_frame_);
+    layers_per_frame_ = std::clamp(layers_per_frame_, kMinLayersPerFrame, max_layers_per_frame_);
 
     // Log significant changes
     if (layers_per_frame_ != old_lpf) {

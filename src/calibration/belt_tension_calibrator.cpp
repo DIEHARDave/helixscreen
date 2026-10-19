@@ -86,7 +86,7 @@ void BeltTensionCalibrator::detect_hardware(BeltHardwareDetectCallback on_comple
 
 void BeltTensionCalibrator::measure_path(
     BeltPath path, std::function<void(int percent, float freq_hz)> on_progress,
-    std::function<void(BeltCurve)> on_complete, BeltErrorCallback on_error,
+    std::function<void(BeltResponse)> on_complete, BeltErrorCallback on_error,
     std::optional<BeltSweepWindow> window) {
     if (!api_) {
         spdlog::warn("[BeltTension] measure_path called without API");
@@ -119,13 +119,13 @@ void BeltTensionCalibrator::measure_path(
                                         on_progress(percent, freq_hz);
                                 }),
                 lifetime_.bg_cb("BeltTensionCalibrator::sweep_complete",
-                                [this, generation, on_complete](const BeltCurve& curve) {
+                                [this, generation, on_complete](const BeltResponse& response) {
                                     if (generation != run_generation_)
                                         return;
                                     run_cancel_ = nullptr;
                                     state_.store(State::IDLE);
                                     if (on_complete)
-                                        on_complete(curve);
+                                        on_complete(response);
                                 }),
                 lifetime_.bg_cb("BeltTensionCalibrator::sweep_error",
                                 [this, generation, on_error](const MoonrakerError& err) {
@@ -180,7 +180,7 @@ void BeltTensionCalibrator::settle(const BeltSettleInputs& inputs, std::function
 
     state_.store(State::HOMING);
     spdlog::info("[BeltTension] Settling belts: {} laps at {:.0f} mm/s, about {:.0f} s",
-                 belt_settle::LAPS, plan.speed_mm_s, plan.seconds);
+                 belt_settle::kLaps, plan.speed_mm_s, plan.seconds);
 
     ensure_homed_then(
         api_, lifetime_,

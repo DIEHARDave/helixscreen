@@ -45,15 +45,15 @@ namespace {
 /// Layers in the synthetic file. Far short of the ~5000 the 133MB K2 file
 /// carries, but well past any plausible sampling budget, which is what makes
 /// the difference between "bounded" and "one per layer" unambiguous.
-constexpr int SYNTH_LAYERS = 2000;
+constexpr int kSynthLayers = 2000;
 
 /// Moves per layer — enough that a layer is a real parse rather than one line.
-constexpr int MOVES_PER_LAYER = 40;
+constexpr int kMovesPerLayer = 40;
 
 /// Canvas the ghost renders into. 320 rows is representative of the preview on
 /// a 480x800 panel, and is what sets the sampling budget.
-constexpr int CANVAS_W = 400;
-constexpr int CANVAS_H = 320;
+constexpr int kCanvasW = 400;
+constexpr int kCanvasH = 320;
 
 /// A G-code file with a known layer count, shaped like a sliced print: a Z
 /// move opening each layer, then extrusions that trace a square.
@@ -147,7 +147,7 @@ struct StreamingFixture {
     CountingDataSource* counter = nullptr;
     GCodeStreamingController controller;
 
-    StreamingFixture() : file(make_layered_gcode(SYNTH_LAYERS, MOVES_PER_LAYER)) {
+    StreamingFixture() : file(make_layered_gcode(kSynthLayers, kMovesPerLayer)) {
         auto source = std::make_unique<CountingDataSource>(file.path());
         counter = source.get();
         REQUIRE(controller.open_source(std::move(source)));
@@ -186,10 +186,10 @@ TEST_CASE("ghost pass over a streamed file does not read one layer per layer",
     const int layer_count = static_cast<int>(fx.controller.get_layer_count());
     // The fixture is only meaningful if the index found roughly the layers it
     // was built with, and enough of them to exceed any sampling budget.
-    REQUIRE(layer_count > ghost_sample_budget(CANVAS_H) * 2);
+    REQUIRE(layer_count > ghost_sample_budget(kCanvasH) * 2);
 
     GCodeLayerRenderer renderer;
-    renderer.set_canvas_size(CANVAS_W, CANVAS_H);
+    renderer.set_canvas_size(kCanvasW, kCanvasH);
     renderer.set_streaming_controller(&fx.controller);
 
     // Everything before this point — the index build in particular — is not what
@@ -203,9 +203,9 @@ TEST_CASE("ghost pass over a streamed file does not read one layer per layer",
     CHECK(GCodeLayerRendererTestAccess::ghost_completed(renderer));
 
     const size_t reads = fx.counter->reads();
-    const auto plan = plan_ghost_sampling(layer_count, /*streaming=*/true, CANVAS_H);
+    const auto plan = plan_ghost_sampling(layer_count, /*streaming=*/true, kCanvasH);
     INFO("layers=" << layer_count << " reads=" << reads << " planned=" << plan.count
-                   << " budget=" << ghost_sample_budget(CANVAS_H));
+                   << " budget=" << ghost_sample_budget(kCanvasH));
 
     // The regression: one seek-and-parse per layer of the file, plus the
     // neighbours each one warmed. Anything near the layer count is that bug.
@@ -222,10 +222,10 @@ TEST_CASE("ghost pass does not drive the prefetch worker across the file",
     StreamingFixture fx;
 
     const int layer_count = static_cast<int>(fx.controller.get_layer_count());
-    REQUIRE(layer_count > ghost_sample_budget(CANVAS_H) * 2);
+    REQUIRE(layer_count > ghost_sample_budget(kCanvasH) * 2);
 
     GCodeLayerRenderer renderer;
-    renderer.set_canvas_size(CANVAS_W, CANVAS_H);
+    renderer.set_canvas_size(kCanvasW, kCanvasH);
     renderer.set_streaming_controller(&fx.controller);
 
     fx.controller.wait_for_prefetch_idle();
@@ -239,7 +239,7 @@ TEST_CASE("ghost pass does not drive the prefetch worker across the file",
     fx.controller.wait_for_prefetch_idle();
 
     const size_t reads = fx.counter->reads();
-    const auto plan = plan_ghost_sampling(layer_count, /*streaming=*/true, CANVAS_H);
+    const auto plan = plan_ghost_sampling(layer_count, /*streaming=*/true, kCanvasH);
     INFO("layers=" << layer_count << " reads=" << reads << " planned=" << plan.count);
 
     // Each get_layer_segments() used to schedule a prefetch of radius 3 around
@@ -256,7 +256,7 @@ TEST_CASE("a streamed ghost still spans the whole model", "[gcode][ghost][stream
     // what counts as a layer.
     StreamingFixture fx;
     const int layer_count = static_cast<int>(fx.controller.get_layer_count());
-    const auto plan = plan_ghost_sampling(layer_count, /*streaming=*/true, CANVAS_H);
+    const auto plan = plan_ghost_sampling(layer_count, /*streaming=*/true, kCanvasH);
 
     const int last_visited = plan.step * (plan.count - 1);
     INFO("layers=" << layer_count << " step=" << plan.step << " last=" << last_visited);
@@ -282,10 +282,10 @@ TEST_CASE("a streamed ghost leaves no empty row inside the model",
     GCodeStreamingController controller;
     REQUIRE(controller.open_file(file.path()));
     REQUIRE(controller.is_open());
-    REQUIRE(controller.get_layer_count() > static_cast<size_t>(ghost_sample_budget(CANVAS_H)));
+    REQUIRE(controller.get_layer_count() > static_cast<size_t>(ghost_sample_budget(kCanvasH)));
 
     GCodeLayerRenderer renderer;
-    renderer.set_canvas_size(CANVAS_W, CANVAS_H);
+    renderer.set_canvas_size(kCanvasW, kCanvasH);
     renderer.set_streaming_controller(&controller);
 
     GCodeLayerRendererTestAccess::run_ghost_pass(renderer);

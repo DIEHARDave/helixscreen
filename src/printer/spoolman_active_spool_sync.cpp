@@ -22,8 +22,8 @@
 namespace helix::spoolman_sync {
 
 namespace {
-constexpr const char* ACTIVE_SPOOL_METHOD = "notify_active_spool_set";
-constexpr const char* ACTIVE_SPOOL_HANDLER = "external_spool_sync";
+constexpr const char* kActiveSpoolMethod = "notify_active_spool_set";
+constexpr const char* kActiveSpoolHandler = "external_spool_sync";
 } // namespace
 
 void try_assign_active_spool_to_tool(const SpoolInfo& spool) {
@@ -244,12 +244,12 @@ void attach(IMoonrakerClient& client, ISpoolmanAPI& spoolman) {
     // Listen for Moonraker active spool changes (user changes spool in Spoolman web
     // UI or another client while HelixScreen is running).
     replace_method_callback(
-        client, ACTIVE_SPOOL_METHOD, ACTIVE_SPOOL_HANDLER,
+        client, kActiveSpoolMethod, kActiveSpoolHandler,
         [&spoolman](const nlohmann::json& data) { on_active_spool_set(spoolman, data); });
 }
 
 void detach(IMoonrakerClient& client) {
-    client.unregister_method_callback(ACTIVE_SPOOL_METHOD, ACTIVE_SPOOL_HANDLER);
+    client.unregister_method_callback(kActiveSpoolMethod, kActiveSpoolHandler);
 }
 
 } // namespace helix::spoolman_sync

@@ -26,6 +26,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <numeric>
 #include <set>
 #include <string>
 #include <unistd.h>
@@ -118,11 +119,11 @@ class CapturingMultiAce : public AmsBackendMultiAce {
         pending_load_grace_ = std::chrono::milliseconds{0};
     }
 
-    /// Every EVENT_ERROR payload the backend raises.
+    /// Every kEventError payload the backend raises.
     std::vector<std::string> errors;
     void record_errors() {
         set_event_callback([this](const std::string& ev, const std::string& data) {
-            if (ev == EVENT_ERROR) {
+            if (ev == kEventError) {
                 errors.push_back(data);
             }
         });
@@ -231,6 +232,37 @@ TEST_CASE_METHOD(MultiAcePrintFixture, "AmsState builds the multiACE backend fro
     ams.deinit_subjects();
 }
 
+TEST_CASE_METHOD(MultiAcePrintFixture, "a 4-ACE rig gives every bay a slot subject",
+                 "[multiace][ams]") {
+    auto with_ace = kU1Objects;
+    with_ace.push_back("ace");
+    const PrinterDiscovery modded = discover(with_ace);
+
+    AmsState& ams = AmsState::instance();
+    ams.deinit_subjects();
+    ams.init_subjects(false);
+    ams.init_backends_from_hardware(modded, api.get(), &client);
+    REQUIRE(ams.backend_count() == 1);
+
+    auto& snap = static_cast<AmsBackendSnapmaker&>(*ams.get_backend(0));
+    SnapmakerTestAccess::handle_status(snap, ace_frame("head_mode_4ace.json"));
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+
+    // ACE 4's bays are global slots 16-19, past the old 16-slot ceiling; the
+    // fixture fills bay 1 with a red PLA and reports bay 3 empty.
+    const int first = multiace::bay_global(3, 0);
+    for (int s = 0; s < 4; ++s) {
+        REQUIRE(ams.get_slot_color_subject(first + s) != nullptr);
+        REQUIRE(ams.get_slot_status_subject(first + s) != nullptr);
+    }
+    CHECK(lv_subject_get_int(ams.get_slot_color_subject(first)) == 0xFF0000);
+    CHECK(lv_subject_get_int(ams.get_slot_status_subject(first + 2)) ==
+          static_cast<int>(SlotStatus::EMPTY));
+
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    ams.deinit_subjects();
+}
+
 TEST_CASE("multiACE subscribes the ace object only beside a U1", "[multiace]") {
     auto with_ace = kU1Objects;
     with_ace.push_back("ace");
@@ -280,6 +312,29 @@ TEST_CASE_METHOD(MultiAceFixture, "head mode shows each ACE as a hub into its he
 
     CHECK(b.slot_is_actively_loaded(multiace::bay_global(0, 0)));
     CHECK_FALSE(b.slot_is_actively_loaded(multiace::bay_global(0, 1)));
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "an unwired head-mode ACE unit feeds no nozzle", "[multiace]") {
+    CapturingMultiAce b;
+    json frame = ace_frame("head_mode_4ace.json");
+    // Head 4 becomes a side-feeder head, so no head names ACE 4.
+    frame["ace"]["head_feeder"]["3"] = true;
+    frame["ace"]["head_ace"]["3"] = -1;
+    b.frame(frame);
+
+    const AmsSystemInfo info = b.get_system_info();
+    REQUIRE(info.units.size() == 5);
+    REQUIRE(info.units[4].hub_tool_label == -1);
+    for (const SlotInfo& s : info.units[4].slots) {
+        CHECK(s.mapped_tool == -1);
+        CHECK(s.extruder_name.empty());
+    }
+
+    const ams_draw::SystemToolLayout layout = ams_draw::compute_system_tool_layout(info, &b);
+    CHECK(layout.units[4].tool_count == 0);
+    CHECK(layout.units[4].hub_group == -1);
+    // The four heads and nothing else: no phantom fifth nozzle.
+    CHECK(layout.total_physical_tools == 4);
 }
 
 TEST_CASE_METHOD(MultiAceFixture, "units rebuild on mode flip", "[multiace]") {
@@ -483,6 +538,33 @@ TEST_CASE_METHOD(MultiAceFixture, "load into an occupied head unloads first", "[
     }
 }
 
+TEST_CASE_METHOD(MultiAceFixture, "a refused op leaves a pending bay load standing", "[multiace]") {
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_4ace.json"));
+    b.frame(json{{"toolhead", {{"extruder", "extruder"}}}});
+    b.record_errors();
+
+    // Head 0 is loaded and routed from ACE 1 bay 1: loading bay 2 defers
+    // behind the head's unload.
+    REQUIRE(b.load_filament(multiace::bay_global(0, 1)).success());
+    REQUIRE(b.sent.size() == 1);
+    CHECK(b.sent[0] == "ACE_UNLOAD_HEAD HEAD=0");
+    b.answer_ok();
+
+    // A tap on an empty bay is refused - and must not take the deferred load
+    // with it: the refusal changed nothing.
+    CHECK_FALSE(b.load_filament(multiace::bay_global(0, 2)).success());
+    CHECK(b.sent.size() == 1);
+    CHECK(b.errors.empty());
+
+    // The head empties and the deferred load still goes.
+    json emptied = {{"ace", {{"head_source", json::object()}}}};
+    emptied.update(feed_frame(0, "preload_finish"));
+    b.frame(emptied);
+    REQUIRE(b.sent.size() == 2);
+    CHECK(b.sent[1] == "ACE_LOAD_HEAD HEAD=0 ACE=0 SLOT=1");
+}
+
 TEST_CASE_METHOD(MultiAcePrintFixture, "bay swap refused while paused", "[multiace]") {
     CapturingMultiAce b(api.get(), &client);
     b.frame(ace_frame("head_mode_4ace.json"));
@@ -510,6 +592,19 @@ TEST_CASE_METHOD(MultiAceFixture, "every head goes through the engine while it i
     // Head mode: the engine picks the wired unit and the head's last bay.
     CHECK(b.sent[2] == "ACE_LOAD_HEAD HEAD=1");
     CHECK(b.sent[3] == "ACE_UNLOAD_HEAD HEAD=0");
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "an unload with no head to name refuses under the engine",
+                 "[multiace]") {
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_4ace.json"));
+    // No current slot and no head named: nothing resolves, and the stock leaf
+    // macro must not run under the engine's shadowed feed files.
+    const AmsError err = b.unload_filament(-1);
+    CHECK_FALSE(err.success());
+    CHECK(err.result == AmsResult::WRONG_STATE);
+    CHECK(err.user_msg == "Nothing loaded");
+    CHECK(b.sent.empty());
 }
 
 TEST_CASE_METHOD(MultiAceFixture, "multi mode always names the bay of a head load", "[multiace]") {
@@ -582,6 +677,39 @@ TEST_CASE_METHOD(MultiAceFixture, "batch ops with ACE-fed heads", "[multiace]") 
         REQUIRE(b.sent.size() == 1);
         CHECK(b.sent[0] == "ACE_UNLOAD_HEAD HEAD=0\nACE_UNLOAD_HEAD HEAD=2");
     }
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "an ACE-fed head is not offered as a batch load target",
+                 "[multiace]") {
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_2ace_2feeder.json"));
+
+    // Heads 0 and 1 are ACE-fed: the backend refuses a batch load into them,
+    // so the picker must not read them as eligible.
+    CHECK(b.slot_op_eligibility(0, /*load=*/true) ==
+          AmsBackend::FilamentOpEligibility::NotSupported);
+    CHECK(b.slot_op_eligibility(1, /*load=*/true) ==
+          AmsBackend::FilamentOpEligibility::NotSupported);
+    // A feeder head keeps the channel-state answer, and a bay stays Busy.
+    json feeder_ready = feed_frame(2, "wait_insert");
+    feeder_ready["filament_feed right"]["extruder2"]["module_exist"] = true;
+    b.frame(feeder_ready);
+    b.frame(json{{"filament_motion_sensor e2_filament", {{"enabled", true}}}});
+    CHECK(b.slot_op_eligibility(2, /*load=*/true) == AmsBackend::FilamentOpEligibility::Eligible);
+    CHECK(b.slot_op_eligibility(multiace::bay_global(0, 0), /*load=*/true) ==
+          AmsBackend::FilamentOpEligibility::Busy);
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "a batch unload names its own refusal", "[multiace]") {
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_2ace_2feeder.json"));
+
+    // An unrouted bay in an unload batch: the refusal must say unload, not
+    // the load-side wording.
+    const AmsError err = b.unload_filament_batch({multiace::bay_global(0, 2)});
+    CHECK(err.result == AmsResult::NOT_SUPPORTED);
+    CHECK(err.technical_msg.find("unload") != std::string::npos);
+    CHECK(b.sent.empty());
 }
 
 TEST_CASE_METHOD(MultiAceFixture, "batch load runs the single-load checks per head", "[multiace]") {
@@ -686,6 +814,32 @@ TEST_CASE_METHOD(MultiAceFixture, "coded 525 error files under its head", "[mult
     CHECK_FALSE(b.classify_error("!! 0003-0523-0002-0207 runout", idle));
     CHECK_FALSE(b.classify_error("!! 0003-0525-0002-0100 something", idle));
     CHECK_FALSE(b.classify_error("// 0003-0525-0002-0207 echo", idle));
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "a failed head load surfaces once", "[multiace]") {
+    CapturingMultiAce b;
+    b.record_errors();
+    b.frame(ace_frame("head_mode_4ace.json"));
+    REQUIRE(b.errors.empty());
+
+    // The engine's head_source says the load into head 1 failed.
+    b.frame(
+        json{{"ace",
+              {{"head_source", {{"1", {{"ace_index", 0}, {"slot", 1}, {"load_failed", true}}}}}}}});
+    REQUIRE(b.errors.size() == 1);
+    CHECK(b.errors[0].find("Toolhead 2") != std::string::npos);
+
+    // Frames restating the standing failure do not repeat it, and a source
+    // that clears arms the edge again.
+    b.frame(
+        json{{"ace",
+              {{"head_source", {{"1", {{"ace_index", 0}, {"slot", 1}, {"load_failed", true}}}}}}}});
+    CHECK(b.errors.size() == 1);
+    b.frame(json{{"ace", {{"head_source", json::object()}}}});
+    b.frame(
+        json{{"ace",
+              {{"head_source", {{"1", {{"ace_index", 0}, {"slot", 1}, {"load_failed", true}}}}}}}});
+    CHECK(b.errors.size() == 2);
 }
 
 TEST_CASE_METHOD(MultiAceFixture, "only the four heads are tools", "[multiace]") {
@@ -845,6 +999,69 @@ TEST_CASE_METHOD(MultiAceFixture, "an ACE-fed head's upstream caption names its 
     CHECK(helix::ui::upstream_lane_caption(info, b, multiace::bay_global(0, 0)).empty());
 }
 
+TEST_CASE_METHOD(MultiAceFixture, "a route naming an absent unit reads as unrouted", "[multiace]") {
+    CapturingMultiAce b;
+    json frame = ace_frame("head_mode_4ace.json");
+    // Head 2's source names ACE 3, but only ACE 1 and ACE 2 answer.
+    json kept = json::array();
+    for (const auto& u : frame["ace"]["aces"]) {
+        if (u["idx"] <= 1) {
+            kept.push_back(u);
+        }
+    }
+    frame["ace"]["aces"] = kept;
+    frame["ace"]["head_ace"] = {{"0", 0}, {"1", 1}, {"2", 2}, {"3", 3}};
+    frame["ace"]["head_source"] = {{"0", {{"ace_index", 0}, {"slot", 0}}},
+                                   {"2", {{"ace_index", 2}, {"slot", 0}}}};
+    b.frame(frame);
+
+    const AmsSystemInfo info = b.get_system_info();
+    REQUIRE(info.units.size() == 3);
+    // Head 0's route names a shown unit; head 2's does not.
+    CHECK(b.upstream_slot(0) == std::optional<int>{multiace::bay_global(0, 0)});
+    CHECK(b.upstream_slot(2) == std::nullopt);
+    CHECK(helix::ui::upstream_lane_caption(info, b, 2).empty());
+    // The absent unit's index range is not numbered as spools: ACE 2 bay 1 is
+    // the 8th spool-owning lane, not the 9th.
+    CHECK(b.spool_display_number(multiace::bay_global(1, 0)) == 8);
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "spool numbers skip no index the engine left out", "[multiace]") {
+    CapturingMultiAce b;
+    json frame = ace_frame("head_mode_4ace.json");
+    // The engine reports ACE 1 and ACE 3 only: the ACE 2 index range is a
+    // gap, not four invisible spools.
+    json kept = json::array();
+    for (const auto& u : frame["ace"]["aces"]) {
+        if (u["idx"] != 1) {
+            kept.push_back(u);
+        }
+    }
+    frame["ace"]["aces"] = kept;
+    frame["ace"]["head_ace"] = {{"0", 0}, {"1", 0}, {"2", 2}, {"3", 2}};
+    frame["ace"]["head_source"] = json{{"0", {{"ace_index", 0}, {"slot", 0}}}};
+    b.frame(frame);
+
+    const AmsSystemInfo info = b.get_system_info();
+    REQUIRE(info.units.size() == 4); // the heads plus the three units shown
+    REQUIRE(info.total_slots == multiace::bay_global(3, 3) + 1);
+
+    // Every lane a unit covers, numbered: a routed head wears its bay's
+    // number, so the DISTINCT numbers over the covered lanes run 1..N with
+    // no skip where the missing unit's index range sits.
+    std::vector<int> numbers;
+    for (int gi = 0; gi < info.total_slots; ++gi) {
+        if (info.get_slot_global(gi)) {
+            numbers.push_back(b.spool_display_number(gi));
+        }
+    }
+    std::sort(numbers.begin(), numbers.end());
+    numbers.erase(std::unique(numbers.begin(), numbers.end()), numbers.end());
+    std::vector<int> expected(numbers.size());
+    std::iota(expected.begin(), expected.end(), 1);
+    CHECK(numbers == expected);
+}
+
 // ============================================================================
 // Bay identity editing
 // ============================================================================
@@ -891,6 +1108,47 @@ TEST_CASE_METHOD(MultiAceFixture, "a bay edit lands and survives the engine's fr
     // writes the bay, and nothing else.
     CHECK(b.get_slot_info(1).material.empty());
     CHECK(b.get_slot_info(1).color_rgb != edited.color_rgb);
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "a bay edit clears when a different spool is detected",
+                 "[multiace][ams]") {
+    helix::test::RegisteredBackend<CapturingMultiAce> reg;
+    CapturingMultiAce& b = *reg;
+    b.frame(ace_frame("head_mode_4ace.json"));
+
+    const int bay = multiace::bay_global(1, 0);
+    SlotInfo edit = b.get_slot_info(bay);
+    edit.material = "PETG";
+    edit.brand = "Polymaker";
+    edit.color_rgb = 0x1E5AA8;
+    edit.spool_name = "Blue PETG";
+    REQUIRE(b.commit_user_edit(bay, b.get_slot_info(bay), edit).success());
+    REQUIRE(b.get_slot_info(bay).material == "PETG");
+
+    // The engine restating its table is the same spool: the edit stands.
+    b.frame(ace_frame("head_mode_4ace.json"));
+    CHECK(b.get_slot_info(bay).material == "PETG");
+
+    SECTION("an empty bay states nothing; the edit waits for evidence") {
+        json emptied = ace_frame("head_mode_4ace.json");
+        emptied["ace"]["aces"][1]["slots"][0]["status"] = "empty";
+        emptied["ace"]["aces"][1]["slots"][0]["material"] = "";
+        emptied["ace"]["aces"][1]["slots"][0]["color"] = json::array({0, 0, 0});
+        b.frame(emptied);
+        CHECK(b.get_slot_info(bay).material == "PETG");
+    }
+
+    // A different spool in the bay clears the edit and yields to the engine.
+    json respooled = ace_frame("head_mode_4ace.json");
+    respooled["ace"]["aces"][1]["slots"][0]["material"] = "PLA";
+    respooled["ace"]["aces"][1]["slots"][0]["brand"] = "Anycubic";
+    respooled["ace"]["aces"][1]["slots"][0]["color"] = json::array({0, 128, 0});
+    b.frame(respooled);
+    const SlotInfo after = b.get_slot_info(bay);
+    CHECK(after.material == "PLA");
+    CHECK(after.color_rgb == 0x008000u);
+    CHECK(after.brand == "Anycubic");
+    CHECK(after.spool_name.empty());
 }
 
 TEST_CASE_METHOD(MultiAceFixture, "bay edits refuse slots the backend does not show",
@@ -944,7 +1202,7 @@ TEST_CASE_METHOD(MultiAceFixture, "clearing a bay spool drops the edit and yield
     SlotInfo original = b.get_slot_info(bay);
     SlotInfo cleared = original;
     cleared.material.clear();
-    cleared.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    cleared.color_rgb = kAmsDefaultSlotColor;
     cleared.color_name.clear();
     cleared.brand.clear();
     cleared.spool_name.clear();

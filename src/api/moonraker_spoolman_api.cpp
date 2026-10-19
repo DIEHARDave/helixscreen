@@ -69,7 +69,7 @@ SpoolInfo helix::spoolman_detail::parse_spool_info(const nlohmann::json& spool_j
         info.bed_temp_min = info.bed_temp_max = info.bed_temp_recommended;
 
         if (filament.contains("extra") && filament["extra"].is_object()) {
-            if (auto k = parse_extra_number(filament["extra"], SPOOLMAN_PA_EXTRA_KEY)) {
+            if (auto k = parse_extra_number(filament["extra"], kSpoolmanPaExtraKey)) {
                 info.pressure_advance = static_cast<float>(*k);
             }
         }

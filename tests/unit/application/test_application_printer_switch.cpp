@@ -58,7 +58,7 @@
 
 namespace {
 
-constexpr const char* PROBE_NAME = "ApplicationPrinterSwitchTestProbe";
+constexpr const char* kProbeName = "ApplicationPrinterSwitchTestProbe";
 
 /**
  * @brief Two-printer config + a per-printer cache-invalidation counter
@@ -87,7 +87,7 @@ class PrinterSwitchFixture : public ApplicationTestFixture {
 
         // Count per-printer cache invalidations without caring who triggers them.
         helix::PrinterCacheRegistry::instance().register_invalidator(
-            PROBE_NAME, [this]() { ++invalidations_; });
+            kProbeName, [this]() { ++invalidations_; });
 
         // ~Application() calls shutdown() unconditionally, which tears down
         // TelemetryManager / UpdateChecker / SoundManager / NavigationManager and the
@@ -315,11 +315,11 @@ TEST_CASE_METHOD(PrinterSwitchFixture,
                  "Application: a new printer scope's first discovery counts as a hardware change "
                  "even when its fingerprint matches the previous printer's",
                  "[application][switch_printer][discovery]") {
-    constexpr size_t SAME_HARDWARE = 0xABCD;
+    constexpr size_t kSameHardware = 0xABCD;
 
-    REQUIRE(ApplicationTestAccess::note_hardware_fingerprint(app_, SAME_HARDWARE));
+    REQUIRE(ApplicationTestAccess::note_hardware_fingerprint(app_, kSameHardware));
     // A reconnect to the same printer with unchanged hardware stays a no-op.
-    REQUIRE_FALSE(ApplicationTestAccess::note_hardware_fingerprint(app_, SAME_HARDWARE));
+    REQUIRE_FALSE(ApplicationTestAccess::note_hardware_fingerprint(app_, kSameHardware));
 
     ApplicationTestAccess::type_mismatch_shown(app_) = true;
     ApplicationTestAccess::hardware_setup_prompt_shown(app_) = true;
@@ -327,7 +327,7 @@ TEST_CASE_METHOD(PrinterSwitchFixture,
 
     ApplicationTestAccess::reset_discovery_session(app_);
 
-    CHECK(ApplicationTestAccess::note_hardware_fingerprint(app_, SAME_HARDWARE));
+    CHECK(ApplicationTestAccess::note_hardware_fingerprint(app_, kSameHardware));
     CHECK_FALSE(ApplicationTestAccess::type_mismatch_shown(app_));
     CHECK_FALSE(ApplicationTestAccess::hardware_setup_prompt_shown(app_));
     CHECK_FALSE(ApplicationTestAccess::targeted_reconfig_shown(app_));

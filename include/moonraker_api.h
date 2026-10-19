@@ -86,9 +86,9 @@ struct PlrDetectResult; // plr_backend.h — check_continue_print_state() result
  */
 class MoonrakerAPI : public helix::IMoonrakerAPI {
   public:
-    // G-code execute_gcode timeout constants (HOMING_TIMEOUT_MS,
-    // AMS_OPERATION_TIMEOUT_MS, EXTRUSION_TIMEOUT_MS, MACRO_TIMEOUT_MS) and
-    // MOONRAKER_DEFAULT_PORT are inherited from IMoonrakerAPI.
+    // G-code execute_gcode timeout constants (kHomingTimeoutMs,
+    // kAmsOperationTimeoutMs, kExtrusionTimeoutMs, kMacroTimeoutMs) and
+    // kMoonrakerDefaultPort are inherited from IMoonrakerAPI.
 
     // Callback typedefs (SuccessCallback, ErrorCallback, BoolCallback,
     // StringCallback, JsonCallback, PowerDevicesCallback, SensorsCallback)
@@ -350,12 +350,12 @@ class MoonrakerAPI : public helix::IMoonrakerAPI {
     // ========================================================================
 
     /**
-     * @brief Query if printer is ready for commands
+     * @brief Query Klippy's state and state message (printer.info)
      *
-     * @param on_result Callback with ready state
+     * @param on_result Callback with the reported state and message
      * @param on_error Error callback
      */
-    void is_printer_ready(BoolCallback on_result, ErrorCallback on_error) override;
+    void get_klippy_status(KlippyStatusCallback on_result, ErrorCallback on_error) override;
 
     /**
      * @brief Get current print state
@@ -533,7 +533,7 @@ class MoonrakerAPI : public helix::IMoonrakerAPI {
                 break;
             base_port = base_port * 10 + (c - '0');
         }
-        if (base_port == MOONRAKER_DEFAULT_PORT) {
+        if (base_port == kMoonrakerDefaultPort) {
             // Direct-to-Moonraker: webcam lives on the reverse proxy (port 80).
             url = base.substr(0, port_pos) + url;
         } else {

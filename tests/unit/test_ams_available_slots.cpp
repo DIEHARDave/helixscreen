@@ -69,11 +69,11 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     // Slot 0 gets a two-color spool; the diagonal-chunk swatch renderer needs
     // this comma-separated hex list to arrive intact on the mapping surfaces.
-    const std::string MULTI_HEXES = "#202020,#F0F0F0";
+    const std::string kMultiHexes = "#202020,#F0F0F0";
     {
         auto slot = mock_ptr->get_slot_info(0);
         slot.color_rgb = 0x202020;
-        slot.multi_color_hexes = MULTI_HEXES;
+        slot.multi_color_hexes = kMultiHexes;
         helix::test::apply_edit(*mock_ptr, 0, slot);
     }
 
@@ -92,7 +92,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     // The load-bearing assertion: the multi-color list survived the
     // SlotInfo -> AvailableSlot conversion in collect_available_slots().
-    CHECK(found->multi_color_hexes == MULTI_HEXES);
+    CHECK(found->multi_color_hexes == kMultiHexes);
     CHECK(found->color_rgb == 0x202020u);
 
     mock_ptr->stop();
@@ -209,7 +209,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "clear_backends returns every backend subject 
     REQUIRE(lv_subject_get_int(ams.get_ams_type_subject()) != static_cast<int>(AmsType::NONE));
     REQUIRE(lv_subject_get_int(ams.get_slot_count_subject()) == 4);
     REQUIRE(lv_subject_get_int(ams.get_slot_color_subject(0)) !=
-            static_cast<int>(AMS_DEFAULT_SLOT_COLOR));
+            static_cast<int>(kAmsDefaultSlotColor));
     REQUIRE(std::string(lv_subject_get_string(ams.get_ams_system_name_subject())) != "");
     // The logo flag says whether there is a logo path for the header to show.
     const auto* logo =
@@ -243,7 +243,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "clear_backends returns every backend subject 
     for (int i = 0; i < 4; ++i) {
         CAPTURE(i);
         CHECK(lv_subject_get_int(ams.get_slot_color_subject(i)) ==
-              static_cast<int>(AMS_DEFAULT_SLOT_COLOR));
+              static_cast<int>(kAmsDefaultSlotColor));
         CHECK(lv_subject_get_int(ams.get_slot_status_subject(i)) ==
               static_cast<int>(SlotStatus::UNKNOWN));
         CHECK(std::string(lv_subject_get_string(ams.get_slot_material_subject(i))).empty());

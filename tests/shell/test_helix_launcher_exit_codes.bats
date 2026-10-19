@@ -5,7 +5,7 @@
 #
 # Two behaviours are covered:
 #
-#  1. Exit code 42 is helix-watchdog's RESTART_LOOP_EXIT_CODE — a deliberate
+#  1. Exit code 42 is helix-watchdog's kRestartLoopExitCode — a deliberate
 #     "stop, this will not fix itself" signal. _is_crash_exit() used to accept
 #     any 1..127, so on dual-binary Pi builds a 42 triggered a whole second
 #     watchdog run against the fbdev binary: the exact opposite of the

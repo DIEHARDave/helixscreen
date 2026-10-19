@@ -2,7 +2,7 @@
 
 #pragma once
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_buffer.h"
 #include "screensaver_frame.h"
@@ -35,32 +35,32 @@ struct PipesLevel {
 
 /// The ladder, most expensive level first. Rasterizing is a small part of a frame's cost, so
 /// the last rung saves mostly by its longer period; it also quarters the raster work.
-inline constexpr PipesLevel PIPES_LEVELS[] = {
-    {SAVER_FAST_PERIOD, 1},
+inline constexpr PipesLevel kPipesLevels[] = {
+    {kSaverFastPeriod, 1},
     {33, 1},
     {100, 2},
 };
-inline constexpr size_t PIPES_LEVEL_COUNT = std::size(PIPES_LEVELS);
+inline constexpr size_t kPipesLevelCount = std::size(kPipesLevels);
 
-inline constexpr int PIPES_NODES_LONG = 15;     ///< nodes along the long screen axis (NUM_DIV - 1)
-inline constexpr float PIPES_PITCH = 7.0f;      ///< node spacing (divSize)
-inline constexpr float PIPES_RADIUS = 1.0f;     ///< pipe radius: 1/7 of the pitch
-inline constexpr float PIPES_VIEW_DIST = 75.0f; ///< camera distance from the grid centre (-zTrans)
-inline constexpr float PIPES_YROT_STEP_DEG = 9.73156f; ///< view turn per new screen
-inline constexpr int PIPES_SLICES = 16;                ///< facets round a pipe; a multiple of 4
-inline constexpr uint32_t PIPES_STEP_MS = 100;         ///< one growth step per pipe
-inline constexpr uint32_t PIPES_MAX_STEPS_PER_TICK = 3;
-inline constexpr int PIPES_MIN_ACTIVE = 2;
-inline constexpr int PIPES_MAX_ACTIVE = 4;
-inline constexpr int PIPES_PER_SCREEN = 7; ///< NORMAL_PIPE_COUNT 5 x 1.5
-inline constexpr int PIPES_MAX_WEIGHT_STRAIGHT = 100;
-inline constexpr int PIPES_TEAPOT_ODDS = 1000;
-inline constexpr int PIPES_TURN_LOOKAHEAD = 2;
-inline constexpr uint32_t PIPES_DISSOLVE_MS = 2000;
-inline constexpr int PIPES_DISSOLVE_DIV = 32; ///< dissolve block = min(w, h) / this
+inline constexpr int kPipesNodesLong = 15;     ///< nodes along the long screen axis (NUM_DIV - 1)
+inline constexpr float kPipesPitch = 7.0f;     ///< node spacing (divSize)
+inline constexpr float kPipesRadius = 1.0f;    ///< pipe radius: 1/7 of the pitch
+inline constexpr float kPipesViewDist = 75.0f; ///< camera distance from the grid centre (-zTrans)
+inline constexpr float kPipesYrotStepDeg = 9.73156f; ///< view turn per new screen
+inline constexpr int kPipesSlices = 16;              ///< facets round a pipe; a multiple of 4
+inline constexpr uint32_t kPipesStepMs = 100;        ///< one growth step per pipe
+inline constexpr uint32_t kPipesMaxStepsPerTick = 3;
+inline constexpr int kPipesMinActive = 2;
+inline constexpr int kPipesMaxActive = 4;
+inline constexpr int kPipesPerScreen = 7; ///< NORMAL_PIPE_COUNT 5 x 1.5
+inline constexpr int kPipesMaxWeightStraight = 100;
+inline constexpr int kPipesTeapotOdds = 1000;
+inline constexpr int kPipesTurnLookahead = 2;
+inline constexpr uint32_t kPipesDissolveMs = 2000;
+inline constexpr int kPipesDissolveDiv = 32; ///< dissolve block = min(w, h) / this
 
 enum class PipeDir : uint8_t { POS_X, NEG_X, POS_Y, NEG_Y, POS_Z, NEG_Z, NONE };
-inline constexpr int PIPE_DIR_COUNT = 6;
+inline constexpr int kPipeDirCount = 6;
 
 enum class PipeJoint : uint8_t { ELBOW, BALL, TEAPOT };
 
@@ -80,7 +80,7 @@ struct PipeGridDims {
     int z = 0;
 };
 
-/// PIPES_NODES_LONG along the long screen axis, the other by aspect (at least 1), depth equal
+/// kPipesNodesLong along the long screen axis, the other by aspect (at least 1), depth equal
 /// to the long axis: 800x480 gives 15 x 9 x 15, 480x800 gives 9 x 15 x 15.
 PipeGridDims pipes_grid_dims(int32_t w, int32_t h);
 
@@ -121,15 +121,15 @@ class PipesGrid {
 /// A pipe's straight weight: 1 + rand(4), or 1 time in 20 rand in [25, 100].
 int pipes_choose_weight_straight(std::minstd_rand& rng);
 
-/// A turn's joint: a teapot 1 time in PIPES_TEAPOT_ODDS, else a ball 1 time in 3, else an elbow.
+/// A turn's joint: a teapot 1 time in kPipesTeapotOdds, else a ball 1 time in 3, else an elbow.
 PipeJoint pipes_choose_joint(std::minstd_rand& rng);
 
 /**
  * @brief Where a pipe at `pos`, last heading `last`, goes next; NONE when every neighbour is taken
  *
  * Straight (when empty) carries `weight_straight`, each empty other neighbour 1; weight
- * PIPES_MAX_WEIGHT_STRAIGHT always goes straight. A turn goes to whichever empty turn has
- * the longest empty run up to PIPES_TURN_LOOKAHEAD, ties broken at random. Marks nothing.
+ * kPipesMaxWeightStraight always goes straight. A turn goes to whichever empty turn has
+ * the longest empty run up to kPipesTurnLookahead, ties broken at random. Marks nothing.
  */
 PipeDir pipes_choose_direction(const PipesGrid& grid, PipeNode pos, PipeDir last,
                                int weight_straight, std::minstd_rand& rng);
@@ -146,7 +146,7 @@ struct PipeMaterial {
 };
 
 /// The sample's 16 "good" teapot materials (COMMON/MATERIAL.C), in its goodMaterials order.
-inline constexpr PipeMaterial PIPE_MATERIALS[] = {
+inline constexpr PipeMaterial kPipeMaterials[] = {
     {{0.0215f, 0.1745f, 0.0215f},
      {0.07568f, 0.61424f, 0.07568f},
      {0.633f, 0.727811f, 0.633f},
@@ -209,7 +209,7 @@ inline constexpr PipeMaterial PIPE_MATERIALS[] = {
      {0.7f, 0.7f, 0.7f},
      0.078125f * 128.0f}, // white rubber
 };
-inline constexpr size_t PIPE_MATERIAL_COUNT = std::size(PIPE_MATERIALS);
+inline constexpr size_t kPipeMaterialCount = std::size(kPipeMaterials);
 
 /// Eye-space light direction, normalize(90, 90, 150): fixed to the camera, so the highlight
 /// sits in the same place on every piece.
@@ -236,7 +236,7 @@ struct PipePiece {
     PipeDir dir = PipeDir::POS_X;
     /// ELBOW: the heading in.
     PipeDir from = PipeDir::POS_X;
-    /// CYLINDER: axis length (PIPES_PITCH long, PIPES_PITCH - 2 r short).
+    /// CYLINDER: axis length (kPipesPitch long, kPipesPitch - 2 r short).
     float length = 0.0f;
     uint8_t material = 0;
 };
@@ -280,8 +280,8 @@ void pipes_emit_end(PipeNode node, PipeGridDims dims, uint8_t material,
 /**
  * @brief One screen of pipes, without pixels
  *
- * begin() starts min(PIPES_PER_SCREEN, rand[2, 4]) pipes. Each step first replaces the pipes
- * that got stuck (a new pipe while fewer than PIPES_PER_SCREEN have been counted, else the slot
+ * begin() starts min(kPipesPerScreen, rand[2, 4]) pipes. Each step first replaces the pipes
+ * that got stuck (a new pipe while fewer than kPipesPerScreen have been counted, else the slot
  * dies; a start with no empty node left caps the count there), then grows every live pipe one
  * node. The screen is finished once no slot is live.
  */
@@ -299,10 +299,10 @@ class PipesScreen {
     PipesGrid& grid() {
         return grid_;
     }
-    const std::array<PipeState, PIPES_MAX_ACTIVE>& pipes() const {
+    const std::array<PipeState, kPipesMaxActive>& pipes() const {
         return pipes_;
     }
-    /// Pipes counted toward PIPES_PER_SCREEN, the starting ones included.
+    /// Pipes counted toward kPipesPerScreen, the starting ones included.
     int pipes_counted() const {
         return counted_;
     }
@@ -325,10 +325,10 @@ class PipesScreen {
     void grow_pipe(PipeState& p, std::minstd_rand& rng, std::vector<PipePiece>& out);
 
     PipesGrid grid_;
-    std::array<PipeState, PIPES_MAX_ACTIVE> pipes_{};
+    std::array<PipeState, kPipesMaxActive> pipes_{};
     int counted_ = 0;
     int started_ = 0;
-    int max_pipes_ = PIPES_PER_SCREEN;
+    int max_pipes_ = kPipesPerScreen;
     std::array<uint32_t, 3> joints_{};
     uint32_t straight_ = 0;
 };
@@ -348,9 +348,9 @@ struct PipeMesh {
     }
 };
 
-/// Unit cylinder along +z from 0 to 1, radius PIPES_RADIUS, PIPES_SLICES facets, open ends.
+/// Unit cylinder along +z from 0 to 1, radius kPipesRadius, kPipesSlices facets, open ends.
 void pipes_build_cylinder(PipeMesh& out);
-/// Sphere of radius sqrt(2) r / cos(pi / PIPES_SLICES), so it covers a pipe end r from its centre.
+/// Sphere of radius sqrt(2) r / cos(pi / kPipesSlices), so it covers a pipe end r from its centre.
 void pipes_build_ball(PipeMesh& out);
 /// Quarter torus, bend radius = tube radius = r: enters at (0, 0, -r) heading +z, leaves at
 /// (0, r, 0) heading +y; the bend centre is (0, r, -r).
@@ -383,7 +383,7 @@ PipeVec3 pipes_xform_point(const PipeXform& xf, PipeVec3 p);
  * @brief Draws pieces into a frame with a z-buffer and the fixed light
  *
  * Perspective with focal length (internal height / 2), the view turned `yrot` about +y and
- * pushed PIPES_VIEW_DIST back. Each triangle interpolates inverse depth and the eye-space
+ * pushed kPipesViewDist back. Each triangle interpolates inverse depth and the eye-space
  * normal; a pixel is written only where it is nearer than what the buffer holds, so draw
  * order never changes the picture. Shading reads per-material tables built by init().
  */
@@ -440,10 +440,10 @@ class PipesRenderer {
     std::vector<uint16_t> lut_; ///< per material: ambient + diffuse by n.L, specular by n.H
 };
 
-/// Clears the frame to black in random blocks over PIPES_DISSOLVE_MS of frame time.
+/// Clears the frame to black in random blocks over kPipesDissolveMs of frame time.
 class PipesDissolve {
   public:
-    /// Cuts a `w` x `h` frame into blocks of max(1, min(w, h) / PIPES_DISSOLVE_DIV) pixels.
+    /// Cuts a `w` x `h` frame into blocks of max(1, min(w, h) / kPipesDissolveDiv) pixels.
     void init(uint32_t w, uint32_t h);
     void release();
     /// Shuffles the block order and starts the clock.
@@ -482,14 +482,14 @@ enum class PipesPhase : uint8_t { GROWING, DISSOLVING };
 /**
  * @brief The whole saver: screens of pipes, each dissolved before the next
  *
- * Growth runs one step per PIPES_STEP_MS of frame time, at most PIPES_MAX_STEPS_PER_TICK per
+ * Growth runs one step per kPipesStepMs of frame time, at most kPipesMaxStepsPerTick per
  * call. A finished screen drops the steps still due and dissolves; when the dissolve ends the
- * view turns PIPES_YROT_STEP_DEG, a pending level's scale takes effect, and a new screen starts,
+ * view turns kPipesYrotStepDeg, a pending level's scale takes effect, and a new screen starts,
  * its first growth step a full step later.
  */
 class PipesSim {
   public:
-    static constexpr const auto& LEVELS = PIPES_LEVELS;
+    static constexpr const auto& kLevels = kPipesLevels;
 
     /// Starts the first screen at yrot 0 on a frame that is already black.
     void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level);

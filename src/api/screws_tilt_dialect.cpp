@@ -34,7 +34,7 @@ bool start_dialect_sequence(IMoonrakerClient& client, IMoonrakerAPI& api,
 
 const std::vector<const char*>& config_section_names() {
     static const std::vector<const char*> names{"screws_tilt_adjust",
-                                                snapmaker::screws_tilt::MODULE_NAME};
+                                                snapmaker::screws_tilt::kModuleName};
     return names;
 }
 

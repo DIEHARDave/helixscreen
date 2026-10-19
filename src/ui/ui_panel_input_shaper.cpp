@@ -43,7 +43,7 @@
 using namespace helix;
 
 // Shaper overlay colors (distinct, visible on dark bg) — shared by chart and legend
-static constexpr uint32_t SHAPER_OVERLAY_COLORS[] = {
+static constexpr uint32_t kShaperOverlayColors[] = {
     0x4FC3F7, // light blue
     0x66BB6A, // green
     0xFFA726, // orange
@@ -56,8 +56,8 @@ static constexpr uint32_t SHAPER_OVERLAY_COLORS[] = {
     0x8D6E63, // brown
     0x78909C, // blue-grey
 };
-static constexpr size_t NUM_SHAPER_COLORS =
-    sizeof(SHAPER_OVERLAY_COLORS) / sizeof(SHAPER_OVERLAY_COLORS[0]);
+static constexpr size_t kNumShaperColors =
+    sizeof(kShaperOverlayColors) / sizeof(kShaperOverlayColors[0]);
 
 // ============================================================================
 // GLOBAL INSTANCE AND ROW CLICK HANDLER
@@ -199,16 +199,16 @@ void InputShaperPanel::init_subjects() {
     auto init_cmp_row = [this](ComparisonRow& row, const char* prefix, size_t idx) {
         char name[48];
         snprintf(name, sizeof(name), "is_%s_cmp_%zu_type", prefix, idx);
-        UI_MANAGED_SUBJECT_STRING_N(row.type, row.type_buf, CMP_TYPE_BUF, "", name, subjects_);
+        UI_MANAGED_SUBJECT_STRING_N(row.type, row.type_buf, kCmpTypeBuf, "", name, subjects_);
         snprintf(name, sizeof(name), "is_%s_cmp_%zu_freq", prefix, idx);
-        UI_MANAGED_SUBJECT_STRING_N(row.freq, row.freq_buf, CMP_VALUE_BUF, "", name, subjects_);
+        UI_MANAGED_SUBJECT_STRING_N(row.freq, row.freq_buf, kCmpValueBuf, "", name, subjects_);
         snprintf(name, sizeof(name), "is_%s_cmp_%zu_vib", prefix, idx);
-        UI_MANAGED_SUBJECT_STRING_N(row.vib, row.vib_buf, CMP_VALUE_BUF, "", name, subjects_);
+        UI_MANAGED_SUBJECT_STRING_N(row.vib, row.vib_buf, kCmpValueBuf, "", name, subjects_);
         snprintf(name, sizeof(name), "is_%s_cmp_%zu_accel", prefix, idx);
-        UI_MANAGED_SUBJECT_STRING_N(row.accel, row.accel_buf, CMP_VALUE_BUF, "", name, subjects_);
+        UI_MANAGED_SUBJECT_STRING_N(row.accel, row.accel_buf, kCmpValueBuf, "", name, subjects_);
     };
 
-    for (size_t i = 0; i < MAX_SHAPERS; i++) {
+    for (size_t i = 0; i < kMaxShapers; i++) {
         init_cmp_row(x_cmp_[i], "x", i);
         init_cmp_row(y_cmp_[i], "y", i);
     }
@@ -301,20 +301,19 @@ void InputShaperPanel::init_subjects() {
 
     // Legend shaper label subjects (one per axis, updated on chip toggle)
     UI_MANAGED_SUBJECT_STRING_N(is_x_legend_shaper_label_, is_x_legend_shaper_label_buf_,
-                                CHIP_LABEL_BUF, "", "is_x_legend_shaper_label", subjects_);
+                                kChipLabelBuf, "", "is_x_legend_shaper_label", subjects_);
     UI_MANAGED_SUBJECT_STRING_N(is_y_legend_shaper_label_, is_y_legend_shaper_label_buf_,
-                                CHIP_LABEL_BUF, "", "is_y_legend_shaper_label", subjects_);
+                                kChipLabelBuf, "", "is_y_legend_shaper_label", subjects_);
 
     // Chip label and active subjects
     auto init_chip = [this](ChipRow& chip, const char* axis, size_t idx) {
         char name[48];
         snprintf(name, sizeof(name), "is_%s_chip_%zu_label", axis, idx);
-        UI_MANAGED_SUBJECT_STRING_N(chip.label, chip.label_buf, CHIP_LABEL_BUF, "", name,
-                                    subjects_);
+        UI_MANAGED_SUBJECT_STRING_N(chip.label, chip.label_buf, kChipLabelBuf, "", name, subjects_);
         snprintf(name, sizeof(name), "is_%s_chip_%zu_active", axis, idx);
         UI_MANAGED_SUBJECT_INT(chip.active, 0, name, subjects_);
     };
-    for (size_t i = 0; i < MAX_SHAPERS; i++) {
+    for (size_t i = 0; i < kMaxShapers; i++) {
         init_chip(x_chips_[i], "x", i);
         init_chip(y_chips_[i], "y", i);
     }
@@ -712,7 +711,7 @@ double InputShaperPanel::before_damping_ratio(char axis) const {
         (axis == 'X') ? config_before_.damping_ratio_x : config_before_.damping_ratio_y;
     // Klipper reports the ratio only when the config sets one; zero means
     // default (shaper_defs.py DEFAULT_DAMPING_RATIO).
-    return dr > 0.0f ? static_cast<double>(dr) : calibration::SHAPER_DEFAULT_DAMPING_RATIO;
+    return dr > 0.0f ? static_cast<double>(dr) : calibration::kShaperDefaultDampingRatio;
 }
 
 void InputShaperPanel::continue_calibrate_all_y() {
@@ -1309,7 +1308,7 @@ void InputShaperPanel::clear_results() {
     x_result_ = InputShaperResult{};
 
     // Clear comparison table subjects
-    for (size_t i = 0; i < MAX_SHAPERS; i++) {
+    for (size_t i = 0; i < kMaxShapers; i++) {
         lv_subject_copy_string(&x_cmp_[i].type, "");
         lv_subject_copy_string(&x_cmp_[i].freq, "");
         lv_subject_copy_string(&x_cmp_[i].vib, "");
@@ -1488,7 +1487,7 @@ void InputShaperPanel::populate_axis_result(char axis, const InputShaperResult& 
     lv_subject_set_int(&recommended_row, -1); // Reset
     lv_subject_set_int(&num_shapers, static_cast<int>(result.all_shapers.size()));
 
-    for (size_t i = 0; i < MAX_SHAPERS; i++) {
+    for (size_t i = 0; i < kMaxShapers; i++) {
         if (i < result.all_shapers.size()) {
             const auto& opt = result.all_shapers[i];
 
@@ -1498,11 +1497,11 @@ void InputShaperPanel::populate_axis_result(char axis, const InputShaperResult& 
                 type_upper += " *";
                 lv_subject_set_int(&recommended_row, static_cast<int>(i));
             }
-            snprintf(cmp[i].type_buf, CMP_TYPE_BUF, "%s", type_upper.c_str());
+            snprintf(cmp[i].type_buf, kCmpTypeBuf, "%s", type_upper.c_str());
             lv_subject_copy_string(&cmp[i].type, cmp[i].type_buf);
 
             // Frequency
-            helix::format::format_frequency_hz(opt.frequency, cmp[i].freq_buf, CMP_VALUE_BUF);
+            helix::format::format_frequency_hz(opt.frequency, cmp[i].freq_buf, kCmpValueBuf);
             lv_subject_copy_string(&cmp[i].freq, cmp[i].freq_buf);
 
             // Vibration with quality description
@@ -1517,12 +1516,12 @@ void InputShaperPanel::populate_axis_result(char axis, const InputShaperResult& 
                     quality_word = quality;
                 }
             }
-            snprintf(cmp[i].vib_buf, CMP_VALUE_BUF, "%.1f%% %s", opt.vibrations,
+            snprintf(cmp[i].vib_buf, kCmpValueBuf, "%.1f%% %s", opt.vibrations,
                      quality_word.c_str());
             lv_subject_copy_string(&cmp[i].vib, cmp[i].vib_buf);
 
             // Max accel
-            snprintf(cmp[i].accel_buf, CMP_VALUE_BUF, "%.0f", opt.max_accel);
+            snprintf(cmp[i].accel_buf, kCmpValueBuf, "%.0f", opt.max_accel);
             lv_subject_copy_string(&cmp[i].accel, cmp[i].accel_buf);
         } else {
             // Clear unused rows
@@ -1618,7 +1617,7 @@ void InputShaperPanel::populate_axis_delta(char axis, const InputShaperResult& r
     if (new_curve.empty()) {
         new_curve = calibration::shaper_transfer_curve(
             result.shaper_type, static_cast<double>(result.shaper_freq),
-            calibration::SHAPER_DEFAULT_DAMPING_RATIO, bins);
+            calibration::kShaperDefaultDampingRatio, bins);
     }
     const double residual_new = calibration::residual_vibration_percent(psd, new_curve);
     if (residual_new < 0.0) {
@@ -1654,7 +1653,7 @@ void InputShaperPanel::create_chart_widgets() {
         if (x_chart_.chart) {
             ui_frequency_response_chart_configure_for_platform(x_chart_.chart, tier);
             ui_frequency_response_chart_set_freq_range(x_chart_.chart, 0.0f,
-                                                       helix::ui::SHAPER_CHART_MAX_HZ);
+                                                       helix::ui::kShaperChartMaxHz);
         }
     }
 
@@ -1666,7 +1665,7 @@ void InputShaperPanel::create_chart_widgets() {
         if (y_chart_.chart) {
             ui_frequency_response_chart_configure_for_platform(y_chart_.chart, tier);
             ui_frequency_response_chart_set_freq_range(y_chart_.chart, 0.0f,
-                                                       helix::ui::SHAPER_CHART_MAX_HZ);
+                                                       helix::ui::kShaperChartMaxHz);
         }
     }
 
@@ -1716,13 +1715,13 @@ void InputShaperPanel::populate_chart(char axis, const InputShaperResult& result
     // Find max amplitude for Y range
     float max_amp = *std::max_element(amps.begin(), amps.end());
     ui_frequency_response_chart_set_amplitude_range(chart_data.chart, 0.0f,
-                                                    max_amp * helix::ui::SHAPER_CHART_HEADROOM);
+                                                    max_amp * helix::ui::kShaperChartHeadroom);
 
     // Add raw PSD series (always visible, semi-transparent light color)
     chart_data.raw_series_id = ui_frequency_response_chart_add_series(
         chart_data.chart, "Raw PSD", helix::ui::shaper_raw_psd_color());
     ui_frequency_response_chart_set_series_style(chart_data.chart, chart_data.raw_series_id,
-                                                 helix::ui::SHAPER_MEASURED_STYLE);
+                                                 helix::ui::kShaperMeasuredStyle);
     ui_frequency_response_chart_set_data(chart_data.chart, chart_data.raw_series_id, freqs.data(),
                                          amps.data(), freqs.size());
 
@@ -1735,16 +1734,16 @@ void InputShaperPanel::populate_chart(char axis, const InputShaperResult& result
     }
 
     // Add shaper overlay series
-    for (size_t i = 0; i < chart_data.shaper_curves.size() && i < MAX_SHAPERS; i++) {
+    for (size_t i = 0; i < chart_data.shaper_curves.size() && i < kMaxShapers; i++) {
         const auto& curve = chart_data.shaper_curves[i];
 
         // Set chip label (uppercase name)
         std::string upper_name = helix::text_io::to_upper(curve.name);
-        snprintf(chips[i].label_buf, CHIP_LABEL_BUF, "%s", upper_name.c_str());
+        snprintf(chips[i].label_buf, kChipLabelBuf, "%s", upper_name.c_str());
         lv_subject_copy_string(&chips[i].label, chips[i].label_buf);
 
         // Add chart series (initially hidden except recommended)
-        lv_color_t color = lv_color_hex(SHAPER_OVERLAY_COLORS[i % NUM_SHAPER_COLORS]);
+        lv_color_t color = lv_color_hex(kShaperOverlayColors[i % kNumShaperColors]);
         chart_data.shaper_series_ids[i] =
             ui_frequency_response_chart_add_series(chart_data.chart, curve.name.c_str(), color);
 
@@ -1767,16 +1766,16 @@ void InputShaperPanel::populate_chart(char axis, const InputShaperResult& result
     }
 
     // Clear unused chips
-    for (size_t i = chart_data.shaper_curves.size(); i < MAX_SHAPERS; i++) {
+    for (size_t i = chart_data.shaper_curves.size(); i < kMaxShapers; i++) {
         chips[i].label_buf[0] = '\0';
         lv_subject_copy_string(&chips[i].label, chips[i].label_buf);
         lv_subject_set_int(&chips[i].active, 0);
     }
 
-    // Hide the chips with no curve behind them (the XML has a fixed MAX_SHAPERS
+    // Hide the chips with no curve behind them (the XML has a fixed kMaxShapers
     // of them, and empty outlines read as broken)
     lv_subject_set_int(&num_chips,
-                       static_cast<int>(std::min(chart_data.shaper_curves.size(), MAX_SHAPERS)));
+                       static_cast<int>(std::min(chart_data.shaper_curves.size(), kMaxShapers)));
 
     // Overlay the live-before setting as a second shaper curve so the old
     // notch is comparable against the fresh fit on the same spectrum. Drawn
@@ -1847,7 +1846,7 @@ void InputShaperPanel::clear_chart(char axis) {
             ui_frequency_response_chart_remove_series(chart_data.chart, chart_data.raw_series_id);
             chart_data.raw_series_id = -1;
         }
-        for (size_t i = 0; i < MAX_SHAPERS; i++) {
+        for (size_t i = 0; i < kMaxShapers; i++) {
             if (chart_data.shaper_series_ids[i] >= 0) {
                 ui_frequency_response_chart_remove_series(chart_data.chart,
                                                           chart_data.shaper_series_ids[i]);
@@ -1866,7 +1865,7 @@ void InputShaperPanel::clear_chart(char axis) {
     chart_data.shaper_curves.clear();
 
     // Clear chip labels
-    for (size_t i = 0; i < MAX_SHAPERS; i++) {
+    for (size_t i = 0; i < kMaxShapers; i++) {
         chips[i].label_buf[0] = '\0';
         lv_subject_copy_string(&chips[i].label, chips[i].label_buf);
         lv_subject_set_int(&chips[i].active, 0);
@@ -1874,7 +1873,7 @@ void InputShaperPanel::clear_chart(char axis) {
 }
 
 void InputShaperPanel::select_shaper_overlay(char axis, int index) {
-    if (index < 0 || index >= static_cast<int>(MAX_SHAPERS))
+    if (index < 0 || index >= static_cast<int>(kMaxShapers))
         return;
 
     auto& chart_data = (axis == 'X') ? x_chart_ : y_chart_;
@@ -1889,7 +1888,7 @@ void InputShaperPanel::select_shaper_overlay(char axis, int index) {
         return;
 
     const int previous = chart_data.selected_shaper;
-    if (previous >= 0 && previous < static_cast<int>(MAX_SHAPERS) &&
+    if (previous >= 0 && previous < static_cast<int>(kMaxShapers) &&
         chart_data.shaper_series_ids[previous] >= 0) {
         ui_frequency_response_chart_show_series(chart_data.chart,
                                                 chart_data.shaper_series_ids[previous], false);
@@ -1922,12 +1921,12 @@ void InputShaperPanel::update_legend(char axis) {
 
     if (active_idx >= 0) {
         // Copy chip label text (already uppercase) to legend label
-        snprintf(legend_label_buf, CHIP_LABEL_BUF, "%s", chips[active_idx].label_buf);
+        snprintf(legend_label_buf, kChipLabelBuf, "%s", chips[active_idx].label_buf);
         lv_subject_copy_string(&legend_label, legend_label_buf);
 
         // Update dot color to match the active shaper's series color
         if (legend_dot) {
-            lv_color_t color = lv_color_hex(SHAPER_OVERLAY_COLORS[active_idx % NUM_SHAPER_COLORS]);
+            lv_color_t color = lv_color_hex(kShaperOverlayColors[active_idx % kNumShaperColors]);
             lv_obj_set_style_bg_color(legend_dot, color, LV_PART_MAIN);
         }
     } else {
@@ -2019,7 +2018,7 @@ void InputShaperPanel::inject_demo_results() {
         for (size_t i = 0; i < shapers.size(); i++) {
             transfer[i] =
                 calibration::shaper_transfer_curve(shapers[i].type, shapers[i].frequency,
-                                                   calibration::SHAPER_DEFAULT_DAMPING_RATIO, bins);
+                                                   calibration::kShaperDefaultDampingRatio, bins);
         }
 
         for (size_t bin = 0; bin < bins.size(); bin++) {

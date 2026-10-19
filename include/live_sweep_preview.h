@@ -52,13 +52,13 @@ struct AccelBatch;
 
 /// Nice value the stream's loop thread takes on its first batch: klippy moves
 /// the toolhead during the sweep, and a starved klippy fails the move.
-inline constexpr int PREVIEW_LOOP_NICE = 10;
+inline constexpr int kPreviewLoopNice = 10;
 
 /// Stream seconds finish() waits for the last point before it stops the stream.
-inline constexpr double PREVIEW_FINISH_GRACE_S = 2.0;
+inline constexpr double kPreviewFinishGraceS = 2.0;
 
 /// Stream seconds without a lock after which one debug line says so.
-inline constexpr double PREVIEW_NO_LOCK_LOG_S = 10.0;
+inline constexpr double kPreviewNoLockLogS = 10.0;
 
 /// The motion a sweep drives the accelerometer with.
 enum class SweepAxis {
@@ -119,10 +119,10 @@ struct PreviewSeries {
 /**
  * @brief Lay the points out over [axis_lo_hz, axis_hi_hz]
  *
- * n = lround((hi - lo) / STEP_HZ) + 1 slots, slot i at lo + i (hi - lo) / (n - 1),
+ * n = lround((hi - lo) / kStepHz) + 1 slots, slot i at lo + i (hi - lo) / (n - 1),
  * so the first and last slots sit on the axis ends the way the chart places
  * them. A slot takes the value (sweep_column_value) of the point nearest it
- * when that point is within STEP_HZ / 2; otherwise NaN. Empty when hi <= lo or
+ * when that point is within kStepHz / 2; otherwise NaN. Empty when hi <= lo or
  * either end is not finite.
  */
 [[nodiscard]] PreviewSeries layout_preview(const std::vector<SweepPoint>& points,
@@ -193,7 +193,7 @@ class LiveSweepPreview {
     void note_console_frequency(float hz);
 
     /// The sweep's motion is over: keep streaming until the last point or
-    /// PREVIEW_FINISH_GRACE_S of further stream, then stop. Points stay.
+    /// kPreviewFinishGraceS of further stream, then stop. Points stay.
     void finish();
 
     /// Back to IDLE; idempotent. Queued points are dropped; points() keeps what

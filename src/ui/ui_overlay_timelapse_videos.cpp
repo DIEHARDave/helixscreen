@@ -45,11 +45,11 @@
 
 // Where a same-host Moonraker keeps its videos when server.files.roots has not
 // answered yet (or names no timelapse root): the stock data_path layout.
-static constexpr const char* TIMELAPSE_DATA_SUBPATH = "printer_data/timelapse/";
+static constexpr const char* kTimelapseDataSubpath = "printer_data/timelapse/";
 
 static std::string default_timelapse_dir() {
     const char* home = getenv("HOME");
-    return std::string(home ? home : "/root") + "/" + TIMELAPSE_DATA_SUBPATH;
+    return std::string(home ? home : "/root") + "/" + kTimelapseDataSubpath;
 }
 
 // ============================================================================
@@ -237,12 +237,12 @@ void TimelapseVideosOverlay::fetch_video_list() {
 // ============================================================================
 
 // Card sizing constants (same as print select)
-static constexpr int CARD_MIN_WIDTH = 140;
-static constexpr int CARD_MAX_WIDTH = 230;
-static constexpr int CARD_DEFAULT_HEIGHT = 220;
+static constexpr int kCardMinWidth = 140;
+static constexpr int kCardMaxWidth = 230;
+static constexpr int kCardDefaultHeight = 220;
 
 TimelapseCardDimensions TimelapseVideosOverlay::calculate_card_dimensions() {
-    TimelapseCardDimensions dims{CARD_MIN_WIDTH, CARD_DEFAULT_HEIGHT};
+    TimelapseCardDimensions dims{kCardMinWidth, kCardDefaultHeight};
 
     if (!video_grid_container_ || !overlay_root_) {
         spdlog::debug("[{}] Cannot calculate dimensions: container or root is null", get_name());
@@ -308,7 +308,7 @@ TimelapseCardDimensions TimelapseVideosOverlay::calculate_card_dimensions() {
         int total_gaps = (cols - 1) * col_gap;
         int card_width = (container_width - total_gaps) / cols;
 
-        if (card_width >= CARD_MIN_WIDTH && card_width <= CARD_MAX_WIDTH) {
+        if (card_width >= kCardMinWidth && card_width <= kCardMaxWidth) {
             dims.card_width = card_width;
             spdlog::debug("[{}] Card layout: {} columns, card={}x{}", get_name(), cols,
                           dims.card_width, dims.card_height);
@@ -317,7 +317,7 @@ TimelapseCardDimensions TimelapseVideosOverlay::calculate_card_dimensions() {
     }
 
     // Fallback
-    dims.card_width = CARD_MIN_WIDTH;
+    dims.card_width = kCardMinWidth;
     spdlog::debug("[{}] Card layout fallback: card={}x{}", get_name(), dims.card_width,
                   dims.card_height);
     return dims;

@@ -773,14 +773,14 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     TA::handle_extruder_changed(*h.panel);
     process_lvgl(10);
 
-    CHECK(TA::selected_op_slot(*h.panel) == helix::ui::ACTIVE_HEAD_SLOT);
+    CHECK(TA::selected_op_slot(*h.panel) == helix::ui::kActiveHeadSlot);
     lv_subject_t* unload_disabled = lv_xml_get_subject(nullptr, "filament_unload_disabled");
     REQUIRE(unload_disabled != nullptr);
     CHECK(lv_subject_get_int(unload_disabled) == 0);
 
     TA::execute_unload(*h.panel);
     REQUIRE(h.mock->unload_calls == 1);
-    CHECK(h.mock->last_unload_slot == helix::ui::ACTIVE_HEAD_SLOT);
+    CHECK(h.mock->last_unload_slot == helix::ui::kActiveHeadSlot);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture,

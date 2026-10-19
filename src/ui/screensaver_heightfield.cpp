@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_heightfield.h"
 
@@ -133,7 +133,7 @@ void HeightfieldRenderer::render(HeightfieldScene& scene) {
     }
     std::fill(color_.begin(), color_.end(), Rgb{});
     std::fill(cover_.begin(), cover_.end(), uint8_t{0});
-    std::fill(depth_.begin(), depth_.end(), NO_DEPTH);
+    std::fill(depth_.begin(), depth_.end(), kNoDepth);
     const auto Hf = static_cast<float>(H);
     std::fill(top_.begin(), top_.end(), Hf);
     std::fill(silhouette_.begin(), silhouette_.end(), Hf);
@@ -149,7 +149,7 @@ void HeightfieldRenderer::render(HeightfieldScene& scene) {
         scene.sample_slice(s, slice, heights_.data(), colors_.data());
         samples_ += static_cast<uint32_t>(W);
         const float k = view_.focal_y * slice.inv_z;
-        const auto depth_mark = static_cast<uint16_t>(std::min<size_t>(s, NO_DEPTH - 1));
+        const auto depth_mark = static_cast<uint16_t>(std::min<size_t>(s, kNoDepth - 1));
         for (int32_t x = 0; x < W; x++) {
             // Kept within a few screens so the row casts below stay defined.
             const float row = std::clamp(
@@ -204,7 +204,7 @@ void HeightfieldRenderer::render(HeightfieldScene& scene) {
                 if (!soft) {
                     col[r] = pix;
                     cov[r] = 255;
-                    if (dep[r] == NO_DEPTH) {
+                    if (dep[r] == kNoDepth) {
                         dep[r] = depth_mark;
                     }
                     continue;
@@ -388,7 +388,7 @@ template <PixelFormat F>
 void upscale_rows(const std::vector<Rgb>& frame, int32_t w, int32_t scale, int32_t y_from,
                   int32_t y_to, int32_t x_from, int32_t x_to, int32_t ox0, int32_t cols,
                   int32_t oy0, int32_t oy1, const PixelWriter& writer) {
-    constexpr size_t BYTES = pixel_bytes(F);
+    constexpr size_t kBytes = pixel_bytes(F);
     const auto put = [](uint8_t* row, int32_t x, int32_t y, Rgb c) {
         PixelWriter::put_dithered_in_row<F>(row, x, y, c);
     };
@@ -399,8 +399,8 @@ void upscale_rows(const std::vector<Rgb>& frame, int32_t w, int32_t scale, int32
         if (scale != 2) {
             if (F == PixelFormat::XRGB8888 && oy > oy0 && (oy - 1) / scale == sy) {
                 // Undithered, a replicated row is the row above it.
-                std::memcpy(row + ox0 * BYTES, writer.row(oy - 1) + ox0 * BYTES,
-                            static_cast<size_t>(cols - ox0) * BYTES);
+                std::memcpy(row + ox0 * kBytes, writer.row(oy - 1) + ox0 * kBytes,
+                            static_cast<size_t>(cols - ox0) * kBytes);
                 continue;
             }
             int32_t ox = ox0;

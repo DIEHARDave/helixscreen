@@ -40,7 +40,7 @@ struct SaverUsageWindow {
 };
 
 /// Name the black screen is counted under when every saver is too heavy for the board.
-inline constexpr const char* SAVER_USAGE_BLACK_SCREEN = "black_screen";
+inline constexpr const char* kSaverUsageBlackScreen = "black_screen";
 
 /**
  * @brief Accumulates SaverUsageWindow from run starts and ends

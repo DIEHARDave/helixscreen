@@ -326,7 +326,7 @@ Just reference the token. The system handles light/dark mode for you:
 
 ### Theme JSON structure
 
-Themes are defined in `config/themes/`. Here's a snippet from `nord.json`:
+Themes are defined in `assets/config/themes/defaults/`. Here's a snippet from `nord.json`:
 
 ```json
 {
@@ -444,6 +444,8 @@ A button with an icon and a label can restack icon-over-label where a row of the
 of width: `stacked_if_bp_lte="N"` on the breakpoint, or `stacked_subject` + `stacked_if_eq`
 on any int subject (a `<subject_expr>` for conditions like orientation and tier together).
 The full attribute table is in [LVGL9_XML_GUIDE.md](LVGL9_XML_GUIDE.md) under `ui_button`.
+
+**Stop buttons.** A control that ends a running operation with an emergency stop (`M112` plus `FIRMWARE_RESTART`) reads "Stop", carries `icon="alert_octagon"` and `variant="danger"`: `<ui_button icon="alert_octagon" text="Stop" variant="danger"/>`. Do not label it "Abort" or "Cancel" (it cannot cancel cleanly) and do not use the `close` icon. Examples: `ui_xml/input_shaper_panel.xml#btn_abort`, `ui_xml/calibration_pid_panel.xml#btn_abort`, `ui_xml/calibration_tool_offset_panel.xml#tool_cal_stop_btn`, `ui_xml/wizard_input_shaper.xml#cancel_calibration_btn`, `ui_xml/panel_belt_tension.xml#btn_stop`.
 
 ### icon
 
@@ -676,8 +678,8 @@ the view resizes. Arrows is 3x2 keys beside a Z column, Arrows + Home 3x3, with 
 beside them in landscape and a row under them in portrait. Axis Rows is a 4x5 grid: X, Y and Z
 rows of minus, axis, plus keys, and a bottom row for the jog modes, Home All and leveling.
 The step selector draws from `jog_step_list()`, the distances set in Motion settings. At
-480x320 the header is 33px (`header_height_tiny`) and its cog button takes
-`action_button_2_icon_only="1"` to stay a padding-free circle.
+480x320 the header is 33px (`header_height_tiny`) and its cog is the header's
+icon-only action (`action_icon`), a padding-free circle drawn by `styles.header_icon_button`.
 
 ### flex_grow
 
@@ -998,7 +1000,7 @@ field that reads as editable and opens the numeric keypad on tap.
 It styles itself like a text input rather than being one -- a real
 `lv_textarea` would take focus and raise the alphanumeric on-screen keyboard.
 `user_data` arrives at the callback as a `const char*` index into the panel's
-own field table (`FIELD_SPECS` in `ui_settings_machine_limits.cpp` is the
+own field table (`kFieldSpecs` in `ui_settings_machine_limits.cpp` is the
 reference shape).
 
 Two things to get right when wiring one up:

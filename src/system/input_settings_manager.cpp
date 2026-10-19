@@ -15,13 +15,13 @@ using namespace helix;
 
 using settings::Scope;
 // Row order is InputSettingsManager::Key.
-static constexpr settings::PersistedSetting INPUT_SETTINGS[] = {
+static constexpr settings::PersistedSetting kInputSettings[] = {
     {"settings_scroll_throw", "/input/scroll_throw", Scope::Global, false,
-     InputSettingsManager::DEFAULT_SCROLL_THROW, 5, 50, "scroll_throw"},
+     InputSettingsManager::kDefaultScrollThrow, 5, 50, "scroll_throw"},
     {"settings_scroll_limit", "/input/scroll_limit", Scope::Global, false, 10, 1, 20,
      "scroll_limit"},
     {"settings_long_press_time", "/input/long_press_time", Scope::Global, false,
-     static_cast<int>(app_constants::input::LONG_PRESS_MS), 300, 1500, "long_press_time"},
+     static_cast<int>(app_constants::input::kLongPressMs), 300, 1500, "long_press_time"},
     // AD5M/AD5X presets enable the scroll guard via the hardware preset.
     {"settings_scroll_guard", "/input/scroll_guard", Scope::Global, true, 0, 0, 1, "scroll_guard"},
     {"settings_debug_touches", "/input/debug_touches", Scope::Global, true, 0, 0, 1,
@@ -38,10 +38,10 @@ InputSettingsManager& InputSettingsManager::instance() {
 }
 
 settings::TableView InputSettingsManager::persisted_table() {
-    return {INPUT_SETTINGS, std::size(INPUT_SETTINGS)};
+    return {kInputSettings, std::size(kInputSettings)};
 }
 
-InputSettingsManager::InputSettingsManager() : settings_(INPUT_SETTINGS) {
+InputSettingsManager::InputSettingsManager() : settings_(kInputSettings) {
     spdlog::trace("[InputSettingsManager] Constructor");
 }
 

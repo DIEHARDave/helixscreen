@@ -507,8 +507,8 @@ void ui_text_apply_transform(lv_obj_t* label, const char* transform) {
 
 /// "…" when @p font has the glyph, else the three-dot spelling LVGL's own DOTS mode uses.
 static const char* ellipsis_for(const lv_font_t* font) {
-    static constexpr const char* ELLIPSIS = "\xE2\x80\xA6"; // U+2026
-    return helix::ui::font_renders_text(font, ELLIPSIS) ? ELLIPSIS : "...";
+    static constexpr const char* kEllipsis = "\xE2\x80\xA6"; // U+2026
+    return helix::ui::font_renders_text(font, kEllipsis) ? kEllipsis : "...";
 }
 
 namespace helix::ui {

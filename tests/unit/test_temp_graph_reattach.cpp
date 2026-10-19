@@ -47,8 +47,8 @@ namespace {
 /// setup_connection_observer() by writing the real PrinterState subject; only the
 /// two enum values it compares against are named locally, because production
 /// spells them as bare literals with no shared enum to import.
-constexpr int CONN_DISCONNECTED = 0;
-constexpr int CONN_CONNECTED = 2;
+constexpr int kConnDisconnected = 0;
+constexpr int kConnConnected = 2;
 
 class TempGraphReattachFixture : public LVGLTestFixture {
   public:
@@ -85,9 +85,9 @@ class TempGraphReattachFixture : public LVGLTestFixture {
     static void reconnect() {
         auto* conn = get_printer_state().network_state().get_printer_connection_state_subject();
         REQUIRE(conn != nullptr);
-        lv_subject_set_int(conn, CONN_DISCONNECTED);
+        lv_subject_set_int(conn, kConnDisconnected);
         settle();
-        lv_subject_set_int(conn, CONN_CONNECTED);
+        lv_subject_set_int(conn, kConnConnected);
         settle();
     }
 };

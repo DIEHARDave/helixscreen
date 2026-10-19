@@ -28,6 +28,10 @@ struct LaneBarsGeometry {
     int first_slot = -1;
     int slot_count = 0;
     int32_t width = 0;
+    /// One bit per lane, set when that lane's spool lives upstream of the
+    /// unit (a fed head's chain ends at its routed bay): those lanes get no
+    /// spool box here, the upstream lane already draws the box.
+    uint32_t upstream_mask = 0;
 };
 
 /// Whether bars built for @p built must be rebuilt for @p now. Each bar binds
@@ -35,7 +39,7 @@ struct LaneBarsGeometry {
 /// count still needs new bars; color, fill and state repaint in place.
 inline bool lane_bars_stale(const LaneBarsGeometry& built, const LaneBarsGeometry& now) {
     return built.first_slot != now.first_slot || built.slot_count != now.slot_count ||
-           built.width != now.width;
+           built.width != now.width || built.upstream_mask != now.upstream_mask;
 }
 
 } // namespace helix::ui
@@ -173,7 +177,7 @@ class AmsOverviewPanel : public PanelBase {
     void update_bypass_widgets_position();
 
     // === Unit view state ===
-    static constexpr int MAX_DETAIL_SLOTS = AMS_DETAIL_MAX_SLOTS;
+    static constexpr int kMaxDetailSlots = kAmsDetailMaxSlots;
     bool unit_view_active_ = false;        ///< The unit view is on screen, not the overview
     lv_obj_t* detail_container_ = nullptr; ///< Unit view root container (takes the swipe)
     lv_obj_t* path_container_ = nullptr;
@@ -182,7 +186,7 @@ class AmsOverviewPanel : public PanelBase {
     lv_obj_t* page_dots_ = nullptr;
     AmsDetailWidgets detail_widgets_;        ///< Shared widget pointers for the spool box
     lv_obj_t* detail_path_canvas_ = nullptr; ///< Filament path visualization
-    lv_obj_t* detail_slot_widgets_[MAX_DETAIL_SLOTS] = {nullptr};
+    lv_obj_t* detail_slot_widgets_[kMaxDetailSlots] = {nullptr};
     int detail_slot_count_ = 0;
     int shown_unit_pos_ = -1; ///< Position in AmsSystemInfo::units of the unit on screen
 

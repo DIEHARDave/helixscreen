@@ -2,7 +2,7 @@
 
 #pragma once
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_canvas.h"
 #include "screensaver_hyperspace_sim.h"
@@ -27,7 +27,7 @@ class HyperspaceScreensaver : public SimSaver<HyperspaceSim> {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return SAVER_BUILD_CANVAS_FORMAT;
+        return kSaverBuildCanvasFormat;
     }
 };
 

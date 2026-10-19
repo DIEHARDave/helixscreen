@@ -254,11 +254,11 @@ void PrintStatusLayoutFitter::recompute_fans_density() {
     // value ("100%") — the visible label changes when the mock's auto heater
     // fan trips, so the cached natural width can be measured against either
     // "0%" or "100%" and we need both to fit.
-    constexpr int DENSITY_SLACK = 8;
+    constexpr int kDensitySlack = 8;
     int next_density = 2;
-    if (controls_w >= fan_row_natural_width_[0] + DENSITY_SLACK)
+    if (controls_w >= fan_row_natural_width_[0] + kDensitySlack)
         next_density = 0;
-    else if (controls_w >= fan_row_natural_width_[1] + DENSITY_SLACK)
+    else if (controls_w >= fan_row_natural_width_[1] + kDensitySlack)
         next_density = 1;
 
     int current = lv_subject_get_int(subjects_.fan_row_density);
@@ -377,8 +377,7 @@ void PrintStatusLayoutFitter::recompute_graph_fits() {
 
     if (static_cast<int>(next) != current) {
         spdlog::debug("[{}] graph_fits {} -> {} (slack={}, needed={})", log_tag_, current,
-                      static_cast<int>(next), preview_slack_h_,
-                      helix::ui::MIN_TEMP_GRAPH_HEIGHT_PX);
+                      static_cast<int>(next), preview_slack_h_, helix::ui::kMinTempGraphHeightPx);
         lv_subject_set_int(subjects_.graph_fits, next ? 1 : 0);
     }
 }
@@ -410,13 +409,13 @@ void PrintStatusLayoutFitter::ensure_temp_graph() {
     helix::TempGraphSeriesSpec nozzle;
     nozzle.klipper_name = printer_state_.temperature_state().active_extruder_name();
     nozzle.display_name = lv_tr("Nozzle");
-    nozzle.color = helix::TEMP_GRAPH_SERIES_COLORS[0];
+    nozzle.color = helix::kTempGraphSeriesColors[0];
     nozzle.show_target = true;
 
     helix::TempGraphSeriesSpec bed;
     bed.klipper_name = "heater_bed";
     bed.display_name = lv_tr("Bed");
-    bed.color = helix::TEMP_GRAPH_SERIES_COLORS[1];
+    bed.color = helix::kTempGraphSeriesColors[1];
     bed.show_target = true;
 
     cfg.series = {std::move(nozzle), std::move(bed)};
@@ -440,7 +439,7 @@ void PrintStatusLayoutFitter::ensure_temp_graph() {
             helix::TempGraphSeriesSpec chamber;
             chamber.klipper_name = klipper;
             chamber.display_name = lv_tr("Chamber");
-            chamber.color = helix::TEMP_GRAPH_SERIES_COLORS[2];
+            chamber.color = helix::kTempGraphSeriesColors[2];
             chamber.show_target = !heater.empty();
             cfg.series.push_back(std::move(chamber));
         }

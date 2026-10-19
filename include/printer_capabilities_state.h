@@ -57,10 +57,15 @@ enum class Capability : uint8_t {
     HasExtraFans,                ///< controllable fans beyond part cooling
     PowerDeviceCount,            ///< power devices (0 = none)
     SensorCount,                 ///< Moonraker sensors (0 = none)
+    HasShakeTune,                ///< Klippain Shake&Tune macros
+    HasHeatSoak,                 ///< heat soak macro, after the user override
+    HasFanFeedback,              ///< fan tachometer feedback (fan_feedback)
+    HasLedEffects,               ///< [led_effect] sections
+    HardwareGeneration,          ///< bumped whenever discovery or kinematics changes
     Count
 };
 
-inline constexpr size_t CAPABILITY_COUNT = static_cast<size_t>(Capability::Count);
+inline constexpr size_t kCapabilityCount = static_cast<size_t>(Capability::Count);
 
 /**
  * @brief Manages printer capability subjects for UI feature visibility
@@ -278,6 +283,14 @@ class PrinterCapabilitiesState {
     // Subject accessors
     // ========================================================================
 
+    /// Announce that discovered hardware changed (a new discovery, new kinematics).
+    void bump_hardware_generation();
+
+    /// Death signal for every capability subject; pass it to observe<V>().
+    [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
+        return subjects_.get_subjects_lifetime();
+    }
+
     /// The subject for one capability. Valid once init_subjects() has run.
     lv_subject_t* subject(Capability cap) const {
         return const_cast<lv_subject_t*>(&capability_subjects_[static_cast<size_t>(cap)]);
@@ -352,7 +365,7 @@ class PrinterCapabilitiesState {
     /// on a K2 Plus (2026-08-24): SpoolmanManager's observer watches this flag's
     /// falling edge and drops the identity cache behind every slot's vendor and
     /// material. Latch instead, and seed init_subjects() from what we already know.
-    std::array<std::optional<int>, CAPABILITY_COUNT> pending_capability_values_{};
+    std::array<std::optional<int>, kCapabilityCount> pending_capability_values_{};
 
     /// Write a capability subject, or latch the value when subjects do not exist.
     void set_capability(Capability cap, int value);
@@ -374,7 +387,7 @@ class PrinterCapabilitiesState {
     /// stepper_z position_endstop from configfile.settings (microns)
     int stepper_z_endstop_microns_ = 0;
 
-    std::array<lv_subject_t, CAPABILITY_COUNT> capability_subjects_{};
+    std::array<lv_subject_t, kCapabilityCount> capability_subjects_{};
     std::vector<WebcamInfo> webcams_; // every enabled webcam, Moonraker order
     std::string webcam_stream_url_;   // auto-pick: MJPEG stream URL
     std::string webcam_snapshot_url_; // snapshot URL

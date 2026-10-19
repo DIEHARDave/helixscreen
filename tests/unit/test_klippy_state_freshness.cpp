@@ -17,7 +17,7 @@
  * Two independent signals gate the write:
  *
  *  - Provenance, STATED not inferred. `dispatch_status_update(status, true)`
- *    stamps CACHED_SNAPSHOT_MARKER on the synthetic notification. A zero eventtime
+ *    stamps kCachedSnapshotMarker on the synthetic notification. A zero eventtime
  *    is NOT a usable proxy: MoonrakerClientMock drives its simulated shutdown and
  *    recovery through the very same untimestamped dispatch, and those are current
  *    truth for their session, not a replay.
@@ -403,6 +403,22 @@ TEST_CASE_METHOD(KlippyFreshnessFixture, "Klippy freshness: printer.info seeds b
         state.set_klippy_state_if_unseeded(KlippyState::READY);
         helix::ui::UpdateQueue::instance().drain();
         CHECK(klippy() == KlippyState::SHUTDOWN);
+    }
+
+    SECTION("a seed carries its reason") {
+        state.set_klippy_state_if_unseeded(KlippyState::ERROR, "key298: rpi MCU is shutdown");
+        helix::ui::UpdateQueue::instance().drain();
+        CHECK(klippy() == KlippyState::ERROR);
+        CHECK(state.network_state().get_klippy_fault_message() == "key298: rpi MCU is shutdown");
+    }
+
+    SECTION("a refused seed leaves the live reason alone") {
+        live("shutdown", 100.0);
+        const std::string live_reason = state.network_state().get_klippy_state_message();
+
+        state.set_klippy_state_if_unseeded(KlippyState::ERROR, "stale reason");
+        helix::ui::UpdateQueue::instance().drain();
+        CHECK(state.network_state().get_klippy_state_message() == live_reason);
     }
 }
 

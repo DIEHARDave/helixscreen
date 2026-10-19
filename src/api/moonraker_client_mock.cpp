@@ -49,17 +49,17 @@ using namespace helix;
 // the `center` + `polygon` shape Moonraker reports for EXCLUDE_OBJECT_DEFINE.
 static json mock_object_entry(const std::string& name, int index, int total,
                               const helix::mock::AxisMax& bed) {
-    constexpr float INSET = 20.0f; // keep the plate margin visible in the map
-    const float bed_w = static_cast<float>(bed.x - mock_internal::MOCK_BED_X_MIN) - 2.0f * INSET;
-    const float bed_h = static_cast<float>(bed.y - mock_internal::MOCK_BED_Y_MIN) - 2.0f * INSET;
+    constexpr float kInset = 20.0f; // keep the plate margin visible in the map
+    const float bed_w = static_cast<float>(bed.x - mock_internal::kMockBedXMin) - 2.0f * kInset;
+    const float bed_h = static_cast<float>(bed.y - mock_internal::kMockBedYMin) - 2.0f * kInset;
     int cols = static_cast<int>(std::ceil(std::sqrt(static_cast<double>(std::max(1, total)))));
     int rows = std::max(1, (total + cols - 1) / cols);
     int row = index / cols, col = index % cols;
     float cell_w = bed_w / static_cast<float>(cols);
     float cell_h = bed_h / static_cast<float>(rows);
-    float cx = static_cast<float>(mock_internal::MOCK_BED_X_MIN) + INSET +
+    float cx = static_cast<float>(mock_internal::kMockBedXMin) + kInset +
                (static_cast<float>(col) + 0.5f) * cell_w;
-    float cy = static_cast<float>(mock_internal::MOCK_BED_Y_MIN) + INSET +
+    float cy = static_cast<float>(mock_internal::kMockBedYMin) + kInset +
                (static_cast<float>(row) + 0.5f) * cell_h;
     float hw = cell_w * 0.35f, hh = cell_h * 0.35f;
     return {{"name", name},
@@ -73,18 +73,18 @@ namespace {
 /// Slicer-style plate names for HELIX_MOCK_EXCLUDE_OBJECTS. Real slicers emit
 /// `<model>_id_<n>_copy_<n>`, so these are long enough to exercise label
 /// truncation/wrapping in the side list rather than flattering it.
-constexpr const char* MOCK_EXCLUDE_OBJECT_NAMES[] = {
+constexpr const char* kMockExcludeObjectNames[] = {
     "Benchy_id_0_copy_0",        "Calibration_Cube_id_1_copy_0", "Bracket_Left_id_2_copy_0",
     "Bracket_Right_id_3_copy_0", "Gear_Housing_id_4_copy_0",     "Vase_id_5_copy_0",
     "Spool_Holder_id_6_copy_0",  "Cable_Clip_id_7_copy_0",       "Hinge_Pin_id_8_copy_0",
     "Knob_id_9_copy_0",          "Fan_Duct_id_10_copy_0",        "Strain_Relief_id_11_copy_0"};
 
-constexpr int MAX_MOCK_EXCLUDE_OBJECT_COUNT =
-    static_cast<int>(sizeof(MOCK_EXCLUDE_OBJECT_NAMES) / sizeof(MOCK_EXCLUDE_OBJECT_NAMES[0]));
+constexpr int kMaxMockExcludeObjectCount =
+    static_cast<int>(sizeof(kMockExcludeObjectNames) / sizeof(kMockExcludeObjectNames[0]));
 
 /// Objects published for a bare `HELIX_MOCK_EXCLUDE_OBJECTS=1`. Enough to fill a
 /// side list past one screen on the short landscape panel without being absurd.
-constexpr int DEFAULT_MOCK_EXCLUDE_OBJECT_COUNT = 5;
+constexpr int kDefaultMockExcludeObjectCount = 5;
 
 /// Registry consult: is this object a chamber HEATER (heater_generic /
 /// temperature_fan whose bare name a chamber-heater backend claims)?
@@ -216,7 +216,7 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
     // MedusaHC drives the real AmsBackendToolChanger, and klipper-toolchanger
     // reports no material, colour, brand or weight - the override store is the
     // whole of filament identity there. Without these records every lane renders
-    // at AMS_DEFAULT_SLOT_COLOR, which makes colour and ghost bugs invisible.
+    // at kAmsDefaultSlotColor, which makes colour and ghost bugs invisible.
     // Outer key style is T<n> (lane_key_style_for), inner "lane" is 0-based.
     if (mock_medusa_variant() != MedusaVariant::NONE) {
         // Each lane mirrors a spool from the mock Spoolman inventory - id,
@@ -365,7 +365,7 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
     }
 
     // HELIX_MOCK_BELT_TUNE_SCRIPT=<A|B>:<hz|flat>,... — that path's peak for
-    // successive windowed sweeps.
+    // each sweep after its first.
     if (const char* script_env = std::getenv("HELIX_MOCK_BELT_TUNE_SCRIPT")) {
         apply_belt_tune_script(script_env);
     }
@@ -432,9 +432,9 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
         // object" — one object would leave the button hidden, which is the very
         // thing the flag exists to defeat.
         if (requested <= 1) {
-            requested = DEFAULT_MOCK_EXCLUDE_OBJECT_COUNT;
+            requested = kDefaultMockExcludeObjectCount;
         }
-        mock_exclude_object_count_ = std::clamp(requested, 2, MAX_MOCK_EXCLUDE_OBJECT_COUNT);
+        mock_exclude_object_count_ = std::clamp(requested, 2, kMaxMockExcludeObjectCount);
         spdlog::info("[MoonrakerClientMock] HELIX_MOCK_EXCLUDE_OBJECTS={} — will publish {} "
                      "synthetic exclude_object entries at print start",
                      exclude_env, mock_exclude_object_count_);
@@ -691,8 +691,8 @@ double mock_heater_duty(double temperature, double target) {
 } // namespace
 
 void MoonrakerClientMock::append_aux_heater_status(json& status_obj, double dt) {
-    constexpr double AMBIENT = 25.0;
-    constexpr double RATE_C_PER_S = 1.0;
+    constexpr double kAmbient = 25.0;
+    constexpr double kRateCPerS = 1.0;
     // The parsed hardware, not the persona's heater list: HELIX_MOCK_OBJECTS
     // heaters reach only the former.
     const std::vector<std::string> heaters = discovery_.hardware().heaters();
@@ -701,9 +701,9 @@ void MoonrakerClientMock::append_aux_heater_status(json& status_obj, double dt) 
     for (const auto& name : heaters) {
         if (name.rfind("heater_generic ", 0) != 0 || name == chamber_key)
             continue;
-        auto& [temp, target] = aux_heaters_.try_emplace(name, AMBIENT, 0.0).first->second;
-        const double goal = target > 0.0 ? target : AMBIENT;
-        const double step = RATE_C_PER_S * dt;
+        auto& [temp, target] = aux_heaters_.try_emplace(name, kAmbient, 0.0).first->second;
+        const double goal = target > 0.0 ? target : kAmbient;
+        const double step = kRateCPerS * dt;
         temp = temp < goal ? std::min(goal, temp + step) : std::max(goal, temp - step);
         status_obj[name] = {
             {"temperature", temp}, {"target", target}, {"power", mock_heater_duty(temp, target)}};
@@ -985,7 +985,7 @@ int MoonrakerClientMock::connect(const char* url, std::function<void()> on_conne
         // Use --gcode-file if specified, otherwise fall back to default test file
         const char* print_file = get_runtime_config()->gcode_test_file
                                      ? get_runtime_config()->gcode_test_file
-                                     : RuntimeConfig::DEFAULT_TEST_FILE;
+                                     : RuntimeConfig::kDefaultTestFile;
         spdlog::info("[MoonrakerClientMock] Auto-starting print simulation with '{}'", print_file);
         start_print_internal(print_file);
     }
@@ -1246,7 +1246,7 @@ void MoonrakerClientMock::populate_capabilities() {
     }
 
     // Add LED effects (klipper-led_effect plugin objects)
-    if (inherits(LED_EFFECTS)) {
+    if (inherits(kLedEffects)) {
         mock_objects.push_back("led_effect breathing");
         mock_objects.push_back("led_effect fire_comet");
         mock_objects.push_back("led_effect rainbow");
@@ -1276,7 +1276,7 @@ void MoonrakerClientMock::populate_capabilities() {
     }
 
     // Add LED-related macros (auto-detected by printer_discovery via LED keywords)
-    if (inherits(LED_EFFECTS)) {
+    if (inherits(kLedEffects)) {
         mock_objects.push_back("gcode_macro LIGHTS_ON");
         mock_objects.push_back("gcode_macro LIGHTS_OFF");
         mock_objects.push_back("gcode_macro LIGHTS_TOGGLE");
@@ -1286,20 +1286,20 @@ void MoonrakerClientMock::populate_capabilities() {
 
     // MCU objects for discovery
     mock_objects.push_back("mcu");
-    if (inherits(EBB_CAN_MCU)) {
+    if (inherits(kEbbCanMcu)) {
         mock_objects.push_back("mcu EBBCan");
     }
 
     // Humidity sensors (BME280/HTU21D for enclosure monitoring)
-    if (inherits(BME280_CHAMBER)) {
+    if (inherits(kBme280Chamber)) {
         mock_objects.push_back("bme280 chamber");
     }
-    if (inherits(HTU21D_DRYER)) {
+    if (inherits(kHtu21dDryer)) {
         mock_objects.push_back("htu21d dryer");
     }
 
     // Width sensor (filament diameter measurement via Hall effect sensor)
-    if (inherits(WIDTH_SENSOR)) {
+    if (inherits(kWidthSensor)) {
         mock_objects.push_back("hall_filament_width_sensor");
     }
 
@@ -1311,7 +1311,7 @@ void MoonrakerClientMock::populate_capabilities() {
     // mode and any persona that omits it: "mmu" detects Happy Hare (priority over every
     // other filament system) and would stand the wrong backend up.
     if (mmu_enabled_ && !is_mock_medusahc() && !is_mock_ifs_module() && !is_mock_openams() &&
-        inherits(HAPPY_HARE_MMU)) {
+        inherits(kHappyHareMmu)) {
         mock_objects.push_back("mmu");
     }
 
@@ -1375,7 +1375,7 @@ void MoonrakerClientMock::populate_capabilities() {
     } else if (printer_type_ == PrinterType::CREALITY_K2_PLUS) {
         // The toolhead switch, named as in assets/config/presets/k2.json.
         mock_objects.push_back("filament_switch_sensor filament_sensor");
-    } else if (inherits(RUNOUT_SENSOR)) {
+    } else if (inherits(kRunoutSensor)) {
         // Default: one switch sensor (typical Voron setup)
         mock_objects.push_back("filament_switch_sensor runout_sensor");
         spdlog::debug(
@@ -1512,7 +1512,7 @@ void MoonrakerClientMock::populate_capabilities() {
     // get_status(), so Klipper never lists it and the capability is detected
     // from configfile.config. Without this the whole mock screws-tilt state
     // machine is unreachable in --test.
-    mock_config["screws_tilt_adjust"] = {{"screw_thread", mock_internal::MOCK_SCREW_THREAD},
+    mock_config["screws_tilt_adjust"] = {{"screw_thread", mock_internal::kMockScrewThread},
                                          {"speed", "50"},
                                          {"horizontal_move_z", "10"}};
     // Provide kinematics so bed_moves detection works
@@ -1528,9 +1528,9 @@ void MoonrakerClientMock::populate_capabilities() {
     // volume from these before detection runs, so the mock has to carry them or
     // --test detects against an empty volume the live path no longer sees.
     const auto axis_max = persona.axis_max;
-    mock_config["stepper_x"] = {{"position_min", mock_internal::MOCK_BED_X_MIN},
+    mock_config["stepper_x"] = {{"position_min", mock_internal::kMockBedXMin},
                                 {"position_max", axis_max.x}};
-    mock_config["stepper_y"] = {{"position_min", mock_internal::MOCK_BED_Y_MIN},
+    mock_config["stepper_y"] = {{"position_min", mock_internal::kMockBedYMin},
                                 {"position_max", axis_max.y}};
     mock_config["stepper_z"] = {{"position_min", 0.0}, {"position_max", axis_max.z}};
     for (const auto& [name, settings] : extra_config_settings_.items()) {
@@ -1566,7 +1566,7 @@ void MoonrakerClientMock::populate_capabilities() {
     update_cached_chamber_key();
 
     // Set mock MCU version data (after parse_objects which clears everything)
-    const bool ebb_can = inherits(EBB_CAN_MCU);
+    const bool ebb_can = inherits(kEbbCanMcu);
     discovery_.modify_hardware([ebb_can](PrinterDiscovery& hw) {
         hw.set_mcu("stm32f446xx");
         if (ebb_can) {
@@ -2046,7 +2046,7 @@ nlohmann::json MoonrakerClientMock::openams_status_json() const {
     }
     // One hub unit, four bays, one FPS lane. Only bays 2 and 3 hold spools;
     // the lane's current slot follows openams_loaded_slot_.
-    static const char* const GROUP_OF_SLOT[] = {"T0", "T1", "T2", "T0"};
+    static const char* const kGroupOfSlot[] = {"T0", "T1", "T2", "T0"};
     const int loaded = openams_loaded_slot_.load();
     nlohmann::json slots = nlohmann::json::array();
     for (int i = 0; i < 4; ++i) {
@@ -2057,7 +2057,7 @@ nlohmann::json MoonrakerClientMock::openams_status_json() const {
                            {"pressure", 0.5},
                            {"set_point", 0.5}};
     if (loaded >= 0) {
-        lane["current_group"] = GROUP_OF_SLOT[loaded];
+        lane["current_group"] = kGroupOfSlot[loaded];
         lane["current_slot"] = loaded;
     } else {
         lane["current_group"] = nullptr;
@@ -2640,7 +2640,7 @@ nlohmann::json MoonrakerClientMock::medusa_status_json() const {
 }
 
 // Notifications a single swap phase lasts. One notification is
-// NOTIFICATION_INTERVAL_TICKS * SIMULATION_INTERVAL_MS = ~1s, so a full
+// kNotificationIntervalTicks * kSimulationIntervalMs = ~1s, so a full
 // drop-then-pick swap runs ~6s: slow enough to watch the step bar move,
 // fast enough not to be a wait.
 static constexpr int kMedusaPhaseNotifications = 3;
@@ -2749,7 +2749,7 @@ bool MoonrakerClientMock::apply_u1_feeding_gcode(const std::string& gcode) {
     } catch (...) {
         return true;
     }
-    if (ext < 0 || ext >= U1_CHANNELS) {
+    if (ext < 0 || ext >= kU1Channels) {
         return true;
     }
     // "UNLOAD=1" contains "LOAD=1" as a substring; the direction must be read
@@ -2845,10 +2845,19 @@ nlohmann::json MoonrakerClientMock::multiace_status_json() const {
     };
 
     nlohmann::json head_ace = nlohmann::json::object();
+    nlohmann::json head_feeder = nlohmann::json::object();
     nlohmann::json head_source = nlohmann::json::object();
+    nlohmann::json ace_heads = nlohmann::json::array();
     for (int h = 0; h < 4; ++h) {
         const std::string key = std::to_string(h);
-        head_ace[key] = head_mode ? (h % multiace_units_) : 0;
+        // The engine wires one unit per head; a head with no unit to spare is
+        // fed from the side feeder, the state head_mode_2ace_2feeder models.
+        const bool ace_fed = !multiace_head_is_feeder(h);
+        head_ace[key] = head_mode ? (ace_fed ? h : -1) : 0;
+        head_feeder[key] = !ace_fed;
+        if (ace_fed) {
+            ace_heads.push_back(h);
+        }
         const auto& route = multiace_route_[static_cast<size_t>(h)];
         if (route.first < 0) {
             head_source[key] = nullptr;
@@ -2867,8 +2876,8 @@ nlohmann::json MoonrakerClientMock::multiace_status_json() const {
     ace["head_ace"] = head_ace;
     ace["head_source"] = head_source;
     ace["head_manual"] = {{"0", false}, {"1", false}, {"2", false}, {"3", false}};
-    ace["head_feeder"] = {{"0", false}, {"1", false}, {"2", false}, {"3", false}};
-    ace["ace_heads"] = json::array({0, 1, 2, 3});
+    ace["head_feeder"] = head_feeder;
+    ace["ace_heads"] = ace_heads;
 
     nlohmann::json aces = nlohmann::json::array();
     for (int u = 0; u < multiace_units_; ++u) {
@@ -2922,9 +2931,10 @@ bool MoonrakerClientMock::apply_multiace_gcode(const std::string& gcode) {
 
     std::vector<int> heads;
     if (cmd == "ACE_UNLOAD_ALL_HEADS") {
-        std::lock_guard<std::mutex> lock(multiace_mutex_);
+        // The engine's own loop unloads every head whose motion sensor sees
+        // filament, ACE-fed, feeder and manual alike.
         for (int h = 0; h < 4; ++h) {
-            if (multiace_route_[static_cast<size_t>(h)].first >= 0) {
+            if (u1_filament_detected_[static_cast<size_t>(h)]) {
                 heads.push_back(h);
             }
         }
@@ -2939,25 +2949,31 @@ bool MoonrakerClientMock::apply_multiace_gcode(const std::string& gcode) {
             int slot = multiace_token(gcode, "SLOT", -1);
             {
                 std::lock_guard<std::mutex> lock(multiace_mutex_);
-                if (ace < 0 || slot < 0) {
-                    // A bare load takes the unit wired to the head (head mode)
-                    // or unit 1, bay 1.
-                    ace = (multiace_mode_ != "multi") ? (h % multiace_units_) : 0;
-                    slot = 0;
+                if (multiace_head_is_feeder(h)) {
+                    // A feeder head loads from the side port: no bay is routed
+                    // and head_source stays null, the engine's own shape.
+                    ace = -1;
+                } else {
+                    if (ace < 0 || slot < 0) {
+                        // A bare load takes the unit wired to the head (head
+                        // mode) or unit 1, bay 1.
+                        ace = (multiace_mode_ != "multi") ? h : 0;
+                        slot = 0;
+                    }
+                    // HEAD is clamped where it is read; an out-of-range ACE or
+                    // SLOT must not reach the route table or the bay seeds.
+                    ace = std::clamp(ace, 0, multiace_units_ - 1);
+                    slot = std::clamp(slot, 0, 3);
+                    if (multiace_route_[i].first >= 0) {
+                        // The engine feeds nothing into an occupied head.
+                        spdlog::warn("[MoonrakerClientMock] multiACE mock: head {} already "
+                                     "loaded - load feeds nothing",
+                                     h);
+                        continue;
+                    }
+                    multiace_route_[i] = {ace, slot};
+                    multiace_swap_phase_ = "done";
                 }
-                // HEAD is clamped where it is read; an out-of-range ACE or
-                // SLOT must not reach the route table or the bay seeds.
-                ace = std::clamp(ace, 0, multiace_units_ - 1);
-                slot = std::clamp(slot, 0, 3);
-                if (multiace_route_[i].first >= 0) {
-                    // The engine feeds nothing into an occupied head.
-                    spdlog::warn("[MoonrakerClientMock] multiACE mock: head {} already loaded - "
-                                 "load feeds nothing",
-                                 h);
-                    continue;
-                }
-                multiace_route_[i] = {ace, slot};
-                multiace_swap_phase_ = "done";
             }
             u1_channel_state_[i] = "preload_finish";
             u1_filament_detected_[i] = true;
@@ -2972,7 +2988,7 @@ bool MoonrakerClientMock::apply_multiace_gcode(const std::string& gcode) {
                 multiace_route_[i] = {-1, -1};
                 multiace_swap_phase_ = "idle";
             }
-            if (had_route) {
+            if (had_route || u1_filament_detected_[i]) {
                 u1_channel_state_[i] = "unload_heat_finish";
                 publish_u1_channel_frame(h);
                 // multiACE's feed unload parks the channel at preload_finish.
@@ -3582,7 +3598,7 @@ RequestId MoonrakerClientMock::send_jsonrpc(const std::string& method, const jso
         if (error_cb) {
             error_cb(MoonrakerError::connection_lost(method));
         }
-        return INVALID_REQUEST_ID;
+        return kInvalidRequestId;
     }
 
     // Same fallback inference MoonrakerRequestTracker::send() applies, so a
@@ -4012,7 +4028,7 @@ bool MoonrakerClientMock::start_print_internal(const std::string& filename) {
         names.reserve(static_cast<size_t>(total));
         json objects_array = json::array();
         for (int i = 0; i < total; ++i) {
-            names.emplace_back(MOCK_EXCLUDE_OBJECT_NAMES[i]);
+            names.emplace_back(kMockExcludeObjectNames[i]);
             objects_array.push_back(mock_object_entry(
                 names.back(), i, total, helix::mock::descriptor(printer_type_).axis_max));
         }
@@ -4506,7 +4522,7 @@ void MoonrakerClientMock::dispatch_initial_state() {
             const bool is_chamber_fan = s.find("chamber") != std::string::npos;
             initial_status[s] = {
                 {"temperature", 35.0},
-                {"target", is_chamber_fan ? mock_internal::MOCK_K2_CHAMBER_FAN_RESTING_C : 40.0},
+                {"target", is_chamber_fan ? mock_internal::kMockK2ChamberFanRestingC : 40.0},
                 {"speed", 0.0}};
         } else if (s.rfind("tmc2240 ", 0) == 0 || s.rfind("tmc5160 ", 0) == 0) {
             // TMC stepper drivers with built-in temperature
@@ -4574,7 +4590,7 @@ void MoonrakerClientMock::dispatch_initial_state() {
                 {"power", mock_heater_duty(42.3, chamber_target_.load())}};
         }
     }
-    if (inherits_default(printer_type_, default_object::WIDTH_SENSOR)) {
+    if (inherits_default(printer_type_, default_object::kWidthSensor)) {
         // Hall-effect filament diameter measurement
         initial_status["hall_filament_width_sensor"] = {
             {"Diameter", 1.75}, {"Raw", 500.0}, {"is_active", true}};
@@ -4625,14 +4641,14 @@ TemperatureStore MoonrakerClientMock::build_historical_temperature_store() const
     // cooldown. Deterministic (fixed pseudo-random seed) so the curve is stable
     // across runs. Ends near ambient, matching the idle live simulation so the
     // seeded history joins the live graph without a visible step (#944).
-    constexpr int SAMPLES = 600;      // 10 min @ 1 Hz
-    constexpr int HEAT_SAMPLES = 90;  // ~90 s ramp to target
-    constexpr int HOLD_SAMPLES = 150; // ~2.5 min at target
+    constexpr int kSamples = 600;     // 10 min @ 1 Hz
+    constexpr int kHeatSamples = 90;  // ~90 s ramp to target
+    constexpr int kHoldSamples = 150; // ~2.5 min at target
     // remaining ~360 s: exponential cooldown back toward ambient
-    constexpr double PEAK_EXTRUDER = 215.0;
-    constexpr double PEAK_BED = 60.0;
-    constexpr double EXT_TAU = 90.0;  // extruder cooldown time constant (s)
-    constexpr double BED_TAU = 140.0; // bed cools slower
+    constexpr double kPeakExtruder = 215.0;
+    constexpr double kPeakBed = 60.0;
+    constexpr double kExtTau = 90.0;  // extruder cooldown time constant (s)
+    constexpr double kBedTau = 140.0; // bed cools slower
 
     // Deterministic pseudo-random noise in [-1, 1] (no std::random_device).
     uint32_t rng_state = 22221;
@@ -4645,36 +4661,36 @@ TemperatureStore MoonrakerClientMock::build_historical_temperature_store() const
     TemperatureStoreSeries& ext = store["extruder"];
     TemperatureStoreSeries& bed = store["heater_bed"];
     for (TemperatureStoreSeries* s : {&ext, &bed}) {
-        s->temperatures.reserve(SAMPLES);
-        s->targets.reserve(SAMPLES);
-        s->powers.reserve(SAMPLES);
+        s->temperatures.reserve(kSamples);
+        s->targets.reserve(kSamples);
+        s->powers.reserve(kSamples);
     }
 
-    for (int i = 0; i < SAMPLES; ++i) {
+    for (int i = 0; i < kSamples; ++i) {
         double ext_temp, bed_temp, ext_target, bed_target, ext_power, bed_power;
-        if (i < HEAT_SAMPLES) {
+        if (i < kHeatSamples) {
             // Heating: linear ramp toward target, full heater power.
-            double p = static_cast<double>(i) / HEAT_SAMPLES;
-            ext_temp = ROOM_TEMP + (PEAK_EXTRUDER - ROOM_TEMP) * p;
-            bed_temp = ROOM_TEMP + (PEAK_BED - ROOM_TEMP) * std::min(1.0, p * 1.2);
-            ext_target = PEAK_EXTRUDER;
-            bed_target = PEAK_BED;
+            double p = static_cast<double>(i) / kHeatSamples;
+            ext_temp = kRoomTemp + (kPeakExtruder - kRoomTemp) * p;
+            bed_temp = kRoomTemp + (kPeakBed - kRoomTemp) * std::min(1.0, p * 1.2);
+            ext_target = kPeakExtruder;
+            bed_target = kPeakBed;
             ext_power = 1.0;
             bed_power = 1.0;
-        } else if (i < HEAT_SAMPLES + HOLD_SAMPLES) {
+        } else if (i < kHeatSamples + kHoldSamples) {
             // Hold: small PID oscillation around target.
-            double o = i - HEAT_SAMPLES;
-            ext_temp = PEAK_EXTRUDER + 0.8 * std::sin(o * 0.15) + 0.3 * std::cos(o * 0.31);
-            bed_temp = PEAK_BED + 0.4 * std::sin(o * 0.12);
-            ext_target = PEAK_EXTRUDER;
-            bed_target = PEAK_BED;
+            double o = i - kHeatSamples;
+            ext_temp = kPeakExtruder + 0.8 * std::sin(o * 0.15) + 0.3 * std::cos(o * 0.31);
+            bed_temp = kPeakBed + 0.4 * std::sin(o * 0.12);
+            ext_target = kPeakExtruder;
+            bed_target = kPeakBed;
             ext_power = 0.30 + 0.10 * std::sin(o * 0.15);
             bed_power = 0.25 + 0.08 * std::sin(o * 0.12);
         } else {
             // Cooldown: heaters off, exponential decay toward ambient.
-            double ct = i - HEAT_SAMPLES - HOLD_SAMPLES; // seconds since cooldown start
-            ext_temp = ROOM_TEMP + (PEAK_EXTRUDER - ROOM_TEMP) * std::exp(-ct / EXT_TAU);
-            bed_temp = ROOM_TEMP + (PEAK_BED - ROOM_TEMP) * std::exp(-ct / BED_TAU);
+            double ct = i - kHeatSamples - kHoldSamples; // seconds since cooldown start
+            ext_temp = kRoomTemp + (kPeakExtruder - kRoomTemp) * std::exp(-ct / kExtTau);
+            bed_temp = kRoomTemp + (kPeakBed - kRoomTemp) * std::exp(-ct / kBedTau);
             ext_target = 0.0;
             bed_target = 0.0;
             ext_power = 0.0;
@@ -4696,9 +4712,9 @@ TemperatureStore MoonrakerClientMock::build_historical_temperature_store() const
         }
         const std::string name = sensor.substr(19); // strip "temperature_sensor " prefix
         TemperatureStoreSeries& series = store[sensor];
-        series.temperatures.reserve(SAMPLES);
-        for (int i = 0; i < SAMPLES; ++i) {
-            double t_sec = -(SAMPLES - i); // negative = in the past
+        series.temperatures.reserve(kSamples);
+        for (int i = 0; i < kSamples; ++i) {
+            double t_sec = -(kSamples - i); // negative = in the past
             double temp;
             if (name.find("chamber") != std::string::npos) {
                 temp = 35.0 + 8.0 * std::sin(2.0 * M_PI * t_sec / 300.0);
@@ -4717,23 +4733,23 @@ TemperatureStore MoonrakerClientMock::build_historical_temperature_store() const
 void MoonrakerClientMock::dispatch_historical_temperatures() {
     // Generate 2-3 minutes of synthetic temperature history
     // At 250ms intervals, that's ~600 data points for 2.5 minutes
-    constexpr int HISTORY_DURATION_MS = 150000; // 2.5 minutes of history
-    constexpr int SAMPLE_INTERVAL_MS = 250;     // Same as SIMULATION_INTERVAL_MS
-    constexpr int HISTORY_SAMPLES = HISTORY_DURATION_MS / SAMPLE_INTERVAL_MS;
+    constexpr int kHistoryDurationMs = 150000; // 2.5 minutes of history
+    constexpr int kSampleIntervalMs = 250;     // Same as kSimulationIntervalMs
+    constexpr int kHistorySamples = kHistoryDurationMs / kSampleIntervalMs;
 
     spdlog::debug(
         "[MoonrakerClientMock] Dispatching {} historical temperature samples ({} seconds)",
-        HISTORY_SAMPLES, HISTORY_DURATION_MS / 1000);
+        kHistorySamples, kHistoryDurationMs / 1000);
 
     // Simulate a realistic temperature profile: heating up to ~60°C then partial cooldown
     // This creates an interesting curve for debugging/visualization
     //
     // Profile: Start at room temp -> heat to 60°C (extruder) / 40°C (bed) -> partial cooldown
     // Timing: ~50s heating, ~30s hold, ~70s cooling (ends at ~35°C extruder, ~30°C bed)
-    constexpr double PEAK_EXTRUDER_TEMP = 60.0;
-    constexpr double PEAK_BED_TEMP = 40.0;
-    constexpr int HEAT_PHASE_SAMPLES = 200; // ~50 seconds at 250ms = 200 samples
-    constexpr int HOLD_PHASE_SAMPLES = 120; // ~30 seconds hold at peak
+    constexpr double kPeakExtruderTemp = 60.0;
+    constexpr double kPeakBedTemp = 40.0;
+    constexpr int kHeatPhaseSamples = 200; // ~50 seconds at 250ms = 200 samples
+    constexpr int kHoldPhaseSamples = 120; // ~30 seconds hold at peak
     // Cooling phase = remaining samples (~70s, cools extruder ~20°C to ~40°C)
 
     // Copy callbacks to avoid holding lock during dispatch
@@ -4754,9 +4770,9 @@ void MoonrakerClientMock::dispatch_historical_temperatures() {
     }
 
     // Generate and dispatch historical samples with realistic noise
-    double ext_temp_hist = ROOM_TEMP;
-    double bed_temp_hist = ROOM_TEMP;
-    const double dt_sec = SAMPLE_INTERVAL_MS / 1000.0;
+    double ext_temp_hist = kRoomTemp;
+    double bed_temp_hist = kRoomTemp;
+    const double dt_sec = kSampleIntervalMs / 1000.0;
 
     // Simple pseudo-random number generator for deterministic noise
     // (Avoids std::random_device which could affect startup time)
@@ -4767,40 +4783,39 @@ void MoonrakerClientMock::dispatch_historical_temperatures() {
         return (static_cast<double>(state) / 0x3fffffff) - 1.0;
     };
 
-    for (int i = 0; i < HISTORY_SAMPLES; i++) {
+    for (int i = 0; i < kHistorySamples; i++) {
         // Calculate simulated timestamp (negative = in the past)
-        double timestamp_sec = -((HISTORY_SAMPLES - i) * dt_sec);
+        double timestamp_sec = -((kHistorySamples - i) * dt_sec);
 
         // Update base temperatures based on phase
-        if (i < HEAT_PHASE_SAMPLES) {
+        if (i < kHeatPhaseSamples) {
             // Heating phase: ramp up to peak (slightly faster at start, slower near target)
-            double progress = static_cast<double>(i) / HEAT_PHASE_SAMPLES;
+            double progress = static_cast<double>(i) / kHeatPhaseSamples;
             double rate_multiplier = 1.0 + 0.3 * (1.0 - progress); // Faster early, slower late
-            ext_temp_hist += EXTRUDER_HEAT_RATE * dt_sec * rate_multiplier;
-            if (ext_temp_hist > PEAK_EXTRUDER_TEMP)
-                ext_temp_hist = PEAK_EXTRUDER_TEMP;
+            ext_temp_hist += kExtruderHeatRate * dt_sec * rate_multiplier;
+            if (ext_temp_hist > kPeakExtruderTemp)
+                ext_temp_hist = kPeakExtruderTemp;
 
-            bed_temp_hist += BED_HEAT_RATE * dt_sec * rate_multiplier;
-            if (bed_temp_hist > PEAK_BED_TEMP)
-                bed_temp_hist = PEAK_BED_TEMP;
-        } else if (i < HEAT_PHASE_SAMPLES + HOLD_PHASE_SAMPLES) {
+            bed_temp_hist += kBedHeatRate * dt_sec * rate_multiplier;
+            if (bed_temp_hist > kPeakBedTemp)
+                bed_temp_hist = kPeakBedTemp;
+        } else if (i < kHeatPhaseSamples + kHoldPhaseSamples) {
             // Hold phase: PID oscillation around target (realistic behavior)
-            double offset = i - HEAT_PHASE_SAMPLES;
+            double offset = i - kHeatPhaseSamples;
             ext_temp_hist =
-                PEAK_EXTRUDER_TEMP + 0.8 * std::sin(offset * 0.15) + 0.3 * std::cos(offset * 0.31);
+                kPeakExtruderTemp + 0.8 * std::sin(offset * 0.15) + 0.3 * std::cos(offset * 0.31);
             bed_temp_hist =
-                PEAK_BED_TEMP + 0.4 * std::sin(offset * 0.12) + 0.15 * std::cos(offset * 0.27);
+                kPeakBedTemp + 0.4 * std::sin(offset * 0.12) + 0.15 * std::cos(offset * 0.27);
         } else {
             // Cooling phase: exponential decay (more realistic than linear)
-            int cool_sample = i - HEAT_PHASE_SAMPLES - HOLD_PHASE_SAMPLES;
+            int cool_sample = i - kHeatPhaseSamples - kHoldPhaseSamples;
             double cool_time = cool_sample * dt_sec;
             // Exponential decay: T(t) = T_ambient + (T_0 - T_ambient) * e^(-t/tau)
             double ext_tau = 40.0; // Extruder thermal time constant (seconds)
             double bed_tau = 80.0; // Bed thermal time constant (slower)
             ext_temp_hist =
-                ROOM_TEMP + (PEAK_EXTRUDER_TEMP - ROOM_TEMP) * std::exp(-cool_time / ext_tau);
-            bed_temp_hist =
-                ROOM_TEMP + (PEAK_BED_TEMP - ROOM_TEMP) * std::exp(-cool_time / bed_tau);
+                kRoomTemp + (kPeakExtruderTemp - kRoomTemp) * std::exp(-cool_time / ext_tau);
+            bed_temp_hist = kRoomTemp + (kPeakBedTemp - kRoomTemp) * std::exp(-cool_time / bed_tau);
         }
 
         // Add realistic sensor noise (±0.3°C for extruder, ±0.2°C for bed)
@@ -4817,7 +4832,7 @@ void MoonrakerClientMock::dispatch_historical_temperatures() {
         // Add width sensor data (Hall-effect filament diameter measurement) on
         // every frame of a persona that has one, so WidthSensorManager receives updates
         if (helix::mock::inherits_default(printer_type_,
-                                          helix::mock::default_object::WIDTH_SENSOR)) {
+                                          helix::mock::default_object::kWidthSensor)) {
             status_obj["hall_filament_width_sensor"] = {
                 {"Diameter", 1.75}, {"Raw", 500.0}, {"is_active", true}};
         }
@@ -4829,9 +4844,9 @@ void MoonrakerClientMock::dispatch_historical_temperatures() {
                 double temp = 25.0;
                 double noise = pseudo_random(i * 3) * 0.5;
                 if (sensor_name.find("chamber") != std::string::npos) {
-                    constexpr double CHAMBER_MIN = 25.0, CHAMBER_MAX = 45.0, CHAMBER_PERIOD = 120.0;
-                    double mid = (CHAMBER_MIN + CHAMBER_MAX) / 2.0;
-                    double amp = (CHAMBER_MAX - CHAMBER_MIN) / 2.0;
+                    constexpr double kChamberMin = 25.0, CHAMBER_MAX = 45.0, CHAMBER_PERIOD = 120.0;
+                    double mid = (kChamberMin + CHAMBER_MAX) / 2.0;
+                    double amp = (CHAMBER_MAX - kChamberMin) / 2.0;
                     temp = mid + amp * std::sin(2.0 * M_PI * timestamp_sec / CHAMBER_PERIOD);
                 } else if (sensor_name.find("mcu") != std::string::npos) {
                     temp = 42.0 + 3.0 * std::sin(2.0 * M_PI * timestamp_sec / 120.0);
@@ -4845,11 +4860,10 @@ void MoonrakerClientMock::dispatch_historical_temperatures() {
             } else if (s.rfind("temperature_fan ", 0) == 0) {
                 double temp = 35.0 + 3.0 * std::sin(2.0 * M_PI * timestamp_sec / 80.0);
                 const bool is_chamber_fan = s.find("chamber") != std::string::npos;
-                status_obj[s] = {{"temperature", temp},
-                                 {"target", is_chamber_fan
-                                                ? mock_internal::MOCK_K2_CHAMBER_FAN_RESTING_C
-                                                : 40.0},
-                                 {"speed", 0.5}};
+                status_obj[s] = {
+                    {"temperature", temp},
+                    {"target", is_chamber_fan ? mock_internal::kMockK2ChamberFanRestingC : 40.0},
+                    {"speed", 0.5}};
             }
         }
 
@@ -5023,7 +5037,7 @@ void MoonrakerClientMock::service_openams_late_links(uint32_t tick) {
 
 void MoonrakerClientMock::temperature_simulation_loop() {
     spdlog::debug("[MoonrakerClientMock] temperature_simulation_loop ENTERED");
-    const double base_dt = SIMULATION_INTERVAL_MS / 1000.0; // Base time step (0.5s)
+    const double base_dt = kSimulationIntervalMs / 1000.0; // Base time step (0.5s)
 
     while (simulation_running_.load()) {
         // Parked by set_simulation_paused(): no physics, no tick, no push, so a
@@ -5032,7 +5046,7 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         // the predicate costs one interval rather than wedging shutdown.
         if (simulation_paused_.load()) {
             std::unique_lock<std::mutex> lock(sim_mutex_);
-            sim_cv_.wait_for(lock, std::chrono::milliseconds(SIMULATION_INTERVAL_MS), [this] {
+            sim_cv_.wait_for(lock, std::chrono::milliseconds(kSimulationIntervalMs), [this] {
                 return !simulation_running_.load() || !simulation_paused_.load();
             });
             continue;
@@ -5059,10 +5073,10 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         // Continuous variation parameters for idle/room temp state
         // Uses sinusoidal waves with different periods to create natural-looking fluctuation
         // This ensures graphs always have data to display during testing
-        constexpr double IDLE_VARIATION_AMPLITUDE = 1.5; // +/- 1.5°C variation
-        constexpr double EXTRUDER_WAVE_PERIOD = 45.0;    // 45 second period for extruder
-        constexpr double BED_WAVE_PERIOD = 60.0;         // 60 second period for bed
-        constexpr double PHASE_OFFSET = 1.57;            // Phase offset between heaters (pi/2)
+        constexpr double kIdleVariationAmplitude = 1.5; // +/- 1.5°C variation
+        constexpr double kExtruderWavePeriod = 45.0;    // 45 second period for extruder
+        constexpr double kBedWavePeriod = 60.0;         // 60 second period for bed
+        constexpr double kPhaseOffset = 1.57;           // Phase offset between heaters (pi/2)
 
         double sim_time = tick * base_dt; // Simulated elapsed time in seconds
         // The dryer clock runs at the simulation speed, so --sim-speed plays a
@@ -5072,22 +5086,22 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         // Simulate extruder temperature change (scaled by speedup)
         if (ext_target > 0) {
             if (ext_temp < ext_target) {
-                ext_temp += EXTRUDER_HEAT_RATE * effective_dt;
+                ext_temp += kExtruderHeatRate * effective_dt;
                 if (ext_temp > ext_target)
                     ext_temp = ext_target;
             } else if (ext_temp > ext_target) {
-                ext_temp -= EXTRUDER_COOL_RATE * effective_dt;
+                ext_temp -= kExtruderCoolRate * effective_dt;
                 if (ext_temp < ext_target)
                     ext_temp = ext_target;
             }
         } else {
             // Cool toward room temp, then add continuous variation
-            if (ext_temp > ROOM_TEMP + IDLE_VARIATION_AMPLITUDE) {
-                ext_temp -= EXTRUDER_COOL_RATE * effective_dt;
+            if (ext_temp > kRoomTemp + kIdleVariationAmplitude) {
+                ext_temp -= kExtruderCoolRate * effective_dt;
             } else {
                 // At room temp: apply sinusoidal variation for continuous graph updates
-                double wave = std::sin(2.0 * M_PI * sim_time / EXTRUDER_WAVE_PERIOD);
-                ext_temp = ROOM_TEMP + IDLE_VARIATION_AMPLITUDE * wave;
+                double wave = std::sin(2.0 * M_PI * sim_time / kExtruderWavePeriod);
+                ext_temp = kRoomTemp + kIdleVariationAmplitude * wave;
             }
         }
         extruder_temp_.store(ext_temp);
@@ -5095,22 +5109,22 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         // Simulate bed temperature change (scaled by speedup)
         if (bed_target_val > 0) {
             if (bed_temp_val < bed_target_val) {
-                bed_temp_val += BED_HEAT_RATE * effective_dt;
+                bed_temp_val += kBedHeatRate * effective_dt;
                 if (bed_temp_val > bed_target_val)
                     bed_temp_val = bed_target_val;
             } else if (bed_temp_val > bed_target_val) {
-                bed_temp_val -= BED_COOL_RATE * effective_dt;
+                bed_temp_val -= kBedCoolRate * effective_dt;
                 if (bed_temp_val < bed_target_val)
                     bed_temp_val = bed_target_val;
             }
         } else {
             // Cool toward room temp, then add continuous variation
-            if (bed_temp_val > ROOM_TEMP + IDLE_VARIATION_AMPLITUDE) {
-                bed_temp_val -= BED_COOL_RATE * effective_dt;
+            if (bed_temp_val > kRoomTemp + kIdleVariationAmplitude) {
+                bed_temp_val -= kBedCoolRate * effective_dt;
             } else {
                 // At room temp: apply sinusoidal variation (phase offset from extruder)
-                double wave = std::sin(2.0 * M_PI * sim_time / BED_WAVE_PERIOD + PHASE_OFFSET);
-                bed_temp_val = ROOM_TEMP + IDLE_VARIATION_AMPLITUDE * wave;
+                double wave = std::sin(2.0 * M_PI * sim_time / kBedWavePeriod + kPhaseOffset);
+                bed_temp_val = kRoomTemp + kIdleVariationAmplitude * wave;
             }
         }
         bed_temp_.store(bed_temp_val);
@@ -5118,8 +5132,8 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         // Simulate chamber temperature change (scaled by speedup)
         // Chamber responds to target temperature like bed/extruder, but slower
         if (simulates_chamber_temp()) {
-            constexpr double CHAMBER_IDLE_VARIATION_AMPLITUDE = 1.5;
-            constexpr double CHAMBER_WAVE_PERIOD = 90.0; // 90 second period for idle variation
+            constexpr double kChamberIdleVariationAmplitude = 1.5;
+            constexpr double kChamberWavePeriod = 90.0; // 90 second period for idle variation
 
             double chamber = chamber_temp_.load();
             double chamber_target = chamber_target_.load();
@@ -5127,22 +5141,22 @@ void MoonrakerClientMock::temperature_simulation_loop() {
             if (chamber_target > 0) {
                 // Heating/cooling toward target
                 if (chamber < chamber_target) {
-                    chamber += CHAMBER_HEAT_RATE * effective_dt;
+                    chamber += kChamberHeatRate * effective_dt;
                     if (chamber > chamber_target)
                         chamber = chamber_target;
                 } else if (chamber > chamber_target) {
-                    chamber -= CHAMBER_COOL_RATE * effective_dt;
+                    chamber -= kChamberCoolRate * effective_dt;
                     if (chamber < chamber_target)
                         chamber = chamber_target;
                 }
             } else {
                 // Cool toward room temp, then add continuous variation
-                if (chamber > ROOM_TEMP + CHAMBER_IDLE_VARIATION_AMPLITUDE) {
-                    chamber -= CHAMBER_COOL_RATE * effective_dt;
+                if (chamber > kRoomTemp + kChamberIdleVariationAmplitude) {
+                    chamber -= kChamberCoolRate * effective_dt;
                 } else {
                     // At room temp: apply sinusoidal variation
-                    double wave = std::sin(2.0 * M_PI * sim_time / CHAMBER_WAVE_PERIOD + 2.0);
-                    chamber = ROOM_TEMP + CHAMBER_IDLE_VARIATION_AMPLITUDE * wave;
+                    double wave = std::sin(2.0 * M_PI * sim_time / kChamberWavePeriod + 2.0);
+                    chamber = kRoomTemp + kChamberIdleVariationAmplitude * wave;
                 }
             }
             chamber_temp_.store(chamber);
@@ -5150,37 +5164,37 @@ void MoonrakerClientMock::temperature_simulation_loop() {
 
         // Simulate MCU temperature (stable 40-55°C, slight load correlation)
         {
-            constexpr double MCU_BASE = 42.0;
-            constexpr double MCU_WAVE_PERIOD = 120.0;
-            constexpr double MCU_AMPLITUDE = 3.0;
-            constexpr double MCU_PRINT_OFFSET = 5.0; // Higher during printing
+            constexpr double kMcuBase = 42.0;
+            constexpr double kMcuWavePeriod = 120.0;
+            constexpr double kMcuAmplitude = 3.0;
+            constexpr double kMcuPrintOffset = 5.0; // Higher during printing
 
-            double mcu = MCU_BASE;
+            double mcu = kMcuBase;
             MockPrintPhase current_phase = print_phase_.load();
             if (current_phase == MockPrintPhase::PRINTING ||
                 current_phase == MockPrintPhase::PREHEAT) {
-                mcu += MCU_PRINT_OFFSET;
+                mcu += kMcuPrintOffset;
             }
-            double wave = std::sin(2.0 * M_PI * sim_time / MCU_WAVE_PERIOD);
-            mcu += MCU_AMPLITUDE * wave;
+            double wave = std::sin(2.0 * M_PI * sim_time / kMcuWavePeriod);
+            mcu += kMcuAmplitude * wave;
             mcu_temp_.store(mcu);
         }
 
         // Simulate host/RPi temperature (45-65°C, higher under load)
         {
-            constexpr double HOST_BASE = 52.0;
-            constexpr double HOST_WAVE_PERIOD = 75.0;
-            constexpr double HOST_AMPLITUDE = 4.0;
-            constexpr double HOST_PRINT_OFFSET = 8.0;
+            constexpr double kHostBase = 52.0;
+            constexpr double kHostWavePeriod = 75.0;
+            constexpr double kHostAmplitude = 4.0;
+            constexpr double kHostPrintOffset = 8.0;
 
-            double host = HOST_BASE;
+            double host = kHostBase;
             MockPrintPhase current_phase = print_phase_.load();
             if (current_phase == MockPrintPhase::PRINTING ||
                 current_phase == MockPrintPhase::PREHEAT) {
-                host += HOST_PRINT_OFFSET;
+                host += kHostPrintOffset;
             }
-            double wave = std::sin(2.0 * M_PI * sim_time / HOST_WAVE_PERIOD + 1.0);
-            host += HOST_AMPLITUDE * wave;
+            double wave = std::sin(2.0 * M_PI * sim_time / kHostWavePeriod + 1.0);
+            host += kHostAmplitude * wave;
             host_temp_.store(host);
         }
 
@@ -5309,12 +5323,12 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         double hotend_fan_speed = (ext_temp > 50.0) ? 1.0 : 0.0;
 
         // ========== Build and Dispatch Status Notification ==========
-        // Only dispatch notifications every NOTIFICATION_INTERVAL_TICKS to reduce log spam
+        // Only dispatch notifications every kNotificationIntervalTicks to reduce log spam
         // Physics still runs every tick for smooth temperature changes
-        if (tick % NOTIFICATION_INTERVAL_TICKS != 0) {
+        if (tick % kNotificationIntervalTicks != 0) {
             // Sleep and continue without dispatching
             std::unique_lock<std::mutex> lock(sim_mutex_);
-            sim_cv_.wait_for(lock, std::chrono::milliseconds(SIMULATION_INTERVAL_MS),
+            sim_cv_.wait_for(lock, std::chrono::milliseconds(kSimulationIntervalMs),
                              [this] { return !simulation_running_.load(); });
             continue;
         }
@@ -5440,7 +5454,7 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         // Add width sensor data (Hall-effect filament diameter measurement) on
         // every frame of a persona that has one, so WidthSensorManager receives updates
         if (helix::mock::inherits_default(printer_type_,
-                                          helix::mock::default_object::WIDTH_SENSOR)) {
+                                          helix::mock::default_object::kWidthSensor)) {
             status_obj["hall_filament_width_sensor"] = {
                 {"Diameter", 1.75}, {"Raw", 500.0}, {"is_active", true}};
         }
@@ -5630,7 +5644,7 @@ void MoonrakerClientMock::temperature_simulation_loop() {
                     // A chamber thermostat parks at its configured resting
                     // target whenever no M141 set is live.
                     const double set = chamber_target_.load();
-                    target = set > 0.0 ? set : mock_internal::MOCK_K2_CHAMBER_FAN_RESTING_C;
+                    target = set > 0.0 ? set : mock_internal::kMockK2ChamberFanRestingC;
                 } else {
                     temp = 35.0 + 3.0 * std::sin(2.0 * M_PI * sim_time / 80.0);
                     target = 40.0;
@@ -5649,8 +5663,8 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         // humidity, temperature)
         {
             // BME280 chamber sensor: humidity varies 40-50%, slow sinusoidal drift
-            constexpr double HUMIDITY_WAVE_PERIOD = 180.0; // 3 minute period
-            double humidity_wave = std::sin(2.0 * M_PI * sim_time / HUMIDITY_WAVE_PERIOD);
+            constexpr double kHumidityWavePeriod = 180.0; // 3 minute period
+            double humidity_wave = std::sin(2.0 * M_PI * sim_time / kHumidityWavePeriod);
             double chamber_humidity = 45.0 + 5.0 * humidity_wave; // 40-50%
             double chamber_h_temp = chamber_temp_.load();         // Use chamber temperature
             double chamber_pressure = 1013.25 + 2.0 * std::sin(2.0 * M_PI * sim_time / 300.0);
@@ -5718,7 +5732,7 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         // can wake the thread immediately instead of waiting for the full interval
         {
             std::unique_lock<std::mutex> lock(sim_mutex_);
-            sim_cv_.wait_for(lock, std::chrono::milliseconds(SIMULATION_INTERVAL_MS),
+            sim_cv_.wait_for(lock, std::chrono::milliseconds(kSimulationIntervalMs),
                              [this] { return !simulation_running_.load(); });
         }
     }
@@ -6092,15 +6106,15 @@ bool MoonrakerClientMock::simulate_pa_calibration(
 
     // Roughly what the real thing costs once the nozzle is already hot: a
     // handful of purge-and-measure cycles, not an instant answer.
-    constexpr int CANDIDATES = 5;
-    constexpr int STEP_MS = 1200;
+    constexpr int kCandidates = 5;
+    constexpr int kStepMs = 1200;
 
     std::lock_guard<std::mutex> lock(pa_cal_mutex_);
     pending_pa_lines_.clear();
     auto due = std::chrono::steady_clock::now();
 
     if (should_fail) {
-        due += std::chrono::milliseconds(STEP_MS);
+        due += std::chrono::milliseconds(kStepMs);
         pending_pa_lines_.push_back({due, "!! [flow_calibrate] not edit filament info!", true,
                                      std::move(success_cb), std::move(error_cb)});
         spdlog::info("[MoonrakerClientMock] FLOW_CALIBRATE: simulating refusal"
@@ -6111,24 +6125,24 @@ bool MoonrakerClientMock::simulate_pa_calibration(
     // Candidate probes, in the U1 flow calibrator's own format: each measured
     // K, then the flow mismatch it read there. Shaped like a real root-find
     // converging on 0.0412.
-    static constexpr double CANDIDATE_K[CANDIDATES] = {0.0200, 0.0600, 0.0400, 0.0420, 0.0412};
-    static constexpr double CANDIDATE_AREA[CANDIDATES] = {0.0181, -0.0142, 0.0011, -0.0004,
-                                                          0.00002};
-    for (int i = 0; i < CANDIDATES; ++i) {
-        due += std::chrono::milliseconds(STEP_MS);
+    static constexpr double kCandidateK[kCandidates] = {0.0200, 0.0600, 0.0400, 0.0420, 0.0412};
+    static constexpr double kCandidateArea[kCandidates] = {0.0181, -0.0142, 0.0011, -0.0004,
+                                                           0.00002};
+    for (int i = 0; i < kCandidates; ++i) {
+        due += std::chrono::milliseconds(kStepMs);
         pending_pa_lines_.push_back(
-            {due, fmt::format("// measure k: {:.5f}", CANDIDATE_K[i]), false, nullptr, nullptr});
-        pending_pa_lines_.push_back({due, fmt::format("// measure area: {:.5f}", CANDIDATE_AREA[i]),
+            {due, fmt::format("// measure k: {:.5f}", kCandidateK[i]), false, nullptr, nullptr});
+        pending_pa_lines_.push_back({due, fmt::format("// measure area: {:.5f}", kCandidateArea[i]),
                                      false, nullptr, nullptr});
     }
 
     // The result line the firmware prints as it applies the value.
-    due += std::chrono::milliseconds(STEP_MS);
+    due += std::chrono::milliseconds(kStepMs);
     pending_pa_lines_.push_back(
         {due, "// Got pressure advance: 0.0412", true, std::move(success_cb), std::move(error_cb)});
 
     spdlog::info("[MoonrakerClientMock] FLOW_CALIBRATE: simulating {} candidates (~{}s)",
-                 CANDIDATES, ((CANDIDATES + 1) * STEP_MS) / 1000);
+                 kCandidates, ((kCandidates + 1) * kStepMs) / 1000);
     return true;
 }
 
@@ -6243,7 +6257,7 @@ void write_mock_shaper_csv(const std::string& path, char axis) {
     shaper_curves.reserve(num_shapers);
     for (int i = 0; i < num_shapers; ++i) {
         shaper_curves.push_back(helix::calibration::shaper_transfer_curve(
-            shapers[i].name, shapers[i].freq, helix::calibration::SHAPER_DEFAULT_DAMPING_RATIO,
+            shapers[i].name, shapers[i].freq, helix::calibration::kShaperDefaultDampingRatio,
             bins));
     }
 
@@ -6323,18 +6337,18 @@ void write_mock_belt_csv(const std::string& path, char path_letter, float peak_h
     std::uniform_real_distribution<float> noise_dist(0.9f, 1.1f);
 
     const bool flat = std::isnan(peak_hz);
-    constexpr float PEAK_HEIGHT = 3e4f;
-    constexpr float SECONDARY_HEIGHT = 0.22f * PEAK_HEIGHT;
-    constexpr double BIN_STEP = 3200.0 / 4096.0;
+    constexpr float kPeakHeight = 3e4f;
+    constexpr float kSecondaryHeight = 0.22f * kPeakHeight;
+    constexpr double kBinStep = 3200.0 / 4096.0;
     // HWHM of 10 Hz (Q ~ 5 at 100 Hz), the width a real belt rig shows. A
     // spike much narrower than that tanks the curve-similarity leg of
     // compare_belt_paths() for peak pairs a real printer scores as close.
-    constexpr float MAIN_HALF_WIDTH_SQ = 100.0f;
-    for (double freq = 5.0; freq <= max_freq + 1e-9; freq += BIN_STEP) {
+    constexpr float kMainHalfWidthSq = 100.0f;
+    for (double freq = 5.0; freq <= max_freq + 1e-9; freq += kBinStep) {
         const float df = static_cast<float>(freq) - peak_hz;
         const float ds = static_cast<float>(freq) - 42.0f;
-        const float main = flat ? 0.0f : PEAK_HEIGHT / (1.0f + (df * df) / MAIN_HALF_WIDTH_SQ);
-        const float secondary = flat ? 0.0f : SECONDARY_HEIGHT / (1.0f + (ds * ds) / 20.25f);
+        const float main = flat ? 0.0f : kPeakHeight / (1.0f + (df * df) / kMainHalfWidthSq);
+        const float secondary = flat ? 0.0f : kSecondaryHeight / (1.0f + (ds * ds) / 20.25f);
         const float psd_xyz = 150.0f * noise_dist(rng) + main + secondary;
 
         if (mode == BeltMockFailure::MULTICHIP) {
@@ -6419,8 +6433,8 @@ void MoonrakerClientMock::apply_belt_tune_script(const std::string& spec) {
         start = end + 1;
     }
     set_belt_tune_script(letter, std::move(peaks));
-    spdlog::info("[MoonrakerClientMock] Belt path {} tune script: {} windowed sweeps", letter,
-                 belt_script_[letter == 'A' ? 0 : 1].size());
+    spdlog::info("[MoonrakerClientMock] Belt path {} tune script: {} sweeps after the first",
+                 letter, belt_script_[letter == 'A' ? 0 : 1].size());
 }
 
 std::string MoonrakerClientMock::belt_csv_path(const std::string& axis_name,
@@ -6549,7 +6563,7 @@ void MoonrakerClientMock::dispatch_shaper_calibrate_response(char axis) {
     // ending exactly on max_freq the way a real sweep does. Realtime plays a
     // line per whole Hz at the belt sweep's cadence; otherwise 20 lines.
     std::vector<std::string> sweep_lines;
-    constexpr int SWEEP_STEPS = 20;
+    constexpr int kSweepSteps = 20;
     const double min_freq = resonance_min_freq_;
     const double max_freq = resonance_max_freq_;
     if (shaper_sweep_realtime_) {
@@ -6558,9 +6572,9 @@ void MoonrakerClientMock::dispatch_shaper_calibrate_response(char axis) {
             sweep_lines.emplace_back(buf);
         }
     } else {
-        for (int i = 0; i < SWEEP_STEPS; ++i) {
+        for (int i = 0; i < kSweepSteps; ++i) {
             const double freq =
-                min_freq + (max_freq - min_freq) * i / static_cast<double>(SWEEP_STEPS - 1);
+                min_freq + (max_freq - min_freq) * i / static_cast<double>(kSweepSteps - 1);
             snprintf(buf, sizeof(buf), "Testing frequency %.0f Hz", freq);
             lines.emplace_back(buf);
         }
@@ -6683,9 +6697,11 @@ void MoonrakerClientMock::dispatch_test_resonances_response(const std::string& g
     const bool windowed = win_lo && win_hi && *win_hi > *win_lo;
 
     float sweep_peak_hz = belt_peaks_hz_[idx];
-    if (windowed) {
-        // A windowed sweep plays the next scripted peak, the last one holding.
-        // It never applies the re-measure walk below.
+    const bool scripted = !belt_script_[0].empty() || !belt_script_[1].empty();
+    if (belt_measure_count_[idx] > 0 && scripted) {
+        // Every sweep after a path's first, full or windowed, plays its next
+        // scripted peak, the last one holding. A script on either path turns
+        // the re-measure walk off for both.
         auto& script = belt_script_[idx];
         if (!script.empty()) {
             sweep_peak_hz = script[std::min(belt_script_pos_[idx], script.size() - 1)];
@@ -6694,7 +6710,7 @@ void MoonrakerClientMock::dispatch_test_resonances_response(const std::string& g
                 belt_peaks_hz_[idx] = sweep_peak_hz;
             }
         }
-    } else if (belt_measure_count_[idx] > 0) {
+    } else if (belt_measure_count_[idx] > 0 && !windowed) {
         // Each full re-measurement after the first walks this path's peak
         // toward the other's by at most 4 Hz: tightening a belt moves its
         // resonance, and the clamp keeps the walk from overshooting past equal.
@@ -6870,7 +6886,7 @@ void MoonrakerClientMock::advance_print_start_simulation() {
 
     // Phase 3: Heating bed (when bed starts warming, ~10% toward target)
     double bed_progress =
-        (bed_target > ROOM_TEMP) ? (bed_temp - ROOM_TEMP) / (bed_target - ROOM_TEMP) : 1.0;
+        (bed_target > kRoomTemp) ? (bed_temp - kRoomTemp) / (bed_target - kRoomTemp) : 1.0;
     if (current_phase < static_cast<uint8_t>(SimulatedPrintStartPhase::HEATING_BED) &&
         bed_progress > 0.05) {
         dispatch_gcode_response("M190 S" + std::to_string(static_cast<int>(bed_target)));
@@ -6883,7 +6899,7 @@ void MoonrakerClientMock::advance_print_start_simulation() {
 
     // Phase 4: Heating nozzle (when extruder starts warming, ~10% toward target)
     double ext_progress =
-        (ext_target > ROOM_TEMP) ? (ext_temp - ROOM_TEMP) / (ext_target - ROOM_TEMP) : 1.0;
+        (ext_target > kRoomTemp) ? (ext_temp - kRoomTemp) / (ext_target - kRoomTemp) : 1.0;
     if (current_phase < static_cast<uint8_t>(SimulatedPrintStartPhase::HEATING_NOZZLE) &&
         ext_progress > 0.05) {
         dispatch_gcode_response("M109 S" + std::to_string(static_cast<int>(ext_target)));
@@ -7009,11 +7025,11 @@ void MoonrakerClientMock::trigger_restart(bool is_firmware) {
             int total_ms = static_cast<int>(effective_delay * 1000);
             int elapsed_ms = 0;
             // Use small interval (10ms) so high-speedup tests don't overshoot
-            constexpr int SLEEP_INTERVAL_MS = 10;
+            constexpr int kSleepIntervalMs = 10;
 
             while (elapsed_ms < total_ms && restart_pending_.load()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_INTERVAL_MS));
-                elapsed_ms += SLEEP_INTERVAL_MS;
+                std::this_thread::sleep_for(std::chrono::milliseconds(kSleepIntervalMs));
+                elapsed_ms += kSleepIntervalMs;
             }
 
             // Check if we were cancelled

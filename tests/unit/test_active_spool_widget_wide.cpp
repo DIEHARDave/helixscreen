@@ -28,8 +28,8 @@ using namespace helix;
 
 namespace {
 
-constexpr uint32_t TEST_SPOOL_COLOR = 0x00FF00; // distinct green, != DEFAULT_COLOR
-constexpr uint32_t DEFAULT_WHITE = 0xE0E0E0;    // ui_spool_canvas.cpp DEFAULT_COLOR
+constexpr uint32_t kTestSpoolColor = 0x00FF00; // distinct green, != DEFAULT_COLOR
+constexpr uint32_t kDefaultWhite = 0xE0E0E0;   // ui_spool_canvas.cpp DEFAULT_COLOR
 
 bool color_is(lv_color_t c, uint32_t rgb) {
     return c.red == ((rgb >> 16) & 0xFF) && c.green == ((rgb >> 8) & 0xFF) &&
@@ -42,7 +42,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "active_spool wide canvas is colored after r
                  "[active_spool][panel_widget][1109]") {
     // Give the widget an active (external) spool with a known color.
     SlotInfo ext;
-    ext.color_rgb = TEST_SPOOL_COLOR;
+    ext.color_rgb = kTestSpoolColor;
     ext.material = "PLA";
     ext.brand = "TestBrand";
     ext.total_weight_g = 1000.0f;
@@ -66,7 +66,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "active_spool wide canvas is colored after r
     widget.on_size_changed(1, 1, 100, 100);
     process_lvgl(30);
     INFO("compact color after 1x1: " << std::hex << ui_spool_canvas_get_color(spool_compact).red);
-    REQUIRE(color_is(ui_spool_canvas_get_color(spool_compact), TEST_SPOOL_COLOR));
+    REQUIRE(color_is(ui_spool_canvas_get_color(spool_compact), kTestSpoolColor));
 
     // Resize to 2x1 — the reporter's repro. The wide canvas must be colored,
     // not left at the DEFAULT_COLOR white.
@@ -76,8 +76,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "active_spool wide canvas is colored after r
     lv_color_t wide = ui_spool_canvas_get_color(spool_wide);
     INFO("wide color after 2x1: r=" << (int)wide.red << " g=" << (int)wide.green
                                     << " b=" << (int)wide.blue);
-    REQUIRE_FALSE(color_is(wide, DEFAULT_WHITE)); // the bug: stuck at default white
-    REQUIRE(color_is(wide, TEST_SPOOL_COLOR));
+    REQUIRE_FALSE(color_is(wide, kDefaultWhite)); // the bug: stuck at default white
+    REQUIRE(color_is(wide, kTestSpoolColor));
 
     AmsState::instance().clear_external_spool_info();
 }
@@ -91,7 +91,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "active_spool wide canvas is colored after r
 TEST_CASE_METHOD(LVGLUITestFixture, "active_spool stays colored after a 2x1 instance is recycled",
                  "[active_spool][panel_widget][1109]") {
     SlotInfo ext;
-    ext.color_rgb = TEST_SPOOL_COLOR;
+    ext.color_rgb = kTestSpoolColor;
     ext.material = "PLA";
     ext.total_weight_g = 1000.0f;
     ext.remaining_weight_g = 500.0f;
@@ -131,7 +131,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "active_spool stays colored after a 2x1 inst
                                << lv_obj_has_flag(compact2, LV_OBJ_FLAG_HIDDEN));
     REQUIRE_FALSE(lv_obj_has_flag(wide_layout2, LV_OBJ_FLAG_HIDDEN));
     REQUIRE(lv_obj_has_flag(compact2, LV_OBJ_FLAG_HIDDEN));
-    REQUIRE(color_is(ui_spool_canvas_get_color(wide2), TEST_SPOOL_COLOR));
+    REQUIRE(color_is(ui_spool_canvas_get_color(wide2), kTestSpoolColor));
 
     AmsState::instance().clear_external_spool_info();
 }

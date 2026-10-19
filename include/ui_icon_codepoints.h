@@ -34,7 +34,7 @@ struct IconMapping {
 
 // Complete icon mapping table
 // Sorted alphabetically by name for efficient binary search
-static const IconMapping ICON_MAP[] = {
+static const IconMapping kIconMap[] = {
     // Alert/Status icons
     {"alert",              "\xF3\xB0\x80\xA6"},  // F0026 alert/triangle-exclamation
     {"alert_circle",       "\xF3\xB0\x80\xA8"},  // F0028 alert-circle
@@ -351,7 +351,7 @@ static const IconMapping ICON_MAP[] = {
 // clang-format on
 
 // Number of icons in the mapping table
-static constexpr size_t ICON_MAP_SIZE = sizeof(ICON_MAP) / sizeof(ICON_MAP[0]);
+static constexpr size_t kIconMapSize = sizeof(kIconMap) / sizeof(kIconMap[0]);
 
 /**
  * @brief Look up an icon codepoint by name
@@ -364,14 +364,14 @@ inline const char* lookup_codepoint(const char* name) {
 
     // Binary search for efficiency (table is sorted alphabetically)
     size_t left = 0;
-    size_t right = ICON_MAP_SIZE;
+    size_t right = kIconMapSize;
 
     while (left < right) {
         size_t mid = left + (right - left) / 2;
-        int cmp = strcmp(name, ICON_MAP[mid].name);
+        int cmp = strcmp(name, kIconMap[mid].name);
 
         if (cmp == 0) {
-            return ICON_MAP[mid].codepoint;
+            return kIconMap[mid].codepoint;
         } else if (cmp < 0) {
             right = mid;
         } else {

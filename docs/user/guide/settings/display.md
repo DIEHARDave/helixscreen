@@ -48,13 +48,17 @@ On the Creality K2, the bottom of the slider stays a little brighter than the nu
 
 ## Screen Dim
 
-How long the screen waits with nobody touching it before it dims: **Never**, **30 seconds**, **1 minute**, **2 minutes**, **5 minutes** or **10 minutes** (the default). Only shown on screens that can change their brightness. Touch the screen to bring it back to full brightness; that touch presses nothing (see [Display Sleep](#display-sleep)).
+How long the screen waits with nobody touching it before it dims: **Never**, **30 seconds**, **1 minute**, **2 minutes**, **5 minutes** or **10 minutes** (the default). Touch the screen to bring it back to full brightness; that touch presses nothing (see [Display Sleep](#display-sleep)).
+
+On a screen that can't change its brightness, such as a phone or tablet running the Android app, nothing can dim, so the same timer starts the screensaver instead. There this row is called **Screensaver after** and offers the same choices. It only appears while a screensaver is selected; with the screensaver **Off** the row is hidden, because the timer would do nothing.
 
 ---
 
 ## Display Sleep
 
 How long the screen waits before it turns off completely: **Never**, **1 minute**, **5 minutes**, **10 minutes**, **20 minutes** (the default) or **30 minutes**. Touch the screen to wake it.
+
+Sleep never comes before the dim or screensaver stage. If a change would put it first, HelixScreen raises the sleep time to match **Screen Dim** (or **Screensaver after**) and says so. **Never** on either row is always allowed.
 
 The touch that wakes the screen never presses anything, whether the screen was asleep, dimmed or showing a screensaver. The screen comes back as soon as your finger lands, but nothing under it is pressed, held or scrolled, however long you hold or drag. Lift your finger, then tap what you want.
 
@@ -70,7 +74,9 @@ Use `0` if `1` made things worse.
 
 ## Screensaver
 
-An animation that plays while the screen is idle. It starts when the screen would dim and stops when the screen goes to sleep. On a screen with no brightness control, the screensaver is the only sign that the screen is idle.
+An animation that plays while the screen is idle. It starts when the screen would dim and stops when the screen goes to sleep. On a screen with no brightness control, the screensaver is the only sign that the screen is idle, and **Screensaver after** sets when it starts (see [Screen Dim](#screen-dim)).
+
+The ESP32 firmware (the BigTreeTech K-Touch and other ESP32-S3 panels) has no screensavers, so this row and **Test Screensaver** don't appear there.
 
 | Option | What you see |
 |--------|--------------|

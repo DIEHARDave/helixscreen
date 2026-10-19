@@ -248,9 +248,9 @@ TEST_CASE_METHOD(LVGLTestFixture, "LiveSweepPreview::finish stops after the grac
     preview.finish();
     const double finish_at = player.synth.time_s();
     // One batch past the grace: the first batch after finish() sets the deadline.
-    player.play_until(preview, log, finish_at + PREVIEW_FINISH_GRACE_S - 0.3);
+    player.play_until(preview, log, finish_at + kPreviewFinishGraceS - 0.3);
     CHECK(preview.state() == LiveSweepPreview::State::STREAMING);
-    player.play_until(preview, log, finish_at + PREVIEW_FINISH_GRACE_S + 0.3);
+    player.play_until(preview, log, finish_at + kPreviewFinishGraceS + 0.3);
     CHECK(preview.state() == LiveSweepPreview::State::DONE);
     CHECK(log.stopped == 1);
 }

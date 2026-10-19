@@ -254,11 +254,11 @@ class AmsEnvironmentOverlay : public OverlayBase {
 
     lv_subject_t drying_progress_subject_{};
 
-    static constexpr int MAX_COMFORT_ROWS = 4;
-    lv_subject_t comfort_visible_[MAX_COMFORT_ROWS] = {};
-    lv_subject_t comfort_status_[MAX_COMFORT_ROWS] = {}; ///< 0=OK, 1=Marginal, 2=Too humid
-    lv_subject_t comfort_text_[MAX_COMFORT_ROWS] = {};
-    char comfort_text_buf_[MAX_COMFORT_ROWS][96] = {};
+    static constexpr int kMaxComfortRows = 4;
+    lv_subject_t comfort_visible_[kMaxComfortRows] = {};
+    lv_subject_t comfort_status_[kMaxComfortRows] = {}; ///< 0=OK, 1=Marginal, 2=Too humid
+    lv_subject_t comfort_text_[kMaxComfortRows] = {};
+    char comfort_text_buf_[kMaxComfortRows][96] = {};
 
     lv_subject_t start_stop_text_subject_{};
     char start_stop_text_buf_[32] = {};

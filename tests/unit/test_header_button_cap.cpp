@@ -31,7 +31,7 @@
 namespace {
 
 /// Every tier suffix the responsive ladder can select.
-constexpr const char* TIER_SUFFIXES[] = {
+constexpr const char* kTierSuffixes[] = {
     "_micro", "_tiny", "_small", "_medium", "_large", "_xlarge", "_xxlarge",
 };
 
@@ -45,7 +45,7 @@ int to_px(const std::unordered_map<std::string, std::string>& table, const std::
 
 TEST_CASE("header_button_height fits inside header_height at every tier",
           "[theme][header][header-button-cap]") {
-    for (const char* suffix : TIER_SUFFIXES) {
+    for (const char* suffix : kTierSuffixes) {
         INFO("tier " << suffix);
         const auto px = theme_manager_parse_all_xml_for_suffix("ui_xml", "px", suffix);
 
@@ -114,4 +114,5 @@ TEST_CASE("header_bar.xml actually applies the cap to both action buttons",
     // element because the quote immediately follows the name.
     CHECK(element_has_cap("action_button"));
     CHECK(element_has_cap("action_button_2"));
+    CHECK(element_has_cap("action_icon_button"));
 }

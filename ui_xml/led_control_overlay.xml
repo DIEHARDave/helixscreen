@@ -166,9 +166,13 @@
             <lv_obj width="100%"
                     height="content" flex_flow="row" scrollable="false" style_pad_all="0"
                     style_pad_gap="#led_swatch_gap" style_flex_cross_place="center">
-              <!-- A subject-bound repeat must be its container's only child. -->
+              <!-- A subject-bound repeat must be its container's only child.
+                   The list takes the space the Custom swatch leaves and wraps
+                   inside it, so a portrait look column too narrow for the whole
+                   preset row wraps to a second line instead of running past the
+                   overlay edge. -->
               <lv_obj name="led_swatch_list"
-                      width="content" height="content" flex_flow="row" scrollable="false" style_pad_all="0"
+                      width="1" height="content" flex_grow="1" flex_flow="row_wrap" scrollable="false" style_pad_all="0"
                       style_pad_gap="#led_swatch_gap">
                 <repeat count="led_swatch_count">
                   <color_swatch name="led_swatch_${i}"
@@ -176,15 +180,10 @@
                                 selected_subject="led_selected_swatch" callback="led_swatch_cb"/>
                 </repeat>
               </lv_obj>
-              <color_swatch name="led_custom_swatch"
-                            index="-2" fill="disc_rainbow" selected_subject="led_selected_swatch"
-                            callback="led_custom_color_cb">
-                <lv_obj width="50%"
-                        height="50%" align="center" style_radius="9999" style_bg_opa="255" style_bg_color="#screen_bg"
-                        style_border_width="0" clickable="false" event_bubble="true" scrollable="false">
-                  <icon src="plus" size="xs" align="center" clickable="false" event_bubble="true"/>
-                </lv_obj>
-              </color_swatch>
+              <custom_color_swatch name="led_custom_swatch"
+                                   icon="plus" selected_subject="led_selected_swatch" callback="led_custom_color_cb"
+                                   size="#led_swatch_size" hit="#led_swatch_gap_half" reach="#led_ring_reach"
+                                   ring="styles.led_swatch_ring"/>
             </lv_obj>
           </lv_obj>
 

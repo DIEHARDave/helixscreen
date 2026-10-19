@@ -263,7 +263,7 @@ void ToolOffsetCalibrationPanel::begin_run() {
         object_lifetime_.bg_cb("ToolOffsetCal::done", [this]() { on_run_finished(true, ""); }),
         object_lifetime_.bg_cb("ToolOffsetCal::error",
                                [this](const MoonrakerError& err) { on_run_rpc_error(err); }),
-        CALIBRATION_TIMEOUT_MS);
+        kCalibrationTimeoutMs);
 }
 
 void ToolOffsetCalibrationPanel::on_run_rpc_error(const MoonrakerError& err) {
@@ -299,7 +299,7 @@ void ToolOffsetCalibrationPanel::begin_idle_wait() {
     // printer still busy after another one is wedged. Re-read the subject when
     // it fires - an edge that landed between the last notification and the
     // timer is a finished run.
-    idle_wait_backstop_.begin(CALIBRATION_TIMEOUT_MS, [this]() {
+    idle_wait_backstop_.begin(kCalibrationTimeoutMs, [this]() {
         const bool still_busy =
             lv_subject_get_int(
                 get_printer_state().calibration_state().get_idle_timeout_printing_subject()) == 1;
@@ -510,12 +510,16 @@ void ToolOffsetCalibrationPanel::on_tools_changed() {
 void init_tool_offset_row_handler() {
     register_xml_callbacks({
         {"on_tool_offset_row_clicked",
-         [](lv_event_t*) { get_global_tool_offset_cal_panel().show(lv_screen_active()); }},
+         [](lv_event_t*) { open_tool_offset_cal_panel(lv_screen_active()); }},
     });
 }
 
 ToolOffsetCalibrationPanel& get_global_tool_offset_cal_panel() {
     return helix::lazy_global<ToolOffsetCalibrationPanel>("ToolOffsetCalibrationPanel");
+}
+
+void open_tool_offset_cal_panel(lv_obj_t* parent_screen) {
+    get_global_tool_offset_cal_panel().show(parent_screen);
 }
 
 } // namespace helix::ui

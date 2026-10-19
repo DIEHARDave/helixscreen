@@ -113,7 +113,7 @@
         </ui_button>
         <!-- The macro blocks Klipper's queue, so Stop is an emergency stop
              plus firmware restart - the only stop there is. -->
-        <ui_button name="tool_cal_stop_btn" flex_grow="3" variant="danger" text="Stop">
+        <ui_button name="tool_cal_stop_btn" flex_grow="3" icon="alert_octagon" variant="danger" text="Stop">
           <event_cb trigger="clicked" callback="on_tool_cal_stop"/>
           <bind_flag_if_eq subject="tool_cal_active" flag="hidden" ref_value="0"/>
         </ui_button>

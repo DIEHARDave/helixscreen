@@ -72,7 +72,7 @@ AmsError AmsSubscriptionBackend::start() {
                             [this, notification]() { handle_status_update(notification); });
             });
 
-        if (id == helix::INVALID_SUBSCRIPTION_ID) {
+        if (id == helix::kInvalidSubscriptionId) {
             spdlog::error("{} Failed to register for status updates", backend_log_tag());
             return AmsErrorHelper::not_connected("Failed to subscribe to Moonraker updates");
         }
@@ -577,7 +577,7 @@ AmsError AmsSubscriptionBackend::ensure_homed_then(
     // virtual to capture - routing around it here would make the unhomed
     // branch untestable and silently drop the G28 from the recorded sequence.
     // The real path below cannot use the virtual because it needs an error
-    // callback and HOMING_TIMEOUT_MS, which the virtual forms do not take.
+    // callback and kHomingTimeoutMs, which the virtual forms do not take.
     // Fixtures are synchronous (no real RPC), so the AmsError the virtual
     // returns IS the only failure signal available here -- there is no async
     // MoonrakerError to forward, so a failure is translated into one.
@@ -613,7 +613,7 @@ AmsError AmsSubscriptionBackend::ensure_homed_then(
             token.defer("AmsSubscriptionBackend::ensure_homed_then_g28_error",
                         [this, err, pre_err]() { handle_dispatch_error(err, pre_err); });
         },
-        IMoonrakerAPI::HOMING_TIMEOUT_MS, /*silent=*/false, /*on_queued=*/nullptr,
+        IMoonrakerAPI::kHomingTimeoutMs, /*silent=*/false, /*on_queued=*/nullptr,
         // The G28 error leg lands in handle_dispatch_error(), which without a
         // caller callback only logs and resets the action to IDLE. Its ownership
         // answer is the caller's, not this wrapper's — and on this leg the
@@ -659,7 +659,7 @@ AmsSubscriptionBackend::dispatch_payload(std::string gcode, std::function<void()
     // capturing anything. All 8 pre-existing callers never pass
     // on_error/timeout_ms/silent, so they always land here, byte-for-byte the
     // pre-widening behaviour.
-    if (!on_error && timeout_ms == IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS && silent) {
+    if (!on_error && timeout_ms == IMoonrakerAPI::kAmsOperationTimeoutMs && silent) {
         return on_complete ? execute_gcode(gcode, std::move(on_complete)) : execute_gcode(gcode);
     }
 
@@ -671,7 +671,7 @@ AmsSubscriptionBackend::dispatch_payload(std::string gcode, std::function<void()
     // that virtual: fixtures capture it there the way they capture the shapes
     // above. Its callbacks land on a background thread; marshal them to main
     // like the direct path below does.
-    if (timeout_ms == IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS &&
+    if (timeout_ms == IMoonrakerAPI::kAmsOperationTimeoutMs &&
         !caller_surfaces_errors.value_or(on_error != nullptr)) {
         return execute_gcode(
             gcode,
@@ -689,7 +689,7 @@ AmsSubscriptionBackend::dispatch_payload(std::string gcode, std::function<void()
     }
 
     // A caller asked for its own error/timeout/toast policy -- the hardcoded
-    // virtuals above can't carry that (they fix AMS_OPERATION_TIMEOUT_MS and
+    // virtuals above can't carry that (they fix kAmsOperationTimeoutMs and
     // silent=true, and their error handling only logs). Talk to IMoonrakerAPI
     // directly, the same way AmsBackendCfs::dispatch_action_script used to
     // before this method existed to replace its fork.
@@ -751,7 +751,7 @@ AmsError AmsSubscriptionBackend::execute_gcode(const std::string& gcode) {
                 spdlog::error("{} G-code failed: {} - {}", tag, gcode, err.message);
             }
         },
-        IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS,
+        IMoonrakerAPI::kAmsOperationTimeoutMs,
         // silent=true: the phase tracker + IFS_STATUS own operation completion,
         // so the RPC timeout is advisory for these long macros. A cold-start
         // load can legitimately run past the 300s ceiling (bundle 77TDH9N6:
@@ -794,7 +794,7 @@ AmsError AmsSubscriptionBackend::execute_gcode(const std::string& gcode,
                 spdlog::error("{} G-code failed: {} - {}", tag, gcode, err.message);
             }
         },
-        IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS,
+        IMoonrakerAPI::kAmsOperationTimeoutMs,
         // silent=true: completion is owned by the phase tracker + IFS_STATUS, not
         // the RPC return, so the advisory 300s timeout must not surface a false
         // "timed out" toast for a legitimately-long macro (bundle 77TDH9N6),
@@ -848,7 +848,7 @@ AmsError AmsSubscriptionBackend::execute_gcode(const std::string& gcode,
                 on_error(err);
             }
         },
-        IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS, silent, /*on_queued=*/nullptr,
+        IMoonrakerAPI::kAmsOperationTimeoutMs, silent, /*on_queued=*/nullptr,
         // caller_surfaces_errors=false: on_error unwinds caller state but does
         // not put anything on screen, so declaring otherwise would silence
         // GcodeErrorRouter and a real macro rejection would reach nobody.

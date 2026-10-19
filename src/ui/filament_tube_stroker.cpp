@@ -158,9 +158,9 @@ int build_passes(const LaneStyle& style, TubeLayer layer, TubePass* out, bool si
     case TubeLayer::Halo:
         if (!style.halo || simple)
             return 0;
-        out[0] = {tube_blend(style.bg, style.wall, HALO_OUTER_MIX), style.width + HALO_WIDTH_EXTRA,
+        out[0] = {tube_blend(style.bg, style.wall, kHaloOuterMix), style.width + kHaloWidthExtra,
                   LV_OPA_COVER};
-        out[1] = {tube_blend(style.bg, style.wall, HALO_INNER_MIX), style.width + HALO_INNER_EXTRA,
+        out[1] = {tube_blend(style.bg, style.wall, kHaloInnerMix), style.width + kHaloInnerExtra,
                   LV_OPA_COVER};
         return 2;
     case TubeLayer::Wall:

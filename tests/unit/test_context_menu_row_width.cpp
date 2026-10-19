@@ -178,7 +178,7 @@ TEST_CASE_METHOD(XMLTestFixture, "context menu: card fits the screen height budg
     lv_obj_t* card = show_and_get_card(menu, test_screen());
 
     const int32_t margin = theme_manager_get_spacing("space_md");
-    const int32_t budget = TEST_DISPLAY_HEIGHT - (margin * 2);
+    const int32_t budget = kTestDisplayHeight - (margin * 2);
 
     INFO("card h=" << lv_obj_get_height(card) << " budget=" << budget);
     CHECK((lv_obj_get_height(card) <= budget || lv_obj_has_flag(card, LV_OBJ_FLAG_SCROLLABLE)));

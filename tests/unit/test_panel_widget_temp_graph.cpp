@@ -223,7 +223,7 @@ TEST_CASE("TempGraphWidget: registered in widget registry", "[temp_graph][panel_
     REQUIRE(def->min_rowspan == 2);
     // A band widget: capped only by the widest grid the engine builds, so a
     // default layout can run it the full width of an ultrawide or 4K panel.
-    REQUIRE(def->max_colspan == GridLayout::MAX_TRACKS);
+    REQUIRE(def->max_colspan == GridLayout::kMaxTracks);
     REQUIRE(def->max_rowspan == 8);
     REQUIRE(def->hardware_gate_subject == nullptr);
 }
@@ -586,7 +586,7 @@ TEST_CASE("TempGraphWidget::features_for_size edge cases", "[temp_graph][panel_w
 
 TEST_CASE("TempGraphWidget::attach() seed extents yield everything but readouts",
           "[temp_graph][panel_widget][features]") {
-    // Mirrors the constexpr SEED_WIDTH_PX/SEED_HEIGHT_PX in
+    // Mirrors the constexpr kSeedWidthPx/kSeedHeightPx in
     // TempGraphWidget::attach() (temp_graph_widget.cpp) — the measured
     // 800x480 two-span (colspan=2/rowspan=2) extents used to seed
     // initial_features, so the tier is Medium by construction.
@@ -596,11 +596,11 @@ TEST_CASE("TempGraphWidget::attach() seed extents yield everything but readouts"
     // both axes, and withholds the readouts that need the widest band. A
     // change to features_for_size() or to these seed values should fail this
     // test rather than silently changing the widget's pre-resize state.
-    constexpr int SEED_WIDTH_PX = 233;
-    constexpr int SEED_HEIGHT_PX = 230;
+    constexpr int kSeedWidthPx = 233;
+    constexpr int kSeedHeightPx = 230;
 
     uint32_t f =
-        TempGraphWidget::features_for_size(SEED_WIDTH_PX, SEED_HEIGHT_PX, UiBreakpoint::Medium);
+        TempGraphWidget::features_for_size(kSeedWidthPx, kSeedHeightPx, UiBreakpoint::Medium);
 
     uint32_t expected = TEMP_GRAPH_FEATURE_LINES | TEMP_GRAPH_FEATURE_TARGET_LINES |
                         TEMP_GRAPH_FEATURE_LEGEND | TEMP_GRAPH_FEATURE_Y_AXIS |
@@ -1063,7 +1063,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
          {
              {{"name", "extruder"},
               {"enabled", true},
-              {"color", lv_color_to_u32(TEMP_GRAPH_SERIES_COLORS[2]) & 0xFFFFFF}},
+              {"color", lv_color_to_u32(kTempGraphSeriesColors[2]) & 0xFFFFFF}},
          }}};
     widget.set_config(config);
     REQUIRE(widget.on_edit_configure());
@@ -1075,8 +1075,8 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     REQUIRE(swatch != nullptr);
     CHECK(helix::ui::has_swatch_paint(swatch));
     CHECK(lv_obj_get_style_radius(swatch, LV_PART_MAIN) == LV_RADIUS_CIRCLE);
-    CHECK(lv_color_eq(helix::ui::swatch_color_of(swatch), TEMP_GRAPH_SERIES_COLORS[2]));
+    CHECK(lv_color_eq(helix::ui::swatch_color_of(swatch), kTempGraphSeriesColors[2]));
 
     lv_obj_send_event(swatch, LV_EVENT_CLICKED, nullptr);
-    CHECK(lv_color_eq(helix::ui::swatch_color_of(swatch), TEMP_GRAPH_SERIES_COLORS[3]));
+    CHECK(lv_color_eq(helix::ui::swatch_color_of(swatch), kTempGraphSeriesColors[3]));
 }

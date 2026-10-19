@@ -89,7 +89,7 @@ bool deadline_pending(const std::atomic<uint32_t>& deadline_ms) {
 /// arm_recovery_recheck(): the three guards it declines on (setup wizard,
 /// restart in flight, AbortManager) clear on human and firmware timescales, so
 /// polling faster only burns timer ticks.
-constexpr uint32_t RECOVERY_RECHECK_RETRY_MS = 2000;
+constexpr uint32_t kRecoveryRecheckRetryMs = 2000;
 
 /// How many declined re-checks before the latch stops re-arming (~30s at the
 /// cadence above). One of those guards has no bound of its own - the setup
@@ -97,8 +97,8 @@ constexpr uint32_t RECOVERY_RECHECK_RETRY_MS = 2000;
 /// the rest of the process is not a useful way to say so. The reason stays
 /// latched past the cap, so a later suppression window still hands it back. The
 /// restart guard is bounded separately by
-/// recovery_suppression::RESTART_FLAG_TIMEOUT, which expires inside this budget.
-constexpr int RECOVERY_RECHECK_MAX_RETRIES = 15;
+/// recovery_suppression::kRestartFlagTimeout, which expires inside this budget.
+constexpr int kRecoveryRecheckMaxRetries = 15;
 
 } // namespace
 
@@ -717,18 +717,18 @@ void EmergencyStopOverlay::recovery_recheck_cb(lv_timer_t* /*timer*/) {
     inst.pending_recovery_reason_.compare_exchange_strong(expected, pending,
                                                           std::memory_order_relaxed);
 
-    if (++inst.recovery_recheck_retries_ > RECOVERY_RECHECK_MAX_RETRIES) {
+    if (++inst.recovery_recheck_retries_ > kRecoveryRecheckMaxRetries) {
         spdlog::warn("[KlipperRecovery] {} still blocked after {} re-checks - staying latched, "
                      "no further re-arm",
                      recovery_reason_str(static_cast<RecoveryReason>(pending)),
-                     RECOVERY_RECHECK_MAX_RETRIES);
+                     kRecoveryRecheckMaxRetries);
         return;
     }
 
     spdlog::debug("[KlipperRecovery] Re-check {} declined, retrying in {}ms",
                   recovery_reason_str(static_cast<RecoveryReason>(pending)),
-                  RECOVERY_RECHECK_RETRY_MS);
-    inst.arm_recovery_recheck_in(RECOVERY_RECHECK_RETRY_MS);
+                  kRecoveryRecheckRetryMs);
+    inst.arm_recovery_recheck_in(kRecoveryRecheckRetryMs);
 }
 
 void EmergencyStopOverlay::suppress_recovery_dialog(uint32_t duration_ms) {
@@ -745,10 +745,10 @@ bool EmergencyStopOverlay::is_recovery_suppressed() const {
 void EmergencyStopOverlay::begin_restart_window() {
     // Callable from any thread for the same reason suppress_recovery_dialog()
     // is: one atomic store of a deadline.
-    restart_expires_at_.store(lv_tick_get() + recovery_suppression::RESTART_FLAG_TIMEOUT,
+    restart_expires_at_.store(lv_tick_get() + recovery_suppression::kRestartFlagTimeout,
                               std::memory_order_relaxed);
     spdlog::debug("[KlipperRecovery] Restart in flight for up to {}ms",
-                  recovery_suppression::RESTART_FLAG_TIMEOUT);
+                  recovery_suppression::kRestartFlagTimeout);
 }
 
 bool EmergencyStopOverlay::restart_in_progress() const {
@@ -863,7 +863,7 @@ void EmergencyStopOverlay::firmware_restart() {
     // before from the user's perspective.
     helix::PrinterRecoveryService recovery(api_);
     recovery.recover(
-        []() {
+        [](helix::RecoveryOutcome) {
             spdlog::info("[KlipperRecovery] Recovery initiated");
             // Toast will update when klippy_state changes to READY
         },
@@ -980,7 +980,7 @@ void begin_expected_klippy_restart(std::string message) {
     // any thread; the toast is LVGL-facing so it hops to the main thread.
     EmergencyStopOverlay::instance().suppress_recovery_dialog(recovery_suppression::LONG);
     if (auto* api = get_moonraker_api()) {
-        api->suppress_disconnect_modal(EXPECTED_RESTART_DISCONNECT_MODAL_MS);
+        api->suppress_disconnect_modal(kExpectedRestartDisconnectModalMs);
     }
     // By value, because the toast is shown on a later main-thread tick. The
     // previous `const char*` captured the POINTER into the deferred lambda, so

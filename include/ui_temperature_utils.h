@@ -308,10 +308,10 @@ char* format_temperature_range(int min_temp, int max_temp, char* buffer, size_t 
 // ============================================================================
 
 /** Default tolerance for "at temperature" state detection (±degrees) */
-constexpr int DEFAULT_AT_TEMP_TOLERANCE = 2;
+constexpr int kDefaultAtTempTolerance = 2;
 
 /** The same tolerance for callers that classify in decidegrees. */
-constexpr int DEFAULT_AT_TEMP_TOLERANCE_DECI = DEFAULT_AT_TEMP_TOLERANCE * 10;
+constexpr int kDefaultAtTempToleranceDeci = kDefaultAtTempTolerance * 10;
 
 /**
  * @brief Bytes a heater status-area string needs, including its terminator.
@@ -322,7 +322,7 @@ constexpr int DEFAULT_AT_TEMP_TOLERANCE_DECI = DEFAULT_AT_TEMP_TOLERANCE * 10;
  * with a smaller buffer renders the same heater cut short while another
  * renders it whole, and the two then disagree on screen.
  */
-constexpr std::size_t HEATER_STATUS_BUF_BYTES = 64;
+constexpr std::size_t kHeaterStatusBufBytes = 64;
 
 /**
  * @brief Thermal state of a heater, shared by every consumer of the 4-state logic.
@@ -351,7 +351,7 @@ enum class HeatState {
  * @param target Target temperature (<= 0 = heater off)
  * @param tolerance Tolerance for the at-temp band (default: 2)
  */
-HeatState classify_heat_state(int current, int target, int tolerance = DEFAULT_AT_TEMP_TOLERANCE);
+HeatState classify_heat_state(int current, int target, int tolerance = kDefaultAtTempTolerance);
 
 /**
  * @brief Classify a chamber heater's thermal state, mode-aware.
@@ -374,11 +374,11 @@ HeatState classify_heat_state(int current, int target, int tolerance = DEFAULT_A
  * @param tolerance Tolerance for the at-temp/neutral band (default: 2)
  */
 HeatState classify_heat_state_with_mode(int current, int target, helix::ChamberMode mode,
-                                        int tolerance = DEFAULT_AT_TEMP_TOLERANCE);
+                                        int tolerance = kDefaultAtTempTolerance);
 
 /// A heater whose target is off but whose part is still hot enough to burn.
 /// Callers keep showing it (muted) until it cools below this.
-constexpr int RESIDUAL_HEAT_THRESHOLD_DECI = 500;
+constexpr int kResidualHeatThresholdDeci = 500;
 
 /// True while `current_deci` is above the residual-heat threshold. Independent
 /// of the target: callers decide whether an "on" heater counts.
@@ -423,7 +423,7 @@ lv_color_t get_heating_state_color(HeatState state);
  * @endcode
  */
 lv_color_t get_heating_state_color(int current_deg, int target_deg,
-                                   int tolerance = DEFAULT_AT_TEMP_TOLERANCE);
+                                   int tolerance = kDefaultAtTempTolerance);
 
 /**
  * @brief Get the icon color-variant string for a heater's thermal state
@@ -442,7 +442,7 @@ lv_color_t get_heating_state_color(int current_deg, int target_deg,
  * @return Variant string suitable for helix::ui::icon::set_variant()
  */
 const char* get_heating_state_variant(int current_deg, int target_deg,
-                                      int tolerance = DEFAULT_AT_TEMP_TOLERANCE);
+                                      int tolerance = kDefaultAtTempTolerance);
 
 // ============================================================================
 // Heater Display
@@ -471,7 +471,7 @@ struct HeaterDisplayResult {
  * produces a consistent display result used across all heater displays.
  * Includes a color field from get_heating_state_color() for one-call convenience.
  *
- * State logic (DEFAULT_AT_TEMP_TOLERANCE, matches get_heating_state_color):
+ * State logic (kDefaultAtTempTolerance, matches get_heating_state_color):
  * - target <= 0: Off
  * - current < target - tolerance: Heating
  * - current > target + tolerance: Cooling

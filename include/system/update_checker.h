@@ -68,7 +68,7 @@ class IMoonrakerAPI;
  * @brief Async update checker for HelixScreen
  *
  * Checks the R2 CDN manifest (GitHub releases API as fallback) to determine if
- * a newer version is available. Rate-limited to one check per MIN_CHECK_INTERVAL.
+ * a newer version is available. Rate-limited to one check per kMinCheckInterval.
  *
  * Usage:
  * @code
@@ -86,7 +86,7 @@ class IMoonrakerAPI;
  */
 class UpdateChecker {
   public:
-    static constexpr const char* DEFAULT_R2_BASE_URL = "https://releases.helixscreen.org";
+    static constexpr const char* kDefaultR2BaseUrl = "https://releases.helixscreen.org";
 
     /**
      * @brief Release information from GitHub
@@ -156,7 +156,7 @@ class UpdateChecker {
      * Spawns background thread to fetch the channel manifest.
      * Callback is invoked on LVGL thread when check completes.
      *
-     * Rate limited: If called within MIN_CHECK_INTERVAL of last check,
+     * Rate limited: If called within kMinCheckInterval of last check,
      * returns cached result immediately instead of making a new request.
      *
      * @param callback Optional callback for result notification
@@ -474,7 +474,7 @@ class UpdateChecker {
      * @brief Resolve the R2 base URL the next check will actually use.
      *
      * Reads r2_url from the trusted update_urls.json, falls back to
-     * DEFAULT_R2_BASE_URL when unset, and strips trailing slashes. Single
+     * kDefaultR2BaseUrl when unset, and strips trailing slashes. Single
      * source of truth for that resolution:
      * check_for_updates() caches its result into cached_r2_base_url_, and
      * refresh_config_snapshot() stores it for off-thread readers.
@@ -726,7 +726,7 @@ class UpdateChecker {
 
     // Rate limiting
     std::chrono::steady_clock::time_point last_check_time_{};
-    static constexpr auto MIN_CHECK_INTERVAL = std::chrono::minutes{10};
+    static constexpr auto kMinCheckInterval = std::chrono::minutes{10};
 
     // Threading
     std::thread worker_thread_;

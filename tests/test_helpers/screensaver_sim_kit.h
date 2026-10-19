@@ -7,7 +7,7 @@
 #include "screensaver_pixel_writer.h"
 #include "screensaver_sim_contract.h"
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 #include "screensaver_canvas.h"
 
 #include <lvgl.h>
@@ -41,22 +41,22 @@ using helix::ui::PixelWriter;
 using helix::ui::Rgb;
 
 /// Frame times a run cycles through: uneven, so motion that ignores dt shows.
-inline constexpr uint32_t UNEVEN_FRAME_MS[] = {33, 16, 50, 7, 70};
+inline constexpr uint32_t kUnevenFrameMs[] = {33, 16, 50, 7, 70};
 
-inline constexpr uint64_t FNV1A_OFFSET = 14695981039346656037ULL;
-inline constexpr uint64_t FNV1A_PRIME = 1099511628211ULL;
+inline constexpr uint64_t kFnv1aOffset = 14695981039346656037ULL;
+inline constexpr uint64_t kFnv1aPrime = 1099511628211ULL;
 
 /// FNV-1a of `size` bytes, continuing from `hash`.
 inline uint64_t fnv1a(uint64_t hash, const uint8_t* data, size_t size) {
     for (size_t i = 0; i < size; i++) {
         hash ^= data[i];
-        hash *= FNV1A_PRIME;
+        hash *= kFnv1aPrime;
     }
     return hash;
 }
 
 /// FNV-1a of every pixel byte of `frame`, row by row, leaving out row padding.
-inline uint64_t frame_fnv1a(const FrameTarget& frame, uint64_t hash = FNV1A_OFFSET) {
+inline uint64_t frame_fnv1a(const FrameTarget& frame, uint64_t hash = kFnv1aOffset) {
     const size_t row_bytes = static_cast<size_t>(frame.w) * helix::ui::pixel_bytes(frame.format);
     for (uint32_t y = 0; y < frame.h; y++) {
         hash = fnv1a(hash, frame.data + static_cast<size_t>(y) * frame.stride, row_bytes);
@@ -254,7 +254,7 @@ template <typename Sim> struct SimRun {
     std::vector<DirtyRect> dirty;
 };
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 /// A clock reading of the time of day `seconds_of_day`, with no print.
 inline helix::ui::ClockReading reading_at(int32_t seconds_of_day, bool use_24h = false) {

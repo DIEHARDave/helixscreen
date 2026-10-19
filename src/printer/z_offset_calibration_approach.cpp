@@ -35,13 +35,13 @@ CalibrationCommand calibration_command(ZOffsetCalibrationStrategy strategy,
 namespace {
 
 /// Keeps the approach lift strictly inside a short Z axis at one decimal.
-constexpr double Z_TOP_MARGIN_MM = 0.1;
+constexpr double kZTopMarginMm = 0.1;
 
 double clamp_to(double v, bool known, float lo, float hi) {
     if (!known || lo >= hi) {
         return v;
     }
-    return std::clamp(v, lo + GCODE_EDGE_MARGIN_MM, hi - GCODE_EDGE_MARGIN_MM);
+    return std::clamp(v, lo + kGcodeEdgeMarginMm, hi - kGcodeEdgeMarginMm);
 }
 
 } // namespace
@@ -67,9 +67,9 @@ Approach calibration_approach(const ApproachInputs& in) {
     x = clamp_to(x, t.has_x, t.x_min, t.x_max);
     y = clamp_to(y, t.has_y, t.y_min, t.y_max);
 
-    double z = APPROACH_Z_MM;
+    double z = kApproachZMm;
     if (t.has_z && t.z_max > t.z_min) {
-        z = std::min(z, static_cast<double>(t.z_max) - Z_TOP_MARGIN_MM);
+        z = std::min(z, static_cast<double>(t.z_max) - kZTopMarginMm);
     }
 
     out.nozzle = AxisTarget{x, y, std::nullopt};

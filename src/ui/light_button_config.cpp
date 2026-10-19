@@ -28,7 +28,7 @@ bool is_light_button(const PanelWidgetEntry& e) {
 }
 
 std::string pending_value(const Config& cfg) {
-    const nlohmann::json* p = cfg.try_get_json(cfg.df() + led::LIGHT_BUTTON_PENDING_PATH);
+    const nlohmann::json* p = cfg.try_get_json(cfg.df() + led::kLightButtonPendingPath);
     return (p != nullptr && p->is_string()) ? p->get<std::string>() : std::string();
 }
 
@@ -71,7 +71,7 @@ bool adopt_pending_light_button(Config& cfg, PanelWidgetConfig& home) {
         c["led"] = value;
         home.set_widget_config(id, c);
     }
-    cfg.set(cfg.df() + led::LIGHT_BUTTON_PENDING_PATH, nlohmann::json());
+    cfg.set(cfg.df() + led::kLightButtonPendingPath, nlohmann::json());
     cfg.save();
     return !ids.empty();
 }

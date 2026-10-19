@@ -35,9 +35,9 @@
 
 #include "../catch_amalgamated.hpp"
 
-using helix::gcode::GHOST_MAX_SAMPLED_LAYERS;
-using helix::gcode::GHOST_MIN_SAMPLED_LAYERS;
 using helix::gcode::ghost_sample_budget;
+using helix::gcode::kGhostMaxSampledLayers;
+using helix::gcode::kGhostMinSampledLayers;
 using helix::gcode::plan_ghost_sampling;
 
 /// A representative ghost buffer height for the 480x800 panels this runs on.
@@ -148,17 +148,17 @@ TEST_CASE("ghost_sample_budget: the canvas sets the budget, clamped at both ends
     // Between the clamps the budget is the row count itself: one sample per row
     // is exactly enough to draw without gaps and more cannot be distinguished.
     CHECK(ghost_sample_budget(320) == 320);
-    CHECK(ghost_sample_budget(GHOST_MIN_SAMPLED_LAYERS) == GHOST_MIN_SAMPLED_LAYERS);
-    CHECK(ghost_sample_budget(GHOST_MAX_SAMPLED_LAYERS) == GHOST_MAX_SAMPLED_LAYERS);
+    CHECK(ghost_sample_budget(kGhostMinSampledLayers) == kGhostMinSampledLayers);
+    CHECK(ghost_sample_budget(kGhostMaxSampledLayers) == kGhostMaxSampledLayers);
 
     // A canvas not sized yet must not produce a budget of zero and a stride
     // that divides by it.
-    CHECK(ghost_sample_budget(0) == GHOST_MIN_SAMPLED_LAYERS);
-    CHECK(ghost_sample_budget(-1) == GHOST_MIN_SAMPLED_LAYERS);
-    CHECK(ghost_sample_budget(1) == GHOST_MIN_SAMPLED_LAYERS);
+    CHECK(ghost_sample_budget(0) == kGhostMinSampledLayers);
+    CHECK(ghost_sample_budget(-1) == kGhostMinSampledLayers);
+    CHECK(ghost_sample_budget(1) == kGhostMinSampledLayers);
 
     // And an unusually tall one must not let the pass grow without limit.
-    CHECK(ghost_sample_budget(4000) == GHOST_MAX_SAMPLED_LAYERS);
+    CHECK(ghost_sample_budget(4000) == kGhostMaxSampledLayers);
 }
 
 TEST_CASE("plan_ghost_sampling: a taller canvas earns a denser sample",
@@ -179,6 +179,6 @@ TEST_CASE("plan_ghost_sampling: an unsized canvas still yields a usable stride",
     // thread, but a zero here must degrade to the floor rather than divide by 0.
     const auto plan = plan_ghost_sampling(5000, /*streaming=*/true, 0);
     CHECK(plan.step >= 1);
-    CHECK(plan.count >= GHOST_MIN_SAMPLED_LAYERS);
-    CHECK(plan.count < GHOST_MIN_SAMPLED_LAYERS * 2);
+    CHECK(plan.count >= kGhostMinSampledLayers);
+    CHECK(plan.count < kGhostMinSampledLayers * 2);
 }

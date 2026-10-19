@@ -103,7 +103,7 @@ TEST_CASE_METHOD(ProxyTestFixture, "get_websocket_url returns client URL", "[api
 
 TEST_CASE_METHOD(ProxyTestFixture, "subscribe_notifications returns valid ID", "[api][proxy]") {
     SubscriptionId id = api->subscribe_notifications([](json) {});
-    REQUIRE(id != INVALID_SUBSCRIPTION_ID);
+    REQUIRE(id != kInvalidSubscriptionId);
 }
 
 TEST_CASE_METHOD(ProxyTestFixture, "unsubscribe_notifications returns true for valid ID",
@@ -123,8 +123,8 @@ TEST_CASE_METHOD(ProxyTestFixture, "subscribe/unsubscribe roundtrip works", "[ap
     SubscriptionId id2 = api->subscribe_notifications([](json) {});
 
     REQUIRE(id1 != id2);
-    REQUIRE(id1 != INVALID_SUBSCRIPTION_ID);
-    REQUIRE(id2 != INVALID_SUBSCRIPTION_ID);
+    REQUIRE(id1 != kInvalidSubscriptionId);
+    REQUIRE(id2 != kInvalidSubscriptionId);
 
     // Unsubscribe both
     REQUIRE(api->unsubscribe_notifications(id1));

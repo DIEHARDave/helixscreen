@@ -53,7 +53,8 @@
           <!-- Cancel (visible only while calibration is running) sends M112 +
                firmware_restart: the gcode queue is blocked during the sweep, so
                that is the only reliable abort. -->
-          <ui_button name="cancel_calibration_btn" height="#button_height_sm" text="Cancel" variant="warning">
+          <ui_button name="cancel_calibration_btn"
+                     height="#button_height_sm" icon="alert_octagon" text="Stop" variant="danger">
             <event_cb trigger="clicked" callback="on_cancel_is_calibration"/>
             <bind_flag_if_eq subject="wizard_input_shaper_active" flag="hidden" ref_value="0"/>
           </ui_button>

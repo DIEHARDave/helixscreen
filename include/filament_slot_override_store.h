@@ -48,7 +48,7 @@ inline LaneKeyStyle lane_key_style_for(AmsType t) {
 // third-party/corrupt records (that would vandalize a shared namespace); the
 // one-shot laneN->T<n> migration only ever touches keys HelixScreen authored.
 // Note: out-of-range slots are intentionally NOT counted — the store does not
-// know NUM_PORTS (the caller range-checks), so it cannot honestly detect them.
+// know kNumPorts (the caller range-checks), so it cannot honestly detect them.
 struct LaneDataAnomalies {
     int int_typed_lane = 0;     ///< inner "lane" is an int, not a string — OrcaSlicer drops these
     int key_inner_mismatch = 0; ///< key looks like laneN/T<n> but disagrees with the inner index
@@ -190,7 +190,7 @@ class FilamentSlotOverrideStore {
     // Blocking read of lane_data/"seated" at init time (mirrors load_blocking's
     // cv.wait_for pattern + load_timeout_). Returns nullopt if absent/unreachable
     // or the stored value is not a valid 0-based lane index. The caller is
-    // responsible for range-checking against its own NUM_PORTS.
+    // responsible for range-checking against its own kNumPorts.
     std::optional<int> load_seated_slot_blocking();
 
     const std::string& backend_id() const {

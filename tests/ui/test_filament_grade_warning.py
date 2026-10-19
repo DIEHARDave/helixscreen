@@ -25,7 +25,7 @@ fallback over the file's whole palette -- the calibration cube's used tool is
 T2, so it lands on lane 3, not lane 1. See MOCK_ENVIRONMENT_VARIABLES.md.
 
 Mutation check (measured 2026-08-18, not assumed):
-  - VARIANT_AFFIXES[]: flip CF's `filled` column to false
+  - kVariantAffixes[]: flip CF's `filled` column to false
     -> both filled_lane tests fail, and they fail by the dialog never appearing
        at all: PLA-CF now reads as unfilled, grades_match() accepts the lane,
        and the print simply starts. test_matching_lane still passes, which is

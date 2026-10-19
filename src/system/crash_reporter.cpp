@@ -127,8 +127,8 @@ bool heap_snapshot_age_is_plausible(long age_ms, int uptime_sec) {
     }
     // uptime is truncated to whole seconds, so allow a couple of seconds of
     // slack before calling an age impossible.
-    constexpr long SLACK_MS = 2000;
-    return age_ms <= static_cast<long>(uptime_sec) * 1000 + SLACK_MS;
+    constexpr long kSlackMs = 2000;
+    return age_ms <= static_cast<long>(uptime_sec) * 1000 + kSlackMs;
 }
 
 // =============================================================================
@@ -938,7 +938,7 @@ const char* crash_worker_url() {
     if (const char* u = std::getenv("HELIX_CRASH_WORKER_URL")) {
         return u;
     }
-    return CrashReporter::CRASH_WORKER_URL;
+    return CrashReporter::kCrashWorkerUrl;
 }
 
 } // namespace

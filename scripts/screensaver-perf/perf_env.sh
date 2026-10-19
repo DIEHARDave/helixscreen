@@ -90,10 +90,10 @@ perf_record_gate() {
 # The registry every saver name comes from. A test points it at a fixture.
 PERF_REGISTRY=${PERF_REGISTRY:-$PERF_REPO/include/screensaver_registry.h}
 
-# Every stable screensaver name, one per line: the name in each row of the SCREENSAVERS table,
+# Every stable screensaver name, one per line: the name in each row of the kScreensavers table,
 # read from the source so a saver added there is a workload here with no edit.
 perf_saver_names() {
-    awk '/SCREENSAVERS\[\] = \{/ {inside = 1; next}
+    awk '/kScreensavers\[\] = \{/ {inside = 1; next}
         inside && /^\};/ {exit}
         inside && /ScreensaverType::/ { pending = 1 }
         pending && match($0, /"[a-z0-9_]+"/) { print substr($0, RSTART + 1, RLENGTH - 2); pending = 0 }' \

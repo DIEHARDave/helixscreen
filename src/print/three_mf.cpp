@@ -14,8 +14,8 @@ namespace helix::three_mf {
 
 namespace {
 
-constexpr std::string_view PLATE_PREFIX = "Metadata/plate_";
-constexpr std::string_view GCODE_SUFFIX = ".gcode";
+constexpr std::string_view kPlatePrefix = "Metadata/plate_";
+constexpr std::string_view kGcodeSuffix = ".gcode";
 
 bool is_space(char c) {
     return c == ' ' || c == '\t' || c == '\r' || c == '\n';
@@ -91,25 +91,25 @@ template <class Fn> void for_each_tag(std::string_view xml, std::string_view ele
 
 /// N from "Metadata/plate_<N><suffix>", or 0.
 int plate_number(std::string_view name, std::string_view suffix) {
-    if (name.size() <= PLATE_PREFIX.size() + suffix.size() ||
-        name.substr(0, PLATE_PREFIX.size()) != PLATE_PREFIX ||
+    if (name.size() <= kPlatePrefix.size() + suffix.size() ||
+        name.substr(0, kPlatePrefix.size()) != kPlatePrefix ||
         name.substr(name.size() - suffix.size()) != suffix) {
         return 0;
     }
     const std::string_view digits =
-        name.substr(PLATE_PREFIX.size(), name.size() - PLATE_PREFIX.size() - suffix.size());
+        name.substr(kPlatePrefix.size(), name.size() - kPlatePrefix.size() - suffix.size());
     if (!std::all_of(digits.begin(), digits.end(),
                      [](char c) { return std::isdigit(static_cast<unsigned char>(c)); })) {
         return 0;
     }
     const int plate = text_io::parse_int<int>(digits).value_or(0);
-    return plate <= MAX_PLATES ? plate : 0;
+    return plate <= kMaxPlates ? plate : 0;
 }
 
 } // namespace
 
 int plate_of_gcode_entry(std::string_view name) {
-    return plate_number(name, GCODE_SUFFIX);
+    return plate_number(name, kGcodeSuffix);
 }
 
 const zip::ZipEntry* find_archive_entry(const std::vector<zip::ZipEntry>& entries,
@@ -177,7 +177,7 @@ bool parse_slice_info(std::string_view xml, int plate, SliceInfo& out) {
                 return;
             }
             if (*key == "index") {
-                info.plate = attr_index(tag, "value", 1, MAX_PLATES);
+                info.plate = attr_index(tag, "value", 1, kMaxPlates);
             } else if (*key == "prediction") {
                 info.prediction_s = attr_double(tag, "value");
             } else if (*key == "weight") {
@@ -189,7 +189,7 @@ bool parse_slice_info(std::string_view xml, int plate, SliceInfo& out) {
         }
         for_each_tag(block, "filament", [&info](std::string_view tag) {
             SliceFilament f;
-            f.id = attr_index(tag, "id", 1, MAX_FILAMENT_SLOTS);
+            f.id = attr_index(tag, "id", 1, kMaxFilamentSlots);
             if (f.id == 0) {
                 return; // not a slot a print can have
             }
@@ -210,14 +210,14 @@ std::string extracted_gcode_name(std::string_view three_mf_path, int plate, bool
     if (gcode::is_3mf(name)) {
         name.resize(name.size() - 4);
     }
-    if (name.size() >= GCODE_SUFFIX.size() &&
-        name.compare(name.size() - GCODE_SUFFIX.size(), GCODE_SUFFIX.size(), GCODE_SUFFIX) == 0) {
-        name.resize(name.size() - GCODE_SUFFIX.size());
+    if (name.size() >= kGcodeSuffix.size() &&
+        name.compare(name.size() - kGcodeSuffix.size(), kGcodeSuffix.size(), kGcodeSuffix) == 0) {
+        name.resize(name.size() - kGcodeSuffix.size());
     }
     if (multi) {
         name += "_plate" + std::to_string(plate);
     }
-    name += GCODE_SUFFIX;
+    name += kGcodeSuffix;
     return name;
 }
 

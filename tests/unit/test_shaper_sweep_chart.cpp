@@ -124,13 +124,13 @@ TEST_CASE_METHOD(ShaperSweepChartFixture, "ShaperSweepChart draws like the resul
     CHECK(lv_obj_get_parent(ui_frequency_response_chart_get_obj(chart.chart())) == host);
     const auto range = ui_frequency_response_chart_get_freq_range(chart.chart());
     CHECK(range.first == 0.0f);
-    CHECK(range.second == helix::ui::SHAPER_CHART_MAX_HZ);
+    CHECK(range.second == helix::ui::kShaperChartMaxHz);
     CHECK(lv_color_eq(ui_frequency_response_chart_get_series_color(chart.chart(), kSeries),
                       helix::ui::shaper_raw_psd_color()));
     // The same look as the results' measured curve, as the tier allows it.
     const auto style = ui_frequency_response_chart_get_series_style(chart.chart(), kSeries);
     const auto caps = helix::PlatformCapabilities::detect();
-    const auto expected = fr_chart_effective_style(helix::ui::SHAPER_MEASURED_STYLE, caps.tier,
+    const auto expected = fr_chart_effective_style(helix::ui::kShaperMeasuredStyle, caps.tier,
                                                    caps.supports_animations);
     CHECK(style.line_width == expected.line_width);
     CHECK(style.glow == expected.glow);
@@ -178,7 +178,7 @@ TEST_CASE_METHOD(ShaperSweepChartFixture, "ShaperSweepChart lays the points on i
     }
     const auto amp_range = ui_frequency_response_chart_get_amplitude_range(chart.chart());
     CHECK(amp_range.first == 0.0f);
-    CHECK(amp_range.second == max_amp * helix::ui::SHAPER_CHART_HEADROOM);
+    CHECK(amp_range.second == max_amp * helix::ui::kShaperChartHeadroom);
     CHECK(curve_events == std::vector<bool>{true});
     CHECK(chart.has_curve());
 }

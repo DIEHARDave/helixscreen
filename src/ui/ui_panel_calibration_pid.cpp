@@ -47,8 +47,8 @@ static bool s_callbacks_registered = false;
 // run completes via the result line well before these, so the reassuring status only shows
 // when calibration is genuinely overrunning. Bed allows much longer than extruder because
 // slow-cooling beds (e.g. AD5M Pro) legitimately take far longer to cycle.
-static constexpr uint32_t PID_OVERTIME_EXTRUDER_MS = 12u * 60u * 1000u; // 12 min
-static constexpr uint32_t PID_OVERTIME_BED_MS = 30u * 60u * 1000u;      // 30 min
+static constexpr uint32_t kPidOvertimeExtruderMs = 12u * 60u * 1000u; // 12 min
+static constexpr uint32_t kPidOvertimeBedMs = 30u * 60u * 1000u;      // 30 min
 
 // Non-creating view of the global instance (defined with it at the bottom of
 // this file). Returns nullptr when the panel does not currently exist, so
@@ -299,7 +299,7 @@ void PIDCalibrationPanel::on_activate() {
     // Reset to idle state with default values
     set_state(State::IDLE);
     selected_heater_ = Heater::EXTRUDER;
-    target_temp_ = EXTRUDER_DEFAULT_TEMP;
+    target_temp_ = kExtruderDefaultTemp;
     fan_speed_ = 0;
     selected_material_.clear();
     has_old_values_ = false;
@@ -315,11 +315,11 @@ void PIDCalibrationPanel::on_activate() {
     lv_subject_set_int(&subj_show_wattage_, 0);
     lv_subject_set_int(&subj_needs_migration_, 0);
     lv_subject_set_int(&subj_is_kalico_, 0);
-    fan_breakpoints_ = FAN_BP_QUICK;
+    fan_breakpoints_ = kFanBpQuick;
     lv_subject_set_int(&subj_fan_is_quick_, 1);
     lv_subject_set_int(&subj_fan_is_detailed_, 0);
     lv_subject_set_int(&subj_fan_is_thorough_, 0);
-    heater_wattage_ = WATTAGE_DEFAULT_EXTRUDER;
+    heater_wattage_ = kWattageDefaultExtruder;
     update_wattage_display();
     needs_migration_ = false;
     is_kalico_ = false;
@@ -729,7 +729,7 @@ void PIDCalibrationPanel::handle_heater_extruder_clicked() {
 
     spdlog::debug("[PIDCal] Extruder selected");
     selected_heater_ = Heater::EXTRUDER;
-    target_temp_ = EXTRUDER_DEFAULT_TEMP;
+    target_temp_ = kExtruderDefaultTemp;
     selected_material_.clear();
     lv_subject_set_int(&subj_heater_is_extruder_, 1);
     update_temp_display();
@@ -739,7 +739,7 @@ void PIDCalibrationPanel::handle_heater_extruder_clicked() {
 
     // Update MPC defaults for extruder
     if (is_kalico_) {
-        heater_wattage_ = WATTAGE_DEFAULT_EXTRUDER;
+        heater_wattage_ = kWattageDefaultExtruder;
         update_wattage_display();
         // The new heater's control type is unread until the query answers
         current_control_ = ControlType::UNKNOWN;
@@ -754,7 +754,7 @@ void PIDCalibrationPanel::handle_heater_bed_clicked() {
 
     spdlog::debug("[PIDCal] Heated bed selected");
     selected_heater_ = Heater::BED;
-    target_temp_ = BED_DEFAULT_TEMP;
+    target_temp_ = kBedDefaultTemp;
     selected_material_.clear();
     fan_speed_ = 0;
     update_fan_slider(0);
@@ -766,7 +766,7 @@ void PIDCalibrationPanel::handle_heater_bed_clicked() {
 
     // Update MPC defaults for bed (higher wattage, no fan config)
     if (is_kalico_) {
-        heater_wattage_ = WATTAGE_DEFAULT_BED;
+        heater_wattage_ = kWattageDefaultBed;
         update_wattage_display();
         // The new heater's control type is unread until the query answers
         current_control_ = ControlType::UNKNOWN;
@@ -779,7 +779,7 @@ void PIDCalibrationPanel::handle_temp_up() {
     if (state_ != State::IDLE)
         return;
 
-    int max_temp = (selected_heater_ == Heater::EXTRUDER) ? EXTRUDER_MAX_TEMP : BED_MAX_TEMP;
+    int max_temp = (selected_heater_ == Heater::EXTRUDER) ? kExtruderMaxTemp : kBedMaxTemp;
 
     if (target_temp_ < max_temp) {
         target_temp_ += 5;
@@ -793,7 +793,7 @@ void PIDCalibrationPanel::handle_temp_down() {
     if (state_ != State::IDLE)
         return;
 
-    int min_temp = (selected_heater_ == Heater::EXTRUDER) ? EXTRUDER_MIN_TEMP : BED_MIN_TEMP;
+    int min_temp = (selected_heater_ == Heater::EXTRUDER) ? kExtruderMinTemp : kBedMinTemp;
 
     if (target_temp_ > min_temp) {
         target_temp_ -= 5;
@@ -1131,7 +1131,7 @@ void PIDCalibrationPanel::update_progress_display() {
     // Abort button, instead of leaving them staring at a stalled progress bar. The RPC
     // timeout no longer hard-fails, so this is the only "something may be wrong" signal.
     const uint32_t overtime_ms =
-        (selected_heater_ == Heater::EXTRUDER) ? PID_OVERTIME_EXTRUDER_MS : PID_OVERTIME_BED_MS;
+        (selected_heater_ == Heater::EXTRUDER) ? kPidOvertimeExtruderMs : kPidOvertimeBedMs;
     if (cal_start_tick_ms_ != 0 && lv_tick_elaps(cal_start_tick_ms_) > overtime_ms) {
         lv_subject_copy_string(&subj_pid_progress_text_,
                                lv_tr("Still working... taking longer than usual"));
@@ -1154,7 +1154,7 @@ void PIDCalibrationPanel::update_progress_display() {
                      pid_estimated_total_);
         } else {
             snprintf(buf, sizeof(buf), lv_tr("Oscillating... cycle %d/%d"),
-                     progress_tracker_.oscillation_count(), PidProgressTracker::EXPECTED_CYCLES);
+                     progress_tracker_.oscillation_count(), PidProgressTracker::kExpectedCycles);
         }
     } else {
         snprintf(buf, sizeof(buf), "%s", lv_tr("Starting..."));
@@ -1484,8 +1484,8 @@ void PIDCalibrationPanel::handle_method_mpc_clicked() {
 void PIDCalibrationPanel::handle_wattage_up() {
     if (state_ != State::IDLE)
         return;
-    if (heater_wattage_ < WATTAGE_MAX) {
-        heater_wattage_ += WATTAGE_STEP;
+    if (heater_wattage_ < kWattageMax) {
+        heater_wattage_ += kWattageStep;
         update_wattage_display();
         spdlog::debug("[PIDCal] Wattage: {}W", heater_wattage_);
     }
@@ -1494,8 +1494,8 @@ void PIDCalibrationPanel::handle_wattage_up() {
 void PIDCalibrationPanel::handle_wattage_down() {
     if (state_ != State::IDLE)
         return;
-    if (heater_wattage_ > WATTAGE_MIN) {
-        heater_wattage_ -= WATTAGE_STEP;
+    if (heater_wattage_ > kWattageMin) {
+        heater_wattage_ -= kWattageStep;
         update_wattage_display();
         spdlog::debug("[PIDCal] Wattage: {}W", heater_wattage_);
     }
@@ -1504,7 +1504,7 @@ void PIDCalibrationPanel::handle_wattage_down() {
 void PIDCalibrationPanel::handle_fan_quick_clicked() {
     if (state_ != State::IDLE)
         return;
-    fan_breakpoints_ = FAN_BP_QUICK;
+    fan_breakpoints_ = kFanBpQuick;
     lv_subject_set_int(&subj_fan_is_quick_, 1);
     lv_subject_set_int(&subj_fan_is_detailed_, 0);
     lv_subject_set_int(&subj_fan_is_thorough_, 0);
@@ -1514,7 +1514,7 @@ void PIDCalibrationPanel::handle_fan_quick_clicked() {
 void PIDCalibrationPanel::handle_fan_detailed_clicked() {
     if (state_ != State::IDLE)
         return;
-    fan_breakpoints_ = FAN_BP_DETAILED;
+    fan_breakpoints_ = kFanBpDetailed;
     lv_subject_set_int(&subj_fan_is_quick_, 0);
     lv_subject_set_int(&subj_fan_is_detailed_, 1);
     lv_subject_set_int(&subj_fan_is_thorough_, 0);
@@ -1524,7 +1524,7 @@ void PIDCalibrationPanel::handle_fan_detailed_clicked() {
 void PIDCalibrationPanel::handle_fan_thorough_clicked() {
     if (state_ != State::IDLE)
         return;
-    fan_breakpoints_ = FAN_BP_THOROUGH;
+    fan_breakpoints_ = kFanBpThorough;
     lv_subject_set_int(&subj_fan_is_quick_, 0);
     lv_subject_set_int(&subj_fan_is_detailed_, 0);
     lv_subject_set_int(&subj_fan_is_thorough_, 1);
@@ -1582,7 +1582,7 @@ static int pid_preset_slot(lv_event_t* e) {
         return -1;
     }
     int slot = suffix[2] - '0';
-    if (slot < 0 || slot >= helix::presets::PRESET_COUNT) {
+    if (slot < 0 || slot >= helix::presets::kPresetCount) {
         spdlog::warn("[PIDCal] Preset button '{}' slot {} out of range", name, slot);
         return -1;
     }

@@ -170,6 +170,8 @@ bool   ui_frequency_response_chart_is_chart_mode(chart);
 lv_obj_t* ui_frequency_response_chart_get_obj(chart);
 ```
 
+**Axis label gutters.** The chart sizes its own label space from `font_small` instead of fixed pixels (`src/ui/ui_frequency_response_chart.cpp#apply_axis_pads`). The left pad is `ui_frequency_response_chart_y_gutter_width()`, the widest amplitude label the formatter can emit ("100%", "999k", "0.005", "1e-04", "100e9"), never under 36 px, plus `space_xs`; the bottom pad is `space_sm` plus the font height plus `space_xs`. Both re-run on `LV_EVENT_SIZE_CHANGED`, because a breakpoint change swaps the font under a live chart. Frequency labels are centred on their tick but clamped inside the chart's box (`ui_frequency_response_chart_x_label_center`, half-width from `ui_frequency_response_chart_x_label_half_width`) so "100 Hz" never clips at either edge. Tick spacing follows the range: 5 Hz up to a 40 Hz span, 10 Hz up to 80, so a zoomed belt-tuning zone still shows a few ticks. `ui_frequency_response_chart_get_freq_range()` reads the range back.
+
 ### Internal Structure
 
 ```cpp
@@ -191,7 +193,7 @@ struct ui_frequency_response_chart_t {
     size_t max_points;
     bool chart_mode;
     float freq_min/max, amp_min/max;
-    FrequencySeriesData series[MAX_SERIES]; // Up to 13 series
+    FrequencySeriesData series[kMaxSeries]; // Up to 13 series
 };
 ```
 
@@ -260,7 +262,7 @@ Each chip is an LVGL button styled as a pill:
 
 ### Chip Subject Bindings
 
-Per chip (11 per axis matching `MAX_SHAPERS`; only chips backed by a CSV curve are shown, via `is_{axis}_num_chips`):
+Per chip (11 per axis matching `kMaxShapers`; only chips backed by a CSV curve are shown, via `is_{axis}_num_chips`):
 - `is_x_chip_0_label` / `is_y_chip_0_label` -- Shaper name text (string subject)
 - `is_x_chip_0_active` / `is_y_chip_0_active` -- Selection state (int subject, 0=unselected, 1=selected)
 
@@ -278,7 +280,7 @@ User taps chip -> input_shaper_chip_x_2_cb (XML event callback)
 
 ### Shaper Overlay Colors
 
-Colors come from the 11-entry `SHAPER_OVERLAY_COLORS[]` array, shared by chart lines and legend dots. Assignment is positional — each shaper takes the color at its column index in the CSV (`index % 11`), so an 11-shaper Kalico CSV never reuses a color:
+Colors come from the 11-entry `kShaperOverlayColors[]` array, shared by chart lines and legend dots. Assignment is positional — each shaper takes the color at its column index in the CSV (`index % 11`), so an 11-shaper Kalico CSV never reuses a color:
 
 | Index | Shaper (stock Klipper) | Color (hex) | Visual |
 |-------|------------------------|-------------|--------|
@@ -319,7 +321,7 @@ Per axis, when a before-value exists and the result is valid:
 
 Some klippy forks (Creality's K1C build) overwrite the staged X result with the Y-axis values at the end of a Y-axis run and announce it with a console line starting `copy_TestAxis_y_to_x Recommended shaper_type_x = ...`. The collector's marker matcher runs BEFORE the recommendation parser — the marker embeds a real `Recommended shaper_type_x` wording that would otherwise clobber the Y run's own recommendation — and sets `InputShaperResult::x_overwritten_by_firmware` on the Y result. The panel carries that onto the X results card (`fw_overwrite_warn_x`, gated on `is_x_fw_overwrite_warn`) with a warning row: the measured X recommendation shown on screen was discarded by the firmware and the saved config holds Y's values for both axes. A Y-only run has no X card to carry it, so the same warning also renders on the Y card (`fw_overwrite_warn_y`, gated `is_x_fw_overwrite_warn eq 1 and is_results_has_x eq 0`).
 
-The transfer math lives in `src/calibration/shaper_response.cpp` and reproduces the klippy shaper tap definitions plus the damping-aware `_estimate_shaper()` (pessimized over Klipper's `TEST_DAMPING_RATIOS`), which is what the firmware writes into a calibration CSV's fitted columns. `tests/unit/test_shaper_response.cpp` pins it against a real K1C CSV column so the port cannot silently drift from firmware output.
+The transfer math lives in `src/calibration/shaper_response.cpp` and reproduces the klippy shaper tap definitions plus the damping-aware `_estimate_shaper()` (pessimized over Klipper's `kTestDampingRatios`), which is what the firmware writes into a calibration CSV's fitted columns. `tests/unit/test_shaper_response.cpp` pins it against a real K1C CSV column so the port cannot silently drift from firmware output.
 
 ---
 
@@ -331,7 +333,7 @@ The transfer math lives in `src/calibration/shaper_response.cpp` and reproduces 
 IDLE (0)          Shows instructions, current config, Calibrate X/Y/All buttons
   |
   v
-MEASURING (1)     Spinner/progress bar, step labels, Abort button
+MEASURING (1)     Spinner/progress bar, step labels, Stop button
 
 Both the panel and the first-run wizard step use the same analysis-phase
 treatment: the sweep shows a determinate bar; the offline analysis reports no
@@ -360,9 +362,9 @@ State visibility is controlled entirely through XML subject bindings:
 4. Calibrate Y axis (progress: "Step 2 of 2")
 5. Show results for both axes
 
-### Abort Behavior
+### Stop Behavior
 
-Aborting during calibration sends `M112` (emergency stop) followed by `FIRMWARE_RESTART`. This is necessary because `SHAPER_CALIBRATE` blocks the G-code queue and cannot be cancelled through normal means. Recovery dialog suppression is applied for 15 seconds.
+The Stop button (`ui_xml/input_shaper_panel.xml#btn_abort`, the wizard's `ui_xml/wizard_input_shaper.xml#cancel_calibration_btn`) sends `M112` (emergency stop) followed by `FIRMWARE_RESTART`. This is necessary because `SHAPER_CALIBRATE` blocks the G-code queue and cannot be cancelled through normal means. Recovery dialog suppression is applied for 15 seconds. Every control that performs this stop is labelled "Stop" with the `alert_octagon` icon and `variant="danger"`: Input Shaper, the wizard step, PID, Tool Offsets and Belt Tension.
 
 ### Klipper Commands
 
@@ -421,7 +423,7 @@ The PID panel provides an interactive UI for Klipper's `PID_CALIBRATE` command w
 IDLE (0)          Heater selection (extruder/bed), temp adjustment, material presets
   |
   v
-CALIBRATING (1)   Live temp graph, progress bar, Abort button
+CALIBRATING (1)   Live temp graph, progress bar, Stop button
   |
   +---> COMPLETE (3)   Shows Kp/Ki/Kd results with before/after comparison
   |
@@ -536,7 +538,7 @@ Set `INPUT_SHAPER_AUTO_START=1` to auto-start X axis calibration when the panel 
 
 ### Adding a New Shaper Type
 
-The CSV parser auto-discovers shaper columns from the header, and the chip toggles and comparison table rows are pre-built for up to 11 shapers (`MAX_SHAPERS` in `ui_panel_input_shaper.h`) — stock Klipper's five plus Kalico's six smooth shapers fit with no code changes. To support more than 11, increase `MAX_SHAPERS` and add the corresponding chip XML elements and callback registrations. The exception is client-side re-scoring: a genuinely new shaper type still needs a new taps function in `shaper_response.h` (see "Adding Support for New Shaper Types" above), or its verdict row and live-before overlays stay hidden.
+The CSV parser auto-discovers shaper columns from the header, and the chip toggles and comparison table rows are pre-built for up to 11 shapers (`kMaxShapers` in `ui_panel_input_shaper.h`) — stock Klipper's five plus Kalico's six smooth shapers fit with no code changes. To support more than 11, increase `kMaxShapers` and add the corresponding chip XML elements and callback registrations. The exception is client-side re-scoring: a genuinely new shaper type still needs a new taps function in `shaper_response.h` (see "Adding Support for New Shaper Types" above), or its verdict row and live-before overlays stay hidden.
 
 ### Adding a New Calibration Metric
 

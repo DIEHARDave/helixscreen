@@ -1397,6 +1397,57 @@ TEST_CASE("PrinterState: set_kinematics gates belt compare on true CoreXY", "[st
     }
 }
 
+namespace {
+std::string firmware_name_subject_text() {
+    lv_subject_t* s = lv_xml_get_subject(nullptr, "klipper_firmware_name");
+    REQUIRE(s != nullptr);
+    return lv_subject_get_string(s);
+}
+} // namespace
+
+TEST_CASE("PrinterState: firmware name reads Klipper before any discovery",
+          "[state][hardware][firmware]") {
+    lv_init_safe();
+    PrinterState& state = get_printer_state();
+    PrinterStateTestAccess::reset(state);
+    state.init_subjects(true);
+
+    REQUIRE(firmware_name_subject_text() == "Klipper");
+}
+
+TEST_CASE("PrinterState::set_hardware publishes the firmware name", "[state][hardware][firmware]") {
+    lv_init_safe();
+    PrinterState& state = get_printer_state();
+    PrinterStateTestAccess::reset(state);
+    state.init_subjects(true);
+
+    SECTION("Kalico") {
+        PrinterDiscovery hw;
+        hw.set_is_kalico(true);
+        state.set_hardware(std::move(hw));
+        REQUIRE(firmware_name_subject_text() == "Kalico");
+    }
+
+    SECTION("Klipper") {
+        PrinterDiscovery hw;
+        state.set_hardware(std::move(hw));
+        REQUIRE(firmware_name_subject_text() == "Klipper");
+    }
+}
+
+TEST_CASE("PrinterState: set_kinematics bumps the hardware generation",
+          "[state][kinematics][hardware]") {
+    lv_init_safe();
+    PrinterState& state = get_printer_state();
+    PrinterStateTestAccess::reset(state);
+    state.init_subjects(false);
+
+    lv_subject_t* gen = state.capabilities_state().subject(Capability::HardwareGeneration);
+    const int before = lv_subject_get_int(gen);
+    state.set_kinematics("corexy");
+    REQUIRE(lv_subject_get_int(gen) != before);
+}
+
 TEST_CASE("PrinterState: Update kinematics from toolhead notification", "[state][kinematics][ui]") {
     lv_init_safe();
 
@@ -1666,7 +1717,7 @@ struct ChamberAssignmentsRestore {
 
 /// The name a model preset seeds for its family's chamber heater before the
 /// wizard runs, and so before anything has checked the printer has one.
-constexpr const char* PRESET_CHAMBER_HEATER = "heater_generic chamber_heater";
+constexpr const char* kPresetChamberHeater = "heater_generic chamber_heater";
 
 PrinterDiscovery discovered_objects(std::initializer_list<const char*> objects) {
     PrinterDiscovery hw;
@@ -1776,7 +1827,7 @@ TEST_CASE(
     "PrinterState::set_hardware: a preset chamber heater the printer lacks yields discovery's",
     "[state][hardware][chamber]") {
     ChamberAssignmentsRestore restore;
-    PrinterState& state = state_before_discovery(PRESET_CHAMBER_HEATER);
+    PrinterState& state = state_before_discovery(kPresetChamberHeater);
 
     SECTION("a chamber-named temperature_fan drives the chamber") {
         state.set_hardware(
@@ -1805,11 +1856,11 @@ TEST_CASE("PrinterState::set_hardware: a named chamber heater the printer report
     ChamberAssignmentsRestore restore;
 
     SECTION("the preset's heater on a printer that has it") {
-        PrinterState& state = state_before_discovery(PRESET_CHAMBER_HEATER);
+        PrinterState& state = state_before_discovery(kPresetChamberHeater);
         state.set_hardware(discovered_objects(
-            {PRESET_CHAMBER_HEATER, "temperature_fan chamber_fan", "extruder", "heater_bed"}));
+            {kPresetChamberHeater, "temperature_fan chamber_fan", "extruder", "heater_bed"}));
 
-        CHECK(state.temperature_state().chamber_heater_name() == PRESET_CHAMBER_HEATER);
+        CHECK(state.temperature_state().chamber_heater_name() == kPresetChamberHeater);
         CHECK(has_chamber_heater(state) == 1);
     }
     SECTION("a heater no chamber keyword names") {
@@ -1826,7 +1877,7 @@ TEST_CASE("PrinterState::set_hardware: a named chamber heater the printer report
 TEST_CASE("PrinterState::set_hardware: an unreported chamber heater name falls back to discovery",
           "[state][hardware][chamber]") {
     ChamberAssignmentsRestore restore;
-    PrinterState& state = state_before_discovery(PRESET_CHAMBER_HEATER);
+    PrinterState& state = state_before_discovery(kPresetChamberHeater);
 
     state.set_hardware(discovered_objects({"heater_generic chamber", "extruder", "heater_bed"}));
 
@@ -1837,7 +1888,7 @@ TEST_CASE("PrinterState::set_hardware: an unreported chamber heater name falls b
 TEST_CASE("PrinterState: chamber heater presence follows each discovery, never the assignment",
           "[state][hardware][chamber]") {
     ChamberAssignmentsRestore restore;
-    PrinterState& state = state_before_discovery(PRESET_CHAMBER_HEATER);
+    PrinterState& state = state_before_discovery(kPresetChamberHeater);
     lv_subject_t* presence = state.capabilities_state().subject(Capability::HasChamberHeater);
 
     // Every value the capability takes from here on, including ones set and
@@ -1878,8 +1929,8 @@ TEST_CASE("PrinterState: chamber heater presence follows each discovery, never t
     CHECK(lv_subject_get_int(presence) == 1);
 
     // A later discovery that reports the heater makes it the chamber heater.
-    state.set_hardware(discovered_objects({PRESET_CHAMBER_HEATER, "extruder", "heater_bed"}));
-    CHECK(state.temperature_state().chamber_heater_name() == PRESET_CHAMBER_HEATER);
+    state.set_hardware(discovered_objects({kPresetChamberHeater, "extruder", "heater_bed"}));
+    CHECK(state.temperature_state().chamber_heater_name() == kPresetChamberHeater);
     CHECK(lv_subject_get_int(presence) == 1);
 
     // One that stops reporting it takes it away again.
@@ -1897,7 +1948,7 @@ namespace {
 
 /// A chamber sensor name an older model preset seeded, still saved on a printer
 /// whose configuration names its chamber sensor differently.
-constexpr const char* STALE_CHAMBER_SENSOR = "temperature_sensor box";
+constexpr const char* kStaleChamberSensor = "temperature_sensor box";
 
 } // namespace
 
@@ -1905,7 +1956,7 @@ TEST_CASE("PrinterState::set_hardware: a chamber sensor the printer does not rep
           "discovery's",
           "[state][hardware][chamber]") {
     ChamberAssignmentsRestore restore;
-    PrinterState& state = state_before_discovery("auto", STALE_CHAMBER_SENSOR);
+    PrinterState& state = state_before_discovery("auto", kStaleChamberSensor);
 
     SECTION("the chamber reads the sensor the printer has") {
         state.set_hardware(centauri_carbon_objects());
@@ -1976,7 +2027,7 @@ TEST_CASE("PrinterState::set_hardware: a stale chamber sensor name leaves the re
 
     ChamberAssignmentsRestore restore;
     SensorsForget forget;
-    PrinterState& state = state_before_discovery("auto", STALE_CHAMBER_SENSOR);
+    PrinterState& state = state_before_discovery("auto", kStaleChamberSensor);
 
     auto& sensors = TemperatureSensorManager::instance();
     sensors.init_subjects();
@@ -2129,7 +2180,7 @@ TEST_CASE("parse_status_notification: reads eventtime and the replay marker",
 
     const nlohmann::json replay_frame = {{"method", "notify_status_update"},
                                          {"params", nlohmann::json::array({status})},
-                                         {CACHED_SNAPSHOT_MARKER, true}};
+                                         {kCachedSnapshotMarker, true}};
     auto replay = parse_status_notification(replay_frame);
     REQUIRE(replay);
     CHECK(replay->eventtime == 0.0);
@@ -2158,8 +2209,8 @@ TEST_CASE("make_status_notification round-trips through parse_status_notificatio
             CHECK(frame->from_cached_snapshot == cached);
             CHECK(frame->whole_objects == whole);
             // A marker is present only when set: live frames carry neither key.
-            CHECK(notification.contains(CACHED_SNAPSHOT_MARKER) == cached);
-            CHECK(notification.contains(WHOLE_OBJECTS_MARKER) == whole);
+            CHECK(notification.contains(kCachedSnapshotMarker) == cached);
+            CHECK(notification.contains(kWholeObjectsMarker) == whole);
         }
     }
 }

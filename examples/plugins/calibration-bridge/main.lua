@@ -454,6 +454,28 @@ helix.ui.on("cancel", function()
     cancel_cal()
 end)
 
+-- "Calibrate with this file" on the print details screen: the file shown
+-- becomes the waiting calibration's print. The check runs while the menu
+-- opens, so it only reads (the state subject, the file) and decides.
+helix.ui.on("can_calibrate_file", function(file)
+    if file.source ~= "printer" then
+        return { visible = true, enabled = false, reason = t("Copy the file to the printer first") }
+    end
+    if not cal or state:get() ~= 1 then
+        return { visible = true, enabled = false, reason = t("Start a calibration in the slicer first") }
+    end
+    return valid_file(file.path)
+end)
+
+helix.ui.on("calibrate_file", function(file)
+    if not cal or state:get() ~= 1 or start_inflight or not file.path or not valid_file(file.path) then
+        return
+    end
+    cal.file = file.path
+    refresh_ctx()
+    open_ask()
+end)
+
 -- Subject-carried strings re-say themselves on a language switch.
 helix.i18n.on_change(function()
     refresh_ctx()

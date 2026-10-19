@@ -1,7 +1,7 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
@@ -26,11 +26,11 @@ using helix::test::non_opaque_pixels;
 using helix::test::TestFrame;
 using helix::ui::DirtyRect;
 using helix::ui::FrameTarget;
-using helix::ui::HYPERSPACE_LEVEL_COUNT;
-using helix::ui::HYPERSPACE_LEVELS;
-using helix::ui::HYPERSPACE_MAX_ROLL;
 using helix::ui::HyperspaceScreensaver;
 using helix::ui::HyperspaceSim;
+using helix::ui::kHyperspaceLevelCount;
+using helix::ui::kHyperspaceLevels;
+using helix::ui::kHyperspaceMaxRoll;
 using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
 using helix::ui::Rgb;
@@ -39,9 +39,9 @@ namespace {
 
 constexpr uint32_t W = 320;
 constexpr uint32_t H = 200;
-constexpr uint32_t FRAME_MS = 33;
+constexpr uint32_t kFrameMs = 33;
 
-/// A sim and its frame, stepped at FRAME_MS.
+/// A sim and its frame, stepped at kFrameMs.
 struct Flight : helix::test::SimRun<HyperspaceSim> {
     Flight(uint32_t seed, size_t level, PixelFormat format = PixelFormat::XRGB8888, uint32_t w = W,
            uint32_t h = H)
@@ -49,13 +49,13 @@ struct Flight : helix::test::SimRun<HyperspaceSim> {
         init(level);
     }
 
-    void step(uint32_t dt_ms = FRAME_MS) {
+    void step(uint32_t dt_ms = kFrameMs) {
         SimRun::step(dt_ms);
     }
 
     /// Steps until `done` holds or `limit_ms` of flight passes; true when `done` held.
     template <typename Done> bool run_until(Done&& done, uint32_t limit_ms) {
-        for (uint32_t t = 0; t < limit_ms; t += FRAME_MS) {
+        for (uint32_t t = 0; t < limit_ms; t += kFrameMs) {
             step();
             if (done()) {
                 return true;
@@ -105,13 +105,13 @@ double uniform_block_share(const TestFrame& frame, int32_t block) {
     return static_cast<double>(uniform) / static_cast<double>(blocks);
 }
 
-constexpr int HUE_BINS = 12;
+constexpr int kHueBins = 12;
 
 /// How many of the pixels at least `threshold` bright fall in each 30-degree slice of the wheel,
 /// red first and turning through yellow toward green.
-std::array<double, HUE_BINS> hue_histogram(const TestFrame& frame, int threshold) {
+std::array<double, kHueBins> hue_histogram(const TestFrame& frame, int threshold) {
     const PixelWriter writer(frame.target);
-    std::array<double, HUE_BINS> bins{};
+    std::array<double, kHueBins> bins{};
     for (int32_t y = 0; y < static_cast<int32_t>(frame.target.h); y++) {
         for (int32_t x = 0; x < static_cast<int32_t>(frame.target.w); x++) {
             const Rgb c = writer.get(x, y);
@@ -123,22 +123,22 @@ std::array<double, HUE_BINS> hue_histogram(const TestFrame& frame, int threshold
             const double beta = std::sqrt(3.0) / 2.0 * (c.g - c.b);
             double degrees = std::atan2(beta, alpha) * 180.0 / M_PI;
             degrees = degrees < 0 ? degrees + 360.0 : degrees;
-            bins[static_cast<size_t>(degrees / (360.0 / HUE_BINS)) % HUE_BINS] += 1.0;
+            bins[static_cast<size_t>(degrees / (360.0 / kHueBins)) % kHueBins] += 1.0;
         }
     }
     return bins;
 }
 
 /// Slices round the wheel that `before` must turn to best match `after`.
-int best_hue_turn(const std::array<double, HUE_BINS>& before,
-                  const std::array<double, HUE_BINS>& after) {
+int best_hue_turn(const std::array<double, kHueBins>& before,
+                  const std::array<double, kHueBins>& after) {
     int best = 0;
     double best_score = -1.0;
-    for (int turn = 0; turn < HUE_BINS; turn++) {
+    for (int turn = 0; turn < kHueBins; turn++) {
         double score = 0.0;
-        for (int i = 0; i < HUE_BINS; i++) {
+        for (int i = 0; i < kHueBins; i++) {
             score +=
-                before[static_cast<size_t>(i)] * after[static_cast<size_t>((i + turn) % HUE_BINS)];
+                before[static_cast<size_t>(i)] * after[static_cast<size_t>((i + turn) % kHueBins)];
         }
         if (score > best_score) {
             best_score = score;
@@ -160,9 +160,9 @@ TEST_CASE("a hyperspace flight replays exactly from a seed, and another seed dif
     CAPTURE(static_cast<int>(format));
     const auto run = [format](uint32_t seed) {
         Flight flight(seed, 0, format);
-        constexpr uint32_t STEPS_MS[] = {16, 33, 50, 7, 100};
+        constexpr uint32_t kStepsMs[] = {16, 33, 50, 7, 100};
         for (int i = 0; i < 600; i++) {
-            flight.step(STEPS_MS[i % 5]);
+            flight.step(kStepsMs[i % 5]);
         }
         return flight.frame.bytes;
     };
@@ -171,12 +171,12 @@ TEST_CASE("a hyperspace flight replays exactly from a seed, and another seed dif
 
 TEST_CASE("every hyperspace pixel is opaque and every frame dirties the whole canvas",
           "[screensaver][hyperspace_sim]") {
-    const size_t level = GENERATE(range(size_t{0}, HYPERSPACE_LEVEL_COUNT));
+    const size_t level = GENERATE(range(size_t{0}, kHyperspaceLevelCount));
     CAPTURE(level);
     Flight flight(5, level);
     size_t frames = 0;
     size_t opaque_failures = 0;
-    for (uint32_t t = 0; t < 40000; t += FRAME_MS) {
+    for (uint32_t t = 0; t < 40000; t += kFrameMs) {
         flight.step();
         frames++;
         REQUIRE(flight.dirty.size() == 1);
@@ -218,8 +218,8 @@ TEST_CASE("goo glows behind open space down to the level that drops it",
         REQUIRE(flight.run_to_open_space());
         return 1.0 - share_at_least(flight.frame, 1);
     };
-    CHECK(HYPERSPACE_LEVELS[2].goo);
-    CHECK_FALSE(HYPERSPACE_LEVELS[3].goo);
+    CHECK(kHyperspaceLevels[2].goo);
+    CHECK_FALSE(kHyperspaceLevels[3].goo);
     const double with_goo = unlit_share_in_open_space(2);
     const double without_goo = unlit_share_in_open_space(3);
     CAPTURE(with_goo, without_goo);
@@ -241,14 +241,14 @@ TEST_CASE("the tunnel draws at each level's block size, and the last level draws
     const auto full = tunnel_frame_stats(0);
     const auto half = tunnel_frame_stats(2);
     const auto quarter = tunnel_frame_stats(4);
-    const auto none = tunnel_frame_stats(HYPERSPACE_LEVEL_COUNT - 1);
+    const auto none = tunnel_frame_stats(kHyperspaceLevelCount - 1);
     CAPTURE(full.second.first, half.second.first, half.second.second, quarter.second.second);
     CAPTURE(full.first, quarter.first, none.first);
 
-    CHECK(HYPERSPACE_LEVELS[0].block == 1);
-    CHECK(HYPERSPACE_LEVELS[2].block == 2);
-    CHECK(HYPERSPACE_LEVELS[4].block == 4);
-    CHECK(HYPERSPACE_LEVELS[HYPERSPACE_LEVEL_COUNT - 1].block == 0);
+    CHECK(kHyperspaceLevels[0].block == 1);
+    CHECK(kHyperspaceLevels[2].block == 2);
+    CHECK(kHyperspaceLevels[4].block == 4);
+    CHECK(kHyperspaceLevels[kHyperspaceLevelCount - 1].block == 0);
 
     CHECK(full.second.first < 0.7);
     CHECK(half.second.first > 0.9);
@@ -263,11 +263,11 @@ TEST_CASE("the last level draws fewer stars than the rung above it",
           "[screensaver][hyperspace_sim]") {
     // Both levels draw stars and nothing behind them, and a seed flies the same stars at every
     // level, so stepping them together compares the same sky.
-    Flight full(47, HYPERSPACE_LEVEL_COUNT - 2);
-    Flight fewer(47, HYPERSPACE_LEVEL_COUNT - 1);
-    REQUIRE_FALSE(HYPERSPACE_LEVELS[HYPERSPACE_LEVEL_COUNT - 2].goo);
+    Flight full(47, kHyperspaceLevelCount - 2);
+    Flight fewer(47, kHyperspaceLevelCount - 1);
+    REQUIRE_FALSE(kHyperspaceLevels[kHyperspaceLevelCount - 2].goo);
     bool open = false;
-    for (uint32_t t = 0; t < 30000 && !open; t += FRAME_MS) {
+    for (uint32_t t = 0; t < 30000 && !open; t += kFrameMs) {
         full.step();
         fewer.step();
         open = full.sim.tunnel_amount() == 0 && full.sim.burst_flares_alive() == 0 && t > 1000;
@@ -304,9 +304,9 @@ TEST_CASE("the camera always flies forward, rolls a little and drifts gently",
     float most_roll = 0.0f;
     float min_drift = 1e9f;
     float max_drift = -1e9f;
-    constexpr uint32_t STEPS_MS[] = {16, 33, 100, 250, 5};
+    constexpr uint32_t kStepsMs[] = {16, 33, 100, 250, 5};
     for (int i = 0; i < 2000; i++) {
-        flight.step(STEPS_MS[i % 5]);
+        flight.step(kStepsMs[i % 5]);
         const auto& cam = flight.sim.camera();
         slowest = std::min(slowest, cam.speed);
         most_roll = std::max(most_roll, std::fabs(cam.roll));
@@ -315,7 +315,7 @@ TEST_CASE("the camera always flies forward, rolls a little and drifts gently",
     }
     CAPTURE(slowest, most_roll, min_drift, max_drift);
     CHECK(slowest > 0.0f);
-    CHECK(most_roll <= HYPERSPACE_MAX_ROLL);
+    CHECK(most_roll <= kHyperspaceMaxRoll);
     CHECK(most_roll > 0.05f);
     CHECK(max_drift - min_drift > 4.0f);
     // The vanishing point strays at most a tenth of the frame height from the centre.
@@ -330,7 +330,7 @@ TEST_CASE("a starburst of flares bursts ahead within the first few seconds",
     REQUIRE(flight.sim.bursts_started() == 0);
     REQUIRE(flight.run_until([&] { return flight.sim.bursts_started() > 0; }, 15000));
     flight.step();
-    CHECK(flight.sim.burst_flares_alive() > HyperspaceSim::BURST_FLARES / 2);
+    CHECK(flight.sim.burst_flares_alive() > HyperspaceSim::kBurstFlares / 2);
     // Its flares burn out rather than piling up.
     REQUIRE(flight.run_until([&] { return flight.sim.burst_flares_alive() == 0; }, 15000));
 }
@@ -349,7 +349,7 @@ TEST_CASE("a hyperspace run sizes its tunnel for its start level",
     CHECK(half < full);
     CHECK(quarter < half);
     CHECK(quarter > 0);
-    CHECK(tunnel_at_start(HYPERSPACE_LEVEL_COUNT - 1) == 0);
+    CHECK(tunnel_at_start(kHyperspaceLevelCount - 1) == 0);
 }
 
 TEST_CASE("a hyperspace level change applies at the next frame, and neither frames nor step-downs "
@@ -361,15 +361,15 @@ TEST_CASE("a hyperspace level change applies at the next frame, and neither fram
     const size_t start_tunnel = flight.sim.tunnel_bytes();
     REQUIRE(start_tunnel > 0);
     size_t held = flight.sim.heap_bytes();
-    for (size_t level = 1; level < HYPERSPACE_LEVEL_COUNT + 1; level++) {
+    for (size_t level = 1; level < kHyperspaceLevelCount + 1; level++) {
         CAPTURE(level);
         flight.sim.request_level(level);
         flight.step();
-        const size_t at = std::min(level, HYPERSPACE_LEVEL_COUNT - 1);
+        const size_t at = std::min(level, kHyperspaceLevelCount - 1);
         CHECK(flight.sim.level() == at);
         const size_t bytes = flight.sim.heap_bytes();
         CHECK(bytes <= held);
-        if (HYPERSPACE_LEVELS[at].block != 0) {
+        if (kHyperspaceLevels[at].block != 0) {
             // A coarser tunnel fits in the tables the run already holds.
             CHECK(flight.sim.tunnel_bytes() == start_tunnel);
         } else {
@@ -398,18 +398,18 @@ TEST_CASE("an odd-sized hyperspace frame fills every pixel and never writes past
     const size_t level = GENERATE(size_t{0}, size_t{2}, size_t{4});
     CAPTURE(static_cast<int>(format), level);
     constexpr uint32_t OW = 321;
-    constexpr uint32_t OH = 203;
-    constexpr uint8_t SENTINEL = 0xA5;
+    constexpr uint32_t kOh = 203;
+    constexpr uint8_t kSentinel = 0xA5;
     // Every byte starts as the sentinel, and the guard row past the frame catches a block
     // written below its last row.
-    TestFrame frame(OW, OH, format, 7, SENTINEL, SENTINEL);
+    TestFrame frame(OW, kOh, format, 7, kSentinel, kSentinel);
     std::minstd_rand rng(43);
     HyperspaceSim sim;
     sim.init(frame.target, rng, level);
     std::vector<DirtyRect> dirty;
     bool tunnel_seen = false;
-    for (uint32_t t = 0; t < 30000 && !tunnel_seen; t += FRAME_MS) {
-        sim.step(FRAME_MS, frame.target, rng, dirty);
+    for (uint32_t t = 0; t < 30000 && !tunnel_seen; t += kFrameMs) {
+        sim.step(kFrameMs, frame.target, rng, dirty);
         tunnel_seen = sim.tunnel_amount() == 255;
     }
     REQUIRE(tunnel_seen);
@@ -421,13 +421,13 @@ TEST_CASE("an odd-sized hyperspace frame fills every pixel and never writes past
     // The last column and row, which a block only partly covers, are drawn too.
     const PixelWriter writer(frame.target);
     size_t edge_lit = 0;
-    for (int32_t y = 0; y < static_cast<int32_t>(OH); y++) {
+    for (int32_t y = 0; y < static_cast<int32_t>(kOh); y++) {
         edge_lit += max_channel(writer.get(OW - 1, y)) > 0 ? 1 : 0;
     }
     for (int32_t x = 0; x < static_cast<int32_t>(OW); x++) {
-        edge_lit += max_channel(writer.get(x, OH - 1)) > 0 ? 1 : 0;
+        edge_lit += max_channel(writer.get(x, kOh - 1)) > 0 ? 1 : 0;
     }
-    CHECK(edge_lit > (OW + OH) / 2);
+    CHECK(edge_lit > (OW + kOh) / 2);
 }
 
 // ============================================================================

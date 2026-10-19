@@ -27,7 +27,7 @@ flowchart TB
     end
 
     subgraph STACK["panel_stack_ - z-ordered overlay stack"]
-        REG["helix::nav::register_overlay(widget, lifecycle)<br/>MUST precede push_overlay -<br/>strict mode aborts if not"]
+        kReg["helix::nav::register_overlay(widget, lifecycle)<br/>MUST precede push_overlay -<br/>strict mode aborts if not"]
         PUSH["push_overlay() - queued<br/>deactivates what it covers, snapshots backdrop,<br/>applies width class, slide-in, on_activate"]
         BACK["go_back() - queued<br/>indev reset, on_deactivate, slide-out,<br/>exactly-once restore latch"]
     end
@@ -43,7 +43,7 @@ flowchart TB
 
     NAV --> RP
     RP --> SWITCH
-    UI["any panel / widget C++"] -->|"show an overlay"| REG --> PUSH
+    UI["any panel / widget C++"] -->|"show an overlay"| kReg --> PUSH
     UI -->|"confirm / alert"| MSHOW --> MSTACK
     BACK -->|"restores"| SWITCH
     PUSH --> LIFE
@@ -180,7 +180,7 @@ Choosing between a modal and an overlay is a design question with a fixed answer
 - **`set_active()` vs `request_panel()`.** `set_active()` swaps the root underneath the stack; `request_panel()` is the navbar-tap semantics including gating and stack clearing. Programmatic navigation should almost always be `request_panel()` - and check its `PanelRequest` return; a `BlockedDisconnected` is a silent no-op otherwise.
 - **Ask `is_panel_on_top()` before a deferred `go_back()`.** By the time your queued callback runs, the user may have navigated on; a blind `go_back()` pops whatever they are looking at now (#1221).
 - **Filename tells you nothing.** [`ui_panel_print_status.h`](../../../include/ui_panel_print_status.h) is an `OverlayBase`; [`src/ui/ui_settings_safety.cpp`](../../../src/ui/ui_settings_safety.cpp) holds an overlay; only the base class matters. Same for XML: overlay screens are named `*_panel.xml`.
-- **Component names must match filenames.** `get_xml_component_name()` / `component_name()` return the `ui_xml/` filename without `.xml` ([`include/ui_panel_base.h#PanelBase`](../../../include/ui_panel_base.h)); a mismatch is the "panel created but empty" silent failure - the create succeeds, no component by that name exists. The six roots have a second name dependency: `PanelFactory::PANEL_NAMES` ([`include/panel_factory.h#PanelFactory`](../../../include/panel_factory.h)) must match the widget names in [`ui_xml/app_layout.xml#panel_container`](../../../ui_xml/app_layout.xml) or boot fails to find the panels.
+- **Component names must match filenames.** `get_xml_component_name()` / `component_name()` return the `ui_xml/` filename without `.xml` ([`include/ui_panel_base.h#PanelBase`](../../../include/ui_panel_base.h)); a mismatch is the "panel created but empty" silent failure - the create succeeds, no component by that name exists. The six roots have a second name dependency: `PanelFactory::kPanelNames` ([`include/panel_factory.h#PanelFactory`](../../../include/panel_factory.h)) must match the widget names in [`ui_xml/app_layout.xml#panel_container`](../../../ui_xml/app_layout.xml) or boot fails to find the panels.
 - **`persistent = true` is for overlays that outlive a navbar switch.** The print-status overlay and the temperature graph overlay (`TempGraphOverlay::before_show()`) use it. It changes what survives a navbar switch, *not* what survives a disconnect - `clear_overlay_stack()` hides every overlay, persistent included; the registration maps survive both paths, so the overlay re-opens with its lifecycle intact either way.
 - **Width class is resolved at push time, not in XML.** Destinations render full width, transient layers gapped with the backdrop showing ([`include/overlay_class.h#OverlayClass`](../../../include/overlay_class.h)); drill-downs inherit. Long-dwell screens (AMS, Print Status) override `is_destination()` so they are full width from every entry point (#1178). `reapply_overlay_widths()` after resolution changes; `set_overlay_width_unmanaged()` for deliberate oddballs like the widget catalog.
 - **Destroy-on-close frees the tree, not the class.** Subjects survive `destroy_overlay_ui()`; widgets do not. Override `on_ui_destroyed()` to null cached child pointers or the next `create()` will chase stale ones.

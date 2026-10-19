@@ -147,7 +147,7 @@ bool try_temp(const std::string& line, const std::map<int, int>& remap, std::str
 }
 
 // --- Family 4: "<KEY>=<digits>" tool parameters, whole key case-insensitive ---
-constexpr std::string_view TOOL_PARAM_KEYS[] = {"INITIAL_TOOL", "TOOL"};
+constexpr std::string_view kToolParamKeys[] = {"INITIAL_TOOL", "TOOL"};
 
 bool iequals(std::string_view a, std::string_view b) {
     if (a.size() != b.size()) {
@@ -193,7 +193,7 @@ template <typename Visit> void for_each_param(std::string_view line, Visit&& vis
 }
 
 bool is_tool_param_key(std::string_view key) {
-    for (std::string_view tool_key : TOOL_PARAM_KEYS) {
+    for (std::string_view tool_key : kToolParamKeys) {
         if (iequals(key, tool_key)) {
             return true;
         }

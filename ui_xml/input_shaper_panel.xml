@@ -150,7 +150,7 @@
                         text="Do not touch the printer during calibration" style_text_color="#text_muted"
                         long_mode="wrap"/>
           </lv_obj>
-          <ui_button name="btn_abort" height="#button_height_sm" text="Abort" variant="danger">
+          <ui_button name="btn_abort" height="#button_height_sm" icon="alert_octagon" text="Stop" variant="danger">
             <event_cb trigger="clicked" callback="input_shaper_cancel_cb"/>
           </ui_button>
         </lv_obj>

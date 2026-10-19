@@ -207,7 +207,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "The per-unit logo subject follows the unit'
     CHECK(subject_int(AmsState::unit_logo_color_subject_name(0)) == 1); // OpenAMS: color
     CHECK(subject_int(AmsState::unit_logo_color_subject_name(1)) == 0); // no color art
     // Past the cap the placeholder reads 0, a tinted mono mark.
-    CHECK(subject_int(AmsState::unit_logo_color_subject_name(AmsState::MAX_UNITS)) == 0);
+    CHECK(subject_int(AmsState::unit_logo_color_subject_name(AmsState::kMaxUnits)) == 0);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "The system logo subject follows the system's logo art",

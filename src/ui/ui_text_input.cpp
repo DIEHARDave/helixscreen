@@ -38,14 +38,14 @@
  * The user_data is structured as: (MAGIC | hint_value)
  * This allows us to both identify text_input widgets and store their hint.
  */
-static constexpr uintptr_t TEXT_INPUT_MAGIC = 0xBADC0DE0;
-static constexpr uintptr_t TEXT_INPUT_MAGIC_MASK = 0xFFFFFFF0;
-static constexpr uintptr_t TEXT_INPUT_HINT_MASK = 0x0000000F;
+static constexpr uintptr_t kTextInputMagic = 0xBADC0DE0;
+static constexpr uintptr_t kTextInputMagicMask = 0xFFFFFFF0;
+static constexpr uintptr_t kTextInputHintMask = 0x0000000F;
 
 // Size of the clear button icon (matches mdi_icons_24 font)
-static constexpr int32_t CLEAR_BTN_SIZE = 24;
+static constexpr int32_t kClearBtnSize = 24;
 // Right padding the clear button adds to the textarea for itself.
-static constexpr int32_t CLEAR_BTN_EXTRA_PAD = CLEAR_BTN_SIZE + 4;
+static constexpr int32_t kClearBtnExtraPad = kClearBtnSize + 4;
 
 // ============================================================================
 // Observer / Binding Callbacks
@@ -204,7 +204,7 @@ static lv_obj_t* create_clear_button(lv_obj_t* textarea) {
 
     // Add right padding to textarea so text doesn't overlap the button
     int32_t original_pad = lv_obj_get_style_pad_right(textarea, LV_PART_MAIN);
-    int32_t extra_pad = CLEAR_BTN_EXTRA_PAD;
+    int32_t extra_pad = kClearBtnExtraPad;
     lv_obj_set_style_pad_right(textarea, original_pad + extra_pad, 0);
 
     // Alignment is relative to the content area (inside padding).
@@ -249,7 +249,7 @@ static void layout_suffix(lv_obj_t* suffix) {
     // Alignment is relative to the content area, so both float back out into the padding.
     lv_obj_align(suffix, LV_ALIGN_RIGHT_MID, reserve, 0);
     if (lv_obj_t* clear_btn = find_clear_btn(textarea)) {
-        lv_obj_align(clear_btn, LV_ALIGN_RIGHT_MID, CLEAR_BTN_EXTRA_PAD + reserve, 0);
+        lv_obj_align(clear_btn, LV_ALIGN_RIGHT_MID, kClearBtnExtraPad + reserve, 0);
     }
 }
 
@@ -315,7 +315,7 @@ static void* ui_text_input_create(lv_xml_parser_state_t* state, const char** att
     // Set default keyboard hint (TEXT) via user_data magic value
     lv_obj_set_user_data(
         textarea,
-        reinterpret_cast<void*>(TEXT_INPUT_MAGIC | static_cast<uintptr_t>(KeyboardHint::TEXT)));
+        reinterpret_cast<void*>(kTextInputMagic | static_cast<uintptr_t>(KeyboardHint::TEXT)));
 
     // Auto-register with keyboard manager for software keyboard support.
     //
@@ -402,7 +402,7 @@ static void ui_text_input_apply(lv_xml_parser_state_t* state, const char** attrs
             }
 
             lv_obj_set_user_data(
-                textarea, reinterpret_cast<void*>(TEXT_INPUT_MAGIC | static_cast<uintptr_t>(hint)));
+                textarea, reinterpret_cast<void*>(kTextInputMagic | static_cast<uintptr_t>(hint)));
         } else if (lv_streq("show_clear_button", name)) {
             show_clear = lv_streq("true", value);
         } else if (lv_streq("clear_callback", name)) {
@@ -462,9 +462,9 @@ KeyboardHint ui_text_input_get_keyboard_hint(lv_obj_t* textarea) {
 
     auto user_data = reinterpret_cast<uintptr_t>(lv_obj_get_user_data(textarea));
 
-    if ((user_data & TEXT_INPUT_MAGIC_MASK) != TEXT_INPUT_MAGIC) {
+    if ((user_data & kTextInputMagicMask) != kTextInputMagic) {
         return KeyboardHint::TEXT;
     }
 
-    return static_cast<KeyboardHint>(user_data & TEXT_INPUT_HINT_MASK);
+    return static_cast<KeyboardHint>(user_data & kTextInputHintMask);
 }

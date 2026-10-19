@@ -360,12 +360,12 @@ ingest path trying to.
 
 Client delivery (`src/system/telemetry_manager.cpp#fire_periodic_snapshot`, `#on_auto_send_tick` and `#enqueue_event`):
 
-- Each periodic snapshot (`SNAPSHOT_INTERVAL_MS`, 4h) saves the event queue and the
+- Each periodic snapshot (`kSnapshotIntervalMs`, 4h) saves the event queue and the
   unsent accumulator together.
 - The accumulator is also rewritten hourly by the auto-send timer. After an unclean exit the next boot sends it
   under its original `boot_id` and `snapshot_seq`, so the window is neither lost nor
   counted twice.
-- At the queue cap (`MAX_QUEUE_SIZE`) a new delta first tries to merge into the newest
+- At the queue cap (`kMaxQueueSize`) a new delta first tries to merge into the newest
   queued row of the same kind and the same `boot_id` that no send has attempted, adding
   counts and extending the window. Rows a send has attempted are never merge targets, since
   the server may already hold them. With no merge target, the oldest non-delta event is
@@ -784,7 +784,7 @@ reported the flag on over devices that reported it at all
 `ScreensaverManager` accumulates the window on the main thread (`include/screensaver_usage.h`,
 `helix::SaverUsage`) and `TelemetryManager` reads and resets it through
 `set_screensaver_usage()`; the saver code has no telemetry dependency. Every map is keyed by
-the saver's stable registry name (`SCREENSAVERS` in `include/screensaver_registry.h`, the same
+the saver's stable registry name (`kScreensavers` in `include/screensaver_registry.h`, the same
 name `settings_snapshot.screensaver_type` carries), plus `black_screen` for the static screen
 shown when every saver is too heavy for the board. A Test-button preview is not counted.
 

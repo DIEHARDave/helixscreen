@@ -45,7 +45,7 @@ class PrinterSwitchFlow {
     PrinterSwitchFlow& operator=(const PrinterSwitchFlow&) = delete;
 
     /// How long the switch card waits for the new printer to connect before it steps aside.
-    static constexpr uint32_t CONNECT_WAIT_MS = 30000;
+    static constexpr uint32_t kConnectWaitMs = 30000;
 
     /// Switches to `printer_id`, asking first when the current printer is printing.
     /// Picking the connected printer does nothing while its connection is up, and connects it
@@ -133,7 +133,7 @@ class PrinterSwitchFlow {
     /// Puts up the switch card reading "Loading..." and paints it before the restart blocks.
     void paint_loading_card(const std::string& title);
     /// The restart is done: the card reads "Connecting..." until the new printer connects,
-    /// fails, or CONNECT_WAIT_MS passes. A setup wizard on screen, or a rebuild that never
+    /// fails, or kConnectWaitMs passes. A setup wizard on screen, or a rebuild that never
     /// started connecting (`connecting` false), takes the card down at once.
     void await_connection(const std::string& title, bool connecting);
     void dismiss_interstitial();

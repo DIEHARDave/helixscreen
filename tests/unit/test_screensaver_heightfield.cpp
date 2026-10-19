@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "../test_helpers/screensaver_sim_kit.h"
 #include "screensaver_heightfield.h"
@@ -360,7 +360,7 @@ TEST_CASE("depth records the slice where coverage first reached half",
     CHECK(r.depth_slice_at(2, 70) == 0);
     CHECK(r.depth_slice_at(2, 50) == 1);
     CHECK(r.depth_slice_at(2, 30) == 2);
-    CHECK(r.depth_slice_at(2, 10) == HeightfieldRenderer::NO_DEPTH);
+    CHECK(r.depth_slice_at(2, 10) == HeightfieldRenderer::kNoDepth);
 
     HeightfieldView soft = v;
     soft.edge = HeightfieldEdge::SOFT_UNDER;
@@ -368,7 +368,7 @@ TEST_CASE("depth records the slice where coverage first reached half",
     r.set_view(soft);
     r.render(scene);
     // Half coverage comes five rows into the feather.
-    CHECK(r.depth_slice_at(2, 21) == HeightfieldRenderer::NO_DEPTH);
+    CHECK(r.depth_slice_at(2, 21) == HeightfieldRenderer::kNoDepth);
     CHECK(r.depth_slice_at(2, 26) == 2);
 }
 
@@ -517,16 +517,16 @@ TEST_CASE("an odd-sized canvas never writes past a row", "[screensaver][heightfi
     const int32_t scale = GENERATE(2, 4);
     CAPTURE(static_cast<int>(format), scale);
     constexpr uint32_t OW = 321;
-    constexpr uint32_t OH = 203;
+    constexpr uint32_t kOh = 203;
     const int32_t w = (OW + scale - 1) / scale;
-    const int32_t h = (OH + scale - 1) / scale;
+    const int32_t h = (kOh + scale - 1) / scale;
     std::vector<Rgb> frame(static_cast<size_t>(w) * h, Rgb{90, 140, 200});
-    TestFrame c(OW, OH, format, 7);
+    TestFrame c(OW, kOh, format, 7);
     const DirtyRect box = upscale_frame(frame, w, h, scale, 0, h, c.target);
-    CHECK(box == DirtyRect{0, 0, static_cast<int32_t>(OW) - 1, static_cast<int32_t>(OH) - 1});
+    CHECK(box == DirtyRect{0, 0, static_cast<int32_t>(OW) - 1, static_cast<int32_t>(kOh) - 1});
     size_t unwritten = 0;
     const PixelWriter wr(c.target);
-    for (uint32_t y = 0; y < OH; y++) {
+    for (uint32_t y = 0; y < kOh; y++) {
         for (uint32_t x = 0; x < OW; x++) {
             unwritten += wr.get(x, y).b < 150 ? 1 : 0;
         }

@@ -14,8 +14,8 @@ void PidProgressTracker::start(Heater heater, int target_temp, float current_tem
     start_tick_ = 0;
     last_tick_ = 0;
     thermal_model_.reset(current_temp);
-    thermal_model_.set_default_rate(heater == Heater::EXTRUDER ? DEFAULT_EXTRUDER_HEAT_RATE
-                                                               : DEFAULT_BED_HEAT_RATE);
+    thermal_model_.set_default_rate(heater == Heater::EXTRUDER ? kDefaultExtruderHeatRate
+                                                               : kDefaultBedHeatRate);
     was_above_target_ = false;
     oscillation_count_ = 0;
     first_oscillation_tick_ = 0;
@@ -114,7 +114,7 @@ int PidProgressTracker::progress_percent() const {
 
     // Cycle-based progress
     float cycle_progress =
-        static_cast<float>(oscillation_count_) / static_cast<float>(EXPECTED_CYCLES);
+        static_cast<float>(oscillation_count_) / static_cast<float>(kExpectedCycles);
     cycle_progress = std::clamp(cycle_progress, 0.0f, 1.0f);
     int pct = static_cast<int>(base + cycle_progress * osc_bar);
     return std::min(pct, 95);
@@ -139,7 +139,7 @@ std::optional<int> PidProgressTracker::eta_seconds() const {
 
     // Oscillating
     if (has_measured_cycle_ && oscillation_count_ > 0) {
-        int remaining_cycles = EXPECTED_CYCLES - oscillation_count_;
+        int remaining_cycles = kExpectedCycles - oscillation_count_;
         if (remaining_cycles <= 0)
             return 0;
         // Subtract time elapsed within the current cycle for smooth countdown
@@ -185,11 +185,11 @@ void PidProgressTracker::on_kalico_sample(int sample, int estimated_total) {
 }
 
 float PidProgressTracker::default_heat_rate() const {
-    return heater_ == Heater::EXTRUDER ? DEFAULT_EXTRUDER_HEAT_RATE : DEFAULT_BED_HEAT_RATE;
+    return heater_ == Heater::EXTRUDER ? kDefaultExtruderHeatRate : kDefaultBedHeatRate;
 }
 
 float PidProgressTracker::default_oscillation_duration() const {
-    return heater_ == Heater::EXTRUDER ? DEFAULT_EXTRUDER_OSCILLATION : DEFAULT_BED_OSCILLATION;
+    return heater_ == Heater::EXTRUDER ? kDefaultExtruderOscillation : kDefaultBedOscillation;
 }
 
 float PidProgressTracker::best_heat_rate() const {

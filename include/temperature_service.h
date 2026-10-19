@@ -6,7 +6,7 @@
 #include "ui_heater_config.h"
 #include "ui_observer_guard.h"
 #include "ui_temp_graph.h"
-#include "ui_temperature_utils.h" // HEATER_STATUS_BUF_BYTES
+#include "ui_temperature_utils.h" // kHeaterStatusBufBytes
 
 #include "async_lifetime_guard.h"
 #include "lvgl/lvgl.h"
@@ -63,7 +63,7 @@ struct HeaterState {
 
     // Subject string buffers
     std::array<char, 32> display_buf{};
-    std::array<char, helix::ui::temperature::HEATER_STATUS_BUF_BYTES> status_buf{};
+    std::array<char, helix::ui::temperature::kHeaterStatusBufBytes> status_buf{};
 
     int64_t last_graph_update_ms = 0;
 
@@ -213,7 +213,7 @@ class TemperatureService {
     helix::TemperatureController* controller_ = nullptr;
 
     // ── Per-heater state (indexed by HeaterType) ────────────────────────
-    std::array<HeaterState, helix::HEATER_TYPE_COUNT> heaters_;
+    std::array<HeaterState, helix::kHeaterTypeCount> heaters_;
 
     // ── Multi-extruder support (nozzle-specific) ────────────────────────
     std::string active_extruder_name_ = "extruder";
@@ -229,7 +229,7 @@ class TemperatureService {
     std::unique_ptr<helix::TempGraphController> mini_graph_controller_;
 
     // ── Graph update throttling ─────────────────────────────────────────
-    static constexpr int64_t GRAPH_SAMPLE_INTERVAL_MS = 1000;
+    static constexpr int64_t kGraphSampleIntervalMs = 1000;
 
     // ── Subject management ──────────────────────────────────────────────
     SubjectManager subjects_;

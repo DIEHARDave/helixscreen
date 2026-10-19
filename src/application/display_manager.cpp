@@ -43,7 +43,7 @@
 #include "screen_hide_hold.h"
 #include "tap_latch.h"
 #include "touch_calibration_wrapper.h"
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver.h"
 #include "screensaver_clock.h"
@@ -455,7 +455,7 @@ bool DisplayManager::init(const Config& config) {
                  m_refresh_timing.screensaver_refr_period_ms, m_refresh_timing.loop_min_sleep_ms,
                  m_refresh_timing.screensaver_loop_min_sleep_ms);
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     // The gate halves the screensaver budget during prints and keys stored levels by display path.
     ScreensaverManager::instance().set_host(screensaver_host(m_backend.get()));
 #endif
@@ -679,11 +679,11 @@ void DisplayManager::configure_pointer(int scroll_throw, int scroll_limit) {
     watch_pointer();
     configure_scroll(scroll_throw, scroll_limit);
     // Long-press threshold — user-configurable global setting (#1245), default
-    // app_constants::input::LONG_PRESS_MS. InputSettingsManager::set_long_press_time
+    // app_constants::input::kLongPressMs. InputSettingsManager::set_long_press_time
     // live-applies changes.
     auto* cfg = helix::Config::get_instance();
     const int long_press_ms = cfg->get<int>("/input/long_press_time",
-                                            static_cast<int>(app_constants::input::LONG_PRESS_MS));
+                                            static_cast<int>(app_constants::input::kLongPressMs));
     lv_indev_set_long_press_time(m_pointer, long_press_ms);
 
     // Config rather than InputSettingsManager: this runs before its subjects exist.
@@ -691,7 +691,7 @@ void DisplayManager::configure_pointer(int scroll_throw, int scroll_limit) {
     m_scroll_guard = helix::ScrollClickGuard::from_settings(
         cfg->get<bool>("/input/scroll_guard", false),
         cfg->get<int>("/input/scroll_guard_cooldown_ms",
-                      static_cast<int>(helix::ScrollClickGuard::DEFAULT_COOLDOWN_MS)),
+                      static_cast<int>(helix::ScrollClickGuard::kDefaultCooldownMs)),
         std::getenv("HELIX_SCROLL_GUARD"), std::getenv("HELIX_SCROLL_GUARD_COOLDOWN_MS"),
         scroll_limit);
 
@@ -863,7 +863,7 @@ void DisplayManager::restore_display_on_shutdown() {
     m_sleep.restore_on_shutdown();
 }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 helix::ui::SaverHost DisplayManager::screensaver_host(const DisplayBackend* backend) {
     helix::ui::SaverHost host;
     host.is_printing = [] {
@@ -1095,15 +1095,15 @@ bool DisplayManager::try_drm_to_fbdev_fallback(lv_display_rotation_t rot, bool s
 }
 
 void DisplayManager::warn_fbdev_high_dpi() {
-    static constexpr int HIGH_DPI_THRESHOLD = 1920;
-    if (m_width <= HIGH_DPI_THRESHOLD && m_height <= HIGH_DPI_THRESHOLD) {
+    static constexpr int kHighDpiThreshold = 1920;
+    if (m_width <= kHighDpiThreshold && m_height <= kHighDpiThreshold) {
         return;
     }
     spdlog::warn("[DisplayManager] Fbdev resolution {}x{} exceeds {}px on one axis. "
                  "Cannot auto-downscale in fbdev mode. Configure a lower resolution "
                  "via kernel parameters (e.g., framebuffer_width/framebuffer_height "
                  "in /boot/firmware/config.txt on Raspberry Pi) and reboot.",
-                 m_width, m_height, HIGH_DPI_THRESHOLD);
+                 m_width, m_height, kHighDpiThreshold);
     char toast_msg[256];
     snprintf(toast_msg, sizeof(toast_msg),
              lv_tr("Display resolution is very high (%dx%d). Text may appear small. "

@@ -22,6 +22,18 @@
 
 namespace helix {
 
+std::optional<KlippyState> parse_klippy_state(std::string_view state) {
+    if (state == "ready")
+        return KlippyState::READY;
+    if (state == "startup")
+        return KlippyState::STARTUP;
+    if (state == "shutdown")
+        return KlippyState::SHUTDOWN;
+    if (state == "error")
+        return KlippyState::ERROR;
+    return std::nullopt;
+}
+
 PrinterNetworkState::PrinterNetworkState() {
     // Initialize string buffer
     std::memset(printer_connection_message_buf_, 0, sizeof(printer_connection_message_buf_));
@@ -176,37 +188,18 @@ bool PrinterNetworkState::apply_webhooks(const nlohmann::json& webhooks, double 
 
         if (webhooks.contains("state") && webhooks["state"].is_string()) {
             std::string klippy_state_str = webhooks["state"].get<std::string>();
-            KlippyState new_state = KlippyState::READY;
-            bool recognized = true;
-
-            if (klippy_state_str == "ready") {
-                new_state = KlippyState::READY;
-            } else if (klippy_state_str == "startup") {
-                new_state = KlippyState::STARTUP;
-            } else if (klippy_state_str == "shutdown") {
-                new_state = KlippyState::SHUTDOWN;
-            } else if (klippy_state_str == "error") {
-                new_state = KlippyState::ERROR;
-            } else {
-                // Klipper documents exactly ready/startup/shutdown/error.
-                // Resolving anything else to READY would be fail-OPEN on a
-                // liveness signal: nav re-enabled and the gcode guards re-opened.
-                // Leave the current state alone instead; a stale-but-known
-                // state is safer than an invented READY. Deduped on the string so a value Klipper
-                // repeats every frame warns once, not per frame.
-                recognized = false;
-                if (last_unknown_klippy_state_ != klippy_state_str) {
-                    last_unknown_klippy_state_ = klippy_state_str;
-                    spdlog::warn("[PrinterNetworkState] Unrecognised webhooks.state '{}' — leaving "
-                                 "klippy state unchanged",
-                                 klippy_state_str);
-                }
-            }
-
-            if (recognized) {
-                changed = set_klippy_state_internal(new_state);
+            if (const std::optional<KlippyState> parsed = parse_klippy_state(klippy_state_str)) {
+                changed = set_klippy_state_internal(*parsed);
                 applied_state = true;
-                message_describes = new_state;
+                message_describes = *parsed;
+            } else if (last_unknown_klippy_state_ != klippy_state_str) {
+                // Leave the current state alone: a stale-but-known state is
+                // safer than an invented one. Deduped on the string so a value
+                // Klipper repeats every frame warns once, not per frame.
+                last_unknown_klippy_state_ = klippy_state_str;
+                spdlog::warn("[PrinterNetworkState] Unrecognised webhooks.state '{}' — leaving "
+                             "klippy state unchanged",
+                             klippy_state_str);
             }
         }
 

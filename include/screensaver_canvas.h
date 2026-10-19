@@ -2,7 +2,7 @@
 
 #pragma once
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_frame.h"
 #include "screensaver_registry.h"
@@ -21,7 +21,7 @@ namespace helix::ui {
  * canvas pixel's X byte must be 0xFF or that pixel draws transparent ("The alpha trap" in
  * docs/devel/GPU_ACCELERATION.md). PixelWriter writes every pixel with that byte set.
  */
-inline constexpr lv_color_format_t SAVER_BUILD_CANVAS_FORMAT =
+inline constexpr lv_color_format_t kSaverBuildCanvasFormat =
     LV_COLOR_DEPTH == 16 ? LV_COLOR_FORMAT_RGB565 : LV_COLOR_FORMAT_XRGB8888;
 
 /**
@@ -34,12 +34,12 @@ inline constexpr lv_color_format_t SAVER_BUILD_CANVAS_FORMAT =
  * PixelWriter's XRGB8888 writes are opaque ARGB8888 pixels. RGB565 has no 4th byte for a blend
  * to zero, so a 16 bpp build takes the display's own format.
  */
-inline constexpr lv_color_format_t LV_DRAW_CANVAS_FORMAT =
+inline constexpr lv_color_format_t kLvDrawCanvasFormat =
     LV_COLOR_DEPTH == 16 ? LV_COLOR_FORMAT_RGB565 : LV_COLOR_FORMAT_ARGB8888;
 
 /// The SaverDepth bit this build draws at, for registry queries such as
 /// default_screensaver_type(). A 16 bpp build compiles only the savers carrying SAVER_DEPTH_16.
-inline constexpr uint8_t SAVER_BUILD_DEPTH = LV_COLOR_DEPTH == 16 ? SAVER_DEPTH_16 : SAVER_DEPTH_32;
+inline constexpr uint8_t kSaverBuildDepth = LV_COLOR_DEPTH == 16 ? SAVER_DEPTH_16 : SAVER_DEPTH_32;
 
 /// PixelWriter format of a canvas: RGB565 for an RGB565 canvas, XRGB8888 for a 4-byte one.
 constexpr PixelFormat pixel_format_for(lv_color_format_t cf) {
@@ -100,7 +100,7 @@ class SaverCanvas {
     /// Paints the whole canvas opaque black and invalidates all of it.
     void fill_black();
 
-    /// Invalidates `areas`, in canvas pixels, after reduce_dirty() to SAVER_MAX_DIRTY_AREAS: the
+    /// Invalidates `areas`, in canvas pixels, after reduce_dirty() to kSaverMaxDirtyAreas: the
     /// whole canvas when they reduce to it.
     void invalidate(std::vector<DirtyRect>& areas);
 

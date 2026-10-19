@@ -1199,11 +1199,11 @@ TEST_CASE("prepare_interleaved_buffers data matches manual expansion",
 
     // Manually expand the first strip and compare against the packed layout.
     const auto& strip = geom.strips[0];
-    static constexpr int TRI_INDICES[6] = {0, 1, 2, 1, 3, 2};
+    static constexpr int kTriIndices[6] = {0, 1, 2, 1, 3, 2};
     const auto* packed = reinterpret_cast<const PackedVertex*>(buf.data.data());
 
     for (int ti = 0; ti < 6; ++ti) {
-        const auto& vert = geom.vertices[strip[static_cast<size_t>(TRI_INDICES[ti])]];
+        const auto& vert = geom.vertices[strip[static_cast<size_t>(kTriIndices[ti])]];
         glm::vec3 pos = geom.quantization.dequantize_vec3(vert.position);
 
         // Color is per-strip, not per-vertex.
@@ -1532,7 +1532,7 @@ TEST_CASE("Geometry Builder: an object run longer than uint16 splits at a strip 
     RibbonGeometry geometry = builder.build(gcode, opts);
 
     const size_t layer_vertices = geometry.layer_strip_ranges[0].second * 6;
-    REQUIRE(layer_vertices > MAX_RUN_VERTICES);
+    REQUIRE(layer_vertices > kMaxRunVertices);
 
     auto runs = geometry.layer_object_runs(0);
     REQUIRE(runs.count >= 2);
@@ -1540,7 +1540,7 @@ TEST_CASE("Geometry Builder: an object run longer than uint16 splits at a strip 
     size_t expected_offset = 0;
     for (const auto& run : runs) {
         CHECK(run.object_index == 0);
-        CHECK(run.vertex_count <= MAX_RUN_VERTICES);
+        CHECK(run.vertex_count <= kMaxRunVertices);
         CHECK(run.vertex_count % 6 == 0);
         CHECK(run.vertex_offset == expected_offset);
         expected_offset += run.vertex_count;
@@ -1552,10 +1552,10 @@ TEST_CASE("Geometry Builder: an object run longer than uint16 splits at a strip 
 TEST_CASE("Geometry Builder: the run-count guard leaves the run table empty",
           "[gcode][geometry][objectruns][slow]") {
     // Alternating objects every segment defeats run coalescing entirely, so the
-    // run count tracks the segment count. Past MAX_OBJECT_RUNS the side table
+    // run count tracks the segment count. Past kMaxObjectRuns the side table
     // stops being cheap relative to the geometry it indexes, and collection is
     // abandoned so the renderer behaves exactly as it did before runs existed.
-    std::vector<int16_t> alternating(MAX_OBJECT_RUNS + 64, int16_t{0});
+    std::vector<int16_t> alternating(kMaxObjectRuns + 64, int16_t{0});
     for (size_t i = 0; i < alternating.size(); ++i) {
         alternating[i] = static_cast<int16_t>(i % 2);
     }

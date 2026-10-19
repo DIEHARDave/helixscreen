@@ -21,7 +21,7 @@
 #include "connection_state.h" // For ConnectionState enum
 #include "device_display_name.h"
 #include "hardware_validator.h"
-#include "i_moonraker_client.h" // for helix::CACHED_SNAPSHOT_MARKER
+#include "i_moonraker_client.h" // for helix::kCachedSnapshotMarker
 #include "json_utils.h"
 #include "lvgl.h"
 #include "lvgl/src/display/lv_display_private.h" // For rendering_in_progress check
@@ -293,9 +293,17 @@ std::optional<StatusFrame> helix::parse_status_notification(const json& notifica
         frame.eventtime = (*params)[1].get<double>();
     }
     frame.from_cached_snapshot =
-        helix::json_util::safe_bool(notification, helix::CACHED_SNAPSHOT_MARKER);
-    frame.whole_objects = helix::json_util::safe_bool(notification, helix::WHOLE_OBJECTS_MARKER);
+        helix::json_util::safe_bool(notification, helix::kCachedSnapshotMarker);
+    frame.whole_objects = helix::json_util::safe_bool(notification, helix::kWholeObjectsMarker);
     return frame;
+}
+
+void PrinterState::apply_klippy_status(const json& webhooks, double eventtime,
+                                       bool from_cached_snapshot,
+                                       std::optional<uint64_t> frame_epoch) {
+    if (network_state_.apply_webhooks(webhooks, eventtime, from_cached_snapshot, frame_epoch)) {
+        calibration_state_.reset_klippy_volatile();
+    }
 }
 
 void PrinterState::update_from_status(const json& state, double eventtime,
@@ -367,9 +375,7 @@ void PrinterState::update_from_status(const json& state, double eventtime,
 
     // Klippy state from webhooks (shutdown/error detection), gated on freshness.
     if (auto it = state.find("webhooks"); it != state.end()) {
-        if (network_state_.apply_webhooks(*it, eventtime, from_cached_snapshot, frame_epoch)) {
-            calibration_state_.reset_klippy_volatile();
-        }
+        apply_klippy_status(*it, eventtime, from_cached_snapshot, frame_epoch);
     }
 
     // Track Klipper pause_resume.is_paused (PAUSE/RESUME gcode state)
@@ -445,16 +451,20 @@ void PrinterState::set_klippy_state_sync(KlippyState state) {
     set_klippy_state_internal(state);
 }
 
-void PrinterState::set_klippy_state_if_unseeded(KlippyState state) {
+void PrinterState::set_klippy_state_if_unseeded(KlippyState state,
+                                                const std::string& state_message) {
     // Deferred so the "has anything live landed?" check runs on the main thread,
     // in the same serialized order as the webhooks parse. Checking on the caller's
     // thread would race: a live frame could land between the check and the apply,
     // and printer.info's older answer would win anyway.
     async_lifetime_.defer("PrinterState::set_klippy_state_if_unseeded",
-                          [this, state]() { set_klippy_state_if_unseeded_internal(state); });
+                          [this, state, state_message]() {
+                              set_klippy_state_if_unseeded_internal(state, state_message);
+                          });
 }
 
-void PrinterState::set_klippy_state_if_unseeded_internal(KlippyState state) {
+void PrinterState::set_klippy_state_if_unseeded_internal(KlippyState state,
+                                                         const std::string& state_message) {
     if (network_state_.klippy_state_from_live()) {
         spdlog::debug("[PrinterState] Ignoring printer.info klippy state {} — a live state "
                       "has already been applied",
@@ -466,6 +476,9 @@ void PrinterState::set_klippy_state_if_unseeded_internal(KlippyState state) {
     // subscription snapshot that follows it on the same connection is strictly
     // newer, so it must still be allowed to correct this value.
     set_klippy_state_internal(state);
+    if (!state_message.empty()) {
+        network_state_.set_klippy_state_message(state_message, state);
+    }
 }
 
 void PrinterState::set_klippy_state_internal(KlippyState state) {
@@ -515,6 +528,7 @@ void PrinterState::set_hardware(helix::PrinterDiscovery hardware) {
 
     // Delegate capability subject updates to capabilities_state_ component
     capabilities_state_.set_hardware(discovery_, capability_overrides_);
+    versions_state_.set_firmware_name_internal(discovery_.firmware_name());
     print_domain_.set_layer_pause_state_object(helix::layer_pause::state_object(discovery_));
 
     // PLR resume-macro capability comes from the same snapshot, ahead of the
@@ -709,6 +723,11 @@ bool PrinterState::is_external_blocking_operation_active() {
                calibration_state_.idle_timeout_busy().printing_since());
 }
 
+bool PrinterState::is_busy_episode_app_initiated() {
+    IdleTimeoutBusy& busy = calibration_state_.idle_timeout_busy();
+    return busy.blocking() && app_command_episode_.owns(busy.printing_since());
+}
+
 int PrinterState::get_configured_z_offset_microns() {
     if (capabilities_state_.has_probe()) {
         // Probe printers: z_offset stored in ProbeSensorManager (already in microns)
@@ -731,6 +750,7 @@ void PrinterState::set_kinematics(const std::string& kinematics) {
     // Belt Tension compares the two CoreXY diagonals, so only a belt-path
     // kinematics gets the feature.
     capabilities_state_.set_supports_belt_compare(belt_path_kinematics(kinematics));
+    capabilities_state_.bump_hardware_generation();
 
     // Determine if the bed moves on Z based on kinematics type:
     // - CoreXY: bed typically moves on Z (Voron 0/Trident, Bambu, AD5M, etc.)

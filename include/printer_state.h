@@ -8,6 +8,7 @@
 #include "app_macro_activity.h"
 #include "app_motion_activity.h"
 #include "async_lifetime_guard.h"
+#include "busy_episode_owner.h"
 #include "capability_overrides.h"
 #include "hardware_validator.h"
 #include "lvgl/lvgl.h"
@@ -78,6 +79,15 @@ enum class KlippyState {
     SHUTDOWN = 2, ///< Emergency shutdown (M112)
     ERROR = 3     ///< Klipper error state (check klippy.log)
 };
+
+/**
+ * @brief Map a Klipper state string (webhooks.state, printer.info "state") to KlippyState
+ *
+ * Klipper documents exactly ready/startup/shutdown/error. Anything else, such as
+ * Moonraker's own "disconnected", is nullopt: inventing a state for it would be
+ * fail-open on a liveness signal.
+ */
+std::optional<KlippyState> parse_klippy_state(std::string_view state);
 
 /**
  * @brief Print job state (from Moonraker print_stats.state)
@@ -202,8 +212,8 @@ struct StatusFrame {
  *
  * params[1] is Klipper's eventtime. It is monotonic-clock derived, so it survives
  * a Klipper restart and only rewinds on a host reboot: a usable freshness key
- * within one connection. CACHED_SNAPSHOT_MARKER says the frame is a replay of an
- * earlier snapshot rather than current traffic; WHOLE_OBJECTS_MARKER says it is a
+ * within one connection. kCachedSnapshotMarker says the frame is a replay of an
+ * earlier snapshot rather than current traffic; kWholeObjectsMarker says it is a
  * subscription response rather than a delta.
  *
  * @return The frame, or nullopt for anything that is not a notify_status_update
@@ -291,6 +301,17 @@ class PrinterState {
                             bool from_cached_snapshot = false,
                             std::optional<uint64_t> frame_epoch = std::nullopt,
                             bool whole_objects = false);
+
+    /**
+     * @brief Apply a webhooks-shaped klippy status ({state, state_message}), main thread only
+     *
+     * The one path from a reported Klipper state to the klippy subjects: status
+     * frames' webhooks object and a printer.info result both land here. Arguments
+     * as update_from_status().
+     */
+    void apply_klippy_status(const json& webhooks, double eventtime = 0.0,
+                             bool from_cached_snapshot = false,
+                             std::optional<uint64_t> frame_epoch = std::nullopt);
 
     //
     // Domain components. Each owns its subjects and the state behind them;
@@ -514,8 +535,10 @@ class PrinterState {
      * notify_klippy_* message) has set the state.
      *
      * @param state KlippyState enum value
+     * @param state_message The reason reported with it (printer.info's
+     *        state_message), applied with the state; empty leaves the message alone
      */
-    void set_klippy_state_if_unseeded(KlippyState state);
+    void set_klippy_state_if_unseeded(KlippyState state, const std::string& state_message = "");
 
     /**
      * @brief Update printer capability subjects from PrinterDiscovery
@@ -734,7 +757,7 @@ class PrinterState {
      * @brief Like is_blocking_operation_active(), but attributes self-inflicted busy
      *
      * Treats busy-ness attributable to the app's own recent jog activity (in
-     * flight, or acked within AppMotionActivity::GRACE_WINDOW) as NOT blocking.
+     * flight, or acked within AppMotionActivity::kGraceWindow) as NOT blocking.
      * Manual probe remains an absolute block. Guards for discretionary gcode use
      * THIS predicate so back-to-back jogs don't self-block — idle_timeout reports
      * "Printing" during any move, including our own jog (spec 2026-07-15).
@@ -763,6 +786,22 @@ class PrinterState {
     helix::AppMacroActivity& app_macro_activity() {
         return app_macro_activity_;
     }
+
+    /// Every user command execute_gcode sends, discretionary fan/temp/LED
+    /// included. Consulted ONLY by the busy-queue toast, through
+    /// is_busy_episode_app_initiated(); the blocking-op predicates never read
+    /// it, so a light tap cannot let a jog through during an external op.
+    helix::BusyEpisodeOwner& app_command_episode() {
+        return app_command_episode_;
+    }
+
+    /**
+     * @brief Whether the current idle_timeout busy episode began with the user's own command
+     *
+     * Any gcode reads "Printing" while it runs, so a burst of light taps can
+     * hold a settled busy episode up on an idle printer. Toast attribution only.
+     */
+    bool is_busy_episode_app_initiated();
 
     /**
      * @brief Get the configured (saved) z-offset in microns
@@ -870,6 +909,9 @@ class PrinterState {
     /// only — never consulted by the blocking-op predicates (see accessor).
     helix::AppMacroActivity app_macro_activity_;
 
+    /// User-command sends for busy-TOAST attribution only (see accessor).
+    helix::BusyEpisodeOwner app_command_episode_;
+
     /// Hardware validation state component (issue counts, severity, status text)
     helix::PrinterHardwareValidationState hardware_validation_state_;
 
@@ -952,7 +994,7 @@ class PrinterState {
 
     /// Main-thread half of set_klippy_state_if_unseeded(): re-checks the guard in
     /// the same serialized order as the webhooks parse, then applies.
-    void set_klippy_state_if_unseeded_internal(KlippyState state);
+    void set_klippy_state_if_unseeded_internal(KlippyState state, const std::string& state_message);
 
     /**
      * @brief Synthesize runtime-dependent options (timelapse, etc.) into the

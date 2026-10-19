@@ -27,10 +27,10 @@ class U1StockSource : public DetectionSource {
 
     /// Unique registration key. Exposed so DetectionManager can match on id()
     /// and static_cast instead of dynamic_cast — the firmware builds -fno-rtti.
-    static constexpr const char* SOURCE_ID = "u1_stock";
+    static constexpr const char* kSourceId = "u1_stock";
 
     std::string id() const override {
-        return SOURCE_ID;
+        return kSourceId;
     }
     bool available() const override {
         return capable_;

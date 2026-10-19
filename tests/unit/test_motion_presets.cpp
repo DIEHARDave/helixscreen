@@ -46,7 +46,7 @@ void check_grid(const PresetPoint* points, size_t count, const AxisBounds& bound
     }
 }
 
-constexpr double CORNER_REACH_100 = 63.63961030678928; // 90 * sqrt(0.5) on r=100
+constexpr double kCornerReach100 = 63.63961030678928; // 90 * sqrt(0.5) on r=100
 
 } // namespace
 
@@ -81,15 +81,15 @@ TEST_CASE("motion presets on a circular bed sit on the inscribed circle", "[moti
     // Rim presets at 90% of the 100 mm radius; diagonals at 45 degrees, not
     // on the bounding square's corners where the round bed has ended.
     const PresetPoint grid[] = {
-        {MotionPreset::RearLeft, -CORNER_REACH_100, CORNER_REACH_100},
+        {MotionPreset::RearLeft, -kCornerReach100, kCornerReach100},
         {MotionPreset::Rear, 0, 90},
-        {MotionPreset::RearRight, CORNER_REACH_100, CORNER_REACH_100},
+        {MotionPreset::RearRight, kCornerReach100, kCornerReach100},
         {MotionPreset::Left, -90, 0},
         {MotionPreset::Center, 0, 0},
         {MotionPreset::Right, 90, 0},
-        {MotionPreset::FrontLeft, -CORNER_REACH_100, -CORNER_REACH_100},
+        {MotionPreset::FrontLeft, -kCornerReach100, -kCornerReach100},
         {MotionPreset::Front, 0, -90},
-        {MotionPreset::FrontRight, CORNER_REACH_100, -CORNER_REACH_100},
+        {MotionPreset::FrontRight, kCornerReach100, -kCornerReach100},
     };
     check_grid(grid, std::size(grid), bounds, true);
 

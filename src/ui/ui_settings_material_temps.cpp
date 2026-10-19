@@ -31,9 +31,9 @@ namespace helix::settings {
 /// The bounds the edit inputs accept: properties of the fields themselves.
 /// The printer's live ceiling is a send-time bound (TemperatureController),
 /// never a database bound.
-constexpr int NOZZLE_INPUT_ABS_MAX_C = 500;
-constexpr int BED_INPUT_ABS_MAX_C = 200;
-constexpr int CHAMBER_INPUT_ABS_MAX_C = 120;
+constexpr int kNozzleInputAbsMaxC = 500;
+constexpr int kBedInputAbsMaxC = 200;
+constexpr int kChamberInputAbsMaxC = 120;
 
 // ============================================================================
 // INITIALIZATION
@@ -338,22 +338,22 @@ void MaterialTempsOverlay::handle_save() {
     // ceiling is applied where a target is sent (TemperatureController), so a
     // material definition can carry values the current printer cannot reach -
     // they clamp at send, not at save.
-    if (nozzle_min < 100 || nozzle_max < 100 || nozzle_min > NOZZLE_INPUT_ABS_MAX_C ||
-        nozzle_max > NOZZLE_INPUT_ABS_MAX_C) {
+    if (nozzle_min < 100 || nozzle_max < 100 || nozzle_min > kNozzleInputAbsMaxC ||
+        nozzle_max > kNozzleInputAbsMaxC) {
         char msg[kToastBufBytes];
-        snprintf(msg, sizeof(msg), lv_tr("Nozzle temp must be 100-%d°C"), NOZZLE_INPUT_ABS_MAX_C);
+        snprintf(msg, sizeof(msg), lv_tr("Nozzle temp must be 100-%d°C"), kNozzleInputAbsMaxC);
         ToastManager::instance().show(ToastSeverity::WARNING, msg, 3000);
         return;
     }
-    if (bed_temp < 0 || bed_temp > BED_INPUT_ABS_MAX_C) {
+    if (bed_temp < 0 || bed_temp > kBedInputAbsMaxC) {
         char msg[kToastBufBytes];
-        snprintf(msg, sizeof(msg), lv_tr("Bed temp must be 0-%d°C"), BED_INPUT_ABS_MAX_C);
+        snprintf(msg, sizeof(msg), lv_tr("Bed temp must be 0-%d°C"), kBedInputAbsMaxC);
         ToastManager::instance().show(ToastSeverity::WARNING, msg, 3000);
         return;
     }
-    if (chamber_temp < 0 || chamber_temp > CHAMBER_INPUT_ABS_MAX_C) {
+    if (chamber_temp < 0 || chamber_temp > kChamberInputAbsMaxC) {
         char msg[kToastBufBytes];
-        snprintf(msg, sizeof(msg), lv_tr("Chamber temp must be 0-%d°C"), CHAMBER_INPUT_ABS_MAX_C);
+        snprintf(msg, sizeof(msg), lv_tr("Chamber temp must be 0-%d°C"), kChamberInputAbsMaxC);
         ToastManager::instance().show(ToastSeverity::WARNING, msg, 3000);
         return;
     }

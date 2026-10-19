@@ -25,12 +25,12 @@ size_t SweepPlan::point_count() const {
     if (!valid()) {
         return 0;
     }
-    return static_cast<size_t>(std::floor((freq_end_hz - freq_start_hz) / sweep_preview::STEP_HZ)) +
+    return static_cast<size_t>(std::floor((freq_end_hz - freq_start_hz) / sweep_preview::kStepHz)) +
            1;
 }
 
 float SweepPlan::point_hz(size_t index) const {
-    return freq_start_hz + static_cast<float>(index) * sweep_preview::STEP_HZ;
+    return freq_start_hz + static_cast<float>(index) * sweep_preview::kStepHz;
 }
 
 float SweepPoint::psd_xyz() const {
@@ -109,11 +109,11 @@ std::optional<float> find_drive_hz(const AccelSample* samples, size_t n, float r
         return std::nullopt;
     }
 
-    const double lo = static_cast<double>(hint_hz) - LOCK_SEARCH_LEAD_S * hz_per_sec;
-    const double hi = static_cast<double>(hint_hz) + LOCK_SEARCH_LAG_S * hz_per_sec;
+    const double lo = static_cast<double>(hint_hz) - kLockSearchLeadS * hz_per_sec;
+    const double hi = static_cast<double>(hint_hz) + kLockSearchLagS * hz_per_sec;
     std::vector<float> grid;
     for (int k = 0;; ++k) {
-        const double f = lo + k * static_cast<double>(LOCK_GRID_STEP_HZ);
+        const double f = lo + k * static_cast<double>(kLockGridStepHz);
         if (f > hi + 1e-6) {
             break;
         }
@@ -156,7 +156,7 @@ std::optional<float> find_drive_hz(const AccelSample* samples, size_t n, float r
 
     double reference = 0.0;
     int references = 0;
-    for (float offset : LOCK_REFERENCE_OFFSETS_HZ) {
+    for (float offset : kLockReferenceOffsetsHz) {
         const float f = grid[best] + offset;
         if (f > 0.0f) {
             reference += power_at(f);
@@ -167,7 +167,7 @@ std::optional<float> find_drive_hz(const AccelSample* samples, size_t n, float r
         return std::nullopt;
     }
     reference /= references;
-    if (!(reference > 0.0) || power[best] < LOCK_MIN_CONTRAST * reference) {
+    if (!(reference > 0.0) || power[best] < kLockMinContrast * reference) {
         return std::nullopt;
     }
 
@@ -177,7 +177,7 @@ std::optional<float> find_drive_hz(const AccelSample* samples, size_t n, float r
     const double denom = a - 2.0 * b + c;
     double offset = denom != 0.0 ? 0.5 * (a - c) / denom : 0.0;
     offset = std::clamp(offset, -0.5, 0.5);
-    return static_cast<float>(grid[best] + offset * LOCK_GRID_STEP_HZ);
+    return static_cast<float>(grid[best] + offset * kLockGridStepHz);
 }
 
 DriveLock::DriveLock(SweepPlan plan) : plan_(plan) {}
@@ -191,13 +191,13 @@ void DriveLock::observe(double at_s, float drive_hz) {
     if (locked_) {
         const double model = static_cast<double>(plan_.freq_start_hz) +
                              static_cast<double>(plan_.hz_per_sec) * (at_s - t0_s_);
-        if (std::abs(static_cast<double>(drive_hz) - model) <= LOCK_LOST_HZ) {
+        if (std::abs(static_cast<double>(drive_hz) - model) <= kLockLostHz) {
             disagree_since_s_ = std::numeric_limits<double>::quiet_NaN();
             return;
         }
         if (std::isnan(disagree_since_s_)) {
             disagree_since_s_ = at_s;
-        } else if (at_s - disagree_since_s_ >= LOCK_LOST_S) {
+        } else if (at_s - disagree_since_s_ >= kLockLostS) {
             locked_ = false;
             estimates_.clear();
             disagree_since_s_ = std::numeric_limits<double>::quiet_NaN();
@@ -207,7 +207,7 @@ void DriveLock::observe(double at_s, float drive_hz) {
 
     estimates_.push_back(at_s - (static_cast<double>(drive_hz) - plan_.freq_start_hz) /
                                     static_cast<double>(plan_.hz_per_sec));
-    while (estimates_.size() > LOCK_HISTORY) {
+    while (estimates_.size() > kLockHistory) {
         estimates_.pop_front();
     }
 
@@ -215,7 +215,7 @@ void DriveLock::observe(double at_s, float drive_hz) {
     for (double centre : estimates_) {
         std::vector<double> cluster;
         for (double e : estimates_) {
-            if (std::abs(e - centre) <= LOCK_AGREE_S + 1e-9) {
+            if (std::abs(e - centre) <= kLockAgreeS + 1e-9) {
                 cluster.push_back(e);
             }
         }
@@ -223,7 +223,7 @@ void DriveLock::observe(double at_s, float drive_hz) {
             best_cluster = std::move(cluster);
         }
     }
-    if (best_cluster.size() < LOCK_AGREE_COUNT) {
+    if (best_cluster.size() < kLockAgreeCount) {
         return;
     }
     std::sort(best_cluster.begin(), best_cluster.end());
@@ -304,7 +304,7 @@ SweepResponseAccumulator::add_samples(const std::vector<AccelSample>& samples, b
         gaps_.emplace_back(static_cast<double>(samples.front().time),
                            static_cast<double>(samples.back().time));
     }
-    const double keep_from = stream_time_s_ - BUFFER_S;
+    const double keep_from = stream_time_s_ - kBufferS;
     while (!buffer_.empty() && static_cast<double>(buffer_.front().time) < keep_from) {
         buffer_.pop_front();
     }
@@ -315,15 +315,15 @@ SweepResponseAccumulator::add_samples(const std::vector<AccelSample>& samples, b
         return finished;
     }
 
-    // Drive-frequency readings, each over the LOCK_WINDOW_S ending at its time.
+    // Drive-frequency readings, each over the kLockWindowS ending at its time.
     const double front_s = static_cast<double>(buffer_.front().time);
-    next_reading_s_ = std::max(next_reading_s_, front_s + LOCK_WINDOW_S);
+    next_reading_s_ = std::max(next_reading_s_, front_s + kLockWindowS);
     std::vector<AccelSample> window;
-    for (; next_reading_s_ <= stream_time_s_; next_reading_s_ += LOCK_INTERVAL_S) {
+    for (; next_reading_s_ <= stream_time_s_; next_reading_s_ += kLockIntervalS) {
         if (!std::isfinite(hint_hz_)) {
             continue;
         }
-        const double lo = next_reading_s_ - LOCK_WINDOW_S;
+        const double lo = next_reading_s_ - kLockWindowS;
         if (overlaps_gap(gaps_, lo, next_reading_s_)) {
             continue;
         }
@@ -334,7 +334,7 @@ SweepResponseAccumulator::add_samples(const std::vector<AccelSample>& samples, b
         const auto drive =
             find_drive_hz(window.data(), window.size(), rate_hz, hint_hz_, plan_.hz_per_sec);
         if (drive) {
-            lock_.observe(next_reading_s_ - LOCK_WINDOW_S / 2.0, *drive);
+            lock_.observe(next_reading_s_ - kLockWindowS / 2.0, *drive);
         }
     }
 
@@ -348,7 +348,7 @@ SweepResponseAccumulator::add_samples(const std::vector<AccelSample>& samples, b
     const size_t count = plan_.point_count();
     const double start = plan_.freq_start_hz;
     const double rate = plan_.hz_per_sec;
-    const double half = STEP_HZ / 2.0;
+    const double half = kStepHz / 2.0;
     std::array<std::vector<float>, 3> axes;
     while (next_point_ < count) {
         const double f = plan_.point_hz(next_point_);

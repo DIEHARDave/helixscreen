@@ -46,7 +46,7 @@
 using namespace helix;
 
 // Static initialization of path prefixes for fallback search
-const std::vector<std::string> MoonrakerFileTransferAPIMock::PATH_PREFIXES = {
+const std::vector<std::string> MoonrakerFileTransferAPIMock::kPathPrefixes = {
     "",      // From project root: assets/test_gcodes/
     "../",   // From build/: ../assets/test_gcodes/
     "../../" // From build/bin/: ../../assets/test_gcodes/
@@ -179,7 +179,7 @@ std::string MoonrakerFileTransferAPIMock::find_test_file(const std::string& file
         return planted + "/" + filename;
     }
 
-    for (const auto& prefix : PATH_PREFIXES) {
+    for (const auto& prefix : kPathPrefixes) {
         std::string path = prefix + std::string(TEST_GCODE_DIR) + "/" + filename;
 
         if (fs::exists(path)) {
@@ -394,7 +394,7 @@ void MoonrakerFileTransferAPIMock::download_file(const std::string& root, const 
 
     // For timelapse root, search timelapse test directory first
     if (root == "timelapse") {
-        for (const auto& prefix : PATH_PREFIXES) {
+        for (const auto& prefix : kPathPrefixes) {
             std::string timelapse_path = prefix + "assets/test_timelapse/" + filename;
             if (std::filesystem::exists(timelapse_path)) {
                 local_path = timelapse_path;
@@ -636,7 +636,7 @@ void MoonrakerFileTransferAPIMock::download_file_to_path(
 
     // For timelapse root, search timelapse test directory first
     if (root == "timelapse") {
-        for (const auto& prefix : PATH_PREFIXES) {
+        for (const auto& prefix : kPathPrefixes) {
             std::string timelapse_path = prefix + "assets/test_timelapse/" + filename;
             if (std::filesystem::exists(timelapse_path)) {
                 local_path = timelapse_path;
@@ -921,7 +921,7 @@ void MoonrakerFileTransferAPIMock::download_thumbnail(const std::string& thumbna
     spdlog::debug("[MoonrakerAPIMock] Falling back to placeholder thumbnail");
 
     std::string placeholder_path;
-    for (const auto& prefix : PATH_PREFIXES) {
+    for (const auto& prefix : kPathPrefixes) {
         std::string test_path = prefix + "assets/images/benchy_thumbnail_white.png";
         if (fs::exists(test_path)) {
             placeholder_path = "A:" + test_path;
@@ -1305,7 +1305,7 @@ void MockScrewsTiltState::reset() {
     // Klipper reports diff = z_base - z, so a screw *above* the base prints a
     // negative diff, which is CCW on a CW-M3 thread. The adjustments below are
     // what probe_lines() emits at reset for the 0.5 mm M3 pitch the mock
-    // advertises (mock_internal::MOCK_SCREW_THREAD).
+    // advertises (mock_internal::kMockScrewThread).
     //
     // The base deliberately sits mid-range (-18 .. +10 minutes around it): that
     // is the prestonbrown/helixscreen#1225 shape, where every screw is small on
@@ -1418,7 +1418,7 @@ std::string MockScrewsTiltState::diff_to_adjustment(float diff_mm) {
     // for a positive diff on a CW-M* thread, CCW for a negative one. The mock
     // must match: emitting the opposite sign is what made --test unable to
     // reproduce the level-verdict bug (prestonbrown/helixscreen#1225).
-    const float mm_per_turn = screw_thread_pitch_mm(mock_internal::MOCK_SCREW_THREAD);
+    const float mm_per_turn = screw_thread_pitch_mm(mock_internal::kMockScrewThread);
 
     // Klipper zeroes the adjustment inside a 1 micron deadband *before* dividing
     // by the pitch, so probe noise never prints as a fraction of a turn.

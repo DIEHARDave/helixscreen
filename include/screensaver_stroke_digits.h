@@ -12,7 +12,7 @@
  * @file screensaver_stroke_digits.h
  * @brief Digits drawn as strokes along lines and arcs, at any size and stroke weight
  *
- * A digit's centre line lives in a box one glyph unit wide and STROKE_DIGIT_PATH_H tall (y
+ * A digit's centre line lives in a box one glyph unit wide and kStrokeDigitPathH tall (y
  * down). Coverage comes from the distance to that line, so one shape serves the flip clock's
  * bold cards and High Fly's thin numerals. No LVGL.
  */
@@ -20,7 +20,7 @@
 namespace helix::ui {
 
 /// Height of a digit's centre-line box, in glyph units; its width is 1.
-inline constexpr float STROKE_DIGIT_PATH_H = 1.6f;
+inline constexpr float kStrokeDigitPathH = 1.6f;
 
 /// Distance, in glyph units, from (px, py) to the nearest point of `digit`'s centre line
 /// (0 to 9). Box-relative coordinates: (0, 0) is the path box's top left.
@@ -29,7 +29,7 @@ float stroke_digit_distance(int digit, float px, float py);
 /// Coverage of the ten digits at one size and stroke, each `w` x `h`, 0 to 255, back to back.
 struct StrokeDigitSet {
     int32_t w = 0; ///< lround((1 + stroke) * unit)
-    int32_t h = 0; ///< lround((STROKE_DIGIT_PATH_H + stroke) * unit)
+    int32_t h = 0; ///< lround((kStrokeDigitPathH + stroke) * unit)
     std::vector<uint8_t> coverage;
 
     /// Coverage of `digit` at (gx, gy) inside its box, 0 outside it or for a digit past 0-9.

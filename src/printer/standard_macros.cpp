@@ -45,7 +45,7 @@ struct SlotPatterns {
 };
 
 // clang-format off
-const std::vector<SlotPatterns> DETECTION_PATTERNS = {
+const std::vector<SlotPatterns> kDetectionPatterns = {
     // M604 ranks last: it is QIDI's stock load, the macro their own screen
     // drives, and it means nothing in Marlin (which has no M604 at all). A
     // printer that defines a conventionally-named load macro keeps it — this
@@ -90,7 +90,7 @@ const std::vector<SlotPatterns> DETECTION_PATTERNS = {
  * Empty string means no fallback is available.
  */
 // clang-format off
-const std::map<StandardMacroSlot, std::string> FALLBACK_MACROS = {
+const std::map<StandardMacroSlot, std::string> kFallbackMacros = {
     {StandardMacroSlot::LoadFilament,   ""},
     {StandardMacroSlot::UnloadFilament, "HELIX_UNLOAD_FILAMENT"},
     {StandardMacroSlot::Purge,          ""},
@@ -115,7 +115,7 @@ struct SlotMeta {
 };
 
 // clang-format off
-const std::map<StandardMacroSlot, SlotMeta> SLOT_METADATA = {
+const std::map<StandardMacroSlot, SlotMeta> kSlotMetadata = {
     {StandardMacroSlot::LoadFilament,   {"load_filament",   "Load Filament"}},
     {StandardMacroSlot::UnloadFilament, {"unload_filament", "Unload Filament"}},
     {StandardMacroSlot::Purge,          {"purge",           "Purge"}},
@@ -217,14 +217,14 @@ void StandardMacros::init_slot_definitions() {
         StandardMacroInfo info;
         info.slot = slot;
 
-        auto meta_it = SLOT_METADATA.find(slot);
-        if (meta_it != SLOT_METADATA.end()) {
+        auto meta_it = kSlotMetadata.find(slot);
+        if (meta_it != kSlotMetadata.end()) {
             info.slot_name = meta_it->second.name;
             info.display_name = meta_it->second.display_name;
         }
 
-        auto fallback_it = FALLBACK_MACROS.find(slot);
-        if (fallback_it != FALLBACK_MACROS.end()) {
+        auto fallback_it = kFallbackMacros.find(slot);
+        if (fallback_it != kFallbackMacros.end()) {
             info.fallback_macro = fallback_it->second;
         }
 
@@ -299,7 +299,7 @@ bool StandardMacros::has_configured_macro(StandardMacroSlot slot,
 }
 
 std::optional<StandardMacroSlot> StandardMacros::slot_from_name(const std::string& name) {
-    for (const auto& [slot, meta] : SLOT_METADATA) {
+    for (const auto& [slot, meta] : kSlotMetadata) {
         if (meta.name == name) {
             return slot;
         }
@@ -308,8 +308,8 @@ std::optional<StandardMacroSlot> StandardMacros::slot_from_name(const std::strin
 }
 
 std::string StandardMacros::slot_to_name(StandardMacroSlot slot) {
-    auto it = SLOT_METADATA.find(slot);
-    if (it != SLOT_METADATA.end()) {
+    auto it = kSlotMetadata.find(slot);
+    if (it != kSlotMetadata.end()) {
         return it->second.name;
     }
     return "";
@@ -423,8 +423,8 @@ void StandardMacros::init(const helix::PrinterDiscovery& hardware,
         slot.shipped_self_prepares = shipped.self_prepares;
 
         // Restore fallback from static definition
-        auto fallback_it = FALLBACK_MACROS.find(slot.slot);
-        if (fallback_it != FALLBACK_MACROS.end()) {
+        auto fallback_it = kFallbackMacros.find(slot.slot);
+        if (fallback_it != kFallbackMacros.end()) {
             slot.fallback_macro = fallback_it->second;
         }
     }
@@ -510,7 +510,7 @@ void StandardMacros::validate_configured(const helix::PrinterDiscovery& hardware
 void StandardMacros::auto_detect(const helix::PrinterDiscovery& hardware) {
     spdlog::debug("[StandardMacros] Running auto-detection on {} macros", hardware.macro_count());
 
-    for (const auto& pattern_def : DETECTION_PATTERNS) {
+    for (const auto& pattern_def : kDetectionPatterns) {
         auto detected = try_detect(hardware, pattern_def.slot, pattern_def.patterns);
         if (!detected.empty()) {
             auto index = static_cast<size_t>(pattern_def.slot);

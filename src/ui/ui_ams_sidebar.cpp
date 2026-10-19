@@ -29,6 +29,7 @@
 #include "filament_op_heater.h"
 #include "filament_op_router.h"
 #include "filament_op_slot_resolver.h"
+#include "helix_psram_attr.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
@@ -55,14 +56,14 @@ namespace {
 /// How long a held optimistic action outlives backend silence once the backend
 /// has accepted the operation: the gap before its first frame, which can
 /// include a G28.
-constexpr std::chrono::seconds OPTIMISTIC_DISPATCH_HOLD{90};
+constexpr std::chrono::seconds kOptimisticDispatchHold{90};
 
 /// The backend accepted the operation: restart a held action's budget from
 /// here, and sync so a backend that set its own action at dispatch drives.
 void hand_operation_to_backend() {
     auto& ams = AmsState::instance();
     if (ams.optimistic_action_held()) {
-        ams.hold_optimistic_action(OPTIMISTIC_DISPATCH_HOLD);
+        ams.hold_optimistic_action(kOptimisticDispatchHold);
     }
     ams.sync_from_backend();
 }
@@ -194,21 +195,21 @@ void dispatch_backend_unload(int slot_index, int target_slot, FilamentOpTicket t
  * live binding. Registered once, deinit'd via StaticSubjectRegistry (which runs
  * before lv_deinit()), same shape as ScrewsTiltShareModal's row subjects.
  */
-lv_subject_t s_unload_disabled{};
-lv_subject_t s_load_disabled{};
-lv_subject_t s_reset_disabled{};
-lv_subject_t s_check_gates_disabled{};
-lv_subject_t s_load_hidden{};
-lv_subject_t s_unload_hidden{};
-lv_subject_t s_unload_picks{};
-lv_subject_t s_mount_hidden{};
-lv_subject_t s_mount_disabled{};
-lv_subject_t s_park_hidden{};
-lv_subject_t s_park_disabled{};
-lv_subject_t s_action_reason{};
-lv_subject_t s_action_reason_shown{};
-char s_action_reason_buf[192];
-lv_subject_t s_supports_reset{};
+HELIX_PSRAM_BSS lv_subject_t s_unload_disabled{};
+HELIX_PSRAM_BSS lv_subject_t s_load_disabled{};
+HELIX_PSRAM_BSS lv_subject_t s_reset_disabled{};
+HELIX_PSRAM_BSS lv_subject_t s_check_gates_disabled{};
+HELIX_PSRAM_BSS lv_subject_t s_load_hidden{};
+HELIX_PSRAM_BSS lv_subject_t s_unload_hidden{};
+HELIX_PSRAM_BSS lv_subject_t s_unload_picks{};
+HELIX_PSRAM_BSS lv_subject_t s_mount_hidden{};
+HELIX_PSRAM_BSS lv_subject_t s_mount_disabled{};
+HELIX_PSRAM_BSS lv_subject_t s_park_hidden{};
+HELIX_PSRAM_BSS lv_subject_t s_park_disabled{};
+HELIX_PSRAM_BSS lv_subject_t s_action_reason{};
+HELIX_PSRAM_BSS lv_subject_t s_action_reason_shown{};
+HELIX_PSRAM_BSS char s_action_reason_buf[192];
+HELIX_PSRAM_BSS lv_subject_t s_supports_reset{};
 bool s_gating_subjects_initialized = false;
 SubjectManager s_subjects;
 
@@ -461,7 +462,7 @@ bool AmsOperationSidebar::setup(lv_obj_t* panel) {
     // Independent stall watchdog for the indeterminate "Working…" state (#1065
     // row 14). Runs on the main loop; the callback no-ops unless an op is active.
     if (!stall_watchdog_timer_) {
-        stall_watchdog_timer_ = lv_timer_create(stall_watchdog_cb, STALL_WATCHDOG_PERIOD_MS, this);
+        stall_watchdog_timer_ = lv_timer_create(stall_watchdog_cb, kStallWatchdogPeriodMs, this);
     }
 
     sync_reset_button_label();
@@ -965,15 +966,18 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
                         step_index_subject_ == ams.get_ams_operation_phase_subject()) {
                         step_lifetime = ams.get_subjects_lifetime();
                     }
-                    // #1046 I-1: for narration-driven bars, seed the shared step
-                    // subject to step 0 (heat) at operation start — BEFORE observing,
-                    // so the initial observer fire highlights heat immediately and the
-                    // bar never looks dead if the matcher misses the opening `//` line.
-                    // This also discards any early narration index resolved against a
-                    // prior operation's template before this recreate ran (#1046 M-1).
+                    // For narration-driven bars with no phase yet, seed the shared
+                    // step subject to step 0 (heat) BEFORE observing, so the initial
+                    // observer fire highlights heat and the bar never looks dead if
+                    // the matcher misses the opening `//` line (#1046). A phase
+                    // already narrated for this operation is kept: an externally
+                    // started operation narrates before its action reaches us, and
+                    // set_active_step_operation() above has already re-resolved or
+                    // dropped any index from another template.
                     // Firmware-phase subjects (e.g. Snapmaker) mirror live hardware
                     // and MUST NOT be seeded — gate on the shared narration subject.
-                    if (step_index_subject_ == ams.get_toolchange_step_subject()) {
+                    if (step_index_subject_ == ams.get_toolchange_step_subject() &&
+                        lv_subject_get_int(step_index_subject_) < 0) {
                         lv_subject_set_int(step_index_subject_, 0);
                     }
                     step_index_observer_ = observe<int>(
@@ -1236,6 +1240,10 @@ void AmsOperationSidebar::start_operation(StepOperationType op_type, int target_
         lv_obj_remove_flag(step_progress_container_, LV_OBJ_FLAG_HIDDEN);
     }
 
+    // An operation this UI starts begins now: no narration from before it
+    // belongs to it.
+    AmsState::instance().set_narration_phase(-1, "");
+
     // Create step progress with correct steps
     recreate_step_progress_for_operation(op_type);
 
@@ -1248,7 +1256,7 @@ void AmsOperationSidebar::start_operation(StepOperationType op_type, int target_
     // (prestonbrown/helixscreen#1057).
     AmsBackend* backend = AmsState::instance().get_backend();
     if (backend && backend->holds_optimistic_action()) {
-        AmsState::instance().hold_optimistic_action(OPTIMISTIC_PREHEAT_HOLD);
+        AmsState::instance().hold_optimistic_action(kOptimisticPreheatHold);
     }
 }
 
@@ -1373,7 +1381,7 @@ bool AmsOperationSidebar::is_extruder_below_target() const {
     }
     int current_deci =
         lv_subject_get_int(printer_state_.temperature_state().get_active_extruder_temp_subject());
-    return current_deci < (target_deci - helix::ui::PREHEAT_MARGIN_C * 10);
+    return current_deci < (target_deci - helix::ui::kPreheatMarginC * 10);
 }
 
 void AmsOperationSidebar::refresh_heat_step_display() {
@@ -1877,7 +1885,7 @@ helix::ui::BackendCaps AmsOperationSidebar::read_backend_caps(AmsSystemInfo& inf
 namespace {
 /// UpdateQueue tag for the guarded param-modal callbacks. A string literal: the
 /// skip counter interns by pointer identity.
-constexpr const char* LOAD_MACRO_TAG = "AmsOperationSidebar::load_macro";
+constexpr const char* kLoadMacroTag = "AmsOperationSidebar::load_macro";
 } // namespace
 
 helix::ui::FilamentOpSurface AmsOperationSidebar::op_surface(const char* tag, int slot_index) {
@@ -1901,7 +1909,7 @@ helix::ui::FilamentOpSurface AmsOperationSidebar::op_surface(const char* tag, in
     // panel closed is dropped and counted rather than reaching freed memory.
     auto token = lifetime_.token();
     surface.guard = [token](std::function<void()> fn) mutable {
-        token.defer(LOAD_MACRO_TAG, std::move(fn));
+        token.defer(kLoadMacroTag, std::move(fn));
     };
     surface.owner = this;
     surface.alive = [token]() { return !token.expired(); };

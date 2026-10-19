@@ -438,24 +438,28 @@ TEST_CASE("belt path names match Klipper's axis syntax", "[belt_tension][calibra
     CHECK(std::string(BeltTensionCalibrator::output_name(BeltPath::PATH_B)) == "helix_belt_b");
 }
 
-TEST_CASE_METHOD(BeltCalibratorFixture, "measure_path sweeps its path and reports the peak",
+TEST_CASE_METHOD(BeltCalibratorFixture, "measure_path reports both curves",
                  "[belt_tension][calibrator]") {
     std::atomic<bool> done{false};
-    BeltCurve got;
+    BeltResponse got;
     int last_percent = -1;
     calibrator_->measure_path(
         BeltPath::PATH_B, [&](int percent, float) { last_percent = percent; },
-        [&](BeltCurve curve) {
-            got = std::move(curve);
+        [&](BeltResponse response) {
+            got = std::move(response);
             done = true;
         },
         [&](const std::string& msg) { FAIL(msg); });
     REQUIRE(pump_until(done));
     CHECK(last_percent == 100);
-    REQUIRE_FALSE(got.empty());
-    auto peak = find_peak_frequency(got, 20.0f, got.back().first);
+    REQUIRE_FALSE(got.xyz.empty());
+    auto peak = find_peak_frequency(got.xyz, 20.0f, got.xyz.back().first);
     REQUIRE(peak.found);
     CHECK(peak.frequency == Catch::Approx(mock_client_.belt_peak_hz('B')).margin(1.0f));
+    REQUIRE(got.in_plane.size() == got.xyz.size());
+    for (size_t i = 0; i < got.xyz.size(); ++i) {
+        CHECK(got.in_plane[i].first == got.xyz[i].first);
+    }
     CHECK(calibrator_->get_state() == BeltTensionCalibrator::State::IDLE);
 }
 
@@ -464,12 +468,12 @@ TEST_CASE_METHOD(BeltCalibratorFixture, "measure_path forwards its window",
     mock_client_.clear_gcode_script_history();
     std::atomic<bool> done{false};
     calibrator_->measure_path(
-        BeltPath::PATH_A, nullptr, [&](BeltCurve) { done = true; },
+        BeltPath::PATH_A, nullptr, [&](BeltResponse) { done = true; },
         [&](const std::string& msg) { FAIL(msg); }, BeltSweepWindow{88.4f, 119.6f});
     REQUIRE(pump_until(done));
     const auto history = mock_client_.gcode_script_history();
     CHECK(std::any_of(history.begin(), history.end(), [](const std::string& g) {
-        return g.find("TEST_RESONANCES AXIS=1,-1 FREQ_START=88 FREQ_END=120 ") == 0;
+        return g.find("TEST_RESONANCES AXIS=1,-1 FREQ_START=89 FREQ_END=119 ") == 0;
     }));
 }
 
@@ -479,7 +483,7 @@ TEST_CASE_METHOD(BeltCalibratorFixture, "cancel while homing never starts the sw
     mock_client_.clear_gcode_script_history();
     bool called = false;
     calibrator_->measure_path(
-        BeltPath::PATH_A, [&](int, float) { called = true; }, [&](BeltCurve) { called = true; },
+        BeltPath::PATH_A, [&](int, float) { called = true; }, [&](BeltResponse) { called = true; },
         [&](const std::string&) { called = true; });
     calibrator_->cancel();
     for (int i = 0; i < 500; ++i) {
@@ -503,7 +507,7 @@ TEST_CASE_METHOD(BeltCalibratorFixture, "cancel silences the run's callbacks",
                  "[belt_tension][calibrator]") {
     bool called = false;
     calibrator_->measure_path(
-        BeltPath::PATH_A, [&](int, float) { called = true; }, [&](BeltCurve) { called = true; },
+        BeltPath::PATH_A, [&](int, float) { called = true; }, [&](BeltResponse) { called = true; },
         [&](const std::string&) { called = true; });
     calibrator_->cancel();
     CHECK(calibrator_->get_state() == BeltTensionCalibrator::State::IDLE);
@@ -575,7 +579,7 @@ TEST_CASE_METHOD(BeltCalibratorFixture, "settle sends the laps with the plan's t
     inputs.max_velocity_mm_s = 10.0f;
     const auto plan = plan_belt_settle(inputs);
     REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
-    REQUIRE(plan.timeout_ms > belt_settle::MIN_TIMEOUT_MS);
+    REQUIRE(plan.timeout_ms > belt_settle::kMinTimeoutMs);
 
     std::atomic<bool> done{false};
     calibrator_->settle(

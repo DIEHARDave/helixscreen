@@ -23,12 +23,12 @@ namespace gcode {
 namespace {
 
 // Layer detection tolerance for Z changes
-constexpr float Z_EPSILON = 0.001f;
+constexpr float kZEpsilon = 0.001f;
 
 // Minimum E delta that counts as extrusion rather than a travel/retract.
 // Matches the threshold GCodeParser::parse_movement_command() uses so the index
 // and the full-file parser agree on what "extruding" means.
-constexpr float EXTRUSION_EPSILON = 0.00001f;
+constexpr float kExtrusionEpsilon = 0.00001f;
 
 // Extract a single-letter float parameter (case-insensitive) from a G-code line.
 // Returns true if found. Skips over coordinates embedded inside identifier
@@ -49,9 +49,9 @@ size_t gcode_code_len(const char* line, size_t len) {
 
 /// Powers of ten that are EXACTLY representable in a double, so scaling by one
 /// of them introduces a single rounding rather than compounding error.
-constexpr double POW10_EXACT[] = {1e0,  1e1,  1e2,  1e3,  1e4,  1e5,  1e6,  1e7,  1e8, 1e9,
+constexpr double kPow10Exact[] = {1e0,  1e1,  1e2,  1e3,  1e4,  1e5,  1e6,  1e7,  1e8, 1e9,
                                   1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18};
-constexpr int POW10_MAX_DIGITS = 18;
+constexpr int kPow10MaxDigits = 18;
 
 /**
  * @brief Parse the plain decimal form G-code axis words actually use.
@@ -95,7 +95,7 @@ bool parse_axis_value_fast(const char* p, const char* limit, float& out, const c
     bool saw_digit = false;
 
     while (s < limit && *s >= '0' && *s <= '9') {
-        if (digits >= POW10_MAX_DIGITS) {
+        if (digits >= kPow10MaxDigits) {
             return false; // more precision than this path promises — strtof it
         }
         mantissa = mantissa * 10 + static_cast<uint64_t>(*s - '0');
@@ -107,7 +107,7 @@ bool parse_axis_value_fast(const char* p, const char* limit, float& out, const c
     if (s < limit && *s == '.') {
         ++s;
         while (s < limit && *s >= '0' && *s <= '9') {
-            if (digits >= POW10_MAX_DIGITS) {
+            if (digits >= kPow10MaxDigits) {
                 return false;
             }
             mantissa = mantissa * 10 + static_cast<uint64_t>(*s - '0');
@@ -126,7 +126,7 @@ bool parse_axis_value_fast(const char* p, const char* limit, float& out, const c
         return false;
     }
 
-    const double value = static_cast<double>(mantissa) / POW10_EXACT[frac_digits];
+    const double value = static_cast<double>(mantissa) / kPow10Exact[frac_digits];
     out = static_cast<float>(negative ? -value : value);
     *endp = s;
     return true;
@@ -297,12 +297,12 @@ namespace {
 /// on a minute-long scan is real, the syscall reduction matters more on slow
 /// flash than on a desktop, and this is the natural place to sample progress.
 /// 1MB is well under the smallest device's headroom (the AD5M runs in ~47MB).
-constexpr size_t INDEX_READ_BLOCK_BYTES = 1024 * 1024;
+constexpr size_t kIndexReadBlockBytes = 1024 * 1024;
 
 /// Report progress at most this often. Coarse on purpose: the callback crosses
 /// to an atomic the UI polls, and a 5M-line file would otherwise call it 5M
 /// times to move a bar 100 steps.
-constexpr size_t INDEX_PROGRESS_LINE_INTERVAL = 20000;
+constexpr size_t kIndexProgressLineInterval = 20000;
 
 /**
  * @brief Feeds whole lines out of a block-buffered file read.
@@ -317,7 +317,7 @@ constexpr size_t INDEX_PROGRESS_LINE_INTERVAL = 20000;
 class BlockLineReader {
   public:
     explicit BlockLineReader(std::istream& in) : in_(in) {
-        buf_.resize(INDEX_READ_BLOCK_BYTES);
+        buf_.resize(kIndexReadBlockBytes);
     }
 
     /// Fill @p line with the next line (newline stripped). False at EOF.
@@ -460,7 +460,7 @@ bool GCodeLayerIndex::build_from_file(const std::string& filepath,
         const size_t code_len = gcode_code_len(line.c_str(), line_len);
         stats_.total_lines++;
 
-        if (on_progress && (stats_.total_lines % INDEX_PROGRESS_LINE_INTERVAL) == 0) {
+        if (on_progress && (stats_.total_lines % kIndexProgressLineInterval) == 0) {
             if (!on_progress(
                     static_cast<float>(static_cast<double>(current_offset) / total_for_progress))) {
                 spdlog::info("[LayerIndex] Build cancelled at line {} ({:.0f}%)",
@@ -576,7 +576,7 @@ bool GCodeLayerIndex::build_from_file(const std::string& filepath,
                     }
                 } else {
                     // Use Z-change based layer detection
-                    if (z > current_z + Z_EPSILON) {
+                    if (z > current_z + kZEpsilon) {
                         is_new_layer = true;
                     }
                 }
@@ -629,7 +629,7 @@ bool GCodeLayerIndex::build_from_file(const std::string& filepath,
                 e_delta = new_e - current_e;
                 current_e = new_e;
             }
-            const bool is_extruding = e_delta > EXTRUSION_EPSILON;
+            const bool is_extruding = e_delta > kExtrusionEpsilon;
 
             // Update running X/Y from this move (for the next layer's snapshot),
             // and grow the model bounds over extruding moves only. Both the

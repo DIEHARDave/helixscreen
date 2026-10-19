@@ -8,14 +8,14 @@ This doc is the map: which file owns what, how the gate decides, and how to add 
 
 | File | Owns |
 |---|---|
-| `include/screensaver_registry.h` | `ScreensaverType`, the `SCREENSAVERS` rows (type, stable name, label key, color depths), clamp, the stable names and the frozen legacy type numbers, the fresh-install default, the too-heavy fallback order and the settings dropdown's choices. Always compiled |
+| `include/screensaver_registry.h` | `ScreensaverType`, the `kScreensavers` rows (type, stable name, label key, color depths), clamp, the stable names and the frozen legacy type numbers, the fresh-install default, the too-heavy fallback order and the settings dropdown's choices. Always compiled |
 | `include/screensaver_setting.h` | Reading the persisted choice: a name in any case, or a legacy number |
 | `include/screensaver_base.h` | `SaverBase`: start, frame and stop sequence, levels, level requests; `ladder_period()` for a ladder table |
 | `include/screensaver_sim_contract.h`, `include/screensaver_sim_saver.h` | The calling shape of a sim (`init_sim`, `step_sim`, with or without an rng) and `SimSaver<Sim>`, which implements every `SaverBase` hook from it |
 | `include/screensaver_clock_saver.h` | `ClockSaver<Sim, State>`: a SimSaver whose sim draws a clock, with the input source (`ClockInputSink`, reached through `Screensaver::clock_input_sink()`), the clock state, the text cache and the redraw-over-what-changed step |
 | `include/screensaver_image.h` | Decoding a sprite or picture once into an owned draw buffer, reading an image header, and the printer picture a saver shows |
 | `include/screensaver_overlay.h` | `SaverOverlay`: the black, clickable overlay on `lv_layer_top()`, so nothing beneath it is ever the press target |
-| `include/screensaver_canvas.h` | `SaverCanvas`: stride-sized buffer, the two canvas formats (`SAVER_BUILD_CANVAS_FORMAT`, `LV_DRAW_CANVAS_FORMAT`), hide-before-free, dirty areas reduced to `SAVER_MAX_DIRTY_AREAS` or the whole canvas (`reduce_dirty`), the dirty-box layer session |
+| `include/screensaver_canvas.h` | `SaverCanvas`: stride-sized buffer, the two canvas formats (`kSaverBuildCanvasFormat`, `kLvDrawCanvasFormat`), hide-before-free, dirty areas reduced to `kSaverMaxDirtyAreas` or the whole canvas (`reduce_dirty`), the dirty-box layer session |
 | `include/screensaver_frame_timer.h` | `SaverFrameTimer`: frame timer with a `MotionClock`, period changes without a motion jump |
 | `include/refresh_period_hold.h` | The display refresh while a saver runs, at the saver's current period; `period()` holds `HELIX_SCREENSAVER_REFR_PERIOD_MS` |
 | `include/screensaver_frame.h`, `include/screensaver_pixel_writer.h` | `DirtyRect` (`whole`, `clipped`), `reduce_dirty`, `FrameTarget`, `frame_row`, `with_pixel_type`, `scaled_extent`, `round_px`; `PixelWriter` (RGB565 and XRGB8888, ordered dither, max blend, `blend_over`, `fill_rect`, lines) and the colour rules every saver shares (`mix_rgb`, `blend_cov`, `scale_rgb`, `to_u8`, `unit_to_u8`, `edge_coverage`). No LVGL |
@@ -50,27 +50,27 @@ opens `SaverCanvas::begin_layer()`, marks what it draws with `mark_dirty()` and 
 
 A saver whose scene is a simulation derives from `SimSaver<Sim>` instead, and writes only what is
 its own: the type and the canvas format. The sim follows the contract in
-`screensaver_sim_contract.h` (`init`, `step`, `request_level`, `clear`, `LEVELS`), and SimSaver
+`screensaver_sim_contract.h` (`init`, `step`, `request_level`, `clear`, `kLevels`), and SimSaver
 clears it before every start, so a sim never depends on how the last run ended. A clock saver
 derives from `ClockSaver<Sim, State>`, which adds the time-and-print input and the text drawn over
 the scene (`draw_clock_text()`, `reset_clock_text()`).
 
-Every ladder starts at 16 ms (`SAVER_FAST_PERIOD`, one refresh of a 60 Hz panel), or at
+Every ladder starts at 16 ms (`kSaverFastPeriod`, one refresh of a 60 Hz panel), or at
 `HELIX_SCREENSAVER_REFR_PERIOD_MS` when that is set for manual testing
 (`SaverBase::level_period_ms`); levels 1 and up keep their declared periods either way. Starfield
-then runs at 33 ms; pipes per `PIPES_LEVELS`: 16 ms, 33 ms, then 100 ms at half resolution (the
+then runs at 33 ms; pipes per `kPipesLevels`: 16 ms, 33 ms, then 100 ms at half resolution (the
 scale changes at the next screen); toasters at 33 ms with every sprite, then 33 ms with ten; the
 bouncing printer and bouncing logo (one class; `BouncingLogoScreensaver` swaps the sprite and drops the tint and corner celebration) at 33 ms, then 33 ms with the corner flash but no confetti; fireworks per
-`FIREWORKS_LEVELS`; the 3D maze per `MAZE_LEVELS`: full resolution at 16 ms, then half resolution at
-33 ms, the same with flat floor and ceiling, and quarter resolution at 50 ms and at 66 ms; hyperspace per `HYPERSPACE_LEVELS`, which keeps 33 ms past level 0
+`kFireworksLevels`; the 3D maze per `kMazeLevels`: full resolution at 16 ms, then half resolution at
+33 ms, the same with flat floor and ceiling, and quarter resolution at 50 ms and at 66 ms; hyperspace per `kHyperspaceLevels`, which keeps 33 ms past level 0
 and then draws its tunnel and goo in 2x2 blocks, drops the goo, draws the tunnel in 4x4 blocks, and
-last drops the tunnel and flies 96 of its 160 stars; the flip clock per `FLIP_CLOCK_LEVELS`: the folding
-flip at 33 ms, then an instant digit swap checked every 250 ms; fireflies per `FIREFLIES_LEVELS`:
+last drops the tunnel and flies 96 of its 160 stars; the flip clock per `kFlipClockLevels`: the folding
+flip at 33 ms, then an instant digit swap checked every 250 ms; fireflies per `kFirefliesLevels`:
 33 ms past level 0, then tails one pixel wide with no glow halo, then 120 flies with 1.5 s tails
-at 50 ms, and last 48 flies with 0.75 s tails at 100 ms; Aqua Surface per `AQUA_LEVELS`: the
+at 50 ms, and last 48 flies with 0.75 s tails at 100 ms; Aqua Surface per `kAquaLevels`: the
 water at half resolution at 33 ms, then quarter resolution with fewer slices at 50 ms and
 100 ms (no new splashes at 100 ms), and last a still frame that redraws only the clock every
-250 ms; High Fly per `HIGHFLY_LEVELS`: half resolution at 33 ms, the same without the
+250 ms; High Fly per `kHighflyLevels`: half resolution at 33 ms, the same without the
 translucent layers, quarter resolution with fewer slices and no towers at 50 ms and at 125 ms,
 and last a still frame that redraws only the clock. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
 the saver's current period (`follow`), so the display and the saver stay equal at every level. Device measurements assume the pacing that keeps 16 ms even: EGL vsync and a 1 ms
@@ -84,7 +84,7 @@ dimmed or under a screensaver. On every embedded backend the sleep-aware read wr
 `DisplaySleepController::note_press()` whether a press is waking the display; when it is,
 `helix::WakeTouchLatch` (`include/wake_touch_latch.h`) reports every read of that touch as
 released, at the pointer's resting point, until the finger lifts. A lift within
-`WakeTouchLatch::REARM_MS` (200 ms) of the waking press keeps the latch armed, so contact
+`WakeTouchLatch::kRearmMs` (200 ms) of the waking press keeps the latch armed, so contact
 chatter as the finger lands, or a stray contact from a panel just powered on, is swallowed
 too; a tap after the window is an ordinary one. LVGL sees no press, drag or
 long press, so neither the overlay nor anything under it can act. The wake itself runs on the
@@ -108,7 +108,7 @@ cells; corridors are a tile wide and walls a tile tall, with the eye at mid-heig
   `maze_focal()` takes the larger of `h / 2` and `w / 2 / tan 60`, so 800x480 sees 90 x 118
   degrees and a frame wider than 120 degrees narrows its vertical view instead. Walls, floor
   rows and sprites share that one focal length and camera plane (`MazeRenderer::set_level`).
-  `MAZE_HFOV_MAX_HALF_TAN` is the knob if the edges bend too far.
+  `kMazeHfovMaxHalfTan` is the knob if the edges bend too far.
 - **The maze** starts as a perfect maze from a recursive backtracker. The walk starts in one of
   its dead ends facing out past the start sign, and the exit, a translucent smiley, is the cell
   furthest from the start in that tree. `MazeMap::open_up` then opens it: a wall out of half the
@@ -158,7 +158,7 @@ cells; corridors are a tile wide and walls a tile tall, with the eye at mid-heig
   is pure (`history_art_candidates`, `cached_art_paths`, `mix_maze_art`) and tested without the
   app.
 - **Cost**: it repaints every pixel every frame, so it is the costliest saver per frame and the
-  one the gate is likeliest to mark too heavy on a small board. `MAZE_LEVELS` pulls the
+  one the gate is likeliest to mark too heavy on a small board. `kMazeLevels` pulls the
   internal resolution (each pixel replicated `scale x scale`), swaps textured floor and ceiling
   for flat fogged rows, and slows to 66 ms at the bottom. The wide view puts more of each frame
   on the dearer floor and ceiling, which the 66 ms rung pays for. It renders into its own
@@ -222,7 +222,7 @@ Each step down and each too-heavy mark is stored at `/display/screensaver_levels
 
 **A too-heavy saver never shows a black screen while another saver fits.**
 `ScreensaverManager::runnable_type` (`runnable_screensaver` in the registry) picks what runs in
-its place: `DEFAULT_SCREENSAVER_TYPE`, then the registry order, skipping every saver marked too
+its place: `kDefaultScreensaverType`, then the registry order, skipping every saver marked too
 heavy for this board and version. `start()` resolves through it, so the idle timeout, the
 settings Test button and `HELIX_SCREENSAVER_NOW` all run the same fallback, and the gate starts
 it the moment a running saver is marked. A static black `SaverOverlay` with no frame timer is
@@ -244,19 +244,19 @@ too heavy, with no fallback, and the dropdown offers it.
 
 ## Names, not numbers
 
-Everything outside the app names a saver by its stable `SCREENSAVERS` name (`"maze"`, `"off"`
+Everything outside the app names a saver by its stable `kScreensavers` name (`"maze"`, `"off"`
 for none): `/display/screensaver_type` in settings.json, `HELIX_SCREENSAVER_NOW`, `helix-screen
 ctl screensaver <name>`, and the level store key. `ScreensaverType` is in-app identity only, so
 reordering the registry, adding a saver or compiling one out never changes what a stored value
 means. The setting is read leniently (`screensaver_from_setting`): a name in any case, or a
-legacy integer through the frozen `LEGACY_SCREENSAVER_TYPE_NAMES` table, which config migration
+legacy integer through the frozen `kLegacyScreensaverTypeNames` table, which config migration
 v28 also uses to rewrite old numbers as names. An unknown name, an out-of-range number or another
 JSON type reads as the default. Writes always store the name.
 
 ## Color depth and builds
 
 The registry row lists the depths a saver draws at. Every saver draws both RGB565 and
-XRGB8888 through `PixelWriter`, with `SAVER_BUILD_CANVAS_FORMAT` picking the display's depth
+XRGB8888 through `PixelWriter`, with `kSaverBuildCanvasFormat` picking the display's depth
 at compile time, so a 16 bpp build compiles all of them (Makefile `SCREENSAVER_16BPP_TARGETS`
 is the depth-16 target list; `SCREENSAVER_32BPP_ONLY_SRCS` is the exclusion list a saver that
 cannot draw 16 bpp would land on, currently empty). The two lists and the registry's depth
@@ -265,11 +265,39 @@ bits must agree.
 The fresh-install default is depth-aware (`default_screensaver_type`): Flip Clock when the
 build draws at its depth, otherwise the first registered saver that does, and Off when none do.
 
+`HELIX_ENABLE_SCREENSAVER` decides whether a build has savers at all, and every guard tests
+its value: `#if HELIX_ENABLE_SCREENSAVER` / `#if !HELIX_ENABLE_SCREENSAVER`, never `#ifdef`.
+The Makefile (with `ENABLE_SCREENSAVER=yes`, the default) and the Android CMake build pass a
+bare `-D`, which reads as 1; `ENABLE_SCREENSAVER=no` leaves it undefined, which reads as 0. The ESP32
+firmware defines it as 0 (`firmware/helixscreen-esp32/components/helixapp/CMakeLists.txt`),
+which an `#ifdef` would read as on. A build without savers still registers
+`settings_screensaver_type` (always Off) and `settings_has_screensaver` (0), so the XML
+bindings on them resolve: `row_screensaver` and `container_test_screensaver` start
+`hidden="true"` in `ui_xml/settings_display_overlay.xml` and their bindings decide from
+there, with no C++ hiding them.
+
+## The idle timeout and the dim row
+
+The saver starts at the dim timeout (`/display/dim_sec`). Display settings offers that
+timeout in one of three forms, picked by `DisplaySettingsManager::dim_row_kind()` from whether
+the display has a dimmable backlight and whether a saver is enabled (type not Off), and
+published as `settings_dim_row_kind`:
+
+| Dimmable backlight | Saver enabled | Row shown |
+|---|---|---|
+| yes | either | Screen Dim |
+| no | yes | Screensaver after |
+| no | no | none |
+
+Both rows edit the same setting. The rule that sleep may not come before the dim stage
+(`should_couple_sleep_to_dim()`) holds exactly when a row is shown, so the two cannot
+disagree, and `set_screensaver_type()` republishes the row kind when the saver changes.
+
 ## Adding a saver
 
-1. Add the type to `ScreensaverType` and a row to `SCREENSAVERS` with a stable name and depths.
+1. Add the type to `ScreensaverType` and a row to `kScreensavers` with a stable name and depths.
    The name is what configs store, so it never changes once shipped.
-   `LEGACY_SCREENSAVER_TYPE_NAMES` stays as it is: a new saver has no legacy number.
+   `kLegacyScreensaverTypeNames` stays as it is: a new saver has no legacy number.
 2. Add the label to `row_screensaver` in `ui_xml/settings_display_overlay.xml` (a test
    compares it with the registry; the overlay builds the shown options from the registry, and
    this list is their translation source), run `make translation-sync`, translate the new key in every
@@ -326,12 +354,12 @@ wandering every 8 to 15 s: stop, loop, glow, hyperspeed, split, merge and a wind
 - **Dirty tiles.** The loops of one swarm span most of the screen, so a box per swarm would
   redraw it all. The sim marks the 16 px tiles each frame draws in, blacks out the tiles the
   last frame drew, and reports both frames' tiles joined into at most
-  `FIREFLIES_MAX_DIRTY_AREAS` boxes.
+  `kFirefliesMaxDirtyAreas` boxes.
 - **Cost.** The ladder test holds the bottom rung to a 1-core board's 10% with the K1C
   redraw model (`tests/test_helpers/screensaver_cost_model.h`), which does not count the sim's
   own drawing (about 1 ms a frame on a desktop at level 0). Only a device run of
   `scripts/screensaver-perf/` measures the whole cost.
-- **RGB565.** Light adds through `add_light` with a `BAYER_4X4` threshold, so a faint tail end
+- **RGB565.** Light adds through `add_light` with a `kBayer4x4` threshold, so a faint tail end
   shows as a sparse pattern instead of rounding to nothing.
 
 ## Flip clock
@@ -345,11 +373,11 @@ decides what the clock reads, and `flip_face` turns that reading into cards:
 - Idle, cancelled, failed, or preparing with no estimate yet: the time of day, HH:MM, with
   AM/PM on the first hour card in 12-hour mode, where that card is blank before 10.
 - A print with an estimate: H:MM:SS (as many hour cards as the hours need, up to
-  `CLOCK_MAX_COUNTDOWN_S`) counting down at wall-clock rate, with "done at
-  <time> · <n>%" under the cards. An estimate within `CLOCK_COUNTDOWN_RESYNC_S` of the running
+  `kClockMaxCountdownS`) counting down at wall-clock rate, with "done at
+  <time> · <n>%" under the cards. An estimate within `kClockCountdownResyncS` of the running
   count is ignored, so estimator jitter never flips the seconds backwards.
 - Paused: the count freezes under PAUSED.
-- A print the clock saw finish: 0:00:00 and DONE for `CLOCK_DONE_HOLD_MS`, then the clock.
+- A print the clock saw finish: 0:00:00 and DONE for `kClockDoneHoldMs`, then the clock.
 
 Every digit has its own card, grouped by a `FlipShape` (hours, minutes, seconds).
 `layout_flip_cards` puts every group in one row with a colon between groups, or, when that
@@ -358,9 +386,9 @@ strokes (lines and arcs, `build_stroke_digits` at a stroke of 0.2) into a covera
 sized to the layout, so they scale to any screen and draw at both depths. Only the cards whose digit changes flip, each with its own
 fold and dirty box, all at once when several change (09:59 to 10:00 flips four, 10:59 to
 11:00 three); nothing is written between changes. A new shape (the clock becoming a
-countdown, the hours gaining a digit) and the drift every `CLOCK_DRIFT_STEP_MS` repaint the
+countdown, the hours gaining a digit) and the drift every `kClockDriftStepMs` repaint the
 layout whole. The caption and AM/PM marker are `lv_draw_label` text on the canvas
-(`SaverLabel`), which is why its canvas uses `LV_DRAW_CANVAS_FORMAT`.
+(`SaverLabel`), which is why its canvas uses `kLvDrawCanvasFormat`.
 
 
 ## Long runs
@@ -374,13 +402,13 @@ turn and the wrinkle scroll to one table turn. Tests start both sims thirty days
 
 `ClockState::step` takes the time, the date and the print each frame and keeps one reading:
 the time of day, or a countdown anchored to the print's remaining time (jitter under
-`CLOCK_COUNTDOWN_RESYNC_S` ignored), frozen while paused, and DONE for `CLOCK_DONE_HOLD_MS`
+`kClockCountdownResyncS` ignored), frozen while paused, and DONE for `kClockDoneHoldMs`
 after a print it saw finish. The flip clock replaces the time with the countdown; Aqua
 Surface and High Fly keep the time as the main readout and show the print as secondary text
 from `clock_print_text`: "ETA 9:41 PM" and "1h 12m left". With no print they show
 `clock_date_text`, the long date and weekday from `locale_formats`
 (`format_localized_long_date`, `format_localized_weekday`). All three drift by
-`clock_drift_at` every `CLOCK_DRIFT_STEP_MS` against burn-in.
+`clock_drift_at` every `kClockDriftStepMs` against burn-in.
 
 Text on a canvas that repaints beneath it is a `SaverLabel`: it redraws its line when the text
 or box changes, or when a box the frame repainted crosses it. The scene puts the pixels back
@@ -420,16 +448,16 @@ Calm, dark, glassy water sloshing in slow motion behind a tank wall (`AquaSim`).
 an analytic sum evaluated each frame into a grid indexed by screen column and depth: three
 tank sloshing modes, four steep Gerstner waves with a one-pass inversion (crests stay peaked),
 and impulse pulses that split and travel apart, all on sim time at a quarter of real time.
-The shading is fresnel reflection (floored at `AQUA_FRESNEL_FLOOR`) of four soft "softbox"
+The shading is fresnel reflection (floored at `kAquaFresnelFloor`) of four soft "softbox"
 bands, read from an environment table pre-blurred at six levels and picked per pixel by how
 fast the reflection changes across neighbours, plus a sun glint, light through thin crests,
 and one octave of wrinkle; then a near-neutral cool tint.
 
-- The near edge always carries a lit meniscus (`AQUA_RIM_FLOOR`); below it are near-black
+- The near edge always carries a lit meniscus (`kAquaRimFloor`); below it are near-black
   water, a faint downward smear of the edge's light, and rising bubbles.
 - Droplets fly from fast-rising crests near the front on a 50 ms emission step. A droplet
   lives until it is below the surface at its own position, never on a timer, and lands with
-  a brief glint. `AQUA_MAX_DROPLETS` caps what is emitted; nothing in flight is culled.
+  a brief glint. `kAquaMaxDroplets` caps what is emitted; nothing in flight is culled.
 - The ring clock: the hour ring fills through the 12 or 24 hours, the minute ring through the
   hour, and the small top ring through the minute, or the print's progress while one runs.
   The date or print line under the rings is a `SaverLabel`.
@@ -453,9 +481,9 @@ white haze over the bottom rows.
   13 to 14 s on alternating sides, comes on at the deck's speed, keeps its world x so it
   slides out to the side as it nears (with a little wind drift), and leaves once off screen.
 - A fly-through every one to two minutes: the cloud ahead grows from the centre, the screen
-  eases toward a blue-grey interior capped at `HIGHFLY_WHITEOUT_MAX`, wisps stream outward
+  eases toward a blue-grey interior capped at `kHighflyWhiteoutMax`, wisps stream outward
   from a polar lookup sampled bilinearly, and it clears. Over the clock the two together cover
-  at most `HIGHFLY_CLOCK_COVER_MAX` of the scene, so the numerals stay readable.
+  at most `kHighflyClockCoverMax` of the scene, so the numerals stay readable.
 - The clock: thin stroke numerals at the cloud line with superscript seconds, AM/PM under
   them and a two-line date (or the print's ETA and time left) on the left. Every part has a
   soft deep-blue shadow so it reads over white cloud: under the numerals a halo baked once per

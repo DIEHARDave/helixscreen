@@ -3,6 +3,7 @@
 
 #include "mount_feed_sequence.h"
 
+#include "klipper_extruder_naming.h"
 #include "macro_param_cache.h"
 
 #include <spdlog/fmt/fmt.h>
@@ -76,7 +77,7 @@ std::string feed_or_retract_gcode(const Request& r, const HeadRequest& head) {
 } // namespace
 
 std::string heater_name(int head) {
-    return head <= 0 ? "extruder" : fmt::format("extruder{}", head);
+    return helix::extruder_name_for_tool(head);
 }
 
 std::vector<Step> steps(bool load) {

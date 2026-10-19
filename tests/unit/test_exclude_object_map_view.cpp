@@ -174,12 +174,12 @@ TEST_CASE("CoordMapper edge cases", "[exclude_map][coords]") {
 
     SECTION("overlapping minimum-size rects") {
         // Two tiny adjacent objects (1mm each) on a 235mm square bed.
-        // Both must be expanded to at least MIN_TOUCH_TARGET_PX.
+        // Both must be expanded to at least kMinTouchTargetPx.
         auto mapper = ExcludeObjectMapView::CoordMapper(235.0f, 235.0f, 400, 400);
         auto r1 = mapper.bbox_to_rect({100.0f, 100.0f}, {101.0f, 101.0f});
         auto r2 = mapper.bbox_to_rect({102.0f, 100.0f}, {103.0f, 101.0f});
-        REQUIRE(r1.w >= ExcludeObjectMapView::MIN_TOUCH_TARGET_PX);
-        REQUIRE(r2.w >= ExcludeObjectMapView::MIN_TOUCH_TARGET_PX);
+        REQUIRE(r1.w >= ExcludeObjectMapView::kMinTouchTargetPx);
+        REQUIRE(r2.w >= ExcludeObjectMapView::kMinTouchTargetPx);
     }
 }
 

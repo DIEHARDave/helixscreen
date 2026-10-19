@@ -41,15 +41,15 @@ static size_t calculate_dynamic_max_size(const std::string& cache_dir, size_t co
     if (!space) {
         spdlog::warn("[ThumbnailCache] Failed to query disk space: {}, using minimum",
                      std::strerror(errno));
-        return ThumbnailCache::MIN_CACHE_SIZE;
+        return ThumbnailCache::kMinCacheSize;
     }
     size_t available = static_cast<size_t>(*space);
 
     // Use 5% of available space
-    size_t dynamic_size = static_cast<size_t>(available * ThumbnailCache::DEFAULT_DISK_PERCENT);
+    size_t dynamic_size = static_cast<size_t>(available * ThumbnailCache::kDefaultDiskPercent);
 
     // Clamp to min/configured_max bounds
-    size_t clamped = std::clamp(dynamic_size, ThumbnailCache::MIN_CACHE_SIZE, configured_max);
+    size_t clamped = std::clamp(dynamic_size, ThumbnailCache::kMinCacheSize, configured_max);
 
     spdlog::debug("[ThumbnailCache] Available disk: {} MB, cache limit: {} MB (max: {} MB)",
                   available / (1024 * 1024), clamped / (1024 * 1024),
@@ -72,7 +72,7 @@ std::string ThumbnailCache::determine_cache_dir() {
     Config* config = Config::get_instance();
     std::string config_dir = config->get<std::string>("/cache/directory", "");
     if (!config_dir.empty()) {
-        std::string full_path = config_dir + "/" + CACHE_SUBDIR;
+        std::string full_path = config_dir + "/" + kCacheSubdir;
         if (try_create_cache_dir(full_path)) {
             spdlog::info("[ThumbnailCache] Using configured cache directory: {}", full_path);
             return full_path;
@@ -81,13 +81,13 @@ std::string ThumbnailCache::determine_cache_dir() {
     }
 
     // 2. Fall through to centralized cache resolution chain
-    return get_helix_cache_dir(CACHE_SUBDIR);
+    return get_helix_cache_dir(kCacheSubdir);
 }
 
 ThumbnailCache::ThumbnailCache()
-    : cache_dir_(determine_cache_dir()), max_size_(MIN_CACHE_SIZE),
-      disk_critical_(DEFAULT_DISK_CRITICAL), disk_low_(DEFAULT_DISK_LOW),
-      configured_max_(DEFAULT_MAX_CACHE_SIZE) {
+    : cache_dir_(determine_cache_dir()), max_size_(kMinCacheSize),
+      disk_critical_(kDefaultDiskCritical), disk_low_(kDefaultDiskLow),
+      configured_max_(kDefaultMaxCacheSize) {
     ensure_cache_dir();
     load_config();
     // Now that directory exists and config is loaded, calculate dynamic size
@@ -96,7 +96,7 @@ ThumbnailCache::ThumbnailCache()
     // HELIX_THUMB_CACHE_MAX_MB — force a hard cache ceiling for testing.
     //
     // Applied AFTER the dynamic sizing and deliberately not through it:
-    // calculate_dynamic_max_size() clamps its result up to MIN_CACHE_SIZE
+    // calculate_dynamic_max_size() clamps its result up to kMinCacheSize
     // (5 MB), so feeding a small value in through configured_max_ gets raised
     // straight back and eviction still never fires. Making eviction reachable
     // is the entire point here — without it the decode-vs-evict interaction
@@ -113,7 +113,7 @@ ThumbnailCache::ThumbnailCache()
             max_size_ = configured_max_;
             spdlog::info("[ThumbnailCache] HELIX_THUMB_CACHE_MAX_MB={} — cache ceiling forced "
                          "to {} MB (dynamic sizing and the {} MB floor bypassed)",
-                         mb, mb, MIN_CACHE_SIZE / (1024 * 1024));
+                         mb, mb, kMinCacheSize / (1024 * 1024));
         } else {
             spdlog::warn("[ThumbnailCache] HELIX_THUMB_CACHE_MAX_MB='{}' is not a positive "
                          "integer — ignoring",
@@ -130,8 +130,8 @@ ThumbnailCache::ThumbnailCache()
 }
 
 ThumbnailCache::ThumbnailCache(size_t max_size)
-    : cache_dir_(determine_cache_dir()), max_size_(max_size), disk_critical_(DEFAULT_DISK_CRITICAL),
-      disk_low_(DEFAULT_DISK_LOW), configured_max_(max_size) {
+    : cache_dir_(determine_cache_dir()), max_size_(max_size), disk_critical_(kDefaultDiskCritical),
+      disk_low_(kDefaultDiskLow), configured_max_(max_size) {
     ensure_cache_dir();
     spdlog::debug("[ThumbnailCache] Using explicit max size: {} MB", max_size_ / (1024 * 1024));
 
@@ -153,11 +153,11 @@ void ThumbnailCache::load_config() {
 
     // Read cache settings from config (values are in MB, convert to bytes)
     int max_mb = config->get<int>("/cache/thumbnail_max_mb",
-                                  static_cast<int>(DEFAULT_MAX_CACHE_SIZE / (1024 * 1024)));
+                                  static_cast<int>(kDefaultMaxCacheSize / (1024 * 1024)));
     int critical_mb = config->get<int>("/cache/disk_critical_mb",
-                                       static_cast<int>(DEFAULT_DISK_CRITICAL / (1024 * 1024)));
+                                       static_cast<int>(kDefaultDiskCritical / (1024 * 1024)));
     int low_mb =
-        config->get<int>("/cache/disk_low_mb", static_cast<int>(DEFAULT_DISK_LOW / (1024 * 1024)));
+        config->get<int>("/cache/disk_low_mb", static_cast<int>(kDefaultDiskLow / (1024 * 1024)));
 
     // Convert to bytes and store
     configured_max_ = static_cast<size_t>(max_mb) * 1024 * 1024;
@@ -260,7 +260,7 @@ std::optional<size_t> ThumbnailCache::probe_disk_space() const {
     // reached twice per fetch_optimized() — once via is_caching_allowed() and
     // once inside evict_locked() — on the main thread while a file listing
     // populates. Free space does not move fast enough to justify probing it per
-    // thumbnail; DISK_PROBE_INTERVAL_MS bounds how stale the answer can be.
+    // thumbnail; kDiskProbeIntervalMs bounds how stale the answer can be.
     const auto now = std::chrono::steady_clock::now();
 
     {
@@ -268,7 +268,7 @@ std::optional<size_t> ThumbnailCache::probe_disk_space() const {
         if (disk_probe_valid_) {
             const auto age =
                 std::chrono::duration_cast<std::chrono::milliseconds>(now - last_disk_probe_);
-            if (age.count() < DISK_PROBE_INTERVAL_MS) {
+            if (age.count() < kDiskProbeIntervalMs) {
                 return cached_available_bytes_;
             }
         }
@@ -335,7 +335,7 @@ std::vector<ThumbnailCache::CacheEntry> ThumbnailCache::scan_locked(size_t* tota
         return entries;
     }
 
-    constexpr std::int64_t STALE_STAGING_NS = 10LL * 60 * 1000 * 1000 * 1000;
+    constexpr std::int64_t kStaleStagingNs = 10LL * 60 * 1000 * 1000 * 1000;
     const std::int64_t now_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                     std::chrono::system_clock::now().time_since_epoch())
                                     .count();
@@ -361,9 +361,9 @@ std::vector<ThumbnailCache::CacheEntry> ThumbnailCache::scan_locked(size_t* tota
 
         // Staging files (text_io::write_file_atomic, write_lvgl_bin) are writes
         // in flight or debris from a crash mid-write: never cached content.
-        // Debris past STALE_STAGING_NS no writer can still own.
+        // Debris past kStaleStagingNs no writer can still own.
         if (path.size() > 4 && path.compare(path.size() - 4, 4, ".tmp") == 0) {
-            if (now_ns - *mtime > STALE_STAGING_NS && helix::fs::remove(path)) {
+            if (now_ns - *mtime > kStaleStagingNs && helix::fs::remove(path)) {
                 spdlog::debug("[ThumbnailCache] Removed stale staging file {}", path);
             }
             continue;
@@ -486,7 +486,7 @@ void ThumbnailCache::refresh_index_locked() const {
         return;
     }
 
-    if (++checks_since_scan_ >= INDEX_RECONCILE_INTERVAL) {
+    if (++checks_since_scan_ >= kIndexReconcileInterval) {
         rescan_locked();
         return;
     }
@@ -524,7 +524,7 @@ void ThumbnailCache::evict_locked() {
     // save_raw_png(), whether or not anything was evicted
     // (prestonbrown/helixscreen#1207). It is now arithmetic over an index kept
     // current by the write sites, plus a reconcile every
-    // INDEX_RECONCILE_INTERVAL checks.
+    // kIndexReconcileInterval checks.
     refresh_index_locked();
     size_t current_size = index_total_;
 
@@ -1336,7 +1336,7 @@ void helix::fetch_thumbnail_from_gcode(const std::string& gcode_path, size_t max
             const auto best = helix::gcode::get_best_thumbnail_from_content(content);
             if (best.png_data.empty()) {
                 spdlog::debug("[ThumbnailCache] No embedded thumbnails in {}", gcode_path);
-                report_error(std::string(GCODE_THUMBNAIL_NONE_EMBEDDED) + gcode_path);
+                report_error(std::string(kGcodeThumbnailNoneEmbedded) + gcode_path);
                 return;
             }
 

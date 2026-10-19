@@ -9,10 +9,14 @@
  * discovery when Klippy is not ready (STARTUP/ERROR states).
  */
 
+#include "ui_update_queue.h"
+
 #include "../lvgl_test_fixture.h"
 #include "ams_types.h"
+#include "app_globals.h"
 #include "moonraker_client_mock.h"
 #include "printer_discovery.h"
+#include "printer_state.h"
 
 #include <algorithm>
 #include <atomic>
@@ -130,6 +134,28 @@ TEST_CASE("Discovery succeeds when Klippy in SHUTDOWN state", "[discovery][klipp
 
     REQUIRE(completed);
     REQUIRE_FALSE(errored);
+}
+
+TEST_CASE("Discovery onto a shut-down Klippy seeds the reason with the state",
+          "[discovery][klippy_gate]") {
+    LVGLTestFixture fixture;
+    get_printer_state().init_subjects(false);
+    get_printer_state().network_state().reset_klippy_state_freshness();
+
+    TestDiscoveryClient client;
+    client.set_klippy_state(MoonrakerClientMock::KlippyState::SHUTDOWN);
+
+    bool completed = false;
+    client.discover_printer_real([&completed]() { completed = true; }, [](const std::string&) {});
+    REQUIRE(completed);
+    helix::ui::UpdateQueue::instance().drain();
+
+    REQUIRE(static_cast<helix::KlippyState>(lv_subject_get_int(
+                get_printer_state().network_state().get_klippy_state_subject())) ==
+            helix::KlippyState::SHUTDOWN);
+    // The mock's printer.info reason for a shutdown.
+    REQUIRE(get_printer_state().network_state().get_klippy_fault_message() ==
+            "Printer has been shut down");
 }
 
 TEST_CASE("Discovery does not call printer.objects.list when Klippy not ready",
