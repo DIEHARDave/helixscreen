@@ -8,6 +8,7 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -110,6 +111,9 @@ public class HelixActivity extends SDLActivity {
      * only "wake" signal available when the user never touches our surface.
      */
     private static volatile int sResumeSeq = 0;
+
+    /** Keeps printer traffic on the connected Wi-Fi; see {@link WifiBinder}. */
+    private WifiBinder mWifiBinder;
 
     private final Handler mHideHandler = new Handler(Looper.getMainLooper());
     private final Runnable mHideRunnable = new Runnable() {
@@ -380,6 +384,22 @@ public class HelixActivity extends SDLActivity {
         if (hasFocus) {
             applySystemUi();
         }
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        mWifiBinder = new WifiBinder(this);
+        mWifiBinder.start();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (mWifiBinder != null) {
+            mWifiBinder.stop();
+            mWifiBinder = null;
+        }
+        super.onDestroy();
     }
 
     @Override
