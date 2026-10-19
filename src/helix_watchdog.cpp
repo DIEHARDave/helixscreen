@@ -270,9 +270,9 @@ static volatile pid_t g_splash_pid = 0;
  * skip the external splash and let the main app show its internal LVGL splash.
  */
 static bool would_use_drm() {
-    const char* env = std::getenv("HELIX_DISPLAY_BACKEND");
-    if (env != nullptr) {
-        return strcmp(env, "drm") == 0;
+    const auto forced = helix::parse_forced_display_backend(std::getenv("HELIX_DISPLAY_BACKEND"));
+    if (forced != helix::ForcedDisplayBackend::None) {
+        return helix::forced_backend_uses_drm(forced);
     }
     // Auto mode: DRM is tried first in create_auto(), check if it's available
 #ifdef HELIX_DISPLAY_DRM

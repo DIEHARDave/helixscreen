@@ -395,6 +395,15 @@ TEST_CASE("HELIX_DISPLAY_BACKEND names a display path", "[display][fallback]") {
     CHECK(helix::parse_forced_display_backend("drm ") == helix::ForcedDisplayBackend::Unknown);
 }
 
+TEST_CASE("A forced EGL rung owns the panel through DRM", "[display][fallback]") {
+    // The watchdog skips the fbdev splash for both DRM presentation paths.
+    CHECK(helix::forced_backend_uses_drm(helix::ForcedDisplayBackend::Drm));
+    CHECK(helix::forced_backend_uses_drm(helix::ForcedDisplayBackend::DrmEgl));
+    CHECK_FALSE(helix::forced_backend_uses_drm(helix::ForcedDisplayBackend::Fbdev));
+    CHECK_FALSE(helix::forced_backend_uses_drm(helix::ForcedDisplayBackend::Sdl));
+    CHECK_FALSE(helix::forced_backend_uses_drm(helix::ForcedDisplayBackend::Unknown));
+}
+
 TEST_CASE("Backend fallback: all backends exhausted returns failure",
           "[display][fallback][crash_hardening]") {
     // When both DRM and fbdev fail, init() should return false

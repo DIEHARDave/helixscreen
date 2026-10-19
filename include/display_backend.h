@@ -64,6 +64,11 @@ inline ForcedDisplayBackend parse_forced_display_backend(const char* value) {
     return ForcedDisplayBackend::Unknown;
 }
 
+/// Whether a forced backend owns the panel through DRM: dumb buffers or EGL.
+inline bool forced_backend_uses_drm(ForcedDisplayBackend forced) {
+    return forced == ForcedDisplayBackend::Drm || forced == ForcedDisplayBackend::DrmEgl;
+}
+
 } // namespace helix
 
 /**
