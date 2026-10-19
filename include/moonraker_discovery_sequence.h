@@ -253,6 +253,15 @@ class MoonrakerDiscoverySequence {
     void discover_sensors();
 
     /**
+     * @brief Read Moonraker's version from update_manager (fire-and-forget)
+     *
+     * For a server.info that reported a placeholder version: machine.update.status
+     * still knows the checkout's tag or commit. Publishes to hardware_ (for the
+     * discovery snapshot) and PrinterState (for a reply landing after it).
+     */
+    void fetch_moonraker_version_fallback(uint64_t seq);
+
+    /**
      * @brief Record the hardware fields carried by a machine.system_info reply
      *
      * OS distribution name, CPU architecture, and the model string a vendor

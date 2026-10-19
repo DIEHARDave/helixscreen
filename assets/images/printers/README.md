@@ -5,14 +5,15 @@ first-run configuration wizard (`src/ui/ui_wizard_printer_identify.cpp`), the Pr
 Image picker overlay (`src/ui/ui_overlay_printer_image.cpp`), and the home panel's
 printer widget (`src/ui/panel_widgets/printer_image_widget.cpp`).
 
-82 PNGs, ~27 MB. PNG is the only format here; nothing loads a `.jpg` or `.webp` from
+84 PNGs, ~27 MB. PNG is the only format here; nothing loads a `.jpg` or `.webp` from
 this directory.
 
 ## Which printer gets which image
 
 `assets/config/printer_database.json` owns that mapping — each entry's `image` field
 names a file in this directory, and an optional `image_variants` list names alternates
-chosen by detected hardware (a K2 with a CFS on top shows `creality-k2-cfs.png`;
+chosen by detected hardware (a K2 with a CFS on top shows `creality-k2-cfs.png`, a K2 Pro
+`creality-k2-pro-cfs.png`;
 `docs/devel/PRINTER_MANAGER.md` § Image Lookup). This README does not list them, because a
 hand-maintained list drifts from the database silently.
 
