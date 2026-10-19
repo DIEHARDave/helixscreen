@@ -291,14 +291,15 @@ check_switch_printer_clears_caches() {
         return 1
     fi
 
-    teardown_line=$(printf '%s\n' "$body" | grep -n 'm_restart.teardown()' | head -1 | cut -d: -f1)
+    # tear_down() is the flow's guarded wrapper around the m_restart.teardown hook.
+    teardown_line=$(printf '%s\n' "$body" | grep -nE '^[[:space:]]*tear_down\(\);' | head -1 | cut -d: -f1)
     if [ -z "$teardown_line" ]; then
-        echo "switch_printer() does not call m_restart.teardown()"
+        echo "switch_printer() does not call tear_down()"
         return 1
     fi
 
     if [ "$clear_line" -ge "$teardown_line" ]; then
-        echo "PrinterCacheRegistry::invalidate_all() must precede m_restart.teardown()"
+        echo "PrinterCacheRegistry::invalidate_all() must precede tear_down()"
         return 1
     fi
     return 0
@@ -325,7 +326,7 @@ check_switch_printer_clears_caches() {
     # values on the way down, so position matters as much as presence.
     local mutated="${BATS_TEST_TMPDIR}/application_late_clear.cpp"
     sed -e 's@^    PrinterCacheRegistry::instance().invalidate_all();@@' \
-        -e 's@^    m_restart.teardown();@    m_restart.teardown();\n    PrinterCacheRegistry::instance().invalidate_all();@' \
+        -e 's@^    tear_down();@    tear_down();\n    PrinterCacheRegistry::instance().invalidate_all();@' \
         src/application/printer_switch_flow.cpp > "$mutated"
 
     run check_switch_printer_clears_caches "$mutated"
@@ -347,11 +348,11 @@ check_switch_printer_clears_caches() {
 
 @test "the switch_printer cache-invalidation gate fails when teardown is missing" {
     local mutated="${BATS_TEST_TMPDIR}/application_no_teardown.cpp"
-    grep -v '^    m_restart.teardown();' src/application/printer_switch_flow.cpp > "$mutated"
+    grep -v '^    tear_down();' src/application/printer_switch_flow.cpp > "$mutated"
 
     run check_switch_printer_clears_caches "$mutated"
     [ "$status" -eq 1 ]
-    [[ "$output" == *"m_restart.teardown"* ]]
+    [[ "$output" == *"does not call tear_down()"* ]]
 }
 
 # --- No RTTI code shapes (the firmware builds -fno-rtti) ---
