@@ -162,6 +162,7 @@ translations:
   A spool may be tangled or the drive gear is jammed: Puede que una bobina esté enredada o que el engranaje de arrastre esté atascado
   ? A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
   : 'Un sistema que alimenta varios filamentos al cabezal, mostrado con su número de ranuras. Gestiona las ranuras en la pantalla del sistema de filamento.'
+  A toolhead offset calibration is in progress, possibly from another screen. End it now?: 'Hay una calibración de offsets de cabezales en curso, quizá desde otra pantalla. ¿Terminarla ahora?'
   A · 1,-1: "A · 1,-1"
   ABS: ABS
   ACCELEROMETERS: ACELERÓMETROS
@@ -1173,6 +1174,7 @@ translations:
   Encoder Error: 'Error del encoder'
   End K: K final
   End Test: Terminar prueba
+  End calibration: 'Terminar calibración'
   End the test print?: ¿Terminar la impresión de prueba?
   Ended: Terminado
   Endless Spool: 'Bobina infinita'
@@ -1976,6 +1978,7 @@ translations:
   Layout: Distribución
   Layout changes are off in safe mode. Restart to edit.: 'Los cambios de diseño están desactivados en modo seguro. Reinicie para editar.'
   Learn More: Más información
+  Leave it: 'Dejarla'
   LedSelect: Seleccionar LED
   Left: 'Izquierda'
   Length of filament to purge: 'Longitud de filamento a purgar'
@@ -3944,6 +3947,7 @@ translations:
   Tool swap: Cambio de herramienta
   Toolchange purge: 'Purga de cambio de herramienta'
   Toolhead: 'Cabezal'
+  Toolhead Calibration Running: 'Calibración de cabezales en curso'
   Toolhead LED: 'LED del cabezal'
   Toolhead Offset Calibration: Calibración de offsets de cabezales
   Toolhead Sensor: Sensor del Cabezal

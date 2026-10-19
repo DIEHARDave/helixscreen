@@ -11,6 +11,7 @@
 #include "ui_snapmaker_nozzle_offset_overlay.h"
 
 #include "ui_callback_helpers.h"
+#include "ui_modal.h"
 #include "ui_nav.h"
 
 #include "app_globals.h"
@@ -158,10 +159,43 @@ void SnapmakerNozzleOffsetOverlay::on_activate() {
 void SnapmakerNozzleOffsetOverlay::on_deactivating(DeactivateReason reason) {
     // A blanked screen is not the user leaving: the run outlives the
     // screensaver. Closing the overlay ends it, and the exit turns the heaters
-    // off. Shutdown has no client left to send through.
+    // off. Shutdown sends the exit without waiting: nothing is left to report into.
     if (reason == DeactivateReason::NavigateAway) {
         runner_.cancel();
+    } else if (reason == DeactivateReason::Shutdown) {
+        nozzle_offset::leave_on_shutdown(runner_, get_moonraker_client());
     }
+}
+
+void SnapmakerNozzleOffsetOverlay::prompt_end_held_calibration() {
+    if (held_prompt_open_) {
+        return;
+    }
+    held_prompt_open_ = true;
+    ConfirmOptions options;
+    options.cancel_text = lv_tr("Leave it");
+    options.on_cancel = [this]() {
+        held_prompt_open_ = false;
+        spdlog::info("[NozzleOffsetCal] Leaving the held calibration state to its owner");
+    };
+    options.on_dismiss = [this]() { held_prompt_open_ = false; };
+    options.owner_token = object_lifetime_.token();
+    modal_confirm(
+        lv_tr("Toolhead Calibration Running"),
+        lv_tr("A toolhead offset calibration is in progress, possibly from another "
+              "screen. End it now?"),
+        ModalSeverity::Warning, lv_tr("End calibration"),
+        [this]() {
+            held_prompt_open_ = false;
+            // A run started here while the prompt was up owns the state now.
+            if (nozzle_offset::run_live()) {
+                return;
+            }
+            if (IMoonrakerClient* client = get_moonraker_client()) {
+                nozzle_offset::send_exit(*client);
+            }
+        },
+        options);
 }
 
 // ============================================================================
@@ -185,17 +219,9 @@ void SnapmakerNozzleOffsetOverlay::send(const std::string& gcode, uint32_t timeo
 }
 
 void SnapmakerNozzleOffsetOverlay::abort_probe() {
-    IMoonrakerClient* client = get_moonraker_client();
-    if (!client) {
-        return;
+    if (IMoonrakerClient* client = get_moonraker_client()) {
+        nozzle_offset::send_probe_abort(*client);
     }
-    client->send_jsonrpc(
-        nozzle_offset::kProbeAbortMethod, nlohmann::json::object(),
-        [](const nlohmann::json&) { spdlog::info("[NozzleOffsetCal] Probe pass aborted"); },
-        [](const MoonrakerError& err) {
-            spdlog::warn("[NozzleOffsetCal] Probe abort failed: {}", err.message);
-        },
-        0, true);
 }
 
 void SnapmakerNozzleOffsetOverlay::read_offsets() {

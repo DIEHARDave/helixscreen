@@ -3,6 +3,7 @@
 
 #include "snapmaker_nozzle_offset.h"
 
+#include "connection_state.h"
 #include "i_moonraker_client.h"
 #include "moonraker_error.h"
 #include "printer_discovery.h"
@@ -24,6 +25,9 @@ constexpr std::array<const char*, 5> kPerHeadHooks = {"HEAT", "AUTO_CLEAN", "MAN
 
 /// Runners in this process that are mid-run.
 std::atomic<int> s_live_runs{0};
+
+/// A run here ended without its EXIT confirmed.
+std::atomic<bool> s_exit_pending{false};
 
 bool phase_is_live(Runner::Phase phase) {
     return phase == Runner::Phase::Running || phase == Runner::Phase::AwaitingUser ||
@@ -171,41 +175,99 @@ bool run_live() {
     return s_live_runs.load() > 0;
 }
 
-bool stale_calibration_state(const nlohmann::json& response, bool live) {
+HeldState held_state_action(const nlohmann::json& response, bool live, bool pending) {
     const nlohmann::json* status = status_map(response);
     if (!status || live) {
-        return false;
+        return HeldState::None;
     }
     const auto held = screws_tilt::main_state_from_status(*status);
-    return held && *held == kMainStateXyzOffsetCalibrate;
+    if (!held || *held != kMainStateXyzOffsetCalibrate) {
+        return HeldState::None;
+    }
+    return pending ? HeldState::Exit : HeldState::AskUser;
 }
 
-void reconcile_on_connect(helix::IMoonrakerClient& client) {
+void mark_exit_pending() {
+    s_exit_pending.store(true);
+}
+
+bool exit_pending() {
+    return s_exit_pending.load();
+}
+
+void clear_exit_pending() {
+    s_exit_pending.store(false);
+}
+
+void send_exit(helix::IMoonrakerClient& client) {
+    client.send_jsonrpc(
+        "printer.gcode.script", {{"script", kExitGcode}},
+        [](const nlohmann::json&) {
+            clear_exit_pending();
+            spdlog::info("[NozzleOffsetCal] Calibration state cleared");
+        },
+        [](const MoonrakerError& err) {
+            mark_exit_pending();
+            spdlog::warn("[NozzleOffsetCal] {} failed: {}", kExitGcode, err.message);
+        },
+        kStepTimeoutMs, true);
+}
+
+void send_probe_abort(helix::IMoonrakerClient& client) {
+    client.send_jsonrpc(
+        kProbeAbortMethod, nlohmann::json::object(),
+        [](const nlohmann::json&) { spdlog::info("[NozzleOffsetCal] Probe pass aborted"); },
+        [](const MoonrakerError& err) {
+            spdlog::warn("[NozzleOffsetCal] Probe abort failed: {}", err.message);
+        },
+        0, true);
+}
+
+void reconcile_on_connect(helix::IMoonrakerClient& client, std::function<void()> ask_user) {
     nlohmann::json params = {
         {"objects", {{"machine_state_manager", nlohmann::json::array({"main_state"})}}}};
     client.send_jsonrpc(
         "printer.objects.query", params,
-        [&client](const nlohmann::json& response) {
+        [&client, ask_user = std::move(ask_user)](const nlohmann::json& response) {
             // Decided at answer time: a run started since the query went out owns the state.
-            if (!stale_calibration_state(response, run_live())) {
+            switch (held_state_action(response, run_live(), exit_pending())) {
+            case HeldState::None:
+                return;
+            case HeldState::Exit:
+                spdlog::info("[NozzleOffsetCal] Ending the calibration state a run here left");
+                send_exit(client);
+                return;
+            case HeldState::AskUser:
+                spdlog::info("[NozzleOffsetCal] A calibration state no run here owns is held");
+                if (ask_user) {
+                    ask_user();
+                }
                 return;
             }
-            spdlog::info("[NozzleOffsetCal] Leaving a toolhead offset calibration state no run "
-                         "here owns");
-            client.send_jsonrpc(
-                "printer.gcode.script", {{"script", kExitGcode}},
-                [](const nlohmann::json&) {
-                    spdlog::info("[NozzleOffsetCal] Calibration state cleared");
-                },
-                [](const MoonrakerError& err) {
-                    spdlog::warn("[NozzleOffsetCal] {} failed: {}", kExitGcode, err.message);
-                },
-                kStepTimeoutMs, true);
         },
         [](const MoonrakerError& err) {
             spdlog::debug("[NozzleOffsetCal] Connect-time state read failed: {}", err.message);
         },
         0, true);
+}
+
+void leave_on_shutdown(const Runner& runner, helix::IMoonrakerClient* client) {
+    // Finishing already has its EXIT in flight.
+    const auto phase = runner.phase();
+    if (phase != Runner::Phase::Running && phase != Runner::Phase::AwaitingUser) {
+        return;
+    }
+    if (!client || client->get_connection_state() != helix::ConnectionState::CONNECTED) {
+        spdlog::warn("[NozzleOffsetCal] Shutting down mid-run with no connection; the "
+                     "calibration state stays held");
+        mark_exit_pending();
+        return;
+    }
+    spdlog::info("[NozzleOffsetCal] Shutting down mid-run; exiting the calibration state");
+    if (runner.probing()) {
+        send_probe_abort(*client);
+    }
+    send_exit(*client);
 }
 
 // ============================================================================
@@ -241,6 +303,8 @@ void Runner::start() {
     ++run_;
     index_ = 0;
     error_.clear();
+    // This run owns the state from here, whatever an earlier one left.
+    clear_exit_pending();
     spdlog::info("[NozzleOffsetCal] Starting a {}-step run", steps_.size());
     run_current();
 }
@@ -259,13 +323,16 @@ void Runner::cancel() {
     ++run_;
     // A probe pass holds Klipper's command queue until it ends, so EXIT would
     // wait behind it without the abort.
-    const bool probing = phase_ == Phase::Running && index_ < steps_.size() &&
-                         steps_[index_].kind == StepKind::Probe;
-    if (probing && hooks_.abort_probe) {
+    if (probing() && hooks_.abort_probe) {
         hooks_.abort_probe();
     }
     spdlog::info("[NozzleOffsetCal] Cancelled at step {}", index_);
     send_exit(Phase::Cancelled);
+}
+
+bool Runner::probing() const {
+    return phase_ == Phase::Running && index_ < steps_.size() &&
+           steps_[index_].kind == StepKind::Probe;
 }
 
 void Runner::reset() {
@@ -321,7 +388,10 @@ void Runner::send_exit(Phase then) {
     set_phase(then);
     const uint64_t run = run_;
     hooks_.send(kExitGcode, kStepTimeoutMs, [this, run](bool ok, const std::string& error) {
-        if (!ok) {
+        if (ok) {
+            clear_exit_pending();
+        } else {
+            mark_exit_pending();
             spdlog::warn("[NozzleOffsetCal] {} failed: {}", kExitGcode, error);
         }
         if (run == run_ && phase_ == Phase::Finishing) {

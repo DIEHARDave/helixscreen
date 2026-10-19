@@ -156,6 +156,7 @@ translations:
   A spool may be tangled or the drive gear is jammed: A spool may be tangled or the drive gear is jammed
   ? A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
   : A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
+  A toolhead offset calibration is in progress, possibly from another screen. End it now?: A toolhead offset calibration is in progress, possibly from another screen. End it now?
   A · 1,-1: A · 1,-1
   ABS: ABS
   ACCELEROMETERS: ACCELEROMETERS
@@ -1134,6 +1135,7 @@ translations:
   Encoder Error: Encoder Error
   End K: End K
   End Test: End Test
+  End calibration: End calibration
   End the test print?: End the test print?
   Ended: Ended
   Endless Spool: Endless Spool
@@ -1921,6 +1923,7 @@ translations:
   Layout: Layout
   Layout changes are off in safe mode. Restart to edit.: Layout changes are off in safe mode. Restart to edit.
   Learn More: Learn More
+  Leave it: Leave it
   LedSelect: LedSelect
   Left: Left
   Length of filament to purge: Length of filament to purge
@@ -3844,6 +3847,7 @@ translations:
   Tool swap: Tool swap
   Toolchange purge: Toolchange purge
   Toolhead: Toolhead
+  Toolhead Calibration Running: Toolhead Calibration Running
   Toolhead LED: Toolhead LED
   Toolhead Offset Calibration: Toolhead Offset Calibration
   Toolhead Sensor: Toolhead Sensor

@@ -157,6 +157,7 @@ translations:
   A spool may be tangled or the drive gear is jammed: 料盘可能缠绕，或驱动齿轮卡住
   ? A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
   : '向工具头供应多种耗材的系统,显示槽位数量。在耗材系统界面管理槽位。'
+  A toolhead offset calibration is in progress, possibly from another screen. End it now?: '工具头偏移校准正在进行，可能来自另一个屏幕。现在结束吗?'
   A · 1,-1: "A · 1,-1"
   ABS: ABS
   ACCELEROMETERS: 加速度计
@@ -1098,6 +1099,7 @@ translations:
   Encoder Error: '编码器错误'
   End K: 结束K值
   End Test: 结束测试
+  End calibration: '结束校准'
   End the test print?: 结束测试打印?
   Ended: 已结束
   Endless Spool: '无限料盘'
@@ -1854,6 +1856,7 @@ translations:
   Layout: 布局
   Layout changes are off in safe mode. Restart to edit.: '安全模式下无法更改布局。请重启后再编辑。'
   Learn More: 了解更多
+  Leave it: '保持不变'
   LedSelect: 选择 LED
   Left: '左'
   Length of filament to purge: '要排出的耗材长度'
@@ -3697,6 +3700,7 @@ translations:
   Tool swap: 工具切换
   Toolchange purge: '换刀排料'
   Toolhead: '工具头'
+  Toolhead Calibration Running: '工具头校准进行中'
   Toolhead LED: '工具头 LED'
   Toolhead Offset Calibration: 工具头偏移校准
   Toolhead Sensor: 工具头传感器

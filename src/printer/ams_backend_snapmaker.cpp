@@ -4,6 +4,7 @@
 #include "ams_backend_snapmaker.h"
 
 #include "ui_insert_notice.h"
+#include "ui_snapmaker_nozzle_offset_overlay.h"
 #include "ui_toast_manager.h"
 
 #include "ams_error.h"
@@ -292,16 +293,20 @@ void AmsBackendSnapmaker::set_discovery(const helix::PrinterDiscovery& discovery
 }
 
 void AmsBackendSnapmaker::on_started() {
-    // A session that died mid-calibration leaves the firmware in its offset
-    // calibration state with heaters on. The reconcile leaves a state a run in
-    // this process still owns, which is the reconnect case.
+    // A run whose driver died leaves the firmware in its offset calibration
+    // state with heaters on. One this process owned is ended; one it did not
+    // may be another screen's, so the user decides.
     bool nozzle_offset = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         nozzle_offset = nozzle_offset_supported_;
     }
     if (nozzle_offset && client_) {
-        snapmaker::nozzle_offset::reconcile_on_connect(*client_);
+        snapmaker::nozzle_offset::reconcile_on_connect(*client_, [] {
+            helix::ui::queue_update("AmsBackendSnapmaker::held_nozzle_offset_cal", [] {
+                helix::ui::get_snapmaker_nozzle_offset_overlay().prompt_end_held_calibration();
+            });
+        });
     }
 
     // Load persisted per-slot overrides (brand, spool name, spoolman IDs, etc.)

@@ -399,25 +399,73 @@ TEST_CASE("each phase maps to one screen", "[snapmaker][nozzle_offset]") {
     REQUIRE(nozzle_offset_screen(P::Failed, Prompt::None) == Screen::Failed);
 }
 
-TEST_CASE("a held calibration state is stale only when no run here owns it",
+TEST_CASE("a held calibration state is ended only when a run here owned it",
           "[snapmaker][nozzle_offset][reconcile]") {
     const nlohmann::json held = {{"machine_state_manager", {{"main_state", 2}}}};
-    REQUIRE(stale_calibration_state(held, false));
-    REQUIRE_FALSE(stale_calibration_state(held, true));
-    REQUIRE(stale_calibration_state({{"result", {{"status", held}}}}, false));
+    REQUIRE(held_state_action(held, false, true) == HeldState::Exit);
+    REQUIRE(held_state_action(held, false, false) == HeldState::AskUser);
+    REQUIRE(held_state_action(held, true, true) == HeldState::None);
+    REQUIRE(held_state_action(held, true, false) == HeldState::None);
+    REQUIRE(held_state_action({{"result", {{"status", held}}}}, false, false) ==
+            HeldState::AskUser);
 
     SECTION("any other main state is not ours to leave") {
-        REQUIRE_FALSE(
-            stale_calibration_state({{"machine_state_manager", {{"main_state", 0}}}}, false));
+        REQUIRE(held_state_action({{"machine_state_manager", {{"main_state", 0}}}}, false, true) ==
+                HeldState::None);
         // SCREWS_TILT_ADJUST belongs to the screws-tilt reconcile.
-        REQUIRE_FALSE(
-            stale_calibration_state({{"machine_state_manager", {{"main_state", 8}}}}, false));
+        REQUIRE(held_state_action({{"machine_state_manager", {{"main_state", 8}}}}, false, true) ==
+                HeldState::None);
     }
     SECTION("no state reported reads as nothing to clear") {
-        REQUIRE_FALSE(stale_calibration_state(nlohmann::json::object(), false));
-        REQUIRE_FALSE(
-            stale_calibration_state({{"machine_state_manager", {{"main_state", "2"}}}}, false));
+        REQUIRE(held_state_action(nlohmann::json::object(), false, true) == HeldState::None);
+        REQUIRE(held_state_action({{"machine_state_manager", {{"main_state", "2"}}}}, false,
+                                  true) == HeldState::None);
     }
+}
+
+TEST_CASE("an EXIT that never lands leaves the exit pending",
+          "[snapmaker][nozzle_offset][reconcile]") {
+    clear_exit_pending();
+    Harness h;
+    h.runner.start();
+    h.advance_to("EXTRUDER_OFFSET_ACTION_HEAT TOOL_ID=T1");
+
+    SECTION("a step lost to a disconnect, then its EXIT too") {
+        h.finish(false, "Websocket disconnected");
+        REQUIRE(h.sent.back().gcode == kExitGcode);
+        REQUIRE_FALSE(exit_pending());
+        h.finish(false, "Not connected to the printer");
+        REQUIRE(exit_pending());
+    }
+    SECTION("a cancel whose EXIT fails") {
+        h.runner.cancel();
+        h.finish(false, "Not connected to the printer");
+        REQUIRE(exit_pending());
+        SECTION("the next run owns the state and forgets it") {
+            h.runner.start();
+            REQUIRE_FALSE(exit_pending());
+        }
+    }
+    SECTION("an EXIT that lands clears it") {
+        mark_exit_pending();
+        h.runner.cancel();
+        h.finish();
+        REQUIRE_FALSE(exit_pending());
+    }
+    clear_exit_pending();
+}
+
+TEST_CASE("Runner::probing names only a probe pass in flight", "[snapmaker][nozzle_offset]") {
+    Harness h;
+    REQUIRE_FALSE(h.runner.probing());
+    h.runner.start();
+    h.advance_to("EXTRUDER_OFFSET_ACTION_DETECT_PLATE PRESENCE=0");
+    REQUIRE_FALSE(h.runner.probing());
+    h.advance_to("EXTRUDER_OFFSET_ACTION_PROBE_CALIBRATE TOOL_ID=T0");
+    REQUIRE(h.runner.probing());
+    h.runner.cancel();
+    REQUIRE_FALSE(h.runner.probing());
+    clear_exit_pending();
 }
 
 TEST_CASE("a run is live from start until it ends", "[snapmaker][nozzle_offset][reconcile]") {

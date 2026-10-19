@@ -205,6 +205,7 @@ translations:
   A spool may be tangled or the drive gear is jammed: Катушка может быть запутана или заклинило приводную шестерню
   ? A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
   : 'Система, подающая несколько филаментов на печатающую головку, отображается с числом слотов. Слотами можно управлять на экране системы филамента.'
+  A toolhead offset calibration is in progress, possibly from another screen. End it now?: 'Идёт калибровка смещений головок, возможно, с другого экрана. Завершить её сейчас?'
   A · 1,-1: "A · 1,-1"
   ABS: ABS
   ACCELEROMETERS: АКСЕЛЕРОМЕТРЫ
@@ -1216,6 +1217,7 @@ translations:
   Encoder Error: 'Ошибка энкодера'
   End K: Конечный K
   End Test: Завершить тест
+  End calibration: 'Завершить калибровку'
   End the test print?: Завершить тестовую печать?
   Ended: Завершено
   Endless Spool: 'Бесконечная катушка'
@@ -2018,6 +2020,7 @@ translations:
   Layout: Раскладка
   Layout changes are off in safe mode. Restart to edit.: 'Изменение раскладки отключено в безопасном режиме. Перезапустите, чтобы редактировать.'
   Learn More: Подробнее
+  Leave it: 'Оставить'
   LedSelect: Выбрать LED
   Left: 'Слева'
   Length of filament to purge: 'Длина продуваемого филамента'
@@ -3984,6 +3987,7 @@ translations:
   Tool swap: Смена инструмента
   Toolchange purge: 'Продувка при смене инструмента'
   Toolhead: 'Печатающая головка'
+  Toolhead Calibration Running: 'Идёт калибровка головок'
   Toolhead LED: 'LED печатающей головки'
   Toolhead Offset Calibration: Калибровка смещений головок
   Toolhead Sensor: Датчик печатающей головки
