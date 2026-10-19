@@ -408,3 +408,20 @@ TEST_CASE("script_output_lines strips install.sh color codes and blank lines",
     CHECK(lines[1] == "[ERROR] Could not auto-detect Moonraker installation.");
     CHECK(lines[2] == "trailing without newline");
 }
+
+TEST_CASE("decide_plugin_prompt keeps the prompt off a print and what follows it",
+          "[plugin_installer]") {
+    using helix::decide_plugin_prompt;
+    using Step = helix::PluginPromptStep;
+
+    // absent, job_holds, waited_for_job, modal_up, print_status_open
+    CHECK(decide_plugin_prompt(false, false, false, false, false) == Step::Stop);
+    CHECK(decide_plugin_prompt(false, true, true, true, true) == Step::Stop);
+    CHECK(decide_plugin_prompt(true, true, false, false, false) == Step::WaitForJob);
+    CHECK(decide_plugin_prompt(true, true, true, true, true) == Step::WaitForJob);
+    // The first look after a job lets go waits for its completion flow.
+    CHECK(decide_plugin_prompt(true, false, true, false, false) == Step::WaitForScreen);
+    CHECK(decide_plugin_prompt(true, false, false, true, false) == Step::WaitForScreen);
+    CHECK(decide_plugin_prompt(true, false, false, false, true) == Step::WaitForScreen);
+    CHECK(decide_plugin_prompt(true, false, false, false, false) == Step::Offer);
+}

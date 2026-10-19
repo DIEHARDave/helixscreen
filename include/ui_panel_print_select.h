@@ -1027,10 +1027,14 @@ class PrintSelectPanel : public PanelBase {
     void show_plugin_install_modal();
 
     /// The boot-time prompt: opens once a session when discovery finds the
-    /// plugin absent. While a job holds the machine it is deferred, and the
-    /// lifecycle observer offers it again once the job lets go.
+    /// plugin absent, following helix::decide_plugin_prompt(). A wait for the
+    /// job is resumed by the lifecycle observer, a wait for the screen by
+    /// plugin_prompt_timer_.
     void maybe_prompt_plugin_install();
-    bool plugin_prompt_deferred_ = false;
+    helix::PluginPromptStep plugin_prompt_wait_ = helix::PluginPromptStep::Stop;
+    helix::ui::LvglTimerGuard plugin_prompt_timer_;
+    /// How often a prompt waiting for the screen looks again.
+    static constexpr uint32_t kPluginPromptRecheckMs = 1000;
 
     //
     // === Internal Methods ===

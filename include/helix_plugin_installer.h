@@ -235,6 +235,45 @@ class HelixPluginInstaller {
 };
 
 /**
+ * @brief What the boot-time install prompt does when it is checked
+ */
+enum class PluginPromptStep {
+    Stop,          ///< the plugin is not known absent: nothing to offer
+    WaitForJob,    ///< a job holds the machine; ask again when it lets go
+    WaitForScreen, ///< a modal or the print status overlay is up; ask again shortly
+    Offer,         ///< open it now (preferences permitting)
+};
+
+/**
+ * @brief Decide the prompt's next step
+ *
+ * The prompt never competes with a print: not while a job holds the machine,
+ * and not over what follows one. A job that has just let go hands the screen to
+ * its completion flow, which may not have put its modal up yet, so the first
+ * check after a wait for the job always waits for the screen once more.
+ *
+ * @param plugin_absent discovery found the plugin absent (helix_plugin_installed == 0)
+ * @param job_holds job_holds_machine() of the current print lifecycle
+ * @param waited_for_job the previous step was WaitForJob
+ * @param modal_up a modal is on screen
+ * @param print_status_open the print status overlay is in the navigation stack
+ */
+constexpr PluginPromptStep decide_plugin_prompt(bool plugin_absent, bool job_holds,
+                                                bool waited_for_job, bool modal_up,
+                                                bool print_status_open) {
+    if (!plugin_absent) {
+        return PluginPromptStep::Stop;
+    }
+    if (job_holds) {
+        return PluginPromptStep::WaitForJob;
+    }
+    if (waited_for_job || modal_up || print_status_open) {
+        return PluginPromptStep::WaitForScreen;
+    }
+    return PluginPromptStep::Offer;
+}
+
+/**
  * @brief Split install.sh output into log lines: color escapes removed,
  *        blank lines dropped.
  */

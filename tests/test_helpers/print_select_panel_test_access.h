@@ -24,6 +24,17 @@ struct PrintSelectPanelTestAccess {
         return panel.plugin_installer_;
     }
 
+    /// Whether the install prompt is waiting for the screen, with its recheck timer armed.
+    static bool plugin_prompt_waiting_for_screen(const PrintSelectPanel& panel) {
+        return panel.plugin_prompt_wait_ == helix::PluginPromptStep::WaitForScreen &&
+               static_cast<bool>(panel.plugin_prompt_timer_);
+    }
+
+    /// What the recheck timer runs on each tick.
+    static void recheck_plugin_prompt(PrintSelectPanel& panel) {
+        panel.maybe_prompt_plugin_install();
+    }
+
     static bool list_contains(const PrintSelectPanel& panel, const std::string& filename) {
         for (const auto& file : panel.file_list_) {
             if (!file.is_dir && file.filename == filename) {

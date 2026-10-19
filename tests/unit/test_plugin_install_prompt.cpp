@@ -300,6 +300,12 @@ TEST_CASE_METHOD(PromptFixture, "an install prompt deferred by a print opens whe
     drain();
     REQUIRE_FALSE(job_holds_machine(get_printer_state().print_state().get_print_lifecycle()));
 
+    // The print's own completion flow gets the screen first.
+    CHECK(prompt() == nullptr);
+    REQUIRE(PrintSelectPanelTestAccess::plugin_prompt_waiting_for_screen(*panel_));
+
+    PrintSelectPanelTestAccess::recheck_plugin_prompt(*panel_);
+    drain();
     CHECK(prompt() != nullptr);
 }
 
@@ -310,6 +316,8 @@ TEST_CASE_METHOD(PromptFixture, "a prompt shown after a deferral still opens onl
     set_plugin_installed(false);
     test::set_wire_state(get_printer_state(), PrintJobState::COMPLETE);
     drain();
+    PrintSelectPanelTestAccess::recheck_plugin_prompt(*panel_);
+    drain();
     REQUIRE(prompt() != nullptr);
     click("btn_cancel");
     REQUIRE(prompt() == nullptr);
@@ -317,6 +325,8 @@ TEST_CASE_METHOD(PromptFixture, "a prompt shown after a deferral still opens onl
     test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
     drain();
     test::set_wire_state(get_printer_state(), PrintJobState::COMPLETE);
+    drain();
+    PrintSelectPanelTestAccess::recheck_plugin_prompt(*panel_);
     drain();
 
     CHECK(prompt() == nullptr);
@@ -353,4 +363,31 @@ TEST_CASE_METHOD(PromptFixture, "a job that starts while the prompt is open refu
     CHECK(moonraker_restarts() == restarts_before);
     REQUIRE(warnings.size() == 1);
     CHECK(warnings[0].find("while printing") != std::string::npos);
+}
+
+TEST_CASE_METHOD(PromptFixture, "a deferred prompt waits until the completion modal is closed",
+                 "[plugin_installer][print_select]") {
+    test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
+    drain();
+    set_plugin_installed(false);
+    test::set_wire_state(get_printer_state(), PrintJobState::COMPLETE);
+    drain();
+    // Stands in for the print-completion modal the lifecycle change puts up.
+    lv_obj_t* completion = helix::ui::modal_alert("Print Complete", "benchy.gcode");
+    drain();
+    REQUIRE(completion != nullptr);
+
+    PrintSelectPanelTestAccess::recheck_plugin_prompt(*panel_);
+    drain();
+    CHECK(prompt() == nullptr);
+    CHECK(ModalStack::instance().top_dialog() == completion);
+    CHECK(PrintSelectPanelTestAccess::plugin_prompt_waiting_for_screen(*panel_));
+
+    Modal::hide(completion);
+    drain();
+    REQUIRE(ModalStack::instance().empty());
+    PrintSelectPanelTestAccess::recheck_plugin_prompt(*panel_);
+    drain();
+    CHECK(prompt() != nullptr);
+    CHECK_FALSE(PrintSelectPanelTestAccess::plugin_prompt_waiting_for_screen(*panel_));
 }
