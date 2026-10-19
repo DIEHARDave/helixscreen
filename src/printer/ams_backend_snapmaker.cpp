@@ -3468,15 +3468,12 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
     }
 
     bool nozzle_offset = false;
-    bool print_holds_heads = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         nozzle_offset = nozzle_offset_supported_;
-        print_holds_heads =
-            print_state_ && (*print_state_ == "printing" || *print_state_ == "paused");
     }
     if (nozzle_offset) {
-        out.push_back(snapmaker::nozzle_offset::device_action(print_holds_heads));
+        out.push_back(snapmaker::nozzle_offset::device_action());
     }
     return out;
 }
@@ -3546,8 +3543,8 @@ std::string AmsBackendSnapmaker::build_preference_gcode(const std::string& actio
     return snapmaker::write_print_preferences_gcode(changes);
 }
 
-AmsError AmsBackendSnapmaker::execute_device_action(const std::string& action_id,
-                                                    const std::any& value) {
+AmsError AmsBackendSnapmaker::do_execute_device_action(const std::string& action_id,
+                                                       const std::any& value) {
     const std::string gcode = build_preference_gcode(action_id, value);
     if (gcode.empty()) {
         return AmsErrorHelper::not_supported(action_id);

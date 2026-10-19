@@ -4464,24 +4464,6 @@ uint64_t AmsBackendCfs::firmware_tool_mapping_generation() const {
 
 namespace {
 
-// Both calibration flows home the toolhead by design (G28 inside
-// BOX_FIND_CUT_POS, XYZ_ZERO for the chute), so PAUSED blocks them too.
-// Stated through print_blocks_filament_op() with self_homes=true so the rule
-// cannot drift from the one greying every filament-op button.
-AmsError refuse_calibration_if_printing(IMoonrakerAPI* api) {
-    if (!api) {
-        // No connection: lifecycle unknown, do not block (mirrors
-        // AmsSubscriptionBackend::refuse_if_printing's null-api path).
-        return AmsErrorHelper::success();
-    }
-    const auto lifecycle = api->printer_state().print_state().get_print_lifecycle();
-    if (print_blocks_filament_op(lifecycle, /*backend_self_homes=*/true)) {
-        return AmsErrorHelper::print_active(lifecycle == PrintState::Paused,
-                                            /*pause_allows_ops=*/false);
-    }
-    return AmsErrorHelper::success();
-}
-
 // Gcode response lines captured while BOX_FIND_CUT_POS runs. Held by
 // shared_ptr so the WebSocket-thread handler stays valid regardless of the
 // backend's lifetime.
@@ -4527,35 +4509,35 @@ std::vector<helix::printer::DeviceAction> AmsBackendCfs::get_device_actions() co
         DA::toggle("toggle_auto_refill", "Toggle Auto-Refill", "maintenance",
                    std::move(auto_refill), "", "Switch to a matching slot on runout"),
         DA::button("nozzle_clean", "Clean Nozzle", "maintenance", "",
-                   "Wipe nozzle on silicone cleaning strip"),
+                   "Wipe nozzle on silicone cleaning strip")
+            .with_machine_motion(),
         DA::button("comm_test", "Communication Test", "maintenance", "",
                    "Test RS-485 link to CFS units"),
     };
     if (macro_variant_ == CfsMacroVariant::K1) {
-        // Both actions home the toolhead, so a print that owns the machine
-        // (or a pause it would drag the head through) greys them out; the
-        // execute paths refuse again for anything the list snapshot missed.
-        const bool print_blocks = !refuse_calibration_if_printing(api_).success();
-        std::string reason;
-        if (print_blocks) {
-            reason = "Printer is busy with a print";
-        }
+        // Both actions home the toolhead (G28 inside BOX_FIND_CUT_POS, XYZ_ZERO for
+        // the chute), and only one calibration may run at a time.
         DA cutter = DA::button("calibrate_cutter", "Calibrate Cutter", "calibration", "",
-                               "Home and sweep the cutter to re-find its position");
+                               "Home and sweep the cutter to re-find its position")
+                        .with_machine_motion();
         cutter.guided_flow = "cfs_cutter";
         DA chute = DA::button("calibrate_purge_chute", "Calibrate Purge Chute", "calibration", "",
-                              "Guide the toolhead to the chute's extrude position");
+                              "Guide the toolhead to the chute's extrude position")
+                       .with_machine_motion();
         chute.guided_flow = "cfs_purge_chute";
         for (DA a : {std::move(cutter), std::move(chute)}) {
-            a.enabled = !print_blocks;
-            a.disable_reason = reason;
+            if (calibration_in_flight_) {
+                a.enabled = false;
+                a.disable_reason = "Calibration in progress";
+            }
             actions.push_back(std::move(a));
         }
     }
     return actions;
 }
 
-AmsError AmsBackendCfs::execute_device_action(const std::string& action_id, const std::any& value) {
+AmsError AmsBackendCfs::do_execute_device_action(const std::string& action_id,
+                                                 const std::any& value) {
     if (action_id == "refresh_rfid") {
         // Probe every connected CFS unit's RFID tags. Inserting a spool does NOT
         // auto-read its tag: the box reports vender/color/material as sentinels
@@ -4655,7 +4637,7 @@ AmsBackendCfs::calibrate_cutter(std::function<void(bool ok, const std::string& l
     if (macro_variant_ != CfsMacroVariant::K1) {
         return AmsErrorHelper::not_supported("Cutter calibration is K1-stock only");
     }
-    if (auto e = refuse_calibration_if_printing(api_); !e.success()) {
+    if (auto e = refuse_motion_if_printing(); !e.success()) {
         return e;
     }
     if (calibration_in_flight_) {
@@ -4734,7 +4716,7 @@ AmsError AmsBackendCfs::start_chute_calibration(
     if (macro_variant_ != CfsMacroVariant::K1) {
         return AmsErrorHelper::not_supported("Purge chute calibration is K1-stock only");
     }
-    if (auto e = refuse_calibration_if_printing(api_); !e.success()) {
+    if (auto e = refuse_motion_if_printing(); !e.success()) {
         return e;
     }
     if (calibration_in_flight_) {

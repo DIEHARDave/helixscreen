@@ -1897,7 +1897,8 @@ std::vector<helix::printer::DeviceAction> AmsBackendAce::get_device_actions() co
     return actions;
 }
 
-AmsError AmsBackendAce::execute_device_action(const std::string& action_id, const std::any& value) {
+AmsError AmsBackendAce::do_execute_device_action(const std::string& action_id,
+                                                 const std::any& value) {
     if (action_id == "ace_manual_feed") {
         int slot = get_current_slot();
         if (slot < 0)

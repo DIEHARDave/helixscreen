@@ -575,8 +575,7 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
      * @param value Optional value for sliders/toggles
      * @return AmsError indicating success or failure
      */
-    AmsError execute_device_action(const std::string& action_id,
-                                   const std::any& value = {}) override;
+    AmsError do_execute_device_action(const std::string& action_id, const std::any& value) override;
 
   protected:
     /**

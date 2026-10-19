@@ -100,6 +100,11 @@ class AmsSubscriptionBackend : public AmsBackend {
     /// batch. Backends opt in via do_filament_batch(); everyone else inherits
     /// the base not_supported refusal.
     AmsError load_filament_batch(const std::vector<int>& slots) final;
+
+    /// Runs a device action through do_execute_device_action(), first refusing one
+    /// get_device_actions() marks moves_machine while a print holds the printer
+    /// (refuse_motion_if_printing()), so no backend can skip the rule.
+    AmsError execute_device_action(const std::string& action_id, const std::any& value = {}) final;
     AmsError unload_filament_batch(const std::vector<int>& slots) final;
 
     /// This backend's echo guard. A store other writers co-author can hold
@@ -364,6 +369,18 @@ class AmsSubscriptionBackend : public AmsBackend {
     ///        otherwise allow it: for an op that leaves nothing on the carriage,
     ///        which the job cannot resume without.
     AmsError refuse_if_printing(bool paused_blocks = false) const;
+
+    /// Refuse anything that moves the printer while a print holds it, paused or
+    /// not: what a `moves_machine` control greys for. AmsErrorHelper::busy_with_print()
+    /// when refused; success when api_ is null (print state unknown).
+    AmsError refuse_motion_if_printing() const;
+
+    /// Backend implementation of execute_device_action(), reached only after the
+    /// moves_machine gate has passed. Default refuses.
+    virtual AmsError do_execute_device_action(const std::string& action_id, const std::any& value) {
+        (void)value;
+        return AmsErrorHelper::not_supported("Device action " + action_id);
+    }
 
     /// Whether this backend's firmware publishes lane identity of its own,
     /// which it files as a VendorCache reading on every status frame.

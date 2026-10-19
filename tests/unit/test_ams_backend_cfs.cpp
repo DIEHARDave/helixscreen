@@ -571,6 +571,31 @@ TEST_CASE("CFS cutter calibration sends BOX_FIND_CUT_POS through the long-send p
     CHECK(got_result);
 }
 
+TEST_CASE("CFS calibration actions move the machine and lock while one runs", "[ams][cfs][calib]") {
+    CfsCalibHelper backend;
+    for (const char* id : {"calibrate_cutter", "calibrate_purge_chute", "nozzle_clean"}) {
+        INFO(id);
+        const auto a = find_action(backend, id);
+        REQUIRE(a.has_value());
+        CHECK(a->moves_machine);
+        CHECK(a->enabled);
+    }
+
+    backend.hold = {"BOX_FIND_CUT_POS"};
+    REQUIRE(backend.calibrate_cutter(nullptr).success());
+    for (const char* id : {"calibrate_cutter", "calibrate_purge_chute"}) {
+        INFO(id);
+        const auto a = find_action(backend, id);
+        REQUIRE(a.has_value());
+        CHECK_FALSE(a->enabled);
+        CHECK(a->disable_reason == "Calibration in progress");
+    }
+
+    backend.release_held();
+    drain_calib_queue();
+    CHECK(find_action(backend, "calibrate_cutter")->enabled);
+}
+
 TEST_CASE("CFS chute calibration homes, prepares, then reports ready (#1282)",
           "[ams][cfs][calib]") {
     CfsCalibHelper backend;
@@ -745,26 +770,26 @@ TEST_CASE("CFS calibration refuses while a print owns the machine (#1282)", "[am
     drain_calib_queue();
 }
 
-TEST_CASE("CFS calibration actions grey out while a print owns the machine (#1282)",
+TEST_CASE("CFS calibration is refused while a print owns the machine (#1282)",
           "[ams][cfs][calib]") {
     CfsCalibHelper backend;
+    // The UI greys them through moves_machine; the backend refuses whatever gets past.
+    for (const char* id : {"calibrate_cutter", "calibrate_purge_chute"}) {
+        const auto a = find_action(backend, id);
+        REQUIRE(a.has_value());
+        CHECK(a->moves_machine);
+    }
 
-    auto cutter = find_action(backend, "calibrate_cutter");
-    REQUIRE(cutter.has_value());
-    CHECK(cutter->enabled);
-    CHECK(cutter->disable_reason.empty());
-
-    helix::test::set_wire_state(backend.state, helix::PrintJobState::PRINTING);
+    for (auto state : {helix::PrintJobState::PRINTING, helix::PrintJobState::PAUSED}) {
+        helix::test::set_wire_state(backend.state, state);
+        helix::ui::UpdateQueue::instance().drain();
+        const AmsError refused = backend.calibrate_cutter(nullptr);
+        CHECK(refused.user_msg == "Printer is busy with a print");
+        CHECK(backend.start_chute_calibration(nullptr).user_msg == "Printer is busy with a print");
+        CHECK(backend.captured.empty());
+    }
+    helix::test::set_wire_state(backend.state, helix::PrintJobState::STANDBY);
     helix::ui::UpdateQueue::instance().drain();
-    cutter = find_action(backend, "calibrate_cutter");
-    REQUIRE(cutter.has_value());
-    CHECK_FALSE(cutter->enabled);
-    CHECK_FALSE(cutter->disable_reason.empty());
-
-    const auto chute = find_action(backend, "calibrate_purge_chute");
-    REQUIRE(chute.has_value());
-    CHECK_FALSE(chute->enabled);
-    CHECK_FALSE(chute->disable_reason.empty());
 }
 
 TEST_CASE("CFS type enum", "[ams][cfs]") {

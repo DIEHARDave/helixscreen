@@ -88,9 +88,9 @@ inline constexpr const char* kGuidedFlowId = "snapmaker_nozzle_offset";
 /// The device-settings section the calibration button sits in.
 [[nodiscard]] helix::printer::DeviceSection device_section();
 
-/// The button that starts the guided flow. A print in progress or paused owns
-/// the heads, so it greys out then.
-[[nodiscard]] helix::printer::DeviceAction device_action(bool print_holds_heads);
+/// The button that starts the guided flow. It moves the machine, so the UI greys
+/// it while a print, running or paused, owns the heads.
+[[nodiscard]] helix::printer::DeviceAction device_action();
 
 /// The full command plan, in the stock screen's order.
 [[nodiscard]] std::vector<Step> build_sequence();

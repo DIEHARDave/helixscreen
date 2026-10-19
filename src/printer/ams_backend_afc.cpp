@@ -6736,7 +6736,8 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
     return actions;
 }
 
-AmsError AmsBackendAfc::execute_device_action(const std::string& action_id, const std::any& value) {
+AmsError AmsBackendAfc::do_execute_device_action(const std::string& action_id,
+                                                 const std::any& value) {
     spdlog::info("[AMS AFC] Executing device action: {}", action_id);
 
     if (action_id == "calibration_wizard") {

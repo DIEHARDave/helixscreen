@@ -24,7 +24,8 @@ std::vector<DeviceAction> afc_default_actions() {
     return {
         // Setup section (calibration + LED)
         DA::button("calibration_wizard", "Run Calibration Wizard", "setup", "play",
-                   "Interactive calibration for all lanes"),
+                   "Interactive calibration for all lanes")
+            .with_machine_motion(),
         DA::slider("bowden_length", "Bowden Length", "setup", 450.0f, 100, 2000, "mm", "ruler",
                    "Distance from hub to toolhead"),
 
@@ -46,11 +47,15 @@ std::vector<DeviceAction> afc_default_actions() {
 
         // Maintenance section
         DA::button("test_lanes", "Test All Lanes", "maintenance", "play_circle",
-                   "Run test sequence on all lanes"),
+                   "Run test sequence on all lanes")
+            .with_machine_motion(),
         DA::button("change_blade", "Change Blade", "maintenance", "wrench",
-                   "Initiate blade change procedure"),
-        DA::button("park", "Park", "maintenance", "home_import", "Park the AFC system"),
-        DA::button("brush", "Clean Brush", "maintenance", "sync", "Run brush cleaning sequence"),
+                   "Initiate blade change procedure")
+            .with_machine_motion(),
+        DA::button("park", "Park", "maintenance", "home_import", "Park the AFC system")
+            .with_machine_motion(),
+        DA::button("brush", "Clean Brush", "maintenance", "sync", "Run brush cleaning sequence")
+            .with_machine_motion(),
         DA::button("reset_motor", "Reset Motor Timer", "maintenance", "progress_clock",
                    "Reset motor run-time counter"),
 
@@ -98,7 +103,8 @@ void afc_add_toolhead_calibration_action(std::vector<DeviceAction>& actions) {
                    DeviceAction::button("toolhead_calibration", "Calibrate Toolhead", "toolhead",
                                         "play",
                                         "Guided sensor-to-nozzle, unload and cutter retract "
-                                        "calibration"));
+                                        "calibration")
+                       .with_machine_motion());
 }
 
 AfcCapabilities afc_default_capabilities() {

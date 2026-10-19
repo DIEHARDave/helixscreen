@@ -3229,7 +3229,7 @@ void AmsBackendMock::set_snapmaker_mode(bool enabled) {
     // The U1 persona ships the toolhead offset calibration macros; the flow
     // drives the mock client's EXTRUDER_OFFSET_ACTION_* simulation.
     mock_device_sections_ = {helix::snapmaker::nozzle_offset::device_section()};
-    mock_device_actions_ = {helix::snapmaker::nozzle_offset::device_action(false)};
+    mock_device_actions_ = {helix::snapmaker::nozzle_offset::device_action()};
 }
 
 void AmsBackendMock::apply_remap_overrides(const std::string& csv) {

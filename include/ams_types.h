@@ -2578,7 +2578,10 @@ struct DeviceAction {
     std::string unit;                 ///< Display unit (e.g., "mm", "%")
     int slot_index = -1;              ///< If action is per-slot (-1 = system-wide)
     bool enabled = true;              ///< Whether action is currently available
-    std::string disable_reason;       ///< Why disabled (if applicable)
+    /// Running it moves the printer (toolhead, homing, a purge or wipe): the UI greys it
+    /// while anything forbids motion and the backend refuses it during a print.
+    bool moves_machine = false;
+    std::string disable_reason; ///< Why disabled (if applicable)
     /// Id of a registered guided flow (ui_guided_device_flow.h) the UI starts instead of
     /// executing the action directly. Empty for an ordinary action.
     std::string guided_flow;
@@ -2630,6 +2633,12 @@ struct DeviceAction {
         a.type = ActionType::DROPDOWN;
         a.options = std::move(options);
         return a;
+    }
+
+    /// This action, marked as one that moves the printer.
+    [[nodiscard]] DeviceAction with_machine_motion() && {
+        moves_machine = true;
+        return std::move(*this);
     }
 
     /// This slider, moving in steps of @p resolution instead of whole units.

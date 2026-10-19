@@ -243,7 +243,8 @@ void AmsDeviceSectionDetailOverlay::create_setting_row(lv_obj_t* parent,
         attrs.insert(attrs.end(), {{"description", description_text},
                                    {"description_tag", description},
                                    {"callback", "on_device_action_toggled"},
-                                   {"disabled", disabled}});
+                                   {"disabled", disabled},
+                                   {"moves_machine", action.moves_machine ? "true" : "false"}});
         break;
     case helix::printer::ActionType::SLIDER: {
         component = "setting_slider_row";
@@ -335,9 +336,11 @@ void AmsDeviceSectionDetailOverlay::create_button(lv_obj_t* row,
                                                   const helix::printer::DeviceAction& action) {
     spdlog::debug("[{}] Creating button in row: {}", get_name(), action.label);
 
-    const char* attrs[] = {
-        "text",     lv_tr(action.label.c_str()),       "icon", action.icon.c_str(),
-        "disabled", action.enabled ? "false" : "true", nullptr};
+    const char* attrs[] = {"text",          lv_tr(action.label.c_str()),
+                           "icon",          action.icon.c_str(),
+                           "disabled",      action.enabled ? "false" : "true",
+                           "moves_machine", action.moves_machine ? "true" : "false",
+                           nullptr};
     lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(row, "device_action_button", attrs));
     if (!btn) {
         spdlog::warn("[{}] Failed to create button for '{}'", get_name(), action.id);

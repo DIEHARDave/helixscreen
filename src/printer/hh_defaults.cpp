@@ -20,10 +20,10 @@ std::vector<DeviceAction> hh_default_actions() {
     using Str = std::string;
     return {
         // --- Setup section ---
-        DA::button("calibrate_bowden", "Calibrate Bowden", "setup"),
-        DA::button("calibrate_encoder", "Calibrate Encoder", "setup"),
-        DA::button("calibrate_gear", "Calibrate Gear", "setup"),
-        DA::button("calibrate_gates", "Calibrate Gates", "setup"),
+        DA::button("calibrate_bowden", "Calibrate Bowden", "setup").with_machine_motion(),
+        DA::button("calibrate_encoder", "Calibrate Encoder", "setup").with_machine_motion(),
+        DA::button("calibrate_gear", "Calibrate Gear", "setup").with_machine_motion(),
+        DA::button("calibrate_gates", "Calibrate Gates", "setup").with_machine_motion(),
         DA::dropdown("led_mode", "LED Mode", "setup",
                      {"off", "gate_status", "filament_color", "on"}, Str("off")),
 
@@ -61,11 +61,11 @@ std::vector<DeviceAction> hh_default_actions() {
         DA::button("spoolman_refresh", "Refresh Spoolman", "accessories"),
 
         // --- Maintenance section ---
-        DA::button("load_extruder", "Load Extruder", "maintenance"),
-        DA::button("unload_extruder", "Unload Extruder", "maintenance"),
+        DA::button("load_extruder", "Load Extruder", "maintenance").with_machine_motion(),
+        DA::button("unload_extruder", "Unload Extruder", "maintenance").with_machine_motion(),
         DA::button("test_grip", "Test Grip", "maintenance"),
-        DA::button("test_load", "Test Load", "maintenance"),
-        DA::button("test_move", "Test Move", "maintenance"),
+        DA::button("test_load", "Test Load", "maintenance").with_machine_motion(),
+        DA::button("test_move", "Test Move", "maintenance").with_machine_motion(),
         DA::toggle("gear_sync", "Gear motor synced", "maintenance", false),
         DA::toggle("motors_toggle", "Motors", "maintenance", true),
         DA::button("servo_buzz", "Buzz Servo", "maintenance"),

@@ -4066,8 +4066,8 @@ std::vector<helix::printer::DeviceAction> AmsBackendHappyHare::get_device_action
     return actions;
 }
 
-AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id,
-                                                    const std::any& value) {
+AmsError AmsBackendHappyHare::do_execute_device_action(const std::string& action_id,
+                                                       const std::any& value) {
     spdlog::info("[AMS HappyHare] Executing device action: {}", action_id);
 
     // Helper to look up an action's min/max range from defaults
@@ -4136,11 +4136,12 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
 
     // Extruder-only moves drive the toolhead extruder, and HH puts no print
     // check on MMU_LOAD/MMU_UNLOAD; an EXTRUDER_ONLY unload forms a tip and
-    // retracts over the part. HH heats the nozzle itself.
+    // retracts over the part, so both are moves_machine and the base refuses
+    // them during a print. HH heats the nozzle itself.
     if (action_id == "load_extruder" || action_id == "unload_extruder") {
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            AmsError precondition = check_preconditions(/*requires_toolhead_motion=*/true);
+            AmsError precondition = check_preconditions();
             if (!precondition) {
                 return precondition;
             }

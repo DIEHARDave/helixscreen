@@ -1377,6 +1377,7 @@
   <translation tag="Fine Outer" zh="细调外圈"/>
   <translation tag="Finish" zh="完成"/>
   <translation tag="Finish or cancel the print before loading, unloading, or changing filament" zh="在装载、卸载或更换耗材之前，请先完成或取消打印"/>
+  <translation tag="Finish or cancel the print first" zh="请先完成或取消打印"/>
   <translation tag="Finishing clean..." zh="即将完成清洁..."/>
   <translation tag="Finishing up..." zh="即将完成..."/>
   <translation tag="Fireflies" zh="萤火虫"/>

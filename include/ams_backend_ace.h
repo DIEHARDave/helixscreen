@@ -218,8 +218,7 @@ class AmsBackendAce : public AmsSubscriptionBackend {
 
     [[nodiscard]] std::vector<helix::printer::DeviceSection> get_device_sections() const override;
     [[nodiscard]] std::vector<helix::printer::DeviceAction> get_device_actions() const override;
-    AmsError execute_device_action(const std::string& action_id,
-                                   const std::any& value = {}) override;
+    AmsError do_execute_device_action(const std::string& action_id, const std::any& value) override;
 
     // ========================================================================
     // Endless Spool

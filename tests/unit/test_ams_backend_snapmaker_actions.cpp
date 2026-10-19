@@ -403,20 +403,11 @@ TEST_CASE("toolhead offset calibration is offered when the firmware has it",
         REQUIRE(sections[0].id == snapmaker::nozzle_offset::kSectionId);
     }
 
-    SECTION("greyed out while a print holds the heads") {
+    SECTION("marked as moving the machine, so the UI greys it while a print holds the heads") {
         backend.set_discovery(nozzle_offset_discovery());
-        for (const char* state : {"printing", "paused"}) {
-            SnapmakerTestAccess::handle_status(backend,
-                                               nlohmann::json{{"print_stats", {{"state", state}}}});
-            const DeviceAction* cal =
-                find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId);
-            REQUIRE(cal != nullptr);
-            REQUIRE_FALSE(cal->enabled);
-            REQUIRE_FALSE(cal->disable_reason.empty());
-        }
-        SnapmakerTestAccess::handle_status(
-            backend, nlohmann::json{{"print_stats", {{"state", "complete"}}}});
-        REQUIRE(find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId)
-                    ->enabled);
+        const DeviceAction* cal =
+            find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId);
+        REQUIRE(cal != nullptr);
+        REQUIRE(cal->moves_machine);
     }
 }

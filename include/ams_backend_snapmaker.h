@@ -549,8 +549,7 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
 
     /// Sends the SET_PRINT_PREFERENCES line build_preference_gcode() maps the
     /// action id to. Unknown ids are reported as not supported.
-    AmsError execute_device_action(const std::string& action_id,
-                                   const std::any& value = {}) override;
+    AmsError do_execute_device_action(const std::string& action_id, const std::any& value) override;
 
     /// The saved unload-at-end list (SettingsManager's end-of-print unload
     /// tools) as one SET_PRINT_PREFERENCES line, sized to the toolheads the

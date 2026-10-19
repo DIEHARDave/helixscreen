@@ -88,6 +88,9 @@ TEST_CASE("AFC default actions keep their shipped field values", "[ams][afc][dev
     CHECK(cut.icon == "tune");
     CHECK(cut.section == "hub");
 
+    CHECK(by_id(actions, "calibration_wizard").moves_machine);
+    CHECK_FALSE(bowden.moves_machine);
+
     const auto& park = by_id(actions, "park");
     CHECK(park.type == ActionType::BUTTON);
     CHECK(park.icon == "home_import");

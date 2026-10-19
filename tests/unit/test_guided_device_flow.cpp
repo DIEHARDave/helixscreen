@@ -17,6 +17,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/device_action_controls.h"
+#include "../test_helpers/print_state_test_drivers.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_mock.h"
 #include "ams_device_action_value.h"
@@ -327,4 +328,40 @@ TEST_CASE_METHOD(GuidedFlowFixture, "a disabled slider and dropdown are locked",
     REQUIRE(d != nullptr);
     CHECK(lv_obj_has_state(d, LV_STATE_DISABLED));
     CHECK(lv_dropdown_get_selected(d) == 1);
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture, "a machine-motion action greys while a print holds the printer",
+                 "[ams][device-section]") {
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    lv_obj_t* moving = open_section_and_find(
+        {DeviceAction::button("calibrate", "Calibrate", "calibration").with_machine_motion(),
+         button("refresh", "")},
+        "calibrate");
+    lv_obj_t* still =
+        lv_obj_find_by_name(get_ams_device_section_detail_overlay().get_root(), "refresh");
+    REQUIRE(still != nullptr);
+    CHECK_FALSE(lv_obj_has_state(moving, LV_STATE_DISABLED));
+
+    helix::test::set_wire_state(state(), PrintJobState::PRINTING);
+    settle();
+    CHECK(lv_obj_has_state(moving, LV_STATE_DISABLED));
+    CHECK_FALSE(lv_obj_has_state(still, LV_STATE_DISABLED));
+
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    settle();
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture, "a machine-motion toggle greys while a print holds the printer",
+                 "[ams][device-section]") {
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    lv_obj_t* root = open_prefs(
+        {DeviceAction::toggle("purge", "Enable Purge", "prefs", false).with_machine_motion()});
+    lv_obj_t* sw = helix::test::find_device_action_control(root, "purge", &lv_switch_class);
+    REQUIRE(sw != nullptr);
+    CHECK_FALSE(lv_obj_has_state(sw, LV_STATE_DISABLED));
+    helix::test::set_wire_state(state(), PrintJobState::PAUSED);
+    settle();
+    CHECK(lv_obj_has_state(sw, LV_STATE_DISABLED));
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    settle();
 }

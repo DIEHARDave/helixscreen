@@ -89,15 +89,12 @@ helix::printer::DeviceSection device_section() {
     return {kSectionId, "Calibration", 60, "Toolhead offset calibration"};
 }
 
-helix::printer::DeviceAction device_action(bool print_holds_heads) {
+helix::printer::DeviceAction device_action() {
     auto action = helix::printer::DeviceAction::button(
-        kActionId, "Calibrate Toolhead Offsets", kSectionId, "",
-        "Measure each toolhead's X, Y and Z offset (about 20 minutes)");
+                      kActionId, "Calibrate Toolhead Offsets", kSectionId, "",
+                      "Measure each toolhead's X, Y and Z offset (about 20 minutes)")
+                      .with_machine_motion();
     action.guided_flow = kGuidedFlowId;
-    if (print_holds_heads) {
-        action.enabled = false;
-        action.disable_reason = "Printer is busy with a print";
-    }
     return action;
 }
 

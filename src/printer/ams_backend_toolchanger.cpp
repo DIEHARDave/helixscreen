@@ -2437,8 +2437,8 @@ bool AmsBackendToolChanger::feeder_open() const {
     return feeder_open_;
 }
 
-AmsError AmsBackendToolChanger::execute_device_action(const std::string& action_id,
-                                                      const std::any& value) {
+AmsError AmsBackendToolChanger::do_execute_device_action(const std::string& action_id,
+                                                         const std::any& value) {
     (void)value;
     if (feeder_.present && (action_id == "open_feeder" || action_id == "close_feeder")) {
         return set_feeder_open(action_id == "open_feeder");

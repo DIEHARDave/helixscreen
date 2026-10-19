@@ -5292,6 +5292,38 @@ TEST_CASE("Happy Hare extruder-only load and unload are refused mid-print",
     CHECK(helper.captured_gcodes.empty());
 }
 
+TEST_CASE("Happy Hare machine-motion actions are refused while a print holds the printer",
+          "[ams][happy_hare][device_actions]") {
+    PrintLifecycleFixture fx;
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg(fx.api.get(),
+                                                                             &fx.mock_client);
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.initialize_test_gates(4);
+    helper.set_running(true);
+
+    const auto actions = helper.get_device_actions();
+    for (const char* id : {"calibrate_bowden", "load_extruder", "test_move"}) {
+        const auto* a = find_action(actions, id);
+        REQUIRE(a != nullptr);
+        CHECK(a->moves_machine);
+    }
+
+    for (auto state : {helix::PrintJobState::PRINTING, helix::PrintJobState::PAUSED}) {
+        helix::test::set_wire_state(fx.state, state);
+        const AmsError refused = helper.execute_device_action("calibrate_bowden");
+        CHECK(refused.result == AmsResult::WRONG_STATE);
+        CHECK(refused.user_msg == "Printer is busy with a print");
+        CHECK(helper.captured_gcodes.empty());
+        // An action that leaves the printer still is not the gate's business.
+        CHECK(helper.execute_device_action("led_mode", std::any(std::string("off"))).success());
+        helper.clear_captured_gcodes();
+    }
+
+    helix::test::set_wire_state(fx.state, helix::PrintJobState::STANDBY);
+    REQUIRE(helper.execute_device_action("calibrate_bowden").success());
+    CHECK(helper.has_gcode_containing("MMU_CALIBRATE_BOWDEN"));
+}
+
 // ============================================================================
 // Real Happy Hare fault shapes (#1323). HH publishes no Error action: a fault
 // in a print is print_state pause_locked plus reason_for_pause, announced by

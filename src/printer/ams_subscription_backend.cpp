@@ -538,6 +538,33 @@ AmsError AmsSubscriptionBackend::refuse_if_printing(bool paused_blocks) const {
     return AmsErrorHelper::print_active(is_paused, /*pause_allows_ops=*/!self_homes);
 }
 
+AmsError AmsSubscriptionBackend::refuse_motion_if_printing() const {
+    if (!api_) {
+        return AmsErrorHelper::success();
+    }
+    const auto lifecycle = api_->printer_state().print_state().get_print_lifecycle();
+    // self_homes=true: PAUSED blocks too, the same span machine_motion_blocked greys.
+    if (!print_blocks_filament_op(lifecycle, /*backend_self_homes=*/true)) {
+        return AmsErrorHelper::success();
+    }
+    spdlog::warn("{} Refusing machine motion while a print holds the printer (lifecycle={})",
+                 backend_log_tag(), static_cast<int>(lifecycle));
+    return AmsErrorHelper::busy_with_print();
+}
+
+AmsError AmsSubscriptionBackend::execute_device_action(const std::string& action_id,
+                                                       const std::any& value) {
+    for (const auto& action : get_device_actions()) {
+        if (action.id == action_id && action.moves_machine) {
+            if (auto e = refuse_motion_if_printing(); !e.success()) {
+                return e;
+            }
+            break;
+        }
+    }
+    return do_execute_device_action(action_id, value);
+}
+
 bool AmsSubscriptionBackend::toolhead_homed() const {
     if (!api_) {
         // No connection: callers fall back to dispatching directly, so the
