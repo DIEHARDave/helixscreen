@@ -185,6 +185,22 @@ crash dialog or blank screen. Fix #2 (`crash_handler::uninstall()` moved
 from first → last in `shutdown()`) is the load-bearing fix for AD5X
 stability — without it, the ZMOD respawn loop is unsurvivable.
 
+**The restart overlaps the old launcher.** `killall` never signals
+`helix-launcher.sh`, whose PID is the one in `/var/run/helixscreen.pid`, and
+the launcher outlives helix-screen while its exit trap runs. Z-Mod's
+`S80helixscreen` reads any live PID there as "already running", so three rules
+keep the new instance up:
+
+- the launcher's exit trap stops only processes carrying its own
+  `HELIX_LAUNCHER_PID` (`scripts/helix-launcher.sh#helix_stop_own_children`),
+  never by name, so it cannot kill its successor;
+- a starting launcher waits up to 10s for an older one to exit
+  (`helix_wait_for_predecessor`);
+- `platform_pre_start` in `hooks-ad5x.sh` and `hooks-ad5m-zmod.sh` runs
+  `helix-launcher.sh --wait-for-predecessor`, which Z-Mod's fork calls before
+  its pidfile check: it returns at once while a watchdog or helix-screen is
+  alive, and otherwise waits out the exiting launcher.
+
 `display_off_timeout` is in **seconds**, default 20, minimum-clamped to 5
 in the macro. There is no helix-side configuration that prevents this kill.
 
