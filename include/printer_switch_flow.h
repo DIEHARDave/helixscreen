@@ -29,7 +29,10 @@ class Config;
 /// Every restart runs from a top-level LVGL timer tick, never inside an UpdateQueue drain:
 /// panel code calls UpdateQueue::drain() from its own methods, and a restart run by that
 /// drain would destroy the panel still on the stack under it. A public call made during a
-/// drain is moved to the next tick and returns false.
+/// drain is moved to the next tick and returns false. One request waits for that tick at a
+/// time, and the latest one wins: a later switch, add or confirmed switch replaces the one
+/// waiting, and a wizard cancel drops it. A cancel restores the previous printer at once and
+/// leaves only its restart for the tick, which runs before any request made after it.
 class PrinterSwitchFlow {
   public:
     /// Teardown releases the current printer, rebuild brings up the active one and reports
@@ -143,17 +146,32 @@ class PrinterSwitchFlow {
     void await_connection(const std::string& title, bool connecting);
     void dismiss_interstitial();
 
-    /// Runs `work` on the next lv_timer_handler() pass, from its own LVGL timer, unless the
-    /// owner's guard has expired by then.
-    void run_at_top_level(std::function<void()> work);
+    /// The latest switch or add request waiting for the next tick; empty when none is.
+    std::function<void()> m_pending_request;
+    /// A wizard cancel restored the previous printer and its restart waits for the tick.
+    bool m_cancel_restart_pending = false;
+    /// The tick that runs the waiting work is already posted.
+    bool m_restart_tick_armed = false;
 
-    /// During an UpdateQueue drain, posts `work` through run_at_top_level() and returns
-    /// true; otherwise returns false and the caller goes on in place.
+    /// Posts the one LVGL timer that runs the waiting work, unless it is already posted.
+    /// Skipped when the owner's guard has expired by then.
+    void arm_restart_tick();
+    /// The tick: a waiting cancel's restart, then the waiting request.
+    void run_waiting_restarts();
+    /// Makes `request` the one that runs on the next tick, replacing any request waiting.
+    void post_request(std::function<void()> request);
+
+    /// During an UpdateQueue drain, posts `work` through post_request() and returns true.
+    /// Otherwise this call is newer than anything waiting: it runs a waiting cancel's
+    /// restart in place, drops a waiting request, and returns false for the caller to go on.
     bool deferred_out_of_drain(const char* entry, std::function<void()> work);
 
     /// The teardown hook. Entered inside an UpdateQueue drain it asserts in debug builds and
     /// logs an error in release builds, where the teardown still runs.
     void tear_down();
+
+    /// The restart cancel_add_printer_wizard() leaves for the tick.
+    void restart_onto_restored_printer();
 
     /// Saves the config, telling the user when it could not.
     bool save_or_report();
