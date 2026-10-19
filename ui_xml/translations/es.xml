@@ -415,6 +415,7 @@
   <translation tag="Bowden" es="Bowden"/>
   <translation tag="Bowden Length" es="Longitud del bowden"/>
   <translation tag="Bowden tube length from hub to toolhead" es="Longitud del tubo bowden del hub al cabezal"/>
+  <translation tag="Bowden tube length to this tool" es="Longitud del tubo Bowden hasta esta herramienta"/>
   <translation tag="Box" es="Caja"/>
   <translation tag="Brand" es="Marca"/>
   <translation tag="Brand and material come from Spoolman" es="La marca y el material provienen de Spoolman"/>
@@ -505,6 +506,7 @@
   <translation tag="Calibration complete! Press &apos;Next&apos; to continue." es="¡Calibración completa! Presione &apos;Siguiente&apos; para continuar."/>
   <translation tag="Calibration failed" es="Calibración fallida"/>
   <translation tag="Calibration failed - touch targets more precisely." es="Calibración fallida – toca los objetivos con más precisión."/>
+  <translation tag="Calibration in progress" es="Calibración en curso"/>
   <translation tag="Calibration kept timing out. Your previous settings were kept." es="La calibración siguió agotando el tiempo de espera. Se conservó su configuración anterior."/>
   <translation tag="Calibration may still be running — printer connection was interrupted" es="La calibración puede seguir en curso — se interrumpió la conexión con la impresora"/>
   <translation tag="Calibration may still be running — response timed out" es="La calibración puede seguir en curso — se agotó el tiempo de respuesta"/>
@@ -1017,6 +1019,7 @@
   <translation tag="Effects" es="Efectos"/>
   <translation tag="Eject" es="Expulsar"/>
   <translation tag="Eject Distance" es="Distancia de expulsión"/>
+  <translation tag="Eject Speed" es="Velocidad de expulsión"/>
   <translation tag="Eject Velocity" es="Velocidad de expulsión"/>
   <translation tag="Eject failed" es="Error al expulsar"/>
   <translation tag="Eject needs [force_move] enabled in printer config" es="La expulsión requiere [force_move] habilitado en la configuración de la impresora"/>
@@ -1116,6 +1119,7 @@
   <translation tag="Every extruder&apos;s temperature at once" es="La temperatura de todos los extrusores"/>
   <translation tag="Every object is set to skip, so there is nothing to print" es="Todos los objetos están marcados para omitir, no hay nada que imprimir"/>
   <translation tag="Every tool&apos;s offsets are measured again and replace the current ones. Save afterwards to keep the result." es="Los offsets de todas las herramientas se miden de nuevo y reemplazan a los actuales. Guarda después para conservar el resultado."/>
+  <translation tag="Every unit keeps its filament gripped" es="Cada unidad mantiene sujeto su filamento"/>
   <translation tag="Everything else was saved. Change them in Spoolman." es="Todo lo demás se guardó. Cámbielos en Spoolman."/>
   <translation tag="Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /" es="Todo lo demás se guardó. Renombre el material usando letras, dígitos, espacios y + - _ . ( ) /"/>
   <translation tag="Excellent Accuracy" es="Precisión Excelente"/>
@@ -1304,6 +1308,7 @@
   <translation tag="Filament Control" es="Control de filamento"/>
   <translation tag="Filament Detected" es="Filamento Detectado"/>
   <translation tag="Filament Dryer" es="Secador de filamento"/>
+  <translation tag="Filament Feeder" es="Alimentador de filamento"/>
   <translation tag="Filament Grade Mismatch" es="El grado del filamento no coincide"/>
   <translation tag="Filament Humidity" es="Humedad del Filamento"/>
   <translation tag="Filament In The Toolhead" es="Filamento en el cabezal"/>
@@ -1583,7 +1588,10 @@
   <translation tag="Hotend Fan" es="Ventilador de Hotend"/>
   <translation tag="Hotend Heater" es="Calentador de Hotend"/>
   <translation tag="How Z-axis movement is displayed" es="Cómo se muestra el movimiento del eje Z"/>
+  <translation tag="How far and how fast a lane ejects" es="Cuánto y qué tan rápido expulsa un carril"/>
+  <translation tag="How far filament is pushed back into the box on eject" es="Cuánto se empuja el filamento de vuelta a la caja al expulsar"/>
   <translation tag="How far filament is pushed back into the box on eject (mm)" es="Cuánto se empuja el filamento de vuelta a la caja al expulsar (mm)"/>
+  <translation tag="How fast filament is pushed back on eject" es="Qué tan rápido se empuja el filamento de vuelta al expulsar"/>
   <translation tag="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)" es="Cuánto hay que mantener pulsado para que cuente como pulsación larga, en ms (auméntalo si el modo de edición u otras acciones se activan por accidente)"/>
   <translation tag="How many labels to print" es="Cuántas etiquetas imprimir"/>
   <translation tag="How the Jog tab arranges its buttons" es="Cómo organiza sus botones la pestaña Jog"/>
@@ -1836,6 +1844,7 @@
   <translation tag="Loading Error" es="Error de Carga"/>
   <translation tag="Loading Filament..." es="Cargando Filamento..."/>
   <translation tag="Loading G-code..." es="Cargando G-code..."/>
+  <translation tag="Loading configuration..." es="Cargando configuración..."/>
   <translation tag="Loading devices..." es="Cargando dispositivos..."/>
   <translation tag="Loading filament..." es="Cargando filamento..."/>
   <translation tag="Loading filaments..." es="Cargando filamentos..."/>
@@ -2149,6 +2158,7 @@
   <translation tag="No prints this week" es="Sin impresiones esta semana"/>
   <translation tag="No prints yet" es="Sin impresiones aún"/>
   <translation tag="No profiles available" es="No hay perfiles disponibles"/>
+  <translation tag="No sensor fitted for this distance" es="No hay sensor instalado para esta distancia"/>
   <translation tag="No sensors detected" es="No se detectaron sensores"/>
   <translation tag="No shared peaks" es="Sin picos comunes"/>
   <translation tag="No slot currently matches." es="Actualmente no coincide ninguna ranura."/>
@@ -2161,6 +2171,10 @@
   <translation tag="No temperature sensors detected" es="No se detectaron sensores de temperatura"/>
   <translation tag="No timelapse videos found" es="No se encontraron videos timelapse"/>
   <translation tag="No tools to calibrate" es="No hay herramientas para calibrar"/>
+  <translation tag="No unit has a filament buffer" es="Ninguna unidad tiene búfer de filamento"/>
+  <translation tag="No unit has a moving selector" es="Ninguna unidad tiene selector móvil"/>
+  <translation tag="No unit has a servo" es="Ninguna unidad tiene servo"/>
+  <translation tag="No unit has an encoder" es="Ninguna unidad tiene codificador"/>
   <translation tag="No unload macro found: unload by hand, then start again" es="No se encontró una macro de descarga: descarga a mano y vuelve a empezar"/>
   <translation tag="No vendors found" es="No se encontraron proveedores"/>
   <translation tag="No verified bypass command for this CFS firmware" es="No hay un comando de bypass verificado para este firmware del CFS"/>
@@ -2451,6 +2465,7 @@
   <translation tag="Priming..." es="Cebando..."/>
   <translation tag="Print" es="Imprimir"/>
   <translation tag="Print Anyway" es="Imprimir de todos modos"/>
+  <translation tag="Print Behavior" es="Comportamiento de impresión"/>
   <translation tag="Print Behaviour" es="Comportamiento de impresión"/>
   <translation tag="Print Cancelled" es="Impresión Cancelada"/>
   <translation tag="Print Complete!" es="¡Impresión Completa!"/>
@@ -3138,6 +3153,7 @@
   <translation tag="Spoolman needs a material for this filament." es="Spoolman necesita un material para este filamento."/>
   <translation tag="Spoolman removed." es="Spoolman eliminado."/>
   <translation tag="Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer." es="Spoolman guardó el precio, la ubicación, el lote y las notas, pero no el resto. Nada más cambió en esta impresora."/>
+  <translation tag="Spoolman support is off in Happy Hare" es="El soporte de Spoolman está desactivado en Happy Hare"/>
   <translation tag="Spoolman unavailable — filament weights may be stale" es="Spoolman no disponible — los pesos del filamento pueden estar desactualizados"/>
   <translation tag="Spoolman was not configured." es="Spoolman no estaba configurado."/>
   <translation tag="Spoolman: %zu Spool" es="Spoolman: %zu bobina"/>
@@ -3530,6 +3546,7 @@
   <translation tag="Toggle Auto-Refill" es="Alternar el rellenado automático"/>
   <translation tag="Toggle Quiet Mode" es="Alternar el modo silencioso"/>
   <translation tag="Toggle external spool bypass" es="Alternar el bypass de la bobina externa"/>
+  <translation tag="Toggle this tool&apos;s toolhead LED" es="Alternar el LED del cabezal de esta herramienta"/>
   <translation tag="Toggle toolhead LED for an extruder" es="Alternar el LED del cabezal para un extrusor"/>
   <translation tag="Toggle:" es="Conmutar:"/>
   <translation tag="Too humid" es="Demasiado húmedo"/>
@@ -3586,9 +3603,12 @@
   <translation tag="Turn Endless Spool on, then set the Backup Gate" es="Active la bobina infinita y luego configure el Gate de respaldo"/>
   <translation tag="Turn LED off when the print ends" es="Apagar el LED al terminar la impresión"/>
   <translation tag="Turn Off" es="Apagar"/>
+  <translation tag="Turn Off LEDs" es="Apagar los LED"/>
+  <translation tag="Turn Off Toolhead LED" es="Apagar el LED del cabezal"/>
   <translation tag="Turn Off WiFi?" es="¿Desactivar WiFi?"/>
   <translation tag="Turn On" es="Encender"/>
   <translation tag="Turn On LEDs" es="Encender los LED"/>
+  <translation tag="Turn On Toolhead LED" es="Encender el LED del cabezal"/>
   <translation tag="Turn off bed check" es="Desactivar comprobación de cama"/>
   <translation tag="Turn off detection" es="Desactivar detección"/>
   <translation tag="Turn on the lights your light buttons control" es="Enciende las luces que controlan tus botones de luz"/>
@@ -3961,6 +3981,7 @@
   <translation tag="you have" es="tienes"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" es="{:.0f}-{:.0f} Hz · unos {} min"/>
   <translation tag="{} ({})" es="{} ({})"/>
+  <translation tag="{} - {}" es="{} - {}"/>
   <translation tag="{} Extruders" es="{} extrusores"/>
   <translation tag="{} Hardware Issues" es="{} problemas de hardware"/>
   <translation tag="{} Issues Detected" es="{} problemas detectados"/>

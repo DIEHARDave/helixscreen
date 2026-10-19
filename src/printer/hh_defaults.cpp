@@ -3,15 +3,17 @@
 
 #include "hh_defaults.h"
 
+#include "ams_device_sections.h"
+
 namespace helix::printer {
 
 std::vector<DeviceSection> hh_default_sections() {
     return {
-        {"setup", "Setup", 0, "Calibration and system configuration"},
-        {"speed", "Speed", 1, "Motor speeds and acceleration"},
-        {"toolhead", "Toolhead", 2, "Extruder distances and sensor configuration"},
-        {"accessories", "Accessories", 3, "eSpooler, clog detection, and sensor settings"},
-        {"maintenance", "Maintenance", 4, "Testing, servo, and motor operations"},
+        device_section("setup", 0, TR_NOOP("Calibration and system configuration")),
+        device_section("speed", 1, TR_NOOP("Motor speeds and acceleration")),
+        device_section("toolhead", 2, TR_NOOP("Extruder distances and sensor configuration")),
+        device_section("accessories", 3, TR_NOOP("eSpooler, clog detection, and sensor settings")),
+        device_section("maintenance", 4, TR_NOOP("Testing, servo, and motor operations")),
     };
 }
 

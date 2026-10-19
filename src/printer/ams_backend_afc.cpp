@@ -6505,8 +6505,8 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
             a.max_value = std::max(2000.0f, bowden_length_ * 1.5f);
         }
         if (a.id == "led_toggle") {
-            a.label = afc_led_state_ ? "Turn Off LEDs" : "Turn On LEDs";
-            a.icon = afc_led_state_ ? "lightbulb-off" : "lightbulb-on";
+            a.label = afc_led_state_ ? TR_NOOP("Turn Off LEDs") : TR_NOOP("Turn On LEDs");
+            a.icon = afc_led_state_ ? "light_off" : "lightbulb_on";
         }
     }
 
@@ -6530,12 +6530,13 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
                                      [](const DeviceAction& a) { return a.id == "bowden_length"; }),
                       actions.end());
         for (int i = 0; i < static_cast<int>(extruders_.size()); ++i) {
-            std::string id = "bowden_T" + std::to_string(i);
-            std::string label = "Bowden Length (T" + std::to_string(i) + ")";
-            std::string desc = "Bowden tube length for tool " + std::to_string(i);
-            actions.push_back(DeviceAction::slider(
-                id, label, "setup", bowden_length_, // shared default until per-extruder tracking
-                100.0f, std::max(2000.0f, bowden_length_ * 1.5f), "mm", "ruler", desc));
+            DeviceAction a =
+                DeviceAction::slider("bowden_T" + std::to_string(i), "Bowden Length", "setup",
+                                     bowden_length_, // shared default until per-extruder tracking
+                                     100.0f, std::max(2000.0f, bowden_length_ * 1.5f), "mm",
+                                     "ruler", "Bowden tube length to this tool");
+            a.tool_index = i;
+            actions.push_back(std::move(a));
         }
     }
 
@@ -6550,21 +6551,21 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
 
         for (int i = 0; i < static_cast<int>(extruders_.size()); ++i) {
             const auto& ext = extruders_[i];
-            std::string suffix = "_T" + std::to_string(i);
-            std::string tool_label = " (T" + std::to_string(i) + ")";
-
-            actions.push_back(DeviceAction::slider(
-                "tool_stn" + suffix, "Sensor to Nozzle" + tool_label, "toolhead",
-                std::any(ext.tool_stn), 0.0f, 200.0f, "mm", "ruler",
-                "Distance from toolhead sensor to nozzle for T" + std::to_string(i)));
-            actions.push_back(
-                DeviceAction::slider("tool_stn_unload" + suffix, "Unload Distance" + tool_label,
-                                     "toolhead", std::any(ext.tool_stn_unload), 0.0f, 200.0f, "mm",
-                                     "ruler", "Retraction distance for T" + std::to_string(i)));
-            actions.push_back(DeviceAction::slider(
-                "tool_sensor_after_extruder" + suffix, "Post-Sensor Clear" + tool_label, "toolhead",
-                std::any(ext.tool_sensor_after_extruder), 0.0f, 100.0f, "mm", "ruler",
-                "Extra clear distance for T" + std::to_string(i)));
+            const std::string suffix = "_T" + std::to_string(i);
+            for (DeviceAction a :
+                 {DeviceAction::slider("tool_stn" + suffix, "Sensor to Nozzle", "toolhead",
+                                       std::any(ext.tool_stn), 0.0f, 200.0f, "mm", "ruler",
+                                       "Distance from toolhead sensor to nozzle tip"),
+                  DeviceAction::slider("tool_stn_unload" + suffix, "Unload Distance", "toolhead",
+                                       std::any(ext.tool_stn_unload), 0.0f, 200.0f, "mm", "ruler",
+                                       "Retraction distance to clear extruder gears"),
+                  DeviceAction::slider("tool_sensor_after_extruder" + suffix, "Post-Sensor Clear",
+                                       "toolhead", std::any(ext.tool_sensor_after_extruder), 0.0f,
+                                       100.0f, "mm", "ruler",
+                                       "Extra distance to move once sensors clear")}) {
+                a.tool_index = i;
+                actions.push_back(std::move(a));
+            }
         }
     }
 
@@ -6576,11 +6577,13 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
         for (int i = 0; i < static_cast<int>(extruders_.size()); ++i) {
             auto it = toolhead_led_state_.find(i);
             bool led_on = (it != toolhead_led_state_.end()) && it->second;
-            actions.push_back(DeviceAction::button(
-                fmt::format("led_extruder_T{}", i),
-                fmt::format("{} Toolhead LED (T{})", led_on ? "Turn Off" : "Turn On", i), "setup",
-                led_on ? "lightbulb-off" : "lightbulb-on",
-                fmt::format("Toggle toolhead LED for T{}", i)));
+            const char* label =
+                led_on ? TR_NOOP("Turn Off Toolhead LED") : TR_NOOP("Turn On Toolhead LED");
+            DeviceAction a = DeviceAction::button(fmt::format("led_extruder_T{}", i), label,
+                                                  "setup", led_on ? "light_off" : "lightbulb_on",
+                                                  "Toggle this tool's toolhead LED");
+            a.tool_index = i;
+            actions.push_back(std::move(a));
         }
     }
 
@@ -6608,7 +6611,7 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
     bool loaded = configs_loaded_.load(std::memory_order_acquire);
     bool cfg_ready = loaded && afc_config_ && afc_config_->is_loaded();
     bool macro_ready = loaded && macro_vars_config_ && macro_vars_config_->is_loaded();
-    std::string not_loaded_reason = "Loading configuration...";
+    std::string not_loaded_reason = TR_NOOP("Loading configuration...");
 
     // Find first AFC_hub section from config (for hub actions)
     std::string hub_section;

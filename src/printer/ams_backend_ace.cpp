@@ -19,6 +19,7 @@
 
 #include "ams_bypass_policy.h"
 #include "ams_device_action_value.h"
+#include "ams_device_sections.h"
 #include "exception_policy.h"
 #include "helix_thread.h"
 #include "i_moonraker_api.h"
@@ -1861,15 +1862,15 @@ bool AmsBackendAce::parse_slots_response(const json& data) {
 // ============================================================================
 
 std::vector<helix::printer::DeviceSection> AmsBackendAce::get_device_sections() const {
-    using DS = helix::printer::DeviceSection;
-    std::vector<DS> sections = {
-        DS{"filament_control", "Filament Control", 0, "Manual feed and retract operations"},
-        DS{"maintenance", "Maintenance", 1, "Feed assist and debug tools"},
+    using helix::printer::device_section;
+    std::vector<helix::printer::DeviceSection> sections = {
+        device_section("filament_control", 0, TR_NOOP("Manual feed and retract operations")),
+        device_section("maintenance", 1, TR_NOOP("Feed assist and debug tools")),
     };
     std::lock_guard<std::mutex> lock(mutex_);
     if (endless_spool_seen_) {
         sections.push_back(
-            DS{"endless_spool", "Endless Spool", 2, "Switch to a backup slot on runout"});
+            device_section("endless_spool", 2, TR_NOOP("Switch to a backup slot on runout")));
     }
     return sections;
 }

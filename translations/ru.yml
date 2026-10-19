@@ -494,6 +494,7 @@ translations:
   Bowden: Боуден
   Bowden Length: 'Длина боудена'
   Bowden tube length from hub to toolhead: 'Длина боуден-трубки от хаба до печатающей головки'
+  Bowden tube length to this tool: "Длина боуден-трубки до этого инструмента"
   Box: Бокс
   Brand: Бренд
   Brand and material come from Spoolman: Бренд и материал берутся из Spoolman
@@ -592,6 +593,7 @@ translations:
   Calibration failed: Калибровка не удалась
   Calibration failed - touch targets more precisely.: Калибровка не удалась – нажимайте
     на цели точнее.
+  Calibration in progress: "Идёт калибровка"
   Calibration kept timing out. Your previous settings were kept.: Калибровка постоянно завершалась по тайм-ауту. Прежние настройки сохранены.
   Calibration may still be running — printer connection was interrupted: 'Калибровка может ещё выполняться — соединение с принтером прервано'
   Calibration may still be running — response timed out: 'Калибровка может ещё выполняться — время ожидания истекло'
@@ -1170,6 +1172,7 @@ translations:
   Effects: Эффекты
   Eject: Извлечь
   Eject Distance: Расстояние извлечения
+  Eject Speed: "Скорость извлечения"
   Eject Velocity: Скорость извлечения
   Eject failed: Ошибка извлечения
   Eject needs [force_move] enabled in printer config: Для извлечения нужно включить
@@ -1274,6 +1277,7 @@ translations:
   Events appear here after sessions and prints: События появятся здесь после сессий
     и печатей
   Every extruder's temperature at once: Температура всех экструдеров
+  Every unit keeps its filament gripped: "Каждый блок держит свой филамент зажатым"
   Everything else was saved. Change them in Spoolman.: Всё остальное сохранено. Измените их в Spoolman.
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: 'Всё остальное сохранено. Переименуйте материал, используя буквы, цифры, пробелы и + - _ . ( ) /'
   Every object is set to skip, so there is nothing to print: 'Все объекты отмечены для пропуска, печатать нечего'
@@ -1475,6 +1479,7 @@ translations:
   Filament Control: Управление филаментом
   Filament Detected: Филамент обнаружен
   Filament Dryer: Сушилка филамента
+  Filament Feeder: "Подача филамента"
   Filament Grade Mismatch: Несоответствие марки филамента
   Filament Humidity: Влажность филамента
   Filament In The Toolhead: Филамент в печатающей головке
@@ -1779,8 +1784,11 @@ translations:
   Hotend Fan: Вентилятор хотенда
   Hotend Heater: Нагреватель хотенда
   How Z-axis movement is displayed: Как отображается движение по оси Z
+  How far and how fast a lane ejects: "Насколько далеко и быстро извлекает канал"
+  How far filament is pushed back into the box on eject: "Насколько далеко филамент задвигается обратно в бокс при извлечении"
   How far filament is pushed back into the box on eject (mm): Насколько глубоко филамент
     задвигается обратно в коробку при извлечении (мм)
+  How fast filament is pushed back on eject: "Как быстро филамент задвигается обратно при извлечении"
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : 'Сколько удерживать, чтобы нажатие считалось долгим, в мс (увеличьте, если режим редактирования срабатывает случайно)'
   How many labels to print: Сколько этикеток напечатать
@@ -2073,6 +2081,7 @@ translations:
   Loading Error: Ошибка загрузки
   Loading Filament...: Загрузка филамента...
   Loading G-code...: Загрузка G-code...
+  Loading configuration...: "Загрузка конфигурации..."
   Loading devices...: Загрузка устройств...
   Loading filament...: Загрузка филамента...
   Loading filaments...: Загрузка филаментов...
@@ -2405,6 +2414,7 @@ translations:
   No prints this week: Нет печатей за неделю
   No prints yet: Нет печатей
   No profiles available: Профили недоступны
+  No sensor fitted for this distance: "Для этого расстояния нет датчика"
   No sensors detected: Датчики не обнаружены
   No shared peaks: "Нет общих пиков"
   No slot currently matches.: 'Сейчас нет подходящего слота.'
@@ -2418,6 +2428,10 @@ translations:
   No temperature sensors detected: 'Датчики температуры не обнаружены'
   No timelapse videos found: Таймлапс-видео не найдены
   No tools to calibrate: Нет инструментов для калибровки
+  No unit has a filament buffer: "Ни у одного блока нет буфера филамента"
+  No unit has a moving selector: "Ни у одного блока нет подвижного селектора"
+  No unit has a servo: "Ни у одного блока нет сервопривода"
+  No unit has an encoder: "Ни у одного блока нет энкодера"
   'No unload macro found: unload by hand, then start again': 'Макрос выгрузки не найден: выгрузите вручную и начните заново'
 
   No vendors found: Производители не найдены
@@ -2732,6 +2746,7 @@ translations:
   Priming...: Грунтование...
   Print: Печать
   Print Anyway: Всё равно печатать
+  Print Behavior: "Поведение при печати"
   'Print Behaviour': 'Поведение печати'
   Print Cancelled: Печать отменена
   Print Complete!: Печать завершена!
@@ -3492,6 +3507,7 @@ translations:
   Spoolman needs a material for this filament.: Spoolman требует материал для этого филамента.
   Spoolman removed.: Spoolman удалён.
   Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolman сохранил цену, расположение, партию и заметки, но не остальное. Больше на этом принтере ничего не изменилось.'
+  Spoolman support is off in Happy Hare: "Поддержка Spoolman отключена в Happy Hare"
   Spoolman unavailable — filament weights may be stale: Spoolman недоступен — вес
     филамента может быть устаревшим
   Spoolman was not configured.: Spoolman не был настроен.
@@ -3973,6 +3989,7 @@ translations:
   Toggle Auto-Refill: 'Переключить автопополнение'
   Toggle Quiet Mode: 'Переключить тихий режим'
   Toggle external spool bypass: Переключить байпас внешней катушки
+  Toggle this tool's toolhead LED: "Переключить LED печатающей головки этого инструмента"
   Toggle toolhead LED for an extruder: 'Переключить LED печатающей головки для экструдера'
   'Toggle:': 'Переключить:'
   Too humid: Слишком влажно
@@ -4031,9 +4048,12 @@ translations:
   Turn Endless Spool on, then set the Backup Gate: 'Включите бесконечную катушку, затем задайте резервный шлюз'
   'Turn LED off when the print ends': 'Выключать светодиод по окончании печати'
   Turn Off: Выключить
+  Turn Off LEDs: "Выключить LED"
+  Turn Off Toolhead LED: "Выключить LED печатающей головки"
   Turn Off WiFi?: Выключить WiFi?
   Turn On: Включить
   Turn On LEDs: 'Включить LED'
+  Turn On Toolhead LED: "Включить LED печатающей головки"
   Turn off bed check: 'Отключить проверку стола'
   Turn off detection: Отключить обнаружение
   Turn on the lights your light buttons control: Включает свет, которым управляют кнопки света
@@ -4429,6 +4449,7 @@ translations:
   you have: у вас
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Гц · примерно {} мин'
   '{} ({})': '{} ({})'
+  '{} - {}': "{} - {}"
   '{} Extruders': 'Экструдеров: {}'
   '{} Hardware Issues': 'Проблем с оборудованием: {}'
   '{} Issues Detected': 'Обнаружено проблем: {}'

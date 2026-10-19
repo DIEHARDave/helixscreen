@@ -415,6 +415,7 @@
   <translation tag="Bowden" en="Bowden"/>
   <translation tag="Bowden Length" en="Bowden Length"/>
   <translation tag="Bowden tube length from hub to toolhead" en="Bowden tube length from hub to toolhead"/>
+  <translation tag="Bowden tube length to this tool" en="Bowden tube length to this tool"/>
   <translation tag="Box" en="Box"/>
   <translation tag="Brand" en="Brand"/>
   <translation tag="Brand and material come from Spoolman" en="Brand and material come from Spoolman"/>
@@ -505,6 +506,7 @@
   <translation tag="Calibration complete! Press &apos;Next&apos; to continue." en="Calibration complete! Press &apos;Next&apos; to continue."/>
   <translation tag="Calibration failed" en="Calibration failed"/>
   <translation tag="Calibration failed - touch targets more precisely." en="Calibration failed - touch targets more precisely."/>
+  <translation tag="Calibration in progress" en="Calibration in progress"/>
   <translation tag="Calibration kept timing out. Your previous settings were kept." en="Calibration kept timing out. Your previous settings were kept."/>
   <translation tag="Calibration may still be running — printer connection was interrupted" en="Calibration may still be running — printer connection was interrupted"/>
   <translation tag="Calibration may still be running — response timed out" en="Calibration may still be running — response timed out"/>
@@ -1017,6 +1019,7 @@
   <translation tag="Effects" en="Effects"/>
   <translation tag="Eject" en="Eject"/>
   <translation tag="Eject Distance" en="Eject Distance"/>
+  <translation tag="Eject Speed" en="Eject Speed"/>
   <translation tag="Eject Velocity" en="Eject Velocity"/>
   <translation tag="Eject failed" en="Eject failed"/>
   <translation tag="Eject needs [force_move] enabled in printer config" en="Eject needs [force_move] enabled in printer config"/>
@@ -1116,6 +1119,7 @@
   <translation tag="Every extruder&apos;s temperature at once" en="Every extruder&apos;s temperature at once"/>
   <translation tag="Every object is set to skip, so there is nothing to print" en="Every object is set to skip, so there is nothing to print"/>
   <translation tag="Every tool&apos;s offsets are measured again and replace the current ones. Save afterwards to keep the result." en="Every tool&apos;s offsets are measured again and replace the current ones. Save afterwards to keep the result."/>
+  <translation tag="Every unit keeps its filament gripped" en="Every unit keeps its filament gripped"/>
   <translation tag="Everything else was saved. Change them in Spoolman." en="Everything else was saved. Change them in Spoolman."/>
   <translation tag="Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /" en="Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /"/>
   <translation tag="Excellent Accuracy" en="Excellent Accuracy"/>
@@ -1304,6 +1308,7 @@
   <translation tag="Filament Control" en="Filament Control"/>
   <translation tag="Filament Detected" en="Filament Detected"/>
   <translation tag="Filament Dryer" en="Filament Dryer"/>
+  <translation tag="Filament Feeder" en="Filament Feeder"/>
   <translation tag="Filament Grade Mismatch" en="Filament Grade Mismatch"/>
   <translation tag="Filament Humidity" en="Filament Humidity"/>
   <translation tag="Filament In The Toolhead" en="Filament In The Toolhead"/>
@@ -1583,7 +1588,10 @@
   <translation tag="Hotend Fan" en="Hotend Fan"/>
   <translation tag="Hotend Heater" en="Hotend Heater"/>
   <translation tag="How Z-axis movement is displayed" en="How Z-axis movement is displayed"/>
+  <translation tag="How far and how fast a lane ejects" en="How far and how fast a lane ejects"/>
+  <translation tag="How far filament is pushed back into the box on eject" en="How far filament is pushed back into the box on eject"/>
   <translation tag="How far filament is pushed back into the box on eject (mm)" en="How far filament is pushed back into the box on eject (mm)"/>
+  <translation tag="How fast filament is pushed back on eject" en="How fast filament is pushed back on eject"/>
   <translation tag="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)" en="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)"/>
   <translation tag="How many labels to print" en="How many labels to print"/>
   <translation tag="How the Jog tab arranges its buttons" en="How the Jog tab arranges its buttons"/>
@@ -1836,6 +1844,7 @@
   <translation tag="Loading Error" en="Loading Error"/>
   <translation tag="Loading Filament..." en="Loading Filament..."/>
   <translation tag="Loading G-code..." en="Loading G-code..."/>
+  <translation tag="Loading configuration..." en="Loading configuration..."/>
   <translation tag="Loading devices..." en="Loading devices..."/>
   <translation tag="Loading filament..." en="Loading filament..."/>
   <translation tag="Loading filaments..." en="Loading filaments..."/>
@@ -2149,6 +2158,7 @@
   <translation tag="No prints this week" en="No prints this week"/>
   <translation tag="No prints yet" en="No prints yet"/>
   <translation tag="No profiles available" en="No profiles available"/>
+  <translation tag="No sensor fitted for this distance" en="No sensor fitted for this distance"/>
   <translation tag="No sensors detected" en="No sensors detected"/>
   <translation tag="No shared peaks" en="No shared peaks"/>
   <translation tag="No slot currently matches." en="No slot currently matches."/>
@@ -2161,6 +2171,10 @@
   <translation tag="No temperature sensors detected" en="No temperature sensors detected"/>
   <translation tag="No timelapse videos found" en="No timelapse videos found"/>
   <translation tag="No tools to calibrate" en="No tools to calibrate"/>
+  <translation tag="No unit has a filament buffer" en="No unit has a filament buffer"/>
+  <translation tag="No unit has a moving selector" en="No unit has a moving selector"/>
+  <translation tag="No unit has a servo" en="No unit has a servo"/>
+  <translation tag="No unit has an encoder" en="No unit has an encoder"/>
   <translation tag="No unload macro found: unload by hand, then start again" en="No unload macro found: unload by hand, then start again"/>
   <translation tag="No vendors found" en="No vendors found"/>
   <translation tag="No verified bypass command for this CFS firmware" en="No verified bypass command for this CFS firmware"/>
@@ -2451,6 +2465,7 @@
   <translation tag="Priming..." en="Priming..."/>
   <translation tag="Print" en="Print"/>
   <translation tag="Print Anyway" en="Print Anyway"/>
+  <translation tag="Print Behavior" en="Print Behavior"/>
   <translation tag="Print Behaviour" en="Print Behaviour"/>
   <translation tag="Print Cancelled" en="Print Cancelled"/>
   <translation tag="Print Complete!" en="Print Complete!"/>
@@ -3138,6 +3153,7 @@
   <translation tag="Spoolman needs a material for this filament." en="Spoolman needs a material for this filament."/>
   <translation tag="Spoolman removed." en="Spoolman removed."/>
   <translation tag="Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer." en="Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer."/>
+  <translation tag="Spoolman support is off in Happy Hare" en="Spoolman support is off in Happy Hare"/>
   <translation tag="Spoolman unavailable — filament weights may be stale" en="Spoolman unavailable — filament weights may be stale"/>
   <translation tag="Spoolman was not configured." en="Spoolman was not configured."/>
   <translation tag="Spoolman: %zu Spool" en="Spoolman: %zu Spool"/>
@@ -3530,6 +3546,7 @@
   <translation tag="Toggle Auto-Refill" en="Toggle Auto-Refill"/>
   <translation tag="Toggle Quiet Mode" en="Toggle Quiet Mode"/>
   <translation tag="Toggle external spool bypass" en="Toggle external spool bypass"/>
+  <translation tag="Toggle this tool&apos;s toolhead LED" en="Toggle this tool&apos;s toolhead LED"/>
   <translation tag="Toggle toolhead LED for an extruder" en="Toggle toolhead LED for an extruder"/>
   <translation tag="Toggle:" en="Toggle:"/>
   <translation tag="Too humid" en="Too humid"/>
@@ -3586,9 +3603,12 @@
   <translation tag="Turn Endless Spool on, then set the Backup Gate" en="Turn Endless Spool on, then set the Backup Gate"/>
   <translation tag="Turn LED off when the print ends" en="Turn LED off when the print ends"/>
   <translation tag="Turn Off" en="Turn Off"/>
+  <translation tag="Turn Off LEDs" en="Turn Off LEDs"/>
+  <translation tag="Turn Off Toolhead LED" en="Turn Off Toolhead LED"/>
   <translation tag="Turn Off WiFi?" en="Turn Off WiFi?"/>
   <translation tag="Turn On" en="Turn On"/>
   <translation tag="Turn On LEDs" en="Turn On LEDs"/>
+  <translation tag="Turn On Toolhead LED" en="Turn On Toolhead LED"/>
   <translation tag="Turn off bed check" en="Turn off bed check"/>
   <translation tag="Turn off detection" en="Turn off detection"/>
   <translation tag="Turn on the lights your light buttons control" en="Turn on the lights your light buttons control"/>
@@ -3961,6 +3981,7 @@
   <translation tag="you have" en="you have"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" en="{:.0f}-{:.0f} Hz · about {} min"/>
   <translation tag="{} ({})" en="{} ({})"/>
+  <translation tag="{} - {}" en="{} - {}"/>
   <translation tag="{} Extruders" en="{} Extruders"/>
   <translation tag="{} Hardware Issues" en="{} Hardware Issues"/>
   <translation tag="{} Issues Detected" en="{} Issues Detected"/>

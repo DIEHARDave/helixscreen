@@ -436,6 +436,7 @@ translations:
   Bowden: Bowden
   Bowden Length: Bowden Length
   Bowden tube length from hub to toolhead: Bowden tube length from hub to toolhead
+  Bowden tube length to this tool: Bowden tube length to this tool
   Box: Box
   Brand: Brand
   Brand and material come from Spoolman: Brand and material come from Spoolman
@@ -535,6 +536,7 @@ translations:
   Calibration failed: Calibration failed
   Calibration failed - touch targets more precisely.: Calibration failed - touch targets
     more precisely.
+  Calibration in progress: Calibration in progress
   Calibration kept timing out. Your previous settings were kept.: Calibration kept timing out. Your previous settings were kept.
   Calibration may still be running — printer connection was interrupted: Calibration may still be running — printer connection was interrupted
   Calibration may still be running — response timed out: Calibration may still be running — response timed out
@@ -1090,6 +1092,7 @@ translations:
   Effects: Effects
   Eject: Eject
   Eject Distance: Eject Distance
+  Eject Speed: Eject Speed
   Eject Velocity: Eject Velocity
   Eject failed: Eject failed
   Eject needs [force_move] enabled in printer config: Eject needs [force_move] enabled
@@ -1192,6 +1195,7 @@ translations:
   Events appear here after sessions and prints: Events appear here after sessions
     and prints
   Every extruder's temperature at once: Every extruder's temperature at once
+  Every unit keeps its filament gripped: Every unit keeps its filament gripped
   Everything else was saved. Change them in Spoolman.: Everything else was saved. Change them in Spoolman.
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /
   Every object is set to skip, so there is nothing to print: Every object is set to skip, so there is nothing to print
@@ -1391,6 +1395,7 @@ translations:
   Filament Control: Filament Control
   Filament Detected: Filament Detected
   Filament Dryer: Filament Dryer
+  Filament Feeder: Filament Feeder
   Filament Grade Mismatch: Filament Grade Mismatch
   Filament Humidity: Filament Humidity
   Filament In The Toolhead: Filament In The Toolhead
@@ -1689,8 +1694,11 @@ translations:
   Hotend Fan: Hotend Fan
   Hotend Heater: Hotend Heater
   How Z-axis movement is displayed: How Z-axis movement is displayed
+  How far and how fast a lane ejects: How far and how fast a lane ejects
+  How far filament is pushed back into the box on eject: How far filament is pushed back into the box on eject
   How far filament is pushed back into the box on eject (mm): How far filament is
     pushed back into the box on eject (mm)
+  How fast filament is pushed back on eject: How fast filament is pushed back on eject
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   How many labels to print: How many labels to print
@@ -1975,6 +1983,7 @@ translations:
   Loading Error: Loading Error
   Loading Filament...: Loading Filament...
   Loading G-code...: Loading G-code...
+  Loading configuration...: Loading configuration...
   Loading devices...: Loading devices...
   Loading filament...: Loading filament...
   Loading filaments...: Loading filaments...
@@ -2306,6 +2315,7 @@ translations:
   No prints this week: No prints this week
   No prints yet: No prints yet
   No profiles available: No profiles available
+  No sensor fitted for this distance: No sensor fitted for this distance
   No sensors detected: No sensors detected
   No shared peaks: No shared peaks
   No slot currently matches.: No slot currently matches.
@@ -2318,6 +2328,10 @@ translations:
   No temperature sensors detected: No temperature sensors detected
   No timelapse videos found: No timelapse videos found
   No tools to calibrate: No tools to calibrate
+  No unit has a filament buffer: No unit has a filament buffer
+  No unit has a moving selector: No unit has a moving selector
+  No unit has a servo: No unit has a servo
+  No unit has an encoder: No unit has an encoder
   'No unload macro found: unload by hand, then start again': 'No unload macro found: unload by hand, then start again'
   No vendors found: No vendors found
   No verified bypass command for this CFS firmware: No verified bypass command for this CFS firmware
@@ -2627,6 +2641,7 @@ translations:
   Priming...: Priming...
   Print: Print
   Print Anyway: Print Anyway
+  Print Behavior: Print Behavior
   'Print Behaviour': 'Print Behaviour'
   Print Cancelled: Print Cancelled
   Print Complete!: Print Complete!
@@ -3369,6 +3384,7 @@ translations:
   Spoolman needs a material for this filament.: Spoolman needs a material for this filament.
   Spoolman removed.: Spoolman removed.
   Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.
+  Spoolman support is off in Happy Hare: Spoolman support is off in Happy Hare
   Spoolman unavailable — filament weights may be stale: Spoolman unavailable — filament
     weights may be stale
   Spoolman was not configured.: Spoolman was not configured.
@@ -3833,6 +3849,7 @@ translations:
   Toggle Auto-Refill: Toggle Auto-Refill
   Toggle Quiet Mode: Toggle Quiet Mode
   Toggle external spool bypass: Toggle external spool bypass
+  Toggle this tool's toolhead LED: Toggle this tool's toolhead LED
   Toggle toolhead LED for an extruder: Toggle toolhead LED for an extruder
   'Toggle:': 'Toggle:'
   Too humid: Too humid
@@ -3891,9 +3908,12 @@ translations:
   Turn Endless Spool on, then set the Backup Gate: Turn Endless Spool on, then set the Backup Gate
   'Turn LED off when the print ends': 'Turn LED off when the print ends'
   Turn Off: Turn Off
+  Turn Off LEDs: Turn Off LEDs
+  Turn Off Toolhead LED: Turn Off Toolhead LED
   Turn Off WiFi?: Turn Off WiFi?
   Turn On: Turn On
   Turn On LEDs: Turn On LEDs
+  Turn On Toolhead LED: Turn On Toolhead LED
   Turn off bed check: Turn off bed check
   Turn off detection: Turn off detection
   Turn on the lights your light buttons control: Turn on the lights your light buttons control
@@ -4283,6 +4303,7 @@ translations:
   you have: you have
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · about {} min'
   '{} ({})': '{} ({})'
+  '{} - {}': '{} - {}'
   '{} Extruders': '{} Extruders'
   '{} Hardware Issues': '{} Hardware Issues'
   '{} Issues Detected': '{} Issues Detected'

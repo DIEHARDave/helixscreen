@@ -448,6 +448,7 @@ translations:
   Bowden: Bowden
   Bowden Length: 'Lunghezza del bowden'
   Bowden tube length from hub to toolhead: 'Lunghezza del tubo bowden dall''hub alla testina'
+  Bowden tube length to this tool: "Lunghezza del tubo Bowden fino a questo utensile"
   Box: Box
   Brand: Marca
   Brand and material come from Spoolman: Marca e materiale provengono da Spoolman
@@ -547,6 +548,7 @@ translations:
   Calibration failed: Calibrazione fallita
   Calibration failed - touch targets more precisely.: Calibrazione fallita – tocca
     i bersagli con più precisione.
+  Calibration in progress: "Calibrazione in corso"
   Calibration kept timing out. Your previous settings were kept.: La calibrazione è scaduta più volte. Sono state mantenute le impostazioni precedenti.
   Calibration may still be running — printer connection was interrupted: 'Calibrazione potrebbe essere ancora in corso — connessione alla stampante interrotta'
   Calibration may still be running — response timed out: Calibrazione potrebbe essere ancora in corso — tempo di risposta scaduto
@@ -1124,6 +1126,7 @@ translations:
   Effects: Effetti
   Eject: Espelli
   Eject Distance: Distanza espulsione
+  Eject Speed: "Velocità espulsione"
   Eject Velocity: Velocità espulsione
   Eject failed: Espulsione fallita
   Eject needs [force_move] enabled in printer config: L'espulsione richiede [force_move]
@@ -1230,6 +1233,7 @@ translations:
   Events appear here after sessions and prints: Gli eventi appaiono qui dopo sessioni
     e stampe
   Every extruder's temperature at once: Temperatura di ogni estrusore
+  Every unit keeps its filament gripped: "Ogni unità tiene il filamento bloccato"
   Everything else was saved. Change them in Spoolman.: Tutto il resto è stato salvato. Modificali in Spoolman.
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: 'Tutto il resto è stato salvato. Rinomina il materiale usando lettere, cifre, spazi e + - _ . ( ) /'
   Every object is set to skip, so there is nothing to print: 'Tutti gli oggetti sono da saltare, non c''è niente da stampare'
@@ -1433,6 +1437,7 @@ translations:
   Filament Control: Controllo filamento
   Filament Detected: Filamento rilevato
   Filament Dryer: Essiccatore filamento
+  Filament Feeder: "Alimentatore filamento"
   Filament Grade Mismatch: Grado filamento non corrispondente
   Filament Humidity: Umidità del filamento
   Filament In The Toolhead: Filamento nella testina
@@ -1737,8 +1742,11 @@ translations:
   Hotend Heater: Riscaldatore hotend
   How Z-axis movement is displayed: Come viene visualizzato il movimento dell'asse
     Z
+  How far and how fast a lane ejects: "Quanto e quanto velocemente espelle una corsia"
+  How far filament is pushed back into the box on eject: "Quanto il filamento viene spinto nella scatola all'espulsione"
   How far filament is pushed back into the box on eject (mm): Quanto il filamento
     viene spinto indietro nella scatola durante l'espulsione (mm)
+  How fast filament is pushed back on eject: "Quanto velocemente il filamento viene respinto all'espulsione"
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : 'Per quanto tempo tenere premuto perché conti come pressione prolungata, in ms (aumenta se la modalità di modifica o altre azioni si attivano per sbaglio)'
   How many labels to print: Quante etichette stampare
@@ -2032,6 +2040,7 @@ translations:
   Loading Error: Errore caricamento
   Loading Filament...: Caricamento filamento...
   Loading G-code...: Caricamento G-code...
+  Loading configuration...: "Caricamento configurazione..."
   Loading devices...: Caricamento dei dispositivi...
   Loading filament...: Caricamento filamento...
   Loading filaments...: Caricamento filamenti...
@@ -2366,6 +2375,7 @@ translations:
   No prints this week: Nessuna stampa questa settimana
   No prints yet: Nessuna stampa
   No profiles available: Nessun profilo disponibile
+  No sensor fitted for this distance: "Nessun sensore montato per questa distanza"
   No sensors detected: Nessun sensore rilevato
   No shared peaks: "Nessun picco comune"
   No slot currently matches.: 'Attualmente nessuno slot corrisponde.'
@@ -2379,6 +2389,10 @@ translations:
   No temperature sensors detected: 'Nessun sensore di temperatura rilevato'
   No timelapse videos found: Nessun video timelapse trovato
   No tools to calibrate: Nessuno strumento da calibrare
+  No unit has a filament buffer: "Nessuna unità ha un buffer filamento"
+  No unit has a moving selector: "Nessuna unità ha un selettore mobile"
+  No unit has a servo: "Nessuna unità ha un servo"
+  No unit has an encoder: "Nessuna unità ha un encoder"
   'No unload macro found: unload by hand, then start again': 'Nessuna macro di scarico trovata: scarica a mano, poi ricomincia'
 
   No vendors found: Nessun fornitore trovato
@@ -2692,6 +2706,7 @@ translations:
   Priming...: Preparazione ugello...
   Print: Stampa
   Print Anyway: Stampa comunque
+  Print Behavior: "Comportamento di stampa"
   'Print Behaviour': 'Comportamento di stampa'
   Print Cancelled: Stampa annullata
   Print Complete!: Stampa completata!
@@ -3449,6 +3464,7 @@ translations:
   Spoolman needs a material for this filament.: Spoolman richiede un materiale per questo filamento.
   Spoolman removed.: Spoolman rimosso.
   Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolman ha salvato prezzo, posizione, lotto e note, ma non il resto. Nient''altro è cambiato su questa stampante.'
+  Spoolman support is off in Happy Hare: "Il supporto Spoolman è disattivato in Happy Hare"
   Spoolman unavailable — filament weights may be stale: Spoolman non disponibile —
     i pesi del filamento potrebbero non essere aggiornati
   Spoolman was not configured.: Spoolman non era configurato.
@@ -3933,6 +3949,7 @@ translations:
   Toggle Auto-Refill: 'Alterna il rifornimento automatico'
   Toggle Quiet Mode: 'Alterna la modalità silenziosa'
   Toggle external spool bypass: Alterna il bypass della bobina esterna
+  Toggle this tool's toolhead LED: "Attiva/disattiva il LED della testina di questo utensile"
   Toggle toolhead LED for an extruder: 'Alterna il LED della testina per un estrusore'
   'Toggle:': 'Commuta:'
   Too humid: Troppo umido
@@ -3991,9 +4008,12 @@ translations:
   Turn Endless Spool on, then set the Backup Gate: 'Attiva la bobina infinita, poi imposta il Gate di riserva'
   'Turn LED off when the print ends': 'Spegni il LED a fine stampa'
   Turn Off: Spegni
+  Turn Off LEDs: "Spegni i LED"
+  Turn Off Toolhead LED: "Spegni il LED della testina"
   Turn Off WiFi?: Disattivare il WiFi?
   Turn On: Accendi
   Turn On LEDs: 'Accendi i LED'
+  Turn On Toolhead LED: "Accendi il LED della testina"
   Turn off bed check: 'Disattiva controllo piano'
   Turn off detection: Disattiva rilevamento
   Turn on the lights your light buttons control: Accende le luci controllate dai pulsanti luce
@@ -4389,6 +4409,7 @@ translations:
   you have: hai
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · circa {} min'
   '{} ({})': '{} ({})'
+  '{} - {}': "{} - {}"
   '{} Extruders': '{} estrusori'
   '{} Hardware Issues': '{} problemi hardware'
   '{} Issues Detected': '{} problemi rilevati'

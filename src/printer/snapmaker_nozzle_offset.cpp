@@ -3,6 +3,7 @@
 
 #include "snapmaker_nozzle_offset.h"
 
+#include "ams_device_sections.h"
 #include "connection_state.h"
 #include "i_moonraker_client.h"
 #include "moonraker_error.h"
@@ -86,7 +87,7 @@ bool supported(const helix::PrinterDiscovery& discovery) {
 }
 
 helix::printer::DeviceSection device_section() {
-    return {kSectionId, "Calibration", 60, "Toolhead offset calibration"};
+    return helix::printer::device_section(kSectionId, 60, TR_NOOP("Toolhead offset calibration"));
 }
 
 helix::printer::DeviceAction device_action() {

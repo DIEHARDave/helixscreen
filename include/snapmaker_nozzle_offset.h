@@ -80,7 +80,7 @@ struct Step {
 /// True when the firmware ships the macros the sequence runs, for all kHeads heads.
 [[nodiscard]] bool supported(const helix::PrinterDiscovery& discovery);
 
-inline constexpr const char* kSectionId = "snapmaker_calibration";
+inline constexpr const char* kSectionId = "calibration";
 inline constexpr const char* kActionId = "snapmaker_nozzle_offset_cal";
 /// The guided flow (ui_guided_device_flow.h) the action starts.
 inline constexpr const char* kGuidedFlowId = "snapmaker_nozzle_offset";

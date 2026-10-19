@@ -420,6 +420,7 @@ translations:
   Bowden: 远程挤出
   Bowden Length: '波顿管长度'
   Bowden tube length from hub to toolhead: '从集线器到工具头的波顿管长度'
+  Bowden tube length to this tool: "到此工具的 Bowden 管长度"
   Box: 料盒
   Brand: 品牌
   Brand and material come from Spoolman: 品牌和材料来自 Spoolman
@@ -513,6 +514,7 @@ translations:
   Calibration complete! Press 'Next' to continue.: 校准完成！按“下一步”继续。
   Calibration failed: 校准失败
   Calibration failed - touch targets more precisely.: 校准失败 – 请更精确地触摸目标。
+  Calibration in progress: "正在校准"
   Calibration kept timing out. Your previous settings were kept.: 校准反复超时，已保留您之前的设置。
   Calibration may still be running — printer connection was interrupted: '校准可能仍在运行 — 打印机连接已中断'
   Calibration may still be running — response timed out: '校准可能仍在运行 — 响应超时'
@@ -1054,6 +1056,7 @@ translations:
   Effects: 特效
   Eject: 弹出
   Eject Distance: 弹出距离
+  Eject Speed: "弹出速度"
   Eject Velocity: 弹出速度
   Eject failed: 弹出失败
   Eject needs [force_move] enabled in printer config: 弹出需要在打印机配置中启用 [force_move]
@@ -1153,6 +1156,7 @@ translations:
   Ethernet: 以太网
   Events appear here after sessions and prints: 会话和打印后事件将显示在此处
   Every extruder's temperature at once: 同时查看所有挤出机温度
+  Every unit keeps its filament gripped: "每个单元都保持夹紧耗材"
   Everything else was saved. Change them in Spoolman.: 其他内容均已保存。请在 Spoolman 中修改。
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: '其他内容均已保存。请使用字母、数字、空格以及 + - _ . ( ) / 重命名材料'
   Every object is set to skip, so there is nothing to print: '所有对象都已设为跳过，没有可打印的内容'
@@ -1347,6 +1351,7 @@ translations:
   Filament Control: 耗材控制
   Filament Detected: 检测到耗材
   Filament Dryer: 耗材烘干
+  Filament Feeder: "耗材送料器"
   Filament Grade Mismatch: 耗材等级不匹配
   Filament Humidity: 耗材湿度
   Filament In The Toolhead: 工具头处有耗材
@@ -1638,7 +1643,10 @@ translations:
   Hotend Fan: 热端风扇
   Hotend Heater: 热端加热器
   How Z-axis movement is displayed: Z 轴移动的显示方式
+  How far and how fast a lane ejects: "料道弹出的距离和速度"
+  How far filament is pushed back into the box on eject: "弹出时耗材被推回料盒的距离"
   How far filament is pushed back into the box on eject (mm): 弹出时耗材被推回料盒的距离（mm）
+  How fast filament is pushed back on eject: "弹出时耗材被推回的速度"
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : '按住多久才算长按（毫秒）。若编辑模式等误触发，请调大'
   How many labels to print: 打印多少张标签
@@ -1907,6 +1915,7 @@ translations:
   Loading Error: 加载错误
   Loading Filament...: 正在加载耗材...
   Loading G-code...: 正在加载 G-code...
+  Loading configuration...: "正在加载配置..."
   Loading devices...: 正在加载设备...
   Loading filament...: 正在加载耗材...
   Loading filaments...: 正在加载耗材...
@@ -2225,6 +2234,7 @@ translations:
   No prints this week: 本周暂无打印
   No prints yet: 暂无打印记录
   No profiles available: 无可用配置
+  No sensor fitted for this distance: "未安装此距离的传感器"
   No sensors detected: 未检测到传感器
   No shared peaks: "无共同峰值"
   No slot currently matches.: '当前没有匹配的槽位。'
@@ -2238,6 +2248,10 @@ translations:
   No temperature sensors detected: '未检测到温度传感器'
   No timelapse videos found: 未找到延时视频
   No tools to calibrate: 没有可校准的工具
+  No unit has a filament buffer: "没有单元带耗材缓冲器"
+  No unit has a moving selector: "没有单元带可移动选择器"
+  No unit has a servo: "没有单元带舵机"
+  No unit has an encoder: "没有单元带编码器"
   'No unload macro found: unload by hand, then start again': 未找到卸载宏:请手动卸载,然后重新开始
 
   No vendors found: 未找到供应商
@@ -2542,6 +2556,7 @@ translations:
   Priming...: 正在预挤...
   Print: 打印
   Print Anyway: 仍要打印
+  Print Behavior: "打印行为"
   'Print Behaviour': '打印行为'
   Print Cancelled: 打印已取消
   Print Complete!: 打印完成！
@@ -3245,6 +3260,7 @@ translations:
   Spoolman needs a material for this filament.: Spoolman 需要该耗材的材料。
   Spoolman removed.: Spoolman 已移除。
   Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolman 已保存价格、位置、批次和备注，但其余内容未保存。此打印机上没有其他更改。'
+  Spoolman support is off in Happy Hare: "Happy Hare 中的 Spoolman 支持已关闭"
   Spoolman unavailable — filament weights may be stale: Spoolman不可用 — 耗材重量可能已过期
   Spoolman was not configured.: Spoolman 未配置。
   'Spoolman: %zu Spool': 'Spoolman: %zu 个线轴'
@@ -3686,6 +3702,7 @@ translations:
   Toggle Auto-Refill: '切换自动续料'
   Toggle Quiet Mode: '切换静音模式'
   Toggle external spool bypass: 切换外部料盘旁路
+  Toggle this tool's toolhead LED: "切换此工具的工具头 LED"
   Toggle toolhead LED for an extruder: '切换某个挤出机的工具头 LED'
   'Toggle:': '切换:'
   Too humid: 湿度过高
@@ -3743,9 +3760,12 @@ translations:
   Turn Endless Spool on, then set the Backup Gate: '请先开启无限料盘，再设置备用通道'
   'Turn LED off when the print ends': '打印结束时关闭 LED'
   Turn Off: 关闭
+  Turn Off LEDs: "关闭 LED"
+  Turn Off Toolhead LED: "关闭工具头 LED"
   Turn Off WiFi?: 关闭 WiFi？
   Turn On: 开启
   Turn On LEDs: '打开 LED'
+  Turn On Toolhead LED: "打开工具头 LED"
   Turn off bed check: '关闭热床检查'
   Turn off detection: 关闭检测
   Turn on the lights your light buttons control: 开启灯光按钮所控制的灯光
@@ -4123,6 +4143,7 @@ translations:
   you have: 您有
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 约 {} 分钟'
   '{} ({})': '{}（{}）'
+  '{} - {}': "{} - {}"
   '{} Extruders': '{} 个挤出机'
   '{} Hardware Issues': '{} 个硬件问题'
   '{} Issues Detected': '检测到 {} 个问题'

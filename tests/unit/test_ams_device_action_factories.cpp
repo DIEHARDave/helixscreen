@@ -6,6 +6,7 @@
 #include "afc_defaults.h"
 #include "ams_backend_ace.h"
 #include "ams_backend_cfs.h"
+#include "ams_device_sections.h"
 #include "ams_types.h"
 #include "hh_defaults.h"
 
@@ -152,4 +153,39 @@ TEST_CASE("every default device action names an icon the font has",
             }
         }
     }
+}
+
+TEST_CASE("every backend's sections come from the shared vocabulary with a real icon",
+          "[ams][device_actions][device_sections]") {
+    for (const auto& kind : helix::printer::kDeviceSectionKinds) {
+        INFO(kind.id);
+        CHECK(helix::ui::icon::lookup_codepoint(kind.icon) != nullptr);
+    }
+
+    std::vector<std::vector<DeviceSection>> all = {
+        afc_default_sections(),
+        hh_default_sections(),
+        helix::AmsBackendAce(nullptr, nullptr).get_device_sections(),
+        AmsBackendCfs(nullptr, nullptr).get_device_sections(),
+    };
+    for (const auto& sections : all) {
+        REQUIRE_FALSE(sections.empty());
+        for (const auto& section : sections) {
+            INFO(section.id);
+            const auto* kind = helix::printer::find_device_section_kind(section.id);
+            REQUIRE(kind != nullptr);
+            CHECK(section.label == kind->label);
+            CHECK(section.icon == kind->icon);
+        }
+    }
+    // One word for one kind of section, whichever system declares it.
+    CHECK(afc_default_sections()[1].label == hh_default_sections()[1].label);
+}
+
+TEST_CASE("an id outside the section vocabulary still renders",
+          "[ams][device_actions][device_sections]") {
+    const auto section = helix::printer::device_section("not_a_kind", 3, "d");
+    CHECK(section.label == "not_a_kind");
+    CHECK(section.icon == "cog");
+    CHECK(section.display_order == 3);
 }

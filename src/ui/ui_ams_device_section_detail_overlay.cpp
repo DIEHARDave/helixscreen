@@ -22,6 +22,7 @@
 #include "ams_device_action_value.h"
 #include "ams_state.h"
 #include "ams_types.h"
+#include "display_numbering.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "static_panel_registry.h"
 #include "ui/ui_widget_helpers.h"
@@ -180,6 +181,16 @@ void AmsDeviceSectionDetailOverlay::refresh() {
 // DYNAMIC CONTROL CREATION
 // ============================================================================
 
+std::string device_action_label(const helix::printer::DeviceAction& action) {
+    std::string label = lv_tr(action.label.c_str());
+    if (action.tool_index >= 0) {
+        label = fmt::format(lv_tr("{} - {}"), label,
+                            active_tool_label(tool_label(action.tool_index), action.tool_index,
+                                              ToolLabelForm::Full));
+    }
+    return label;
+}
+
 namespace {
 
 /// The slider positions one unit of @p action's value spans.
@@ -225,13 +236,14 @@ void AmsDeviceSectionDetailOverlay::create_setting_row(lv_obj_t* parent,
     const std::string& description = (!action.enabled && !action.disable_reason.empty())
                                          ? action.disable_reason
                                          : action.description;
-    const std::string label = lv_tr(action.label.c_str());
+    const std::string label = device_action_label(action);
     const std::string description_text = description.empty() ? "" : lv_tr(description.c_str());
     const char* disabled = action.enabled ? "" : kActionDisabledSubject;
 
     std::vector<std::pair<std::string, std::string>> attrs = {
         {"label", label},
-        {"label_tag", action.label},
+        // A tool-suffixed label is composed here; a tag would re-translate it to the bare label.
+        {"label_tag", action.tool_index >= 0 ? std::string() : action.label},
         {"icon", action.icon},
     };
     const char* component = nullptr;
@@ -336,7 +348,8 @@ void AmsDeviceSectionDetailOverlay::create_button(lv_obj_t* row,
                                                   const helix::printer::DeviceAction& action) {
     spdlog::debug("[{}] Creating button in row: {}", get_name(), action.label);
 
-    const char* attrs[] = {"text",          lv_tr(action.label.c_str()),
+    const std::string label = device_action_label(action);
+    const char* attrs[] = {"text",          label.c_str(),
                            "icon",          action.icon.c_str(),
                            "disabled",      action.enabled ? "false" : "true",
                            "moves_machine", action.moves_machine ? "true" : "false",
@@ -433,7 +446,7 @@ void AmsDeviceSectionDetailOverlay::apply_slider_value(const helix::printer::Dev
     // The value travels as float, the type the section's sliders have always sent.
     AmsError result = execute(action, std::any(static_cast<float>(sent)));
     if (result.success()) {
-        NOTIFY_INFO(lv_tr("{} set to {}"), lv_tr(action.label.c_str()),
+        NOTIFY_INFO(lv_tr("{} set to {}"), device_action_label(action),
                     slider_value_text(sent, scale, action.unit));
     } else if (slider) {
         // The backend kept its old value; so does the row.
@@ -473,7 +486,7 @@ void AmsDeviceSectionDetailOverlay::on_action_clicked(lv_event_t* e) {
             // words: German sends the participle to the end of the
             // clause and Japanese renders this as 〜を開始しました, and
             // neither can be reached by concatenating "label" + "started".
-            NOTIFY_INFO(lv_tr("{} started"), lv_tr(action->label.c_str()));
+            NOTIFY_INFO(lv_tr("{} started"), device_action_label(*action));
         }
     }
 
@@ -491,7 +504,7 @@ void AmsDeviceSectionDetailOverlay::on_toggle_changed(lv_event_t* e) {
                       new_value);
         if (overlay.execute(*action, std::any(new_value)).success()) {
             NOTIFY_INFO(new_value ? lv_tr("{} enabled") : lv_tr("{} disabled"),
-                        lv_tr(action->label.c_str()));
+                        device_action_label(*action));
         } else if (new_value) {
             lv_obj_remove_state(sw, LV_STATE_CHECKED);
         } else {
@@ -544,7 +557,7 @@ void AmsDeviceSectionDetailOverlay::on_value_clicked(lv_event_t* e) {
             slider = helix::ui::find_required(row, "slider", overlay.get_name());
         }
         overlay.keypad_action_id_ = action->id;
-        overlay.keypad_title_ = lv_tr(action->label.c_str());
+        overlay.keypad_title_ = device_action_label(*action);
         ui_keypad_config_t config = {
             .initial_value = static_cast<float>(slider ? scale.to_value(lv_slider_get_value(slider))
                                                        : action->min_value),
@@ -587,7 +600,7 @@ void AmsDeviceSectionDetailOverlay::on_dropdown_changed(lv_event_t* e) {
             spdlog::debug("[AmsDeviceSectionDetailOverlay] Dropdown changed: {} = '{}'", action->id,
                           choice);
             if (overlay.execute(*action, std::any(choice)).success()) {
-                NOTIFY_INFO(lv_tr("{} set to {}"), lv_tr(action->label.c_str()), choice);
+                NOTIFY_INFO(lv_tr("{} set to {}"), device_action_label(*action), choice);
             }
         }
     }

@@ -538,7 +538,7 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         return print_preferences_;
     }
 
-    /// The Print Behaviour section shown on the AMS device-operations
+    /// The Print Behavior section shown on the AMS device-operations
     /// overlay. Absent until the firmware has reported a preference, so the
     /// overlay never offers a setting whose state it does not know.
     [[nodiscard]] std::vector<helix::printer::DeviceSection> get_device_sections() const override;

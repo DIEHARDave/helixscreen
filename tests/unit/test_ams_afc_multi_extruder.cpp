@@ -434,13 +434,13 @@ TEST_CASE("AFC.system webhook: bowden actions have correct labels",
 
     for (const auto& action : actions) {
         if (action.id == "bowden_T0") {
-            CHECK(action.label.find("T0") != std::string::npos);
+            CHECK(action.tool_index == 0);
             CHECK(action.section == "setup");
             CHECK(action.type == helix::printer::ActionType::SLIDER);
             CHECK(action.unit == "mm");
         }
         if (action.id == "bowden_T1") {
-            CHECK(action.label.find("T1") != std::string::npos);
+            CHECK(action.tool_index == 1);
             CHECK(action.section == "setup");
             CHECK(action.type == helix::printer::ActionType::SLIDER);
             CHECK(action.unit == "mm");

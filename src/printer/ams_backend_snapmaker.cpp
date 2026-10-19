@@ -8,6 +8,7 @@
 #include "ui_toast_manager.h"
 
 #include "ams_device_action_value.h"
+#include "ams_device_sections.h"
 #include "ams_error.h"
 #include "ams_fault_event.h"
 #include "ams_state.h"
@@ -54,6 +55,9 @@
 namespace helix {
 
 namespace {
+
+/// The section the firmware's print preferences sit in.
+constexpr const char* kPrintPrefsSection = "print_prefs";
 
 /// Parses a pending insert verdict may hold while waiting for the tag
 /// reader's filament_detect.info entry. Status frames arrive about once a
@@ -3393,11 +3397,7 @@ std::vector<helix::printer::DeviceSection> AmsBackendSnapmaker::get_device_secti
     std::vector<DeviceSection> out;
     // Nothing reported yet - an empty section is worse than none.
     if (!print_preferences().empty()) {
-        DeviceSection s;
-        s.id = "snapmaker_print_prefs";
-        s.label = lv_tr("Print Behaviour");
-        s.display_order = 50;
-        out.push_back(std::move(s));
+        out.push_back(helix::printer::device_section(kPrintPrefsSection, 50, ""));
     }
     bool nozzle_offset = false;
     {
@@ -3419,29 +3419,29 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
     std::vector<DeviceAction> out;
 
     auto add_toggle = [&](const char* id, const char* label, bool value) {
-        out.push_back(DeviceAction::toggle(id, lv_tr(label), "snapmaker_print_prefs", value));
+        out.push_back(DeviceAction::toggle(id, label, kPrintPrefsSection, value));
     };
 
     // Only settings the firmware has reported become actions: a toggle whose
     // state is unknown renders off and invites "changing" it to its own value.
     if (p.auto_replenish) {
-        add_toggle("snapmaker_auto_replenish", "Auto-Replenish", *p.auto_replenish);
+        add_toggle("snapmaker_auto_replenish", TR_NOOP("Auto-Replenish"), *p.auto_replenish);
     }
     if (p.replenish_ignore_color) {
-        add_toggle("snapmaker_replenish_ignore_color", "Replenish ignores color",
+        add_toggle("snapmaker_replenish_ignore_color", TR_NOOP("Replenish ignores color"),
                    *p.replenish_ignore_color);
     }
     if (p.filament_entangle_detect) {
-        add_toggle("snapmaker_entangle_detect", "Detect filament tangles",
+        add_toggle("snapmaker_entangle_detect", TR_NOOP("Detect filament tangles"),
                    *p.filament_entangle_detect);
     }
     if (p.filament_entangle_sen) {
-        out.push_back(DeviceAction::dropdown("snapmaker_entangle_sen", lv_tr("Tangle sensitivity"),
-                                             "snapmaker_print_prefs", {"low", "medium", "high"},
+        out.push_back(DeviceAction::dropdown("snapmaker_entangle_sen", "Tangle sensitivity",
+                                             kPrintPrefsSection, {"low", "medium", "high"},
                                              std::string(*p.filament_entangle_sen)));
     }
     if (p.end_led_turn_off) {
-        add_toggle("snapmaker_end_led_off", "Turn LED off when the print ends",
+        add_toggle("snapmaker_end_led_off", TR_NOOP("Turn LED off when the print ends"),
                    *p.end_led_turn_off);
     }
     // The firmware's list says how many heads there are; the values are the
@@ -3453,16 +3453,13 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
         // proxy type on some platforms, not bool, and the UI casts the value back to bool.
         const bool unload = saved[t];
         const int tool = static_cast<int>(t);
-        DeviceAction a = DeviceAction::toggle(
-            "snapmaker_end_unload_t" + std::to_string(t),
-            std::string(lv_tr("Unload at end")) + " - " +
-                helix::ui::tool_label_in_form(tool_noun(), helix::ui::tool_label(tool), tool,
-                                              helix::ui::ToolLabelForm::Full),
-            "snapmaker_print_prefs", unload);
+        DeviceAction a = DeviceAction::toggle("snapmaker_end_unload_t" + std::to_string(t),
+                                              "Unload at end", kPrintPrefsSection, unload);
         a.slot_index = static_cast<int>(t);
+        a.tool_index = tool;
         if (head_is_soft(soft, t)) {
             a.enabled = false;
-            a.disable_reason = lv_tr("Soft filament is never unloaded");
+            a.disable_reason = TR_NOOP("Soft filament is never unloaded");
         }
         out.push_back(std::move(a));
     }

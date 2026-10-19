@@ -2556,6 +2556,7 @@ struct DeviceSection {
     std::string label;       ///< Display label (e.g., "Calibration")
     int display_order;       ///< Sort order (0 = first)
     std::string description; ///< Short description for settings row
+    std::string icon;        ///< Icon name; device_section() fills it from the shared table
 };
 
 /**
@@ -2577,7 +2578,10 @@ struct DeviceAction {
     float step = 1;                   ///< Slider resolution: 1, 0.1 or 0.01
     std::string unit;                 ///< Display unit (e.g., "mm", "%")
     int slot_index = -1;              ///< If action is per-slot (-1 = system-wide)
-    bool enabled = true;              ///< Whether action is currently available
+    /// The tool this action applies to (0-based G-code number), or -1. The UI names
+    /// the tool after the label, in the app's one tool-label form.
+    int tool_index = -1;
+    bool enabled = true; ///< Whether action is currently available
     /// Running it moves the printer (toolhead, homing, a purge or wipe): the UI greys it
     /// while anything forbids motion and the backend refuses it during a print.
     bool moves_machine = false;

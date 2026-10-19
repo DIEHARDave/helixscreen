@@ -187,6 +187,12 @@ class AmsDeviceSectionDetailOverlay : public OverlayBase {
     SubjectManager subjects_;
 };
 
+/**
+ * @brief What a DeviceAction's control is labeled: its translated label, then the
+ *        tool it applies to in the app's one tool-label form ("Tool 1 (T0)").
+ */
+[[nodiscard]] std::string device_action_label(const helix::printer::DeviceAction& action);
+
 inline AmsDeviceSectionDetailOverlay& get_ams_device_section_detail_overlay() {
     return lazy_global<AmsDeviceSectionDetailOverlay>("AmsDeviceSectionDetailOverlay");
 }

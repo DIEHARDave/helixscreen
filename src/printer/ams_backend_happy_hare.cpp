@@ -26,6 +26,7 @@
 #include "printer_state.h" // PrinterState: mid-print clear guard
 #include "settings_manager.h"
 #include "text_io.h"
+#include "translation_loader.h" // TR_NOOP
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -3941,7 +3942,7 @@ std::vector<helix::printer::DeviceAction> AmsBackendHappyHare::get_device_action
         for (auto& a : actions) {
             if (a.id == "spoolman_refresh") {
                 a.enabled = false;
-                a.disable_reason = "Spoolman support is off in Happy Hare";
+                a.disable_reason = TR_NOOP("Spoolman support is off in Happy Hare");
             }
         }
     }
@@ -3951,7 +3952,7 @@ std::vector<helix::printer::DeviceAction> AmsBackendHappyHare::get_device_action
         for (auto& a : actions) {
             if (a.type != ActionType::BUTTON) {
                 a.enabled = false;
-                a.disable_reason = "Loading configuration...";
+                a.disable_reason = TR_NOOP("Loading configuration...");
             }
         }
         return actions;
@@ -4041,25 +4042,25 @@ std::vector<helix::printer::DeviceAction> AmsBackendHappyHare::get_device_action
             a.enabled = false;
             switch (*feature) {
             case happy_hare::UnitFeature::Servo:
-                a.disable_reason = "No unit has a servo";
+                a.disable_reason = TR_NOOP("No unit has a servo");
                 break;
             case happy_hare::UnitFeature::SelectorSpeed:
-                a.disable_reason = "No unit has a moving selector";
+                a.disable_reason = TR_NOOP("No unit has a moving selector");
                 break;
             case happy_hare::UnitFeature::Encoder:
-                a.disable_reason = "No unit has an encoder";
+                a.disable_reason = TR_NOOP("No unit has an encoder");
                 break;
             case happy_hare::UnitFeature::SyncToExtruder:
-                a.disable_reason = "Every unit keeps its filament gripped";
+                a.disable_reason = TR_NOOP("Every unit keeps its filament gripped");
                 break;
             case happy_hare::UnitFeature::FilamentBuffer:
-                a.disable_reason = "No unit has a filament buffer";
+                a.disable_reason = TR_NOOP("No unit has a filament buffer");
                 break;
             }
         } else if ((a.id == "toolhead_sensor_to_nozzle" || a.id == "toolhead_entry_to_extruder") &&
                    !test_config_unit_locked(a.id)) {
             a.enabled = false;
-            a.disable_reason = "No sensor fitted for this distance";
+            a.disable_reason = TR_NOOP("No sensor fitted for this distance");
         }
     }
 

@@ -421,6 +421,7 @@ translations:
   Bowden: ボーデン
   Bowden Length: 'ボーデン長'
   Bowden tube length from hub to toolhead: 'ハブからツールヘッドまでのボーデンチューブ長'
+  Bowden tube length to this tool: "このツールまでのボーデンチューブ長"
   Box: ボックス
   Brand: ブランド
   Brand and material come from Spoolman: ブランドと素材は Spoolman から取得されます
@@ -514,6 +515,7 @@ translations:
   Calibration complete! Press 'Next' to continue.: '"キャリブレーション完了！「次へ」を押して続行してください。"'
   Calibration failed: キャリブレーション失敗
   Calibration failed - touch targets more precisely.: キャリブレーション失敗 – ターゲットをより正確にタッチしてください。
+  Calibration in progress: "キャリブレーション中"
   Calibration kept timing out. Your previous settings were kept.: キャリブレーションが繰り返しタイムアウトしました。以前の設定を維持しました。
   Calibration may still be running — printer connection was interrupted: 'キャリブレーションがまだ実行中の可能性があります — プリンター接続が中断されました'
   Calibration may still be running — response timed out: 'キャリブレーションがまだ実行中の可能性があります — 応答タイムアウト'
@@ -1057,6 +1059,7 @@ translations:
   Effects: エフェクト
   Eject: 取り出し
   Eject Distance: 取り出し距離
+  Eject Speed: "取り出し速度"
   Eject Velocity: 取り出し速度
   Eject failed: イジェクトに失敗しました
   Eject needs [force_move] enabled in printer config: 取り出しにはプリンター設定で [force_move]
@@ -1157,6 +1160,7 @@ translations:
   Ethernet: イーサネット
   Events appear here after sessions and prints: セッションと印刷の後にイベントがここに表示されます
   Every extruder's temperature at once: 全エクストルーダーの温度を一覧表示
+  Every unit keeps its filament gripped: "すべてのユニットがフィラメントを保持したままです"
   Everything else was saved. Change them in Spoolman.: その他はすべて保存されました。変更は Spoolman で行ってください。
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: 'その他はすべて保存されました。材料名は英字・数字・スペース・+ - _ . ( ) / で構成される名前に変更してください'
   Every object is set to skip, so there is nothing to print: 'すべてのオブジェクトがスキップ対象のため、印刷するものがありません'
@@ -1351,6 +1355,7 @@ translations:
   Filament Control: フィラメント制御
   Filament Detected: フィラメント検出
   Filament Dryer: フィラメントドライヤー
+  Filament Feeder: "フィラメントフィーダー"
   Filament Grade Mismatch: フィラメントグレード不一致
   Filament Humidity: フィラメント湿度
   Filament In The Toolhead: ツールヘッドにフィラメントがあります
@@ -1642,8 +1647,11 @@ translations:
   Hotend Fan: ホットエンドファン
   Hotend Heater: ホットエンドヒーター
   How Z-axis movement is displayed: Z軸の移動表示方法
+  How far and how fast a lane ejects: "レーンの取り出し距離と速度"
+  How far filament is pushed back into the box on eject: "取り出し時にフィラメントをボックスへ押し戻す距離"
   How far filament is pushed back into the box on eject (mm): 取り出し時にフィラメントをボックスへ押し戻す距離
     (mm)
+  How fast filament is pushed back on eject: "取り出し時にフィラメントを押し戻す速度"
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : '長押しと判定されるまでの保持時間（ミリ秒）。編集モードなどが誤動作する場合は大きくしてください'
   How many labels to print: 印刷するラベル枚数
@@ -1913,6 +1921,7 @@ translations:
   Loading Error: 装填エラー
   Loading Filament...: フィラメントを装填中...
   Loading G-code...: G-codeを読み込み中...
+  Loading configuration...: "設定を読み込み中..."
   Loading devices...: デバイスを読み込み中...
   Loading filament...: フィラメントを装填中...
   Loading filaments...: フィラメントを読み込み中...
@@ -2232,6 +2241,7 @@ translations:
   No prints this week: 今週の印刷なし
   No prints yet: 印刷履歴なし
   No profiles available: 利用可能なプロファイルがありません
+  No sensor fitted for this distance: "この距離用のセンサーが取り付けられていません"
   No sensors detected: センサーが検出されませんでした
   No shared peaks: "共通のピークなし"
   No slot currently matches.: '現在、一致するスロットはありません。'
@@ -2245,6 +2255,10 @@ translations:
   No temperature sensors detected: '温度センサーが検出されません'
   No timelapse videos found: タイムラプス動画が見つかりません
   No tools to calibrate: キャリブレートするツールがありません
+  No unit has a filament buffer: "フィラメントバッファを持つユニットがありません"
+  No unit has a moving selector: "可動セレクターを持つユニットがありません"
+  No unit has a servo: "サーボを持つユニットがありません"
+  No unit has an encoder: "エンコーダーを持つユニットがありません"
   'No unload macro found: unload by hand, then start again': '排出マクロが見つかりません: 手で排出してから、もう一度始めてください'
 
   No vendors found: ベンダーが見つかりません
@@ -2550,6 +2564,7 @@ translations:
   Priming...: プライミング中...
   Print: 印刷
   Print Anyway: それでも印刷
+  Print Behavior: "印刷時の動作"
   'Print Behaviour': '印刷の動作'
   Print Cancelled: 印刷キャンセル
   Print Complete!: 印刷完了！
@@ -3254,6 +3269,7 @@ translations:
   Spoolman needs a material for this filament.: Spoolman にはこのフィラメントの素材が必要です。
   Spoolman removed.: Spoolman を削除しました。
   Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolmanに価格、場所、ロット、メモは保存されましたが、それ以外は保存されませんでした。このプリンターではほかに何も変更されていません。'
+  Spoolman support is off in Happy Hare: "Happy Hare の Spoolman サポートはオフです"
   Spoolman unavailable — filament weights may be stale: Spoolmanが利用できません — フィラメント重量が古い可能性があります
   Spoolman was not configured.: Spoolman は設定されていませんでした。
   'Spoolman: %zu Spool': 'Spoolman: %zu 個のスプール'
@@ -3695,6 +3711,7 @@ translations:
   Toggle Auto-Refill: '自動補充を切り替え'
   Toggle Quiet Mode: '静音モードを切り替え'
   Toggle external spool bypass: 外部スプールバイパスを切り替え
+  Toggle this tool's toolhead LED: "このツールのツールヘッドLEDを切り替え"
   Toggle toolhead LED for an extruder: 'エクストルーダーのツールヘッドLEDを切り替え'
   'Toggle:': '切り替え:'
   Too humid: 湿度が高すぎます
@@ -3752,9 +3769,12 @@ translations:
   Turn Endless Spool on, then set the Backup Gate: 'エンドレススプールを有効にしてから、バックアップゲートを設定してください'
   'Turn LED off when the print ends': '印刷終了時に LED を消灯'
   Turn Off: オフにする
+  Turn Off LEDs: "LEDを消灯"
+  Turn Off Toolhead LED: "ツールヘッドLEDを消灯"
   Turn Off WiFi?: WiFiをオフにしますか？
   Turn On: オンにする
   Turn On LEDs: 'LEDを点灯'
+  Turn On Toolhead LED: "ツールヘッドLEDを点灯"
   Turn off bed check: 'ベッドチェックをオフにする'
   Turn off detection: 検出をオフにする
   Turn on the lights your light buttons control: ライトボタンが操作するライトを点灯します
@@ -4133,6 +4153,7 @@ translations:
   you have: 現在は
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 約{}分'
   '{} ({})': '{}（{}）'
+  '{} - {}': "{} - {}"
   '{} Extruders': '{} エクストルーダー'
   '{} Hardware Issues': 'ハードウェアの問題 {} 件'
   '{} Issues Detected': '問題を {} 件検出'

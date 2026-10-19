@@ -2985,14 +2985,18 @@ publishing a phantom tray; pure black is a real pick and publishes.
 
 ### Dynamic Actions (backend-specific)
 
-Each backend can expose dynamic device actions via `get_device_sections()` and `get_device_actions()`. The UI renders them as buttons, toggles, sliders, or dropdowns based on `ActionType`.
+Each backend can expose dynamic device actions via `get_device_sections()` and `get_device_actions()`. The section overlay builds each from the `setting_toggle_row` / `setting_slider_row` / `setting_dropdown_row` / `setting_info_row` components (buttons from `device_action_button`), shows `disable_reason` as the description when an action is disabled, and names a per-tool action's tool from `DeviceAction::tool_index` in the app's tool-label form.
+
+Section ids, labels and icons come from one table, `include/ams_device_sections.h` (`device_section(id, order, description)`): a backend picks ids and writes its own description. Labels and descriptions stay English in the backend (`TR_NOOP` for anything assigned after construction, such as `disable_reason`); the UI translates once.
+
+Values reach `do_execute_device_action()` through `device_action_value<T>()` (`include/ams_device_action_value.h`): numbers by value whatever their type, a missing value refused. An action that moves the printer is marked `with_machine_motion()`: its control greys while motion is blocked (`moves_machine`), and `AmsSubscriptionBackend::execute_device_action()` refuses it during a print with "Printer is busy with a print".
 
 The section lists live in `src/printer/afc_defaults.cpp` (`afc_default_sections()`) and
 `src/printer/hh_defaults.cpp` (`hh_default_sections()`):
 
 | Backend | Sections |
 |---------|----------|
-| AFC | **Setup**, **Speed Settings**, **Toolhead**, **Maintenance**, **Hub & Cutter**, **Tip Forming**, **Purge & Wipe** (7) |
+| AFC | **Setup**, **Speed**, **Toolhead**, **Maintenance**, **Hub & Cutter**, **Tip Forming**, **Purge & Wipe** (7) |
 | Happy Hare | **Setup**, **Speed**, **Toolhead**, **Accessories**, **Maintenance** (5) |
 
 There is no separate "Calibration" or "LED & Modes" section on AFC. The calibration
@@ -3028,8 +3032,8 @@ vendor flow is one new file plus one `guided_flow` string on its backend's actio
 `AmsBackend::unload_blocked_reason(slot)` and `eject_unavailable_reason(slot)` return a
 translated one-line reason, or empty. The lane context menu binds them to the
 `ams_slot_unload_hint` / `ams_slot_eject_hint` subjects, so the UI never decides which backend
-owes the user an explanation. The Device Operations overlay shows its eject distance and
-velocity rows from `supports_configurable_eject_params()` (`ams_device_ops_has_eject_params`).
+owes the user an explanation. QIDI Box publishes its lane eject distance and speed as two
+sliders in its **Filament Control** section (`AmsBackendQidi::get_device_actions`).
 
 ---
 
@@ -3072,7 +3076,7 @@ When AFC mock mode is enabled:
 - Reports `AmsType::AFC` with type name "AFC (Mock)"
 - Uses `PathTopology::HUB` (4 lanes merge through hub)
 - Configures 4 lanes with realistic filament data (PLA, PETG, ABS, ASA)
-- Sets AFC-specific device sections: Calibration, Maintenance, Speed Settings, LEDs & Modes
+- Sets AFC's device sections (`afc_default_sections()`)
 - Includes mock device actions: calibration wizard, bowden length slider, speed multipliers, lane tests, blade change, park, brush, motor reset, LED toggle, quiet mode toggle
 - Uses `TipMethod::CUT`
 - Editable endless spool with pre-configured backup mapping

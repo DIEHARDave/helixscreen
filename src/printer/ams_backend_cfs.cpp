@@ -9,6 +9,7 @@
 #include "ui_update_queue.h"
 
 #include "ams_bypass_policy.h"
+#include "ams_device_sections.h"
 #include "ams_fault_event.h"
 #include "ams_tool_map_sync.h"
 #include "cfs_status_parse.h"
@@ -4481,13 +4482,13 @@ std::vector<helix::printer::DeviceSection> AmsBackendCfs::get_device_sections() 
     // hardware, so a single maintenance section carries them; a split would be
     // a taxonomy with one or two members each. The device-operations overlay
     // renders only actions whose section matches one declared here.
-    using DS = helix::printer::DeviceSection;
-    std::vector<DS> sections = {
-        DS{"maintenance", "Maintenance", 0, "RFID, Auto-Refill, nozzle and link care"},
+    using helix::printer::device_section;
+    std::vector<helix::printer::DeviceSection> sections = {
+        device_section("maintenance", 0, TR_NOOP("RFID, Auto-Refill, nozzle and link care")),
     };
     if (macro_variant_ == CfsMacroVariant::K1) {
         sections.push_back(
-            DS{"calibration", "Calibration", 1, "Cutter and purge chute calibration"});
+            device_section("calibration", 1, TR_NOOP("Cutter and purge chute calibration")));
     }
     return sections;
 }
@@ -4528,7 +4529,7 @@ std::vector<helix::printer::DeviceAction> AmsBackendCfs::get_device_actions() co
         for (DA a : {std::move(cutter), std::move(chute)}) {
             if (calibration_in_flight_) {
                 a.enabled = false;
-                a.disable_reason = "Calibration in progress";
+                a.disable_reason = TR_NOOP("Calibration in progress");
             }
             actions.push_back(std::move(a));
         }

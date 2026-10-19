@@ -415,6 +415,7 @@
   <translation tag="Bowden" zh="远程挤出"/>
   <translation tag="Bowden Length" zh="波顿管长度"/>
   <translation tag="Bowden tube length from hub to toolhead" zh="从集线器到工具头的波顿管长度"/>
+  <translation tag="Bowden tube length to this tool" zh="到此工具的 Bowden 管长度"/>
   <translation tag="Box" zh="料盒"/>
   <translation tag="Brand" zh="品牌"/>
   <translation tag="Brand and material come from Spoolman" zh="品牌和材料来自 Spoolman"/>
@@ -505,6 +506,7 @@
   <translation tag="Calibration complete! Press &apos;Next&apos; to continue." zh="校准完成！按“下一步”继续。"/>
   <translation tag="Calibration failed" zh="校准失败"/>
   <translation tag="Calibration failed - touch targets more precisely." zh="校准失败 – 请更精确地触摸目标。"/>
+  <translation tag="Calibration in progress" zh="正在校准"/>
   <translation tag="Calibration kept timing out. Your previous settings were kept." zh="校准反复超时，已保留您之前的设置。"/>
   <translation tag="Calibration may still be running — printer connection was interrupted" zh="校准可能仍在运行 — 打印机连接已中断"/>
   <translation tag="Calibration may still be running — response timed out" zh="校准可能仍在运行 — 响应超时"/>
@@ -1017,6 +1019,7 @@
   <translation tag="Effects" zh="特效"/>
   <translation tag="Eject" zh="弹出"/>
   <translation tag="Eject Distance" zh="弹出距离"/>
+  <translation tag="Eject Speed" zh="弹出速度"/>
   <translation tag="Eject Velocity" zh="弹出速度"/>
   <translation tag="Eject failed" zh="弹出失败"/>
   <translation tag="Eject needs [force_move] enabled in printer config" zh="弹出需要在打印机配置中启用 [force_move]"/>
@@ -1116,6 +1119,7 @@
   <translation tag="Every extruder&apos;s temperature at once" zh="同时查看所有挤出机温度"/>
   <translation tag="Every object is set to skip, so there is nothing to print" zh="所有对象都已设为跳过，没有可打印的内容"/>
   <translation tag="Every tool&apos;s offsets are measured again and replace the current ones. Save afterwards to keep the result." zh="所有工具的偏移将重新测量并替换当前值。之后请保存以保留结果。"/>
+  <translation tag="Every unit keeps its filament gripped" zh="每个单元都保持夹紧耗材"/>
   <translation tag="Everything else was saved. Change them in Spoolman." zh="其他内容均已保存。请在 Spoolman 中修改。"/>
   <translation tag="Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /" zh="其他内容均已保存。请使用字母、数字、空格以及 + - _ . ( ) / 重命名材料"/>
   <translation tag="Excellent Accuracy" zh="精度极佳"/>
@@ -1304,6 +1308,7 @@
   <translation tag="Filament Control" zh="耗材控制"/>
   <translation tag="Filament Detected" zh="检测到耗材"/>
   <translation tag="Filament Dryer" zh="耗材烘干"/>
+  <translation tag="Filament Feeder" zh="耗材送料器"/>
   <translation tag="Filament Grade Mismatch" zh="耗材等级不匹配"/>
   <translation tag="Filament Humidity" zh="耗材湿度"/>
   <translation tag="Filament In The Toolhead" zh="工具头处有耗材"/>
@@ -1583,7 +1588,10 @@
   <translation tag="Hotend Fan" zh="热端风扇"/>
   <translation tag="Hotend Heater" zh="热端加热器"/>
   <translation tag="How Z-axis movement is displayed" zh="Z 轴移动的显示方式"/>
+  <translation tag="How far and how fast a lane ejects" zh="料道弹出的距离和速度"/>
+  <translation tag="How far filament is pushed back into the box on eject" zh="弹出时耗材被推回料盒的距离"/>
   <translation tag="How far filament is pushed back into the box on eject (mm)" zh="弹出时耗材被推回料盒的距离（mm）"/>
+  <translation tag="How fast filament is pushed back on eject" zh="弹出时耗材被推回的速度"/>
   <translation tag="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)" zh="按住多久才算长按（毫秒）。若编辑模式等误触发，请调大"/>
   <translation tag="How many labels to print" zh="打印多少张标签"/>
   <translation tag="How the Jog tab arranges its buttons" zh="点动页按钮的排列方式"/>
@@ -1836,6 +1844,7 @@
   <translation tag="Loading Error" zh="加载错误"/>
   <translation tag="Loading Filament..." zh="正在加载耗材..."/>
   <translation tag="Loading G-code..." zh="正在加载 G-code..."/>
+  <translation tag="Loading configuration..." zh="正在加载配置..."/>
   <translation tag="Loading devices..." zh="正在加载设备..."/>
   <translation tag="Loading filament..." zh="正在加载耗材..."/>
   <translation tag="Loading filaments..." zh="正在加载耗材..."/>
@@ -2149,6 +2158,7 @@
   <translation tag="No prints this week" zh="本周暂无打印"/>
   <translation tag="No prints yet" zh="暂无打印记录"/>
   <translation tag="No profiles available" zh="无可用配置"/>
+  <translation tag="No sensor fitted for this distance" zh="未安装此距离的传感器"/>
   <translation tag="No sensors detected" zh="未检测到传感器"/>
   <translation tag="No shared peaks" zh="无共同峰值"/>
   <translation tag="No slot currently matches." zh="当前没有匹配的槽位。"/>
@@ -2161,6 +2171,10 @@
   <translation tag="No temperature sensors detected" zh="未检测到温度传感器"/>
   <translation tag="No timelapse videos found" zh="未找到延时视频"/>
   <translation tag="No tools to calibrate" zh="没有可校准的工具"/>
+  <translation tag="No unit has a filament buffer" zh="没有单元带耗材缓冲器"/>
+  <translation tag="No unit has a moving selector" zh="没有单元带可移动选择器"/>
+  <translation tag="No unit has a servo" zh="没有单元带舵机"/>
+  <translation tag="No unit has an encoder" zh="没有单元带编码器"/>
   <translation tag="No unload macro found: unload by hand, then start again" zh="未找到卸载宏:请手动卸载,然后重新开始"/>
   <translation tag="No vendors found" zh="未找到供应商"/>
   <translation tag="No verified bypass command for this CFS firmware" zh="此 CFS 固件没有经验证的旁通命令"/>
@@ -2451,6 +2465,7 @@
   <translation tag="Priming..." zh="正在预挤..."/>
   <translation tag="Print" zh="打印"/>
   <translation tag="Print Anyway" zh="仍要打印"/>
+  <translation tag="Print Behavior" zh="打印行为"/>
   <translation tag="Print Behaviour" zh="打印行为"/>
   <translation tag="Print Cancelled" zh="打印已取消"/>
   <translation tag="Print Complete!" zh="打印完成！"/>
@@ -3138,6 +3153,7 @@
   <translation tag="Spoolman needs a material for this filament." zh="Spoolman 需要该耗材的材料。"/>
   <translation tag="Spoolman removed." zh="Spoolman 已移除。"/>
   <translation tag="Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer." zh="Spoolman 已保存价格、位置、批次和备注，但其余内容未保存。此打印机上没有其他更改。"/>
+  <translation tag="Spoolman support is off in Happy Hare" zh="Happy Hare 中的 Spoolman 支持已关闭"/>
   <translation tag="Spoolman unavailable — filament weights may be stale" zh="Spoolman不可用 — 耗材重量可能已过期"/>
   <translation tag="Spoolman was not configured." zh="Spoolman 未配置。"/>
   <translation tag="Spoolman: %zu Spool" zh="Spoolman: %zu 个线轴"/>
@@ -3530,6 +3546,7 @@
   <translation tag="Toggle Auto-Refill" zh="切换自动续料"/>
   <translation tag="Toggle Quiet Mode" zh="切换静音模式"/>
   <translation tag="Toggle external spool bypass" zh="切换外部料盘旁路"/>
+  <translation tag="Toggle this tool&apos;s toolhead LED" zh="切换此工具的工具头 LED"/>
   <translation tag="Toggle toolhead LED for an extruder" zh="切换某个挤出机的工具头 LED"/>
   <translation tag="Toggle:" zh="切换:"/>
   <translation tag="Too humid" zh="湿度过高"/>
@@ -3586,9 +3603,12 @@
   <translation tag="Turn Endless Spool on, then set the Backup Gate" zh="请先开启无限料盘，再设置备用通道"/>
   <translation tag="Turn LED off when the print ends" zh="打印结束时关闭 LED"/>
   <translation tag="Turn Off" zh="关闭"/>
+  <translation tag="Turn Off LEDs" zh="关闭 LED"/>
+  <translation tag="Turn Off Toolhead LED" zh="关闭工具头 LED"/>
   <translation tag="Turn Off WiFi?" zh="关闭 WiFi？"/>
   <translation tag="Turn On" zh="开启"/>
   <translation tag="Turn On LEDs" zh="打开 LED"/>
+  <translation tag="Turn On Toolhead LED" zh="打开工具头 LED"/>
   <translation tag="Turn off bed check" zh="关闭热床检查"/>
   <translation tag="Turn off detection" zh="关闭检测"/>
   <translation tag="Turn on the lights your light buttons control" zh="开启灯光按钮所控制的灯光"/>
@@ -3961,6 +3981,7 @@
   <translation tag="you have" zh="您有"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" zh="{:.0f}-{:.0f} Hz · 约 {} 分钟"/>
   <translation tag="{} ({})" zh="{}（{}）"/>
+  <translation tag="{} - {}" zh="{} - {}"/>
   <translation tag="{} Extruders" zh="{} 个挤出机"/>
   <translation tag="{} Hardware Issues" zh="{} 个硬件问题"/>
   <translation tag="{} Issues Detected" zh="检测到 {} 个问题"/>

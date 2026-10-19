@@ -5,6 +5,7 @@
 
 #include "ui_toast_manager.h"
 
+#include "ams_device_sections.h"
 #include "ams_error.h"
 #include "ams_fault_event.h"
 #include "ams_state.h"
@@ -2377,9 +2378,9 @@ std::vector<helix::printer::DeviceSection> AmsBackendToolChanger::get_device_sec
     if (!feeder_.present) {
         return {};
     }
-    using DS = helix::printer::DeviceSection;
     return {
-        DS{"feeder", "Filament feeder", 0, "Release or grip the filament by hand"},
+        helix::printer::device_section("feeder", 0,
+                                       TR_NOOP("Release or grip the filament by hand")),
     };
 }
 

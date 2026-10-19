@@ -454,6 +454,7 @@ translations:
   Bowden: Bowden
   Bowden Length: 'Bowden-Länge'
   Bowden tube length from hub to toolhead: 'Länge des Bowdenschlauchs vom Hub zum Werkzeugkopf'
+  Bowden tube length to this tool: "Bowden-Länge bis zu diesem Werkzeug"
   Box: Box
   Brand: Marke
   Brand and material come from Spoolman: Marke und Material stammen aus Spoolman
@@ -551,6 +552,7 @@ translations:
   Calibration failed: Kalibrierung fehlgeschlagen
   Calibration failed - touch targets more precisely.: Kalibrierung fehlgeschlagen
     – Ziele präziser berühren.
+  Calibration in progress: "Kalibrierung läuft"
   Calibration kept timing out. Your previous settings were kept.: Bei der Kalibrierung kam es wiederholt zu einer Zeitüberschreitung. Ihre vorherigen Einstellungen wurden beibehalten.
   Calibration may still be running — printer connection was interrupted: 'Kalibrierung läuft möglicherweise noch — Druckerverbindung wurde unterbrochen'
   Calibration may still be running — response timed out: Kalibrierung läuft möglicherweise noch — Zeitüberschreitung der Antwort
@@ -1131,6 +1133,7 @@ translations:
   Effects: Effekte
   Eject: Auswerfen
   Eject Distance: Auswurfstrecke
+  Eject Speed: "Auswurfgeschwindigkeit"
   Eject Velocity: Auswurfgeschwindigkeit
   Eject failed: Auswerfen fehlgeschlagen
   Eject needs [force_move] enabled in printer config: Auswerfen erfordert [force_move]
@@ -1238,6 +1241,7 @@ translations:
   Events appear here after sessions and prints: Ereignisse erscheinen hier nach Sitzungen
     und Drucken
   Every extruder's temperature at once: Alle Extrudertemperaturen auf einmal
+  Every unit keeps its filament gripped: "Jede Einheit hält ihr Filament fest"
   Everything else was saved. Change them in Spoolman.: Alles Übrige wurde gespeichert. Ändern Sie diese in Spoolman.
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: 'Alles Übrige wurde gespeichert. Benennen Sie das Material mit Buchstaben, Ziffern, Leerzeichen sowie + - _ . ( ) / um'
   Every object is set to skip, so there is nothing to print: 'Jedes Objekt ist zum Überspringen markiert, es gibt nichts zu drucken'
@@ -1445,6 +1449,7 @@ translations:
   Filament Control: Filamentsteuerung
   Filament Detected: Filament erkannt
   Filament Dryer: Filamenttrockner
+  Filament Feeder: "Filamentzuführung"
   Filament Grade Mismatch: Filamentklassenabweichung
   Filament Humidity: Filamentfeuchtigkeit
   Filament In The Toolhead: Filament im Werkzeugkopf
@@ -1747,8 +1752,11 @@ translations:
   Hotend Fan: Hotend-Lüfter
   Hotend Heater: Hotend-Heizung
   How Z-axis movement is displayed: Wie Z-Achsen-Bewegung angezeigt wird
+  How far and how fast a lane ejects: "Wie weit und wie schnell eine Spur auswirft"
+  How far filament is pushed back into the box on eject: "Wie weit das Filament beim Auswerfen in die Box zurückgeschoben wird"
   How far filament is pushed back into the box on eject (mm): Wie weit das Filament
     beim Auswerfen in die Box zurückgeschoben wird (mm)
+  How fast filament is pushed back on eject: "Wie schnell das Filament beim Auswerfen zurückgeschoben wird"
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : 'Wie lange gedrückt werden muss, damit es als langes Drücken zählt, in ms (erhöhen, wenn der Bearbeitungsmodus oder andere Aktionen versehentlich auslösen)'
   How many labels to print: Wie viele Etiketten drucken
@@ -2041,6 +2049,7 @@ translations:
   Loading Error: Ladefehler
   Loading Filament...: Lade Filament...
   Loading G-code...: G-Code wird geladen...
+  Loading configuration...: "Konfiguration wird geladen..."
   Loading devices...: Geräte werden geladen...
   Loading filament...: Filament wird geladen...
   Loading filaments...: Filamente werden geladen...
@@ -2374,6 +2383,7 @@ translations:
   No prints this week: Keine Drucke diese Woche
   No prints yet: Noch keine Drucke
   No profiles available: Keine Profile verfügbar
+  No sensor fitted for this distance: "Für diese Strecke ist kein Sensor verbaut"
   No sensors detected: Keine Sensoren erkannt
   No shared peaks: "Keine gemeinsamen Spitzen"
   No slot currently matches.: 'Derzeit passt kein Slot.'
@@ -2387,6 +2397,10 @@ translations:
   No temperature sensors detected: 'Keine Temperatursensoren erkannt'
   No timelapse videos found: Keine Zeitraffer-Videos gefunden
   No tools to calibrate: Keine Werkzeuge zum Kalibrieren
+  No unit has a filament buffer: "Keine Einheit hat einen Filamentpuffer"
+  No unit has a moving selector: "Keine Einheit hat einen beweglichen Selektor"
+  No unit has a servo: "Keine Einheit hat ein Servo"
+  No unit has an encoder: "Keine Einheit hat einen Encoder"
   'No unload macro found: unload by hand, then start again': 'Kein Entlade-Makro gefunden: Entlade von Hand und starte dann erneut'
 
   No vendors found: Keine Hersteller gefunden
@@ -2700,6 +2714,7 @@ translations:
   Priming...: Primen...
   Print: Drucken
   Print Anyway: Trotzdem drucken
+  Print Behavior: "Druckverhalten"
   'Print Behaviour': 'Druckverhalten'
   Print Cancelled: Druck abgebrochen
   Print Complete!: Druck abgeschlossen!
@@ -3458,6 +3473,7 @@ translations:
   Spoolman needs a material for this filament.: Spoolman benötigt ein Material für dieses Filament.
   Spoolman removed.: Spoolman entfernt.
   Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolman hat Preis, Standort, Los und Notizen gespeichert, aber nicht den Rest. Sonst hat sich an diesem Drucker nichts geändert.'
+  Spoolman support is off in Happy Hare: "Spoolman-Unterstützung ist in Happy Hare deaktiviert"
   Spoolman unavailable — filament weights may be stale: Spoolman nicht verfügbar —
     Filamentgewichte können veraltet sein
   Spoolman was not configured.: Spoolman war nicht konfiguriert.
@@ -3939,6 +3955,7 @@ translations:
   Toggle Auto-Refill: 'Automatisches Nachfüllen umschalten'
   Toggle Quiet Mode: 'Leisen Modus umschalten'
   Toggle external spool bypass: Bypass der externen Spule umschalten
+  Toggle this tool's toolhead LED: "Werkzeugkopf-LED dieses Werkzeugs umschalten"
   Toggle toolhead LED for an extruder: 'Werkzeugkopf-LED für einen Extruder umschalten'
   'Toggle:': 'Umschalten:'
   Too humid: Zu feucht
@@ -3999,9 +4016,12 @@ translations:
   Turn Endless Spool on, then set the Backup Gate: 'Aktivieren Sie die Endlosspule und legen Sie dann das Backup-Gate fest'
   'Turn LED off when the print ends': 'LED am Druckende ausschalten'
   Turn Off: Ausschalten
+  Turn Off LEDs: "LEDs ausschalten"
+  Turn Off Toolhead LED: "Werkzeugkopf-LED ausschalten"
   Turn Off WiFi?: WiFi ausschalten?
   Turn On: Einschalten
   Turn On LEDs: 'LEDs einschalten'
+  Turn On Toolhead LED: "Werkzeugkopf-LED einschalten"
   Turn off bed check: 'Bettprüfung ausschalten'
   Turn off detection: Erkennung ausschalten
   Turn on the lights your light buttons control: Schaltet die Lichter ein, die Ihre Lichttasten steuern
@@ -4397,6 +4417,7 @@ translations:
   you have: Sie haben
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · ca. {} Min.'
   '{} ({})': '{} ({})'
+  '{} - {}': "{} - {}"
   '{} Extruders': '{} Extruder'
   '{} Hardware Issues': '{} Hardware-Probleme'
   '{} Issues Detected': '{} Probleme erkannt'

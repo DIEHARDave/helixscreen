@@ -3,19 +3,21 @@
 
 #include "afc_defaults.h"
 
+#include "ams_device_sections.h"
+
 #include <algorithm>
 
 namespace helix::printer {
 
 std::vector<DeviceSection> afc_default_sections() {
     return {
-        {"setup", "Setup", 0, "Calibration, LED, and system configuration"},
-        {"speed", "Speed Settings", 1, "Move speed multipliers"},
-        {"toolhead", "Toolhead", 2, "Extruder distances and sensor configuration"},
-        {"maintenance", "Maintenance", 3, "Lane tests and motor resets"},
-        {"hub", "Hub & Cutter", 4, "Blade change and parking"},
-        {"tip_forming", "Tip Forming", 5, "Tip shaping configuration"},
-        {"purge", "Purge & Wipe", 6, "Purge tower and brush settings"},
+        device_section("setup", 0, TR_NOOP("Calibration, LED, and system configuration")),
+        device_section("speed", 1, TR_NOOP("Move speed multipliers")),
+        device_section("toolhead", 2, TR_NOOP("Extruder distances and sensor configuration")),
+        device_section("maintenance", 3, TR_NOOP("Lane tests and motor resets")),
+        device_section("hub", 4, TR_NOOP("Blade change and parking")),
+        device_section("tip_forming", 5, TR_NOOP("Tip shaping configuration")),
+        device_section("purge", 6, TR_NOOP("Purge tower and brush settings")),
     };
 }
 

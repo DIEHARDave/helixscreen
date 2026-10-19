@@ -108,14 +108,17 @@ TEST_CASE_METHOD(EndUnloadFixture, "end-unload offers one toggle per reported to
             false);
 }
 
-TEST_CASE_METHOD(EndUnloadFixture, "end-unload toggles name the toolhead and its T index",
+TEST_CASE_METHOD(EndUnloadFixture, "end-unload toggles carry their tool for the UI to name",
                  "[ams][snapmaker][actions][end_unload]") {
     AmsBackendSnapmaker backend(nullptr, nullptr);
     SnapmakerTestAccess::handle_status(
         backend, frame({{"end_unload_filament", {false, false, false, false}}}));
     const auto actions = backend.get_device_actions();
-    REQUIRE(find_action(actions, "snapmaker_end_unload_t1")->label ==
-            "Unload at end - Toolhead 2 (T1)");
+    const DeviceAction* t1 = find_action(actions, "snapmaker_end_unload_t1");
+    REQUIRE(t1 != nullptr);
+    CHECK(t1->label == "Unload at end");
+    CHECK(t1->tool_index == 1);
+    CHECK(t1->section == "print_prefs");
 }
 
 TEST_CASE_METHOD(EndUnloadFixture, "quick end-unload toggles compose instead of wiping each other",
