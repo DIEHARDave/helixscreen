@@ -92,6 +92,23 @@ enum class IpScope {
  */
 IpScope ip_scope(std::string_view addr);
 
+/// The finer classification ip_scope() folds into Local/Global, for callers that
+/// must tell a LAN peer from a loopback, CGNAT or multicast one.
+enum class IpClass {
+    NotAnIp,
+    Unspecified, ///< 0.0.0.0/8, ::
+    Loopback,    ///< 127/8, ::1
+    Private,     ///< 10/8, 172.16/12, 192.168/16
+    LinkLocal,   ///< 169.254/16, fe80::/10
+    SharedCgnat, ///< 100.64/10: carrier NAT, and the range Tailscale assigns
+    UniqueLocal, ///< fc00::/7
+    Multicast,   ///< 224/4 and above, ff00::/8
+    Global,
+};
+
+/// Classify a single IP literal; same input rules as ip_scope().
+IpClass ip_class(std::string_view addr);
+
 /**
  * @brief Reduce a routable IP address to a non-identifying token.
  *

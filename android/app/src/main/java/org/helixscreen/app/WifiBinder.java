@@ -8,30 +8,32 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.util.Log;
 
+import java.util.ArrayList;
+
 /**
- * Keeps the process bound to the connected Wi-Fi network so printer traffic stays on the LAN.
+ * Tells native code which Wi-Fi network carries the app's LAN sockets.
  *
  * Android makes a Wi-Fi network with no internet access the default only when nothing else
- * is available. With mobile data up, every socket the app opens goes out over the cellular
- * link, so a Moonraker connection to a 192.168.x.x printer times out. Binding the process to
- * the Wi-Fi network routes all of its sockets, native ones included, over Wi-Fi.
+ * is available. With mobile data up, a socket to a 192.168.x.x printer goes out over the
+ * cellular link and times out. Native code (android_lan_route.cpp) binds each socket whose
+ * peer is a LAN address to the network handle published here; the process itself stays
+ * unbound, so internet traffic keeps the system's default route.
  *
- * The binding is dropped (the system default network decides again) when:
+ * The published handle is 0 (no LAN binding) when:
  *   - no Wi-Fi is connected, so a printer reached over mobile data still works;
- *   - a VPN is the default network, so a printer reached through Tailscale or another VPN
- *     still goes through it. A process bound to the Wi-Fi network bypasses the VPN.
- *
- * Binding affects sockets opened after the change; a connection already in flight finishes
- * or times out on the network it started on and reconnects on the new one.
+ *   - a VPN is the default network, so a printer reached through Tailscale or another VPN,
+ *     including a subnet route to its LAN, still goes through it.
  */
 final class WifiBinder {
     private static final String TAG = "HelixNetwork";
 
     private final ConnectivityManager mConnectivity;
     private final Object mLock = new Object();
-    private Network mWifi;
+    /** Connected Wi-Fi networks, oldest first. More than one with dual-STA. */
+    private final ArrayList<Network> mWifi = new ArrayList<>();
     private boolean mDefaultIsVpn;
-    private Network mBound;
+    private boolean mRunning;
+    private long mPublished;
     private ConnectivityManager.NetworkCallback mWifiCallback;
     private ConnectivityManager.NetworkCallback mDefaultCallback;
 
@@ -43,6 +45,9 @@ final class WifiBinder {
         if (mConnectivity == null || mWifiCallback != null) {
             return;
         }
+        synchronized (mLock) {
+            mRunning = true;
+        }
         // A printer's own access point may not claim internet, so do not require it.
         NetworkRequest wifiRequest = new NetworkRequest.Builder()
                 .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
@@ -52,18 +57,17 @@ final class WifiBinder {
             @Override
             public void onAvailable(Network network) {
                 synchronized (mLock) {
-                    mWifi = network;
-                    updateLocked("Wi-Fi available");
+                    mWifi.remove(network);
+                    mWifi.add(network);
+                    publishLocked("Wi-Fi available");
                 }
             }
 
             @Override
             public void onLost(Network network) {
                 synchronized (mLock) {
-                    if (network.equals(mWifi)) {
-                        mWifi = null;
-                    }
-                    updateLocked("Wi-Fi lost");
+                    mWifi.remove(network);
+                    publishLocked("Wi-Fi lost");
                 }
             }
         };
@@ -72,7 +76,7 @@ final class WifiBinder {
             public void onCapabilitiesChanged(Network network, NetworkCapabilities caps) {
                 synchronized (mLock) {
                     mDefaultIsVpn = caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN);
-                    updateLocked("default network changed");
+                    publishLocked("default network changed");
                 }
             }
 
@@ -80,7 +84,7 @@ final class WifiBinder {
             public void onLost(Network network) {
                 synchronized (mLock) {
                     mDefaultIsVpn = false;
-                    updateLocked("default network lost");
+                    publishLocked("default network lost");
                 }
             }
         };
@@ -97,6 +101,14 @@ final class WifiBinder {
         if (mConnectivity == null) {
             return;
         }
+        // Stop first, so a callback already running on the connectivity thread cannot
+        // publish a handle after this returns.
+        synchronized (mLock) {
+            mRunning = false;
+            mWifi.clear();
+            mDefaultIsVpn = false;
+            publishHandleLocked(0, "stopped");
+        }
         for (ConnectivityManager.NetworkCallback cb :
                 new ConnectivityManager.NetworkCallback[] {mWifiCallback, mDefaultCallback}) {
             if (cb == null) {
@@ -110,27 +122,35 @@ final class WifiBinder {
         }
         mWifiCallback = null;
         mDefaultCallback = null;
-        synchronized (mLock) {
-            mWifi = null;
-            mDefaultIsVpn = false;
-            updateLocked("stopped");
+    }
+
+    private void publishLocked(String why) {
+        if (!mRunning) {
+            return;
+        }
+        // The most recently connected Wi-Fi is the one the user just joined.
+        Network wifi = mWifi.isEmpty() ? null : mWifi.get(mWifi.size() - 1);
+        long handle = (wifi != null && !mDefaultIsVpn) ? wifi.getNetworkHandle() : 0;
+        publishHandleLocked(handle, why + (mDefaultIsVpn ? ", VPN active" : ""));
+    }
+
+    private void publishHandleLocked(long handle, String why) {
+        if (handle == mPublished) {
+            return;
+        }
+        try {
+            nativeSetWifiNetwork(handle);
+        } catch (UnsatisfiedLinkError e) {
+            Log.w(TAG, "Native library unavailable, LAN sockets keep the default route: " + e);
+            return;
+        }
+        mPublished = handle;
+        if (handle != 0) {
+            Log.i(TAG, "LAN sockets use Wi-Fi network " + handle + " (" + why + ")");
+        } else {
+            Log.i(TAG, "LAN sockets use the default network (" + why + ")");
         }
     }
 
-    private void updateLocked(String why) {
-        Network target = (mWifi != null && !mDefaultIsVpn) ? mWifi : null;
-        if (target == null ? mBound == null : target.equals(mBound)) {
-            return;
-        }
-        boolean ok = mConnectivity.bindProcessToNetwork(target);
-        if (ok) {
-            mBound = target;
-        }
-        if (target != null) {
-            Log.i(TAG, "Bound process to Wi-Fi " + target + " (" + why + "): " + (ok ? "ok" : "FAILED"));
-        } else {
-            Log.i(TAG, "Unbound process, system default network decides (" + why
-                    + (mDefaultIsVpn ? ", VPN active" : "") + "): " + (ok ? "ok" : "FAILED"));
-        }
-    }
+    private static native void nativeSetWifiNetwork(long handle);
 }
