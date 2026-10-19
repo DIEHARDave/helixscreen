@@ -209,3 +209,13 @@ TEST_CASE_METHOD(GuidedFlowFixture, "the section header fits a 480x320 screen",
     // Positive scroll_right is the width of text clipped past the header's edge.
     CHECK(lv_obj_get_scroll_right(title) <= 0);
 }
+
+TEST_CASE_METHOD(GuidedFlowFixture, "section action buttons take the standard button height",
+                 "[ams][guided-flow][device-section]") {
+    ScopedResolution small(lv_display_get_default(), 480, 320);
+    theme_manager_refresh_layout_constants(lv_display_get_default());
+
+    lv_obj_t* btn = open_section_and_find({button("a", ""), button("b", "")}, "a");
+    lv_obj_update_layout(btn);
+    CHECK(lv_obj_get_height(btn) == theme_manager_get_spacing("button_height"));
+}

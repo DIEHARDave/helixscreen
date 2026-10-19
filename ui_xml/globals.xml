@@ -561,7 +561,7 @@
 
     <!-- button_height is responsive: _small/_medium/_large registered as button_height based on screen size -->
     <px name="button_height_micro" value="26"/>
-    <px name="button_height_tiny" value="32"/>
+    <px name="button_height_tiny" value="44"/>
     <px name="button_height_small" value="48"/>
     <px name="button_height_medium" value="52"/>
     <px name="button_height_large" value="72"/>

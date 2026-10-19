@@ -622,7 +622,7 @@ const TokenEntry k_token_table[] = {
     {"px", "jog_mode_w_xxlarge", "145"},
     {"px", "touch_target_min", "48"},
     {"px", "button_height_micro", "26"},
-    {"px", "button_height_tiny", "32"},
+    {"px", "button_height_tiny", "44"},
     {"px", "button_height_small", "48"},
     {"px", "button_height_medium", "52"},
     {"px", "button_height_large", "72"},

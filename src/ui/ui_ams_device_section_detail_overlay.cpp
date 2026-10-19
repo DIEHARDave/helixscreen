@@ -8,6 +8,7 @@
 
 #include "ui_ams_device_section_detail_overlay.h"
 
+#include "ui_button.h"
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_guided_device_flow.h"
@@ -397,24 +398,22 @@ void AmsDeviceSectionDetailOverlay::create_button_in_row(
     // from backend data (documented exception for declarative UI rules).
     spdlog::debug("[{}] Creating button in row: {}", get_name(), action.label);
 
-    lv_obj_t* btn = lv_button_create(row);
+    const char* attrs[] = {"text", lv_tr(action.label.c_str()), nullptr};
+    lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(row, "ui_button", attrs));
+    if (!btn) {
+        spdlog::warn("[{}] Failed to create button for '{}'", get_name(), action.id);
+        return;
+    }
     lv_obj_set_name(btn, action.id.c_str());
     lv_obj_set_flex_grow(btn, 1);
-    lv_obj_set_height(btn, theme_manager_get_spacing("button_height_sm"));
-    lv_obj_set_style_radius(btn, theme_manager_get_spacing("border_radius"), 0);
+    if (lv_obj_t* btn_label = ui_button_get_label(btn)) {
+        lv_obj_set_name(btn_label, fmt::format("{}_label", action.id).c_str());
+    }
 
-    // Button label
-    lv_obj_t* btn_label = lv_label_create(btn);
-    lv_label_set_text(btn_label, lv_tr(action.label.c_str()));
-    lv_obj_center(btn_label);
-    lv_obj_set_name(btn_label, fmt::format("{}_label", action.id).c_str());
-
-    // Store action ID in vector, pass index as user_data
+    // ui_button owns the object's user_data, so the action index rides on the event.
     action_ids_.push_back(action.id);
-    lv_obj_set_user_data(btn, reinterpret_cast<void*>(action_ids_.size() - 1));
-
-    // Register click callback
-    lv_obj_add_event_cb(btn, on_action_clicked, LV_EVENT_CLICKED, nullptr);
+    lv_obj_add_event_cb(btn, on_action_clicked, LV_EVENT_CLICKED,
+                        reinterpret_cast<void*>(action_ids_.size() - 1));
 
     // Handle disabled state
     if (!action.enabled) {
@@ -437,9 +436,9 @@ void AmsDeviceSectionDetailOverlay::on_action_clicked(lv_event_t* e) {
     if (!btn || !lv_obj_is_valid(btn)) {
         spdlog::warn("[AmsDeviceSectionDetailOverlay] on_action_clicked: invalid target");
     } else {
-        // Get action ID from vector using index stored in user_data
+        // Get action ID from vector using the index carried on the event
         auto& overlay = get_ams_device_section_detail_overlay();
-        auto index = reinterpret_cast<size_t>(lv_obj_get_user_data(btn));
+        auto index = reinterpret_cast<size_t>(lv_event_get_user_data(e));
         if (index >= overlay.action_ids_.size()) {
             spdlog::warn("[AmsDeviceSectionDetailOverlay] Invalid action index: {}", index);
         } else {
