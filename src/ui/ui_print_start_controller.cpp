@@ -394,7 +394,7 @@ void PrintStartController::execute_print_start() {
 void PrintStartController::send_backend_preprint_then(const std::set<int>& tools_used,
                                                       const std::map<int, int>& remap,
                                                       std::function<void()> on_done,
-                                                      std::function<void()> on_abort) {
+                                                      std::function<void()> on_abort, bool routed) {
     AmsBackend* backend = AmsState::instance().get_backend();
     if (!backend) {
         // No backend — nothing to pre-send; proceed with the start step.
@@ -403,6 +403,7 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
         }
         return;
     }
+    backend->note_print_start_from_here();
 
     // A remap the backend cannot honor stops the print here, before anything
     // is sent, with the same report a printer-side refusal gets below.
@@ -417,7 +418,8 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
         return;
     }
 
-    std::string gcode = backend->build_preprint_gcode(tools_used, remap);
+    std::string gcode = routed ? backend->build_preprint_gcode(tools_used, remap)
+                               : backend->build_unrouted_preprint_gcode(tools_used);
 
     if (gcode.empty()) {
         // Nothing the firmware needs (e.g. no parsed tools) — start immediately.
@@ -597,52 +599,81 @@ void PrintStartController::reprint_impl(const std::string& filename, const std::
     // path. On native-send error the modal is shown and on_error runs.
     AmsBackend* backend = AmsState::instance().get_backend();
     if (backend && backend->requires_preprint_send()) {
-        // Where the reprint's routing comes from. The normal start path reads
-        // the detail view's colour/type match; a reprint has no detail view, no
-        // swatch card and no picker, so the only thing that knows how this job
-        // was routed is the printer, and only while its task was configured,
-        // which is what last_print_tool_mapping() snapshots. An empty remap is
-        // not "no routing": build_preprint_gcode resolves a tool it is not told
-        // about to that tool's firmware-default head.
-        auto remap = routing ? routing
-                             : helix::FilamentMapper::reprint_remap(
-                                   backend->last_print_tool_mapping(), tools_used);
-        if (!remap && backend->default_print_routing_is_identity()) {
-            // The firmware's own default is tool n = slot n, so the empty remap
-            // sends exactly that for the file's tools and overwrites any map the
-            // printer still holds for its next print.
-            remap = std::map<int, int>{};
-        } else if (!remap) {
-            // Not known (no configured task observed, e.g. the app started after
-            // the print ended). Sending a map here means inventing a routing: an
-            // identity map is a confident wrong answer for exactly the files that
-            // need one. The firmware keeps whatever map the last job left; only
-            // the routing-free per-print preferences go out, and the log says so.
-            //
-            // The cost is the SET_PRINT_USED_EXTRUDERS spurious-feed suppression,
-            // which cannot be computed either: the used-head set is derived from
-            // the same routing.
-            spdlog::warn("[PrintStartController] Reprint: no recorded print routing; sending "
-                         "no extruder map rather than writing a default one over it");
-        }
-
-        // The abort path has to retire the job this function armed above.
-        // execute_print_start() avoids the problem by arming INSIDE its
-        // success-only lambda; reprint arms before the pre-send because the
-        // pre-send is itself part of the window. Handing on_error straight
-        // through would leave the job armed on a rejected pre-send, and
-        // print_in_progress is published from it - so can_start_new_print()
-        // would refuse every later print until the watchdog fired.
-        auto abort = [this, on_error]() {
-            printer_state_.print_state().retire_preparing(helix::PreparingExit::Failed);
-            if (on_error) {
-                on_error();
+        auto preprint = [this, routing, start, on_error](const std::set<int>& tools_used) {
+            // Read again here: the file read below answers later, and the
+            // backend may have been replaced meanwhile.
+            AmsBackend* backend = AmsState::instance().get_backend();
+            if (!backend || !backend->requires_preprint_send()) {
+                start();
+                return;
             }
+            // Where the reprint's routing comes from. The normal start path reads
+            // the detail view's colour/type match; a reprint has no detail view, no
+            // swatch card and no picker, so the only thing that knows how this job
+            // was routed is the printer, and only while its task was configured,
+            // which is what last_print_tool_mapping() snapshots. An empty remap is
+            // not "no routing": build_preprint_gcode resolves a tool it is not told
+            // about to that tool's firmware-default head.
+            auto remap = routing ? routing
+                                 : helix::FilamentMapper::reprint_remap(
+                                       backend->last_print_tool_mapping(), tools_used);
+            if (!remap && backend->default_print_routing_is_identity()) {
+                // The firmware's own default is tool n = slot n, so the empty remap
+                // sends exactly that for the file's tools and overwrites any map the
+                // printer still holds for its next print.
+                remap = std::map<int, int>{};
+            } else if (!remap) {
+                // Not known (no configured task observed, e.g. the app started after
+                // the print ended). Sending a map here means inventing a routing: an
+                // identity map is a confident wrong answer for exactly the files that
+                // need one, so none is written. A firmware whose routing returns to
+                // identity at each print end still runs the file's tools at their own
+                // slots, and can be told which those are; any other gets only the
+                // routing-free per-print preferences.
+                spdlog::warn("[PrintStartController] Reprint: no recorded print routing; sending "
+                             "no extruder map rather than writing a default one over it");
+            }
+
+            // The abort path has to retire the job this function armed above.
+            // execute_print_start() avoids the problem by arming INSIDE its
+            // success-only lambda; reprint arms before the pre-send because the
+            // pre-send is itself part of the window. Handing on_error straight
+            // through would leave the job armed on a rejected pre-send, and
+            // print_in_progress is published from it - so can_start_new_print()
+            // would refuse every later print until the watchdog fired.
+            auto abort = [this, on_error]() {
+                printer_state_.print_state().retire_preparing(helix::PreparingExit::Failed);
+                if (on_error) {
+                    on_error();
+                }
+            };
+            if (!remap && backend->print_routing_resets_to_identity()) {
+                send_backend_preprint_then(tools_used, {}, start, abort, /*routed=*/false);
+                return;
+            }
+            // With the routing unknown only the routing-free part goes out (an
+            // empty tool set): the backend's per-print preferences.
+            send_backend_preprint_then(remap ? tools_used : std::set<int>{},
+                                       remap ? *remap : std::map<int, int>{}, start, abort);
         };
-        // With the routing unknown only the routing-free part goes out (an
-        // empty tool set): the backend's per-print preferences.
-        send_backend_preprint_then(remap ? tools_used : std::set<int>{},
-                                   remap ? *remap : std::map<int, int>{}, start, abort);
+        // The pre-print step tells the firmware which heads to feed and unload,
+        // so a reprint with no tools in hand reads them from the file first, the
+        // same reading the slicer-start check uses. A file that answers nothing
+        // keeps the routing-free step.
+        if (tools_used.empty() && archive_plate == 0) {
+            if (!reprint_facts_) {
+                reprint_facts_ = std::make_unique<helix::FileStartFactsLoader>(api_);
+            }
+            reprint_facts_->set_api(api_);
+            reprint_facts_->load(filename, [preprint](helix::FileStartFacts facts) {
+                const std::set<int> tools = helix::file_tools_used(facts);
+                spdlog::info("[PrintStartController] Reprint: {} tools read from {}", tools.size(),
+                             facts.filename);
+                preprint(tools);
+            });
+        } else {
+            preprint(tools_used);
+        }
         return; // start fires from the send continuation — do NOT also start here
     }
 

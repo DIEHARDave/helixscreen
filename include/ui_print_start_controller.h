@@ -217,6 +217,9 @@ class PrintStartController {
     }
 
   private:
+    /// Reads a reprinted file's tools when its caller has none; created on that use.
+    std::unique_ptr<helix::FileStartFactsLoader> reprint_facts_;
+
     // Test-only access to the gate-pipeline runner (toy-gate injection and
     // dialog introspection).
     friend class ::PrintStartControllerTestAccess;
@@ -261,9 +264,11 @@ class PrintStartController {
                       std::function<void()> on_started, std::function<void()> on_error,
                       int archive_plate);
 
+    /// @p routed false sends the backend's unrouted step for @p tools_used
+    /// (build_unrouted_preprint_gcode()) instead of a map.
     void send_backend_preprint_then(const std::set<int>& tools_used,
                                     const std::map<int, int>& remap, std::function<void()> on_done,
-                                    std::function<void()> on_abort);
+                                    std::function<void()> on_abort, bool routed = true);
 
     /// The "Print setup failed" modal for a pre-print send that did not
     /// happen: @p reason when one is known, else the printer-refusal text.

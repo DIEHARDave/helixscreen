@@ -441,6 +441,45 @@ recorded as live-verified (#991) is the `AUTO_FEEDING` command itself - it block
 (`src/printer/ams_backend_snapmaker.cpp#prepare_for_resume`, `:722-724`). The full chain - runout pause ->
 runout dialog -> refeed -> RESUME -> print continues - is **not field-tested**.
 
+**Resume waits for a confirmed load.** `FEED_AUTO` answers OK without feeding when the
+port reads empty under `PRINTING=1`, and raises 525 (`extruder[N]: state: ..., error: ...!`)
+when its own test, `channel_state == load_finish` with `channel_error == ok`, fails at the
+end. The head presence switch reads present for filament that reached the toolhead and
+stopped short of the nozzle, so it vouches for nothing. A load that errors, times out, or
+answers OK with the feeder short of that test (the refeed, a Load from the filament panel,
+or a `*_fail` load state from any source) marks the head's load unconfirmed for the
+current print. While one is marked, `prepare_for_resume` never reaches RESUME: on the head
+it resumes on it retries the refeed, and on any other head it refuses, since loading that
+head would leave it picked up when RESUME runs. A Resume after a failed load is the
+dangerous action: `INNER_RESUME` extrudes 20 mm (`_CLIENT_EXTRUDE LENGTH=20`) into
+whatever jammed. The refusal names the head and points at the hardware ("Toolhead 2 (T1)
+didn't load. Check that its hotend is seated and do a test extrude before resuming."),
+with tapping Resume to retry the load as the way forward. Even with nothing marked, a head
+an automatic feeder serves resumes only from `load_finish` with no channel fault; the
+motion sensor's present reading is not taken as a load, and any other state runs the
+refeed first. The mark
+clears when that feeder reaches `load_finish` with no error, when the print leaves
+printing/paused, and on disconnect
+(`src/printer/ams_backend_snapmaker.cpp#mark_load_unconfirmed_locked`).
+
+**A print started without the task setup.** A slicer upload-and-print or a Fluidd start
+arrives as a plain `SDCARD_PRINT_FILE`, so `extruders_used` stays all false: the firmware's
+per-head runout feed (`sm_print_auto_feed`) and the end-of-print unload
+(`SM_PRINT_END_AUTO_UNLOAD_FILAMENT`) both skip every head. `SET_PRINT_USED_EXTRUDERS` and
+`SET_PRINT_TASK_PARAMETERS` are refused while `print_stats.state` is printing or paused
+(`id=531, code=16`), so the backend cannot repair it mid-print. With `extruders_used` all
+false the firmware also skips `SM_PRINT_PREEXTRUDE_FILAMENT` and the switch check, so every
+toolhead after the first pauses the print on its first use. The backend judges each print
+once, on the first frame that names it printing or paused; when its task names no used
+head it reads the file's tools (`FileStartFactsLoader`: scanned tools, else per-tool
+weights, else palette size, else assumed) and, when one past T0 is used and the print is
+still the same one, raises one sticky warning saying so. Every start from this screen
+calls `note_print_start_from_here()` before its pre-print step (the start controller and
+the restart-from-beginning path), and the print that begins within two minutes counts as
+this screen's: it never gets the "started outside HelixScreen" line, and one whose file's
+tools went unread gets "HelixScreen couldn't read which toolheads this file uses" instead
+(`src/printer/ams_backend_snapmaker.cpp#judge_task_config_locked`).
+
 Related capability flags: `recovers_filament_on_resume() = true` (Resume re-feeds, so
 the runout dialog presents Resume as primary) and
 `should_suppress_idle_runout_modal() = true` (the U1 drives load/unload itself, so an
@@ -499,6 +538,22 @@ remaps happen per-print through the pre-print path above. Routing is not fixed â
 firmware's `extruder_map_table` holds the live logical-to-physical answer for the current
 print, and `get_tool_mapping()` publishes it (read-only; the write side is the pre-print
 gcode).
+
+**A reprint with no known routing.** A reprint replays the routing the backend saw the
+last print configured with (`last_print_tool_mapping()`). When it saw none (a slicer or
+Fluidd start, or the app restarted since), no map is written: an identity map is a wrong
+answer for a crossover print. The used heads still go out. `<klipper>/klippy/extras/print_task_config.py`'s
+`reset_print_info()` sets `extruder_map_table` back to its default at every print end
+(complete, cancel, error), so a print whose start writes no map runs tool n on head n, and
+`build_unrouted_preprint_gcode()` sends `SET_PRINT_USED_EXTRUDERS` for the file's tools at
+those heads, plus the unload choice (`print_routing_resets_to_identity()`). The file's tools
+come from `file_tools_used()` (scanned tools, else per-tool weights). Nothing goes when the
+tools cannot be read, or when the firmware's live map reads other than its default for a
+used tool (a map a start that never printed left behind). A file cannot set its own
+routing: `SET_PRINT_EXTRUDER_MAP`, `SET_PRINT_USED_EXTRUDERS` and
+`SET_PRINT_TASK_PARAMETERS` all refuse while `print_stats.state` is printing or paused
+(`id=531`), which is when a file's lines run
+(`src/ui/ui_print_start_controller.cpp#reprint_impl`).
 
 ### Slot Overrides and lane_data
 

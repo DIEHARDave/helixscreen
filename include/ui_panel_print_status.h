@@ -25,6 +25,9 @@
 // Forward declaration
 namespace helix {
 class IMoonrakerAPI;
+namespace ui {
+class PrintStartController;
+} // namespace ui
 struct MemoryInfo;
 } // namespace helix
 
@@ -595,10 +598,14 @@ class PrintStatusPanel : public OverlayBase {
     [[nodiscard]] std::string reprint_filename() const;
     /// reprint_filename() with the archive plate to extract, for a .3mf printed that way.
     [[nodiscard]] helix::gcode::ReprintTarget reprint_target() const;
-    /// Reprints @p target with no print controller to route through: a plain
-    /// file starts directly; an archive plate, which only the controller can
-    /// extract, is refused.
-    void reprint_without_controller(const helix::gcode::ReprintTarget& target);
+    /// Reprints @p target through @p controller, which owns the pre-print step a
+    /// firmware needs (the U1's used heads) and the preparing window.
+    void reprint_through(helix::ui::PrintStartController& controller,
+                         const helix::gcode::ReprintTarget& target);
+    /// Print Files' controller, or this panel's own until Print Files is built
+    /// (the ESP32 build defers that panel to its first visit).
+    [[nodiscard]] helix::ui::PrintStartController& reprint_controller();
+    [[nodiscard]] helix::ui::PrintStartController& own_reprint_controller();
     void handle_files_click(); ///< Open print select while this overlay holds the screen
     void handle_resize();
 
@@ -737,6 +744,9 @@ class PrintStatusPanel : public OverlayBase {
 
     /// Manages filament runout guidance (extracted from PrintStatusPanel)
     std::unique_ptr<helix::ui::FilamentRunoutHandler> runout_handler_;
+
+    /// Reprints when Print Files has no controller yet; created on that use.
+    std::unique_ptr<helix::ui::PrintStartController> own_reprint_controller_;
 };
 
 // Global instance accessor (needed by main.cpp)

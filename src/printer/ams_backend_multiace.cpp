@@ -203,6 +203,7 @@ void AmsBackendMultiAce::apply_extension_locked(const nlohmann::json& status, bo
     // stream of frames carrying the standing failure reports it once.
     // Collected here under the lock; handle_status emits outside it.
     for (int h : load_failed_heads) {
+        mark_load_unconfirmed_locked(h, "engine reported load_failed");
         pending_load_failed_errors_.push_back(AmsErrorHelper::position_label(tool_noun(), h) +
                                               ": " + lv_tr("Load failed"));
     }
@@ -328,6 +329,14 @@ void AmsBackendMultiAce::rebuild_units_locked() {
 
 bool AmsBackendMultiAce::head_is_upstream_fed_locked(int head) const {
     return ace_fed_locked(head);
+}
+
+bool AmsBackendMultiAce::resume_may_refeed_locked(int head) const {
+    // The engine owns the feed state machine for every head while its contract
+    // is in force, and loads through ACE_LOAD_HEAD; AUTO_FEEDING is the stock
+    // firmware's load, which the engine is not known to honour mid-print.
+    (void)head;
+    return !active_locked();
 }
 
 bool AmsBackendMultiAce::preload_finish_ends_unload_locked(int head) const {
@@ -671,7 +680,7 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
         }
         if (!ace_head) {
             AmsError err =
-                dispatch_feed(multiace::load_gcode(head, std::nullopt), kEventLoadComplete);
+                dispatch_feed(multiace::load_gcode(head, std::nullopt), kEventLoadComplete, head);
             if (err.success()) {
                 cancel_pending_load("a new load");
             }
@@ -686,14 +695,16 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
                                     " has no recorded bay to load from",
                                 lv_tr("Select a filament slot to load"), "", slot_index);
             }
-            AmsError err = dispatch_feed(multiace::load_gcode(head, recorded), kEventLoadComplete);
+            AmsError err =
+                dispatch_feed(multiace::load_gcode(head, recorded), kEventLoadComplete, head);
             if (err.success()) {
                 cancel_pending_load("a new load");
             }
             return err;
         }
         // Head mode defaults to the wired unit and the head's last bay.
-        AmsError err = dispatch_feed(multiace::load_gcode(head, std::nullopt), kEventLoadComplete);
+        AmsError err =
+            dispatch_feed(multiace::load_gcode(head, std::nullopt), kEventLoadComplete, head);
         if (err.success()) {
             cancel_pending_load("a new load");
         }
@@ -722,7 +733,7 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
                         "", slot_index);
     }
     if (!head_loaded && !head_has_source) {
-        AmsError err = dispatch_feed(multiace::load_gcode(head, bay), kEventLoadComplete);
+        AmsError err = dispatch_feed(multiace::load_gcode(head, bay), kEventLoadComplete, head);
         if (err.success()) {
             cancel_pending_load("a new load");
         }
@@ -851,7 +862,8 @@ void AmsBackendMultiAce::advance_pending_load() {
     }
     spdlog::info("{} Head {} is empty; loading ACE {} bay {}", backend_log_tag(), pending.head + 1,
                  pending.bay.first + 1, pending.bay.second + 1);
-    dispatch_feed(multiace::load_gcode(pending.head, pending.bay), kEventLoadComplete);
+    dispatch_feed(multiace::load_gcode(pending.head, pending.bay), kEventLoadComplete,
+                  pending.head);
 }
 
 AmsError AmsBackendMultiAce::do_unload_filament(int slot_index) {

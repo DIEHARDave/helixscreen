@@ -941,7 +941,11 @@ TEST_CASE("reprint: a Fork print-map box sends the identity map for the file's t
         Harness h;
         h.client.clear_gcode_script_history();
         h.controller.initiate_reprint("part.gcode", "part.gcode", {}, [] {}, [] {});
-        helix::ui::UpdateQueue::instance().drain();
+        // With no tools in hand the reprint reads the file first; this one is
+        // not on the printer, so the read answers nothing.
+        for (int i = 0; i < 8; ++i) {
+            helix::ui::UpdateQueue::instance().drain();
+        }
         const auto lines = print_map_lines(h);
         REQUIRE(lines.size() == 1);
         CHECK(lines[0] == "BOX_PRINT_MAP MAP=");

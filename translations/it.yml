@@ -1116,6 +1116,8 @@ translations:
   EXTRAS: EXTRA
   Each fan can only be selected once: Ogni ventola può essere selezionata solo una
     volta
+  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
+  : 'Ogni testina dopo la prima metterà in pausa la stampa al suo primo utilizzo, perché la stampante non la caricherà né la innescherà. Il filamento non verrà scaricato a fine stampa.'
   Edit: Modifica
   Edit Filament: Modifica filamento
   Edit Slot: Modifica Slot
@@ -1677,6 +1679,7 @@ translations:
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen si è arrestato
   HelixScreen Macros: 'Macro HelixScreen'
+  HelixScreen couldn't read which toolheads this file uses, so the printer wasn't told.: 'HelixScreen non è riuscito a leggere quali testine usa questo file, quindi la stampante non è stata informata.'
   HelixScreen is detecting your display orientation: HelixScreen sta rilevando l'orientamento
     del display
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
@@ -2022,6 +2025,7 @@ translations:
   Load filament: 'Carica il filamento'
   Load filament first: Prima carica il filamento
   Load into which tool?: 'In quale strumento caricare?'
+  Load it in the filament panel, then tap Resume.: 'Caricalo nel pannello filamento, poi tocca Riprendi.'
   Load or unload filament.: Carica o scarica il filamento.
   Load Profile: 'Carica profilo'
   Load the required filaments or start anyway?: Caricare i filamenti richiesti o avviare
@@ -3596,6 +3600,7 @@ translations:
   'Tangle sensitivity': 'Sensibilità ai grovigli'
   Tap + to add: Tocca + per aggiungere
   Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge: Toccare Riavvia firmware per ripristinare. Sulla K2 questo riavvia anche il bridge MCU rpi
+  Tap Resume to try the load again from {}.: 'Tocca Riprendi per ritentare il caricamento da {}.'
   Tap again to confirm this orientation: Tocca di nuovo per confermare questo orientamento
   Tap an empty spot inside the enclosure: Tocca un punto vuoto dentro la chiusura
   Tap any tile to open its full controls or toggle its state.: Tocca un riquadro per aprirne i controlli completi o per cambiarne lo stato.
@@ -3845,6 +3850,7 @@ translations:
     stampa richiede circa %.0fg ma la bobina ne ha circa %.0fg rimanenti. Avviare
     comunque?
   This print never reports layer {}.: 'Questa stampa non riporta mai lo strato {}.'
+  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: 'Questa stampa è stata avviata fuori da HelixScreen, quindi la stampante non sa quali testine usa.'
   This printer cannot calibrate tool offsets automatically: Questa stampante non può calibrare automaticamente gli offset degli strumenti
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Questa stampante riempie i suoi gate da Spoolman. HelixScreen ha svuotato la propria copia; rimuovi la bobina in Spoolman.
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: Questa stampante riempie i suoi gate da Spoolman. Modifica colore, materiale e bobina in Spoolman.
@@ -4411,6 +4417,7 @@ translations:
   '{} configured items not found': '{} elementi configurati non trovati'
   '{} critical': '{} critici'
   '{} critical hardware issues': '{} problemi hardware critici'
+  "{} didn't load. Check that its hotend is seated and do a test extrude before resuming.": '{} non si è caricato. Verifica che il suo hotend sia ben inserito ed esegui un''estrusione di prova prima di riprendere.'
   '{} disabled': '{} disabilitato'
   '{} enabled': '{} abilitato'
   '{} failed: {}': '{} non riuscito: {}'
