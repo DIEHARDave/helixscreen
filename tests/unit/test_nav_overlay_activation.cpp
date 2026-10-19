@@ -32,6 +32,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/log_capture.h"
 #include "../test_helpers/navigation_manager_test_access.h"
+#include "../test_helpers/scoped_platform_tier.h"
 #include "../test_helpers/snapshot_backdrops_mode.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
@@ -93,23 +94,6 @@ class RecordingPanel : public PanelBase {
     int deactivates = 0;
     bool visible_on_last_activate = false;
     bool navigate_to_home_on_activate = false;
-};
-
-/// Sets the platform_tier subject for one scope.
-class ScopedTier {
-  public:
-    explicit ScopedTier(helix::PlatformTier tier)
-        : subject_(lv_xml_get_subject(nullptr, "platform_tier")),
-          saved_(lv_subject_get_int(subject_)) {
-        lv_subject_set_int(subject_, static_cast<int>(tier));
-    }
-    ~ScopedTier() {
-        lv_subject_set_int(subject_, saved_);
-    }
-
-  private:
-    lv_subject_t* subject_;
-    int saved_;
 };
 
 /// Unhidden children of the top layer, where the loading pill lives.
