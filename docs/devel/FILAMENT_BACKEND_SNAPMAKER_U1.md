@@ -527,6 +527,31 @@ Backend Emits"); the override persists to `lane_data` whatever the firmware take
 | Spoolman | Fields only | `spoolman_id`/`spoolman_vendor_id` persist in slot overrides; no Snapmaker-specific Spoolman wiring exists in the backend |
 | Mock mode | Yes | `HELIX_MOCK_AMS=snapmaker` (aliases `snapswap`, `u1`): 4 slots, PARALLEL, non-editable mapping ([MOCK_ENVIRONMENT_VARIABLES.md](MOCK_ENVIRONMENT_VARIABLES.md)) |
 
+### Toolhead Offset Calibration
+
+The stock firmware's multi-toolhead offset calibration is a device action (`snapmaker_nozzle_offset_cal`, section `snapmaker_calibration`) that starts the `snapmaker_nozzle_offset` guided flow. The backend offers it only when `snapmaker::nozzle_offset::supported()` finds `_EXTRUDER_OFFSET_ACTION_PRESTART`, `_EXTRUDER_OFFSET_ACTION_EXIT` and the five per-head hook macros for T0..T3 in the objects list (`include/snapmaker_nozzle_offset.h`); it greys out while `print_stats.state` is printing or paused.
+
+The commands are registered in Python by `ExtruderOffsetCalibration` in `<klipper>/klippy/extras/probe_inductance_coil.py` (status object `extruder_offset_calibration`), with no `desc=`, so they never appear in `printer.gcode.help`. Each `EXTRUDER_OFFSET_ACTION_<STEP>` is one blocking step that runs the matching `_EXTRUDER_OFFSET_ACTION_<STEP>[_Tn]` macro from `xyz_offset_calibration.cfg`. Every step but PRESTART refuses with coded fault `0003-0530-0000-0009` unless `machine_state_manager.main_state` is `XYZ_OFFSET_CALIBRATE`, which PRESTART enters and EXIT leaves. The stock screen (`/usr/bin/gui`, view source cali_extruders_offset.c) sequences them; its step table and its Next-button handler fix this order:
+
+| # | Command | Who waits |
+|---|---------|-----------|
+| 1 | `EXTRUDER_OFFSET_ACTION_PRESTART` | enters the state, cavity LED on, bed 55 C and all nozzles 140 C, `G28` |
+| 2 | per head n: `HEAT TOOL_ID=Tn` | heats to the loaded filament's print temperature minus 20 C (`HEAT_TEMP` overrides) |
+| 3 | `AUTO_CLEAN TOOL_ID=Tn SAFE_MOVE_Y_POS=250` | purges 30 mm (5 mm for soft filament) and wipes at the discard position |
+| 4 | `MANUAL_CLEAN TOOL_ID=Tn` | parks the head at X135 Y5 Z150 |
+| 5 | user brushes the hot nozzle, taps Next | stock text: "Clean the nozzle with the provided wire brush and maintain a clean docking position." |
+| 6 | `WAIT_COOL TOOL_ID=Tn TEMP=140` | fans on until the nozzle reaches probing temperature |
+| 7 | user removes the PEI sheet, taps Next | |
+| 8 | `DETECT_PLATE PRESENCE=0` | probes a solid and a hole point; fault `0003-0530-0000-0011` while the sheet is on (`screws_tilt::plate_still_on_bed`) |
+| 9 | per head n: `PROBE_CALIBRATE TOOL_ID=Tn` | `XYZ_OFFSET_CALIBRATE` against the bed's reference hole; the step that completes the fourth result runs `SAVE_RESULT FORCE_SAVE=0` itself |
+| 10 | `EXTRUDER_OFFSET_ACTION_EXIT` | heaters off, idle timeout restored, Z to 150, state back to IDLE |
+
+`snapmaker::nozzle_offset::Runner` walks that plan one RPC at a time. A plate refusal asks for the sheet again; any other failure sends EXIT and stops. A cancel sends EXIT once, after the webhook `printer.extruder_offset_calibration.probe_abort` when a probe pass is in flight, because a Klipper command blocks the queue until it ends and EXIT would wait behind it. The overlay (`ui_snapmaker_nozzle_offset_overlay`) cancels on `NavigateAway` only: a screensaver must not end a 20-minute run. After EXIT it reads each head's `extruder_offset` back for the result screen.
+
+`EXTRUDER_OFFSET_ACTION_CHECK_TARGET_TEMP` is also called by the stock screen; where in the sequence is not established, and the flow works without it.
+
+Mock: the `snapmaker_u1` persona lists the hook macros, and `MoonrakerClientMock::simulate_nozzle_offset_calibration` answers each step after a beat, models the state gate, and moves the probed head's `extruder_offset`. `HELIX_MOCK_NOZZLE_CAL_PLATE_REFUSE=<n>` refuses the first n plate checks; `HELIX_MOCK_NOZZLE_CAL_FAIL=<n>` fails head n's probe.
+
 ### Key Files
 
 | File | Purpose |
@@ -535,6 +560,8 @@ Backend Emits"); the override persists to `lane_data` whatever the firmware take
 | `src/printer/ams_backend_snapmaker.cpp` | Full implementation: status parse, channel_state table, gcode, overrides, pre-print builder |
 | `include/printer_discovery.h` | `filament_detect` detection + registration order (MMU wins over stock U1) |
 | `include/snapmaker_resume.h` + `src/printer/snapmaker_resume.cpp` | Terminal-pause matchers (dirty bed vs runout) and coded-error `msg` extraction |
+| `include/snapmaker_nozzle_offset.h` + `src/printer/snapmaker_nozzle_offset.cpp` | Toolhead offset calibration: capability check, step plan, `Runner` |
+| `include/ui_snapmaker_nozzle_offset_overlay.h` + `src/ui/ui_snapmaker_nozzle_offset_overlay.cpp` | The guided flow's overlay, registered by `src/ui/ui_snapmaker_device_flows.cpp` |
 | `include/batch_feed_reconcile.h` | Connect-time cleanup of a firmware batch left in the `doing` state |
 | `include/snapmaker_print_preferences.h` | `PrintPreferences` read/write model for the firmware prefs surfaced as device actions, plus each head's `filament_soft` |
 | `include/filament_temperature_source.h` + `src/printer/filament_temperature_source.cpp` | Per-filament load/unload temperature capture (see above) |

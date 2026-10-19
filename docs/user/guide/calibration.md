@@ -173,6 +173,8 @@ For tool-changer printers that can measure their own tool positions: one tap cal
 
 This screen only appears on a tool changer whose firmware exposes the calibration macro. If your printer doesn't have it, use the regular [Z-Offset Calibration](#z-offset-calibration) flow instead — it still works per-tool.
 
+On a Snapmaker U1, toolhead offsets are calibrated from the filament system settings instead: see [Toolhead Offset Calibration](filament.md#toolhead-offset-calibration).
+
 Every tool your printer reports gets its own row, however many there are:
 
 ![Tool Offsets Panel with many tools](../../images/user/advanced-tool-offsets-many-tools.png)

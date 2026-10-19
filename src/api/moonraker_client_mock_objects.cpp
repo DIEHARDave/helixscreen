@@ -602,6 +602,18 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                 }
             }
 
+            // The U1 reports each head's calibrated offset on its extruder.
+            if (self->get_printer_type() == MoonrakerClientMock::PrinterType::SNAPMAKER_U1) {
+                for (int head = 0; head < 4; ++head) {
+                    const std::string name =
+                        head == 0 ? std::string("extruder") : "extruder" + std::to_string(head);
+                    if (objects.contains(name)) {
+                        const auto o = self->nozzle_offset(head);
+                        status_obj[name]["extruder_offset"] = {o[0], o[1], o[2]};
+                    }
+                }
+            }
+
             // Test-set status objects (set_object_status()): served only when
             // the query asks for the object, like every branch above.
             for (const auto& [name, status] : self->object_status_overrides().items()) {

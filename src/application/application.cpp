@@ -1735,6 +1735,7 @@ bool Application::register_xml_components() {
     // Guided flows must exist before any overlay builds: an action that names an unregistered
     // flow is refused rather than executed.
     helix::ui::register_cfs_device_flows();
+    helix::ui::register_snapmaker_device_flows();
 
     // Start XML hot reloader if enabled. Default ON for native (non-release)
     // builds so editing XML during dev Just Works; OFF for cross-compiled

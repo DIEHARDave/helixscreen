@@ -118,6 +118,7 @@
   <translation tag="1 print" ru="1 печать"/>
   <translation tag="1 profile" ru="1 профиль"/>
   <translation tag="1 unit" ru="1 ед."/>
+  <translation tag="1. Each nozzle is heated, wiped and parked at the front for you to brush clean" ru="1. Каждое сопло нагревается, протирается и паркуется спереди, чтобы вы его почистили щёткой"/>
   <translation tag="1. Printer homes all axes (~1 minute)" ru="1. Принтер ищет ноль по всем осям (~1 минута)"/>
   <translation tag="1. Printer homes and probes the bed" ru="1. Принтер паркуется и зондирует стол"/>
   <translation tag="1. Printer will home and probe each screw" ru="1. Принтер запаркуется и проверит каждый винт"/>
@@ -134,6 +135,7 @@
   <translation tag="2. Jog Y until the nozzle is centered over the chute opening" ru="2. Двигайте Y, пока сопло не встанет по центру отверстия жёлоба"/>
   <translation tag="2. Place paper between nozzle and bed" ru="2. Положите бумагу между соплом и столом"/>
   <translation tag="2. Results show how much to turn each screw" ru="2. Результаты покажут, насколько повернуть каждый винт"/>
+  <translation tag="2. Take the PEI sheet off the bed when asked" ru="2. Снимите лист PEI со стола, когда появится запрос"/>
   <translation tag="20 minutes" ru="20 минут"/>
   <translation tag="24 Hour" ru="24 часа"/>
   <translation tag="24-hour" ru="24-часовой"/>
@@ -142,6 +144,7 @@
   <translation tag="2D Heatmap" ru="2D тепловая карта"/>
   <translation tag="2D Layers" ru="2D слои"/>
   <translation tag="3. Adjust screws, then re-probe to verify" ru="3. Отрегулируйте винты, затем перепроверьте"/>
+  <translation tag="3. Every toolhead is probed and the offsets are saved" ru="3. Каждая печатающая головка измеряется, и смещения сохраняются"/>
   <translation tag="3. Lower nozzle until paper drags slightly" ru="3. Опустите сопло, пока бумага не начнёт слегка цепляться"/>
   <translation tag="3. Save the position" ru="3. Сохраните позицию"/>
   <translation tag="30 minutes" ru="30 минут"/>
@@ -515,6 +518,7 @@
   <translation tag="Calibrate Gear" ru="Калибровать шестерню"/>
   <translation tag="Calibrate Purge Chute" ru="Калибровать жёлоб продувки"/>
   <translation tag="Calibrate Toolhead" ru="Калибровать печатающую головку"/>
+  <translation tag="Calibrate Toolhead Offsets" ru="Калибровать смещения головок"/>
   <translation tag="Calibrate X" ru="Калибровать X"/>
   <translation tag="Calibrate Y" ru="Калибровать Y"/>
   <translation tag="Calibrate input shaping to reduce ringing artifacts in prints" ru="Калибровка компенсации вибраций для уменьшения артефактов звона"/>
@@ -656,6 +660,7 @@
   <translation tag="Checking for webcam..." ru="Проверка веб-камеры..."/>
   <translation tag="Checking plugin" ru="Проверка плагина"/>
   <translation tag="Checking slots..." ru="Проверка слотов..."/>
+  <translation tag="Checking the PEI sheet is off..." ru="Проверка, что лист PEI снят..."/>
   <translation tag="Checking the printer..." ru="Проверка принтера..."/>
   <translation tag="Checking timelapse plugin..." ru="Проверка плагина таймлапса..."/>
   <translation tag="Checking webcam" ru="Проверка веб-камеры"/>
@@ -678,6 +683,7 @@
   <translation tag="Chute position: X {:.1f}, Y {:.1f}" ru="Позиция жёлоба продувки: X {:.1f}, Y {:.1f}"/>
   <translation tag="Clean Brush" ru="Очистить щётку"/>
   <translation tag="Clean Nozzle" ru="Очистить сопло"/>
+  <translation tag="Clean {}" ru="Очистите {}"/>
   <translation tag="Cleaning Nozzle..." ru="Очистка сопла..."/>
   <translation tag="Cleaning nozzle..." ru="Очистка сопла..."/>
   <translation tag="Clear" ru="Очистить"/>
@@ -822,6 +828,7 @@
   <translation tag="Cooling Tube Length" ru="Длина трубки охлаждения"/>
   <translation tag="Cooling Tube Retraction" ru="Ретракция в трубке охлаждения"/>
   <translation tag="Cooling for probing..." ru="Охлаждение перед зондированием..."/>
+  <translation tag="Cooling {}..." ru="Охлаждение: {}..."/>
   <translation tag="Copied to clipboard!" ru="Скопировано в буфер обмена!"/>
   <translation tag="Copy" ru="Копировать"/>
   <translation tag="Copy Command" ru="Копировать команду"/>
@@ -1553,6 +1560,7 @@
   <translation tag="Heating to {}°C before {}..." ru="Нагрев до {}°C перед «{}»..."/>
   <translation tag="Heating to {}°C for {}..." ru="Нагрев до {}°C в течение {}..."/>
   <translation tag="Heating to {}°C..." ru="Нагрев до {}°C..."/>
+  <translation tag="Heating {}..." ru="Нагрев: {}..."/>
   <translation tag="Heating..." ru="Нагрев..."/>
   <translation tag="Heating: %d / %d°C" ru="Нагрев: %d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" ru="Карта высот и ровность активной сетки стола"/>
@@ -1748,6 +1756,7 @@
   <translation tag="Keep clear of the printer while the toolhead is moving" ru="Не приближайтесь к принтеру, пока перемещается печатающая головка"/>
   <translation tag="Keep current" ru="Оставить текущую"/>
   <translation tag="Keep current ({})" ru="Оставить текущее ({})"/>
+  <translation tag="Keep hands clear except when asked. The printer moves on its own." ru="Держите руки подальше, если не появится запрос. Принтер двигается сам."/>
   <translation tag="Keep hands clear. The printer moves on its own." ru="Держите руки подальше. Принтер двигается сам."/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." ru="Хранит собственные данные на этом экране (до 256 КБ)."/>
   <translation tag="Keep the bypass spool visible when bypass is off" ru="Показывать катушку байпаса, даже когда байпас выключен"/>
@@ -1983,6 +1992,7 @@
   <translation tag="Maximum acceleration (mm/s²)" ru="Максимальное ускорение (мм/с²)"/>
   <translation tag="Maximum toolhead speed (mm/s)" ru="Максимальная скорость печатающей головки (мм/с)"/>
   <translation tag="Measure" ru="Измерить"/>
+  <translation tag="Measure each toolhead&apos;s X, Y and Z offset (about 20 minutes)" ru="Измерить смещение X, Y и Z каждой головки (около 20 минут)"/>
   <translation tag="Measure every tool&apos;s XYZ offset automatically" ru="Автоматически измеряет смещение XYZ каждого инструмента"/>
   <translation tag="Measure pressure advance automatically" ru="Автоматически измеряет Pressure Advance"/>
   <translation tag="Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed." ru="Отсчитывайте высоту от стола. Острые углы без наплывов и пропусков означают верный K. Каждая строка - диапазон высот и K, который принтер сообщал во время его печати."/>
@@ -1990,6 +2000,7 @@
   <translation tag="Measured filament diameter" ru="Измеренный диаметр филамента"/>
   <translation tag="Measured pressure advance" ru="Измеренный Pressure Advance"/>
   <translation tag="Measurement incomplete. Try again." ru="Измерение не завершено. Повторите попытку."/>
+  <translation tag="Measures each toolhead&apos;s X, Y and Z offset so every head prints in the same place. Takes about 20 minutes." ru="Измеряет смещение X, Y и Z каждой головки, чтобы все печатали в одной точке. Занимает около 20 минут."/>
   <translation tag="Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen." ru="Измеряет стол у каждого регулировочного винта и показывает, насколько его повернуть. Запускается на экране «Наклон винтов»."/>
   <translation tag="Measures vibration for input shaping. Run resonance tests on the Input Shaper screen." ru="Измеряет вибрацию для input shaping. Тесты резонанса запускаются на экране Input Shaper."/>
   <translation tag="Measuring" ru="Измерение"/>
@@ -1997,6 +2008,7 @@
   <translation tag="Measuring accelerometer noise..." ru="Измерение шума акселерометра..."/>
   <translation tag="Measuring vibrations... {}%" ru="Измерение вибраций... {}%"/>
   <translation tag="Measuring wheel error" ru="Ошибка измерительного колеса"/>
+  <translation tag="Measuring {}..." ru="Измерение: {}..."/>
   <translation tag="Memory" ru="Память"/>
   <translation tag="Memory (MB)" ru="Память (МБ)"/>
   <translation tag="Memory Snapshot" ru="Снимок памяти"/>
@@ -2050,6 +2062,7 @@
   <translation tag="Moves the print head to measure vibration frequencies on each axis. Takes 2-3 minutes. The printer will make noise — this is normal." ru="Перемещает печатающую головку для измерения частот вибрации по каждой оси. Занимает 2-3 минуты. Принтер будет шуметь — это нормально."/>
   <translation tag="Moving lane" ru="Перемещение канала"/>
   <translation tag="Moving the plate..." ru="Перемещение стола..."/>
+  <translation tag="Moving {} to the front..." ru="Перемещение вперёд: {}..."/>
   <translation tag="Multi-Filament" ru="Мульти-филамент"/>
   <translation tag="Multi-Filament Overview" ru="Обзор мульти-филамента"/>
   <translation tag="Multi-Filament System" ru="Мультифиламентная система"/>
@@ -2228,6 +2241,7 @@
   <translation tag="Nothing to remap" ru="Нечего переназначать"/>
   <translation tag="Nothing to unload: no filament at the nozzle" ru="Выгружать нечего: в сопле нет филамента"/>
   <translation tag="Nothing was changed. Temperature and material are kept, so a retry is one tap." ru="Ничего не изменилось. Температура и материал сохранены, повторить можно одним нажатием."/>
+  <translation tag="Nothing was saved and the heaters are off." ru="Ничего не сохранено, нагреватели выключены."/>
   <translation tag="Notification" ru="Уведомление"/>
   <translation tag="Notifications" ru="Уведомления"/>
   <translation tag="Notify when print finishes" ru="Уведомить о завершении печати"/>
@@ -2273,6 +2287,7 @@
   <translation tag="Off:" ru="Выкл:"/>
   <translation tag="Off: runs with these values without asking" ru="Выкл.: запуск с этими значениями без запроса"/>
   <translation tag="Offer to save Z-offset changes to the printer config" ru="Предлагать сохранить изменения Z-Offset в конфигурации принтера"/>
+  <translation tag="Offsets Saved" ru="Смещения сохранены"/>
   <translation tag="Offsets saved" ru="Смещения сохранены"/>
   <translation tag="Old setting on today&apos;s data: {} residual - now: {}" ru="Прежняя настройка на сегодняшних данных: остаточная вибрация {} — сейчас: {}"/>
   <translation tag="On" ru="Вкл"/>
@@ -2395,6 +2410,7 @@
   <translation tag="Pill" ru="Овал"/>
   <translation tag="Pixels before a press becomes a scroll (lower = scrolls engage sooner)" ru="Пикселей до того, как нажатие станет прокруткой (меньше = прокрутка начинается раньше)"/>
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." ru="Поместите файлы изображений (PNG, JPEG, BMP, GIF) в config/custom_images/. Макс. размер: 2048×2048 пикселей."/>
+  <translation tag="Place the PEI sheet back onto the heated bed." ru="Верните лист PEI на подогреваемый стол."/>
   <translation tag="Place the spools" ru="Положите катушки"/>
   <translation tag="Placed" ru="Добавлено"/>
   <translation tag="Plate {}" ru="Пластина {}"/>
@@ -2447,6 +2463,7 @@
   <translation tag="Preheat: all {} tools + bed set_many" ru="Преднагрев: все {} инструментов + стол заданы"/>
   <translation tag="Preheat: all {} tools + bed set_one" ru="Преднагрев: все {} инструмент + стол заданы"/>
   <translation tag="Preheat: {} + bed set" ru="Преднагрев: {} + стол заданы"/>
+  <translation tag="Preheating and homing..." ru="Преднагрев и парковка осей..."/>
   <translation tag="Preload" ru="Предзагрузка"/>
   <translation tag="Preload failed" ru="Ошибка предварительной загрузки"/>
   <translation tag="Prepared" ru="Готово"/>
@@ -2562,6 +2579,7 @@
   <translation tag="Printer hardware detected" ru="Обнаружено оборудование принтера"/>
   <translation tag="Printer image set to auto-detect" ru="Изображение принтера — автоопределение"/>
   <translation tag="Printer is busy - {} stays in the queue" ru="Принтер занят – {} остаётся в очереди"/>
+  <translation tag="Printer is busy with a print" ru="Принтер занят печатью"/>
   <translation tag="Printer is busy — try again in a moment" ru="Принтер занят — повторите попытку чуть позже"/>
   <translation tag="Printer is not paired — pair it first" ru="Принтер не сопряжён — сначала выполните сопряжение"/>
   <translation tag="Printer is not ready" ru="Принтер не готов"/>
@@ -2738,6 +2756,7 @@
   <translation tag="Remove PIN" ru="Удалить PIN"/>
   <translation tag="Remove Spoolman?" ru="Удалить Spoolman?"/>
   <translation tag="Remove plugin from printer" ru="Удалить плагин с принтера"/>
+  <translation tag="Remove the PEI Sheet" ru="Снимите лист PEI"/>
   <translation tag="Remove the PEI sheet from the bed, then start again: probing through the sheet gives wrong results" ru="Снимите лист PEI со стола и начните заново: щуп через лист даёт неверные результаты"/>
   <translation tag="Remove the bypass spool from the toolhead first" ru="Сначала извлеките катушку байпаса из печатающей головки"/>
   <translation tag="Remove the spools" ru="Снимите катушки"/>
@@ -2932,6 +2951,7 @@
   <translation tag="Saves to Klipper config and restarts firmware." ru="Сохраняет в конфигурацию Klipper и перезапускает прошивку."/>
   <translation tag="Saving Configuration..." ru="Сохранение конфигурации..."/>
   <translation tag="Saving Z-offset..." ru="Сохранение Z-offset..."/>
+  <translation tag="Saving and finishing..." ru="Сохранение и завершение..."/>
   <translation tag="Saving config... Klipper will restart." ru="Сохранение конфигурации... Klipper перезапустится."/>
   <translation tag="Saving offsets..." ru="Сохранение смещений..."/>
   <translation tag="Saving the position and parking the toolhead." ru="Сохранение позиции и парковка печатающей головки."/>
@@ -3227,6 +3247,7 @@
   <translation tag="Std Deviation" ru="Станд. отклонение"/>
   <translation tag="Step" ru="Шаг"/>
   <translation tag="Step 1 of 3" ru="Шаг 1 из 3"/>
+  <translation tag="Step {} of {}" ru="Шаг {} из {}"/>
   <translation tag="Still saving this spool…" ru="Эта катушка ещё сохраняется…"/>
   <translation tag="Still working... taking longer than usual" ru="Всё ещё выполняется... дольше обычного"/>
   <translation tag="Stop" ru="Стоп"/>
@@ -3293,6 +3314,7 @@
   <translation tag="TOOLS" ru="ИНСТРУМЕНТЫ"/>
   <translation tag="TPU" ru="TPU"/>
   <translation tag="Tag Parts" ru="Отметить узлы"/>
+  <translation tag="Take the PEI sheet off the heated bed, then tap Next. The toolheads probe the bare bed." ru="Снимите лист PEI с подогреваемого стола и нажмите «Далее». Головки измеряют по голому столу."/>
   <translation tag="Takes 3-5 min. Do not interrupt." ru="Занимает 3-5 мин. Не прерывайте."/>
   <translation tag="Tangle prevention active" ru="Защита от спутывания активна"/>
   <translation tag="Tangle prevention boosted" ru="Защита от спутывания усилена"/>
@@ -3363,6 +3385,7 @@
   <translation tag="The CFS odometer hardware is faulty and needs repair or replacement" ru="Оборудование одометра CFS неисправно и требует ремонта или замены"/>
   <translation tag="The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints." ru="Плагин HelixPrint позволяет быстро модифицировать G-code прямо на принтере — например, пропускать сетку стола для быстрых перепечаток."/>
   <translation tag="The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings." ru="Плагин таймлапса Moonraker установлен. Способ записи задается в настройках таймлапса."/>
+  <translation tag="The PEI sheet is still on the bed. Take it off, then tap Next." ru="Лист PEI всё ещё на столе. Снимите его и нажмите «Далее»."/>
   <translation tag="The Spoolman spool currently loaded" ru="Текущая катушка Spoolman"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." ru="Анимированная заставка была отключена на данном устройстве, чтобы она не мешала печати. Вы можете снова включить её в Настройки &gt; Дисплей."/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." ru="Стол остыл. Снимите катушки со стола, затем подтвердите."/>
@@ -3399,6 +3422,7 @@
   <translation tag="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle." ru="Загружена катушка {}, но файл нарезан для {}. Филамент с наполнителем печатается с меньшим потоком и требует закалённого сопла."/>
   <translation tag="The message your printer&apos;s macros show (M117)" ru="Сообщение, которое показывают макросы принтера (M117)"/>
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." ru="Сопло делает несколько коротких тестовых перемещений в углу, в стороне от зоны печати, и повторяет их до сходимости."/>
+  <translation tag="The nozzle is hot. Brush it clean with the wire brush that came with the printer and keep the docking position clean, then tap Next." ru="Сопло горячее. Очистите его металлической щёткой из комплекта, держите место парковки чистым и нажмите «Далее»."/>
   <translation tag="The plate and the spools are still hot. Use gloves." ru="Стол и катушки ещё горячие. Используйте перчатки."/>
   <translation tag="The plate finishes its current move, but drying will not start." ru="Стол завершит текущее перемещение, но сушка не начнётся."/>
   <translation tag="The print ended before any layer was printed. Nothing was changed." ru="Печать завершилась до первого слоя. Ничего не изменено."/>
@@ -3578,10 +3602,12 @@
   <translation tag="Toolchange purge" ru="Продувка при смене инструмента"/>
   <translation tag="Toolhead" ru="Печатающая головка"/>
   <translation tag="Toolhead LED" ru="LED печатающей головки"/>
+  <translation tag="Toolhead Offset Calibration" ru="Калибровка смещений головок"/>
   <translation tag="Toolhead Sensor" ru="Датчик печатающей головки"/>
   <translation tag="Toolhead Style" ru="Стиль печатающей головки"/>
   <translation tag="Toolhead Y" ru="Печатающая головка Y"/>
   <translation tag="Toolhead jam" ru="Замятие в печатающей головке"/>
+  <translation tag="Toolhead offset calibration" ru="Калибровка смещений головок"/>
   <translation tag="Toolhead position and homing, with a plate view and Home All" ru="Положение и парковка печатающей головки, с видом стола и кнопкой «Парковка всех осей»"/>
   <translation tag="Toolhead position unknown" ru="Положение печатающей головки неизвестно"/>
   <translation tag="Toolheads" ru="Печатающие головки"/>
@@ -3829,6 +3855,7 @@
   <translation tag="Wifi" ru="Wi-Fi"/>
   <translation tag="Will not switch spools on runout" ru="При обрыве катушка не переключится"/>
   <translation tag="Wipe nozzle on silicone cleaning strip" ru="Очистить сопло о силиконовую полоску"/>
+  <translation tag="Wiping {}..." ru="Очистка: {}..."/>
   <translation tag="Wizard Error" ru="Ошибка мастера"/>
   <translation tag="Working..." ru="Выполнение..."/>
   <translation tag="Write failed at chunk {}" ru="Не удалось записать в блоке {}"/>

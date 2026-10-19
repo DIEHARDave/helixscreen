@@ -28,6 +28,7 @@
 #include "printer_discovery.h"
 #include "settings_manager.h"
 #include "snapmaker_channel_state.h"
+#include "snapmaker_nozzle_offset.h"
 #include "snapmaker_resume.h"
 #include "snapmaker_status_parse.h"
 #include "text_io.h"
@@ -271,6 +272,7 @@ void AmsBackendSnapmaker::set_discovery(const helix::PrinterDiscovery& discovery
         discovery.macro_config_name(helix::macro_patterns::AUTO_FEEDING_BATCH);
     use_batch_macro_ = !macro.empty();
     batch_macro_object_ = macro.empty() ? std::string{} : "gcode_macro " + macro;
+    nozzle_offset_supported_ = snapmaker::nozzle_offset::supported(discovery);
 }
 
 void AmsBackendSnapmaker::on_started() {
@@ -3227,15 +3229,25 @@ std::optional<size_t> end_unload_tool(const std::string& action_id) {
 } // namespace
 
 std::vector<helix::printer::DeviceSection> AmsBackendSnapmaker::get_device_sections() const {
-    if (print_preferences().empty()) {
-        return {}; // nothing reported yet - an empty section is worse than none
-    }
     using helix::printer::DeviceSection;
-    DeviceSection s;
-    s.id = "snapmaker_print_prefs";
-    s.label = lv_tr("Print Behaviour");
-    s.display_order = 50;
-    return {s};
+    std::vector<DeviceSection> out;
+    // Nothing reported yet - an empty section is worse than none.
+    if (!print_preferences().empty()) {
+        DeviceSection s;
+        s.id = "snapmaker_print_prefs";
+        s.label = lv_tr("Print Behaviour");
+        s.display_order = 50;
+        out.push_back(std::move(s));
+    }
+    bool nozzle_offset = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        nozzle_offset = nozzle_offset_supported_;
+    }
+    if (nozzle_offset) {
+        out.push_back(snapmaker::nozzle_offset::device_section());
+    }
+    return out;
 }
 
 std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_actions() const {
@@ -3293,6 +3305,18 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
             a.disable_reason = lv_tr("Soft filament is never unloaded");
         }
         out.push_back(std::move(a));
+    }
+
+    bool nozzle_offset = false;
+    bool print_holds_heads = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        nozzle_offset = nozzle_offset_supported_;
+        print_holds_heads =
+            print_state_ && (*print_state_ == "printing" || *print_state_ == "paused");
+    }
+    if (nozzle_offset) {
+        out.push_back(snapmaker::nozzle_offset::device_action(print_holds_heads));
     }
     return out;
 }

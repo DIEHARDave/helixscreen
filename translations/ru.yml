@@ -130,6 +130,7 @@ translations:
   1 print: '1 печать'
   1 profile: '1 профиль'
   '1 unit': '1 ед.'
+  1. Each nozzle is heated, wiped and parked at the front for you to brush clean: 1. Каждое сопло нагревается, протирается и паркуется спереди, чтобы вы его почистили щёткой
   1. Printer homes all axes (~1 minute): 1. Принтер ищет ноль по всем осям (~1 минута)
   1. Printer homes and probes the bed: 1. Принтер паркуется и зондирует стол
   1. Printer will home and probe each screw: 1. Принтер запаркуется и проверит каждый
@@ -149,6 +150,7 @@ translations:
   2. Place paper between nozzle and bed: 2. Положите бумагу между соплом и столом
   2. Results show how much to turn each screw: 2. Результаты покажут, насколько повернуть
     каждый винт
+  2. Take the PEI sheet off the bed when asked: 2. Снимите лист PEI со стола, когда появится запрос
   20 minutes: 20 минут
   24 Hour: 24 часа
   24-hour: 24-часовой
@@ -157,6 +159,7 @@ translations:
   2D Heatmap: 2D тепловая карта
   2D Layers: 2D слои
   3. Adjust screws, then re-probe to verify: 3. Отрегулируйте винты, затем перепроверьте
+  3. Every toolhead is probed and the offsets are saved: 3. Каждая печатающая головка измеряется, и смещения сохраняются
   3. Lower nozzle until paper drags slightly: 3. Опустите сопло, пока бумага не начнёт
     слегка цепляться
   3. Save the position: 3. Сохраните позицию
@@ -558,6 +561,7 @@ translations:
   Calibrate Gear: 'Калибровать шестерню'
   Calibrate Purge Chute: Калибровать жёлоб продувки
   Calibrate Toolhead: 'Калибровать печатающую головку'
+  Calibrate Toolhead Offsets: Калибровать смещения головок
   Calibrate X: Калибровать X
   Calibrate Y: Калибровать Y
   Calibrate All Tools: Калибровать все инструменты
@@ -720,6 +724,7 @@ translations:
   Checking for webcam...: Проверка веб-камеры...
   Checking plugin: Проверка плагина
   Checking slots...: Проверка слотов...
+  Checking the PEI sheet is off...: Проверка, что лист PEI снят...
   Checking the printer...: "Проверка принтера..."
   Checking timelapse plugin...: Проверка плагина таймлапса...
   Checking webcam: Проверка веб-камеры
@@ -748,6 +753,7 @@ translations:
 
   Clean Brush: 'Очистить щётку'
   Clean Nozzle: Очистить сопло
+  Clean {}: Очистите {}
   Cleaning Nozzle...: Очистка сопла...
   Cleaning nozzle...: Очистка сопла...
   Clear: Очистить
@@ -908,6 +914,7 @@ translations:
   Cooling Tube Length: 'Длина трубки охлаждения'
   Cooling Tube Retraction: 'Ретракция в трубке охлаждения'
   Cooling for probing...: Охлаждение перед зондированием...
+  Cooling {}...: 'Охлаждение: {}...'
   Copied to clipboard!: Скопировано в буфер обмена!
   Copy: "Копировать"
   Copy Command: Копировать команду
@@ -1700,6 +1707,7 @@ translations:
   Heating to {}°C before {}...: Нагрев до {}°C перед «{}»...
   Heating to {}°C for {}...: Нагрев до {}°C в течение {}...
   Heating to {}°C...: Нагрев до {}°C...
+  Heating {}...: 'Нагрев: {}...'
   Heating...: Нагрев...
   'Heating: %d / %d°C': 'Нагрев: %d / %d°C'
   Heightmap and flatness of the active bed mesh: 'Карта высот и ровность активной сетки стола'
@@ -1922,6 +1930,7 @@ translations:
   Keep clear of the printer while the toolhead is moving: Не приближайтесь к принтеру, пока перемещается печатающая головка
   Keep current: Оставить текущую
   Keep current ({}): Оставить текущее ({})
+  Keep hands clear except when asked. The printer moves on its own.: Держите руки подальше, если не появится запрос. Принтер двигается сам.
   Keep hands clear. The printer moves on its own.: Держите руки подальше. Принтер двигается сам.
 
   Keep its own data on this screen (up to 256 KB).: 'Хранит собственные данные на этом экране (до 256 КБ).'
@@ -2182,6 +2191,7 @@ translations:
   Maximum acceleration (mm/s²): Максимальное ускорение (мм/с²)
   Maximum toolhead speed (mm/s): Максимальная скорость печатающей головки (мм/с)
   Measure: 'Измерить'
+  Measure each toolhead's X, Y and Z offset (about 20 minutes): Измерить смещение X, Y и Z каждой головки (около 20 минут)
   Measure every tool's XYZ offset automatically: Автоматически измеряет смещение XYZ каждого инструмента
   Measure pressure advance automatically: 'Автоматически измеряет Pressure Advance'
   ? Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed.
@@ -2190,6 +2200,7 @@ translations:
   Measured filament diameter: Измеренный диаметр филамента
   Measured pressure advance: 'Измеренный Pressure Advance'
   Measurement incomplete. Try again.: Измерение не завершено. Повторите попытку.
+  Measures each toolhead's X, Y and Z offset so every head prints in the same place. Takes about 20 minutes.: Измеряет смещение X, Y и Z каждой головки, чтобы все печатали в одной точке. Занимает около 20 минут.
   Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen.: 'Измеряет стол у каждого регулировочного винта и показывает, насколько его повернуть. Запускается на экране «Наклон винтов».'
   Measures vibration for input shaping. Run resonance tests on the Input Shaper screen.: 'Измеряет вибрацию для input shaping. Тесты резонанса запускаются на экране Input Shaper.'
   Measuring: 'Измерение'
@@ -2197,6 +2208,7 @@ translations:
   Measuring accelerometer noise...: 'Измерение шума акселерометра...'
   Measuring vibrations... {}%: 'Измерение вибраций... {}%'
   Measuring wheel error: Ошибка измерительного колеса
+  Measuring {}...: 'Измерение: {}...'
   Memory: Память
   Memory (MB): Память (МБ)
   Memory Snapshot: Снимок памяти
@@ -2254,6 +2266,7 @@ translations:
   Moving lane: Перемещение канала
   Moving the plate...: Перемещение стола...
 
+  Moving {} to the front...: 'Перемещение вперёд: {}...'
   Multi-Filament: Мульти-филамент
   Multi-Filament Overview: Обзор мульти-филамента
   Multi-Filament System: Мультифиламентная система
@@ -2444,6 +2457,7 @@ translations:
   'Which lane is in the toolhead?': 'Какая дорожка в печатающей головке?'
   'Choose which lane is in the toolhead to unload it': 'Выберите, какая дорожка в печатающей головке, чтобы выгрузить её'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: 'Ничего не изменилось. Температура и материал сохранены, повторить можно одним нажатием.'
+  Nothing was saved and the heaters are off.: Ничего не сохранено, нагреватели выключены.
   Notification: Уведомление
   Notifications: Уведомления
   Notify when print finishes: Уведомить о завершении печати
@@ -2489,6 +2503,7 @@ translations:
   'Off:': 'Выкл:'
   'Off: runs with these values without asking': 'Выкл.: запуск с этими значениями без запроса'
   Offer to save Z-offset changes to the printer config: 'Предлагать сохранить изменения Z-Offset в конфигурации принтера'
+  Offsets Saved: Смещения сохранены
   Offsets saved: Смещения сохранены
   "Old setting on today's data: {} residual - now: {}": 'Прежняя настройка на сегодняшних данных: остаточная вибрация {} — сейчас: {}'
   'On': Вкл
@@ -2622,6 +2637,7 @@ translations:
   'Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels.': 'Поместите
     файлы изображений (PNG, JPEG, BMP, GIF) в config/custom_images/. Макс. размер:
     2048×2048 пикселей.'
+  Place the PEI sheet back onto the heated bed.: Верните лист PEI на подогреваемый стол.
   Place the spools: Положите катушки
 
   Placed: Добавлено
@@ -2680,6 +2696,7 @@ translations:
     many: 'Преднагрев: все {} инструментов + стол заданы'
     other: 'Преднагрев: все {} инструмента + стол заданы'
   'Preheat: {} + bed set': 'Преднагрев: {} + стол заданы'
+  Preheating and homing...: Преднагрев и парковка осей...
   Preload: 'Предзагрузка'
   Preload failed: Ошибка предварительной загрузки
   Prepared: Готово
@@ -2800,6 +2817,7 @@ translations:
   Printer hardware detected: Обнаружено оборудование принтера
   Printer image set to auto-detect: Изображение принтера — автоопределение
   Printer is busy - {} stays in the queue: 'Принтер занят – {} остаётся в очереди'
+  Printer is busy with a print: Принтер занят печатью
   Printer is busy — try again in a moment: Принтер занят — повторите попытку чуть позже
   Printer is not paired — pair it first: Принтер не сопряжён — сначала выполните сопряжение
   Printer is not ready: Принтер не готов
@@ -2989,6 +3007,7 @@ translations:
   Remove PIN: Удалить PIN
   Remove Spoolman?: Удалить Spoolman?
   Remove plugin from printer: Удалить плагин с принтера
+  Remove the PEI Sheet: Снимите лист PEI
   'Remove the PEI sheet from the bed, then start again: probing through the sheet gives wrong results': 'Снимите лист PEI со стола и начните заново: щуп через лист даёт неверные результаты'
   Remove the bypass spool from the toolhead first: 'Сначала извлеките катушку байпаса из печатающей головки'
   Remove the spools: Снимите катушки
@@ -3201,6 +3220,7 @@ translations:
     и перезапускает прошивку.
   Saving Configuration...: Сохранение конфигурации...
   Saving Z-offset...: Сохранение Z-offset...
+  Saving and finishing...: Сохранение и завершение...
   Saving config... Klipper will restart.: Сохранение конфигурации... Klipper перезапустится.
   Saving offsets...: Сохранение смещений...
   Saving the position and parking the toolhead.: Сохранение позиции и парковка печатающей головки.
@@ -3534,6 +3554,7 @@ translations:
   Std Deviation: Станд. отклонение
   Step: Шаг
   Step 1 of 3: Шаг 1 из 3
+  Step {} of {}: Шаг {} из {}
   Still saving this spool…: 'Эта катушка ещё сохраняется…'
   Still working... taking longer than usual: Всё ещё выполняется... дольше обычного
   Stop: Стоп
@@ -3609,6 +3630,7 @@ translations:
   TOOLS: ИНСТРУМЕНТЫ
   TPU: TPU
   Tag Parts: Отметить узлы
+  Take the PEI sheet off the heated bed, then tap Next. The toolheads probe the bare bed.: Снимите лист PEI с подогреваемого стола и нажмите «Далее». Головки измеряют по голому столу.
   Takes 3-5 min. Do not interrupt.: Занимает 3-5 мин. Не прерывайте.
   Tangle prevention active: Защита от спутывания активна
   Tangle prevention boosted: Защита от спутывания усилена
@@ -3689,6 +3711,7 @@ translations:
   : Плагин HelixPrint позволяет быстро модифицировать G-code прямо на принтере — например,
     пропускать сетку стола для быстрых перепечаток.
   The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings.: 'Плагин таймлапса Moonraker установлен. Способ записи задается в настройках таймлапса.'
+  The PEI sheet is still on the bed. Take it off, then tap Next.: Лист PEI всё ещё на столе. Снимите его и нажмите «Далее».
   The Spoolman spool currently loaded: Текущая катушка Spoolman
   ? The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
@@ -3734,6 +3757,8 @@ translations:
   : Загружена катушка {}, но файл нарезан для {}. Филамент с наполнителем печатается с меньшим потоком и требует закалённого сопла.
   The message your printer's macros show (M117): 'Сообщение, которое показывают макросы принтера (M117)'
   The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.: 'Сопло делает несколько коротких тестовых перемещений в углу, в стороне от зоны печати, и повторяет их до сходимости.'
+  ? The nozzle is hot. Brush it clean with the wire brush that came with the printer and keep the docking position clean, then tap Next.
+  : Сопло горячее. Очистите его металлической щёткой из комплекта, держите место парковки чистым и нажмите «Далее».
   The plate and the spools are still hot. Use gloves.: Стол и катушки ещё горячие. Используйте перчатки.
 
   The plate finishes its current move, but drying will not start.: 'Стол завершит текущее перемещение, но сушка не начнётся.'
@@ -3960,10 +3985,12 @@ translations:
   Toolchange purge: 'Продувка при смене инструмента'
   Toolhead: 'Печатающая головка'
   Toolhead LED: 'LED печатающей головки'
+  Toolhead Offset Calibration: Калибровка смещений головок
   Toolhead Sensor: Датчик печатающей головки
   Toolhead Style: Стиль печатающей головки
   Toolhead Y: Печатающая головка Y
   Toolhead jam: Замятие в печатающей головке
+  Toolhead offset calibration: Калибровка смещений головок
   Toolhead position and homing, with a plate view and Home All: "Положение и парковка печатающей головки, с видом стола и кнопкой «Парковка всех осей»"
   Toolhead position unknown: Положение печатающей головки неизвестно
   Toolheads: Печатающие головки
@@ -4219,6 +4246,7 @@ translations:
   Wifi: Wi-Fi
   Will not switch spools on runout: При обрыве катушка не переключится
   Wipe nozzle on silicone cleaning strip: 'Очистить сопло о силиконовую полоску'
+  Wiping {}...: 'Очистка: {}...'
   Wizard Error: Ошибка мастера
   Working...: Выполнение...
   Write failed at chunk {}: Не удалось записать в блоке {}
