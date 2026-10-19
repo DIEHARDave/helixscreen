@@ -185,4 +185,26 @@ struct WpaNetSysfsGuard {
     std::string net_dir_;
 };
 
+/// Hermetic process table for the same tests: pins HELIX_WPA_PROC_ROOT to an
+/// empty <base>/proc, so the backend's wpa_supplicant daemon scans read no
+/// real PIDs. A real /proc makes start()'s duration a property of the host:
+/// on one holding ~95k zombie processes each scan costs a second, and init
+/// overruns the 5 s wait start() gives it.
+struct WpaProcRootGuard {
+    explicit WpaProcRootGuard(const std::string& base_dir) {
+        proc_dir_ = base_dir + "/proc";
+        std::error_code ec;
+        std::filesystem::create_directories(proc_dir_, ec);
+        ::setenv("HELIX_WPA_PROC_ROOT", proc_dir_.c_str(), 1);
+    }
+    ~WpaProcRootGuard() {
+        ::unsetenv("HELIX_WPA_PROC_ROOT");
+        std::error_code ec;
+        std::filesystem::remove_all(proc_dir_, ec);
+    }
+
+  private:
+    std::string proc_dir_;
+};
+
 } // namespace helix_test

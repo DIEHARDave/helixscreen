@@ -239,6 +239,16 @@ ScanTrigger classify_scan_reply(const std::string& reply) {
 }
 } // namespace helix::wifi::detail
 
+/// The process table the daemon scans read. HELIX_WPA_PROC_ROOT is the test
+/// seam, like HELIX_WPA_NET_SYSFS: every scan opens each live PID's cmdline,
+/// and on a host with tens of thousands of processes (a container that never
+/// reaps its zombies) a scan costs a second, which is enough to push init_wpa()
+/// past start()'s 5 s wait.
+static std::string wpa_proc_root() {
+    const char* root = std::getenv("HELIX_WPA_PROC_ROOT");
+    return (root != nullptr && root[0] != '\0') ? std::string(root) : "/proc";
+}
+
 /// Inspect running processes for a `wpa_supplicant` daemon and return the
 /// control-interface directory it was launched with.
 ///
@@ -256,10 +266,11 @@ ScanTrigger classify_scan_reply(const std::string& reply) {
 /// its per-PID precedence/fallthrough is load-bearing, so it is left alone.
 static std::string detect_wpa_conf_path_from_proc() {
     std::error_code ec;
-    if (!fs::is_directory("/proc", ec))
+    const std::string proc = wpa_proc_root();
+    if (!fs::is_directory(proc, ec))
         return {};
 
-    for (const auto& entry : fs::directory_iterator("/proc", ec)) {
+    for (const auto& entry : fs::directory_iterator(proc, ec)) {
         if (ec)
             break;
         const std::string name = entry.path().filename().string();
@@ -290,10 +301,11 @@ static std::string detect_wpa_conf_path_from_proc() {
 
 static std::string detect_wpa_ctrl_dir_from_proc() {
     std::error_code ec;
-    if (!fs::is_directory("/proc", ec))
+    const std::string proc = wpa_proc_root();
+    if (!fs::is_directory(proc, ec))
         return {};
 
-    for (const auto& entry : fs::directory_iterator("/proc", ec)) {
+    for (const auto& entry : fs::directory_iterator(proc, ec)) {
         if (ec)
             break;
         // PID directories only.
@@ -1049,6 +1061,7 @@ static std::string describe_conf_access(const std::string& path) {
 
 void WifiBackendWpaSupplicant::resolve_and_store_interface() {
     helix::wifi::Roots roots;
+    roots.proc = wpa_proc_root();
     roots.ctrl = resolve_wpa_ctrl_directory();
 
     if (roots.ctrl.empty()) {

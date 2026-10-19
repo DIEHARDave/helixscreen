@@ -63,9 +63,11 @@ struct WpaFakeFixture {
         // Hermetic hardware: without this the suite needs a real wlan-named
         // interface, which CI runners do not have.
         net_sysfs_guard.emplace(dir);
+        proc_root_guard.emplace(dir);
     }
 
     ~WpaFakeFixture() {
+        proc_root_guard.reset();
         net_sysfs_guard.reset();
         env_guard.reset();
         fake.reset();
@@ -74,6 +76,7 @@ struct WpaFakeFixture {
 
     std::optional<helix_test::WpaSocketDirGuard> env_guard;
     std::optional<helix_test::WpaNetSysfsGuard> net_sysfs_guard;
+    std::optional<helix_test::WpaProcRootGuard> proc_root_guard;
 };
 
 /// Counts SCAN_COMPLETE dispatches from a backend under test.
