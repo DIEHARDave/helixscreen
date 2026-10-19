@@ -5914,3 +5914,155 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker sync_external_identity writes noth
     CHECK(h.config_writes().empty());
     CHECK(h.printer.api.rest_mock().mock_get_post_history().empty());
 }
+
+// ============================================================================
+// print_task_config drift: the firmware forgets a head's record when filament
+// leaves the toolhead (an unload, unload-at-end, a runout), while the lane's
+// declaration stands for the spool still in the feeder.
+// ============================================================================
+
+namespace {
+
+/// print_task_config frame naming one head's type and colour; the other heads
+/// are left out.
+json make_head_record(int head, const std::string& type, const std::string& rgba) {
+    json types = json::array();
+    json colours = json::array();
+    for (int i = 0; i < 4; ++i) {
+        types.push_back(i == head ? type : "PLA");
+        colours.push_back(i == head ? rgba : "FFFFFFFF");
+    }
+    return json{{"print_task_config",
+                 {{"filament_type", types},
+                  {"filament_color_rgba", colours},
+                  {"filament_official", json::array({false, false, false, false})}}}};
+}
+
+SlotInfo polymaker_asa() {
+    SlotInfo edit;
+    edit.brand = "Polymaker";
+    edit.material = "ASA";
+    edit.color_rgb = 0xFF9800;
+    return edit;
+}
+
+/// A harness whose head 0 holds a declared Polymaker ASA, written to the
+/// firmware and echoed back, with its spool resting in the feeder port.
+void declare_head0_asa(FilamentRecordHarness& h) {
+    h.frame(make_feed_status(0, "unload_finish", /*filament_detected=*/true));
+    helix::test::edit_slot_as_user(h.backend, 0, polymaker_asa());
+    FilamentRecordHarness::drain();
+    h.frame(make_head_record(0, "ASA", "FF9800FF"));
+    h.printer.client.clear_gcode_script_history();
+}
+
+} // namespace
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker writes a declared spool back after the firmware drops its record",
+                 "[ams][snapmaker][filament_record][record_drift]") {
+    lv_init_safe();
+    FilamentRecordHarness h("drift_restore");
+    declare_head0_asa(h);
+
+    // Filament left the toolhead: the firmware resets the head to NONE / white.
+    h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+
+    const auto writes = h.config_writes();
+    REQUIRE(writes.size() == 2);
+    CHECK(writes[0] == "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=0 VENDOR=Generic "
+                       "FILAMENT_TYPE=ASA FILAMENT_SUBTYPE=Basic");
+    CHECK(writes[1] == "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=0 FILAMENT_COLOR_RGBA=FF9800FF");
+    CHECK(h.backend.get_slot_info(0).material == "ASA");
+
+    SECTION("the same silence again sends nothing more") {
+        h.printer.client.clear_gcode_script_history();
+        h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+        CHECK(h.config_writes().empty());
+    }
+    SECTION("a later drop, after the record came back, is written back again") {
+        h.frame(make_head_record(0, "ASA", "FF9800FF"));
+        h.printer.client.clear_gcode_script_history();
+        h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+        CHECK(h.config_writes().size() == 2);
+    }
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker holds a dropped record's write-back until the print stops",
+                 "[ams][snapmaker][filament_record][record_drift]") {
+    lv_init_safe();
+    FilamentRecordHarness h("drift_restore_printing");
+    declare_head0_asa(h);
+
+    h.print("printing");
+    h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+    CHECK(h.config_writes().empty());
+
+    h.print("complete");
+    CHECK(h.config_writes().size() == 2);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker writes no dropped record back for a spool that may have changed",
+                 "[ams][snapmaker][filament_record][record_drift]") {
+    lv_init_safe();
+    FilamentRecordHarness h("drift_restore_spool_left");
+    declare_head0_asa(h);
+
+    SECTION("the feeder port is empty") {
+        h.frame(make_feed_status(0, "wait_insert", /*filament_detected=*/false));
+        h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+        CHECK(h.config_writes().empty());
+    }
+    SECTION("a spool went into the port since the declaration") {
+        h.frame(make_feed_status(0, "wait_insert", /*filament_detected=*/false));
+        h.frame(make_feed_status(0, "wait_insert", /*filament_detected=*/true));
+        h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+        CHECK(h.config_writes().empty());
+
+        // Saving the slot again declares the new spool, and writes it.
+        helix::test::edit_slot_as_user(h.backend, 0, polymaker_asa());
+        FilamentRecordHarness::drain();
+        CHECK(h.config_writes().size() == 2);
+    }
+    SECTION("a feed is still moving filament on the head") {
+        h.frame(make_feed_status(0, "unload_doing", /*filament_detected=*/true));
+        h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+        CHECK(h.config_writes().empty());
+
+        h.frame(make_feed_status(0, "unload_finish", /*filament_detected=*/true));
+        CHECK(h.config_writes().size() == 2);
+    }
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker writes nothing back for a head with no declared material",
+                 "[ams][snapmaker][filament_record][record_drift]") {
+    lv_init_safe();
+    FilamentRecordHarness h("drift_restore_undeclared");
+    h.frame(make_feed_status(0, "unload_finish", /*filament_detected=*/true));
+    h.frame(make_head_record(0, "ASA", "FF9800FF"));
+    h.printer.client.clear_gcode_script_history();
+
+    h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+    CHECK(h.config_writes().empty());
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker an edit's own write is not repeated before the firmware echoes it",
+                 "[ams][snapmaker][filament_record][record_drift]") {
+    lv_init_safe();
+    FilamentRecordHarness h("drift_restore_edit_echo");
+    h.frame(make_feed_status(0, "unload_finish", /*filament_detected=*/true));
+    h.frame(make_head_record(0, "NONE", "FFFFFFFF"));
+    h.printer.client.clear_gcode_script_history();
+
+    helix::test::edit_slot_as_user(h.backend, 0, polymaker_asa());
+    FilamentRecordHarness::drain();
+    REQUIRE(h.config_writes().size() == 2);
+
+    // A frame from before the write landed still reads NONE.
+    h.frame(make_feed_status(0, "unload_finish", /*filament_detected=*/true));
+    CHECK(h.config_writes().size() == 2);
+}

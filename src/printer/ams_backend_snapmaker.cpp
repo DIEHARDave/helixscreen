@@ -300,6 +300,8 @@ void AmsBackendSnapmaker::on_started() {
         // The overrides reload below; a held save belongs to the session that
         // made it.
         pending_record_writes_.fill(std::nullopt);
+        record_restore_sent_.fill(false);
+        insert_since_declaration_.fill(false);
     }
     if (!api_)
         return;
@@ -1136,6 +1138,7 @@ AmsError AmsBackendSnapmaker::apply_user_edit(int slot_index, const SlotInfo& in
             return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, kNumTools - 1);
 
         slot->assign_filament_fields(info);
+        insert_since_declaration_[static_cast<size_t>(slot_index)] = false;
 
         // handle_status writes RFID and print_task_config fields
         // unconditionally, so an edit kept only in memory is wiped by the next
@@ -1702,6 +1705,7 @@ void AmsBackendSnapmaker::apply_port_presence_locked(int i, bool detected, Frame
             !firmware_driven && !head_is_upstream_fed_locked(i)) {
             pending_insert_passes_[i] = 1;
             insert_verdict_[i] = InsertIdentity::NotRead;
+            insert_since_declaration_[i] = true;
         } else if (!detected) {
             pending_insert_passes_[i] = 0;
         }
@@ -2526,6 +2530,7 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
         converge_locked(fx);
 
         fx.official_repairs = official_flag_repairs_locked();
+        fx.record_restores = record_restores_locked();
         // A save held across a print waits for the heads to be free: a pause
         // the print raised (a runout, an M600) is no moment to reset a head's
         // flow calibration behind the user's back.
@@ -2574,9 +2579,12 @@ void AmsBackendSnapmaker::dispatch_effects(const FrameEffects& fx) {
         end_firmware_batch();
     }
 
-    if (!fx.official_repairs.empty()) {
-        dispatch_official_flag_repairs(fx.official_repairs);
-    }
+    dispatch_record_scripts(fx.official_repairs,
+                            "is flagged official with no card behind it; rewriting the record "
+                            "HelixScreen wrote to clear the flag");
+    dispatch_record_scripts(fx.record_restores,
+                            "record names no filament while the spool declared for it is still "
+                            "in the feeder; writing the declaration back");
     for (const auto& [head, pending] : fx.record_flushes) {
         write_task_filament_record(head, pending.info, pending.material_declared);
     }
@@ -2951,6 +2959,8 @@ void AmsBackendSnapmaker::write_task_filament_record(int head, const SlotInfo& i
         if (force) {
             lines = RecordLines::Both;
         }
+        // This write is the record's restore until the firmware echoes it.
+        record_restore_sent_[idx] = true;
     }
     const std::string gcode = build_filament_config_gcode(head, info, force, lines);
     if (gcode.empty()) {
@@ -3023,20 +3033,79 @@ std::vector<std::pair<int, std::string>> AmsBackendSnapmaker::official_flag_repa
     return out;
 }
 
-void AmsBackendSnapmaker::dispatch_official_flag_repairs(
-    const std::vector<std::pair<int, std::string>>& repairs) {
+std::vector<std::pair<int, std::string>> AmsBackendSnapmaker::record_restores_locked() {
+    std::vector<std::pair<int, std::string>> out;
+    // Every write runs FLOW_RESET_K on its head.
+    if (system_info_.units.empty() || !heads_free_locked() || batch_.active) {
+        return out;
+    }
+    for (int head = 0; head < kNumTools; ++head) {
+        const auto idx = static_cast<size_t>(head);
+        if (!task_type_[idx]) {
+            continue;
+        }
+        if (!is_unset_task_field(*task_type_[idx])) {
+            record_restore_sent_[idx] = false;
+            continue;
+        }
+        if (record_restore_sent_[idx] || insert_since_declaration_[idx]) {
+            continue;
+        }
+        // The firmware's clear does not say the spool left: unload-at-end
+        // leaves it in the feeder. An empty port does, and a spool that went
+        // in since is one nobody has named.
+        const bool spool_in_lane =
+            (feed_presence_seen_[idx] && port_sensor_filament_present_[idx]) ||
+            loaded_at_toolhead_[idx];
+        if (!spool_in_lane ||
+            helix::snapmaker::channel_state_in_progress(channel_snapshots_[idx].state)) {
+            continue;
+        }
+        const auto ovr = overrides_.find(head);
+        if (ovr == overrides_.end() ||
+            !helix::ams::declared_on_lane(lane_id(head), &ovr->second).material) {
+            continue;
+        }
+        std::string gcode = unset_record_restore_locked(head);
+        if (gcode.empty()) {
+            continue;
+        }
+        record_restore_sent_[idx] = true;
+        out.emplace_back(head, std::move(gcode));
+    }
+    return out;
+}
+
+std::string AmsBackendSnapmaker::unset_record_restore_locked(int head) const {
+    const auto idx = static_cast<size_t>(head);
+    if (!task_type_[idx].has_value() || !is_unset_task_field(*task_type_[idx])) {
+        return {};
+    }
+    const std::optional<bool> needs_force = record_write_needs_force_locked(head);
+    if (!needs_force) {
+        return {};
+    }
+    const SlotInfo* slot =
+        system_info_.units.empty() ? nullptr : system_info_.units[0].get_slot(head);
+    if (!slot) {
+        return {};
+    }
+    return build_filament_config_gcode(head, *slot, *needs_force);
+}
+
+void AmsBackendSnapmaker::dispatch_record_scripts(
+    const std::vector<std::pair<int, std::string>>& writes, const char* why) {
     if (!api_) {
         return;
     }
     const char* tag = backend_log_tag();
-    for (const auto& [head, gcode] : repairs) {
-        spdlog::info("{} head {} is flagged official with no card behind it; "
-                     "rewriting the record HelixScreen wrote to clear the flag",
-                     tag, head);
+    for (const auto& [head, gcode] : writes) {
+        spdlog::info("{} head {} {}", tag, head, why);
         api_->execute_gcode(
-            gcode, [tag, h = head]() { spdlog::debug("{} head {} official flag cleared", tag, h); },
+            gcode,
+            [tag, h = head]() { spdlog::debug("{} head {} filament record written", tag, h); },
             [tag, h = head](const MoonrakerError& err) {
-                spdlog::warn("{} head {} official flag repair failed: {}", tag, h, err.message);
+                spdlog::warn("{} head {} filament record write failed: {}", tag, h, err.message);
             },
             /*timeout_ms=*/0, /*silent=*/false, /*on_queued=*/nullptr,
             /*caller_surfaces_errors=*/false);
@@ -3062,25 +3131,16 @@ AmsBackendSnapmaker::resume_record_repairs_locked(int active_slot) const {
     std::vector<std::pair<int, std::string>> out;
     for (int head = 0; head < kNumTools; ++head) {
         const auto idx = static_cast<size_t>(head);
-        if (!used[idx] || !task_type_[idx].has_value() || !is_unset_task_field(*task_type_[idx])) {
+        if (!used[idx]) {
             continue;
         }
-        const std::optional<bool> needs_force = record_write_needs_force_locked(head);
-        if (!needs_force) {
-            continue;
-        }
-        const SlotInfo* slot =
-            system_info_.units.empty() ? nullptr : system_info_.units[0].get_slot(head);
-        if (!slot) {
-            continue;
-        }
-        std::string gcode = build_filament_config_gcode(head, *slot, *needs_force);
+        std::string gcode = unset_record_restore_locked(head);
         if (gcode.empty()) {
             continue;
         }
         spdlog::info("{} prepare_for_resume: head {} has no firmware filament type; "
                      "restoring {} before RESUME",
-                     backend_log_tag(), head, slot->material);
+                     backend_log_tag(), head, system_info_.units[0].get_slot(head)->material);
         out.emplace_back(head, std::move(gcode));
     }
     return out;

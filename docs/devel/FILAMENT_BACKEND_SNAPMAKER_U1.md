@@ -204,6 +204,21 @@ declared a material, nothing when it already agrees, since every send runs `FLOW
 on the head. VENDOR is `Snapmaker` or `Generic`, FILAMENT_SUBTYPE a known product line or
 `Basic` (`src/printer/ams_backend_snapmaker.cpp#write_task_filament_record`).
 
+The firmware forgets a head's record whenever filament leaves its toolhead. The
+toolhead switch's remove event (an unload, unload-at-end, a runout), and a feeder port
+that empties while the toolhead holds nothing, call `filament_detect`'s
+`request_clear_filament_info`, which resets the head's `print_task_config` record to
+`NONE` / `FFFFFFFF` without a log line. A
+tagless spool resting in the feeder after an unload-at-end therefore reads `NONE` to
+every other client while its lane still declares it. The backend writes the lane's
+declaration back when the record reads unset, the lane declares a material, the port or
+the nozzle latch holds filament, no spool has gone into the port since the declaration,
+no feed is moving the head, and the heads are free (the same hold as an edit). It sends
+once per drop: the record naming a type re-arms it, and an edit's own write counts as the
+restore until the firmware echoes it. A spool inserted after the declaration is one
+nobody has named, so it waits for the next edit
+(`src/printer/ams_backend_snapmaker.cpp#record_restores_locked`).
+
 The Extended Firmware's `POST /printer/filament_detect/set` is not used. It fills the same
 record, but it also sets `filament_official` True for the head (measured on a rig: the flag
 rises within a second of the HTTP 200, a plain `SET_PRINT_FILAMENT_CONFIG` is then refused
@@ -507,7 +522,8 @@ the product line the tag itself states, or blank.
 
 User edits round-trip to firmware through `SET_PRINT_FILAMENT_CONFIG` (see "Commands the
 Backend Emits"); the override persists to `lane_data` whatever the firmware takes
-(`src/printer/ams_backend_snapmaker.cpp#apply_user_edit`).
+(`src/printer/ams_backend_snapmaker.cpp#apply_user_edit`), and a record the firmware
+later drops to `NONE` is written back from it while the spool stays in the lane.
 
 ### Capabilities
 
