@@ -5,6 +5,7 @@
 #include "driver/uart.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_private/freertos_debug.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lvgl.h"
@@ -117,6 +118,45 @@ static void print_line(size_t seq) {
     printf("SNAP:%s%08lx %.*s\n", seq_text, (unsigned long)crc, (int)n, b64);
 }
 
+// One "TASK:" line per FreeRTOS task, fewest free stack bytes first: the
+// least free since the task started, and the span of its stack. The span can
+// read up to 15 bytes under the depth the task was created with, since the
+// port aligns the stack's top to 16 bytes. A task that exits between the
+// state read and its snapshot leaves its own row unreliable and nothing
+// worse: the memory of a freed TCB stays mapped.
+static void print_task_stacks(void) {
+    // Room for a few tasks created between the count and the state read.
+    const UBaseType_t room = uxTaskGetNumberOfTasks() + 4;
+    TaskStatus_t* tasks = heap_caps_malloc(room * sizeof(TaskStatus_t), MALLOC_CAP_SPIRAM);
+    if (!tasks) {
+        printf("TASK: no memory for %u task records\n", (unsigned)room);
+        return;
+    }
+    const UBaseType_t n = uxTaskGetSystemState(tasks, room, NULL);
+    for (UBaseType_t i = 1; i < n; ++i) {
+        const TaskStatus_t t = tasks[i];
+        UBaseType_t j = i;
+        for (; j > 0 && tasks[j - 1].usStackHighWaterMark > t.usStackHighWaterMark; --j) {
+            tasks[j] = tasks[j - 1];
+        }
+        tasks[j] = t;
+    }
+    for (UBaseType_t i = 0; i < n; ++i) {
+        unsigned size = 0;
+        TaskSnapshot_t snap;
+        if (vTaskGetSnapshot(tasks[i].xHandle, &snap) == pdTRUE && tasks[i].pxStackBase &&
+            snap.pxEndOfStack > tasks[i].pxStackBase) {
+            size = (unsigned)((const uint8_t*)snap.pxEndOfStack -
+                              (const uint8_t*)tasks[i].pxStackBase) +
+                   1u;
+        }
+        printf("TASK: %-16.16s min_free=%u size=%u prio=%u\n", tasks[i].pcTaskName,
+               (unsigned)tasks[i].usStackHighWaterMark, size, (unsigned)tasks[i].uxCurrentPriority);
+    }
+    printf("TASK: %u tasks\n", (unsigned)n);
+    heap_caps_free(tasks);
+}
+
 static size_t line_count(void) {
     return (s_dump_len + SNAP_LINE_BYTES - 1) / SNAP_LINE_BYTES;
 }
@@ -138,6 +178,7 @@ void serial_snapshot_poll(void) {
                (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM),
                img_cache ? (unsigned)lv_cache_get_size(img_cache, NULL) : 0u,
                img_cache ? (unsigned)lv_cache_get_max_size(img_cache, NULL) : 0u);
+        print_task_stacks();
     }
     if (atomic_exchange(&s_notes_requested, false)) {
         app_boot_print_notifications();
