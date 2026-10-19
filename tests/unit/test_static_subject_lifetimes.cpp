@@ -13,6 +13,7 @@
 
 #include "ui_ams_lane_bar.h"
 #include "ui_ams_lane_spool.h"
+#include "ui_ams_sidebar.h"
 #include "ui_ams_slot.h"
 #include "ui_color_picker.h"
 
@@ -64,4 +65,25 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     CHECK(survives_switch("SwatchGridSubjects"));
     // Not run either: the colour grid's selection subject still resolves by name.
     CHECK(lv_xml_get_subject(nullptr, "color_picker_selected_swatch") != nullptr);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "AMS sidebar gating subjects outlive a printer switch",
+                 "[ams][sidebar][subjects][shutdown]") {
+    // Created by the AMS panels' process-once registration, which a switch
+    // never re-runs.
+    helix::ui::AmsOperationSidebar::register_callbacks_static();
+    for (const char* name : {"AmsSidebarButtonGatingReset", "AmsSidebarButtonGating"}) {
+        CAPTURE(name);
+        CHECK(survives_switch(name));
+    }
+    for (const char* subject :
+         {"ams_sidebar_unload_disabled", "ams_sidebar_load_disabled", "ams_sidebar_reset_disabled",
+          "ams_sidebar_check_gates_disabled", "ams_sidebar_load_hidden",
+          "ams_sidebar_unload_hidden", "ams_sidebar_unload_picks", "ams_sidebar_mount_hidden",
+          "ams_sidebar_mount_disabled", "ams_sidebar_park_hidden", "ams_sidebar_park_disabled",
+          "ams_sidebar_action_reason", "ams_sidebar_action_reason_shown",
+          "ams_sidebar_supports_reset"}) {
+        CAPTURE(subject);
+        CHECK(lv_xml_get_subject(nullptr, subject) != nullptr);
+    }
 }
