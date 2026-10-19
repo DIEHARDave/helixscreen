@@ -3,8 +3,8 @@
 #
 # Meta-tests for scripts/check_link_parity.py - the variant-link parity gate.
 #
-# The fbdev and EGL binaries are linked from prerequisite lists written out by
-# hand beside the main link's, and a gap between them surfaces only as
+# The fbdev binary is linked from a prerequisite list written out by hand
+# beside the main link's, and a gap between them surfaces only as
 # undefined references in the one configuration that compiles the missing
 # object in. These tests seed that drift into a copy of the build files and
 # require the gate to name the object, so a gate that stopped comparing
@@ -57,7 +57,7 @@ edit_mk() {
     contains "variant links match" "$output"
     # Every variant platform in mk/cross.mk was actually compared.
     contains "pi-both/fbdev" "$output"
-    contains "pi32-both/egl" "$output"
+    contains "pi32-both/fbdev" "$output"
     contains "x86-both/fbdev" "$output"
 }
 
@@ -71,12 +71,16 @@ edit_mk() {
     contains "build/pi-fbdev/bin/helix-screen does not link build/pi/obj/linenoise.o" "$output"
 }
 
-@test "fails when the EGL link drops an object the main link uses" {
-    make_tree
-    edit_mk egl-link.mk 's/ \$(APP_DNS_RESOLV_OBJ) \$(WPA_DEPS)/ $(WPA_DEPS)/'
-    run python3 "$GATE" --repo-root "$TREE" --platform pi32
+@test "an EGL path object is excused from the fbdev link through EGL_PATH_OBJS" {
+    # The same seed as the main-link-only case below, declared as part of the
+    # EGL path: the fbdev binary carries no GPU path, so this one is no drift.
+    printf '%s\n' 'EGL_PATH_OBJS += $(OBJ_DIR)/seeded_gpu.o' '$(TARGET): $(OBJ_DIR)/seeded_gpu.o' > "$WORK/seed.mk"
+    run python3 "$GATE" --repo-root "$(scratch_tree)" --platform pi32-both --extra-makefile "$WORK/seed.mk"
+    [ "$status" -eq 0 ] || fail "expected exit 0, got $status: $output"
+    printf '%s\n' '$(TARGET): $(OBJ_DIR)/seeded_gpu.o' > "$WORK/seed.mk"
+    run python3 "$GATE" --repo-root "$(scratch_tree)" --platform pi32-both --extra-makefile "$WORK/seed.mk"
     [ "$status" -eq 1 ] || fail "expected exit 1, got $status: $output"
-    contains "helix-screen-egl does not link build/pi32/obj/dns_resolv.o" "$output"
+    contains "does not link build/pi32/obj/seeded_gpu.o" "$output"
 }
 
 @test "fails when an object is added to the main link only" {
@@ -105,7 +109,7 @@ edit_mk() {
 @test "fails when mk/cross.mk names no variant platform" {
     make_tree
     rm "$TREE/mk/cross.mk"
-    grep -v -e 'PI_DUAL_LINK' -e 'ENABLE_EGL_RUNG' "$REPO/mk/cross.mk" > "$TREE/mk/cross.mk"
+    grep -v -e 'PI_DUAL_LINK' "$REPO/mk/cross.mk" > "$TREE/mk/cross.mk"
     run python3 "$GATE" --repo-root "$TREE"
     [ "$status" -eq 1 ] || fail "expected exit 1, got $status: $output"
     contains "names no platform" "$output"

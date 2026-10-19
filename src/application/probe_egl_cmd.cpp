@@ -17,6 +17,7 @@
 
 #ifdef HELIX_PROBE_EGL_AVAILABLE
 
+#include "display_backend.h"
 #include "gcode_gl_fallback.h"
 
 #include <EGL/egl.h>
@@ -213,6 +214,13 @@ std::vector<std::string> candidate_nodes() {
 } // namespace
 
 int run_probe_egl() {
+    // GLES for the 3D viewer alone compiles this probe in, but only a binary
+    // linked with the EGL presentation path can act on a yes.
+    if (helix::make_drm_egl_backend == nullptr) {
+        printf("built without EGL presentation\n");
+        return 1;
+    }
+
     const std::vector<std::string> nodes = candidate_nodes();
     if (nodes.empty()) {
         printf("no DRM card nodes to probe\n");

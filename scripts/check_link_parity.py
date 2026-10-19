@@ -3,11 +3,10 @@
 #
 # Lint gate: the variant links link everything the main link does.
 #
-# Three binaries come out of one compile on the Pi and x86 cross builds:
-# $(TARGET) (mk/rules.mk), $(FBDEV_TARGET) (mk/pi-dual-link.mk) and
-# $(EGL_TARGET) (mk/egl-link.mk). Each variant recipe links its own
-# prerequisites, and each prerequisite list is written out by hand, so an
-# object added to the main link reaches a variant only if someone remembers to
+# Two binaries come out of one compile on the Pi and x86 cross builds:
+# $(TARGET) (mk/rules.mk) and $(FBDEV_TARGET) (mk/pi-dual-link.mk). The variant
+# recipe links its own prerequisites, and that list is written out by hand, so an
+# object added to the main link reaches the variant only if someone remembers to
 # add it there too. Forgetting does not show in a native build or in a release
 # that compiles the object out: it shows as undefined references in whichever
 # configuration first compiles the object in (prestonbrown/helixscreen#1375).
@@ -20,7 +19,7 @@
 # performs it and only the variable name is repeated here.
 #
 # The platforms come from mk/cross.mk: every PLATFORM_TARGET block that turns on
-# PI_DUAL_LINK or ENABLE_EGL_RUNG is checked.
+# PI_DUAL_LINK is checked.
 #
 # Usage:
 #   scripts/check_link_parity.py
@@ -56,20 +55,14 @@ VARIANTS = {
             "DRM_GLES_APP_OBJS": "GLES users, rebuilt with the CPU fallback",
             # The fbdev binary must not reference libdrm or libinput.
             "LVGL_DRM_DRIVER_OBJS": "LVGL DRM and libinput drivers",
-        },
-    ),
-    "egl": (
-        "EGL_TARGET",
-        {
-            # Replaced by the -DHELIX_ENABLE_OPENGLES compiles in egl-variant/.
-            "EGL_APP_REPLACED": "DRM display backend, rebuilt for EGL",
-            "EGL_LVGL_REPLACED": "LVGL DRM and OpenGL ES drivers, rebuilt for EGL",
+            # The fbdev binary links no GPU libraries (mk/egl-link.mk).
+            "EGL_PATH_OBJS": "EGL presentation path",
         },
     ),
 }
 
 PLATFORM_RE = re.compile(r"^\s*(?:else\s+)?ifeq\s*\(\$\(PLATFORM_TARGET\),([A-Za-z0-9_-]+)\)")
-VARIANT_SWITCH_RE = re.compile(r"^\s*(PI_DUAL_LINK|ENABLE_EGL_RUNG)\s*:?=\s*yes\b")
+VARIANT_SWITCH_RE = re.compile(r"^\s*PI_DUAL_LINK\s*:?=\s*yes\b")
 
 
 def variant_platforms(cross_mk: Path) -> list[str]:

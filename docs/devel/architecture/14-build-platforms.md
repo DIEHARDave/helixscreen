@@ -180,8 +180,8 @@ Two independent choices, easy to conflate:
 
 - The **display backend** decides how finished pixels reach the panel: fbdev, DRM/KMS dumb buffers,
   DRM through EGL/GBM, SDL. Chosen at runtime by [`src/api/display_backend.cpp#create_auto`](../../../src/api/display_backend.cpp);
-  the EGL presentation path is a separate binary, `helix-screen-egl`, that the Pi targets link beside the
-  DRM one ([`mk/egl-link.mk`](../../../mk/egl-link.mk)).
+  on the Pi targets the DRM binary links the EGL presentation path beside dumb buffers and takes it for
+  `HELIX_DISPLAY_BACKEND=egl` ([`mk/egl-link.mk`](../../../mk/egl-link.mk)).
 - The **draw unit** decides what rasterizes widgets: `lv_draw_sw`, `lv_draw_opengles`,
   `lv_draw_nanovg`, `vg_lite`. Chosen at compile time by the `LV_USE_DRAW_*` switches in
   `lv_conf.h`.
@@ -248,15 +248,15 @@ Cursor direction is judged with the picture upright, the way a rotated install i
 lv_evdev bounds a relative position by the unrotated display, which at 90 and 270 is not the
 picture, so the hook reads the position before that bound and bounds it by the picture instead.
 
-On the EGL binary every nonzero angle takes the GPU strategy. Otherwise 90 and 270 never go to the plane,
+On the EGL path every nonzero angle takes the GPU strategy. Otherwise 90 and 270 never go to the plane,
 whatever its mask advertises: the plane is programmed at the panel's own width and height and LVGL keeps laying
 out unrotated ([`src/api/drm_rotation_strategy.cpp#choose_drm_rotation_strategy`](../../../src/api/drm_rotation_strategy.cpp)).
 A board whose plane cannot carry the angle falls to the fbdev backend.
 
-**A panel needing 90 or 270 belongs on the EGL binary where the board has a GPU, else on the fbdev binary.** Pi targets ship
-`helix-screen` for DRM, `helix-screen-fbdev` ([`mk/pi-dual-link.mk`](../../../mk/pi-dual-link.mk)) and
-`helix-screen-egl`, with [`scripts/helix-launcher.sh`](../../../scripts/helix-launcher.sh)
-selecting between them (EGL only when `--probe-egl` finds a real GPU) and falling back on a DRM crash. Forcing the fbdev binary is
+**A panel needing 90 or 270 belongs on the EGL path where the board has a GPU, else on the fbdev binary.** Pi targets ship
+`helix-screen` (EGL and DRM dumb buffers) and `helix-screen-fbdev` ([`mk/pi-dual-link.mk`](../../../mk/pi-dual-link.mk)),
+with [`scripts/helix-launcher.sh`](../../../scripts/helix-launcher.sh)
+choosing the rung (EGL only when `--probe-egl` finds a real GPU) and stepping down one rung on a crash. Forcing the fbdev binary is
 `HELIX_DISPLAY_BACKEND=fbdev`.
 
 ### Patches: forked fixes, stamp-applied

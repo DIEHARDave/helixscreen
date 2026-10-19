@@ -212,45 +212,70 @@ void diagnose_no_display_hardware() {
 std::unique_ptr<DisplayBackend> DisplayBackend::create_auto() {
     // Check environment variable override first
     const char* backend_env = std::getenv("HELIX_DISPLAY_BACKEND");
-    if (backend_env != nullptr) {
+    const auto forced = helix::parse_forced_display_backend(backend_env);
+    if (forced != helix::ForcedDisplayBackend::None) {
         spdlog::info("[DisplayBackend] HELIX_DISPLAY_BACKEND={} - using forced backend",
                      backend_env);
-
-        if (strcmp(backend_env, "drm") == 0) {
-#ifdef HELIX_DISPLAY_DRM
-            auto backend = std::make_unique<DisplayBackendDRM>();
-            if (backend->is_available()) {
-                return backend;
-            }
-            spdlog::warn("[DisplayBackend] DRM backend forced but not available");
-#else
-            spdlog::warn("[DisplayBackend] DRM backend forced but not compiled in");
-#endif
-        } else if (strcmp(backend_env, "fbdev") == 0 || strcmp(backend_env, "fb") == 0) {
-#ifdef HELIX_DISPLAY_FBDEV
-            auto backend = std::make_unique<DisplayBackendFbdev>();
-            if (backend->is_available()) {
-                return backend;
-            }
-            spdlog::warn("[DisplayBackend] Framebuffer backend forced but not available");
-#else
-            spdlog::warn("[DisplayBackend] Framebuffer backend forced but not compiled in");
-#endif
-        } else if (strcmp(backend_env, "sdl") == 0) {
-#ifdef HELIX_DISPLAY_SDL
-            auto backend = std::make_unique<DisplayBackendSDL>();
-            if (backend->is_available()) {
-                return backend;
-            }
-            spdlog::warn("[DisplayBackend] SDL backend forced but not available");
-#else
-            spdlog::warn("[DisplayBackend] SDL backend forced but not compiled in");
-#endif
-        } else {
-            spdlog::warn("[DisplayBackend] Unknown HELIX_DISPLAY_BACKEND value: {}", backend_env);
-        }
-        // Fall through to auto-detection if forced backend unavailable
     }
+    switch (forced) {
+    case helix::ForcedDisplayBackend::None:
+        break;
+    case helix::ForcedDisplayBackend::Drm: {
+#ifdef HELIX_DISPLAY_DRM
+        auto backend = std::make_unique<DisplayBackendDRM>();
+        if (backend->is_available()) {
+            return backend;
+        }
+        spdlog::warn("[DisplayBackend] DRM backend forced but not available");
+#else
+        spdlog::warn("[DisplayBackend] DRM backend forced but not compiled in");
+#endif
+        break;
+    }
+    case helix::ForcedDisplayBackend::DrmEgl: {
+#ifdef HELIX_DISPLAY_DRM
+        if (helix::make_drm_egl_backend != nullptr) {
+            auto backend = helix::make_drm_egl_backend();
+            if (backend->is_available()) {
+                return backend;
+            }
+            spdlog::warn("[DisplayBackend] EGL presentation forced but DRM is not available");
+            break;
+        }
+#endif
+        spdlog::warn("[DisplayBackend] EGL presentation forced but not compiled in");
+        break;
+    }
+    case helix::ForcedDisplayBackend::Fbdev: {
+#ifdef HELIX_DISPLAY_FBDEV
+        auto backend = std::make_unique<DisplayBackendFbdev>();
+        if (backend->is_available()) {
+            return backend;
+        }
+        spdlog::warn("[DisplayBackend] Framebuffer backend forced but not available");
+#else
+        spdlog::warn("[DisplayBackend] Framebuffer backend forced but not compiled in");
+#endif
+        break;
+    }
+    case helix::ForcedDisplayBackend::Sdl: {
+#ifdef HELIX_DISPLAY_SDL
+        auto backend = std::make_unique<DisplayBackendSDL>();
+        if (backend->is_available()) {
+            return backend;
+        }
+        spdlog::warn("[DisplayBackend] SDL backend forced but not available");
+#else
+        spdlog::warn("[DisplayBackend] SDL backend forced but not compiled in");
+#endif
+        break;
+    }
+    case helix::ForcedDisplayBackend::Unknown:
+        spdlog::warn("[DisplayBackend] Unknown HELIX_DISPLAY_BACKEND value: {}",
+                     backend_env != nullptr ? backend_env : "");
+        break;
+    }
+    // A forced backend that is unavailable falls through to auto-detection.
 
     // Auto-detection: try backends in order of preference
 

@@ -1491,6 +1491,9 @@ endif
 ifdef PI_DUAL_LINK
 include mk/pi-dual-link.mk
 endif
+# The objects the EGL presentation path adds to the DRM link; empty where the
+# binary carries none.
+EGL_PATH_OBJS :=
 ifeq ($(ENABLE_EGL_RUNG),yes)
 include mk/egl-link.mk
 endif

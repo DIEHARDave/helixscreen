@@ -101,7 +101,7 @@ endif
 else
 # Phase 2: Actual build (only runs when _PARALLEL_CHECKED is set)
 ifeq ($(ENABLE_EGL_RUNG),yes)
-    EGL_RUNG_GOALS := $(EGL_TARGET) strip-egl
+    EGL_RUNG_GOALS := verify-egl
 else
     EGL_RUNG_GOALS :=
 endif

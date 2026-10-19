@@ -27,12 +27,11 @@
 // survive. Ask the preprocessor what it resolved to, never the header.
 //
 // Both directions are errors, and they fail differently. A request with no
-// result gives a binary that believes it is GPU-accelerated and presents
+// result gives a backend that believes it is GPU-accelerated and presents
 // through dumb buffers. A result with no request is worse: mk/egl-link.mk
-// builds two binaries from one set of objects and tells them apart by this
-// macro alone, so LV_USE_OPENGLES turned on in lv_conf.h would put the EGL
-// driver in BOTH of them, leaving nothing to step down to when the probe
-// declines.
+// compiles this file twice into one binary and tells the two apart by this
+// macro alone, so LV_USE_OPENGLES turned on in lv_conf.h would make both of
+// them EGL, leaving nothing to step down to when the probe declines.
 #if defined(HELIX_ENABLE_OPENGLES) && !LV_LINUX_DRM_USE_EGL
 #error "HELIX_ENABLE_OPENGLES set but LVGL resolved LV_LINUX_DRM_USE_EGL to 0"
 #endif
@@ -1603,5 +1602,11 @@ void DisplayBackendDRM::clear_calibration() {
     calibration_context_.calibration = calibration_;
     spdlog::info("[DRM Backend] Stored calibration cleared — device is uncalibrated");
 }
+
+#if LV_LINUX_DRM_USE_EGL
+std::unique_ptr<DisplayBackend> helix::make_drm_egl_backend() {
+    return std::make_unique<DisplayBackendDRM>();
+}
+#endif
 
 #endif // HELIX_DISPLAY_DRM

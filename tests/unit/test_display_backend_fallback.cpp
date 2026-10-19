@@ -382,6 +382,19 @@ TEST_CASE("Virtual dispatch: is_gpu_accelerated reflects the override, defaults 
     }
 }
 
+TEST_CASE("HELIX_DISPLAY_BACKEND names a display path", "[display][fallback]") {
+    CHECK(helix::parse_forced_display_backend(nullptr) == helix::ForcedDisplayBackend::None);
+    CHECK(helix::parse_forced_display_backend("drm") == helix::ForcedDisplayBackend::Drm);
+    // The launcher's EGL rung: the same binary, presenting through EGL.
+    CHECK(helix::parse_forced_display_backend("egl") == helix::ForcedDisplayBackend::DrmEgl);
+    CHECK(helix::parse_forced_display_backend("fbdev") == helix::ForcedDisplayBackend::Fbdev);
+    CHECK(helix::parse_forced_display_backend("fb") == helix::ForcedDisplayBackend::Fbdev);
+    CHECK(helix::parse_forced_display_backend("sdl") == helix::ForcedDisplayBackend::Sdl);
+    CHECK(helix::parse_forced_display_backend("") == helix::ForcedDisplayBackend::Unknown);
+    CHECK(helix::parse_forced_display_backend("EGL") == helix::ForcedDisplayBackend::Unknown);
+    CHECK(helix::parse_forced_display_backend("drm ") == helix::ForcedDisplayBackend::Unknown);
+}
+
 TEST_CASE("Backend fallback: all backends exhausted returns failure",
           "[display][fallback][crash_hardening]") {
     // When both DRM and fbdev fail, init() should return false

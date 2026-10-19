@@ -33,6 +33,39 @@ enum class DisplayBackendType {
     AUTO   ///< Auto-detect best available backend
 };
 
+namespace helix {
+
+/**
+ * @brief The display path HELIX_DISPLAY_BACKEND names
+ *
+ * `egl` is the DRM backend presenting through EGL/OpenGL ES rather than dumb
+ * buffers. `fb` is accepted for fbdev. An unset variable is None; anything
+ * else, the empty string included, is Unknown.
+ */
+enum class ForcedDisplayBackend { None, Drm, DrmEgl, Fbdev, Sdl, Unknown };
+
+inline ForcedDisplayBackend parse_forced_display_backend(const char* value) {
+    if (value == nullptr) {
+        return ForcedDisplayBackend::None;
+    }
+    const std::string_view v(value);
+    if (v == "drm") {
+        return ForcedDisplayBackend::Drm;
+    }
+    if (v == "egl") {
+        return ForcedDisplayBackend::DrmEgl;
+    }
+    if (v == "fbdev" || v == "fb") {
+        return ForcedDisplayBackend::Fbdev;
+    }
+    if (v == "sdl") {
+        return ForcedDisplayBackend::Sdl;
+    }
+    return ForcedDisplayBackend::Unknown;
+}
+
+} // namespace helix
+
 /**
  * @brief Result of display resolution auto-detection
  *

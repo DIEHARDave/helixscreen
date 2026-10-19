@@ -84,9 +84,10 @@ ifeq ($(PLATFORM_TARGET),pi)
     # Without it SIGABRT reports get garbage frames. Matches ad5x/cc1/k1/k2/snapmaker-u1.
     TARGET_CFLAGS := -march=armv8-a -fno-omit-frame-pointer -funwind-tables -I/usr/aarch64-linux-gnu/include -I/usr/include/libdrm -Wno-error=conversion -Wno-error=sign-conversion -DHELIX_RELEASE_BUILD -DHELIX_BINARY_VARIANT=\"drm\"
     DISPLAY_BACKEND := drm
-    # This binary presents through DRM dumb buffers. The GPU presentation path
-    # is a separate binary built by ENABLE_EGL_RUNG below, so that flipping this
-    # would rebuild the wrong one.
+    # The base build presents through DRM dumb buffers. ENABLE_EGL_RUNG below
+    # adds the GPU presentation path to the same binary as a second compile of
+    # the few files that read the EGL config; flipping this would make both
+    # compiles EGL.
     ENABLE_OPENGLES := no
     ENABLE_SDL := no
     ENABLE_GLES_3D := yes
@@ -99,7 +100,7 @@ ifeq ($(PLATFORM_TARGET),pi)
     # Strip binary for size - embedded targets don't need debug symbols
     STRIP_BINARY := yes
     FONT_TIERS := all
-    # Also link helix-screen-egl, which the launcher probes for and prefers.
+    # Also link the EGL presentation path, which the launcher probes for and prefers.
     ENABLE_EGL_RUNG := yes
 
 else ifeq ($(PLATFORM_TARGET),pi-fbdev)
@@ -179,7 +180,7 @@ else ifeq ($(PLATFORM_TARGET),pi32)
     BUILD_SUBDIR := pi32
     STRIP_BINARY := yes
     FONT_TIERS := all
-    # Also link helix-screen-egl, which the launcher probes for and prefers.
+    # Also link the EGL presentation path, which the launcher probes for and prefers.
     ENABLE_EGL_RUNG := yes
 
 else ifeq ($(PLATFORM_TARGET),pi32-fbdev)
@@ -1833,11 +1834,9 @@ define deploy-common
 	@# Sync binaries and launcher to bin/
 	rsync -avzz --progress $(3)/helix-screen $(3)/helix-splash $(1):$(2)/bin/
 	@if [ -f $(3)/helix-watchdog ]; then rsync -avzz $(3)/helix-watchdog $(1):$(2)/bin/; fi
-	@# The EGL rung, on targets that build one. helix-launcher.sh probes for it
-	@# and prefers it; without this the device keeps whatever it had, and a stale
-	@# one would be probed and run in place of the binary just deployed.
-	@if [ -f $(3)/helix-screen-egl ]; then rsync -avzz $(3)/helix-screen-egl $(1):$(2)/bin/; \
-	else ssh $(1) "rm -f $(2)/bin/helix-screen-egl"; fi
+	@# The EGL rung lives inside helix-screen; a separate helix-screen-egl left
+	@# on the device by an older deploy is dead weight.
+	@ssh $(1) "rm -f $(2)/bin/helix-screen-egl"
 	@# Sync Bluetooth plugin if built (runtime-loaded via dlopen, same dir as binary)
 	@if [ -f $(3)/libhelix-bluetooth.so ]; then \
 		echo "$(DIM)Deploying Bluetooth plugin...$(RESET)"; \
@@ -3087,7 +3086,6 @@ define release-package
 	@if [ -f build/$(1)/bin/helix-splash ]; then cp build/$(1)/bin/helix-splash $(RELEASE_DIR)/helixscreen/bin/; fi
 	@if [ -f build/$(1)/bin/helix-watchdog ]; then cp build/$(1)/bin/helix-watchdog $(RELEASE_DIR)/helixscreen/bin/; fi
 	@if [ -f build/$(1)/bin/libhelix-bluetooth.so ]; then cp build/$(1)/bin/libhelix-bluetooth.so $(RELEASE_DIR)/helixscreen/bin/; fi
-	@if [ -f build/$(1)/bin/helix-screen-egl ]; then cp build/$(1)/bin/helix-screen-egl $(RELEASE_DIR)/helixscreen/bin/; fi
 	$(if $(filter $(1),$(REL_FBDEV)),@if [ -f build/$(1)-fbdev/bin/helix-screen ]; then cp build/$(1)-fbdev/bin/helix-screen $(RELEASE_DIR)/helixscreen/bin/helix-screen-fbdev; fi)
 	$(release-bin-extra-$(1))
 	@cp scripts/helix-launcher.sh $(RELEASE_DIR)/helixscreen/bin/
@@ -3143,11 +3141,11 @@ define release-package
 endef
 
 # Package Pi release
-release-pi: $(INSTALLER_BUNDLES) | build/pi/bin/helix-screen build/pi/bin/helix-splash build/pi-fbdev/bin/helix-screen build/pi/bin/helix-screen-egl
+release-pi: $(INSTALLER_BUNDLES) | build/pi/bin/helix-screen build/pi/bin/helix-splash build/pi-fbdev/bin/helix-screen
 	$(call release-package,pi)
 
 # Package Pi 32-bit release (same structure as 64-bit Pi)
-release-pi32: $(INSTALLER_BUNDLES) | build/pi32/bin/helix-screen build/pi32/bin/helix-splash build/pi32-fbdev/bin/helix-screen build/pi32/bin/helix-screen-egl
+release-pi32: $(INSTALLER_BUNDLES) | build/pi32/bin/helix-screen build/pi32/bin/helix-splash build/pi32-fbdev/bin/helix-screen
 	$(call release-package,pi32)
 
 # Package AD5M release

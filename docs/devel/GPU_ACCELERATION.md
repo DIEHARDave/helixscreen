@@ -112,19 +112,24 @@ plane masks and renderer strings, then an A/B of `ENABLE_OPENGLES=no|yes`.
 
 ## How a board gets the EGL rung
 
-Three binaries, selected by `scripts/helix-launcher.sh#select_binary` at boot:
+Three rungs in two binaries, chosen by `scripts/helix-launcher.sh` at boot
+(`select_binary` picks the binary, `app_display_backend` the rung):
 
 ```
-helix-screen-egl     GPU presentation      taken only if --probe-egl exits 0
-helix-screen         DRM dumb buffers      the default
-helix-screen-fbdev   /dev/fb0              when the DRM binary's libs are missing
+helix-screen         HELIX_DISPLAY_BACKEND=egl   GPU presentation, only if --probe-egl exits 0
+helix-screen         HELIX_DISPLAY_BACKEND=drm   DRM dumb buffers, the default
+helix-screen-fbdev   HELIX_DISPLAY_BACKEND=fbdev /dev/fb0, when the DRM binary's libs are missing
 ```
 
-Which of LVGL's two DRM drivers a binary carries is a compile-time choice, so
-this is a choice of binary and not a runtime mode. `mk/egl-link.mk` builds the
-third one from the DRM build's objects, recompiling only the translation units
-that read the EGL config macros — `src/api/display_backend_drm.cpp` and LVGL's
-own DRM and OpenGL ES drivers.
+Which of LVGL's two DRM drivers a translation unit carries is a compile-time
+choice, so `mk/egl-link.mk` compiles the units that read the EGL config macros
+a second time — `src/api/display_backend_drm.cpp` and LVGL's own DRM and
+OpenGL ES drivers — and links both compiles into `helix-screen`. The four LVGL
+functions both drivers define are renamed in the EGL compile, and each compile
+of `DisplayBackendDRM` lives in its own inline namespace, so the dumb-buffer
+backend and the EGL one coexist and each binds to its own driver.
+`DisplayBackend::create_auto()` builds the EGL one, through
+`make_drm_egl_backend()`, only for `HELIX_DISPLAY_BACKEND=egl`.
 
 That sharing is measured, not assumed. Building the `pi` target twice, once per
 `ENABLE_OPENGLES` value, and comparing all 1465 objects: **811 differ as raw
@@ -140,17 +145,19 @@ any two builds. The remaining 13:
 | `display/display_backend_drm.o` | `libhelix-display.a`, which only the splash and watchdog link — not part of this rung |
 
 The raw-byte number is the trap here: comparing objects without stripping says
-811 files changed and implies the EGL binary needs a full second build. It
-does not. Strip the debug info and the answer is 12 objects in the main binary.
+811 files changed and implies the EGL path needs a full second build. It does
+not. Strip the debug info and the answer is 12 objects in the main binary.
 
-**Selection is a probe, not a crash.** A failed EGL init inside one binary
-would fall through to fbdev in-process and skip the middle rung entirely,
-silently demoting a board from dumb buffers to `/dev/fb0`. So the probe is a
-separate process: `helix-screen-egl --probe-egl` does the bring-up
-(`gbm_create_device`, `eglInitialize`, `eglChooseConfig`, `eglCreateContext`),
-prints what answered, and exits 0 or non-zero. A bring-up that aborts inside
-the driver takes down only the probe. A board whose probe declines runs the DRM
-binary; it never drops two rungs at once.
+**Selection is a probe, not a crash.** A failed EGL display init falls through
+to fbdev in-process and skips the middle rung entirely, silently demoting a
+board from dumb buffers to `/dev/fb0`. So the probe is a separate process:
+`helix-screen --probe-egl` does the bring-up (`gbm_create_device`,
+`eglInitialize`, `eglChooseConfig`, `eglCreateContext`), prints what answered,
+and exits 0 or non-zero. A binary linked without the EGL path refuses before
+touching the GPU. A bring-up that aborts inside the driver takes down only the
+probe. A board whose probe declines runs dumb buffers; it never drops two rungs
+at once, and a crash on the EGL rung reruns `helix-screen` with
+`HELIX_DISPLAY_BACKEND=drm`.
 
 **The probe refuses a software renderer.** The CB1's original failure was a
 stale Mesa in `/opt/panfrost` missing `kms_swrast`/`swrast`; the inverse —
@@ -162,12 +169,12 @@ predicate. It is deliberately a different question from
 faults during 3D draws, and Panfrost is on it while still presenting through
 EGL correctly.
 
-**Verifying the binary is the one you think it is.** A build that links the base
-objects into the EGL binary produces something that runs fine and presents
-through dumb buffers, while the launcher believes it is on the GPU. There is no
-other symptom, so `make verify-egl` checks for `lv_opengles_init` — defined only
-inside `#if LV_USE_OPENGLES` — in the EGL binary and asserts its absence from
-the base one. The trap it guards is real: `lv_opengles_shader.c` holds its GLSL
+**Verifying the binary is the one you think it is.** A build whose link misses
+the EGL objects produces something that runs fine and presents through dumb
+buffers for `HELIX_DISPLAY_BACKEND=egl`, while the launcher believes it is on
+the GPU. There is no other symptom, so `make verify-egl` checks
+`helix-screen` for the GLES shader source, which only the OpenGL ES driver
+compiled with the config carries. The trap it guards is real: `lv_opengles_shader.c` holds its GLSL
 in C++11 raw string literals, so it compiles as C++ when the config is on and as
 plain C when it is off, and the stock rules put both at the same object path.
 

@@ -108,10 +108,14 @@ ENVEOF
 }
 
 # Install a mock display binary that records its args and the display backend
-# it was started with, for test inspection
+# it was started with, for test inspection. Its --probe-egl answers with
+# MOCK_PROBE_RC (default 1, a binary without the EGL path) and records nothing.
 install_recording_binary() {
     cat > "$MOCK_INSTALL/bin/$1" << 'MOCKEOF'
 #!/bin/sh
+if [ "$1" = "--probe-egl" ]; then
+    exit "${MOCK_PROBE_RC:-1}"
+fi
 for arg in "$@"; do
     echo "$arg"
 done > "$MOCK_INSTALL/helix_screen_args.txt"
@@ -152,12 +156,41 @@ run_env_setup() {
 # End-to-end: the display backend the chosen binary is started with
 # =============================================================================
 
-@test "e2e: a forced EGL rung starts helix-screen-egl with drm" {
-    install_recording_binary helix-screen-egl
+@test "e2e: a forced EGL rung starts helix-screen with egl" {
     export HELIX_DISPLAY_BACKEND=egl
 
     run launcher_backend
-    [ "$output" = "helix-screen-egl drm" ]
+    [ "$output" = "helix-screen egl" ]
+}
+
+@test "e2e: a dual-binary install whose probe succeeds starts the primary with egl" {
+    install_recording_binary helix-screen-fbdev
+    mock_command_script "ldd" 'exit 0'
+    unset HELIX_DISPLAY_BACKEND
+    export MOCK_PROBE_RC=0
+
+    run launcher_backend
+    [ "$output" = "helix-screen egl" ]
+}
+
+@test "e2e: a crash on the EGL rung retries helix-screen with drm, not fbdev" {
+    install_recording_binary helix-screen-fbdev
+    # Appends one line per run, and crashes only when presenting through EGL.
+    cat > "$MOCK_INSTALL/bin/helix-screen" << 'MOCKEOF'
+#!/bin/sh
+[ "$1" = "--probe-egl" ] && exit 0
+echo "$(basename "$0") ${HELIX_DISPLAY_BACKEND-<unset>}" >> "$MOCK_INSTALL/runs.txt"
+[ "${HELIX_DISPLAY_BACKEND:-}" = egl ] && exit 139
+exit 0
+MOCKEOF
+    chmod +x "$MOCK_INSTALL/bin/helix-screen"
+    mock_command_script "ldd" 'exit 0'
+    unset HELIX_DISPLAY_BACKEND
+    cp "$LAUNCHER" "$MOCK_INSTALL/bin/helix-launcher.sh"
+    MOCK_INSTALL="$MOCK_INSTALL" sh "$MOCK_INSTALL/bin/helix-launcher.sh" >/dev/null 2>&1 || true
+
+    run cat "$MOCK_INSTALL/runs.txt"
+    [ "$output" = "$(printf 'helix-screen egl\nhelix-screen drm')" ]
 }
 
 @test "e2e: a primary whose libraries do not resolve starts helix-screen-fbdev with fbdev" {
