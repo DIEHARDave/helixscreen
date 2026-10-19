@@ -26,7 +26,13 @@ IMPLIB_GEN := tools/implib/implib-gen.py
 IMPLIB_SYSROOT_LIBS := /usr/lib/$(TARGET_TRIPLE)
 IMPLIB_SONAMES := libdrm.so.2 libgbm.so.1 libEGL.so.1 libinput.so.10
 IMPLIB_DIR := $(BUILD_DIR)/implib
-IMPLIB_OBJS := $(foreach lib,$(IMPLIB_SONAMES),$(IMPLIB_DIR)/$(lib).tramp.o $(IMPLIB_DIR)/$(lib).init.o)
+IMPLIB_INIT_C := $(foreach lib,$(IMPLIB_SONAMES),$(IMPLIB_DIR)/$(lib).init.c)
+# The headers the return-kind table reads each function's return type from.
+IMPLIB_HEADERS := /usr/include/xf86drm.h /usr/include/xf86drmMode.h /usr/include/gbm.h \
+                  /usr/include/EGL/egl.h /usr/include/libinput.h
+IMPLIB_RETURNS := $(IMPLIB_DIR)/gpu_lib_returns
+IMPLIB_OBJS := $(foreach lib,$(IMPLIB_SONAMES),$(IMPLIB_DIR)/$(lib).tramp.o $(IMPLIB_DIR)/$(lib).init.o) \
+               $(IMPLIB_RETURNS).o
 
 # One run writes both files, so they share the rule (a multi-target pattern
 # rule is grouped).
@@ -42,9 +48,17 @@ $(IMPLIB_DIR)/%.tramp.o: $(IMPLIB_DIR)/%.tramp.S
 $(IMPLIB_DIR)/%.init.o: $(IMPLIB_DIR)/%.init.c
 	$(Q)$(CC) $(TARGET_CFLAGS) -w -c $< -o $@
 
+# What each function returns, so the stand-in for a missing library fails the
+# way its caller expects (src/api/gpu_libs.cpp#helix_gpu_lib_symbol).
+$(IMPLIB_RETURNS).c: $(IMPLIB_INIT_C) $(IMPLIB_HEADERS) scripts/gpu_lib_return_kinds.py
+	$(Q)python3 scripts/gpu_lib_return_kinds.py --out $@ --init-c $(IMPLIB_INIT_C) --header $(IMPLIB_HEADERS)
+
+$(IMPLIB_RETURNS).o: $(IMPLIB_RETURNS).c
+	$(Q)$(CC) $(TARGET_CFLAGS) -c $< -o $@
+
 # Generated sources are kept, not deleted as intermediates, so a rebuild does
 # not regenerate them.
-.PRECIOUS: $(IMPLIB_DIR)/%.tramp.S $(IMPLIB_DIR)/%.init.c
+.PRECIOUS: $(IMPLIB_DIR)/%.tramp.S $(IMPLIB_DIR)/%.init.c $(IMPLIB_RETURNS).c
 
 # The main link (mk/rules.mk) links $^, so these join it as prerequisites.
 $(TARGET): $(IMPLIB_OBJS)

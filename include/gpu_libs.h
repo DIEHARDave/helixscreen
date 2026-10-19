@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <initializer_list>
 
 namespace helix::gpu_libs {
@@ -10,10 +11,28 @@ namespace helix::gpu_libs {
 /// The display and GPU libraries a DRM build can use. Where the build carries
 /// them as lazy-loading trampolines (HELIX_DLOPEN_GPU_LIBS, tools/implib), the
 /// binary starts without them, and every path into them asks available() first.
-/// A call that gets past that into a missing library logs an error and returns
-/// 0 (NULL, EGL_FALSE, EGL_NO_*), which is a failure for the call that opens
-/// each sequence but reads as success for some int-returning libdrm calls.
+/// A call that gets past that into a missing library logs an error and gets a
+/// failure back by return type (Failure): -1 with errno ENOSYS for a signed
+/// libdrm or libinput integer and every *_get_fd*, 0.0 for a double, and 0 for
+/// everything else, which is NULL, EGL_FALSE or EGL_NO_* to the caller.
 enum class Lib { Drm, Gbm, Egl, Gles2, Input };
+
+/// What the stand-in for a missing library's function returns. The values are
+/// the kind codes scripts/gpu_lib_return_kinds.py writes into the build's table.
+enum class Failure : char { Zero = 'z', Negative = 'i', ZeroDouble = 'd' };
+
+/// One row of that table. Layout-compatible with the generated C struct.
+struct ReturnKind {
+    const char* name;
+    char kind;
+};
+
+/// The failure for @p name in @p table (sorted by name, as generated); Zero
+/// when the function is not listed.
+Failure failure_for(const char* name, const ReturnKind* table, size_t count);
+
+/// The stand-in function that returns @p failure.
+void* stand_in(Failure failure);
 
 /// The soname a library is loaded by.
 const char* soname(Lib lib);

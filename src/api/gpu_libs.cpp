@@ -6,6 +6,8 @@
 #include <spdlog/spdlog.h>
 
 #include <array>
+#include <cerrno>
+#include <cstring>
 #include <dlfcn.h>
 #include <mutex>
 
@@ -89,19 +91,86 @@ void* gles2_proc(const char* name) {
 
 namespace {
 
-// Stands in for every function of a library that does not load. Returns 0,
-// which reads as NULL, EGL_FALSE or EGL_NO_* to the caller; extra arguments
-// are ignored under every ABI we build for (caller-cleaned, args in registers).
-extern "C" long helix_gpu_lib_missing_function() {
+// Stand-ins for the functions of a library that does not load, one per kind of
+// failure. Extra arguments are ignored under every ABI we build for (caller-
+// cleaned, arguments in registers), and a long long fills both result
+// registers on 32-bit ARM, so it reads as 0 or -1 whatever width was declared.
+extern "C" long long helix_gpu_lib_return_zero() {
     return 0;
+}
+
+extern "C" long long helix_gpu_lib_return_negative() {
+    errno = ENOSYS;
+    return -1;
+}
+
+extern "C" double helix_gpu_lib_return_zero_double() {
+    return 0.0;
+}
+
+// A new reference to the handle helix_gpu_lib_open() gives for a library that
+// does not load. Implib.so dlclose()s whatever handle it got when the process
+// exits, so it must be a real one: libdl, which every glibc binary here already
+// has loaded (RTLD_NOLOAD returns the same handle each time).
+// helix_gpu_lib_symbol() recognises it and never searches it, since a search
+// would also reach libdl's dependencies and find libc's functions.
+void* reference_sentinel() {
+    void* h = dlopen("libdl.so.2", RTLD_LAZY | RTLD_NOLOAD);
+    return h != nullptr ? h : dlopen("libc.so.6", RTLD_LAZY | RTLD_NOLOAD);
+}
+
+void* missing_library_handle() {
+    static void* const sentinel = reference_sentinel();
+    return sentinel;
 }
 
 } // namespace
 
+// The build's table of what each trampolined function returns
+// (mk/implib.mk); absent in a build without trampolines.
+// NAMESPACE_OK: generated C table, linked by its C name
+extern "C" const helix::gpu_libs::ReturnKind helix_gpu_lib_return_kinds[] __attribute__((weak));
+// NAMESPACE_OK: generated C table, linked by its C name
+extern "C" const size_t helix_gpu_lib_return_kind_count __attribute__((weak));
+
+namespace helix::gpu_libs {
+
+Failure failure_for(const char* name, const ReturnKind* table, size_t count) {
+    size_t lo = 0;
+    size_t hi = count;
+    while (lo < hi) {
+        const size_t mid = lo + (hi - lo) / 2;
+        const int cmp = std::strcmp(table[mid].name, name);
+        if (cmp == 0) {
+            return static_cast<Failure>(table[mid].kind);
+        }
+        if (cmp < 0) {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    return Failure::Zero;
+}
+
+void* stand_in(Failure failure) {
+    switch (failure) {
+    case Failure::Negative:
+        return reinterpret_cast<void*>(&helix_gpu_lib_return_negative);
+    case Failure::ZeroDouble:
+        return reinterpret_cast<void*>(&helix_gpu_lib_return_zero_double);
+    case Failure::Zero:
+        break;
+    }
+    return reinterpret_cast<void*>(&helix_gpu_lib_return_zero);
+}
+
+} // namespace helix::gpu_libs
+
 // Implib.so's loader and resolver for the trampolines (mk/implib.mk passes
 // these as --dlopen-callback and --dlsym-callback). Upstream aborts when a
 // library or symbol is missing; these answer instead, so a call that reached a
-// missing library past include/gpu_libs.h logs it and gets 0 back.
+// missing library past include/gpu_libs.h logs it and gets a failure back.
 
 extern "C" void*
 helix_gpu_lib_open(const char* soname) { // NAMESPACE_OK: Implib.so calls it by its C name
@@ -110,19 +179,22 @@ helix_gpu_lib_open(const char* soname) { // NAMESPACE_OK: Implib.so calls it by 
     if (void* lib = dlopen(soname, RTLD_LAZY | RTLD_GLOBAL)) {
         return lib;
     }
-    spdlog::error("[GpuLibs] Called into {} which does not load; its functions return 0", soname);
-    // Any non-null handle: helix_gpu_lib_symbol() serves the stand-in for it.
-    return dlopen(nullptr, RTLD_LAZY);
+    spdlog::error("[GpuLibs] Called into {} which does not load; its functions fail", soname);
+    missing_library_handle();
+    return reference_sentinel();
 }
 
 extern "C" void*
 helix_gpu_lib_symbol(void* lib,
                      const char* name) { // NAMESPACE_OK: Implib.so calls it by its C name
-    if (lib != nullptr) {
+    if (lib != nullptr && lib != missing_library_handle()) {
         if (void* fn = dlsym(lib, name)) {
             return fn;
         }
     }
-    spdlog::error("[GpuLibs] {} is unavailable; the call returns 0", name);
-    return reinterpret_cast<void*>(&helix_gpu_lib_missing_function);
+    const size_t count =
+        &helix_gpu_lib_return_kind_count != nullptr ? helix_gpu_lib_return_kind_count : 0;
+    const auto failure = helix::gpu_libs::failure_for(name, helix_gpu_lib_return_kinds, count);
+    spdlog::error("[GpuLibs] {} is unavailable; the call fails", name);
+    return helix::gpu_libs::stand_in(failure);
 }
