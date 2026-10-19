@@ -12,7 +12,7 @@ using Change = ControlBreaker::Change;
 // exercise it directly with no fixture and no sleeping.
 
 namespace {
-constexpr uint32_t FAST = 20;
+constexpr uint32_t kFast = 20;
 constexpr uint32_t kSlow = 5000;
 } // namespace
 
@@ -81,7 +81,7 @@ TEST_CASE("ControlBreaker recovers on the first call that answers in time",
     REQUIRE(b.open());
     REQUIRE(b.allow_call(15000));
 
-    CHECK(b.record(FAST, 15000) == Change::Recovered);
+    CHECK(b.record(kFast, 15000) == Change::Recovered);
     CHECK_FALSE(b.open());
     CHECK(b.allow_call(15000));
 

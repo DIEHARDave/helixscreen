@@ -18,7 +18,8 @@ namespace helix {
  *
  * Invariant: MoonrakerMotionAPI wraps BOTH the success and error callback of
  * every stamped send, and the request tracker guarantees one of them fires
- * (including on timeout) — so inflight_ cannot leak upward permanently.
+ * (including on timeout) — so the in-flight count cannot leak upward
+ * permanently. A leak would read as a stuck send and disown, never adopt.
  */
 class AppMotionActivity {
   public:
@@ -29,27 +30,34 @@ class AppMotionActivity {
 
     void note_sent(clock::time_point now = clock::now()) {
         episode_.note_sent(now);
-        inflight_.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    /**
+     * Record a send that can start a busy episode without tracking it in
+     * flight: a G28 whose continuation moves the toolhead once it acks, while
+     * a homing macro may still hold idle_timeout "Printing".
+     */
+    void note_episode_send(clock::time_point now = clock::now()) {
+        episode_.note_untracked_send(now);
+    }
+
+    /// Keeps an episode the app already owns from lapsing; starts nothing.
+    void note_still_active(clock::time_point now = clock::now()) {
+        episode_.note_still_active(now);
     }
 
     void note_done(clock::time_point now = clock::now()) {
-        last_done_ns_.store(now.time_since_epoch().count(), std::memory_order_relaxed);
-        // Clamp at zero if a done arrives without a matching send.
-        int prev = inflight_.fetch_sub(1, std::memory_order_relaxed);
-        if (prev <= 0) {
-            inflight_.store(0, std::memory_order_relaxed);
-        }
+        episode_.note_done(now);
     }
 
     bool recently_active(clock::time_point now = clock::now()) const {
-        if (inflight_.load(std::memory_order_relaxed) > 0) {
+        if (episode_.inflight() > 0) {
             return true;
         }
-        const auto last_ns = last_done_ns_.load(std::memory_order_relaxed);
-        if (last_ns == 0) {
+        const clock::time_point last = episode_.last_done();
+        if (last.time_since_epoch().count() == 0) {
             return false;
         }
-        const clock::time_point last{clock::duration{last_ns}};
         return (now - last) < kGraceWindow;
     }
 
@@ -64,8 +72,6 @@ class AppMotionActivity {
     }
 
   private:
-    std::atomic<int> inflight_{0};
-    std::atomic<long long> last_done_ns_{0};
     BusyEpisodeOwner episode_;
 };
 

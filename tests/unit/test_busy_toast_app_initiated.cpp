@@ -390,7 +390,8 @@ TEST_CASE_METHOD(MacroActivityFixture,
     // the first went out just before the flag was seen going high.
     begin_blocking_episode();
     REQUIRE(state.is_external_blocking_operation_active());
-    state.app_command_episode().note_sent(episode_start(state) - std::chrono::milliseconds(200));
+    state.app_command_episode().note_untracked_send(episode_start(state) -
+                                                    std::chrono::milliseconds(200));
 
     const size_t sent_before = mock_client.gcode_script_history().size();
     for (int tap = 0; tap < 10; ++tap) {
@@ -405,7 +406,8 @@ TEST_CASE_METHOD(MacroActivityFixture,
 TEST_CASE_METHOD(MacroActivityFixture, "an episode the user's light taps began still refuses a jog",
                  "[busy_guard][1206][1108][mock]") {
     begin_blocking_episode();
-    state.app_command_episode().note_sent(episode_start(state) - std::chrono::milliseconds(200));
+    state.app_command_episode().note_untracked_send(episode_start(state) -
+                                                    std::chrono::milliseconds(200));
     api->execute_gcode(LIGHT, nullptr, nullptr);
     REQUIRE(state.is_busy_episode_app_initiated());
 
@@ -422,7 +424,8 @@ TEST_CASE_METHOD(MacroActivityFixture,
     // Mainsail starts a bed mesh; half a second later, still inside kSettle, the
     // user taps the light and that tap goes out on the normal path, stamped.
     begin_blocking_episode();
-    state.app_command_episode().note_sent(episode_start(state) + std::chrono::milliseconds(500));
+    state.app_command_episode().note_untracked_send(episode_start(state) +
+                                                    std::chrono::milliseconds(500));
 
     api->execute_gcode(LIGHT, nullptr, nullptr);
 
@@ -434,9 +437,9 @@ TEST_CASE_METHOD(MacroActivityFixture,
                  "busy toast fires when the user's last command long predates the episode",
                  "[busy_guard][1206][mock]") {
     // A tap well before an external op began does not make that op the user's.
-    state.app_command_episode().note_sent(BusyEpisodeOwner::clock::now() -
-                                          IdleTimeoutBusy::kSettle -
-                                          BusyEpisodeOwner::kGraceWindow - std::chrono::seconds(1));
+    state.app_command_episode().note_untracked_send(
+        BusyEpisodeOwner::clock::now() - IdleTimeoutBusy::kSettle - BusyEpisodeOwner::kGraceWindow -
+        std::chrono::seconds(1));
     begin_blocking_episode();
 
     api->execute_gcode(LIGHT, nullptr, nullptr);
@@ -463,12 +466,12 @@ TEST_CASE("BusyEpisodeOwner keeps a sustained tap burst the app's own", "[busy_g
     BusyEpisodeOwner owner;
     const auto t0 = BusyEpisodeOwner::clock::now();
     const auto episode = t0 + std::chrono::milliseconds(100);
-    owner.note_sent(t0);
+    owner.note_untracked_send(t0);
     for (int tap = 1; tap <= 30; ++tap) {
         const auto now = t0 + tap * std::chrono::milliseconds(200);
         INFO("tap " << tap);
         CHECK(owner.owns(episode, now));
-        owner.note_sent(now);
+        owner.note_untracked_send(now);
     }
     // Once the burst stops, the episode stops passing as the app's.
     const auto last = t0 + 30 * std::chrono::milliseconds(200);
@@ -485,7 +488,7 @@ TEST_CASE("BusyEpisodeOwner never adopts an episode that began without it", "[bu
                          tap * std::chrono::milliseconds(200);
         INFO("tap " << tap);
         CHECK_FALSE(owner.owns(episode, now));
-        owner.note_sent(now);
+        owner.note_untracked_send(now);
     }
 }
 
@@ -494,17 +497,63 @@ TEST_CASE_METHOD(MacroActivityFixture,
                  "later jogs",
                  "[busy_guard][1108][mock]") {
     // An external bed mesh observed 3 s ago; one jog went out at +0.5 s while
-    // the guard was still settling, and its grace window has since lapsed.
+    // the guard was still settling, and sits queued behind the mesh unacked.
     begin_blocking_episode();
     auto& busy = state.calibration_state().idle_timeout_busy();
     const auto start = IdleTimeoutBusy::clock::now() - std::chrono::seconds(3);
     busy.set_printing(false, start);
     busy.set_printing(true, start);
     state.app_motion_activity().note_sent(start + std::chrono::milliseconds(500));
-    state.app_motion_activity().note_done(start + std::chrono::milliseconds(520));
 
     REQUIRE(state.is_external_blocking_operation_active());
     api->execute_gcode("G1 X10 F3000", nullptr,
                        [this](const MoonrakerError& err) { error_cb(err); });
     CHECK(error_called);
+}
+
+TEST_CASE("BusyEpisodeOwner reads an episode as not owned once its start falls out of the history",
+          "[busy_guard][1206]") {
+    const auto t0 = BusyEpisodeOwner::clock::now();
+    const auto episode = t0 + std::chrono::milliseconds(100);
+    const auto ask = episode + std::chrono::seconds(1);
+    auto burst = [&](BusyEpisodeOwner& owner, unsigned after_start) {
+        owner.note_untracked_send(t0);
+        for (unsigned i = 1; i <= after_start; ++i) {
+            owner.note_untracked_send(episode + i * std::chrono::milliseconds(50));
+        }
+    };
+
+    BusyEpisodeOwner kept;
+    burst(kept, BusyEpisodeOwner::kHistory - 1);
+    CHECK(kept.owns(episode, ask));
+
+    BusyEpisodeOwner overflowed;
+    burst(overflowed, BusyEpisodeOwner::kHistory);
+    CHECK_FALSE(overflowed.owns(episode, ask));
+}
+
+// Nothing acks a toast-path stamp: the queued send is fire-and-forget and a
+// normal send's ack is not routed back here. A stamp counted as in flight
+// would read stuck after kGraceWindow and disown the user's own episode.
+TEST_CASE_METHOD(MacroActivityFixture,
+                 "a light tap on an idle printer keeps its episode past the grace window",
+                 "[busy_guard][1206][mock]") {
+    api->execute_gcode(LIGHT, nullptr, nullptr);
+    const auto sent = BusyEpisodeOwner::clock::now();
+
+    const auto episode = sent + std::chrono::milliseconds(500);
+    CHECK(state.app_command_episode().owns(episode, sent + BusyEpisodeOwner::kGraceWindow +
+                                                        std::chrono::milliseconds(600)));
+}
+
+TEST_CASE_METHOD(MacroActivityFixture,
+                 "a light tap queued into a busy episode keeps the next one past the grace window",
+                 "[busy_guard][1206][mock]") {
+    begin_blocking_episode();
+    api->execute_gcode(LIGHT, nullptr, nullptr);
+    const auto sent = BusyEpisodeOwner::clock::now();
+
+    const auto episode = sent + std::chrono::milliseconds(500);
+    CHECK(state.app_command_episode().owns(episode, sent + BusyEpisodeOwner::kGraceWindow +
+                                                        std::chrono::milliseconds(600)));
 }

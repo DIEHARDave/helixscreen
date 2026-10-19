@@ -13,12 +13,12 @@ namespace helix {
 
 namespace {
 
-constexpr const char* SEP = " · ";
+constexpr const char* kSep = " · ";
 
 std::string with_detail(const char* label, const std::string& detail) {
     std::string out = lv_tr(label);
     if (!detail.empty()) {
-        out += SEP;
+        out += kSep;
         out += detail;
     }
     return out;
@@ -49,7 +49,7 @@ std::string filament_system_text(const std::vector<FilamentSystemFact>& systems)
         }
         out += sys.name;
         if (sys.slots > 0) {
-            out += SEP;
+            out += kSep;
             out += std::to_string(sys.slots);
         }
     }
@@ -162,7 +162,7 @@ std::string base_text(CapChip chip, const CapabilityChipFacts& f) {
 std::string capability_chip_text(CapChip chip, const CapabilityChipFacts& facts) {
     std::string text = base_text(chip, facts);
     if (!text.empty() && facts.forced_on.count(chip) != 0) {
-        text += SEP;
+        text += kSep;
         text += lv_tr("set manually");
     }
     return text;
@@ -173,13 +173,13 @@ std::string kinematics_display_name(const std::string& kinematics) {
         const char* klipper;
         const char* display;
     };
-    static constexpr Name NAMES[] = {
+    static constexpr Name kNames[] = {
         {"corexy", "CoreXY"}, {"limited_corexy", "CoreXY"},     {"hybrid_corexy", "Hybrid CoreXY"},
         {"corexz", "CoreXZ"}, {"cartesian", "Cartesian"},       {"limited_cartesian", "Cartesian"},
         {"delta", "Delta"},   {"rotary_delta", "Rotary Delta"}, {"polar", "Polar"},
         {"winch", "Winch"},
     };
-    for (const auto& n : NAMES) {
+    for (const auto& n : kNames) {
         if (kinematics == n.klipper) {
             return n.display;
         }
