@@ -171,7 +171,10 @@ case "${1:-}" in
         cp -R "$PLUGIN_SRC" "$INSTALL_DIR/moonraker-plugin"
         chown -R "$APP_USER:$APP_USER" "$INSTALL_DIR/moonraker-plugin"
         mkdir -p "$PRE"
-        cp -a "$CONFIG_DIR/." "$PRE/" ;;
+        cp -a "$CONFIG_DIR/." "$PRE/"
+        # Uninstall removes [helix_print] wherever it lives, a section the
+        # user placed before the install included, so incsec expects it gone.
+        if [ "$LAYOUT" = incsec ]; then : > "$PRE/helix.conf"; fi ;;
     install)
         as_app --no-restart --auto ;;
     uninstall)
