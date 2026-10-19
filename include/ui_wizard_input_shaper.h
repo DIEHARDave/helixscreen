@@ -230,13 +230,6 @@ class WizardInputShaperStep : public helix::wizard::Step {
     /// Stop the stream and hide the chart host (error, abort).
     void stop_preview();
 
-    /// Test hook: the live preview's stream source.
-    void set_preview_source_factory_for_test(
-        helix::calibration::LiveSweepPreview::SourceFactory factory);
-    [[nodiscard]] const helix::ui::ShaperSweepChart& sweep_chart_for_test() const {
-        return sweep_chart_;
-    }
-
     /**
      * @brief Show the analysis-phase treatment: spinner on, elapsed "Ns" label
      *
@@ -310,6 +303,8 @@ class WizardInputShaperStep : public helix::wizard::Step {
     lv_obj_t* low_ram_warn_dialog_ = nullptr;
 
   private:
+    friend class WizardInputShaperStepTestAccess;
+
     // Screen instance
     lv_obj_t* screen_root_ = nullptr;
 

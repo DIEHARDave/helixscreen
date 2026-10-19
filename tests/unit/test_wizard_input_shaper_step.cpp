@@ -799,6 +799,7 @@ TEST_CASE_METHOD(WizardInputShaperStepTestFixture, "WizardInputShaperStep - asyn
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/sweep_preview_fakes.h"
+#include "../test_helpers/wizard_input_shaper_step_test_access.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "resonance_console.h"
@@ -831,7 +832,7 @@ class WizardPreviewFixture : public LVGLUITestFixture {
         step_->init_subjects();
         step_->register_callbacks();
         *step_->get_calibrator() = InputShaperCalibrator(api_.get());
-        step_->set_preview_source_factory_for_test(manual_factory(log_));
+        WizardInputShaperStepTestAccess::set_preview_source_factory(*step_, manual_factory(log_));
         screen_ = step_->create(test_screen());
         REQUIRE(screen_ != nullptr);
 
@@ -847,7 +848,7 @@ class WizardPreviewFixture : public LVGLUITestFixture {
     ~WizardPreviewFixture() override {
         client_.unregister_method_callback("notify_gcode_response", "wizard_preview");
         step_->cleanup();
-        step_->set_preview_source_factory_for_test(nullptr);
+        WizardInputShaperStepTestAccess::set_preview_source_factory(*step_, nullptr);
         helix::ui::UpdateQueue::instance().drain();
         *step_->get_calibrator() = InputShaperCalibrator(previous_api_);
         step_->set_calibration_complete(false);
@@ -882,7 +883,7 @@ class WizardPreviewFixture : public LVGLUITestFixture {
     }
 
     [[nodiscard]] std::vector<float> drawn() const {
-        auto* chart = step_->sweep_chart_for_test().chart();
+        auto* chart = WizardInputShaperStepTestAccess::sweep_chart(*step_).chart();
         return chart ? ui_frequency_response_chart_get_series_amplitudes(chart, 0)
                      : std::vector<float>{};
     }
@@ -921,14 +922,15 @@ TEST_CASE_METHOD(WizardPreviewFixture, "the wizard step draws each axis's live s
     REQUIRE(run_until([&] { return log_.created == 1; }));
     CHECK(log_.accel_chip == "adxl345");
     REQUIRE(run_until([&] { return has_chart() == 1; }));
-    const auto& x_points = step_->sweep_chart_for_test().preview().points();
+    const auto& x_points = WizardInputShaperStepTestAccess::sweep_chart(*step_).preview().points();
     REQUIRE_FALSE(x_points.empty());
 
     // X's result: its CSV curve replaces the preview, then Y attaches afresh.
     REQUIRE(run_until([&] { return log_.created == 2; }));
     CHECK(log_.stopped == 1);
     REQUIRE(run_until([&] {
-        return has_chart() == 1 && !step_->sweep_chart_for_test().preview().points().empty();
+        return has_chart() == 1 &&
+               !WizardInputShaperStepTestAccess::sweep_chart(*step_).preview().points().empty();
     }));
 
     REQUIRE(run_until([&] { return step_->is_calibration_complete(); }));
@@ -940,7 +942,7 @@ TEST_CASE_METHOD(WizardPreviewFixture, "the wizard step draws each axis's live s
     CHECK(drawn() == y_csv);
 
     step_->cleanup();
-    CHECK(step_->sweep_chart_for_test().chart() == nullptr);
+    CHECK(WizardInputShaperStepTestAccess::sweep_chart(*step_).chart() == nullptr);
     CHECK(has_chart() == 0);
 }
 
@@ -959,8 +961,10 @@ TEST_CASE_METHOD(WizardPreviewFixture, "the wizard step shows X's CSV curve once
 
     // Y's first sweep line attaches a fresh source reading psd_y.
     REQUIRE(run_until([&] { return log_.created == 2; }));
-    REQUIRE(run_until([&] { return !step_->sweep_chart_for_test().preview().points().empty(); }));
-    const auto& points = step_->sweep_chart_for_test().preview().points();
+    REQUIRE(run_until([&] {
+        return !WizardInputShaperStepTestAccess::sweep_chart(*step_).preview().points().empty();
+    }));
+    const auto& points = WizardInputShaperStepTestAccess::sweep_chart(*step_).preview().points();
     // STANDARD stores 200 of the 201-slot grid, so one point may be picked out.
     const auto curve = drawn();
     int missing = 0;

@@ -625,11 +625,6 @@ void WizardInputShaperStep::stop_preview() {
     }
 }
 
-void WizardInputShaperStep::set_preview_source_factory_for_test(
-    helix::calibration::LiveSweepPreview::SourceFactory factory) {
-    sweep_chart_.set_source_factory(std::move(factory));
-}
-
 // ============================================================================
 // Validation
 // ============================================================================
