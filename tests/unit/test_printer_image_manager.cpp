@@ -15,6 +15,7 @@
 #include "ams_state.h"
 #include "config.h"
 #include "lvgl/lvgl.h"
+#include "printer_detector.h"
 #include "printer_image_regions.h"
 #include "wizard_config_paths.h"
 
@@ -689,6 +690,28 @@ TEST_CASE_METHOD(DetectedK2Fixture, "PrinterImageManager detected image follows 
 
     AmsState::instance().clear_backends();
     CHECK(pim.get_detected_image_path(800) == plain);
+}
+
+TEST_CASE_METHOD(DetectedK2Fixture,
+                 "PrinterImageManager every K2-family printer shows the CFS with a CFS connected",
+                 "[printer_image_manager][printer_image_variants]") {
+    // Every K2 model takes a CFS on top, so each database entry carries the variant.
+    std::vector<std::string> k2_family;
+    for (const auto& name : PrinterDetector::get_list_names()) {
+        if (name.rfind("Creality K2", 0) == 0) {
+            k2_family.push_back(name);
+        }
+    }
+    REQUIRE(k2_family.size() >= 4);
+
+    AmsState::instance().add_backend(std::make_unique<test::TypedMockBackend>(AmsType::CFS));
+    auto& pim = PrinterImageManager::instance();
+    Config* config = Config::get_instance();
+    for (const auto& name : k2_family) {
+        INFO(name);
+        config->set<std::string>(config->df() + helix::wizard::PRINTER_TYPE, name);
+        CHECK(pim.get_detected_image_path(800).find("creality-k2-cfs") != std::string::npos);
+    }
 }
 
 TEST_CASE_METHOD(DetectedK2Fixture, "PrinterImageManager custom image wins over an image variant",

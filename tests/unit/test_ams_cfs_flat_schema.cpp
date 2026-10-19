@@ -1381,3 +1381,38 @@ TEST_CASE("CFS flat: revision 1 ignores boxes[] online flags", "[ams][cfs][flat]
         CHECK(u.connected);
     }
 }
+
+// A K2 Plus on the k2-improvements box.py, API revision 1 with a boxes[] list
+// (bundle EH9J7764). The printer picture picks its CFS variant off a unit that
+// is connected and not absent, so this payload has to produce one.
+TEST_CASE("CFS flat schema: a k2-improvements revision 1 payload has a present unit",
+          "[ams][cfs][flat][printer_image_variants]") {
+    const json box = json::parse(R"({
+        "api_version": 1, "data_ready": true, "driver_ready": true,
+        "boxes": [{"address": 1, "fault": null, "humidity_pct": 20, "online": true,
+                   "slots": [0, 1, 2, 3], "state": "IDLE", "state_code": 0,
+                   "status": "OK", "status_code": 0, "temp_c": 23}],
+        "filament_detected": true, "filament_sensor_error": null,
+        "humidity_pct": 20, "loaded_mask": 4, "loaded_slot": 2,
+        "runout": {"chain": [], "loaded_slot": 2}, "runout_swap_enabled": true,
+        "slot_filament_mask": 7, "state": "IDLE", "state_code": 0,
+        "status": "OK", "status_code": 0, "temp_c": 23, "tracking_active": false,
+        "slots": [
+            {"index": 0, "external": false, "present": true, "loaded": false,
+             "material": "PLA", "color": "#1A1A1A", "brand": "Overture", "name": ""},
+            {"index": 1, "external": false, "present": true, "loaded": false,
+             "material": "PLA", "color": "#AEEA00", "brand": "SUNLU", "name": ""},
+            {"index": 2, "external": false, "present": true, "loaded": true,
+             "material": "PLA", "color": "#FFFFFF", "brand": "Overture", "name": ""},
+            {"index": 3, "external": false, "present": false, "loaded": false,
+             "material": "", "color": "", "brand": "", "name": ""},
+            {"index": 4, "external": true, "present": true, "loaded": false,
+             "material": "", "color": "", "brand": "", "name": ""}
+        ]
+    })");
+
+    const auto info = AmsBackendCfs::parse_box_status(box);
+    REQUIRE(info.units.size() == 1);
+    CHECK(info.units[0].connected);
+    CHECK_FALSE(info.units[0].absent);
+}
