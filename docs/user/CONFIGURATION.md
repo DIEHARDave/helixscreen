@@ -1268,7 +1268,7 @@ The remaining AMS settings are **per printer**, so they live under the printer's
 }
 ```
 
-All four have UI equivalents in **Settings > Devices > Multi-Filament System Management** - edit them there rather than by hand.
+All four have UI equivalents in **Settings > Printing > Multi-Filament System Management** - edit them there rather than by hand.
 
 #### `force_bypass_controls`
 **Type:** boolean

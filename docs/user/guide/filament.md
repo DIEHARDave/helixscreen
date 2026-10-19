@@ -201,7 +201,7 @@ Some filament systems do not report a bypass position. On those, the Bypass togg
 
 The Creality CFS no longer appears here — it has a working external spool. See [CFS and the External Spool](#cfs-and-the-external-spool).
 
-To show the controls anyway, turn on **Enable Bypass Controls** in Settings > Devices > Multi-Filament System Management. The setting appears only when your firmware reports no bypass.
+To show the controls anyway, turn on **Enable Bypass Controls** in Settings > Printing > Multi-Filament System Management. The setting appears only when your firmware reports no bypass.
 
 With it on, the external spool appears on the filament path beside your slots. Tap it to set material, color, and brand, or to link a Spoolman spool.
 
