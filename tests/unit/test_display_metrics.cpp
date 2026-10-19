@@ -393,3 +393,26 @@ TEST_CASE("the auto scale survives being overridden", "[display_metrics][scale]"
     DisplayMetrics::set_auto_scale(1.0); // restore for other tests
     DisplayMetrics::set_active_scale(1.0);
 }
+
+TEST_CASE("an upscaled logical surface is scaled by its own pixel density",
+          "[display_metrics][logical_dpi]") {
+    // Galaxy Z Flip 7: a 480 DPI 2520x1080 panel the Android SDL driver draws at
+    // 1260x540 and doubles. The logical pixel is 240 DPI, which sits just past
+    // the deadband; the native figure would nearly double the UI.
+    const double flip = DisplayMetrics::logical_dpi(480.0, 2520, 1080, 1260, 540);
+    CHECK(flip == Catch::Approx(240.0));
+    CHECK(DisplayMetrics::ui_scale_for_dpi(flip) < 1.06);
+    CHECK(DisplayMetrics::ui_scale_for_dpi(480.0) > 1.8);
+
+    // The panel's orientation and the surface's need not agree.
+    CHECK(DisplayMetrics::logical_dpi(480.0, 1080, 2520, 1260, 540) == Catch::Approx(240.0));
+
+    // A 3x surface, and a native one, which is the identity.
+    CHECK(DisplayMetrics::logical_dpi(450.0, 3200, 1440, 1066, 480) ==
+          Catch::Approx(450.0 / 3.0).epsilon(0.01));
+    CHECK(DisplayMetrics::logical_dpi(200.0, 1920, 1200, 1920, 1200) == Catch::Approx(200.0));
+
+    // Without both sizes there is nothing to convert by.
+    CHECK(DisplayMetrics::logical_dpi(480.0, 0, 0, 1260, 540) == Catch::Approx(480.0));
+    CHECK(DisplayMetrics::logical_dpi(480.0, 2520, 1080, 0, 540) == Catch::Approx(480.0));
+}

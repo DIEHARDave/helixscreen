@@ -1384,8 +1384,23 @@ bool Application::init_display() {
                 measured_dpi = static_cast<double>(ddpi);
             }
         }
-        spdlog::info("[Application] Android screen: {}x{} (DPI-aware sizing via SDL)",
-                     m_screen_width, m_screen_height);
+        // The SDL driver draws at an integer fraction of the native resolution
+        // and upscales, so the DPI is reported per native pixel while the UI
+        // lays out in logical ones.
+        int native_w = 0, native_h = 0;
+        auto* renderer =
+            static_cast<SDL_Renderer*>(lv_sdl_window_get_renderer(m_display->display()));
+        if (renderer != nullptr) {
+            SDL_GetRendererOutputSize(renderer, &native_w, &native_h);
+        }
+        if (measured_dpi) {
+            measured_dpi = helix::DisplayMetrics::logical_dpi(*measured_dpi, native_w, native_h,
+                                                              m_screen_width, m_screen_height);
+        }
+        spdlog::info("[Application] Android screen: {}x{} logical, {}x{} native, {:.0f} dpi per "
+                     "logical pixel",
+                     m_screen_width, m_screen_height, native_w, native_h,
+                     measured_dpi.value_or(0.0));
     }
 #endif
 

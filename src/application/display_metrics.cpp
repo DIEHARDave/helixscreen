@@ -88,6 +88,18 @@ double DisplayMetrics::ui_scale_for_dpi(double dpi) {
     return std::min(scale, kMaxScale);
 }
 
+double DisplayMetrics::logical_dpi(double physical_dpi, int native_w, int native_h, int logical_w,
+                                   int logical_h) {
+    if (native_w <= 0 || native_h <= 0 || logical_w <= 0 || logical_h <= 0) {
+        return physical_dpi;
+    }
+    const double native_diag =
+        std::hypot(static_cast<double>(native_w), static_cast<double>(native_h));
+    const double logical_diag =
+        std::hypot(static_cast<double>(logical_w), static_cast<double>(logical_h));
+    return physical_dpi * logical_diag / native_diag;
+}
+
 bool DisplayMetrics::dpi_is_plausible(double dpi) {
     return std::isfinite(dpi) && dpi >= kMinPlausibleDpi && dpi <= kMaxPlausibleDpi;
 }

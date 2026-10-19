@@ -111,6 +111,16 @@ class DisplayMetrics {
     /// keep today's sizing, never shrink below it.
     static double ui_scale_for_dpi(double dpi);
 
+    /// DPI of the pixels the UI draws in, when the platform presents a logical
+    /// surface smaller than the panel and upscales it (Android renders at an
+    /// integer fraction of the native resolution). @p physical_dpi is per native
+    /// pixel; the result is per logical pixel, which is what the scale curve
+    /// must see, or a surface already enlarged by the upscale is enlarged again.
+    /// Sizes are compared by diagonal so the panel's orientation does not matter.
+    /// Unknown or degenerate sizes return @p physical_dpi unchanged.
+    static double logical_dpi(double physical_dpi, int native_w, int native_h, int logical_w,
+                              int logical_h);
+
     /// Whether a measurement is inside the plausibility band.
     static bool dpi_is_plausible(double dpi);
 
