@@ -531,3 +531,29 @@ TEST_CASE("BusyEpisodeOwner reads an episode as not owned once its start falls o
     burst(overflowed, BusyEpisodeOwner::kHistory);
     CHECK_FALSE(overflowed.owns(episode, ask));
 }
+
+// Nothing acks a toast-path stamp: the queued send is fire-and-forget and a
+// normal send's ack is not routed back here. A stamp counted as in flight
+// would read stuck after kGraceWindow and disown the user's own episode.
+TEST_CASE_METHOD(MacroActivityFixture,
+                 "a light tap on an idle printer keeps its episode past the grace window",
+                 "[busy_guard][1206][mock]") {
+    api->execute_gcode(LIGHT, nullptr, nullptr);
+    const auto sent = BusyEpisodeOwner::clock::now();
+
+    const auto episode = sent + std::chrono::milliseconds(500);
+    CHECK(state.app_command_episode().owns(episode, sent + BusyEpisodeOwner::kGraceWindow +
+                                                        std::chrono::milliseconds(600)));
+}
+
+TEST_CASE_METHOD(MacroActivityFixture,
+                 "a light tap queued into a busy episode keeps the next one past the grace window",
+                 "[busy_guard][1206][mock]") {
+    begin_blocking_episode();
+    api->execute_gcode(LIGHT, nullptr, nullptr);
+    const auto sent = BusyEpisodeOwner::clock::now();
+
+    const auto episode = sent + std::chrono::milliseconds(500);
+    CHECK(state.app_command_episode().owns(episode, sent + BusyEpisodeOwner::kGraceWindow +
+                                                        std::chrono::milliseconds(600)));
+}
