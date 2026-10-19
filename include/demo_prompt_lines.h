@@ -69,4 +69,35 @@ inline std::vector<std::string> afc_calibration_lines() {
     return lines;
 }
 
+/**
+ * @brief Buttons colored by hex in the third field, as Fluidd, Mainsail and
+ * Z-Mod send them, then two rows of label-less swatch tiles and a Back footer
+ * (prestonbrown/helixscreen#1806). Shared by `ctl demo action-prompt-hex` and
+ * the action prompt layout tests.
+ */
+inline std::vector<std::string> hex_color_prompt_lines() {
+    static constexpr const char* const kPalette[2][6] = {
+        {"ffffff", "fef043", "0acc38", "21cc3d", "2750e0", "a03cf7"},
+        {"f330f9", "f72224", "7c4b00", "898989", "161616", "#0de2a0"},
+    };
+    std::vector<std::string> lines = {
+        "// action:prompt_begin Select color",
+        "// action:prompt_text Pick a color for slot 1.",
+        "// action:prompt_button Standard|GCODE_CMD_1|error",
+        "// action:prompt_button HEX Dark (White Text)|GCODE_CMD_2|ff5722",
+        "// action:prompt_button HEX Light (Black Text)|GCODE_CMD_3|e0e0e0",
+    };
+    for (const auto& row : kPalette) {
+        lines.emplace_back("// action:prompt_button_group_start");
+        for (const char* hex : row) {
+            lines.push_back(std::string("// action:prompt_button _ |CHANGE_ZCOLOR SLOT=1 HEX=") +
+                            hex + "|" + hex);
+        }
+        lines.emplace_back("// action:prompt_button_group_end");
+    }
+    lines.emplace_back("// action:prompt_footer_button Back||secondary");
+    lines.emplace_back("// action:prompt_show");
+    return lines;
+}
+
 } // namespace helix::demo
