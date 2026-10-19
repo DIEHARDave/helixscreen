@@ -606,6 +606,7 @@
   <translation tag="Check the RS-485 cable between printer and CFS" fr="Vérifiez le câble RS-485 entre l&apos;imprimante et le CFS"/>
   <translation tag="Check the buffer unit on the back of the printer" fr="Vérifiez l&apos;unité tampon à l&apos;arrière de l&apos;imprimante"/>
   <translation tag="Check the chips, then save" fr="Vérifiez les étiquettes, puis enregistrez"/>
+  <translation tag="Check the filament in {}, then tap Resume to load it again." fr="Vérifiez le filament dans {}, puis touchez Reprendre pour le charger à nouveau."/>
   <translation tag="Check the filament path and try again." fr="Vérifiez le chemin du filament et réessayez."/>
   <translation tag="Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed" fr="Vérifiez le trajet du slot vers le hub à la recherche d&apos;un emmêlement ou d&apos;une résistance. Si le slot avance librement, le capteur du hub ou le moteur d&apos;entraînement est peut-être défaillant"/>
   <translation tag="Check the provided value and try again" fr="Vérifiez la valeur fournie et réessayez"/>
@@ -3463,6 +3464,7 @@
   <translation tag="This print does not report layers, so no layer pause can be scheduled." fr="Cette impression ne signale pas ses couches, aucune pause par couche ne peut donc être prévue."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" fr="Cette impression nécessite environ %.0fg mais il reste environ %.0fg sur la bobine. Démarrer quand même ?"/>
   <translation tag="This print never reports layer {}." fr="Cette impression ne signale jamais la couche {}."/>
+  <translation tag="This print was started outside HelixScreen, so the printer doesn&apos;t know which toolheads it uses." fr="Cette impression a été lancée en dehors de HelixScreen, l&apos;imprimante ne sait donc pas quelles têtes d&apos;outil elle utilise."/>
   <translation tag="This printer cannot calibrate tool offsets automatically" fr="Cette imprimante ne peut pas calibrer les offsets d&apos;outil automatiquement"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." fr="Cette imprimante remplit ses gates depuis Spoolman. HelixScreen a effacé sa propre copie ; retirez la bobine dans Spoolman."/>
   <translation tag="This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman." fr="Cette imprimante remplit ses gates depuis Spoolman. Effectuez les changements de couleur, matériau et bobine dans Spoolman."/>
@@ -3555,6 +3557,7 @@
   <translation tag="Toolhead position and homing, with a plate view and Home All" fr="Position et référence de la tête d&apos;outil, avec vue du plateau et Tout référencer"/>
   <translation tag="Toolhead position unknown" fr="Position de la tête d&apos;outil inconnue"/>
   <translation tag="Toolheads" fr="Têtes d&apos;outil"/>
+  <translation tag="Toolheads won&apos;t refeed on their own after a runout, and filament won&apos;t unload when the print ends." fr="Les têtes d&apos;outil ne se rechargeront pas seules après une fin de filament, et le filament ne sera pas déchargé à la fin de l&apos;impression."/>
   <translation tag="Tools" fr="Outils"/>
   <translation tag="Tools Used" fr="Outils utilisés"/>
   <translation tag="Tools: " fr="Outils : "/>
@@ -3979,6 +3982,7 @@
   <translation tag="{} could not be checked from Home - review it and tap Print" fr="{} n&apos;a pas pu être vérifié depuis l&apos;accueil – vérifiez-le et touchez Imprimer"/>
   <translation tag="{} critical" fr="{} critique(s)"/>
   <translation tag="{} critical hardware issues" fr="{} problèmes de matériel critique"/>
+  <translation tag="{} didn&apos;t load. Load it before resuming." fr="{} ne s&apos;est pas chargé. Chargez-le avant de reprendre."/>
   <translation tag="{} disabled" fr="{} désactivé"/>
   <translation tag="{} enabled" fr="{} activé"/>
   <translation tag="{} failed: {}" fr="{} a échoué : {}"/>

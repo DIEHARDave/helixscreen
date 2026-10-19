@@ -671,6 +671,7 @@ translations:
   Check the RS-485 cable between printer and CFS: Vérifiez le câble RS-485 entre l'imprimante et le CFS
   Check the buffer unit on the back of the printer: Vérifiez l'unité tampon à l'arrière de l'imprimante
   Check the chips, then save: Vérifiez les étiquettes, puis enregistrez
+  Check the filament in {}, then tap Resume to load it again.: 'Vérifiez le filament dans {}, puis touchez Reprendre pour le charger à nouveau.'
   Check the filament path and try again.: Vérifiez le chemin du filament et réessayez.
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
   : Vérifiez le trajet du slot vers le hub à la recherche d'un emmêlement ou d'une résistance. Si le slot avance librement, le capteur du hub ou le moteur d'entraînement est peut-être défaillant
@@ -3870,6 +3871,7 @@ translations:
     impression nécessite environ %.0fg mais il reste environ %.0fg sur la bobine.
     Démarrer quand même ?
   This print never reports layer {}.: 'Cette impression ne signale jamais la couche {}.'
+  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: 'Cette impression a été lancée en dehors de HelixScreen, l''imprimante ne sait donc pas quelles têtes d''outil elle utilise.'
   This printer cannot calibrate tool offsets automatically: Cette imprimante ne peut pas calibrer les offsets d'outil automatiquement
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Cette imprimante remplit ses gates depuis Spoolman. HelixScreen a effacé sa propre copie ; retirez la bobine dans Spoolman.
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: Cette imprimante remplit ses gates depuis Spoolman. Effectuez les changements de couleur, matériau et bobine dans Spoolman.
@@ -3989,6 +3991,7 @@ translations:
   Toolhead position and homing, with a plate view and Home All: "Position et référence de la tête d'outil, avec vue du plateau et Tout référencer"
   Toolhead position unknown: 'Position de la tête d''outil inconnue'
   Toolheads: 'Têtes d''outil'
+  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: 'Les têtes d''outil ne se rechargeront pas seules après une fin de filament, et le filament ne sera pas déchargé à la fin de l''impression.'
   Tools: Outils
   Tools Used: Outils utilisés
   'Tools: ': 'Outils : '
@@ -4440,6 +4443,7 @@ translations:
   '{} configured items not found': '{} éléments configurés introuvables'
   '{} critical': '{} critique(s)'
   '{} critical hardware issues': '{} problèmes de matériel critique'
+  "{} didn't load. Load it before resuming.": '{} ne s''est pas chargé. Chargez-le avant de reprendre.'
   '{} disabled': '{} désactivé'
   '{} enabled': '{} activé'
   '{} failed: {}': '{} a échoué : {}'

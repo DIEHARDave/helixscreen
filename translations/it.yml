@@ -661,6 +661,7 @@ translations:
   Check the RS-485 cable between printer and CFS: Controllare il cavo RS-485 tra stampante e CFS
   Check the buffer unit on the back of the printer: Controllare l'unità buffer sul retro della stampante
   Check the chips, then save: Controlla le etichette, poi salva
+  Check the filament in {}, then tap Resume to load it again.: 'Controlla il filamento in {}, poi tocca Riprendi per caricarlo di nuovo.'
   Check the filament path and try again.: Controllare il percorso del filamento e
     riprovare.
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
@@ -3840,6 +3841,7 @@ translations:
     stampa richiede circa %.0fg ma la bobina ne ha circa %.0fg rimanenti. Avviare
     comunque?
   This print never reports layer {}.: 'Questa stampa non riporta mai lo strato {}.'
+  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: 'Questa stampa è stata avviata fuori da HelixScreen, quindi la stampante non sa quali testine usa.'
   This printer cannot calibrate tool offsets automatically: Questa stampante non può calibrare automaticamente gli offset degli strumenti
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Questa stampante riempie i suoi gate da Spoolman. HelixScreen ha svuotato la propria copia; rimuovi la bobina in Spoolman.
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: Questa stampante riempie i suoi gate da Spoolman. Modifica colore, materiale e bobina in Spoolman.
@@ -3958,6 +3960,7 @@ translations:
   Toolhead position and homing, with a plate view and Home All: "Posizione e homing della testina, con vista del piatto e Homing tutto"
   Toolhead position unknown: Posizione della testina sconosciuta
   Toolheads: Testine
+  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: 'Le testine non si ricaricheranno da sole dopo un esaurimento del filamento, e il filamento non verrà scaricato a fine stampa.'
   Tools: Strumenti
   Tools Used: Utensili usati
   'Tools: ': 'Utensili: '
@@ -4406,6 +4409,7 @@ translations:
   '{} configured items not found': '{} elementi configurati non trovati'
   '{} critical': '{} critici'
   '{} critical hardware issues': '{} problemi hardware critici'
+  "{} didn't load. Load it before resuming.": '{} non si è caricato. Caricalo prima di riprendere.'
   '{} disabled': '{} disabilitato'
   '{} enabled': '{} abilitato'
   '{} failed: {}': '{} non riuscito: {}'

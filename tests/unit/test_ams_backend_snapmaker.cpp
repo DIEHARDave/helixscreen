@@ -3372,6 +3372,8 @@ TEST_CASE_METHOD(SnapmakerFixture,
         callback_fired = true;
         captured = err;
     });
+    // The feeder reports the load before the command's answer is handled.
+    SnapmakerTestAccess::handle_status(h.backend, make_feed_status(0, "load_finish"));
     ResumeRecoveryHarness::drain();
 
     const auto& hist = h.client.gcode_script_history();
@@ -3445,7 +3447,167 @@ TEST_CASE_METHOD(
     REQUIRE(callback_fired);
     REQUIRE_FALSE(captured.success());
     CHECK(captured.user_msg.find("e0_filament") == std::string::npos);
-    CHECK(captured.user_msg.find("Feeder 1") != std::string::npos);
+    CHECK(captured.user_msg == "Toolhead 1 (T0) didn't load. Load it before resuming.");
+    CHECK(captured.suggestion.find("Feeder 1") != std::string::npos);
+}
+
+// ---------------------------------------------------------------------------
+// A head whose load failed holds Resume until its feeder reports load_finish
+// with no error. The head presence switch reads "present" for filament that
+// reached the toolhead and stopped short of the nozzle, so it vouches for
+// nothing.
+// ---------------------------------------------------------------------------
+
+namespace {
+/// prepare_for_resume once, drained; the answer it gave.
+AmsError resume_once(ResumeRecoveryHarness& h, int slot) {
+    AmsError captured{AmsResult::RESUME_REQUIRES_RESTART}; // poison
+    bool fired = false;
+    h.backend.prepare_for_resume(slot, [&](const AmsError& err) {
+        fired = true;
+        captured = err;
+    });
+    ResumeRecoveryHarness::drain();
+    REQUIRE(fired);
+    return captured;
+}
+
+size_t count_containing(const std::vector<std::string>& history, const std::string& needle) {
+    size_t n = 0;
+    for (const auto& s : history) {
+        if (s.find(needle) != std::string::npos) {
+            ++n;
+        }
+    }
+    return n;
+}
+
+/// The runout refeed on head 0 fails, then the head switch reads present.
+void fail_refeed_then_switch_present(ResumeRecoveryHarness& h) {
+    h.client.force_next_gcode_error(MoonrakerErrorType::JSON_RPC_ERROR,
+                                    "extruder[0]: state: none, error: ok!", "AUTO_FEEDING");
+    REQUIRE_FALSE(resume_once(h, 0).success());
+    SnapmakerTestAccess::set_sensor_present(h.backend, 0, true);
+    h.client.clear_gcode_script_history();
+}
+} // namespace
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker resume after a failed load is held although the head reads present",
+                 "[ams][snapmaker][resume][load_unconfirmed]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    ResumeRecoveryHarness h;
+    fail_refeed_then_switch_present(h);
+
+    // Resume retries the load instead of trusting the switch, and the retry's
+    // OK alone, with the feeder never reaching load_finish, is no load.
+    const AmsError second = resume_once(h, 0);
+    CHECK_FALSE(second.success());
+    CHECK(second.user_msg == "Toolhead 1 (T0) didn't load. Load it before resuming.");
+    CHECK(count_containing(h.client.gcode_script_history(),
+                           "AUTO_FEEDING EXTRUDER=0 LOAD=1 PRINTING=1") == 1);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker resume proceeds once the feeder confirms the load",
+                 "[ams][snapmaker][resume][load_unconfirmed]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    ResumeRecoveryHarness h;
+    fail_refeed_then_switch_present(h);
+
+    SECTION("load_finish with no error releases Resume without another load") {
+        SnapmakerTestAccess::handle_status(h.backend, make_feed_status(0, "load_finish"));
+        CHECK(resume_once(h, 0).success());
+        CHECK(count_containing(h.client.gcode_script_history(), "AUTO_FEEDING") == 0);
+    }
+
+    SECTION("load_finish carrying a channel error holds it") {
+        SnapmakerTestAccess::handle_status(h.backend,
+                                           make_feed_status(0, "load_finish", true, "no_filament"));
+        CHECK_FALSE(resume_once(h, 0).success());
+    }
+
+    SECTION("a retried load that reaches load_finish resumes") {
+        bool ok = false;
+        h.backend.prepare_for_resume(0, [&](const AmsError& err) { ok = err.success(); });
+        SnapmakerTestAccess::handle_status(h.backend, make_feed_status(0, "load_finish"));
+        ResumeRecoveryHarness::drain();
+        CHECK(ok);
+        CHECK(count_containing(h.client.gcode_script_history(), "AUTO_FEEDING") == 1);
+    }
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker resume on another head waits for the failed head",
+                 "[ams][snapmaker][resume][load_unconfirmed]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    ResumeRecoveryHarness h;
+    fail_refeed_then_switch_present(h);
+    SnapmakerTestAccess::set_current_slot(h.backend, 2);
+
+    // Loading head 0 now would leave it picked up when RESUME runs on head 2,
+    // so the answer is a refusal naming head 0, with nothing sent.
+    const AmsError err = resume_once(h, 2);
+    CHECK_FALSE(err.success());
+    CHECK(err.user_msg == "Toolhead 1 (T0) didn't load. Load it before resuming.");
+    CHECK(h.client.gcode_script_history().empty());
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker forgets a failed load when the print or link ends",
+                 "[ams][snapmaker][resume][load_unconfirmed]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    ResumeRecoveryHarness h;
+    SnapmakerTestAccess::handle_status(h.backend, json{{"print_stats", {{"state", "paused"}}}});
+    fail_refeed_then_switch_present(h);
+
+    SECTION("print cancelled") {
+        SnapmakerTestAccess::handle_status(h.backend,
+                                           json{{"print_stats", {{"state", "cancelled"}}}});
+    }
+    SECTION("print complete") {
+        SnapmakerTestAccess::handle_status(h.backend,
+                                           json{{"print_stats", {{"state", "complete"}}}});
+    }
+    SECTION("disconnect for a printer switch") {
+        h.backend.before_disconnect();
+    }
+
+    CHECK(resume_once(h, 0).success());
+    CHECK(count_containing(h.client.gcode_script_history(), "AUTO_FEEDING") == 0);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker resume after a paused manual load that failed",
+                 "[ams][snapmaker][resume][load_unconfirmed]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    ResumeRecoveryHarness h;
+    SnapmakerTestAccess::set_sensor_present(h.backend, 0, true);
+    SnapmakerTestAccess::handle_status(h.backend, json{{"print_stats", {{"state", "paused"}}}});
+    SnapmakerTestAccess::handle_status(h.backend,
+                                       json{{"filament_feed left",
+                                             {{"extruder0",
+                                               {{"filament_detected", true},
+                                                {"channel_state", "wait_insert"},
+                                                {"channel_error", "ok"},
+                                                {"module_exist", true},
+                                                {"disable_auto", false}}}}},
+                                            {"filament_motion_sensor e0_filament",
+                                             {{"enabled", true}, {"filament_detected", true}}}});
+
+    h.client.force_next_gcode_error(MoonrakerErrorType::JSON_RPC_ERROR,
+                                    "extruder[0]: state: none, error: ok!", "AUTO_FEEDING");
+    SnapmakerTestAccess::set_running(h.backend, true);
+    const AmsError load = h.backend.load_filament(0);
+    INFO(load.technical_msg << " / " << load.user_msg);
+    REQUIRE(load.success());
+    ResumeRecoveryHarness::drain();
+    h.client.clear_gcode_script_history();
+
+    CHECK_FALSE(resume_once(h, 0).success());
+    CHECK(count_containing(h.client.gcode_script_history(),
+                           "AUTO_FEEDING EXTRUDER=0 LOAD=1 PRINTING=1") == 1);
 }
 
 // ============================================================================
@@ -6148,4 +6310,74 @@ TEST_CASE_METHOD(SnapmakerFixture,
     // A frame from before the write landed still reads NONE.
     h.frame(make_feed_status(0, "unload_finish", /*filament_detected=*/true));
     CHECK(h.config_writes().size() == 2);
+}
+
+// ============================================================================
+// A print whose task names no used head: started without the task setup, so
+// the firmware neither refeeds a head on runout nor unloads at the end.
+// SET_PRINT_USED_EXTRUDERS is refused while printing or paused, so the user
+// is told once per print instead.
+// ============================================================================
+
+namespace {
+json used_heads(const std::vector<bool>& used) {
+    json arr = json::array();
+    for (bool b : used) {
+        arr.push_back(b);
+    }
+    return json{{"print_task_config", {{"extruders_used", arr}}}};
+}
+
+struct StickyWarnings {
+    std::vector<std::string> seen;
+    StickyWarnings() {
+        helix::ui::set_test_notification_sticky_warning_hook(
+            [this](const std::string& m) { seen.push_back(m); });
+    }
+    ~StickyWarnings() {
+        helix::ui::set_test_notification_sticky_warning_hook(nullptr);
+    }
+    StickyWarnings(const StickyWarnings&) = delete;
+    StickyWarnings& operator=(const StickyWarnings&) = delete;
+};
+} // namespace
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker tells the user once about a print with no used heads",
+                 "[ams][snapmaker][task_config_notice]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    StickyWarnings warnings;
+    FilamentRecordHarness h("task_notice_slicer");
+    h.frame(used_heads({false, false, false, false}));
+
+    h.print("printing");
+    REQUIRE(warnings.seen.size() == 1);
+    CHECK(warnings.seen[0].find("started outside HelixScreen") != std::string::npos);
+
+    // Status keeps arriving through the print, a pause and its resume.
+    h.frame(used_heads({false, false, false, false}));
+    h.print("paused");
+    h.print("printing");
+    CHECK(warnings.seen.size() == 1);
+
+    // The next print is judged afresh.
+    h.print("complete");
+    h.print("printing");
+    CHECK(warnings.seen.size() == 2);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker says nothing about a print whose task names its heads",
+                 "[ams][snapmaker][task_config_notice]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    StickyWarnings warnings;
+    FilamentRecordHarness h("task_notice_own");
+    h.frame(used_heads({false, true, false, false}));
+    h.print("printing");
+
+    // The firmware clears the flags as the print ends, while print_stats can
+    // still read printing.
+    h.frame(used_heads({false, false, false, false}));
+    CHECK(warnings.seen.empty());
 }

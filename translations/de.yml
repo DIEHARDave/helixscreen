@@ -669,6 +669,7 @@ translations:
   Check the RS-485 cable between printer and CFS: RS-485-Kabel zwischen Drucker und CFS prüfen
   Check the buffer unit on the back of the printer: Puffereinheit an der Rückseite des Druckers prüfen
   Check the chips, then save: Markierungen prüfen, dann speichern
+  Check the filament in {}, then tap Resume to load it again.: 'Prüfen Sie das Filament in {} und tippen Sie dann auf Fortsetzen, um es erneut zu laden.'
   Check the filament path and try again.: Prüfen Sie den Filamentpfad und versuchen
     Sie es erneut.
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
@@ -3848,6 +3849,7 @@ translations:
     Druck benötigt etwa %.0fg, aber die Spule hat noch etwa %.0fg übrig. Trotzdem
     starten?
   This print never reports layer {}.: 'Dieser Druck meldet Schicht {} nie.'
+  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: 'Dieser Druck wurde außerhalb von HelixScreen gestartet, daher weiß der Drucker nicht, welche Werkzeugköpfe er verwendet.'
   This printer cannot calibrate tool offsets automatically: Dieser Drucker kann Werkzeug-Offsets nicht automatisch kalibrieren
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Dieser Drucker füllt seine Gates aus Spoolman. HelixScreen hat seine eigene Kopie gelöscht; entferne die Spule in Spoolman.
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: Dieser Drucker füllt seine Gates aus Spoolman. Ändere Farbe, Material und Spule in Spoolman.
@@ -3964,6 +3966,7 @@ translations:
   Toolhead position and homing, with a plate view and Home All: "Position und Referenzfahrt des Werkzeugkopfs, mit Plattenansicht und Alle referenzieren"
   Toolhead position unknown: Werkzeugkopfposition unbekannt
   Toolheads: Werkzeugköpfe
+  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: 'Werkzeugköpfe werden nach einem Filamentauslauf nicht selbst nachgeladen, und das Filament wird am Druckende nicht entladen.'
   Tools: Werkzeuge
   Tools Used: Verwendete Werkzeuge
   'Tools: ': 'Werkzeuge: '
@@ -4414,6 +4417,7 @@ translations:
   '{} configured items not found': '{} konfigurierte Elemente nicht gefunden'
   '{} critical': '{} kritisch'
   '{} critical hardware issues': '{} kritische Hardwareprobleme'
+  "{} didn't load. Load it before resuming.": '{} wurde nicht geladen. Laden Sie es, bevor Sie fortsetzen.'
   '{} disabled': '{} deaktiviert'
   '{} enabled': '{} aktiviert'
   '{} failed: {}': '{} fehlgeschlagen: {}'

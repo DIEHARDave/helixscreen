@@ -441,6 +441,31 @@ recorded as live-verified (#991) is the `AUTO_FEEDING` command itself - it block
 (`src/printer/ams_backend_snapmaker.cpp#prepare_for_resume`, `:722-724`). The full chain - runout pause ->
 runout dialog -> refeed -> RESUME -> print continues - is **not field-tested**.
 
+**Resume waits for a confirmed load.** `FEED_AUTO` answers OK without feeding when the
+port reads empty under `PRINTING=1`, and raises 525 (`extruder[N]: state: ..., error: ...!`)
+when its own test, `channel_state == load_finish` with `channel_error == ok`, fails at the
+end. The head presence switch reads present for filament that reached the toolhead and
+stopped short of the nozzle, so it vouches for nothing. A load that errors, times out, or
+answers OK with the feeder short of that test (the refeed, a Load from the filament panel,
+or a `*_fail` load state from any source) marks the head's load unconfirmed for the
+current print. While one is marked, `prepare_for_resume` never reaches RESUME: on the head
+it resumes on it retries the refeed, and on any other head it refuses, since loading that
+head would leave it picked up when RESUME runs. The refusal names the head ("Toolhead 2 (T1)
+didn't load. Load it before resuming.") and says to tap Resume to load it again. The mark
+clears when that feeder reaches `load_finish` with no error, when the print leaves
+printing/paused, and on disconnect
+(`src/printer/ams_backend_snapmaker.cpp#mark_load_unconfirmed_locked`).
+
+**A print started without the task setup.** A slicer upload-and-print or a Fluidd start
+arrives as a plain `SDCARD_PRINT_FILE`, so `extruders_used` stays all false: the firmware's
+per-head runout feed (`sm_print_auto_feed`) and the end-of-print unload
+(`SM_PRINT_END_AUTO_UNLOAD_FILAMENT`) both skip every head. `SET_PRINT_USED_EXTRUDERS` and
+`SET_PRINT_TASK_PARAMETERS` are refused while `print_stats.state` is printing or paused
+(`id=531, code=16`), so the backend cannot repair it mid-print. It judges each print once,
+on the first frame that names it printing or paused, and a print whose task names no used
+head raises one sticky warning saying so
+(`src/printer/ams_backend_snapmaker.cpp#judge_task_config_locked`).
+
 Related capability flags: `recovers_filament_on_resume() = true` (Resume re-feeds, so
 the runout dialog presents Resume as primary) and
 `should_suppress_idle_runout_modal() = true` (the U1 drives load/unload itself, so an

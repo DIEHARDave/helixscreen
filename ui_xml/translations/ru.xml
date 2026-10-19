@@ -645,6 +645,7 @@
   <translation tag="Check the RS-485 cable between printer and CFS" ru="Проверьте кабель RS-485 между принтером и CFS"/>
   <translation tag="Check the buffer unit on the back of the printer" ru="Проверьте буферный блок на задней панели принтера"/>
   <translation tag="Check the chips, then save" ru="Проверьте метки и сохраните"/>
+  <translation tag="Check the filament in {}, then tap Resume to load it again." ru="Проверьте филамент в {}, затем нажмите «Продолжить», чтобы загрузить его снова."/>
   <translation tag="Check the filament path and try again." ru="Проверьте путь филамента и попробуйте снова."/>
   <translation tag="Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed" ru="Проверьте путь от слота до хаба на запутывание или трение. Если слот подаёт свободно, возможно, неисправен датчик хаба или подающий двигатель"/>
   <translation tag="Check the provided value and try again" ru="Проверьте указанное значение и повторите попытку"/>
@@ -3523,6 +3524,7 @@
   <translation tag="This print does not report layers, so no layer pause can be scheduled." ru="Эта печать не сообщает слои, поэтому паузу на слое запланировать нельзя."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" ru="Для этой печати нужно около %.0fг, но на катушке осталось около %.0fг. Всё равно начать?"/>
   <translation tag="This print never reports layer {}." ru="Эта печать никогда не сообщает слой {}."/>
+  <translation tag="This print was started outside HelixScreen, so the printer doesn&apos;t know which toolheads it uses." ru="Эта печать запущена не из HelixScreen, поэтому принтер не знает, какие печатающие головки она использует."/>
   <translation tag="This printer cannot calibrate tool offsets automatically" ru="Этот принтер не может калибровать смещения инструментов автоматически"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." ru="Этот принтер берёт данные шлюзов из Spoolman. HelixScreen очистил свою копию; удалите катушку в Spoolman."/>
   <translation tag="This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman." ru="Этот принтер берёт данные шлюзов из Spoolman. Меняйте цвет, материал и катушку в Spoolman."/>
@@ -3615,6 +3617,7 @@
   <translation tag="Toolhead position and homing, with a plate view and Home All" ru="Положение и парковка печатающей головки, с видом стола и кнопкой «Парковка всех осей»"/>
   <translation tag="Toolhead position unknown" ru="Положение печатающей головки неизвестно"/>
   <translation tag="Toolheads" ru="Печатающие головки"/>
+  <translation tag="Toolheads won&apos;t refeed on their own after a runout, and filament won&apos;t unload when the print ends." ru="После окончания филамента головки не будут подавать его сами, а в конце печати филамент не будет выгружен."/>
   <translation tag="Tools" ru="Инструменты"/>
   <translation tag="Tools Used" ru="Использовано инструментов"/>
   <translation tag="Tools: " ru="Инструменты: "/>
@@ -4048,6 +4051,7 @@
   <translation tag="{} critical hardware issues_few" ru="{} критические проблемы с оборудованием"/>
   <translation tag="{} critical hardware issues_many" ru="{} критических проблем с оборудованием"/>
   <translation tag="{} critical hardware issues_one" ru="{} критическая проблема с оборудованием"/>
+  <translation tag="{} didn&apos;t load. Load it before resuming." ru="{}: филамент не загрузился. Загрузите его перед продолжением."/>
   <translation tag="{} disabled" ru="{} выключено"/>
   <translation tag="{} enabled" ru="{} включено"/>
   <translation tag="{} failed: {}" ru="Ошибка {}: {}"/>

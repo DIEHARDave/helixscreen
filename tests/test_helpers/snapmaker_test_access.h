@@ -90,6 +90,11 @@ class SnapmakerTestAccess {
         std::lock_guard<std::mutex> lock(b.mutex_);
         return b.rfid_tracker_.baseline(slot_index);
     }
+    /// What start() sets once the subscription is up; filament ops refuse
+    /// until it is.
+    static void set_running(AmsBackendSnapmaker& b, bool running) {
+        b.running_ = running;
+    }
     static void set_sensor_present(AmsBackendSnapmaker& b, int slot_index, bool present) {
         std::lock_guard<std::mutex> lock(b.mutex_);
         b.sensor_filament_present_[slot_index] = present;

@@ -708,6 +708,7 @@ translations:
   Check the RS-485 cable between printer and CFS: Проверьте кабель RS-485 между принтером и CFS
   Check the buffer unit on the back of the printer: Проверьте буферный блок на задней панели принтера
   Check the chips, then save: Проверьте метки и сохраните
+  Check the filament in {}, then tap Resume to load it again.: 'Проверьте филамент в {}, затем нажмите «Продолжить», чтобы загрузить его снова.'
   Check the filament path and try again.: Проверьте путь филамента и попробуйте снова.
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
   : Проверьте путь от слота до хаба на запутывание или трение. Если слот подаёт свободно, возможно, неисправен датчик хаба или подающий двигатель
@@ -3884,6 +3885,7 @@ translations:
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: Для
     этой печати нужно около %.0fг, но на катушке осталось около %.0fг. Всё равно начать?
   This print never reports layer {}.: 'Эта печать никогда не сообщает слой {}.'
+  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: 'Эта печать запущена не из HelixScreen, поэтому принтер не знает, какие печатающие головки она использует.'
   This printer cannot calibrate tool offsets automatically: Этот принтер не может калибровать смещения инструментов автоматически
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Этот принтер берёт данные шлюзов из Spoolman. HelixScreen очистил свою копию; удалите катушку в Spoolman.
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: Этот принтер берёт данные шлюзов из Spoolman. Меняйте цвет, материал и катушку в Spoolman.
@@ -3998,6 +4000,7 @@ translations:
   Toolhead position and homing, with a plate view and Home All: "Положение и парковка печатающей головки, с видом стола и кнопкой «Парковка всех осей»"
   Toolhead position unknown: Положение печатающей головки неизвестно
   Toolheads: Печатающие головки
+  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: 'После окончания филамента головки не будут подавать его сами, а в конце печати филамент не будет выгружен.'
   Tools: Инструменты
   Tools Used: Использовано инструментов
   'Tools: ': 'Инструменты: '
@@ -4454,6 +4457,7 @@ translations:
     few: '{} критические проблемы с оборудованием'
     many: '{} критических проблем с оборудованием'
     other: '{} критические проблемы с оборудованием'
+  "{} didn't load. Load it before resuming.": '{}: филамент не загрузился. Загрузите его перед продолжением.'
   '{} disabled': '{} выключено'
   '{} enabled': '{} включено'
   '{} failed: {}': 'Ошибка {}: {}'

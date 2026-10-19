@@ -646,6 +646,7 @@ translations:
   Check the RS-485 cable between printer and CFS: Check the RS-485 cable between printer and CFS
   Check the buffer unit on the back of the printer: Check the buffer unit on the back of the printer
   Check the chips, then save: Check the chips, then save
+  Check the filament in {}, then tap Resume to load it again.: Check the filament in {}, then tap Resume to load it again.
   Check the filament path and try again.: Check the filament path and try again.
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
   : Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
@@ -3742,6 +3743,7 @@ translations:
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: This
     print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?
   This print never reports layer {}.: This print never reports layer {}.
+  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.
   This printer cannot calibrate tool offsets automatically: This printer cannot calibrate tool offsets automatically
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.
@@ -3858,6 +3860,7 @@ translations:
   Toolhead position and homing, with a plate view and Home All: Toolhead position and homing, with a plate view and Home All
   Toolhead position unknown: Toolhead position unknown
   Toolheads: Toolheads
+  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.
   Tools: Tools
   Tools Used: Tools Used
   'Tools: ': 'Tools: '
@@ -4300,6 +4303,7 @@ translations:
   '{} configured items not found': '{} configured items not found'
   '{} critical': '{} critical'
   '{} critical hardware issues': '{} critical hardware issues'
+  "{} didn't load. Load it before resuming.": "{} didn't load. Load it before resuming."
   '{} disabled': '{} disabled'
   '{} enabled': '{} enabled'
   '{} failed: {}': '{} failed: {}'

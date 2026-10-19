@@ -616,6 +616,7 @@ translations:
   Check the RS-485 cable between printer and CFS: 请检查打印机与 CFS 之间的 RS-485 线缆
   Check the buffer unit on the back of the printer: 请检查打印机背面的缓冲单元
   Check the chips, then save: 检查标签后保存
+  Check the filament in {}, then tap Resume to load it again.: '请检查{}中的耗材，然后点按恢复重新装载。'
   Check the filament path and try again.: 检查耗材路径并重试。
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
   : 请检查从槽位到集线器的通路是否缠绕或阻力过大。若槽位送料顺畅，可能是集线器传感器或送料电机故障
@@ -3606,6 +3607,7 @@ translations:
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: 本次打印需要约
     %.0fg，但料盘仅剩约 %.0fg。仍要开始吗？
   This print never reports layer {}.: '此打印从不报告第 {} 层。'
+  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: '此打印是在 HelixScreen 之外启动的，因此打印机不知道它使用哪些工具头。'
   This printer cannot calibrate tool offsets automatically: 此打印机无法自动校准工具偏移
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: 此打印机的通道信息来自 Spoolman。HelixScreen 已清除本地副本；请在 Spoolman 中移除该线轴。
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: 此打印机的通道信息来自 Spoolman。请在 Spoolman 中更改颜色、材料和线轴。
@@ -3711,6 +3713,7 @@ translations:
   Toolhead position and homing, with a plate view and Home All: "工具头位置与归位，含热床视图和全部归位"
   Toolhead position unknown: 工具头位置未知
   Toolheads: 工具头
+  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: '耗材用尽后工具头不会自动重新送料，打印结束时也不会卸载耗材。'
   Tools: 工具
   Tools Used: 已使用工具
   'Tools: ': '工具: '
@@ -4140,6 +4143,7 @@ translations:
   '{} configured items not found': 未找到 {} 个已配置的项目
   '{} critical': '{} 个严重'
   '{} critical hardware issues': '{} 个关键硬件问题'
+  "{} didn't load. Load it before resuming.": '{}未装载。请在恢复前装载。'
   '{} disabled': '已停用{}'
   '{} enabled': '已启用{}'
   '{} failed: {}': '{} 失败：{}'

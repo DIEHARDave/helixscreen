@@ -606,6 +606,7 @@
   <translation tag="Check the RS-485 cable between printer and CFS" ja="プリンターと CFS 間の RS-485 ケーブルを確認してください"/>
   <translation tag="Check the buffer unit on the back of the printer" ja="プリンター背面のバッファーユニットを確認してください"/>
   <translation tag="Check the chips, then save" ja="チップを確認して保存"/>
+  <translation tag="Check the filament in {}, then tap Resume to load it again." ja="{}のフィラメントを確認し、再開をタップしてもう一度ロードしてください。"/>
   <translation tag="Check the filament path and try again." ja="フィラメント経路を確認して、もう一度お試しください。"/>
   <translation tag="Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed" ja="スロットからハブまでの経路に絡まりや抵抗がないか確認してください。スロットが問題なく送り出せる場合は、ハブセンサーまたは送り出しモーターの故障が考えられます"/>
   <translation tag="Check the provided value and try again" ja="入力した値を確認してもう一度お試しください"/>
@@ -3463,6 +3464,7 @@
   <translation tag="This print does not report layers, so no layer pause can be scheduled." ja="この印刷はレイヤーを報告しないため、レイヤーでの一時停止は予約できません。"/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" ja="この印刷には約 %.0fg 必要ですが、スプールの残量は約 %.0fg です。それでも開始しますか？"/>
   <translation tag="This print never reports layer {}." ja="この印刷はレイヤー {} を報告しません。"/>
+  <translation tag="This print was started outside HelixScreen, so the printer doesn&apos;t know which toolheads it uses." ja="この印刷はHelixScreen以外から開始されたため、プリンターはどのツールヘッドを使うかを知りません。"/>
   <translation tag="This printer cannot calibrate tool offsets automatically" ja="このプリンターはツールオフセットを自動でキャリブレートできません"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." ja="このプリンターのゲートは Spoolman から設定されます。HelixScreen 側のコピーはクリアしました。Spoolman でスプールを削除してください。"/>
   <translation tag="This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman." ja="このプリンターのゲートは Spoolman から設定されます。色・素材・スプールの変更は Spoolman で行ってください。"/>
@@ -3555,6 +3557,7 @@
   <translation tag="Toolhead position and homing, with a plate view and Home All" ja="ツールヘッドの位置とホーミング。プレート表示と全軸ホーミング付き"/>
   <translation tag="Toolhead position unknown" ja="ツールヘッドの位置が不明です"/>
   <translation tag="Toolheads" ja="ツールヘッド"/>
+  <translation tag="Toolheads won&apos;t refeed on their own after a runout, and filament won&apos;t unload when the print ends." ja="フィラメント切れの後にツールヘッドは自動で再供給されず、印刷終了時にフィラメントは排出されません。"/>
   <translation tag="Tools" ja="ツール"/>
   <translation tag="Tools Used" ja="使用したツール"/>
   <translation tag="Tools: " ja="ツール: "/>
@@ -3979,6 +3982,7 @@
   <translation tag="{} could not be checked from Home - review it and tap Print" ja="{} をホームから確認できませんでした – 内容を確認して印刷をタップしてください"/>
   <translation tag="{} critical" ja="重大 {} 件"/>
   <translation tag="{} critical hardware issues" ja="{} 個の重要なハードウェアの問題"/>
+  <translation tag="{} didn&apos;t load. Load it before resuming." ja="{}がロードされませんでした。再開する前にロードしてください。"/>
   <translation tag="{} disabled" ja="{} を無効にしました"/>
   <translation tag="{} enabled" ja="{} を有効にしました"/>
   <translation tag="{} failed: {}" ja="{} に失敗しました: {}"/>

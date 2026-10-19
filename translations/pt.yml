@@ -663,6 +663,7 @@ translations:
   Check the RS-485 cable between printer and CFS: Verifique o cabo RS-485 entre a impressora e o CFS
   Check the buffer unit on the back of the printer: Verifique a unidade de buffer na parte de trás da impressora
   Check the chips, then save: Confira as etiquetas e salve
+  Check the filament in {}, then tap Resume to load it again.: 'Verifique o filamento em {} e toque em Retomar para carregá-lo novamente.'
   Check the filament path and try again.: Verifique o caminho do filamento e tente
     novamente.
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
@@ -3846,6 +3847,7 @@ translations:
     impressão precisa de cerca de %.0fg, mas o carretel tem cerca de %.0fg restantes.
     Iniciar mesmo assim?
   This print never reports layer {}.: 'Esta impressão nunca informa a camada {}.'
+  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: 'Esta impressão foi iniciada fora do HelixScreen, então a impressora não sabe quais cabeçotes ela usa.'
   This printer cannot calibrate tool offsets automatically: Esta impressora não consegue calibrar os offsets de ferramenta automaticamente
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Esta impressora preenche seus gates a partir do Spoolman. O HelixScreen limpou a própria cópia; remova a bobina no Spoolman.
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: Esta impressora preenche seus gates a partir do Spoolman. Faça alterações de cor, material e bobina no Spoolman.
@@ -3962,6 +3964,7 @@ translations:
   Toolhead position and homing, with a plate view and Home All: "Posição e posicionamento do cabeçote, com vista da mesa e Posicionar tudo"
   Toolhead position unknown: Posição do cabeçote desconhecida
   Toolheads: Cabeçotes
+  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: 'Os cabeçotes não serão recarregados sozinhos após o fim de filamento, e o filamento não será descarregado ao final da impressão.'
   Tools: Ferramentas
   Tools Used: Ferramentas Usadas
   'Tools: ': 'Ferramentas: '
@@ -4409,6 +4412,7 @@ translations:
   '{} configured items not found': '{} itens configurados não encontrados'
   '{} critical': '{} crítico(s)'
   '{} critical hardware issues': '{} problemas críticos de hardware'
+  "{} didn't load. Load it before resuming.": '{} não carregou. Carregue-o antes de retomar.'
   '{} disabled': '{} desabilitado'
   '{} enabled': '{} habilitado'
   '{} failed: {}': '{} falhou: {}'

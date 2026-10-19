@@ -331,9 +331,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     AmsError cancel() override;
 
     // Resume preparation. A Terminal pause answers RESUME_REQUIRES_RESTART at
-    // once. After a runout (sensor_filament_present_ false for the active
-    // tool) AUTO_FEEDING refeeds it before the caller dispatches RESUME.
-    // Otherwise every used head whose print_task_config record names no
+    // once. A head whose last load is unconfirmed holds RESUME: the head
+    // resumed on retries its load, any other head is refused. After a runout
+    // (sensor_filament_present_ false for the active tool) AUTO_FEEDING refeeds it before the
+    // caller dispatches RESUME. Otherwise every used head whose print_task_config record names no
     // filament type while the slot knows its material gets that record
     // written (the firmware refuses RESUME without it). on_ready is always
     // called on the main thread.
@@ -501,8 +502,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// an error raises kEventError. Either one ends an action the UI is holding
     /// for a feed the firmware declined without moving channel_state. A
     /// timeout raises nothing: the feed may still be running, and
-    /// channel_state reports its end.
-    AmsError dispatch_feed(std::string gcode, const char* complete_event);
+    /// channel_state reports its end. An error or a timeout on a load marks
+    /// @p load_head's load unconfirmed; -1 names no head.
+    AmsError dispatch_feed(std::string gcode, const char* complete_event, int load_head = -1);
 
     /// dispatch_feed() with the answer handed to the caller: @p on_ok on OK,
     /// @p on_failed on an error or a timeout. Both run on the main thread.
@@ -658,6 +660,8 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         std::vector<std::pair<int, std::string>> record_restores;
         /// Held record writes this frame released.
         std::vector<std::pair<int, PendingRecordWrite>> record_flushes;
+        /// The running print's task names no used head: the user is told once.
+        bool task_config_unset = false;
     };
 
     void dispatch_effects(const FrameEffects& fx);
@@ -923,6 +927,18 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// frame carries it. Under mutex_.
     std::optional<std::string> print_state_;
 
+    /// Per head: a load during the current print ended without the feeder
+    /// reporting load_finish with channel_error ok. The head presence switch
+    /// reads "present" for filament that reached the toolhead and stopped
+    /// short of the nozzle, so it cannot vouch for a load; until the feeder
+    /// does, Resume retries the load instead of sending RESUME. Cleared by a
+    /// confirmed load, the print ending, and a disconnect. Under mutex_.
+    std::array<bool, kNumTools> load_unconfirmed_{};
+
+    /// The current print has been judged for a task configured with no used
+    /// heads: once per print, reset when the print ends. Under mutex_.
+    bool task_config_judged_ = false;
+
     /// machine_state_manager.main_state from this backend's own status frames;
     /// unset until a frame carries it. Under mutex_.
     std::optional<int> main_state_;
@@ -1033,9 +1049,43 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     void send_resume_repairs_then(std::vector<std::pair<int, std::string>> repairs,
                                   std::function<void()> next);
 
-    /// prepare_for_resume after a runout on @p slot: AUTO_FEEDING refeeds it
-    /// before the caller dispatches RESUME.
+    /// prepare_for_resume after a runout on @p slot, or with @p slot's last
+    /// load unconfirmed: AUTO_FEEDING refeeds it, and on_ready reports success
+    /// only when the feeder then reads load_finish with channel_error ok.
+    /// FEED_AUTO answers OK without feeding when the port reads empty under
+    /// PRINTING=1, so the command's own answer proves nothing.
     void run_runout_refeed(int slot, ResumeReadyCallback on_ready);
+
+    /// The feeder's own word that @p head is loaded to the nozzle: the success
+    /// test FEED_AUTO applies before it raises 525.
+    [[nodiscard]] static bool load_confirmed(const ChannelSnapshot& snap) {
+        return snap.state == "load_finish" && snap.error == "ok";
+    }
+
+    /// Record that a load on @p head ended unconfirmed. Only during a print
+    /// (printing or paused); outside one there is no Resume to hold.
+    /// Caller holds mutex_.
+    void mark_load_unconfirmed_locked(int head, std::string_view why);
+
+    /// The head whose unconfirmed load holds Resume: @p preferred when it is
+    /// one, else the lowest, else -1. Caller holds mutex_.
+    [[nodiscard]] int unconfirmed_load_head_locked(int preferred) const;
+
+    /// Resume refused because @p head's last load is unconfirmed.
+    [[nodiscard]] AmsError unconfirmed_load_error(int head, std::string technical) const;
+
+    /// print_stats.state names a print in progress (printing or paused).
+    [[nodiscard]] bool print_in_progress_locked() const;
+
+    /// Apply this frame's print_stats.state; a print that ends forgets the
+    /// unconfirmed loads and the task judgement. Caller holds mutex_.
+    void apply_print_state_locked(const std::string& state);
+
+    /// Once per print: a print running with every extruders_used flag false
+    /// was started without the task setup, so the firmware neither feeds a
+    /// head on runout nor unloads at the end. Returns true when the user
+    /// should be told. Caller holds mutex_.
+    [[nodiscard]] bool judge_task_config_locked();
 
     /// On a channel whose firmware states no identity at all, drop the brand
     /// and product line the lane only remembers. Caller holds mutex_.

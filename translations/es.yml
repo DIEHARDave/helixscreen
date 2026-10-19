@@ -664,6 +664,7 @@ translations:
   Check the RS-485 cable between printer and CFS: Compruebe el cable RS-485 entre la impresora y el CFS
   Check the buffer unit on the back of the printer: Compruebe la unidad de búfer en la parte trasera de la impresora
   Check the chips, then save: Revise las etiquetas y guarde
+  Check the filament in {}, then tap Resume to load it again.: 'Revise el filamento en {} y luego toque Reanudar para cargarlo de nuevo.'
   Check the filament path and try again.: Verifique la ruta del filamento e intente
     de nuevo.
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
@@ -3842,6 +3843,7 @@ translations:
     impresión necesita aproximadamente %.0fg pero la bobina tiene aproximadamente
     %.0fg restantes. ¿Iniciar de todos modos?
   This print never reports layer {}.: 'Esta impresión nunca informa la capa {}.'
+  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: 'Esta impresión se inició fuera de HelixScreen, así que la impresora no sabe qué cabezales usa.'
   This printer cannot calibrate tool offsets automatically: Esta impresora no puede calibrar los offsets de herramienta automáticamente
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Esta impresora llena sus gates desde Spoolman. HelixScreen borró su propia copia; quita la bobina en Spoolman.
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: Esta impresora llena sus gates desde Spoolman. Haz los cambios de color, material y bobina en Spoolman.
@@ -3958,6 +3960,7 @@ translations:
   Toolhead position and homing, with a plate view and Home All: "Posición y posicionamiento del cabezal, con vista de la placa y Posicionar todo"
   Toolhead position unknown: Posición del cabezal desconocida
   Toolheads: Cabezales
+  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: 'Los cabezales no se recargarán solos tras un agotamiento de filamento, y el filamento no se descargará al terminar la impresión.'
   Tools: Herramientas
   Tools Used: Herramientas usadas
   'Tools: ': 'Herramientas: '
@@ -4405,6 +4408,7 @@ translations:
   '{} configured items not found': '{} elementos configurados no encontrados'
   '{} critical': '{} crítico(s)'
   '{} critical hardware issues': '{} problemas de hardware crítico'
+  "{} didn't load. Load it before resuming.": '{} no se cargó. Cárguelo antes de reanudar.'
   '{} disabled': '{} desactivado'
   '{} enabled': '{} activado'
   '{} failed: {}': '{} falló: {}'
