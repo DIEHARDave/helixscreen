@@ -286,3 +286,22 @@ TEST_CASE_METHOD(PluginUninstallFixture, "the install row refuses while a job ho
     CHECK(restarts == 0);
     CHECK(warned_about_printing());
 }
+
+TEST_CASE_METHOD(PluginUninstallFixture,
+                 "a job that starts while the install modal is open refuses the install",
+                 "[advanced][plugin_installer]") {
+    get_printer_state().set_helix_plugin_installed(false);
+    UpdateQueue::instance().drain();
+    helix::test::PluginScriptSandbox scripts(AdvancedPanelTestAccess::plugin_installer(panel));
+    scripts.write_script("exit 0");
+    AdvancedPanelTestAccess::tap_install_row(panel);
+    process_lvgl(50);
+    REQUIRE(ModalStack::instance().top_dialog() != nullptr);
+    start_print();
+
+    answer_modal("btn_install");
+
+    CHECK(scripts.script_args().empty());
+    CHECK(restarts == 0);
+    CHECK(warned_about_printing());
+}

@@ -13,7 +13,8 @@
 
 namespace helix {
 class IMoonrakerAPI;
-}
+class PrinterState;
+} // namespace helix
 
 namespace helix::ui {
 
@@ -27,6 +28,16 @@ namespace helix::ui {
  * @return true when a restart was requested; false with no API to ask
  */
 bool request_moonraker_restart_for_plugin(IMoonrakerAPI* api);
+
+/**
+ * @brief Refuse a plugin install or uninstall while a job holds the machine
+ *
+ * Both restart Moonraker, and the install also blocks this thread while its
+ * script runs. Shows the warning toast when it refuses.
+ *
+ * @return true when refused
+ */
+bool refuse_plugin_change_during_job(PrinterState& printer_state);
 
 } // namespace helix::ui
 
@@ -83,6 +94,11 @@ class PluginInstallModal : public Modal {
      */
     void set_moonraker_restarter(MoonrakerRestarter restarter);
 
+    /// Asked when Install is tapped, since a job can start while the modal is
+    /// open; true refuses (it reports why itself). Unset never refuses.
+    using JobGate = std::function<bool()>;
+    void set_job_gate(JobGate gate);
+
   protected:
     void on_show() override;
     void on_hide() override;
@@ -95,6 +111,7 @@ class PluginInstallModal : public Modal {
   private:
     helix::HelixPluginInstaller* installer_ = nullptr;
     MoonrakerRestarter moonraker_restarter_;
+    JobGate job_gate_;
 
     // Destruction guard - prevents async callbacks from accessing destroyed object
     std::atomic<bool> is_destroying_{false};

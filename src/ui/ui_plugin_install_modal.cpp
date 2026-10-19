@@ -3,11 +3,14 @@
 
 #include "ui_plugin_install_modal.h"
 
+#include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "i_moonraker_api.h"
+#include "print_lifecycle_state.h"
+#include "printer_state.h"
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -27,6 +30,18 @@ void PluginInstallModal::set_installer(helix::HelixPluginInstaller* installer) {
 
 void PluginInstallModal::set_moonraker_restarter(MoonrakerRestarter restarter) {
     moonraker_restarter_ = std::move(restarter);
+}
+
+void PluginInstallModal::set_job_gate(JobGate gate) {
+    job_gate_ = std::move(gate);
+}
+
+bool helix::ui::refuse_plugin_change_during_job(helix::PrinterState& printer_state) {
+    if (!job_holds_machine(printer_state.print_state().get_print_lifecycle())) {
+        return false;
+    }
+    NOTIFY_WARNING(lv_tr("Cannot change the HelixPrint plugin while printing"));
+    return true;
 }
 
 bool helix::ui::request_moonraker_restart_for_plugin(helix::IMoonrakerAPI* api) {
@@ -248,6 +263,11 @@ void PluginInstallModal::check_dont_ask_preference() {
 void PluginInstallModal::on_install_clicked() {
     if (!installer_) {
         spdlog::error("[Plugin Install] No installer set");
+        return;
+    }
+
+    if (job_gate_ && job_gate_()) {
+        spdlog::info("[Plugin Install] Install refused: a job holds the machine");
         return;
     }
 

@@ -126,10 +126,6 @@ class AdvancedPanel : public PanelBase {
     /// host-side Preparing block — everything a Klipper restart would kill.
     bool job_holds_machine_now() const;
 
-    /// The plugin rows restart Moonraker, so they refuse, with a warning
-    /// toast, while a job holds the machine. Returns true when refused.
-    bool refuse_plugin_change_during_job() const;
-
     /// The confirmed half of the uninstall row: runs the uninstaller and
     /// reports the outcome. Blocks this thread while the script runs.
     void run_helix_plugin_uninstall();

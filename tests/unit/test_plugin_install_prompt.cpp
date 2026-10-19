@@ -27,12 +27,14 @@
 #include "../test_helpers/print_select_panel_test_access.h"
 #include "../test_helpers/print_state_test_drivers.h"
 #include "../test_helpers/scoped_env.h"
+#include "../ui_test_utils.h"
 #include "config.h"
 #include "discovery_steps.h"
 #include "observer_factory.h"
 #include "printer_state.h"
 
 #include <string>
+#include <vector>
 
 #include "../catch_amalgamated.hpp"
 
@@ -331,4 +333,24 @@ TEST_CASE_METHOD(PromptFixture, "a deferred prompt stays closed when the plugin 
     drain();
 
     CHECK(prompt() == nullptr);
+}
+
+TEST_CASE_METHOD(PromptFixture, "a job that starts while the prompt is open refuses the install",
+                 "[plugin_installer][print_select]") {
+    std::vector<std::string> warnings;
+    helix::ui::set_test_notification_warning_hook(
+        [&warnings](const std::string& message) { warnings.push_back(message); });
+    scripts.write_script("exit 0");
+    set_plugin_installed(false);
+    REQUIRE(prompt() != nullptr);
+    const int restarts_before = moonraker_restarts();
+    test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
+    drain();
+
+    click("btn_install");
+
+    CHECK(scripts.script_args().empty());
+    CHECK(moonraker_restarts() == restarts_before);
+    REQUIRE(warnings.size() == 1);
+    CHECK(warnings[0].find("while printing") != std::string::npos);
 }

@@ -4,7 +4,6 @@
 #include "ui_panel_advanced.h"
 
 #include "ui_callback_helpers.h"
-#include "ui_error_reporting.h"
 #include "ui_modal.h"
 #if !defined(HELIX_PLATFORM_ESP32)
 #include "ui_overlay_pa_tuning.h"
@@ -510,18 +509,10 @@ void AdvancedPanel::on_klippy_state_for_skips(int state) {
 // HELIXPRINT PLUGIN HANDLERS
 // ============================================================================
 
-bool AdvancedPanel::refuse_plugin_change_during_job() const {
-    if (!job_holds_machine_now()) {
-        return false;
-    }
-    NOTIFY_WARNING(lv_tr("Cannot change the HelixPrint plugin while printing"));
-    return true;
-}
-
 void AdvancedPanel::handle_helix_plugin_install_clicked() {
     spdlog::debug("[{}] HelixPrint Plugin Install clicked", get_name());
 
-    if (refuse_plugin_change_during_job()) {
+    if (helix::ui::refuse_plugin_change_during_job(printer_state_)) {
         return;
     }
 
@@ -541,6 +532,8 @@ void AdvancedPanel::handle_helix_plugin_install_clicked() {
     plugin_install_modal_.set_installer(&plugin_installer_);
     plugin_install_modal_.set_moonraker_restarter(
         [this]() { return restart_moonraker_for_plugin(); });
+    plugin_install_modal_.set_job_gate(
+        [this]() { return helix::ui::refuse_plugin_change_during_job(printer_state_); });
     plugin_install_modal_.show(lv_screen_active());
 }
 
@@ -555,7 +548,7 @@ bool AdvancedPanel::restart_moonraker_for_plugin() {
 void AdvancedPanel::handle_helix_plugin_uninstall_clicked() {
     spdlog::debug("[{}] HelixPrint Plugin Uninstall clicked", get_name());
 
-    if (refuse_plugin_change_during_job()) {
+    if (helix::ui::refuse_plugin_change_during_job(printer_state_)) {
         return;
     }
 
@@ -573,7 +566,7 @@ void AdvancedPanel::run_helix_plugin_uninstall() {
     using UninstallOutcome = helix::UninstallOutcome;
 
     // A job can start while the confirmation is open.
-    if (refuse_plugin_change_during_job()) {
+    if (helix::ui::refuse_plugin_change_during_job(printer_state_)) {
         return;
     }
 

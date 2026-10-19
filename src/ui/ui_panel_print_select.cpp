@@ -3530,6 +3530,8 @@ void PrintSelectPanel::show_plugin_install_modal() {
     plugin_install_modal_.set_installer(&plugin_installer_);
     plugin_install_modal_.set_moonraker_restarter(
         [this]() { return helix::ui::request_moonraker_restart_for_plugin(api_); });
+    plugin_install_modal_.set_job_gate(
+        [this]() { return helix::ui::refuse_plugin_change_during_job(printer_state_); });
     plugin_install_modal_.show(lv_screen_active());
 }
 
