@@ -59,9 +59,9 @@ TEST_CASE_METHOD(LVGLUITestFixture, "ams dispatch: claims every backend-only act
     // These five must be handled centrally. If any one of them stops being
     // claimed here, the Overview panel silently swallows it again — which is
     // exactly the #1258 failure mode.
-    const MenuAction shared[] = {MenuAction::EJECT,       MenuAction::RECOVER_POSITION,
-                                 MenuAction::SELECT_GATE, MenuAction::CHECK_GATE,
-                                 MenuAction::PRELOAD,     MenuAction::CLEAR_SPOOL};
+    const MenuAction shared[] = {MenuAction::EJECT, MenuAction::RECOVER_POSITION,
+                                 MenuAction::CHECK_GATE, MenuAction::PRELOAD,
+                                 MenuAction::CLEAR_SPOOL};
 
     for (MenuAction action : shared) {
         INFO("action index = " << static_cast<int>(action));

@@ -401,8 +401,9 @@ class ContextMenu {
      *
      * Stacked column groups are the default. If the stacked card would not fit the
      * backdrop (less a margin top and bottom), the group container flips to a row so
-     * the groups sit side by side; if even that overflows, the card is capped and
-     * made scrollable.
+     * the groups sit side by side, wrapping the groups that do not fit the width
+     * onto a second line (decide_column_flow()); if even that overflows, the card is
+     * capped and made scrollable.
      */
     static void fit_card_to_screen(lv_obj_t* menu_card);
 
@@ -421,6 +422,29 @@ class ContextMenu {
     void position_card(lv_obj_t* menu_card);
 
   public:
+    /// How a card's column groups flow.
+    enum class ColumnFlow {
+        Stacked, ///< one list, top to bottom
+        Row,     ///< side by side
+        RowWrap, ///< side by side, the groups that do not fit wrapping to a second line
+    };
+
+    /**
+     * @brief The flow fit_card_to_screen() gives a card's column groups
+     *
+     * Stacked while the stacked card fits @p avail_h; else side by side while the
+     * row of groups fits @p avail_w; else side by side and wrapping, so a third
+     * group on a narrow portrait screen goes under the first two rather than off
+     * the edge.
+     *
+     * @param stacked_h The card's height with its groups stacked
+     * @param row_w     The card's width with its groups side by side
+     * @param avail_w   The backdrop's width, less the margin each side
+     * @param avail_h   The backdrop's height, less the margin top and bottom
+     */
+    static ColumnFlow decide_column_flow(int32_t stacked_h, int32_t row_w, int32_t avail_w,
+                                         int32_t avail_h);
+
     /**
      * @brief Card width for @p policy, factored out so it can be tested
      *

@@ -935,6 +935,7 @@ translations:
   Couldn't save the material name: 'Impossible d''enregistrer le nom du matériau'
   Couldn't save the printer's gate map: Impossible d'enregistrer la table des gates de l'imprimante
   Couldn't save to Spoolman. Nothing changed on this printer.: Impossible d'enregistrer dans Spoolman. Rien n'a été modifié sur cette imprimante.
+  Couldn't set the backup: Impossible de définir le secours
   Cover open: Capot ouvert
   Crash Report: Rapport de plantage
   Crash report sent — thank you!: Rapport de crash envoyé — merci !

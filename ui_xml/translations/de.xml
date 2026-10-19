@@ -830,6 +830,7 @@
   <translation tag="Couldn&apos;t save the material name" de="Materialname konnte nicht gespeichert werden"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" de="Gate-Zuordnung des Druckers konnte nicht gespeichert werden"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." de="Speichern in Spoolman fehlgeschlagen. Auf diesem Drucker wurde nichts geändert."/>
+  <translation tag="Couldn&apos;t set the backup" de="Ersatz konnte nicht festgelegt werden"/>
   <translation tag="Cover open" de="Abdeckung offen"/>
   <translation tag="Crash Report" de="Absturzbericht"/>
   <translation tag="Crash report sent — thank you!" de="Absturzbericht gesendet — vielen Dank!"/>

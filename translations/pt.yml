@@ -930,6 +930,7 @@ translations:
   Couldn't save the material name: 'Não foi possível salvar o nome do material'
   Couldn't save the printer's gate map: Não foi possível salvar o mapa de gates da impressora
   Couldn't save to Spoolman. Nothing changed on this printer.: Não foi possível salvar no Spoolman. Nada foi alterado nesta impressora.
+  Couldn't set the backup: Não foi possível definir a reserva
   Cover open: Tampa aberta
   Crash Report: Relatório de Falha
   Crash report sent — thank you!: Relatório de erro enviado — obrigado!

@@ -11,16 +11,13 @@
 #include "ui_error_reporting.h"
 #include "ui_overlay_qr_scanner.h"
 #include "ui_plugin_menu_rows.h"
-#include "ui_toast_manager.h"
 
 #include "ams_backend.h"
 #include "ams_bypass_policy.h"
-#include "ams_remap.h"
 #include "ams_state.h"
 #include "ams_types.h"
 #include "app_globals.h"
 #include "display_numbering.h"
-#include "filament_database.h"
 #include "filament_op_execute.h"
 #include "filament_op_slot_resolver.h"
 #include "filament_variants.h"
@@ -31,10 +28,8 @@
 #include "spoolman_types.h"
 #include "ui/ui_widget_helpers.h"
 
-#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
 #include <optional>
 
 namespace helix::ui {
@@ -61,9 +56,6 @@ HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_load_hint_visible_subject_;
 HELIX_PSRAM_BSS char AmsContextMenu::slot_load_hint_buf_[192];
 HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_mount_subject_;
 HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_park_subject_;
-HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_backup_label_subject_;
-HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_tool_row_visible_subject_;
-HELIX_PSRAM_BSS char AmsContextMenu::slot_backup_label_buf_[64];
 
 // ============================================================================
 // Construction / Destruction
@@ -92,9 +84,6 @@ void AmsContextMenu::init_subjects() {
                            sizeof(slot_load_hint_buf_), "");
     lv_subject_init_int(&slot_mount_subject_, 0);
     lv_subject_init_int(&slot_park_subject_, 0);
-    lv_subject_init_string(&slot_backup_label_subject_, slot_backup_label_buf_, nullptr,
-                           sizeof(slot_backup_label_buf_), "");
-    lv_subject_init_int(&slot_tool_row_visible_subject_, 0);
 
     lv_xml_register_subject(nullptr, "ams_slot_is_loaded", &slot_is_loaded_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_can_load", &slot_can_load_subject_);
@@ -115,8 +104,6 @@ void AmsContextMenu::init_subjects() {
                             &slot_load_hint_visible_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_mount", &slot_mount_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_park", &slot_park_subject_);
-    lv_xml_register_subject(nullptr, "ams_slot_backup_label", &slot_backup_label_subject_);
-    lv_xml_register_subject(nullptr, "ams_slot_tool_row_visible", &slot_tool_row_visible_subject_);
 
     subjects_initialized_ = true;
 }
@@ -136,17 +123,12 @@ AmsContextMenu::~AmsContextMenu() {
 
 AmsContextMenu::AmsContextMenu(AmsContextMenu&& other) noexcept
     : ContextMenu(std::move(other)), action_callback_(std::move(other.action_callback_)),
-      backend_(other.backend_), total_slots_(other.total_slots_), bays_(std::move(other.bays_)),
-      tool_dropdown_(other.tool_dropdown_), backup_dropdown_(other.backup_dropdown_),
-      pending_is_loaded_(other.pending_is_loaded_) {
+      backend_(other.backend_), pending_is_loaded_(other.pending_is_loaded_) {
     // Nothing to transfer for the subjects: they are static and shared. Copying
     // the lv_subject_t values here was never sound anyway — observers hold the
     // address they were registered against, so a by-value move left every one of
     // them pointing at the moved-from object.
     other.backend_ = nullptr;
-    other.total_slots_ = 0;
-    other.tool_dropdown_ = nullptr;
-    other.backup_dropdown_ = nullptr;
 }
 
 AmsContextMenu& AmsContextMenu::operator=(AmsContextMenu&& other) noexcept {
@@ -156,18 +138,11 @@ AmsContextMenu& AmsContextMenu::operator=(AmsContextMenu&& other) noexcept {
 
         action_callback_ = std::move(other.action_callback_);
         backend_ = other.backend_;
-        total_slots_ = other.total_slots_;
-        bays_ = std::move(other.bays_);
-        tool_dropdown_ = other.tool_dropdown_;
-        backup_dropdown_ = other.backup_dropdown_;
         pending_is_loaded_ = other.pending_is_loaded_;
 
         // Subjects are static and shared — nothing to transfer. See the move ctor.
 
         other.backend_ = nullptr;
-        other.total_slots_ = 0;
-        other.tool_dropdown_ = nullptr;
-        other.backup_dropdown_ = nullptr;
     }
     return *this;
 }
@@ -190,16 +165,6 @@ bool AmsContextMenu::show_near_widget(lv_obj_t* parent, int slot_index, lv_obj_t
     pending_is_loaded_ = is_loaded;
     external_spool_mode_ = false;
 
-    // Get total slots from backend
-    bays_.clear();
-    if (backend_) {
-        const AmsSystemInfo info = backend_->get_system_info();
-        total_slots_ = info.total_slots;
-        bays_ = info.present_slots();
-    } else {
-        total_slots_ = 0;
-    }
-
     // Base class handles: XML creation, on_created callback, positioning, and
     // claiming the active-menu slot the static callbacks resolve through.
     bool result = ContextMenu::show_near_widget(parent, slot_index, near_widget);
@@ -216,8 +181,6 @@ bool AmsContextMenu::show_for_external_spool(lv_obj_t* parent, lv_obj_t* anchor_
     // Configure for external spool mode (no backend operations)
     backend_ = nullptr;
     pending_is_loaded_ = false;
-    total_slots_ = 0;
-    bays_.clear();
     external_spool_mode_ = true;
     external_offer_toggle_ = offer_toggle;
 
@@ -243,10 +206,10 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
     // has no gate to preload.
     lv_subject_set_int(&slot_preload_subject_, 0);
 
-    // External spool mode: the lane dropdowns do not apply, but Load and Unload
-    // do — kExternalSpoolSlot is a target plan_load()/plan_unload() both
-    // resolve, and this menu is where a user looking at the bypass spool goes
-    // for them (prestonbrown/helixscreen#1486).
+    // External spool mode: Load and Unload apply — kExternalSpoolSlot is a
+    // target plan_load()/plan_unload() both resolve, and this menu is where a
+    // user looking at the bypass spool goes for them
+    // (prestonbrown/helixscreen#1486).
     if (external_spool_mode_) {
         // backend_ is deliberately null in this mode, so the gating terms come
         // off the live backend instead. Same predicate as every other surface:
@@ -353,7 +316,6 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
 #endif
         }
 
-        // No dropdowns for external spool
         return;
     }
 
@@ -459,18 +421,6 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
                       ops.presence ? (*ops.presence ? "yes" : "no") : "unknown", print_blocks_op);
     }
 
-    // Show Select Gate button if backend supports it (e.g. Happy Hare)
-    if (backend_ && backend_->supports_gate_select()) {
-        lv_obj_t* btn_gate_select =
-            helix::ui::find_required(menu_obj, "btn_gate_select", "AmsContextMenu");
-        if (btn_gate_select) {
-            lv_obj_remove_flag(btn_gate_select, LV_OBJ_FLAG_HIDDEN);
-            if (system_busy) {
-                lv_obj_add_state(btn_gate_select, LV_STATE_DISABLED);
-            }
-        }
-    }
-
     // Show Check Gate button if backend supports it (e.g. Happy Hare)
     if (backend_ && backend_->supports_gate_check()) {
         lv_obj_t* btn_gate_check =
@@ -544,9 +494,6 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
 #endif
     }
 
-    // Configure dropdowns based on backend capabilities
-    configure_dropdowns();
-
     append_slot_plugin_rows(menu_obj, slot_index);
 }
 
@@ -619,11 +566,6 @@ void AmsContextMenu::handle_purge() {
 void AmsContextMenu::handle_bypass_toggle() {
     spdlog::info("[AmsContextMenu] Bypass toggle requested");
     dispatch_ams_action(MenuAction::TOGGLE_BYPASS);
-}
-
-void AmsContextMenu::handle_gate_select() {
-    spdlog::info("[AmsContextMenu] Select gate requested for slot {}", get_item_index());
-    dispatch_ams_action(MenuAction::SELECT_GATE);
 }
 
 void AmsContextMenu::handle_gate_check() {
@@ -814,7 +756,6 @@ void AmsContextMenu::register_callbacks() {
     register_xml_callbacks({
         {"ams_context_load_cb", on_load_cb},
         {"ams_context_unload_cb", on_unload_cb},
-        {"ams_context_gate_select_cb", on_gate_select_cb},
         {"ams_context_gate_check_cb", on_gate_check_cb},
         {"ams_context_preload_cb", on_preload_cb},
         {"ams_context_mount_cb", on_mount_cb},
@@ -825,8 +766,6 @@ void AmsContextMenu::register_callbacks() {
         {"ams_context_scan_qr_cb", on_scan_qr_cb},
         {"ams_context_purge_cb", on_purge_cb},
         {"ams_context_bypass_toggle_cb", on_bypass_toggle_cb},
-        {"ams_context_tool_changed_cb", on_tool_changed_cb},
-        {"ams_context_backup_changed_cb", on_backup_changed_cb},
     });
 
     callbacks_registered_ = true;
@@ -856,13 +795,6 @@ void AmsContextMenu::on_unload_cb(lv_event_t* /*e*/) {
     auto* self = get_active_instance();
     if (self) {
         self->handle_unload();
-    }
-}
-
-void AmsContextMenu::on_gate_select_cb(lv_event_t* /*e*/) {
-    auto* self = get_active_instance();
-    if (self) {
-        self->handle_gate_select();
     }
 }
 
@@ -934,342 +866,8 @@ void AmsContextMenu::on_scan_qr_cb(lv_event_t* /*e*/) {
     }
 }
 
-void AmsContextMenu::on_tool_changed_cb(lv_event_t* /*e*/) {
-    auto* self = get_active_instance();
-    if (self) {
-        self->handle_tool_changed();
-    }
-}
-
-void AmsContextMenu::on_backup_changed_cb(lv_event_t* /*e*/) {
-    auto* self = get_active_instance();
-    if (self) {
-        self->handle_backup_changed();
-    }
-}
-
-// ============================================================================
-// Dropdown Handlers
-// ============================================================================
-
-void AmsContextMenu::handle_tool_changed() {
-    if (!tool_dropdown_ || !backend_) {
-        return;
-    }
-
-    int selected = static_cast<int>(lv_dropdown_get_selected(tool_dropdown_));
-    // Option 0 = "None", options 1+ = T0, T1, T2...
-    int tool_number = selected - 1; // -1 = None
-
-    spdlog::info("[AmsContextMenu] Tool mapping changed for slot {}: tool {}", get_item_index(),
-                 tool_number >= 0 ? tool_number : -1);
-
-    if (tool_number >= 0) {
-        // Warn if another tool already maps to this slot
-        auto mapping = backend_->get_tool_mapping();
-        for (size_t i = 0; i < mapping.size(); ++i) {
-            if (static_cast<int>(i) != tool_number && mapping[i] == get_item_index()) {
-                spdlog::warn("[AmsContextMenu] Tool {} will share slot {} with tool {}",
-                             tool_number, get_item_index(), i);
-                // The position is a bare prefix, not part of the sentence:
-                // every locale that inflects would otherwise have the verb or a
-                // preposition agree with a noun that changes per backend.
-                std::string msg = helix::ui::lane_label(backend_->lane_noun(), get_item_index()) +
-                                  ": " +
-                                  fmt::format(lv_tr("{} and {} are both mapped here"),
-                                              helix::ui::tool_label(tool_number),
-                                              helix::ui::tool_label(static_cast<int>(i)));
-                ToastManager::instance().show(ToastSeverity::WARNING, msg.c_str());
-                break;
-            }
-        }
-
-        auto result = backend_->set_tool_mapping(tool_number, get_item_index());
-        if (!result.success()) {
-            // notify_ams_error() logs the technical message itself.
-            helix::ui::notify_ams_error(result, lv_tr("Couldn't assign the tool"));
-        }
-    }
-    // Note: "None" selection doesn't clear mapping - user needs to map another slot to that tool
-}
-
-void AmsContextMenu::handle_backup_changed() {
-    if (!backup_dropdown_ || !backend_) {
-        return;
-    }
-
-    int selected = static_cast<int>(lv_dropdown_get_selected(backup_dropdown_));
-
-    // Dropdown: None=0, then each backup candidate in order.
-    const std::vector<int> candidates = backup_candidates_for(bays_, get_item_index());
-    int backup_slot = -1; // Default to None
-    if (selected > 0 && selected <= static_cast<int>(candidates.size())) {
-        backup_slot = candidates[static_cast<size_t>(selected - 1)];
-    }
-
-    // Ask the BACKEND whether this pairing is allowed. Same rule that tagged the
-    // option "(incompatible)" in build_backup_options(), so the label and the
-    // refusal cannot disagree.
-    if (decide_backup_refused(get_item_index(), backup_slot, backend_eligible_fn())) {
-        const std::string current_material = backend_->get_slot_info(get_item_index()).material;
-        const std::string backup_material = backend_->get_slot_info(backup_slot).material;
-        spdlog::warn("[AmsContextMenu] Backend rejected backup slot {} for slot {} ({} / {})",
-                     backup_slot, get_item_index(), current_material, backup_material);
-
-        // Name the materials only when they are in fact the problem. A backend
-        // with a stricter rule (AD5X IFS matches colour and port presence too)
-        // can refuse two slots holding the same material, and a message saying
-        // "PLA cannot use PLA as backup" would be nonsense.
-        std::string msg;
-        if (!current_material.empty() && !backup_material.empty() &&
-            !filament::materials_compatible(current_material, backup_material)) {
-            msg = fmt::format(lv_tr("Incompatible materials: {} cannot use {} as backup"),
-                              current_material, backup_material);
-        } else {
-            msg = lv_tr("That slot cannot stand in for this one");
-        }
-        ToastManager::instance().show(ToastSeverity::ERROR, msg.c_str());
-
-        // Reset dropdown to "None" (index 0)
-        lv_dropdown_set_selected(backup_dropdown_, 0);
-        return;
-    }
-
-    spdlog::info("[AmsContextMenu] Backup slot changed for slot {}: backup {}", get_item_index(),
-                 backup_slot >= 0 ? backup_slot : -1);
-
-    auto result = backend_->set_endless_spool_backup(get_item_index(), backup_slot);
-    if (!result.success()) {
-        spdlog::warn("[AmsContextMenu] Failed to set endless spool backup: {}", result.user_msg);
-    } else {
-        // Bump slots version to trigger endless spool arrow redraw
-        AmsState::instance().bump_slots_version();
-    }
-
-    // Close the context menu after selection
-    hide();
-}
-
-// ============================================================================
-// Dropdown Configuration
-// ============================================================================
-
-void AmsContextMenu::configure_dropdowns() {
-    if (!menu()) {
-        return;
-    }
-
-    // Find dropdown widgets
-    tool_dropdown_ = helix::ui::find_required(menu(), "tool_dropdown", "AmsContextMenu");
-    backup_dropdown_ = helix::ui::find_required(menu(), "backup_dropdown", "AmsContextMenu");
-
-    // Find row containers and divider
-    lv_obj_t* backup_row =
-        helix::ui::find_required(menu(), "backup_dropdown_row", "AmsContextMenu");
-    lv_obj_t* divider = helix::ui::find_required(menu(), "dropdown_divider", "AmsContextMenu");
-
-    bool show_any_dropdown = false;
-
-    // Assigned Tool lives here: the persistent tool->lane map is a property of
-    // the slot, not of one edit. Shown only where a write lands — the same
-    // can_write_mapping_table() gate the print-start apply path uses (the U1
-    // honours remaps through its pre-print send while refusing the table
-    // write, and an unusable dropdown is worse than none).
-    const bool tool_row = backend_ && helix::printer::can_write_mapping_table(*backend_);
-    lv_subject_set_int(&slot_tool_row_visible_subject_, tool_row ? 1 : 0);
-    if (tool_row) {
-        populate_tool_dropdown();
-        show_any_dropdown = true;
-        spdlog::debug("[AmsContextMenu] Assigned Tool row shown");
-    }
-
-    // Configure endless spool dropdown — see decide_show_backup_row().
-    if (backend_) {
-        auto es_caps = backend_->get_endless_spool_capabilities();
-        if (decide_show_backup_row(es_caps, backend_->get_endless_spool_config(),
-                                   get_item_index())) {
-            populate_backup_dropdown();
-            lv_subject_copy_string(&slot_backup_label_subject_,
-                                   helix::ui::backup_lane_text(menu_lane_noun()).c_str());
-            if (backup_row) {
-                lv_obj_remove_flag(backup_row, LV_OBJ_FLAG_HIDDEN);
-            }
-            // Disable dropdown if not editable
-            if (backup_dropdown_ && !es_caps.editable()) {
-                lv_obj_add_state(backup_dropdown_, LV_STATE_DISABLED);
-            }
-            show_any_dropdown = true;
-            spdlog::debug("[AmsContextMenu] Endless spool row shown (editable={})",
-                          es_caps.editable());
-        } else if (es_caps.available()) {
-            spdlog::debug("[AmsContextMenu] Endless spool available but slot {} has no "
-                          "backup to show - row stays hidden",
-                          get_item_index());
-        }
-    }
-
-    // Show divider only if any dropdown is visible
-    if (divider && show_any_dropdown) {
-        lv_obj_remove_flag(divider, LV_OBJ_FLAG_HIDDEN);
-    }
-}
-
-bool AmsContextMenu::decide_show_backup_row(const helix::printer::EndlessSpoolCapabilities& caps,
-                                            const helix::printer::EndlessSpoolConfig& cfg,
-                                            int slot) {
-    if (!caps.available()) {
-        return false;
-    }
-    // Editable implies there is something to write even before anything is set.
-    return caps.editable() || helix::printer::endless_spool_backup_for(cfg, slot) >= 0;
-}
-
-void AmsContextMenu::populate_tool_dropdown() {
-    if (!tool_dropdown_) {
-        return;
-    }
-
-    std::string options = build_tool_options();
-    lv_dropdown_set_options(tool_dropdown_, options.c_str());
-
-    int current_tool = get_current_tool_for_slot();
-    // Map tool number to dropdown index: None=0, T0=1, T1=2, etc.
-    int selected_index = (current_tool >= 0) ? (current_tool + 1) : 0;
-    lv_dropdown_set_selected(tool_dropdown_, static_cast<uint32_t>(selected_index));
-
-    spdlog::debug("[AmsContextMenu] Tool dropdown populated: slot {} maps to tool {}",
-                  get_item_index(), current_tool);
-}
-
-void AmsContextMenu::populate_backup_dropdown() {
-    if (!backup_dropdown_) {
-        return;
-    }
-
-    std::string options = build_backup_options();
-    lv_dropdown_set_options(backup_dropdown_, options.c_str());
-
-    int current_backup = get_current_backup_for_slot();
-    // Dropdown: None=0, then each backup candidate in order.
-    const std::vector<int> candidates = backup_candidates_for(bays_, get_item_index());
-    int selected_index = 0; // Default to None
-    if (auto it = std::find(candidates.begin(), candidates.end(), current_backup);
-        it != candidates.end()) {
-        selected_index = 1 + static_cast<int>(it - candidates.begin());
-    }
-    lv_dropdown_set_selected(backup_dropdown_, static_cast<uint32_t>(selected_index));
-
-    spdlog::debug("[AmsContextMenu] Backup dropdown populated: slot {} backup is {}",
-                  get_item_index(), current_backup);
-}
-
-std::string AmsContextMenu::build_tool_options() const {
-    std::string options = lv_tr("None");
-    // Add tool options T0, T1, T2... based on total slots
-    for (int i = 0; i < total_slots_; ++i) {
-        options += "\n" + helix::ui::tool_label(i);
-    }
-    return options;
-}
-
-AmsContextMenu::BackupEligibleFn AmsContextMenu::backend_eligible_fn() const {
-    AmsBackend* backend = backend_;
-    if (backend == nullptr) {
-        // No backend: tag nothing and refuse nothing. Matches the old code, which
-        // skipped every compatibility check when backend_ was null.
-        return [](int, int) { return helix::printer::BackupEligibility::Eligible; };
-    }
-    return [backend](int slot, int candidate) {
-        return backend->endless_spool_backup_eligibility(slot, candidate);
-    };
-}
-
 LaneNoun AmsContextMenu::menu_lane_noun() const {
     return backend_ ? backend_->lane_noun() : helix::ui::active_lane_noun();
-}
-
-std::string AmsContextMenu::build_backup_options() const {
-    return build_backup_options_for(menu_lane_noun(),
-                                    backup_candidates_for(bays_, get_item_index()),
-                                    get_item_index(), backend_eligible_fn());
-}
-
-std::vector<int> AmsContextMenu::backup_candidates_for(const std::vector<int>& bays,
-                                                       int item_index) {
-    std::vector<int> candidates;
-    for (int bay : bays) {
-        if (bay != item_index) {
-            candidates.push_back(bay);
-        }
-    }
-    return candidates;
-}
-
-std::string AmsContextMenu::build_backup_options_for(LaneNoun noun,
-                                                     const std::vector<int>& candidates,
-                                                     int item_index,
-                                                     const BackupEligibleFn& eligible) {
-    std::string options = lv_tr("None");
-
-    // One option per candidate, in the backend's own word ("Lane 1", "Gate 1").
-    for (int i : candidates) {
-        options += "\n" + helix::ui::lane_label(noun, i);
-        if (item_index >= 0 && eligible) {
-            switch (eligible(item_index, i)) {
-            case helix::printer::BackupEligibility::Incompatible:
-                options += std::string(" ") + lv_tr("(incompatible)");
-                break;
-            case helix::printer::BackupEligibility::GradeDiffers:
-                // Selectable, and labelled so the choice is an informed one:
-                // same polymer, but a filled grade that prints slower and wears
-                // a brass nozzle.
-                options += std::string(" ") + lv_tr("(different grade)");
-                break;
-            case helix::printer::BackupEligibility::Eligible:
-                break;
-            }
-        }
-    }
-    return options;
-}
-
-bool AmsContextMenu::decide_backup_refused(int item_index, int backup_slot,
-                                           const BackupEligibleFn& eligible) {
-    if (backup_slot < 0 || item_index < 0) {
-        return false; // "None" clears a backup; nothing to be compatible with.
-    }
-    // Only the hard verdict refuses. A grade difference is tagged in the option
-    // list and then allowed: the print surviving its runout is worth more than
-    // the grade being exact, and the user has been told which lane it is.
-    return eligible &&
-           eligible(item_index, backup_slot) == helix::printer::BackupEligibility::Incompatible;
-}
-
-int AmsContextMenu::get_current_tool_for_slot() const {
-    if (!backend_) {
-        return -1;
-    }
-
-    // Get tool mapping and find which tool maps to this slot
-    auto mapping = backend_->get_tool_mapping();
-    for (size_t tool = 0; tool < mapping.size(); ++tool) {
-        if (mapping[tool] == get_item_index()) {
-            return static_cast<int>(tool);
-        }
-    }
-    return -1; // No tool maps to this slot
-}
-
-int AmsContextMenu::get_current_backup_for_slot() const {
-    if (!backend_) {
-        return -1;
-    }
-
-    // One shared projection for the group relation — see
-    // helix::printer::endless_spool_backup_for(). decide_show_backup_row() makes
-    // the same call, so a read-only row is only ever shown where this is >= 0.
-    return helix::printer::endless_spool_backup_for(backend_->get_endless_spool_config(),
-                                                    get_item_index());
 }
 
 void open_slot_editor(lv_obj_t* parent_screen, IMoonrakerAPI* api, int slot_index,
@@ -1340,7 +938,7 @@ void dispatch_slot_menu_action(const SlotMenuHost& host, AmsContextMenu::MenuAct
                                int slot) {
     using MenuAction = AmsContextMenu::MenuAction;
 
-    // EJECT / RECOVER_POSITION / SELECT_GATE / CHECK_GATE / CLEAR_SPOOL are pure backend
+    // EJECT / RECOVER_POSITION / CHECK_GATE / PRELOAD / CLEAR_SPOOL are pure backend
     // calls; see ams_dispatch_backend_action().
     if (ams_dispatch_backend_action(action, slot,
                                     host.path_canvas ? host.path_canvas() : nullptr)) {

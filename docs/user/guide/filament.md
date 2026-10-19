@@ -177,7 +177,7 @@ On small portrait screens there is room for the steps only as a row of dots, so 
 
 **Load and Unload always mean filament.** They never mount or park a tool - that is what tapping a toolhead, **Mount...** and **Park** are for. A printer that needs a tool on the carriage to feed it mounts the tool as part of the load.
 
-**The tool picker.** Each row names a tool and, where it is not the tool's own, the slot it uses, with what that slot holds - the material and whether it is loaded, ready to load, or empty. The tool you have selected, or else the one on the carriage, comes ticked when it can take the operation. A tool with no slot assigned to it is greyed out with **Assign a slot first**; set one with **Assigned Tool** in the slot's menu.
+**The tool picker.** Each row names a tool and, where it is not the tool's own, the slot it uses, with what that slot holds - the material and whether it is loaded, ready to load, or empty. The tool you have selected, or else the one on the carriage, comes ticked when it can take the operation. A tool with no slot assigned to it is greyed out with **Assign a slot first**; set one with **Assigned Tool** in the slot's **Edit Spool** editor.
 
 **Loading or unloading several heads at once.** On a printer with a toolhead per slot (Snapmaker U1, MedusaHC), the picker lets you tick several heads. The prompt text the printer shows is English - every screen attached to the printer sees the same words. If a ticked head turns out not to take the operation, it is skipped with a warning naming the head and the reason, and the rest continue. A head whose own sensor reports it empty is not tickable for Unload at all: there is nothing in it for an unload to act on.
 
@@ -237,7 +237,7 @@ Tapping the mounted toolhead, or any slot's filament tube or spool, opens the sl
 
 ### Slot Context Menu
 
-**Tap any slot** to open a context menu with actions for that specific slot:
+**Tap any slot** to open a context menu with actions for that specific slot. It holds actions only, so it always fits the screen without scrolling. To move the selector, tap it on the filament path: its menu steps it to the next or previous gate.
 
 | Action | Description |
 |--------|-------------|
@@ -245,25 +245,28 @@ Tapping the mounted toolhead, or any slot's filament tube or spool, opens the sl
 | **Unload** | Retract filament from this slot. Only available if this slot is currently loaded. Greyed out while filament sits in the toolhead that no slot claims, because the slot this menu names may not be the one holding it: use **Unload** in the filament sidebar instead. |
 | **Eject** | Push filament fully out of the lane to release the spool, when the slot has filament in its lane but **not** loaded into the toolhead. Replaces the Unload button in that state. Only on backends that support per-lane eject (AFC and Happy Hare). |
 | **Recover** | Pull filament that is stranded partway down the tube back toward its slot, without heating the nozzle. Takes the place of **Unload** when the system can tell that this slot's filament is stuck past the hub. |
+| **Check Slot** | Happy Hare only. Check this gate's filament sensor. Greyed out while the MMU is busy. |
 | **Preload** | Happy Hare only. Feed filament from the spool into its gate, ready for a later load. Greyed out during a print, while any filament is loaded, or while the MMU is busy. |
-| **Edit Spool** | Open the spool editor to view or change the material, brand, color and remaining weight. See [Editing Filament Properties](#editing-filament-properties). |
+| **Edit Spool** | Open the spool editor to view or change the material, brand, color and remaining weight, and the slot's **Assigned Tool** and Endless Spool backup. See [Editing Filament Properties](#editing-filament-properties). |
 | **Select Spool** | Open the spool editor on your list of Spoolman spools, to assign one to this slot. Only shown when Spoolman is configured. |
 | **Scan QR Code** | Scan a filament QR code to auto-fill spool data. Only shown when Spoolman is configured. |
 | **Clear Spool** | Erase everything HelixScreen and the printer's firmware remember about this slot: your saved edits, the slot's spool details, and the Spoolman link, plus the printer's own record where the firmware lets it be wiped (Happy Hare's whole gate map entry, the QIDI Box's stored slot values). What is left afterwards is only what the hardware can physically read - on the ACE, the Snapmaker U1 and a stock CFS the firmware's record cannot be wiped (read-only, or the RFID tag is simply re-read), so the slot repopulates from it. Shown whenever the slot carries an assignment, loaded or not. Refused on the lane feeding an active, paused or preparing print - the button greys out and says why. |
 
 > **Note:** On a Happy Hare printer that fills its gates from Spoolman (Spoolman pull mode), the firmware side is refused for both edits and Clear Spool, and the reason names Spoolman: make color, material and spool changes in Spoolman itself. Clear Spool still clears HelixScreen's own copy, so remove the spool in Spoolman to finish the job.
 
-**Endless Spool** switches to another spool when one runs out mid-print. Creality calls it Auto-Refill, Snapmaker Auto-Replenish, zMod Infinite Spool Mode, AFC infinite spool and Happy Hare EndlessSpool; HelixScreen calls it Endless Spool everywhere except on a vendor's own toggle. On systems that support it, the context menu also includes:
+**Endless Spool** switches to another spool when one runs out mid-print. Creality calls it Auto-Refill, Snapmaker Auto-Replenish, zMod Infinite Spool Mode, AFC infinite spool and Happy Hare EndlessSpool; HelixScreen calls it Endless Spool everywhere except on a vendor's own toggle. On systems that support it, the slot's **Edit Spool** editor has, below the spool's details:
 
 - **Backup Slot** (**Backup Lane** on AFC, **Backup Gate** on Happy Hare) — Choose where to switch to if this spool runs out mid-print. The backup must hold a compatible material; a slot holding something else is marked **(incompatible)** and can't be picked. A slot holding the *same* material in a different grade — PLA-CF behind PLA, say — is marked **(different grade)** and *can* be picked: the swap will work, but filled filaments print slower and wear a brass nozzle, and this one happens mid-print without you there, so the label tells you before you choose it. This picker appears on **AFC (Box Turtle)** and on **single-unit Happy Hare** setups; a multi-unit Happy Hare shows its groups read-only, because the command that edits them acts on whichever unit is selected.
 
-**Assigned Tool** - On systems where HelixScreen can set which tool a slot feeds, the menu has an **Assigned Tool** dropdown: pick the tool this slot should feed. See [Assigned Tool](#assigned-tool) below.
+**Assigned Tool** - On systems where HelixScreen can set which tool a slot feeds, the editor has an **Assigned Tool** dropdown beside it: pick the tool this slot should feed. See [Assigned Tool](#assigned-tool) below.
 
-**The Creality CFS is different: there is nothing to pick.** Its **Auto-Refill** is managed entirely by the box's firmware. Stock CFS firmware never says which slot it would switch to, so the menu has no Backup Slot row and no backup arrows are drawn between the slots; the line at the bottom of the menu says whether Auto-Refill is on and that the firmware chooses. A community Kalico-based CFS setup that publishes its switch plan is the exception: while Auto-Refill is on, a slot with a planned backup shows the Backup Slot row **greyed out** with that slot in it, and arrows mark the plan. Either way, the box decides for itself which slot can stand in, and it only accepts one holding the **exact same material and the exact same colour**. If nothing matches, or Auto-Refill is switched off, it does not switch at all: the print stays paused and HelixScreen tells you which of the two it was. Auto-Refill itself can be turned on or off from the CFS device actions.
+Both are saved with the editor's **Save**, like the rest of its changes. A line under them says what a runout will do.
+
+**The Creality CFS is different: there is nothing to pick.** Its **Auto-Refill** is managed entirely by the box's firmware. Stock CFS firmware never says which slot it would switch to, so the editor has no Backup Slot row and no backup arrows are drawn between the slots; the line at the bottom of the editor says whether Auto-Refill is on and that the firmware chooses. A community Kalico-based CFS setup that publishes its switch plan is the exception: while Auto-Refill is on, a slot with a planned backup shows the Backup Slot row **greyed out** with that slot in it, and arrows mark the plan. Either way, the box decides for itself which slot can stand in, and it only accepts one holding the **exact same material and the exact same colour**. If nothing matches, or Auto-Refill is switched off, it does not switch at all: the print stays paused and HelixScreen tells you which of the two it was. Auto-Refill itself can be turned on or off from the CFS device actions.
 
 > **Clearing every backup at once:** To remove every Endless Spool backup in one step — back to "a runout just stops the print" — open the AMS Management overlay and tap **Reset Endless Spool**. See [AMS Management (Settings Overlay)](#ams-management-settings-overlay) below.
 
-> **Assigning tools:** Which tool a slot feeds is set in two places. For one print, use the **Filament Mapping** card that appears when you select a multi-tool file: see [Filament Mapping](#filament-mapping) below. To change the printer's own standing assignment, pick the slot's **Assigned Tool** in this menu: see [Assigned Tool](#assigned-tool) below.
+> **Assigning tools:** Which tool a slot feeds is set in two places. For one print, use the **Filament Mapping** card that appears when you select a multi-tool file: see [Filament Mapping](#filament-mapping) below. To change the printer's own standing assignment, pick the slot's **Assigned Tool** in its **Edit Spool** editor: see [Assigned Tool](#assigned-tool) below.
 
 ### Editing Filament Properties
 
@@ -304,7 +307,7 @@ Tapping Back with unsaved changes asks whether to **Save** or **Discard** them.
 - **Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.**
 - **Spoolman is offline, so brand and material can't be saved.** A linked spool's brand and material come from Spoolman, so they wait until it is reachable.
 
-Which tool a slot feeds is not set here: use **Assigned Tool** in the slot's menu (see [Assigned Tool](#assigned-tool)).
+**Assigned Tool** and the Endless Spool backup sit at the bottom of the editor, below **More**, on systems that support them; on a small screen scroll down to reach them. They are saved with **Save** too. See [Assigned Tool](#assigned-tool) and [Slot Context Menu](#slot-context-menu) for Endless Spool.
 
 > **Adding brands and products from a file.** The catalog can be extended or corrected by editing `user_filaments.json` instead of using the screen. See [Editing materials and brands by hand](settings/printing.md#editing-materials-and-brands-by-hand).
 
@@ -386,7 +389,7 @@ Keep the `M109` for the first tool last. It sets that tool from its idle tempera
 
 ### Assigned Tool
 
-Separately from Filament Mapping, some filament systems keep their own table of which slot each tool prints from, and it stays in place from one print to the next. Where HelixScreen can write that table (such as AFC, Happy Hare and the QIDI Box), the slot's menu shows an **Assigned Tool** dropdown: tap a slot and pick the tool that slot should feed. The dropdown is left out where the system keeps no table HelixScreen can write, such as the Snapmaker U1 and the ACE. The tool badges in the slot view show the result.
+Separately from Filament Mapping, some filament systems keep their own table of which slot each tool prints from, and it stays in place from one print to the next. Where HelixScreen can write that table (such as AFC, Happy Hare and the QIDI Box), the spool editor shows an **Assigned Tool** dropdown: tap a slot, choose **Edit Spool**, pick the tool that slot should feed, and **Save**. The dropdown is left out where the system keeps no table HelixScreen can write, such as the Snapmaker U1 and the ACE. The tool badges in the slot view show the result.
 
 Filament Mapping is chosen per print, from the file you are about to print. Assigned Tool is the printer's standing table, which a print uses when nothing maps it otherwise.
 

@@ -830,6 +830,7 @@
   <translation tag="Couldn&apos;t save the material name" ja="材料名を保存できませんでした"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" ja="プリンターのゲートマップを保存できませんでした"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." ja="Spoolman に保存できませんでした。このプリンターでは何も変更されていません。"/>
+  <translation tag="Couldn&apos;t set the backup" ja="予備を設定できませんでした"/>
   <translation tag="Cover open" ja="カバーが開いています"/>
   <translation tag="Crash Report" ja="クラッシュレポート"/>
   <translation tag="Crash report sent — thank you!" ja="クラッシュレポートを送信しました — ありがとうございます！"/>
