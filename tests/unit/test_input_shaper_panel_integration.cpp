@@ -620,6 +620,7 @@ class InputShaperPreviewFixture : public InputShaperDeltaFixture {
         panel_->on_ui_destroyed();
         ispta::InputShaperPanelTestAccess::set_preview_source_factory(*panel_, nullptr);
         ispta::InputShaperPanelTestAccess::set_overlay_root(*panel_, nullptr);
+        ispta::InputShaperPanelTestAccess::set_parent_screen(*panel_, nullptr);
     }
 
     void set_reachable(bool reachable) {
@@ -769,4 +770,28 @@ TEST_CASE_METHOD(InputShaperPreviewFixture, "no stream where the layout hides th
     CHECK(log_.created == 0);
     // An absent gate reads as fitting.
     CHECK(helix::ui::live_chart_layout_fits("input_shaper_panel", "no_such_gate"));
+}
+
+TEST_CASE_METHOD(InputShaperPreviewFixture,
+                 "a rebuild drops the live chart with the tree it lived in",
+                 "[input_shaper][panel][preview]") {
+    panel_->handle_calibrate_x_clicked();
+    REQUIRE(run_until([&] { return subject_int("is_measuring_has_chart") == 1; }));
+    REQUIRE(chart().chart() != nullptr);
+
+    // What a hot reload does: free the whole widget tree and create it again.
+    // The live chart is a child of a host inside that tree.
+    ispta::InputShaperPanelTestAccess::set_parent_screen(*panel_, test_screen());
+    REQUIRE(panel_->rebuild());
+    view_ = panel_->get_root();
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(chart().chart() == nullptr);
+    CHECK(log_.stopped == log_.created);
+    CHECK(subject_int("is_measuring_has_chart") == 0);
+
+    // Stop and leave after the rebuild touch only the new tree.
+    panel_->handle_cancel_clicked();
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(chart().chart() == nullptr);
+    CHECK(lv_obj_find_by_name(view_, "chart_container_measuring") != nullptr);
 }

@@ -123,6 +123,11 @@ struct InputShaperPanelTestAccess {
     static void set_overlay_root(InputShaperPanel& p, lv_obj_t* root) {
         p.overlay_root_ = root;
     }
+
+    /// The screen rebuild() re-creates the view on; create() normally sets it.
+    static void set_parent_screen(InputShaperPanel& p, lv_obj_t* screen) {
+        p.parent_screen_ = screen;
+    }
 };
 
 } // namespace ui

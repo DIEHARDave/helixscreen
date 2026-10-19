@@ -462,6 +462,14 @@ void InputShaperPanel::on_deactivating(DeactivateReason reason) {
         return;
     }
 
+    // A rebuild frees the whole widget tree without firing on_ui_destroyed(),
+    // and every chart's objects are children of hosts inside that tree. Drop
+    // them here while the tree is still alive; create() makes the results
+    // charts again and the next sweep makes the live chart lazily.
+    if (reason == DeactivateReason::Rebuild) {
+        on_ui_destroyed();
+    }
+
     stop_preview();
 
     // Cancel any in-progress calibration
