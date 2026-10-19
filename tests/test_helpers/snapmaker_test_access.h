@@ -6,6 +6,7 @@
 #include "ams_backend_snapmaker.h"
 #include "filament_slot_override.h"
 #include "filament_slot_override_store.h"
+#include "print_start_inputs.h"
 #include "test_helpers/seeded_override.h"
 
 #include <memory>
@@ -94,6 +95,15 @@ class SnapmakerTestAccess {
     /// until it is.
     static void set_running(AmsBackendSnapmaker& b, bool running) {
         b.running_ = running;
+    }
+    /// Answer the print-file tool check without reading a file.
+    static void
+    set_file_tools_probe(AmsBackendSnapmaker& b,
+                         std::function<void(const std::string&, std::function<void(bool)>)> probe) {
+        b.file_tools_probe_ = std::move(probe);
+    }
+    static bool file_uses_later_tool(const FileStartFacts& facts) {
+        return AmsBackendSnapmaker::file_uses_later_tool(facts);
     }
     static void set_sensor_present(AmsBackendSnapmaker& b, int slot_index, bool present) {
         std::lock_guard<std::mutex> lock(b.mutex_);

@@ -28,6 +28,7 @@
 #include "multiace_status.h"
 #include "pause_cause.h"
 #include "post_op_cooldown_manager.h"
+#include "print_start_inputs.h"
 #include "printer_discovery.h"
 #include "settings_manager.h"
 #include "snapmaker_channel_state.h"
@@ -913,9 +914,7 @@ AmsBackend::FilamentOpEligibility AmsBackendSnapmaker::slot_op_eligibility(int s
     // The firmware reports channel_error="no_filament" for ANY empty lane, and
     // ""/"none" when a channel has nothing to say — none of the three is a
     // hard fault, or every empty feeder would read as an error.
-    const bool hard_fault = snap.error != "ok" && !snap.error.empty() && snap.error != "none" &&
-                            snap.error != "no_filament";
-    if (hard_fault) {
+    if (channel_error_is_fault(snap.error)) {
         return E::Error;
     }
     // An empty lane answers Empty ahead of the settled-state test: an idle
@@ -1118,6 +1117,26 @@ void AmsBackendSnapmaker::prepare_for_resume(int slot_index, ResumeReadyCallback
         return;
     }
 
+    if (slot >= 0 && slot < kNumTools) {
+        ChannelSnapshot snap;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            snap = channel_snapshots_[slot];
+        }
+        // The motion sensor reads present partway through a load that then
+        // fails, so on a head an automatic feeder serves only the feeder's own
+        // load_finish vouches for filament at the nozzle. RESUME extrudes into
+        // the head before it prints, which is the wrong thing to do to a jam.
+        if (feeder_serves_head(snap) &&
+            (snap.state != "load_finish" || channel_error_is_fault(snap.error))) {
+            spdlog::warn("{} prepare_for_resume: tool {} sensor reads present but the feeder "
+                         "reads '{}' (error '{}') — loading before RESUME",
+                         backend_log_tag(), slot, snap.state, snap.error);
+            run_runout_refeed(slot, std::move(on_ready));
+            return;
+        }
+    }
+
     if (slot < 0 || slot >= kNumTools) {
         spdlog::debug("{} prepare_for_resume: no active tool", backend_log_tag());
     } else {
@@ -1273,9 +1292,10 @@ AmsError AmsBackendSnapmaker::unconfirmed_load_error(int head, std::string techn
                                                            head, helix::ui::ToolLabelForm::Full);
     return AmsError(
         AmsResult::COMMAND_FAILED, std::move(technical),
-        fmt::format(fmt::runtime(lv_tr("{} didn't load. Load it before resuming.")), tool),
-        fmt::format(fmt::runtime(lv_tr("Check the filament in {}, then tap Resume to load it "
-                                       "again.")),
+        fmt::format(fmt::runtime(lv_tr("{} didn't load. Check that its hotend is seated and do a "
+                                       "test extrude before resuming.")),
+                    tool),
+        fmt::format(fmt::runtime(lv_tr("Tap Resume to try the load again from {}.")),
                     AmsErrorHelper::position_label(lane_noun(), head)));
 }
 
@@ -1290,7 +1310,63 @@ void AmsBackendSnapmaker::apply_print_state_locked(const std::string& state) {
         // A load's outcome and the task judgement each belong to one print.
         load_unconfirmed_.fill(false);
         task_config_judged_ = false;
+        ++print_generation_;
     }
+}
+
+bool AmsBackendSnapmaker::file_uses_later_tool(const FileStartFacts& facts) {
+    if (!facts.tools_used.empty()) {
+        return std::any_of(facts.tools_used.begin(), facts.tools_used.end(),
+                           [](int tool) { return tool > 0; });
+    }
+    if (!facts.metadata) {
+        return true;
+    }
+    const auto& weights = facts.metadata->filament_weights;
+    if (!weights.empty()) {
+        return std::any_of(weights.begin() + 1, weights.end(), [](double g) { return g > 0.0; });
+    }
+    return facts.metadata->filament_colors.size() > 1;
+}
+
+void AmsBackendSnapmaker::warn_if_unset_task_uses_later_tool(const std::string& filename,
+                                                             uint32_t print) {
+    auto on_answer = [this, filename, print](bool later_tool) {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (print != print_generation_) {
+                return;
+            }
+        }
+        spdlog::warn("{} '{}' running with no used heads in print_task_config; {}",
+                     backend_log_tag(), filename,
+                     later_tool ? "it uses a tool past the first, warning"
+                                : "it uses the first tool only, no warning");
+        if (!later_tool) {
+            return;
+        }
+        ui_notification_warning_sticky(
+            lv_tr("This print was started outside HelixScreen, so the printer doesn't know "
+                  "which toolheads it uses."),
+            lv_tr("Each toolhead after the first will pause the print the first time it is "
+                  "used, because the printer won't load or prime it. Filament won't unload "
+                  "when the print ends."));
+    };
+    if (file_tools_probe_) {
+        file_tools_probe_(filename, std::move(on_answer));
+        return;
+    }
+    if (!api_ || filename.empty()) {
+        on_answer(true);
+        return;
+    }
+    if (!file_facts_) {
+        file_facts_ = std::make_unique<FileStartFactsLoader>(api_);
+    }
+    // The loader is owned here and drops its answer when destroyed.
+    file_facts_->load(filename, [on_answer = std::move(on_answer)](FileStartFacts facts) {
+        on_answer(file_uses_later_tool(facts));
+    });
 }
 
 bool AmsBackendSnapmaker::judge_task_config_locked() {
@@ -2696,6 +2772,10 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
         std::lock_guard<std::mutex> lock(mutex_);
 
         if (const nlohmann::json* ps = helix::json_util::find_member(status, "print_stats")) {
+            if (const nlohmann::json* file = helix::json_util::find_member(*ps, "filename");
+                file && file->is_string()) {
+                print_filename_ = file->get<std::string>();
+            }
             if (const nlohmann::json* state = helix::json_util::find_member(*ps, "state");
                 state && state->is_string()) {
                 apply_print_state_locked(state->get<std::string>());
@@ -2722,6 +2802,8 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
 
         apply_print_task_config_locked(delta, fx);
         fx.task_config_unset = judge_task_config_locked();
+        fx.task_config_unset_file = print_filename_;
+        fx.task_config_print = print_generation_;
 
         apply_toolhead_sensors_locked(delta, fx);
 
@@ -2788,14 +2870,12 @@ void AmsBackendSnapmaker::dispatch_effects(const FrameEffects& fx) {
     }
 
     if (fx.task_config_unset) {
-        spdlog::warn("{} print running with no used heads in print_task_config; per-head "
-                     "refeed and end-of-print unload are off for this print",
-                     backend_log_tag());
-        ui_notification_warning_sticky(
-            lv_tr("This print was started outside HelixScreen, so the printer doesn't know "
-                  "which toolheads it uses."),
-            lv_tr("Toolheads won't refeed on their own after a runout, and filament won't "
-                  "unload when the print ends."));
+        std::string file = fx.task_config_unset_file;
+        if (file.empty()) {
+            file = lv_subject_get_string(
+                get_printer_state().print_state().get_print_filename_subject());
+        }
+        warn_if_unset_task_uses_later_tool(file, fx.task_config_print);
     }
 
     if (fx.changed) {

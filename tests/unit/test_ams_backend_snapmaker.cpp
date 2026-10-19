@@ -3447,7 +3447,9 @@ TEST_CASE_METHOD(
     REQUIRE(callback_fired);
     REQUIRE_FALSE(captured.success());
     CHECK(captured.user_msg.find("e0_filament") == std::string::npos);
-    CHECK(captured.user_msg == "Toolhead 1 (T0) didn't load. Load it before resuming.");
+    CHECK(captured.user_msg ==
+          "Toolhead 1 (T0) didn't load. Check that its hotend is seated and do a test extrude "
+          "before resuming.");
     CHECK(captured.suggestion.find("Feeder 1") != std::string::npos);
 }
 
@@ -3504,7 +3506,9 @@ TEST_CASE_METHOD(SnapmakerFixture,
     // OK alone, with the feeder never reaching load_finish, is no load.
     const AmsError second = resume_once(h, 0);
     CHECK_FALSE(second.success());
-    CHECK(second.user_msg == "Toolhead 1 (T0) didn't load. Load it before resuming.");
+    CHECK(second.user_msg ==
+          "Toolhead 1 (T0) didn't load. Check that its hotend is seated and do a test extrude "
+          "before resuming.");
     CHECK(count_containing(h.client.gcode_script_history(),
                            "AUTO_FEEDING EXTRUDER=0 LOAD=1 PRINTING=1") == 1);
 }
@@ -3550,7 +3554,9 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker resume on another head waits for t
     // so the answer is a refusal naming head 0, with nothing sent.
     const AmsError err = resume_once(h, 2);
     CHECK_FALSE(err.success());
-    CHECK(err.user_msg == "Toolhead 1 (T0) didn't load. Load it before resuming.");
+    CHECK(err.user_msg ==
+          "Toolhead 1 (T0) didn't load. Check that its hotend is seated and do a test extrude "
+          "before resuming.");
     CHECK(h.client.gcode_script_history().empty());
 }
 
@@ -3576,6 +3582,57 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker forgets a failed load when the pri
 
     CHECK(resume_once(h, 0).success());
     CHECK(count_containing(h.client.gcode_script_history(), "AUTO_FEEDING") == 0);
+}
+
+namespace {
+/// Head 0 served by an automatic feeder, reading @p state / @p error.
+json fed_head0(const std::string& state, const std::string& error = "ok") {
+    return json{{"filament_feed left",
+                 {{"extruder0",
+                   {{"filament_detected", true},
+                    {"channel_state", state},
+                    {"channel_error", error},
+                    {"module_exist", true},
+                    {"disable_auto", false}}}}}};
+}
+} // namespace
+
+TEST_CASE_METHOD(
+    SnapmakerFixture,
+    "Snapmaker resume with the head reading present still needs the feeder's load_finish",
+    "[ams][snapmaker][resume][load_unconfirmed]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    ResumeRecoveryHarness h;
+    SnapmakerTestAccess::set_sensor_present(h.backend, 0, true);
+
+    SECTION("loaded: RESUME proceeds with nothing sent") {
+        SnapmakerTestAccess::handle_status(h.backend, fed_head0("load_finish"));
+        CHECK(resume_once(h, 0).success());
+        CHECK(count_containing(h.client.gcode_script_history(), "AUTO_FEEDING") == 0);
+    }
+    SECTION("an empty feeder's no_filament is no fault") {
+        SnapmakerTestAccess::handle_status(h.backend, fed_head0("load_finish", "no_filament"));
+        CHECK(resume_once(h, 0).success());
+    }
+    SECTION("staged short of the nozzle: the load runs first and must confirm") {
+        SnapmakerTestAccess::handle_status(h.backend, fed_head0("preload_finish"));
+        CHECK_FALSE(resume_once(h, 0).success());
+        CHECK(count_containing(h.client.gcode_script_history(),
+                               "AUTO_FEEDING EXTRUDER=0 LOAD=1 PRINTING=1") == 1);
+    }
+    SECTION("load_finish with a live feed fault loads first") {
+        SnapmakerTestAccess::handle_status(h.backend, fed_head0("load_finish", "feed_timeout"));
+        CHECK_FALSE(resume_once(h, 0).success());
+        CHECK(count_containing(h.client.gcode_script_history(), "AUTO_FEEDING") == 1);
+    }
+    SECTION("no automatic feeder: the sensor answers") {
+        SnapmakerTestAccess::handle_status(h.backend, fed_head0("preload_finish"));
+        SnapmakerTestAccess::handle_status(
+            h.backend, json{{"filament_feed left", {{"extruder0", {{"disable_auto", true}}}}}});
+        CHECK(resume_once(h, 0).success());
+        CHECK(count_containing(h.client.gcode_script_history(), "AUTO_FEEDING") == 0);
+    }
 }
 
 TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker resume after a paused manual load that failed",
@@ -6342,17 +6399,36 @@ struct StickyWarnings {
 };
 } // namespace
 
-TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker tells the user once about a print with no used heads",
+namespace {
+/// The file check answers @p later_tool and records the files it was asked about.
+struct FileToolsProbe {
+    std::vector<std::string> asked;
+    FileToolsProbe(AmsBackendSnapmaker& b, bool later_tool) {
+        SnapmakerTestAccess::set_file_tools_probe(
+            b, [this, later_tool](const std::string& file, std::function<void(bool)> answer) {
+                asked.push_back(file);
+                answer(later_tool);
+            });
+    }
+};
+} // namespace
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker warns once about a print with no used heads that uses a later tool",
                  "[ams][snapmaker][task_config_notice]") {
     lv_init_safe();
     helix::ui::UpdateQueue::instance().init();
     StickyWarnings warnings;
     FilamentRecordHarness h("task_notice_slicer");
+    FileToolsProbe probe(h.backend, /*later_tool=*/true);
     h.frame(used_heads({false, false, false, false}));
 
-    h.print("printing");
+    h.frame(json{{"print_stats", {{"state", "printing"}, {"filename", "orca_4color.gcode"}}}});
     REQUIRE(warnings.seen.size() == 1);
     CHECK(warnings.seen[0].find("started outside HelixScreen") != std::string::npos);
+    CHECK(warnings.seen[0].find("pause the print the first time") != std::string::npos);
+    REQUIRE(probe.asked.size() == 1);
+    CHECK(probe.asked[0] == "orca_4color.gcode");
 
     // Status keeps arriving through the print, a pause and its resume.
     h.frame(used_heads({false, false, false, false}));
@@ -6367,12 +6443,44 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker tells the user once about a print 
 }
 
 TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker says nothing about a print that uses only the first tool",
+                 "[ams][snapmaker][task_config_notice]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    StickyWarnings warnings;
+    FilamentRecordHarness h("task_notice_t0");
+    FileToolsProbe probe(h.backend, /*later_tool=*/false);
+    h.frame(used_heads({false, false, false, false}));
+    h.print("printing");
+    CHECK(probe.asked.size() == 1);
+    CHECK(warnings.seen.empty());
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker drops a file answer that lands after its print ended",
+                 "[ams][snapmaker][task_config_notice]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    StickyWarnings warnings;
+    FilamentRecordHarness h("task_notice_late");
+    std::function<void(bool)> held;
+    SnapmakerTestAccess::set_file_tools_probe(
+        h.backend, [&](const std::string&, std::function<void(bool)> answer) { held = answer; });
+    h.frame(used_heads({false, false, false, false}));
+    h.print("printing");
+    h.print("cancelled");
+    REQUIRE(held);
+    held(true);
+    CHECK(warnings.seen.empty());
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
                  "Snapmaker says nothing about a print whose task names its heads",
                  "[ams][snapmaker][task_config_notice]") {
     lv_init_safe();
     helix::ui::UpdateQueue::instance().init();
     StickyWarnings warnings;
     FilamentRecordHarness h("task_notice_own");
+    FileToolsProbe probe(h.backend, /*later_tool=*/true);
     h.frame(used_heads({false, true, false, false}));
     h.print("printing");
 
@@ -6380,4 +6488,34 @@ TEST_CASE_METHOD(SnapmakerFixture,
     // still read printing.
     h.frame(used_heads({false, false, false, false}));
     CHECK(warnings.seen.empty());
+    CHECK(probe.asked.empty());
+}
+
+TEST_CASE("Snapmaker reads a later tool from the file's tools, weights, then palette",
+          "[ams][snapmaker][task_config_notice]") {
+    helix::FileStartFacts facts;
+    SECTION("scanned tools") {
+        facts.tools_used = {0};
+        CHECK_FALSE(SnapmakerTestAccess::file_uses_later_tool(facts));
+        facts.tools_used = {0, 2};
+        CHECK(SnapmakerTestAccess::file_uses_later_tool(facts));
+    }
+    SECTION("nothing known counts as a later tool") {
+        CHECK(SnapmakerTestAccess::file_uses_later_tool(facts));
+    }
+    SECTION("per-tool weights") {
+        facts.metadata = FileMetadata{};
+        facts.metadata->filament_weights = {12.5, 0.0, 0.0, 0.0};
+        facts.metadata->filament_colors = {"#FF0000", "#00FF00", "#0000FF", "#FFFFFF"};
+        CHECK_FALSE(SnapmakerTestAccess::file_uses_later_tool(facts));
+        facts.metadata->filament_weights = {12.5, 0.0, 3.0, 0.0};
+        CHECK(SnapmakerTestAccess::file_uses_later_tool(facts));
+    }
+    SECTION("palette when there are no weights") {
+        facts.metadata = FileMetadata{};
+        facts.metadata->filament_colors = {"#FF0000"};
+        CHECK_FALSE(SnapmakerTestAccess::file_uses_later_tool(facts));
+        facts.metadata->filament_colors = {"#FF0000", "#00FF00"};
+        CHECK(SnapmakerTestAccess::file_uses_later_tool(facts));
+    }
 }

@@ -29,6 +29,8 @@ namespace helix {
 
 class SnapmakerTestAccess;
 class SnapmakerRealtimeTestAccess;
+class FileStartFactsLoader;
+struct FileStartFacts;
 class RunoutScopeTestAccess;
 
 /**
@@ -660,8 +662,11 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         std::vector<std::pair<int, std::string>> record_restores;
         /// Held record writes this frame released.
         std::vector<std::pair<int, PendingRecordWrite>> record_flushes;
-        /// The running print's task names no used head: the user is told once.
+        /// The running print's task names no used head: its file is checked
+        /// for a tool past the first, and the user told once.
         bool task_config_unset = false;
+        std::string task_config_unset_file;
+        uint32_t task_config_print = 0;
     };
 
     void dispatch_effects(const FrameEffects& fx);
@@ -939,6 +944,23 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// heads: once per print, reset when the print ends. Under mutex_.
     bool task_config_judged_ = false;
 
+    /// Counts prints: bumped each time print_stats.state enters or leaves a
+    /// print, so an answer about one print's file is dropped once it ends.
+    /// Under mutex_.
+    uint32_t print_generation_ = 0;
+
+    /// print_stats.filename from this backend's own frames. Under mutex_.
+    std::string print_filename_;
+
+    /// Reads the running print's file for its tools. Created on first use;
+    /// main thread only.
+    std::unique_ptr<FileStartFactsLoader> file_facts_;
+
+    /// Answers whether @p filename uses a tool past the first; tests replace
+    /// the file read with it. Main thread only.
+    std::function<void(const std::string& filename, std::function<void(bool)> on_answer)>
+        file_tools_probe_;
+
     /// machine_state_manager.main_state from this backend's own status frames;
     /// unset until a frame carries it. Under mutex_.
     std::optional<int> main_state_;
@@ -1062,6 +1084,19 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         return snap.state == "load_finish" && snap.error == "ok";
     }
 
+    /// A channel_error that is a fault. The firmware reports "no_filament"
+    /// for any empty feeder and ""/"none" when a channel has nothing to say,
+    /// none of which is one.
+    [[nodiscard]] static bool channel_error_is_fault(const std::string& error) {
+        return error != "ok" && !error.empty() && error != "none" && error != "no_filament";
+    }
+
+    /// An automatic feeder serves this head, so its channel_state says
+    /// whether filament is loaded to the nozzle.
+    [[nodiscard]] static bool feeder_serves_head(const ChannelSnapshot& snap) {
+        return snap.module_exist && !snap.disable_auto && !snap.state.empty();
+    }
+
     /// Record that a load on @p head ended unconfirmed. Only during a print
     /// (printing or paused); outside one there is no Resume to hold.
     /// Caller holds mutex_.
@@ -1082,10 +1117,20 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     void apply_print_state_locked(const std::string& state);
 
     /// Once per print: a print running with every extruders_used flag false
-    /// was started without the task setup, so the firmware neither feeds a
-    /// head on runout nor unloads at the end. Returns true when the user
-    /// should be told. Caller holds mutex_.
+    /// was started without the task setup, so the firmware neither feeds,
+    /// primes nor switch-checks a head before its first use, and unloads
+    /// nothing at the end. Returns true when its file should be checked.
+    /// Caller holds mutex_.
     [[nodiscard]] bool judge_task_config_locked();
+
+    /// Whether a file uses a tool past the first, by its scanned tools, else
+    /// its per-tool weights, else its palette size. A file nothing answers
+    /// for counts as using one: the warning costs less than the pause.
+    [[nodiscard]] static bool file_uses_later_tool(const FileStartFacts& facts);
+
+    /// Check the file of print @p print for a tool past the first and warn
+    /// the user when it has one and that print is still running.
+    void warn_if_unset_task_uses_later_tool(const std::string& filename, uint32_t print);
 
     /// On a channel whose firmware states no identity at all, drop the brand
     /// and product line the lane only remembers. Caller holds mutex_.

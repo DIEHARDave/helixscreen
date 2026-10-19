@@ -606,7 +606,6 @@
   <translation tag="Check the RS-485 cable between printer and CFS" en="Check the RS-485 cable between printer and CFS"/>
   <translation tag="Check the buffer unit on the back of the printer" en="Check the buffer unit on the back of the printer"/>
   <translation tag="Check the chips, then save" en="Check the chips, then save"/>
-  <translation tag="Check the filament in {}, then tap Resume to load it again." en="Check the filament in {}, then tap Resume to load it again."/>
   <translation tag="Check the filament path and try again." en="Check the filament path and try again."/>
   <translation tag="Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed" en="Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed"/>
   <translation tag="Check the provided value and try again" en="Check the provided value and try again"/>
@@ -1006,6 +1005,7 @@
   <translation tag="ETA {}" en="ETA {}"/>
   <translation tag="EXTRAS" en="EXTRAS"/>
   <translation tag="Each fan can only be selected once" en="Each fan can only be selected once"/>
+  <translation tag="Each toolhead after the first will pause the print the first time it is used, because the printer won&apos;t load or prime it. Filament won&apos;t unload when the print ends." en="Each toolhead after the first will pause the print the first time it is used, because the printer won&apos;t load or prime it. Filament won&apos;t unload when the print ends."/>
   <translation tag="Edit" en="Edit"/>
   <translation tag="Edit Filament" en="Edit Filament"/>
   <translation tag="Edit Slot" en="Edit Slot"/>
@@ -3265,6 +3265,7 @@
   <translation tag="Tangle sensitivity" en="Tangle sensitivity"/>
   <translation tag="Tap + to add" en="Tap + to add"/>
   <translation tag="Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge" en="Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge"/>
+  <translation tag="Tap Resume to try the load again from {}." en="Tap Resume to try the load again from {}."/>
   <translation tag="Tap again to confirm this orientation" en="Tap again to confirm this orientation"/>
   <translation tag="Tap an empty spot inside the enclosure" en="Tap an empty spot inside the enclosure"/>
   <translation tag="Tap any tile to open its full controls or toggle its state." en="Tap any tile to open its full controls or toggle its state."/>
@@ -3557,7 +3558,6 @@
   <translation tag="Toolhead position and homing, with a plate view and Home All" en="Toolhead position and homing, with a plate view and Home All"/>
   <translation tag="Toolhead position unknown" en="Toolhead position unknown"/>
   <translation tag="Toolheads" en="Toolheads"/>
-  <translation tag="Toolheads won&apos;t refeed on their own after a runout, and filament won&apos;t unload when the print ends." en="Toolheads won&apos;t refeed on their own after a runout, and filament won&apos;t unload when the print ends."/>
   <translation tag="Tools" en="Tools"/>
   <translation tag="Tools Used" en="Tools Used"/>
   <translation tag="Tools: " en="Tools: "/>
@@ -3982,7 +3982,7 @@
   <translation tag="{} could not be checked from Home - review it and tap Print" en="{} could not be checked from Home - review it and tap Print"/>
   <translation tag="{} critical" en="{} critical"/>
   <translation tag="{} critical hardware issues" en="{} critical hardware issues"/>
-  <translation tag="{} didn&apos;t load. Load it before resuming." en="{} didn&apos;t load. Load it before resuming."/>
+  <translation tag="{} didn&apos;t load. Check that its hotend is seated and do a test extrude before resuming." en="{} didn&apos;t load. Check that its hotend is seated and do a test extrude before resuming."/>
   <translation tag="{} disabled" en="{} disabled"/>
   <translation tag="{} enabled" en="{} enabled"/>
   <translation tag="{} failed: {}" en="{} failed: {}"/>

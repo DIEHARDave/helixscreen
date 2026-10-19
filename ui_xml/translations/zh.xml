@@ -606,7 +606,6 @@
   <translation tag="Check the RS-485 cable between printer and CFS" zh="请检查打印机与 CFS 之间的 RS-485 线缆"/>
   <translation tag="Check the buffer unit on the back of the printer" zh="请检查打印机背面的缓冲单元"/>
   <translation tag="Check the chips, then save" zh="检查标签后保存"/>
-  <translation tag="Check the filament in {}, then tap Resume to load it again." zh="请检查{}中的耗材，然后点按恢复重新装载。"/>
   <translation tag="Check the filament path and try again." zh="检查耗材路径并重试。"/>
   <translation tag="Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed" zh="请检查从槽位到集线器的通路是否缠绕或阻力过大。若槽位送料顺畅，可能是集线器传感器或送料电机故障"/>
   <translation tag="Check the provided value and try again" zh="请检查所提供的值后重试"/>
@@ -1006,6 +1005,7 @@
   <translation tag="ETA {}" zh="预计 {}"/>
   <translation tag="EXTRAS" zh="其他"/>
   <translation tag="Each fan can only be selected once" zh="每个风扇只能选择一次"/>
+  <translation tag="Each toolhead after the first will pause the print the first time it is used, because the printer won&apos;t load or prime it. Filament won&apos;t unload when the print ends." zh="打印机不会装载或预挤出后续工具头，因此第一个之后的每个工具头在首次使用时都会暂停打印。打印结束时也不会卸载耗材。"/>
   <translation tag="Edit" zh="编辑"/>
   <translation tag="Edit Filament" zh="编辑耗材"/>
   <translation tag="Edit Slot" zh="编辑槽位"/>
@@ -3265,6 +3265,7 @@
   <translation tag="Tangle sensitivity" zh="打结灵敏度"/>
   <translation tag="Tap + to add" zh="点击 + 添加"/>
   <translation tag="Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge" zh="点按“重启固件”以恢复。在 K2 上这也会重启 rpi MCU 桥接"/>
+  <translation tag="Tap Resume to try the load again from {}." zh="点按恢复，从{}重新尝试装载。"/>
   <translation tag="Tap again to confirm this orientation" zh="再次点击确认此方向"/>
   <translation tag="Tap an empty spot inside the enclosure" zh="点击机箱内的空白处"/>
   <translation tag="Tap any tile to open its full controls or toggle its state." zh="点击任意磁贴以打开其完整控制项或切换其状态。"/>
@@ -3557,7 +3558,6 @@
   <translation tag="Toolhead position and homing, with a plate view and Home All" zh="工具头位置与归位，含热床视图和全部归位"/>
   <translation tag="Toolhead position unknown" zh="工具头位置未知"/>
   <translation tag="Toolheads" zh="工具头"/>
-  <translation tag="Toolheads won&apos;t refeed on their own after a runout, and filament won&apos;t unload when the print ends." zh="耗材用尽后工具头不会自动重新送料，打印结束时也不会卸载耗材。"/>
   <translation tag="Tools" zh="工具"/>
   <translation tag="Tools Used" zh="已使用工具"/>
   <translation tag="Tools: " zh="工具: "/>
@@ -3982,7 +3982,7 @@
   <translation tag="{} could not be checked from Home - review it and tap Print" zh="无法从主页检查 {} – 请查看后点按打印"/>
   <translation tag="{} critical" zh="{} 个严重"/>
   <translation tag="{} critical hardware issues" zh="{} 个关键硬件问题"/>
-  <translation tag="{} didn&apos;t load. Load it before resuming." zh="{}未装载。请在恢复前装载。"/>
+  <translation tag="{} didn&apos;t load. Check that its hotend is seated and do a test extrude before resuming." zh="{}未装载。恢复前请检查热端是否安装到位，并进行一次测试挤出。"/>
   <translation tag="{} disabled" zh="已停用{}"/>
   <translation tag="{} enabled" zh="已启用{}"/>
   <translation tag="{} failed: {}" zh="{} 失败：{}"/>

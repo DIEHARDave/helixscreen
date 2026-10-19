@@ -645,7 +645,6 @@
   <translation tag="Check the RS-485 cable between printer and CFS" ru="Проверьте кабель RS-485 между принтером и CFS"/>
   <translation tag="Check the buffer unit on the back of the printer" ru="Проверьте буферный блок на задней панели принтера"/>
   <translation tag="Check the chips, then save" ru="Проверьте метки и сохраните"/>
-  <translation tag="Check the filament in {}, then tap Resume to load it again." ru="Проверьте филамент в {}, затем нажмите «Продолжить», чтобы загрузить его снова."/>
   <translation tag="Check the filament path and try again." ru="Проверьте путь филамента и попробуйте снова."/>
   <translation tag="Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed" ru="Проверьте путь от слота до хаба на запутывание или трение. Если слот подаёт свободно, возможно, неисправен датчик хаба или подающий двигатель"/>
   <translation tag="Check the provided value and try again" ru="Проверьте указанное значение и повторите попытку"/>
@@ -1048,6 +1047,7 @@
   <translation tag="ETA {}" ru="Окончание {}"/>
   <translation tag="EXTRAS" ru="ДОПОЛНИТЕЛЬНО"/>
   <translation tag="Each fan can only be selected once" ru="Каждый вентилятор можно выбрать только один раз"/>
+  <translation tag="Each toolhead after the first will pause the print the first time it is used, because the printer won&apos;t load or prime it. Filament won&apos;t unload when the print ends." ru="Каждая головка после первой приостановит печать при первом использовании, потому что принтер не загрузит и не подготовит её. В конце печати филамент не будет выгружен."/>
   <translation tag="Edit" ru="Редактировать"/>
   <translation tag="Edit Filament" ru="Редактировать филамент"/>
   <translation tag="Edit Slot" ru="Редактировать слот"/>
@@ -3325,6 +3325,7 @@
   <translation tag="Tangle sensitivity" ru="Чувствительность к спутыванию"/>
   <translation tag="Tap + to add" ru="Нажмите +, чтобы добавить"/>
   <translation tag="Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge" ru="Нажмите «Перезапуск прошивки» для восстановления. На K2 это также перезапускает мост MCU rpi"/>
+  <translation tag="Tap Resume to try the load again from {}." ru="Нажмите «Продолжить», чтобы повторить загрузку из {}."/>
   <translation tag="Tap again to confirm this orientation" ru="Нажмите ещё раз для подтверждения ориентации"/>
   <translation tag="Tap an empty spot inside the enclosure" ru="Нажмите на пустое место внутри корпуса"/>
   <translation tag="Tap any tile to open its full controls or toggle its state." ru="Нажмите на любую плитку, чтобы открыть её полные элементы управления или переключить состояние."/>
@@ -3617,7 +3618,6 @@
   <translation tag="Toolhead position and homing, with a plate view and Home All" ru="Положение и парковка печатающей головки, с видом стола и кнопкой «Парковка всех осей»"/>
   <translation tag="Toolhead position unknown" ru="Положение печатающей головки неизвестно"/>
   <translation tag="Toolheads" ru="Печатающие головки"/>
-  <translation tag="Toolheads won&apos;t refeed on their own after a runout, and filament won&apos;t unload when the print ends." ru="После окончания филамента головки не будут подавать его сами, а в конце печати филамент не будет выгружен."/>
   <translation tag="Tools" ru="Инструменты"/>
   <translation tag="Tools Used" ru="Использовано инструментов"/>
   <translation tag="Tools: " ru="Инструменты: "/>
@@ -4051,7 +4051,7 @@
   <translation tag="{} critical hardware issues_few" ru="{} критические проблемы с оборудованием"/>
   <translation tag="{} critical hardware issues_many" ru="{} критических проблем с оборудованием"/>
   <translation tag="{} critical hardware issues_one" ru="{} критическая проблема с оборудованием"/>
-  <translation tag="{} didn&apos;t load. Load it before resuming." ru="{}: филамент не загрузился. Загрузите его перед продолжением."/>
+  <translation tag="{} didn&apos;t load. Check that its hotend is seated and do a test extrude before resuming." ru="{}: филамент не загрузился. Перед продолжением проверьте, что хотэнд установлен правильно, и выполните пробную экструзию."/>
   <translation tag="{} disabled" ru="{} выключено"/>
   <translation tag="{} enabled" ru="{} включено"/>
   <translation tag="{} failed: {}" ru="Ошибка {}: {}"/>

@@ -708,7 +708,6 @@ translations:
   Check the RS-485 cable between printer and CFS: Проверьте кабель RS-485 между принтером и CFS
   Check the buffer unit on the back of the printer: Проверьте буферный блок на задней панели принтера
   Check the chips, then save: Проверьте метки и сохраните
-  Check the filament in {}, then tap Resume to load it again.: 'Проверьте филамент в {}, затем нажмите «Продолжить», чтобы загрузить его снова.'
   Check the filament path and try again.: Проверьте путь филамента и попробуйте снова.
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
   : Проверьте путь от слота до хаба на запутывание или трение. Если слот подаёт свободно, возможно, неисправен датчик хаба или подающий двигатель
@@ -1159,6 +1158,8 @@ translations:
   EXTRAS: ДОПОЛНИТЕЛЬНО
   Each fan can only be selected once: Каждый вентилятор можно выбрать только один
     раз
+  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
+  : 'Каждая головка после первой приостановит печать при первом использовании, потому что принтер не загрузит и не подготовит её. В конце печати филамент не будет выгружен.'
   Edit: Редактировать
   Edit Filament: Редактировать филамент
   Edit Slot: Редактировать слот
@@ -3641,6 +3642,7 @@ translations:
   'Tangle sensitivity': 'Чувствительность к спутыванию'
   Tap + to add: Нажмите +, чтобы добавить
   Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge: Нажмите «Перезапуск прошивки» для восстановления. На K2 это также перезапускает мост MCU rpi
+  Tap Resume to try the load again from {}.: 'Нажмите «Продолжить», чтобы повторить загрузку из {}.'
   Tap again to confirm this orientation: Нажмите ещё раз для подтверждения ориентации
   Tap an empty spot inside the enclosure: Нажмите на пустое место внутри корпуса
   Tap any tile to open its full controls or toggle its state.: 'Нажмите на любую плитку, чтобы открыть её полные элементы управления или переключить состояние.'
@@ -4000,7 +4002,6 @@ translations:
   Toolhead position and homing, with a plate view and Home All: "Положение и парковка печатающей головки, с видом стола и кнопкой «Парковка всех осей»"
   Toolhead position unknown: Положение печатающей головки неизвестно
   Toolheads: Печатающие головки
-  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: 'После окончания филамента головки не будут подавать его сами, а в конце печати филамент не будет выгружен.'
   Tools: Инструменты
   Tools Used: Использовано инструментов
   'Tools: ': 'Инструменты: '
@@ -4457,7 +4458,7 @@ translations:
     few: '{} критические проблемы с оборудованием'
     many: '{} критических проблем с оборудованием'
     other: '{} критические проблемы с оборудованием'
-  "{} didn't load. Load it before resuming.": '{}: филамент не загрузился. Загрузите его перед продолжением.'
+  "{} didn't load. Check that its hotend is seated and do a test extrude before resuming.": '{}: филамент не загрузился. Перед продолжением проверьте, что хотэнд установлен правильно, и выполните пробную экструзию.'
   '{} disabled': '{} выключено'
   '{} enabled': '{} включено'
   '{} failed: {}': 'Ошибка {}: {}'

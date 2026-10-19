@@ -450,8 +450,14 @@ answers OK with the feeder short of that test (the refeed, a Load from the filam
 or a `*_fail` load state from any source) marks the head's load unconfirmed for the
 current print. While one is marked, `prepare_for_resume` never reaches RESUME: on the head
 it resumes on it retries the refeed, and on any other head it refuses, since loading that
-head would leave it picked up when RESUME runs. The refusal names the head ("Toolhead 2 (T1)
-didn't load. Load it before resuming.") and says to tap Resume to load it again. The mark
+head would leave it picked up when RESUME runs. A Resume after a failed load is the
+dangerous action: `INNER_RESUME` extrudes 20 mm (`_CLIENT_EXTRUDE LENGTH=20`) into
+whatever jammed. The refusal names the head and points at the hardware ("Toolhead 2 (T1)
+didn't load. Check that its hotend is seated and do a test extrude before resuming."),
+with tapping Resume to retry the load as the way forward. Even with nothing marked, a head
+an automatic feeder serves resumes only from `load_finish` with no channel fault; the
+motion sensor's present reading is not taken as a load, and any other state runs the
+refeed first. The mark
 clears when that feeder reaches `load_finish` with no error, when the print leaves
 printing/paused, and on disconnect
 (`src/printer/ams_backend_snapmaker.cpp#mark_load_unconfirmed_locked`).
@@ -461,9 +467,13 @@ arrives as a plain `SDCARD_PRINT_FILE`, so `extruders_used` stays all false: the
 per-head runout feed (`sm_print_auto_feed`) and the end-of-print unload
 (`SM_PRINT_END_AUTO_UNLOAD_FILAMENT`) both skip every head. `SET_PRINT_USED_EXTRUDERS` and
 `SET_PRINT_TASK_PARAMETERS` are refused while `print_stats.state` is printing or paused
-(`id=531, code=16`), so the backend cannot repair it mid-print. It judges each print once,
-on the first frame that names it printing or paused, and a print whose task names no used
-head raises one sticky warning saying so
+(`id=531, code=16`), so the backend cannot repair it mid-print. With `extruders_used` all
+false the firmware also skips `SM_PRINT_PREEXTRUDE_FILAMENT` and the switch check, so every
+toolhead after the first pauses the print on its first use. The backend judges each print
+once, on the first frame that names it printing or paused; when its task names no used
+head it reads the file's tools (`FileStartFactsLoader`: scanned tools, else per-tool
+weights, else palette size, else assumed) and, when one past T0 is used and the print is
+still the same one, raises one sticky warning saying so
 (`src/printer/ams_backend_snapmaker.cpp#judge_task_config_locked`).
 
 Related capability flags: `recovers_filament_on_resume() = true` (Resume re-feeds, so

@@ -646,7 +646,6 @@ translations:
   Check the RS-485 cable between printer and CFS: Check the RS-485 cable between printer and CFS
   Check the buffer unit on the back of the printer: Check the buffer unit on the back of the printer
   Check the chips, then save: Check the chips, then save
-  Check the filament in {}, then tap Resume to load it again.: Check the filament in {}, then tap Resume to load it again.
   Check the filament path and try again.: Check the filament path and try again.
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
   : Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
@@ -1079,6 +1078,8 @@ translations:
   ETA {}: ETA {}
   EXTRAS: EXTRAS
   Each fan can only be selected once: Each fan can only be selected once
+  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
+  : Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
   Edit: Edit
   Edit Filament: Edit Filament
   Edit Slot: Edit Slot
@@ -3505,6 +3506,7 @@ translations:
   'Tangle sensitivity': 'Tangle sensitivity'
   Tap + to add: Tap + to add
   Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge: Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge
+  Tap Resume to try the load again from {}.: Tap Resume to try the load again from {}.
   Tap again to confirm this orientation: Tap again to confirm this orientation
   Tap an empty spot inside the enclosure: Tap an empty spot inside the enclosure
   Tap any tile to open its full controls or toggle its state.: Tap any tile to open its full controls or toggle its state.
@@ -3860,7 +3862,6 @@ translations:
   Toolhead position and homing, with a plate view and Home All: Toolhead position and homing, with a plate view and Home All
   Toolhead position unknown: Toolhead position unknown
   Toolheads: Toolheads
-  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.
   Tools: Tools
   Tools Used: Tools Used
   'Tools: ': 'Tools: '
@@ -4303,7 +4304,7 @@ translations:
   '{} configured items not found': '{} configured items not found'
   '{} critical': '{} critical'
   '{} critical hardware issues': '{} critical hardware issues'
-  "{} didn't load. Load it before resuming.": "{} didn't load. Load it before resuming."
+  "{} didn't load. Check that its hotend is seated and do a test extrude before resuming.": "{} didn't load. Check that its hotend is seated and do a test extrude before resuming."
   '{} disabled': '{} disabled'
   '{} enabled': '{} enabled'
   '{} failed: {}': '{} failed: {}'

@@ -669,7 +669,6 @@ translations:
   Check the RS-485 cable between printer and CFS: RS-485-Kabel zwischen Drucker und CFS prüfen
   Check the buffer unit on the back of the printer: Puffereinheit an der Rückseite des Druckers prüfen
   Check the chips, then save: Markierungen prüfen, dann speichern
-  Check the filament in {}, then tap Resume to load it again.: 'Prüfen Sie das Filament in {} und tippen Sie dann auf Fortsetzen, um es erneut zu laden.'
   Check the filament path and try again.: Prüfen Sie den Filamentpfad und versuchen
     Sie es erneut.
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
@@ -1120,6 +1119,8 @@ translations:
   ETA {}: 'Ende {}'
   EXTRAS: EXTRAS
   Each fan can only be selected once: Jeder Lüfter kann nur einmal ausgewählt werden
+  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
+  : 'Jeder Werkzeugkopf nach dem ersten pausiert den Druck bei seiner ersten Verwendung, weil der Drucker ihn nicht lädt oder vorbereitet. Das Filament wird am Druckende nicht entladen.'
   Edit: Bearbeiten
   Edit Filament: Filament bearbeiten
   Edit Slot: Slot bearbeiten
@@ -3598,6 +3599,7 @@ translations:
   'Tangle sensitivity': 'Verwicklungsempfindlichkeit'
   Tap + to add: Zum Hinzufügen + tippen
   Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge: Zum Wiederherstellen auf Firmware-Neustart tippen. Beim K2 wird dabei auch die rpi-MCU-Bridge neu gestartet
+  Tap Resume to try the load again from {}.: 'Tippen Sie auf Fortsetzen, um das Laden aus {} erneut zu versuchen.'
   Tap again to confirm this orientation: Erneut tippen, um diese Ausrichtung zu bestätigen
   Tap an empty spot inside the enclosure: Auf eine freie Stelle im Gehäuse tippen
   Tap any tile to open its full controls or toggle its state.: 'Tippen Sie auf eine Kachel, um die vollständige Steuerung zu öffnen oder ihren Zustand umzuschalten.'
@@ -3966,7 +3968,6 @@ translations:
   Toolhead position and homing, with a plate view and Home All: "Position und Referenzfahrt des Werkzeugkopfs, mit Plattenansicht und Alle referenzieren"
   Toolhead position unknown: Werkzeugkopfposition unbekannt
   Toolheads: Werkzeugköpfe
-  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: 'Werkzeugköpfe werden nach einem Filamentauslauf nicht selbst nachgeladen, und das Filament wird am Druckende nicht entladen.'
   Tools: Werkzeuge
   Tools Used: Verwendete Werkzeuge
   'Tools: ': 'Werkzeuge: '
@@ -4417,7 +4418,7 @@ translations:
   '{} configured items not found': '{} konfigurierte Elemente nicht gefunden'
   '{} critical': '{} kritisch'
   '{} critical hardware issues': '{} kritische Hardwareprobleme'
-  "{} didn't load. Load it before resuming.": '{} wurde nicht geladen. Laden Sie es, bevor Sie fortsetzen.'
+  "{} didn't load. Check that its hotend is seated and do a test extrude before resuming.": '{} wurde nicht geladen. Prüfen Sie, ob das Hotend richtig sitzt, und extrudieren Sie testweise, bevor Sie fortsetzen.'
   '{} disabled': '{} deaktiviert'
   '{} enabled': '{} aktiviert'
   '{} failed: {}': '{} fehlgeschlagen: {}'

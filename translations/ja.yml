@@ -617,7 +617,6 @@ translations:
   Check the RS-485 cable between printer and CFS: プリンターと CFS 間の RS-485 ケーブルを確認してください
   Check the buffer unit on the back of the printer: プリンター背面のバッファーユニットを確認してください
   Check the chips, then save: チップを確認して保存
-  Check the filament in {}, then tap Resume to load it again.: '{}のフィラメントを確認し、再開をタップしてもう一度ロードしてください。'
   Check the filament path and try again.: フィラメント経路を確認して、もう一度お試しください。
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
   : スロットからハブまでの経路に絡まりや抵抗がないか確認してください。スロットが問題なく送り出せる場合は、ハブセンサーまたは送り出しモーターの故障が考えられます
@@ -1046,6 +1045,8 @@ translations:
   ETA {}: '終了予定 {}'
   EXTRAS: その他
   Each fan can only be selected once: 各ファンは一度のみ選択できます
+  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
+  : 'プリンターがロードもプライミングも行わないため、2番目以降のツールヘッドは初めて使われるときに印刷を一時停止します。印刷終了時にフィラメントは排出されません。'
   Edit: 編集
   Edit Filament: フィラメントを編集
   Edit Slot: スロットを編集
@@ -3388,6 +3389,7 @@ translations:
   'Tangle sensitivity': '絡み検出の感度'
   Tap + to add: + をタップして追加
   Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge: 「ファームウェア再起動」をタップして復旧してください。K2 では rpi MCU ブリッジも再起動されます
+  Tap Resume to try the load again from {}.: '再開をタップすると、{}からもう一度ロードします。'
   Tap again to confirm this orientation: もう一度タップしてこの向きを確定
   Tap an empty spot inside the enclosure: 筐体内の空いている場所をタップ
   Tap any tile to open its full controls or toggle its state.: タイルをタップすると、全機能のコントロールを開いたり、状態を切り替えたりできます。
@@ -3722,7 +3724,6 @@ translations:
   Toolhead position and homing, with a plate view and Home All: "ツールヘッドの位置とホーミング。プレート表示と全軸ホーミング付き"
   Toolhead position unknown: ツールヘッドの位置が不明です
   Toolheads: ツールヘッド
-  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: 'フィラメント切れの後にツールヘッドは自動で再供給されず、印刷終了時にフィラメントは排出されません。'
   Tools: ツール
   Tools Used: 使用したツール
   'Tools: ': 'ツール: '
@@ -4153,7 +4154,7 @@ translations:
   '{} configured items not found': 設定された項目 {} 個が見つかりません
   '{} critical': '重大 {} 件'
   '{} critical hardware issues': '{} 個の重要なハードウェアの問題'
-  "{} didn't load. Load it before resuming.": '{}がロードされませんでした。再開する前にロードしてください。'
+  "{} didn't load. Check that its hotend is seated and do a test extrude before resuming.": '{}がロードされませんでした。再開する前に、ホットエンドが正しく取り付けられているか確認し、テスト押し出しを行ってください。'
   '{} disabled': '{} を無効にしました'
   '{} enabled': '{} を有効にしました'
   '{} failed: {}': '{} に失敗しました: {}'

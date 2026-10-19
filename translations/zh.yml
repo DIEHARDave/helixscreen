@@ -616,7 +616,6 @@ translations:
   Check the RS-485 cable between printer and CFS: 请检查打印机与 CFS 之间的 RS-485 线缆
   Check the buffer unit on the back of the printer: 请检查打印机背面的缓冲单元
   Check the chips, then save: 检查标签后保存
-  Check the filament in {}, then tap Resume to load it again.: '请检查{}中的耗材，然后点按恢复重新装载。'
   Check the filament path and try again.: 检查耗材路径并重试。
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
   : 请检查从槽位到集线器的通路是否缠绕或阻力过大。若槽位送料顺畅，可能是集线器传感器或送料电机故障
@@ -1043,6 +1042,8 @@ translations:
   ETA {}: '预计 {}'
   EXTRAS: 其他
   Each fan can only be selected once: 每个风扇只能选择一次
+  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
+  : '打印机不会装载或预挤出后续工具头，因此第一个之后的每个工具头在首次使用时都会暂停打印。打印结束时也不会卸载耗材。'
   Edit: 编辑
   Edit Filament: 编辑耗材
   Edit Slot: 编辑槽位
@@ -3380,6 +3381,7 @@ translations:
   'Tangle sensitivity': '打结灵敏度'
   Tap + to add: 点击 + 添加
   Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge: 点按“重启固件”以恢复。在 K2 上这也会重启 rpi MCU 桥接
+  Tap Resume to try the load again from {}.: '点按恢复，从{}重新尝试装载。'
   Tap again to confirm this orientation: 再次点击确认此方向
   Tap an empty spot inside the enclosure: 点击机箱内的空白处
   Tap any tile to open its full controls or toggle its state.: 点击任意磁贴以打开其完整控制项或切换其状态。
@@ -3713,7 +3715,6 @@ translations:
   Toolhead position and homing, with a plate view and Home All: "工具头位置与归位，含热床视图和全部归位"
   Toolhead position unknown: 工具头位置未知
   Toolheads: 工具头
-  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: '耗材用尽后工具头不会自动重新送料，打印结束时也不会卸载耗材。'
   Tools: 工具
   Tools Used: 已使用工具
   'Tools: ': '工具: '
@@ -4143,7 +4144,7 @@ translations:
   '{} configured items not found': 未找到 {} 个已配置的项目
   '{} critical': '{} 个严重'
   '{} critical hardware issues': '{} 个关键硬件问题'
-  "{} didn't load. Load it before resuming.": '{}未装载。请在恢复前装载。'
+  "{} didn't load. Check that its hotend is seated and do a test extrude before resuming.": '{}未装载。恢复前请检查热端是否安装到位，并进行一次测试挤出。'
   '{} disabled': '已停用{}'
   '{} enabled': '已启用{}'
   '{} failed: {}': '{} 失败：{}'

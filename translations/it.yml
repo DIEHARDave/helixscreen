@@ -661,7 +661,6 @@ translations:
   Check the RS-485 cable between printer and CFS: Controllare il cavo RS-485 tra stampante e CFS
   Check the buffer unit on the back of the printer: Controllare l'unità buffer sul retro della stampante
   Check the chips, then save: Controlla le etichette, poi salva
-  Check the filament in {}, then tap Resume to load it again.: 'Controlla il filamento in {}, poi tocca Riprendi per caricarlo di nuovo.'
   Check the filament path and try again.: Controllare il percorso del filamento e
     riprovare.
   ? Check the path from the slot to the hub for a tangle or drag. If the slot feeds freely, the hub sensor or the feeder motor may have failed
@@ -1113,6 +1112,8 @@ translations:
   EXTRAS: EXTRA
   Each fan can only be selected once: Ogni ventola può essere selezionata solo una
     volta
+  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
+  : 'Ogni testina dopo la prima metterà in pausa la stampa al suo primo utilizzo, perché la stampante non la caricherà né la innescherà. Il filamento non verrà scaricato a fine stampa.'
   Edit: Modifica
   Edit Filament: Modifica filamento
   Edit Slot: Modifica Slot
@@ -3592,6 +3593,7 @@ translations:
   'Tangle sensitivity': 'Sensibilità ai grovigli'
   Tap + to add: Tocca + per aggiungere
   Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge: Toccare Riavvia firmware per ripristinare. Sulla K2 questo riavvia anche il bridge MCU rpi
+  Tap Resume to try the load again from {}.: 'Tocca Riprendi per ritentare il caricamento da {}.'
   Tap again to confirm this orientation: Tocca di nuovo per confermare questo orientamento
   Tap an empty spot inside the enclosure: Tocca un punto vuoto dentro la chiusura
   Tap any tile to open its full controls or toggle its state.: Tocca un riquadro per aprirne i controlli completi o per cambiarne lo stato.
@@ -3960,7 +3962,6 @@ translations:
   Toolhead position and homing, with a plate view and Home All: "Posizione e homing della testina, con vista del piatto e Homing tutto"
   Toolhead position unknown: Posizione della testina sconosciuta
   Toolheads: Testine
-  Toolheads won't refeed on their own after a runout, and filament won't unload when the print ends.: 'Le testine non si ricaricheranno da sole dopo un esaurimento del filamento, e il filamento non verrà scaricato a fine stampa.'
   Tools: Strumenti
   Tools Used: Utensili usati
   'Tools: ': 'Utensili: '
@@ -4409,7 +4410,7 @@ translations:
   '{} configured items not found': '{} elementi configurati non trovati'
   '{} critical': '{} critici'
   '{} critical hardware issues': '{} problemi hardware critici'
-  "{} didn't load. Load it before resuming.": '{} non si è caricato. Caricalo prima di riprendere.'
+  "{} didn't load. Check that its hotend is seated and do a test extrude before resuming.": '{} non si è caricato. Verifica che il suo hotend sia ben inserito ed esegui un''estrusione di prova prima di riprendere.'
   '{} disabled': '{} disabilitato'
   '{} enabled': '{} abilitato'
   '{} failed: {}': '{} non riuscito: {}'
