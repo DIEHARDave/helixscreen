@@ -109,6 +109,7 @@ src/application/main_loop_handler.cpp  # not in the v1 Core+AMS cut
 src/application/remote_screen_fb0_sink.cpp  # not in the v1 Core+AMS cut
 src/application/remote_screen_manager.cpp  # not in the v1 Core+AMS cut
 src/application/remote_screen_blit.cpp  # no screen server on the K-Touch: nothing to mirror into
+src/application/remote_screen_server_sink.cpp  # no screen server on the K-Touch
 src/application/splash_screen_manager.cpp  # not in the v1 Core+AMS cut
 src/application/xml_hot_reloader.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_capture.cpp  # not in the v1 Core+AMS cut
