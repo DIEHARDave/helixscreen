@@ -124,7 +124,7 @@
               width="100%" flex_grow="1" style_pad_all="0" style_pad_gap="#space_sm" flex_flow="column"
               style_flex_main_place="start" style_flex_cross_place="center" scrollable="false">
         <bind_flag_if_not_eq subject="input_shaper_state" flag="hidden" ref_value="1"/>
-        <!-- One compact header: status and progress on the left, Abort on the
+        <!-- One compact header: status and progress on the left, Stop on the
              right, so the live chart below gets every remaining pixel. -->
         <lv_obj width="100%"
                 height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
