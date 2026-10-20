@@ -792,10 +792,8 @@ void NetworkSettingsOverlay::clear_network_list() {
         lv_indev_reset(indev, networks_list_);
     }
 
-    // Freeze queue to prevent background thread from enqueueing callbacks
-    // targeting children we're about to delete
-    auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-    helix::ui::UpdateQueue::instance().drain();
+    // Queued scan and connect results hold no row pointers: they rebuild the
+    // list or look widgets up by name, so the rows need no drain first.
 
     int32_t child_count = static_cast<int32_t>(lv_obj_get_child_count(networks_list_));
     for (int32_t i = child_count - 1; i >= 0; i--) {
