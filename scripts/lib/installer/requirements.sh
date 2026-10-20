@@ -325,6 +325,12 @@ _overlay_upperdir() {
 check_service_dest_space() {
     # A desktop install writes no service definition.
     [ "${platform:-}" = "x86-desktop" ] && return 0
+    # Nor does a self-update under systemd: it runs inside the unit's
+    # ProtectSystem=strict sandbox, where /etc is read-only even for root, and
+    # the unit's root ExecStartPre refreshes the service files on restart.
+    if _is_self_update && _systemd_is_init; then
+        return 0
+    fi
     # set_install_paths() has already run, so INIT_SCRIPT_DEST is known. It is
     # empty on systemd platforms, where install_service_systemd writes the unit
     # to /etc/systemd/system instead.
@@ -377,9 +383,14 @@ check_service_dest_space() {
 
 # Detect init system (systemd vs SysV)
 # Sets: INIT_SYSTEM to "systemd" or "sysv"
+# True when systemd is this host's running init.
+_systemd_is_init() {
+    command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]
+}
+
 detect_init_system() {
     # Check for systemd
-    if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+    if _systemd_is_init; then
         INIT_SYSTEM="systemd"
         log_info "Init system: systemd"
         return
