@@ -454,7 +454,7 @@ ConfirmOptions PaTuningOverlay::owned_confirm() {
 }
 
 void PaTuningOverlay::confirm_and_start() {
-    if (stage_ != SETUP || !helix::tune::pressure_advance_enabled()) {
+    if (stage_ != SETUP) {
         return;
     }
     if (job_holds_machine(get_printer_state().print_state().get_print_lifecycle())) {
@@ -860,8 +860,7 @@ void PaTuningOverlay::fetch_result_spool(int spool_id) {
                         &spoolman_text_,
                         fmt::format(fmt::runtime(lv_tr("Active spool: {}")), spool->display_name())
                             .c_str());
-                    lv_subject_set_int(&can_save_spool_,
-                                       helix::tune::pressure_advance_enabled() ? 1 : 0);
+                    lv_subject_set_int(&can_save_spool_, 1);
                 } else {
                     lv_subject_copy_string(&spoolman_text_, lv_tr("No active Spoolman spool."));
                 }
@@ -881,8 +880,7 @@ std::string PaTuningOverlay::extruder_label() const {
 
 void PaTuningOverlay::save_to_spool() {
     const auto k = session_.result();
-    if (stage_ != RESULT || !k || !api_ || !active_spool_ || active_spool_->filament_id <= 0 ||
-        !helix::tune::pressure_advance_enabled()) {
+    if (stage_ != RESULT || !k || !api_ || !active_spool_ || active_spool_->filament_id <= 0) {
         return;
     }
     lv_subject_set_int(&can_save_spool_, 0);

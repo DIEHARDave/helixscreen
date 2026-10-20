@@ -4,7 +4,6 @@
 
 #include "ui_error_reporting.h"
 
-#include "config.h"
 #include "filament_database.h"
 #include "format_utils.h"
 #include "i_moonraker_api.h"
@@ -52,11 +51,6 @@ void set_flow_percent(IMoonrakerAPI* api, int pct) {
             spdlog::error("[TuneController] Failed to set flow: {}", err.message);
             helix::ui::notify_error_tr(TR_NOOP("Failed to set flow rate: {}"), err);
         });
-}
-
-bool pressure_advance_enabled() {
-    auto* config = Config::get_instance();
-    return config && config->is_beta_features_enabled();
 }
 
 void set_pressure_advance(IMoonrakerAPI* api, const std::string& extruder, float k) {

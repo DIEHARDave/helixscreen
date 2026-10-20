@@ -228,7 +228,7 @@ scale = 1.0                            for dpi <= 225
 scale = 1.0 + (dpi - 225) * 0.0032118  above, capped at 2.0
 ```
 
-The deadband covers every measured printer (CC1 131, SonicPad 170, CB1 187, Pi 206, K1C/K2+ 218, AD5M 221 true DPI), so all of them resolve to exactly 1.0 and are bit-identical to an unscaled build. A 405 DPI phone resolves to 1.578.
+The deadband covers every measured printer (CC1 131, SonicPad 170, CB1 187, Pi 206, K1C/K2+ 218, AD5M 221 true DPI), so all of them resolve to exactly 1.0 and are bit-identical to an unscaled build. A 405 DPI panel drawn at its native resolution resolves to 1.578. The Android SDL driver never draws a phone that way: above 225 DPI it renders at half the native resolution or less and upscales, so the curve sees the logical pixel's DPI (a 480 DPI Galaxy Z Flip 7 at 1260x540 is 240, scale 1.048).
 
 **What the scale multiplies**
 
@@ -253,7 +253,7 @@ So DPI is resolved from trusted sources only, most trusted first:
 | Source | Notes |
 |--------|-------|
 | `--dpi <n>` / stored override | Always wins; ignored if outside the 60-700 plausibility band |
-| Platform measurement | Android only (`SDL_GetDisplayDPI`), still plausibility-checked |
+| Platform measurement | Android only (`SDL_GetDisplayDPI`), converted to the DPI of the logical surface the SDL driver draws and upscales (`DisplayMetrics::logical_dpi`), still plausibility-checked |
 | Known-panel table | Integrated panels keyed on platform: `ad5m`, `cc1`, `k1`, `k2`. Platforms driving a user-chosen display (`pi`, `pi32`, `x86`) deliberately have no entry |
 | Fallback | The 160 DPI authoring reference, i.e. scale 1.0 |
 

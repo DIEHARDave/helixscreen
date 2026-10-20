@@ -19,7 +19,7 @@ firmware-measured calibration is a separate screen (`include/ui_panel_calibratio
 
 ## How a run works
 
-1. Advanced > Pressure Advance Tuning (beta). Pick tool (multi-tool printers), material
+1. Advanced > Pressure Advance Tuning. Pick tool (multi-tool printers), material
    preset (nozzle and bed temperature come from `presets::slot_temps()`), extruder kind
    (direct drive sweeps 0 to 0.1, bowden 0 to 1.0) and edit the start and end K.
 2. `pa::generate_test_gcode()` writes a 40 mm hollow square tower centred on the bed
@@ -59,9 +59,6 @@ keeps the ramp going, and the Tune overlay shows a Tuner button while a run is a
 
 ## Rules the run keeps
 
-- **Beta gate.** `tune::pressure_advance_enabled()` (beta features) is checked by every
-  send outside the tuner's own run: the Tune row, Save to Spool and spool activation.
-  The widgets hide on `show_beta_features` as well, but the C++ check is what stops a send.
 - **Heads, not tools.** The tool chips are `ToolState::heated_heads()`; lanes feeding one
   hotend are one head. A tool is selected (`T<n>`, the head's representative tool, so
   sparse numbering works) only with `has_multiple_extruders()`. The nozzle is heated by

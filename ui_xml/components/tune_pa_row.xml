@@ -4,15 +4,13 @@
 <component>
   <!-- Live pressure advance for the active extruder, sharing a row with the
        speed and flow reset in both orientations of the print tune panel (it
-       wraps under it where the row is too narrow). A beta feature: hidden, and
-       its handler refuses, while beta features are off. The value is the printer's
+       wraps under it where the row is too narrow). The value is the printer's
        own report, so a step that Klipper refused never shows as applied. The
        Tuner button appears only while a pressure-advance test print runs, as
        the way back to the full-screen tuner. -->
   <view name="tune_pa_row"
         width="content" height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xxs"
         style_flex_cross_place="center" scrollable="false">
-    <bind_flag_if_eq subject="show_beta_features" flag="hidden" ref_value="0"/>
     <text_small text="PA" style_text_color="#text_muted"/>
     <text_heading name="pa_display" bind_text="tune_pa_display" style_pad_right="#space_xs"/>
     <ui_button name="btn_pa_tuner" height="#button_height_sm" text="Tuner" icon="gauge" hidden="true">

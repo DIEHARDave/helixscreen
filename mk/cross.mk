@@ -2861,7 +2861,8 @@ define release-clean-assets
 	@# source PNGs once every printer has a render at the size being kept.
 	@# gen-splash-3d-<platform> already narrows what gets BUILT, but the copy above
 	@# takes whatever build/ happens to hold, so this is the step that bounds the
-	@# payload. A platform whose panel is unknown until runtime keeps everything.
+	@# payload. A platform whose panel is unbounded keeps every size class and the
+	@# source PNGs; one whose manifest names candidate boards ships their union.
 	$(if $(2),@$(PLATFORM_MANIFEST) prune-assets $(2) $(1))
 endef
 

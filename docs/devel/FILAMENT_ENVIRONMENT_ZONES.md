@@ -356,7 +356,7 @@ with (`zones_`) and a selected index.
   screen.
 - Three `IndexedSubjectPool`s back the tab strip (`env_zone_tab_label/state/active`), reclaimed
   in `on_ui_destroyed()` rather than `on_deactivate()`.
-- With beta features on (`show_beta_features`), on a dryer reporting `supports_gate_selection` the lane line gives way to a row of lane chips
+- On a dryer reporting `supports_gate_selection` the lane line gives way to a row of lane chips
   (`env_dry_gate_label/selected`, one per heated gate on the shown zone's unit; each lane's
   state is on the zone tabs and the slot badges) and, with `supports_rotation`, a Rotate chip. Every chip starts selected
   on each showing and the last selected one cannot be cleared. While every chip is selected,
@@ -366,8 +366,7 @@ with (`zones_`) and a selected index.
   belongs to the unit. Each chip is `#touch_target_min` square; while they show, the comfort
   list wraps 2x2 at every breakpoint, and at Micro the comfort strip hides (the humidity readout
   stays). A Stop on a subset names what it stopped ("Stopped drying Gate 2, Gate 3",
-  `stopped_lanes_text()`). With beta off `publish_dry_gates()` offers no chips, so Start and
-  Stop send the whole-unit command; the slot drying badges are read-only state and show either way.
+  `stopped_lanes_text()`). The slot drying badges are read-only state and show on every dryer.
 - The cross-unit affordance ("View all boxes") appears only when the printer reports more zones
   than this view is showing **and** no overview already sits beneath the overlay - reached from
   the list, Back is already the way there, so a second route would stack a duplicate.

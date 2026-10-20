@@ -58,6 +58,15 @@ struct ResolvedDpi {
     DpiSource source;
 };
 
+/// Everything the UI's size follows from, decided in one place for startup and
+/// for every later change of the drawing surface.
+struct ScaleDecision {
+    ResolvedDpi resolved; ///< Per logical pixel
+    double auto_scale;    ///< From the DPI alone
+    double ui_scale;      ///< After the stored setting
+    int32_t lvgl_dpi;     ///< kReferenceDpi scaled by ui_scale, for lv_display_set_dpi
+};
+
 /// Human-readable source name, for the one startup log line that records how
 /// the UI decided its scale. Worth logging: when a user reports the UI is the
 /// wrong size, which source won is the first thing to know.
@@ -111,6 +120,16 @@ class DisplayMetrics {
     /// keep today's sizing, never shrink below it.
     static double ui_scale_for_dpi(double dpi);
 
+    /// DPI of the pixels the UI draws in, when the platform presents a logical
+    /// surface smaller than the panel and upscales it (Android renders at an
+    /// integer fraction of the native resolution). @p physical_dpi is per native
+    /// pixel; the result is per logical pixel, which is what the scale curve
+    /// must see, or a surface already enlarged by the upscale is enlarged again.
+    /// Sizes are compared by diagonal so the panel's orientation does not matter.
+    /// Unknown or degenerate sizes return @p physical_dpi unchanged.
+    static double logical_dpi(double physical_dpi, int native_w, int native_h, int logical_w,
+                              int logical_h);
+
     /// Whether a measurement is inside the plausibility band.
     static bool dpi_is_plausible(double dpi);
 
@@ -133,6 +152,17 @@ class DisplayMetrics {
     /// (Android's SDL_GetDisplayDPI), which is still plausibility-checked.
     static ResolvedDpi resolve_dpi(int user_override_dpi, std::optional<double> platform_measured,
                                    board::Board board);
+
+    /// The whole chain from measurements to scale: @p platform_native_dpi is
+    /// converted to the logical surface (logical_dpi), resolved against
+    /// @p user_override_dpi and the board (resolve_dpi), turned into the auto
+    /// scale, and then the stored @p scale_setting has its say. A surface that
+    /// changes size at runtime (a foldable folding) reruns this with its new
+    /// native and logical sizes.
+    static ScaleDecision decide_scale(int user_override_dpi,
+                                      std::optional<double> platform_native_dpi, int native_w,
+                                      int native_h, int logical_w, int logical_h,
+                                      board::Board board, int scale_setting);
 
     /// Scale an authored pixel constant. The single choke point every future
     /// physical-units caller goes through, so widening the refactor past
@@ -175,10 +205,10 @@ class DisplayMetrics {
     static void set_auto_scale(double scale);
     static double auto_scale();
 
-    /// The process-wide scale, resolved once during display init. Screens do
-    /// not resize or change DPI at runtime, so this is set exactly once and
-    /// read everywhere; it defaults to 1.0 so any code path that runs before
-    /// display init (or in a unit test) behaves exactly as it does today.
+    /// The process-wide scale, resolved during display init and again when
+    /// the drawing surface changes size (decide_scale). It defaults to 1.0 so
+    /// any code path that runs before display init (or in a unit test)
+    /// behaves exactly as it does today.
     static void set_active_scale(double scale);
     static double active_scale();
 };

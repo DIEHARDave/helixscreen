@@ -209,7 +209,7 @@ on 6 of the 8):
 | Raspberry Pi rig | 800×480 | 206 | 1.0 |
 | K1C, K2 Plus | 480×800 | 218 | 1.0 |
 | AD5M | 800×480 | 221 | 1.0 |
-| Phone (Android) | 1080×2400 | ~405 | 1.578 |
+| Phone (Android), 2x logical surface | 540×1200 logical | ~203 per logical pixel | 1.0 |
 
 Do not read a panel's DPI off the kernel to fill this in. See
 [THEME_SYSTEM.md § The high-DPI UI scale factor](THEME_SYSTEM.md#the-high-dpi-ui-scale-factor).

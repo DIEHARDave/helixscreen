@@ -19,7 +19,6 @@ struct CapChipSpec {
     const char* info_title;   ///< untranslated key, lv_tr at use
     const char* info_message; ///< what it is, what HelixScreen does with it, where
     void (*open)();           ///< nullptr = info popup
-    bool beta;                ///< the screen is a beta feature: info popup while beta is off
 };
 
 /// One entry per CapChip, in enum order.
@@ -32,8 +31,7 @@ const CapChipSpec* find_cap_chip_spec(std::string_view name);
 /// AmsState and the sensor managers.
 CapabilityChipFacts gather_capability_chip_facts();
 
-/// A tapped chip's action: its screen, or its info popup when it has none or
-/// the screen is a beta feature and beta features are off.
+/// A tapped chip's action: its screen, or its info popup when it has none.
 void open_cap_chip(const CapChipSpec& spec);
 
 } // namespace helix

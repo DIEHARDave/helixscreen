@@ -389,6 +389,8 @@ void MoonrakerManager::create_client(const RuntimeConfig& runtime_config) {
         spdlog::info("[MoonrakerManager] Creating MOCK client ({}, {}x speed)",
                      persona.display_name, speedup);
         auto mock = std::make_unique<MoonrakerClientMock>(persona.type, speedup);
+        // Whole-Hz shaper sweep lines, so the live sweep preview has a sweep to follow.
+        mock->set_shaper_sweep_realtime(true);
 
         // HELIX_MOCK_AUTO_PRINT=1 — boot straight into an active mock print so
         // print-gated features (e.g. adaptive bed mesh) are exercisable under

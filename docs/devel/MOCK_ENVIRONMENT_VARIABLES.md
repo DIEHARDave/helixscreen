@@ -1543,7 +1543,7 @@ INPUT_SHAPER_DEMO_KALICO=1 ./build/bin/helix-screen --test -vv &
 
 ### `HELIX_MOCK_BELT_A_HZ`
 
-Set belt path A's simulated resonance peak (Hz) in the mock's `TEST_RESONANCES` simulation. Path A is the `AXIS=1,-1` diagonal (Voron/Shake&Tune naming). Re-measuring a path walks its peak toward the other path's by up to 4 Hz per run, so the tuning loop converges the way cranking a belt tensioner does.
+Set belt path A's simulated resonance peak (Hz) in the mock's `TEST_RESONANCES` simulation. Path A is the `AXIS=1,-1` diagonal (Voron/Shake&Tune naming). Re-measuring a path with a full sweep, while no tune script is set, walks its peak toward the other path's by up to 4 Hz per run, so the tuning loop converges the way cranking a belt tensioner does.
 
 | Property | Value |
 |----------|-------|
@@ -1570,6 +1570,53 @@ Set belt path B's simulated resonance peak (Hz), the `AXIS=1,1` diagonal. Read o
 # A stiff A belt and a loose B belt
 HELIX_MOCK_BELT_A_HZ=115 HELIX_MOCK_BELT_B_HZ=95 ./build/bin/helix-screen --test --sim-speed 6 -vv
 ```
+
+### `HELIX_MOCK_BELT_TUNE_SCRIPT`
+
+Script one belt path's peak across the guided tuning loop. A path's first sweep reads its seeded peak (`HELIX_MOCK_BELT_A_HZ` / `_B_HZ`); every sweep of the named path after that, full or windowed (`TEST_RESONANCES ... FREQ_START= FREQ_END=`), plays the next value in the list, and the last value holds once the list runs out. So the calibration turn's full sweeps and the narrow rounds after it can all be scripted. While either path has a script, no sweep applies the re-measure walk described under `HELIX_MOCK_BELT_A_HZ`. The CSV always spans the configured range, as Klipper's does. Read once at mock construction. An empty or non-numeric item is skipped with a warning, and a prefix other than `A:` or `B:` drops the whole value.
+
+Without a script the walk runs on full re-measures, so a plain `--test` run still registers the calibration turn: A's 110 Hz and B's 98 Hz walk to 106 and 102 on the calibration sweep.
+
+| Property | Value |
+|----------|-------|
+| **Values** | `<A\|B>:<hz>,<hz>,...`; the item `flat` writes a featureless curve (noise floor, no peak) for that sweep, which reaches the no-peak round |
+| **Default** | unset: sweeps after the first walk the peaks as `HELIX_MOCK_BELT_A_HZ` describes |
+| **File** | `src/api/moonraker_client_mock.cpp` (`apply_belt_tune_script`, `dispatch_test_resonances_response`) |
+
+```bash
+# B: the calibration sweep barely moves (98.3), a second turn registers (102.1),
+# then the narrow rounds climb toward A (110 Hz)
+HELIX_MOCK_BELT_TUNE_SCRIPT="B:98.3,102.1,102.1,105.0,108.5,109.9" ./build/bin/helix-screen --test --sim-speed 6 -vv
+
+# B's second sweep finds no peak
+HELIX_MOCK_BELT_TUNE_SCRIPT="B:flat,104" ./build/bin/helix-screen --test --sim-speed 6 -vv
+```
+
+### Live sweep preview under `--test`
+
+No variable switches this on: under `--test` the live sweep charts (Input Shaper panel and
+wizard step, Belt Tension) are fed by the mock printer's own accelerometer stream, so the
+whole path from the loop thread to the chart runs without hardware.
+
+- **The stream.** `MockAccelBatchSource` (`include/accel_batch_source_mock.h`) plays a synthetic
+  sweep (`SweepSynth`) through the callbacks klippy's dump endpoint feeds, on a private
+  libhv loop thread, one batch per `kBatchIntervalMs` of wall time. `make_accel_batch_source`
+  picks it when `RuntimeConfig::should_mock_moonraker()`; the mock's
+  `MoonrakerClientMock::make_accel_batch_source` hands it the response of the sweep it
+  started last. The stream's ramp starts `kDriveLeadS` after the stream, as a real one
+  trails the console line the preview attaches on.
+- **The response.** It matches the CSV the mock writes for the same sweep, so the swap to
+  the CSV curve is seamless. Belt paths follow `HELIX_MOCK_BELT_A_HZ` / `_B_HZ` (and the
+  tune script); `SHAPER_CALIBRATE` peaks at 53.8 Hz (X) and 48.2 Hz (Y).
+- **Pacing.** `--sim-speed` scales the stream (stream seconds per wall second) and the
+  console lines together, so the two stay in step at any factor. Check the preview at 4-10x, as for
+  any active sweep.
+- **Realtime shaper sweep.** `SHAPER_CALIBRATE` plays one `Testing frequency` line per whole
+  Hz at the belt sweep's cadence when `MoonrakerClientMock::set_shaper_sweep_realtime` is on,
+  which `MoonrakerManager` sets for the app. Unit tests keep the compact 20-line transcript.
+- **Failure modes.** `HELIX_MOCK_BELT_FAIL=stall` and the other modes end the console
+  transcript as before, and the preview stops with the run. `HELIX_SWEEP_PREVIEW_OFF=1`
+  (`ENVIRONMENT_VARIABLES.md`) removes the preview under `--test` too.
 
 ### `HELIX_MOCK_BELT_FAIL`
 

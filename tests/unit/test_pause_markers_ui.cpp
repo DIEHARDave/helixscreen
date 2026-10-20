@@ -306,7 +306,7 @@ TEST_CASE_METHOD(PauseMarkerFixture,
     const int32_t track =
         lv_area_get_width(&coords) - pad_left - lv_obj_get_style_pad_right(bar, LV_PART_MAIN);
 
-    // Pause at layer is a beta feature; its tick shows only with beta on.
+    // The runtime tick needs no beta features.
     auto* config = helix::Config::get_instance();
     REQUIRE(config != nullptr);
     struct BetaRestore {
@@ -316,16 +316,7 @@ TEST_CASE_METHOD(PauseMarkerFixture,
             config->set<bool>("/beta_features", prev);
         }
     } restore{config, config->get<bool>("/beta_features", false)};
-    config->set<bool>("/beta_features", true);
-
-    SECTION("beta off hides the runtime tick") {
-        config->set<bool>("/beta_features", false);
-        state_.print_state().note_layer_pause_at_layer(6);
-        REQUIRE(state_.print_state().layer_pause_marker_fraction().has_value());
-        lv_draw_buf_t* marked = take_snapshot(bar);
-        CHECK(diff_columns(marked, baseline).empty());
-        lv_draw_buf_destroy(marked);
-    }
+    config->set<bool>("/beta_features", false);
 
     SECTION("scheduled layer with a mark draws one tick on the file's axis") {
         const int v0 = lv_subject_get_int(state_.print_state().get_pause_markers_version_subject());

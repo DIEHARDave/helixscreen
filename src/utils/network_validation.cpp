@@ -4,9 +4,11 @@
 #include "utils/network_validation.h"
 
 #include "text_io.h"
+#include "translation_loader.h"
 
 #include <algorithm>
 #include <cctype>
+#include <cerrno>
 
 bool is_valid_ip_or_hostname(const std::string& host_raw) {
     std::string host(helix::text_io::trim(host_raw));
@@ -181,3 +183,40 @@ std::string resolve_moonraker_host_default(const std::string& stored_host, bool 
     }
     return is_android ? std::string() : std::string("127.0.0.1");
 }
+
+namespace helix {
+
+ConnectFailureKind classify_connect_failure(int io_error, int socket_error) {
+    const int cause = (io_error == ENOTCONN && socket_error != 0) ? socket_error : io_error;
+    switch (cause) {
+    case ECONNREFUSED:
+        return ConnectFailureKind::Refused;
+    case ETIMEDOUT:
+    case EHOSTUNREACH:
+    case ENETUNREACH:
+#ifdef EHOSTDOWN
+    case EHOSTDOWN:
+#endif
+        return ConnectFailureKind::Timeout;
+    default:
+        return ConnectFailureKind::Unknown;
+    }
+}
+
+const char* connect_failure_hint(ConnectFailureKind kind, bool is_android) {
+    switch (kind) {
+    case ConnectFailureKind::Timeout:
+        return is_android ? TR_NOOP("No answer: check the IP address and that this device is on "
+                                    "the printer's Wi-Fi, not mobile data.")
+                          : TR_NOOP("No answer: check the IP address and that this device is on "
+                                    "the printer's network.");
+    case ConnectFailureKind::Refused:
+        return TR_NOOP("The printer refused that port: check the port (Moonraker is usually "
+                       "7125).");
+    case ConnectFailureKind::Unknown:
+        break;
+    }
+    return TR_NOOP("Connection failed. Check IP/port and try again.");
+}
+
+} // namespace helix

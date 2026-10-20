@@ -61,6 +61,8 @@ Klipper SHAPER_CALIBRATE
 | `include/ui_panel_input_shaper.h` | Input shaper panel (overlay) |
 | `src/ui/ui_panel_input_shaper.cpp` | Panel implementation |
 | `ui_xml/input_shaper_panel.xml` | XML layout with subject bindings |
+| `include/ui_shaper_sweep_chart.h`, `src/ui/ui_shaper_sweep_chart.cpp` | `ShaperSweepChart`: the live chart shared by the panel's MEASURING view and the wizard step |
+| `include/live_sweep_preview.h`, `include/sweep_response_estimator.h` | The stream-to-points pipeline behind every live sweep chart (`BELT_TENSION.md` § Live preview) |
 | `include/ui_panel_calibration_pid.h` | PID calibration panel |
 | `src/ui/ui_panel_calibration_pid.cpp` | PID panel implementation |
 | `ui_xml/calibration_pid_panel.xml` | PID panel XML layout |
@@ -170,6 +172,8 @@ bool   ui_frequency_response_chart_is_chart_mode(chart);
 lv_obj_t* ui_frequency_response_chart_get_obj(chart);
 ```
 
+**Axis label gutters.** The chart sizes its own label space from `font_small` instead of fixed pixels (`src/ui/ui_frequency_response_chart.cpp#apply_axis_pads`). The left pad is `ui_frequency_response_chart_y_gutter_width()`, the widest amplitude label the formatter can emit ("100%", "999k", "0.005", "1e-04", "100e9"), never under 36 px, plus `space_xs`; the bottom pad is `space_sm` plus the font height plus `space_xs`. Both re-run on `LV_EVENT_SIZE_CHANGED`, because a breakpoint change swaps the font under a live chart. Frequency labels are centred on their tick but clamped inside the chart's box (`ui_frequency_response_chart_x_label_center`, half-width from `ui_frequency_response_chart_x_label_half_width`) so "100 Hz" never clips at either edge. Tick spacing follows the range: 5 Hz up to a 40 Hz span, 10 Hz up to 80, so a zoomed belt-tuning zone still shows a few ticks. `ui_frequency_response_chart_get_freq_range()` reads the range back.
+
 ### Internal Structure
 
 ```cpp
@@ -209,9 +213,20 @@ The chart uses five LVGL draw event callbacks registered on `LV_EVENT_DRAW_MAIN`
 
 5. **`draw_muted_series_cb`** (DRAW_POST) -- Draws series flagged via `ui_frequency_response_chart_set_series_muted()` as thin (1px, ~66% opacity) polylines from their stored data, instead of through their LVGL chart series (which stays hidden). Used for the live-before "Previous" curve so the fitted curves stay visually dominant. Point placement mirrors the built-in renderer: X from point index, Y from amplitude over the configured range.
 
+### NaN gaps
+
+A non-finite amplitude is a gap. The built-in LVGL renderer skips it
+(`LV_CHART_POINT_NONE`), and the styled and muted passes stroke and fill only the runs
+`include/ui_frequency_response_chart.h#fr_chart_finite_runs` returns: every maximal run of
+finite values at least two points long. A lone finite point between two gaps draws nothing.
+Points are placed by index, so a caller with a partial curve passes the whole frequency grid
+with NaN where it has no value (the live preview does exactly this).
+
 ### Downsampling
 
-When `set_data()` is called with more points than `max_points` for the current tier, data is automatically downsampled using evenly-spaced point selection. The first and last points are always preserved to maintain frequency range endpoints.
+When `set_data()` is called with more points than `max_points` for the current tier, data is automatically downsampled using evenly-spaced point selection. The first and last points are always preserved to maintain frequency range endpoints. Picking
+can land on a NaN gap or step over a narrow peak, so the live curve on a BASIC-tier chart is
+coarser than the CSV curve that replaces it.
 
 ---
 
@@ -331,7 +346,7 @@ The transfer math lives in `src/calibration/shaper_response.cpp` and reproduces 
 IDLE (0)          Shows instructions, current config, Calibrate X/Y/All buttons
   |
   v
-MEASURING (1)     Spinner/progress bar, step labels, Abort button
+MEASURING (1)     Progress bar, step labels, Stop button, and the live response chart (§ Live sweep chart)
 
 Both the panel and the first-run wizard step use the same analysis-phase
 treatment: the sweep shows a determinate bar; the offline analysis reports no
@@ -360,9 +375,47 @@ State visibility is controlled entirely through XML subject bindings:
 4. Calibrate Y axis (progress: "Step 2 of 2")
 5. Show results for both axes
 
-### Abort Behavior
+### Live sweep chart
 
-Aborting during calibration sends `M112` (emergency stop) followed by `FIRMWARE_RESTART`. This is necessary because `SHAPER_CALIBRATE` blocks the G-code queue and cannot be cancelled through normal means. Recovery dialog suppression is applied for 15 seconds.
+While `SHAPER_CALIBRATE` sweeps, MEASURING draws the measured response as it arrives, in
+`chart_container_measuring` (`ui_xml/input_shaper_panel.xml`). The wizard step draws the same
+chart in `wizard_input_shaper_chart_host`. Both own a
+`include/ui_shaper_sweep_chart.h#ShaperSweepChart`, which wraps a `LiveSweepPreview`
+(`BELT_TENSION.md` § Live preview covers the signals, the drive lock, why the console timing
+is not drawn, and the threading crossing).
+
+- **Arming.** `InputShaperPanel::begin_axis_preview` and
+  `WizardInputShaperStep::begin_axis_preview` build a target with
+  `live_sweep_target(preview_facts_, SweepAxis::X or Y)`. The facts (socket path,
+  reachability, `[resonance_tester]`) are queried once on entry (`query_preview_facts`). A
+  per-axis `accel_chip_x` / `accel_chip_y` picks that axis's chip.
+- **Progress.** `ShaperSweepChart::on_progress`: `Sweeping` with a frequency feeds the
+  console value (the first one opens the stream), `Analyzing` calls `finish()`, which keeps
+  the stream for the last points and then releases the chip before the offline analysis.
+- **Column and axis.** The chart plots the axis under test (`SweepColumn::X` or `Y`) on a
+  fixed 0 to `kShaperChartMaxHz` (200 Hz) axis shared with the results charts, so a curve
+  sits at the same x before and after the swap. The amplitude range follows the tallest
+  point with `kShaperChartHeadroom`.
+- **Swap.** `show_curve` stops the stream and draws the CSV curve in place. In Calibrate All
+  the panel keeps X's CSV curve on screen until Y's first preview points replace it, so the
+  chart never blanks between axes. Anywhere else the panel clears the chart on completion.
+- **Visibility.** The layout decides whether the chart fits: the XML publishes
+  `is_measuring_chart_fits` (panel) and `wizard_input_shaper_chart_fits` (wizard) from the
+  breakpoint, and `live_chart_layout_fits` reads them. Where it is hidden nothing arms, so
+  nothing streams for a chart nobody sees.
+- **Rebuild.** A hot-reload rebuild frees the widget tree without `on_ui_destroyed()`, so
+  `InputShaperPanel::on_deactivating` calls it on `DeactivateReason::Rebuild` while the tree
+  is still alive: the live chart and both results charts are destroyed with their hosts,
+  `create()` makes the results charts again, and the next sweep makes the live chart. The
+  wizard step destroys its chart in `cleanup()`, before the wizard deletes the screen.
+- **No stream, no chart.** Without a reachable socket, a single chip, or with
+  `HELIX_SWEEP_PREVIEW_OFF`, MEASURING shows the progress bar alone.
+- **Never a verdict.** Recommendations, the comparison table and the residual scoring read
+  the CSV only.
+
+### Stop Behavior
+
+The Stop button (`ui_xml/input_shaper_panel.xml#btn_abort`, the wizard's `ui_xml/wizard_input_shaper.xml#cancel_calibration_btn`) sends `M112` (emergency stop) followed by `FIRMWARE_RESTART`. This is necessary because `SHAPER_CALIBRATE` blocks the G-code queue and cannot be cancelled through normal means. Recovery dialog suppression is applied for 15 seconds. Every control that performs this stop is labelled "Stop" with the `alert_octagon` icon and `variant="danger"`: Input Shaper, the wizard step, PID, Tool Offsets and Belt Tension.
 
 ### Klipper Commands
 
@@ -421,7 +474,7 @@ The PID panel provides an interactive UI for Klipper's `PID_CALIBRATE` command w
 IDLE (0)          Heater selection (extruder/bed), temp adjustment, material presets
   |
   v
-CALIBRATING (1)   Live temp graph, progress bar, Abort button
+CALIBRATING (1)   Live temp graph, progress bar, Stop button
   |
   +---> COMPLETE (3)   Shows Kp/Ki/Kd results with before/after comparison
   |
@@ -582,3 +635,4 @@ Test tags:
 - `[input_shaper]` -- Combined input shaper tests
 - `[platform]` -- Platform tier detection and adaptation
 - `[downsampling]` -- Data downsampling behavior
+- Live sweep chart: `tests/unit/test_shaper_sweep_chart.cpp`, `test_live_sweep_preview.cpp`, `test_sweep_response_estimator.cpp`, `test_mock_accel_batch_source.cpp`; the wizard step's wiring is in `test_wizard_input_shaper_step.cpp`

@@ -21,7 +21,6 @@
 #include "accel_sensor_manager.h"
 #include "ams_state.h"
 #include "app_globals.h"
-#include "config.h"
 #include "filament_sensor_manager.h"
 #include "i_moonraker_api.h"
 #include "job_queue_start.h"
@@ -170,175 +169,174 @@ constexpr std::array<CapChipSpec, kCapChipCount> kSpecs = {{
     {C::Kinematics, "pm_chip_kinematics", "pm_chip_text_kinematics", TR_NOOP("Kinematics"),
      TR_NOOP("How the printer's axes are driven, as its Klipper config declares it. HelixScreen "
              "uses it to decide how homing works and which belt and motion tools apply."),
-     nullptr, false},
+     nullptr},
     {C::BuildVolume, "pm_chip_build_volume", "pm_chip_text_build_volume", TR_NOOP("Build Volume"),
      TR_NOOP("The printable size in millimeters (X × Y × Z), from the axis limits in the "
              "printer's Klipper config."),
-     nullptr, false},
+     nullptr},
     {C::Probe, "pm_chip_probe", "pm_chip_text_probe", TR_NOOP("Probe"),
      TR_NOOP("A sensor that measures the distance to the bed. HelixScreen uses it for Z offset "
              "calibration and probe tests on the Probe screen."),
-     open_probe, false},
+     open_probe},
     {C::BedMesh, "pm_chip_bed_mesh", "pm_chip_text_bed_mesh", TR_NOOP("Bed Mesh"),
      TR_NOOP("A height map of the bed that Klipper uses to make up for an uneven surface. View "
              "and calibrate it on the Bed Mesh screen."),
-     PM_DESKTOP_SCREEN(open_bed_mesh), false},
+     PM_DESKTOP_SCREEN(open_bed_mesh)},
     {C::Qgl, "pm_chip_qgl", "pm_chip_text_qgl", TR_NOOP("QGL"),
      TR_NOOP("Quad Gantry Level squares a gantry driven by four Z motors to the bed. HelixScreen "
              "offers it on the Controls and Motion screens."),
-     nullptr, false},
+     nullptr},
     {C::ZTilt, "pm_chip_z_tilt", "pm_chip_text_z_tilt", TR_NOOP("Z-Tilt"),
      TR_NOOP("Z-Tilt levels the gantry or bed using its separate Z motors. HelixScreen offers it "
              "on the Controls and Motion screens."),
-     nullptr, false},
+     nullptr},
     {C::ScrewsTilt, "pm_chip_screws_tilt", "pm_chip_text_screws_tilt", TR_NOOP("Screws Tilt"),
      TR_NOOP("Measures the bed at each adjustment screw and says how far to turn it. Run it on "
              "the Screws Tilt screen."),
-     PM_DESKTOP_SCREEN(open_screws_tilt), false},
+     PM_DESKTOP_SCREEN(open_screws_tilt)},
     {C::Accelerometer, "pm_chip_accelerometer", "pm_chip_text_accelerometer",
      TR_NOOP("Accelerometer"),
      TR_NOOP("Measures vibration for input shaping. Run resonance tests on the Input Shaper "
              "screen."),
-     PM_DESKTOP_SCREEN(open_input_shaper), false},
+     PM_DESKTOP_SCREEN(open_input_shaper)},
     {C::BeltTension, "pm_chip_belt_tension", "pm_chip_text_belt_tension", TR_NOOP("Belt Tension"),
      TR_NOOP("Compares the two belt paths of a CoreXY printer with the accelerometer, so you can "
              "even out their tension. Run it on the Belt Tension screen."),
-     PM_DESKTOP_SCREEN(open_belt_tension), true},
+     PM_DESKTOP_SCREEN(open_belt_tension)},
     {C::ShakeTune, "pm_chip_shake_tune", "pm_chip_text_shake_tune", TR_NOOP("Shake&Tune"),
      TR_NOOP("Klippain Shake&Tune macros are installed on the printer. HelixScreen detects them "
              "but does not use them; run them from Mainsail or Fluidd."),
-     nullptr, false},
+     nullptr},
     {C::HeatedBed, "pm_chip_heated_bed", "pm_chip_text_heated_bed", TR_NOOP("Heated Bed"),
      TR_NOOP("The bed heater. Set its temperature and watch its graph on the bed temperature "
              "screen."),
-     open_temp_graph_bed, false},
+     open_temp_graph_bed},
     {C::ChamberSensor, "pm_chip_chamber_sensor", "pm_chip_text_chamber_sensor",
      TR_NOOP("Chamber Sensor"),
      TR_NOOP("A sensor that reads the air temperature inside the enclosure. Watch it on the "
              "chamber temperature screen."),
-     open_temp_graph_chamber, false},
+     open_temp_graph_chamber},
     {C::ChamberHeater, "pm_chip_chamber_heater", "pm_chip_text_chamber_heater",
      TR_NOOP("Chamber Heater"),
      TR_NOOP("A heater that warms the air inside the enclosure. Set its temperature on the "
              "chamber temperature screen."),
-     open_temp_graph_chamber, false},
+     open_temp_graph_chamber},
     {C::ChamberDryer, "pm_chip_chamber_dryer", "pm_chip_text_chamber_dryer",
      TR_NOOP("Chamber Dryer"),
      TR_NOOP("The chamber heater can run a filament drying cycle. Start one from the drying "
              "dialog."),
-     open_chamber_dryer, false},
+     open_chamber_dryer},
     {C::FilterFan, "pm_chip_filter_fan", "pm_chip_text_filter_fan", TR_NOOP("Filter Fan"),
      TR_NOOP("A fan that pulls the enclosure air through a filter. Control it on the chamber "
              "temperature screen."),
-     open_temp_graph_chamber, false},
+     open_temp_graph_chamber},
     {C::BedDrying, "pm_chip_bed_drying", "pm_chip_text_bed_drying", TR_NOOP("Bed Drying"),
      TR_NOOP("The heated bed and enclosure can dry spools placed on the bed. Start a cycle from "
              "the bed drying dialog."),
-     open_bed_drying, false},
+     open_bed_drying},
     {C::Fans, "pm_chip_fans", "pm_chip_text_fans", TR_NOOP("Fans"),
      TR_NOOP("Fans besides the part cooling fan. Control them on the Fans screen."),
-     open_fan_control, false},
+     open_fan_control},
     {C::FanTach, "pm_chip_fan_tach", "pm_chip_text_fan_tach", TR_NOOP("Fan Tach"),
      TR_NOOP("The printer reports measured fan speeds. HelixScreen shows them on the Fans "
              "screen."),
-     open_fan_control, false},
+     open_fan_control},
     {C::FilamentSystem, "pm_chip_filament_system", "pm_chip_text_filament_system",
      TR_NOOP("Multi-Filament"),
      TR_NOOP("A system that feeds several filaments to the toolhead, shown with its slot count. "
              "Manage the slots on the filament system screen."),
-     open_ams_detail, false},
+     open_ams_detail},
     {C::ToolChanger, "pm_chip_tool_changer", "pm_chip_text_tool_changer", TR_NOOP("Tool Changer"),
      TR_NOOP("The printer swaps between several toolheads. Manage the tools on the filament "
              "system screen."),
-     open_ams_detail, false},
+     open_ams_detail},
     {C::FilamentSensors, "pm_chip_filament_sensors", "pm_chip_text_filament_sensors",
      TR_NOOP("Filament Sensors"),
      TR_NOOP("Sensors that detect filament running out or jamming. Set what each one does in "
              "the sensor settings."),
-     open_sensor_settings, false},
+     open_sensor_settings},
     {C::WidthSensors, "pm_chip_width_sensors", "pm_chip_text_width_sensors",
      TR_NOOP("Width Sensors"),
      TR_NOOP("Sensors that measure the filament diameter as it feeds. Configure them in the "
              "sensor settings."),
-     open_sensor_settings, false},
+     open_sensor_settings},
     {C::Retraction, "pm_chip_retraction", "pm_chip_text_retraction", TR_NOOP("Retraction"),
      TR_NOOP("Klipper handles retraction itself (G10/G11). Adjust the lengths and speeds in the "
              "retraction settings."),
-     open_retraction, false},
+     open_retraction},
     {C::PaCal, "pm_chip_pa_cal", "pm_chip_text_pa_cal", TR_NOOP("PA Calibration"),
      TR_NOOP("The printer can measure pressure advance on its own. Run it on the PA "
              "calibration screen."),
-     PM_DESKTOP_SCREEN(open_pa_cal), false},
+     PM_DESKTOP_SCREEN(open_pa_cal)},
     {C::ToolOffsets, "pm_chip_tool_offsets", "pm_chip_text_tool_offsets", TR_NOOP("Tool Offsets"),
      TR_NOOP("The printer can measure each tool's offset automatically. Run it on the tool "
              "offset calibration screen."),
-     PM_DESKTOP_SCREEN(open_tool_offsets), true},
+     PM_DESKTOP_SCREEN(open_tool_offsets)},
     {C::NozzleClean, "pm_chip_nozzle_clean", "pm_chip_text_nozzle_clean", TR_NOOP("Nozzle Clean"),
      TR_NOOP("A macro that wipes the nozzle. HelixScreen can run it before a print from the "
              "pre-print options."),
-     nullptr, false},
+     nullptr},
     {C::PurgeLine, "pm_chip_purge_line", "pm_chip_text_purge_line", TR_NOOP("Purge Line"),
      TR_NOOP("The printer can draw a priming line before a print. HelixScreen offers it in the "
              "pre-print options."),
-     nullptr, false},
+     nullptr},
     {C::HeatSoak, "pm_chip_heat_soak", "pm_chip_text_heat_soak", TR_NOOP("Heat Soak"),
      TR_NOOP("Heat soak lets the enclosure warm up before a print. It is listed because the "
              "printer has a heat soak macro or it was turned on in settings; HelixScreen does not "
              "run it."),
-     nullptr, false},
+     nullptr},
     {C::ExcludeObject, "pm_chip_exclude_object", "pm_chip_text_exclude_object",
      TR_NOOP("Exclude Object"),
      TR_NOOP("Exclude Object lets you skip a failed part mid-print from the print status "
              "screen."),
-     nullptr, false},
+     nullptr},
     {C::LayerPause, "pm_chip_layer_pause", "pm_chip_text_layer_pause", TR_NOOP("Layer Pause"),
      TR_NOOP("Pauses a print at a chosen layer, for a filament swap or an insert. During a "
-             "print, set the layer from the preview card on the print status screen. This is a "
-             "beta feature."),
-     nullptr, false},
+             "print, set the layer from the preview card on the print status screen."),
+     nullptr},
     {C::JobQueue, "pm_chip_job_queue", "pm_chip_text_job_queue", TR_NOOP("Job Queue"),
      TR_NOOP("Moonraker keeps a queue of prints to run one after another. View it in the job "
              "queue."),
-     open_job_queue, false},
+     open_job_queue},
     {C::Mcus, "pm_chip_mcus", "pm_chip_text_mcus", TR_NOOP("MCUs"),
      TR_NOOP("The controller boards Klipper runs on. See their load in the system settings."),
-     open_system_settings, false},
+     open_system_settings},
     {C::Power, "pm_chip_power", "pm_chip_text_power", TR_NOOP("Power"),
      TR_NOOP("Power devices Moonraker can switch. Turn them on and off on the Power screen."),
-     open_power, false},
+     open_power},
     {C::Leds, "pm_chip_leds", "pm_chip_text_leds", TR_NOOP("LEDs"),
      TR_NOOP("Lights the printer can control. Choose which ones HelixScreen uses in the LED "
              "settings."),
-     open_led_settings, false},
+     open_led_settings},
     {C::LedEffects, "pm_chip_led_effects", "pm_chip_text_led_effects", TR_NOOP("LED Effects"),
      TR_NOOP("Animated light effects configured on the printer. Turn them on and off from the "
              "LED controls."),
-     open_led_control, false},
+     open_led_control},
     {C::Speaker, "pm_chip_speaker", "pm_chip_text_speaker", TR_NOOP("Speaker"),
      TR_NOOP("A buzzer or speaker for alerts and sounds. Set what plays in the sound settings."),
-     open_sound_settings, false},
+     open_sound_settings},
     {C::Webcam, "pm_chip_webcam", "pm_chip_text_webcam", TR_NOOP("Webcam"),
      TR_NOOP("A camera Moonraker streams. Add the camera widget to the home screen to watch it, "
              "and see it during a print."),
-     nullptr, false},
+     nullptr},
     {C::Spoolman, "pm_chip_spoolman", "pm_chip_text_spoolman", TR_NOOP("Spoolman"),
      TR_NOOP("Moonraker is connected to Spoolman, which tracks your spools and how much "
              "filament is left. Browse them on the Spoolman screen."),
-     PM_DESKTOP_SCREEN(open_spoolman), false},
+     PM_DESKTOP_SCREEN(open_spoolman)},
     {C::Timelapse, "pm_chip_timelapse", "pm_chip_text_timelapse", TR_NOOP("Timelapse"),
      TR_NOOP("The Moonraker timelapse plugin is installed. Set how it records in the timelapse "
              "settings."),
-     PM_DESKTOP_SCREEN(open_timelapse), false},
+     PM_DESKTOP_SCREEN(open_timelapse)},
     {C::HelixMacros, "pm_chip_helix_macros", "pm_chip_text_helix_macros",
      TR_NOOP("HelixScreen Macros"),
      TR_NOOP("HelixScreen's helper macros are installed in the printer's config. Install "
              "updates on the Advanced screen."),
-     open_advanced, false},
+     open_advanced},
     {C::HelixPlugin, "pm_chip_helix_plugin", "pm_chip_text_helix_plugin",
      TR_NOOP("HelixPrint Plugin"),
      TR_NOOP("HelixScreen's Moonraker plugin is installed, which it uses to run pre-print "
              "options. Manage it on the Advanced screen."),
-     open_advanced, false},
+     open_advanced},
 }};
 
 constexpr bool specs_in_enum_order() {
@@ -422,9 +420,7 @@ CapabilityChipFacts gather_capability_chip_facts() {
 
 void open_cap_chip(const CapChipSpec& spec) {
     spdlog::debug("[Printer Manager] {} chip clicked", spec.name);
-    Config* config = Config::get_instance();
-    const bool screen_offered = !spec.beta || (config && config->is_beta_features_enabled());
-    if (spec.open && screen_offered) {
+    if (spec.open) {
         spec.open();
         return;
     }

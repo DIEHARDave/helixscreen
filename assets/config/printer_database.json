@@ -874,6 +874,7 @@
       "enclosed": true,
       "name": "Voron 2.4",
       "manufacturer": "Voron",
+      "belt_tensioner": "screw",
       "image": "voron-v2.png",
       "_print_start_default_phases_comment": "Estimates for a 350mm-class gantry machine with a probe-based mesh: G28 plus a four-point QUAD_GANTRY_LEVEL (the 2.4 levels its gantry, never Z_TILT), then a mesh sweep, a brush wipe and a purge line. Heating is omitted - the thermal model owns those.",
       "print_start_default_phases": {
@@ -1124,6 +1125,7 @@
       "enclosed": true,
       "name": "Voron Trident",
       "manufacturer": "Voron",
+      "belt_tensioner": "screw",
       "image": "voron-trident.png",
       "_print_start_default_phases_comment": "Estimates for a 350mm-class machine with a probe-based mesh: G28 plus a three-point Z_TILT_ADJUST (the Trident tilts its bed, it has no gantry to QGL), then a mesh sweep, a brush wipe and a purge line. Heating is omitted - the thermal model owns those.",
       "print_start_default_phases": {
@@ -2784,6 +2786,29 @@
           "pattern": "ender-3-v3-ke",
           "confidence": 95,
           "reason": "Hostname contains 'ender-3-v3-ke'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "nebula",
+          "confidence": 50,
+          "reason": "Creality Nebula Pad host (hostname 'Nebula'). The pad drives the Ender-3 V3 SE/KE and retrofits onto an Ender-3 / Pro / V2, so it names the family, never the model"
+        },
+        {
+          "type": "cpu_arch_match",
+          "field": "cpu_arch",
+          "pattern": "mips",
+          "confidence": 50,
+          "corroborating": true,
+          "reason": "MIPS host (Nebula Pad's Ingenic X2000E) - shared with FlashForge and the K1 line, so it supports a Nebula Pad identification and never establishes one"
+        },
+        {
+          "type": "macro_match",
+          "field": "macros",
+          "pattern": "CX_PRINT_LEVELING_CALIBRATION",
+          "confidence": 50,
+          "corroborating": true,
+          "reason": "Creality stock-firmware macro set (Nebula Pad, K1 line) - names the vendor's firmware, not a model"
         }
       ]
     },
@@ -2888,6 +2913,29 @@
           "pattern": "ender-3",
           "confidence": 85,
           "reason": "Hostname contains 'ender-3'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "nebula",
+          "confidence": 50,
+          "reason": "Creality Nebula Pad host (hostname 'Nebula'). The pad drives the Ender-3 V3 SE/KE and retrofits onto an Ender-3 / Pro / V2, so it names the family, never the model"
+        },
+        {
+          "type": "cpu_arch_match",
+          "field": "cpu_arch",
+          "pattern": "mips",
+          "confidence": 50,
+          "corroborating": true,
+          "reason": "MIPS host (Nebula Pad's Ingenic X2000E) - shared with FlashForge and the K1 line, so it supports a Nebula Pad identification and never establishes one"
+        },
+        {
+          "type": "macro_match",
+          "field": "macros",
+          "pattern": "CX_PRINT_LEVELING_CALIBRATION",
+          "confidence": 50,
+          "corroborating": true,
+          "reason": "Creality stock-firmware macro set (Nebula Pad, K1 line) - names the vendor's firmware, not a model"
         }
       ]
     },

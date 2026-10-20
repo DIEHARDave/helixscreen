@@ -230,6 +230,11 @@ def mockOnlyAssets = ['test_gcodes', 'test_timelapse']
 // so the C arrays would be dead weight in the APK and in app storage.
 def compiledFontSources = 'fonts/*.c'
 
+// Translation files no locale loads: the merged catalogue and the identity
+// locale's pack. scripts/translation_packs.py is the definition every packager
+// shares; tests/python/test_translation_packs.py fails if this list drifts from it.
+def unloadedTranslationFiles = ['translations.xml', 'en.xml']
+
 // Same globs as regexes, for the post-copy audit below. Only '*' appears in
 // these patterns; everything around it is quoted literally.
 def nonShippableConfigPatterns = nonShippableConfig.collect {
@@ -254,7 +259,10 @@ task copyAssets(type: Copy) {
     doFirst {
         stagedAssetDirs.each { it.deleteDir() }
     }
-    from('../../ui_xml') { into 'ui_xml' }
+    from('../../ui_xml') {
+        into 'ui_xml'
+        exclude unloadedTranslationFiles.collect { "translations/${it}" }
+    }
     from('../../assets') {
         into 'assets'
         exclude mockOnlyAssets + mockOnlyAssets.collect { "${it}/**" }

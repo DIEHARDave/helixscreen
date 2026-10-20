@@ -29,11 +29,6 @@ void set_speed_percent(IMoonrakerAPI* api, int pct);
 /// Clamp and send M221. No-op when `api` is null. Errors surface via NOTIFY_ERROR.
 void set_flow_percent(IMoonrakerAPI* api, int pct);
 
-/// Pressure advance control is a beta feature. Every pressure-advance send that
-/// is not the tuner's own run (the Tune row, spool activation, Save to Spool)
-/// checks this, not only the widgets that would show it.
-bool pressure_advance_enabled();
-
 /// The Tune overlay's pressure-advance step: one tap is 0.001 of K, two
 /// buttons give 0.005.
 inline constexpr float kPaTuneStep = 0.001f;

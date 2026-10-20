@@ -162,6 +162,10 @@ class MoonrakerClient : public hv::WebSocketClient, public IMoonrakerClient {
      */
     void set_auto_reconnect(bool enabled) override;
 
+    ConnectFailureKind last_connect_failure() const override {
+        return last_connect_failure_.load(std::memory_order_relaxed);
+    }
+
     // ========== Subscription Management ==========
 
     /**
@@ -863,6 +867,9 @@ class MoonrakerClient : public hv::WebSocketClient, public IMoonrakerClient {
     // treatment.
     std::atomic<SteadyTicks> connect_started_at_{0};
     std::atomic<bool> initial_failure_notified_{false};
+    // Written on the libhv event loop thread when a never-opened attempt closes,
+    // read by the UI thread after its on_disconnected callback.
+    std::atomic<ConnectFailureKind> last_connect_failure_{ConnectFailureKind::Unknown};
     uint32_t initial_connect_failure_ms_{60000};
 
     /// Klippy's state is polled from printer.info after notify_klippy_disconnected,

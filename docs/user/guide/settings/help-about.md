@@ -105,7 +105,7 @@ Tap **Current Version** seven times in **Settings > Help & About > About**. A me
 With beta features on:
 
 - The **Update Channel** menu in [Updates](updates.md#update-channel) gains a third choice, **Dev**.
-- More rows appear on the Advanced screen (Tool Offsets, Belt Tension; some only on printers whose hardware supports them).
+- HelixScreen offers to install the HelixPrint plugin when your printer does not have it.
 
 Tap seven more times to turn them off again. See [Beta Features](../beta-features.md) for the full list.
 

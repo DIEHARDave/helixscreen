@@ -84,6 +84,19 @@ class FakeMoonrakerClient : public helix::IMoonrakerClient {
     /// What connect() returns; nonzero is a transport that could not start.
     int connect_result = 0;
 
+    /// What last_connect_failure() reports after fire_disconnected().
+    helix::ConnectFailureKind connect_failure = helix::ConnectFailureKind::Unknown;
+
+    /// Deliver the last connect()'s on_disconnected, as a failed attempt would.
+    /// @return false when connect() was never called.
+    bool fire_disconnected() {
+        if (!on_disconnected_) {
+            return false;
+        }
+        on_disconnected_();
+        return true;
+    }
+
     /// Deliver @p msg to every handler registered for @p method.
     /// @return false when nothing is subscribed — which is itself the
     ///         assertion for "the consumer never registered".
@@ -214,9 +227,14 @@ class FakeMoonrakerClient : public helix::IMoonrakerClient {
     // Everything else — inert
     // ========================================================================
 
-    int connect(const char* url, std::function<void()>, std::function<void()>) override {
+    int connect(const char* url, std::function<void()>,
+                std::function<void()> on_disconnected) override {
         last_url_ = url ? url : "";
+        on_disconnected_ = std::move(on_disconnected);
         return connect_result;
+    }
+    helix::ConnectFailureKind last_connect_failure() const override {
+        return connect_failure;
     }
     void disconnect() override {}
     const std::string& get_last_url() const override {
@@ -288,6 +306,7 @@ class FakeMoonrakerClient : public helix::IMoonrakerClient {
 
   protected:
     std::string last_url_;
+    std::function<void()> on_disconnected_;
     helix::RequestId next_request_id_ = 0;
     /// Held, not a temporary: a weak_ptr to a just-destroyed shared_ptr is
     /// born expired, which silently disarms every SubscriptionGuard built

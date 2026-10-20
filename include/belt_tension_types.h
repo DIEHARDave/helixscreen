@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include <cstddef>
 #include <functional>
 #include <string>
 #include <vector>
@@ -33,6 +34,22 @@ enum class BeltPath {
     PATH_B, ///< CoreXY diagonal B (1,1)
 };
 
+/// What kind of tensioner a belt path uses.
+enum class BeltTensionerKind {
+    UNKNOWN,
+    SCREW,
+    SPRING,
+};
+
+/// Frequency range a TEST_RESONANCES sweep is limited to, sent as FREQ_START
+/// (floored) and FREQ_END (ceiled). Klipper rejects a FREQ_START under 1 Hz, so
+/// both bounds must be real frequencies; pass no window for the printer's own
+/// [resonance_tester] range.
+struct BeltSweepWindow {
+    float freq_start_hz = 0.0f;
+    float freq_end_hz = 0.0f;
+};
+
 /// Kinematics type detected from printer
 enum class KinematicsType {
     UNKNOWN,
@@ -57,6 +74,14 @@ struct BeltTensionHardware {
 
 /// One path's response: (frequency Hz, psd_xyz) pairs, ascending frequency.
 using BeltCurve = std::vector<std::pair<float, float>>;
+
+/// One sweep's response on one frequency grid: psd_xyz for the similarity
+/// summary, psd_x + psd_y for tuning. Belt modes move the toolhead in the XY
+/// plane; Z motion in a band is the frame, not the belt.
+struct BeltResponse {
+    BeltCurve xyz;
+    BeltCurve in_plane; ///< empty when the CSV carried no psd_x and psd_y columns
+};
 
 enum class BeltVerdict { MATCHED, CLOSE, ADJUST };
 
@@ -95,7 +120,11 @@ struct BeltComparison {
     float similarity_percent = 0.0f;
     BeltVerdict verdict = BeltVerdict::ADJUST; ///< from similarity only
     BeltPeakPairing peaks;
+    float band_max_psd = 0.0f; ///< the stronger curve's in-band maximum
 };
+
+/// The curve's bins with band_min_hz <= f <= band_max_hz, ascending frequency.
+[[nodiscard]] BeltCurve curve_in_band(const BeltCurve& curve, float band_min_hz, float band_max_hz);
 
 /// Pearson correlation x100 of the two curves inside the band, clamped to 0..100.
 /// B is linearly interpolated onto A's in-band frequencies. Returns 0 when either
@@ -144,6 +173,35 @@ struct AccelSample {
 /// Parse Klipper raw CSV accelerometer data
 /// Format: #time,accel_x,accel_y,accel_z
 std::vector<AccelSample> parse_accel_csv(const std::string& csv_data);
+
+/**
+ * @brief A signal ready for single-bin DFTs: mean removed, Hann windowed, in double
+ *
+ * The window is the symmetric w[i] = 0.5 - 0.5 cos(2 pi i / (n - 1)). Every
+ * spectrum the accelerometer paths compute reads its bins off one of these and
+ * applies its own scale: compute_psd() divides |X|^2 by n * rate, a relative
+ * scale its peak searches only compare with itself; goertzel_psd()
+ * (sweep_response_estimator.h) scales to a one-sided density,
+ * 2 |X|^2 / (rate * sum(w^2)), the units Klipper's calibration CSV carries.
+ * Empty for n < 2.
+ */
+class HannWindowedSignal {
+  public:
+    HannWindowedSignal(const float* x, size_t n);
+
+    /// |X|^2 at `omega` radians per sample.
+    [[nodiscard]] double power(double omega) const;
+    [[nodiscard]] double sum_w2() const {
+        return sum_w2_;
+    }
+    [[nodiscard]] size_t size() const {
+        return v_.size();
+    }
+
+  private:
+    std::vector<double> v_;
+    double sum_w2_ = 0.0;
+};
 
 /// Compute PSD via DFT from accelerometer samples.
 ///

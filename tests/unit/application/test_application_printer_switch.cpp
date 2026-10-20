@@ -101,8 +101,9 @@ class PrinterSwitchFixture : public ApplicationTestFixture {
         // The registry outlives the fixture; the invalidator closes over `this`.
         helix::PrinterCacheRegistry::instance().clear();
         set_wizard_cancel_callback(nullptr);
-        // cancel_add_printer_wizard() defers its teardown through AsyncLifetimeGuard;
-        // that callback closes over app_, so drop it rather than run it.
+        // Queued work closes over app_, so drop it rather than run it. The restart
+        // cancel_add_printer_wizard() posts to the next tick is skipped once app_'s
+        // AsyncLifetimeGuard is gone.
         helix::ui::UpdateQueueTestAccess::discard_pending(helix::ui::UpdateQueue::instance());
     }
 
@@ -400,6 +401,8 @@ TEST_CASE_METHOD(PrinterSwitchFixture,
 
     const auto exceptions_before = helix::ui::UpdateQueueTestAccess::callback_exception_count();
     helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    CHECK(events_.empty());
+    lv_timer_handler();
 
     CHECK(helix::ui::UpdateQueueTestAccess::callback_exception_count() == exceptions_before);
     CHECK(events_ == std::vector<std::string>{"teardown", "rebuild", "home"});

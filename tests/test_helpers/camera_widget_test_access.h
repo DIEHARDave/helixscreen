@@ -79,6 +79,14 @@ class CameraWidgetTestAccess {
     static void show_fullscreen_overlay(CameraWidget& w) {
         w.show_fullscreen_overlay();
     }
+
+    /// The status setters a decoded frame and the stream status callbacks call.
+    static void set_status_text(CameraWidget& w, const char* text) {
+        w.set_status_text(text);
+    }
+    static void set_status_key(CameraWidget& w, const char* key) {
+        w.set_status_key(key);
+    }
     static lv_obj_t* fullscreen_overlay(const CameraWidget& w) {
         return w.fullscreen_overlay_;
     }

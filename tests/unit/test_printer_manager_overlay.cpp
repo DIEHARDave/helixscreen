@@ -580,18 +580,19 @@ TEST_CASE_METHOD(CapabilityChipsFixture,
 }
 
 TEST_CASE_METHOD(CapabilityChipsFixture,
-                 "PrinterManagerOverlay: a beta screen shows its popup while beta is off",
+                 "PrinterManagerOverlay: the Tool Offsets chip opens its screen with beta off",
                  "[printer_manager]") {
     ScopedBeta beta(false);
     REQUIRE(show() != nullptr);
     const helix::CapChipSpec* spec = helix::find_cap_chip_spec("pm_chip_tool_offsets");
     REQUIRE(spec != nullptr);
     REQUIRE(spec->open != nullptr);
-    REQUIRE(spec->beta);
 
     click("pm_chip_tool_offsets");
-    CHECK(ModalStack::instance().top_component_name() != "");
-    CHECK(helix::ui::get_global_tool_offset_cal_panel().get_root() == nullptr);
+    CHECK(ModalStack::instance().empty());
+    lv_obj_t* root = helix::ui::get_global_tool_offset_cal_panel().get_root();
+    REQUIRE(root != nullptr);
+    CHECK(helix::nav::is_in_stack(root));
 }
 
 TEST_CASE_METHOD(CapabilityChipsFixture, "PrinterManagerOverlay: a chip pushes its screen",

@@ -151,9 +151,9 @@ struct ApplyFixture : LVGLTestFixture {
     bool prev_beta = false;
 
     ApplyFixture() : api(client, get_printer_state()) {
-        // A beta feature: on for these cases unless one turns it off.
+        // Off: pressure advance needs no beta features (prestonbrown/helixscreen#1736).
         prev_beta = Config::get_instance()->get<bool>("/beta_features", false);
-        Config::get_instance()->set<bool>("/beta_features", true);
+        Config::get_instance()->set<bool>("/beta_features", false);
         get_printer_state().init_subjects(false);
         get_printer_state().set_klippy_state_sync(KlippyState::READY);
         client.connect("ws://mock/websocket", []() {}, []() {});
@@ -178,6 +178,7 @@ struct ApplyFixture : LVGLTestFixture {
 
 TEST_CASE_METHOD(ApplyFixture, "activating a spool applies its saved K while idle",
                  "[spoolman][pa_tune]") {
+    REQUIRE_FALSE(Config::get_instance()->is_beta_features_enabled());
     helix::spoolman_sync::apply_saved_pressure_advance(spool_with_k(0.0375f));
     CHECK(client.last_send_script() == "SET_PRESSURE_ADVANCE EXTRUDER=extruder ADVANCE=0.0375");
 }
@@ -221,16 +222,6 @@ TEST_CASE("saving a K keeps the filament's other extra fields", "[spoolman][pa_t
     const json& extra = server.filament_updates.back().data["extra"];
     CHECK(extra["drying_note"] == "\"4h at 55\"");
     CHECK(extra["pressure_advance"] == "0.0420");
-}
-
-TEST_CASE_METHOD(ApplyFixture, "with beta features off, activation never sends K",
-                 "[spoolman][pa_tune]") {
-    auto* config = Config::get_instance();
-    config->set<bool>("/beta_features", false);
-    helix::tune::set_speed_percent(&api, 120);
-    helix::spoolman_sync::apply_saved_pressure_advance(spool_with_k(0.04f));
-    CHECK(client.last_send_script() == "M220 S120");
-    CHECK_FALSE(helix::tune::pressure_advance_enabled());
 }
 
 TEST_CASE("a filament read back as no object is never written over", "[spoolman][pa_tune]") {
