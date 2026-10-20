@@ -154,8 +154,9 @@ static constexpr settings::PersistedSetting SETTINGS[] = {
     // Off: positional filament mapping
     {"auto_color_map", "filament/auto_color_map", Scope::PerPrinter, true, 0, 0, 1,
      "auto_color_map"},
+    // The telemetry key keeps the analytics series' original name.
     {"unload_after_print", "ams/unload_after_print", Scope::PerPrinter, true, 0, 0, 1,
-     "unload_after_print"},
+     "afc_unload_after_print"},
     // Bit N = tool N unloads when a print ends.
     {"end_of_print_unload_tools", "ams/end_of_print_unload_tools", Scope::PerPrinter, false, 0, 0,
      255, "end_of_print_unload_tools"},
