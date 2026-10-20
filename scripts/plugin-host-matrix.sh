@@ -14,7 +14,7 @@
 # Options:
 #   --vintages "A B"   Moonraker refs (default: v0.8.0 v0.9.3 master)
 #   --layouts "A B"    cell.sh layouts (default: plain legacy k1 forgex modconf incsec remote
-#                      relocate cli)
+#                      relocate cli rofs)
 #   --out DIR          results (default: build/plugin-host/<timestamp>)
 #   --no-strict        run install.sh unconfined even where its service confines it
 #   --keep             leave each cell's container running for a look inside
@@ -45,6 +45,13 @@
 # it asked Moonraker to restart and that it completed, and the harness makes
 # no restart of its own: loaded and unloaded wait on the one install.sh made.
 #
+# A layout whose install must be refused (rofs) runs instead:
+#   up         as above
+#   refused    install.sh --no-restart --auto exits nonzero with an [ERROR],
+#              and leaves no plugin link
+#   unloaded   after a restart: no helix_print, failed or not, no new warning
+#   pristine   as above
+#
 # DOCKER names the docker client (default docker; the test host passes
 # "sudo -n docker"). Exits 0 when every cell passes, 1 when any fails, 2 on a
 # usage or build error.
@@ -56,8 +63,9 @@ HARNESS="$REPO/tests/plugin-host"
 read -r -a DOCKER <<< "${DOCKER:-docker}"
 
 VINTAGES="v0.8.0 v0.9.3 master"
-ALL_LAYOUTS="plain legacy k1 forgex modconf incsec remote relocate cli"
+ALL_LAYOUTS="plain legacy k1 forgex modconf incsec remote relocate cli rofs"
 SELF_RESTART_LAYOUTS="cli"
+REFUSE_LAYOUTS="rofs"
 LAYOUTS=$ALL_LAYOUTS
 OUT=""
 STRICT=1
@@ -241,7 +249,7 @@ run_cell() { # <vintage> <layout>
         -v "$HARNESS:/harness:ro" -v "$REPO/moonraker-plugin:/plugin-src:ro" \
         "$(image_for "$v")" sh /harness/cell.sh start "$l" > /dev/null || { record up FAIL "docker run failed"; return 1; }
 
-    cell_steps
+    if is_one_of "$l" "$REFUSE_LAYOUTS"; then cell_refuse_steps; else cell_steps; fi
     rc=$?
     x cat /var/log/moonraker.out > "$CDIR/moonraker.out" 2>&1
     # shellcheck disable=SC2016  # expands in the container
@@ -274,6 +282,25 @@ check_pristine() {
 }
 
 first_complaint() { grep -m1 -E 'ERROR|WARN' "$1" | sed 's/\x1b\[[0-9;]*m//g'; }
+
+cell_refuse_steps() {
+    local base rc link ok=0
+    base=$(cell_up) || return 1
+    x sh /harness/cell.sh stage
+    x sh /harness/cell.sh install > "$CDIR/install.out" 2>&1
+    rc=$?
+    link=$(x sh /harness/cell.sh link)
+    if [ "$rc" -eq 0 ]; then record refused FAIL "install exited 0, link $link"; ok=1
+    elif ! grep -q 'ERROR' "$CDIR/install.out"; then record refused FAIL "exit $rc with no [ERROR]"; ok=1
+    elif [ "$link" != absent ]; then record refused FAIL "exit $rc, but the link is $link"; ok=1
+    else record refused PASS "exit $rc: $(first_complaint "$CDIR/install.out")"
+    fi
+    if restart; then check_unloaded "$base" || ok=1
+    else record unloaded FAIL "Moonraker did not come back after the restart"; ok=1
+    fi
+    check_pristine || ok=1
+    return "$ok"
+}
 
 cell_steps() {
     local base rc n

@@ -1333,3 +1333,20 @@ mock_systemd_without_sudo() {
     contains "Moonraker needs a restart" "$output"
     if printf '%s' "$output" | grep -qi 'complete'; then fail "claimed completion: $output"; fi
 }
+
+@test "auto install refuses a components dir that takes no link though test -w passes, and writes nothing" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    cp -R "$c" "$BATS_TEST_TMPDIR/config.before"
+    local real_ln
+    real_ln=$(command -v ln)
+    # The components dir stays mode 755, as a read-only mount looks to root.
+    mock_command_script "ln" "for a; do case \"\$a\" in */components/*) echo \"ln: \$a: Read-only file system\" >&2; exit 1;; esac; done; exec '$real_ln' \"\$@\""
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 1 ]
+    contains "Cannot write to components directory" "$output"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+    diff -r "$BATS_TEST_TMPDIR/config.before" "$c" || fail "the config dir changed"
+}

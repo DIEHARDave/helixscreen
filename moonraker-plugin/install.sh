@@ -166,6 +166,14 @@ running_moonraker_arg() {
     running_moonraker_args | awk -v a="$1" -v b="$2" 'p == a || p == b { print; exit } { p = $0 }'
 }
 
+# Whether a link can be made in directory @1: a probe link is made there and
+# removed. test -w alone passes for root on a read-only filesystem.
+can_link_in() {
+    probe="$1/.helix_print.probe.$$"
+    ln -s "$PLUGIN_FILE" "$probe" 2>/dev/null || return 1
+    rm -f "$probe"
+}
+
 # Find Moonraker's components directory. An explicit path wins, then the
 # user's home, then the Moonraker that is actually running (whatever its
 # layout), then the known vendor roots, then a pip-installed package.
@@ -710,7 +718,7 @@ relink() {
 
     link_to=$(path_for_moonraker "$PLUGIN_FILE")
     [ -f "$mroot$link_to" ] || error "Moonraker cannot see $PLUGIN_FILE from its root ($mroot)"
-    [ -w "$components_dir" ] || error "Cannot write to components directory: $components_dir"
+    can_link_in "$components_dir" || error "Cannot write to components directory: $components_dir"
     ln -sf "$link_to" "$target" || error "Could not re-point $target"
     info "Re-pointed $target -> $link_to (was $current)"
     return "$EXIT_RELINK_DONE"
@@ -742,8 +750,9 @@ auto_install() {
     info "Config: ${config_dir:-not found}"
     printf '\n'
 
-    # Pre-flight permission checks
-    if [ ! -w "$components_dir" ]; then
+    # Pre-flight checks, all before the first write: the link can be made
+    # and the config can be edited.
+    if ! can_link_in "$components_dir"; then
         error "Cannot write to components directory: $components_dir"
     fi
 

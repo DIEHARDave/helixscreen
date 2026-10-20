@@ -42,6 +42,8 @@
 #                     install.sh --auto at a shell, without --no-restart, on
 #                     a systemd host where sudo wants a password: install.sh
 #                     has to restart Moonraker by asking it over HTTP
+#   rofs              k1, but the components directory is a read-only mount;
+#                     the install must refuse and change nothing
 #
 # Moonraker v0.8 resolves a relative [include] against the directory of the
 # symlink's target, later versions against the link's own directory; the mod
@@ -111,7 +113,7 @@ layout() { # <layout>
             esac
             [ -e "$CONFIG_DIR/moonraker.conf" ] || base_conf yes > "$CONFIG_DIR/moonraker.conf"
             chown -R pi:pi "$CONFIG_DIR" ;;
-        k1)
+        k1|rofs)
             APP_USER=root APP_HOME=/root INSTALL_DIR=/usr/data/helixscreen STRICT=0
             CONFIG_DIR=/usr/data/printer_data/config
             COMPONENTS_DIR=/usr/data/moonraker/moonraker/moonraker/components
@@ -119,7 +121,11 @@ layout() { # <layout>
             cp -a "$MR_SRC" /usr/data/moonraker/moonraker
             data_dirs /usr/data/printer_data root
             base_conf yes > "$CONFIG_DIR/moonraker.conf"
-            MR_CMD="python3 /usr/data/moonraker/moonraker/moonraker/moonraker.py -d /usr/data/printer_data" ;;
+            MR_CMD="python3 /usr/data/moonraker/moonraker/moonraker/moonraker.py -d /usr/data/printer_data"
+            if [ "$1" = rofs ]; then
+                mount --bind "$COMPONENTS_DIR" "$COMPONENTS_DIR"
+                mount -o remount,ro,bind "$COMPONENTS_DIR"
+            fi ;;
         forgex)
             APP_USER=root APP_HOME=/root INSTALL_DIR=/opt/config/mod_data/helixscreen STRICT=0
             CONFIG_DIR=$FX/root/printer_data/config
