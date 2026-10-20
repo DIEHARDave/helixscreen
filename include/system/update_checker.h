@@ -400,6 +400,21 @@ class UpdateChecker {
      */
     static std::string init_service_dest_dir();
 
+    /// True when systemd is this host's running init (install.sh's
+    /// _systemd_is_init).
+    static bool systemd_is_init();
+
+    /**
+     * @brief Whether an in-app update writes the service destination, so the
+     *        pre-download probe applies.
+     *
+     * Only a root app installs directly, and under systemd it runs inside the
+     * unit's ProtectSystem=strict sandbox: /etc is read-only even for root, and
+     * a self-update writes no unit (the unit's root ExecStartPre refreshes it
+     * on restart). SysV root installs may rewrite their init script.
+     */
+    static bool update_writes_service_dest(bool is_root, bool systemd_init);
+
     std::string get_platform_asset_name() const;
 
     /// Single source of truth for the release asset name Moonraker's update

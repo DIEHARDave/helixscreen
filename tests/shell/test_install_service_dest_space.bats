@@ -63,6 +63,30 @@ split_filesystems() {
     echo "$output" | grep -q "Cannot write the service definition"
 }
 
+@test "check_service_dest_space: a systemd self-update writes no service file, so it skips" {
+    # The app runs install.sh inside its unit's ProtectSystem=strict sandbox,
+    # where /etc is read-only even for root; a self-update writes no unit there.
+    split_filesystems
+    dd() { echo "probe-ran" >&2; return 1; }
+    _systemd_is_init() { return 0; }
+    export HELIX_SELF_UPDATE=1
+
+    run check_service_dest_space
+    [ "$status" -eq 0 ]
+    lacks "probe-ran" "$output"
+}
+
+@test "check_service_dest_space: a SysV self-update still probes (it may rewrite the init script)" {
+    split_filesystems
+    dd() { return 1; }
+    _systemd_is_init() { return 1; }
+    export HELIX_SELF_UPDATE=1
+
+    run check_service_dest_space
+    [ "$status" -eq 1 ]
+    contains "Cannot write the service definition" "$output"
+}
+
 @test "check_service_dest_space: passes when the probe write succeeds" {
     split_filesystems
 

@@ -1176,13 +1176,21 @@ std::string UpdateChecker::service_dest_probe_error(const std::string& init_dir)
     return fmt::format(lv_tr("Error: cannot write the service file in {}"), init_dir);
 }
 
+bool UpdateChecker::systemd_is_init() {
+    struct stat st {};
+    return stat("/run/systemd/system", &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+bool UpdateChecker::update_writes_service_dest(bool is_root, bool systemd_init) {
+    return is_root && !systemd_init;
+}
+
 std::string UpdateChecker::init_service_dest_dir() {
     // Same resolution order as install.sh's detect_init_system: systemd when
     // it is running, else SysV. Empty means this host has no init destination
     // we know (a dev machine) and the installer's own pre-flight decides.
     struct stat st {};
-    if (stat("/run/systemd/system", &st) == 0 && S_ISDIR(st.st_mode) &&
-        stat("/etc/systemd/system", &st) == 0 && S_ISDIR(st.st_mode)) {
+    if (systemd_is_init() && stat("/etc/systemd/system", &st) == 0 && S_ISDIR(st.st_mode)) {
         return "/etc/systemd/system";
     }
     if (stat("/etc/init.d", &st) == 0 && S_ISDIR(st.st_mode)) {
@@ -1541,12 +1549,13 @@ void UpdateChecker::start_download() {
     // Fail fast where the installer would refuse anyway: the service
     // definition is the one payload piece that lands on the root filesystem,
     // and on boards whose root overlay is full the installer refuses only
-    // AFTER the app has downloaded the whole archive. Root only — a non-root
-    // app never installs directly, and install.sh's pre-flight under sudo
-    // remains the authority.
+    // AFTER the app has downloaded the whole archive. Only where the update
+    // writes it (update_writes_service_dest); install.sh's pre-flight remains
+    // the authority.
     {
         auto* rc = get_runtime_config();
-        if (geteuid() == 0 && !(rc && rc->test_mode)) {
+        if (update_writes_service_dest(geteuid() == 0, systemd_is_init()) &&
+            !(rc && rc->test_mode)) {
             const std::string failure = service_dest_probe_error(init_service_dest_dir());
             if (!failure.empty()) {
                 spdlog::error("[UpdateChecker] Service destination unwritable, not "

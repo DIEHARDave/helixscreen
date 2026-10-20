@@ -1148,6 +1148,21 @@ TEST_CASE("UpdateChecker telemetry_release_host keeps only release hosts",
     CHECK(UC::telemetry_release_host("").empty());
 }
 
+TEST_CASE("UpdateChecker probes the service destination only where an update writes it",
+          "[update_checker][1778]") {
+    using UC = UpdateChecker;
+    // A SysV root install refreshes its init script during the update, so a
+    // full or read-only /etc/init.d must stop it before the download.
+    CHECK(UC::update_writes_service_dest(true, false));
+    // Under systemd the app runs in its unit's ProtectSystem=strict sandbox,
+    // where /etc is read-only even for root, and a self-update writes no unit:
+    // the next start's root ExecStartPre refreshes it.
+    CHECK_FALSE(UC::update_writes_service_dest(true, true));
+    // A non-root app never installs directly.
+    CHECK_FALSE(UC::update_writes_service_dest(false, false));
+    CHECK_FALSE(UC::update_writes_service_dest(false, true));
+}
+
 TEST_CASE("UpdateChecker service_dest_probe_error mirrors the installer's write probe",
           "[update_checker][1778]") {
     using UC = UpdateChecker;
