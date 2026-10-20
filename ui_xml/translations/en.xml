@@ -250,6 +250,7 @@
   <translation tag="All time" en="All time"/>
   <translation tag="Allow" en="Allow"/>
   <translation tag="Allow Home Screen Editing" en="Allow Home Screen Editing"/>
+  <translation tag="Allow Remote Control" en="Allow Remote Control"/>
   <translation tag="Allow cold load/unload" en="Allow cold load/unload"/>
   <translation tag="Allow display to sleep during active prints" en="Allow display to sleep during active prints"/>
   <translation tag="Allwinner" en="Allwinner"/>
@@ -1126,6 +1127,8 @@
   <translation tag="Estimating..." en="Estimating..."/>
   <translation tag="Ethernet" en="Ethernet"/>
   <translation tag="Events appear here after sessions and prints" en="Events appear here after sessions and prints"/>
+  <translation tag="Every browser needs a new code to control this screen" en="Every browser needs a new code to control this screen"/>
+  <translation tag="Every browser that can control this screen will need the new pairing code." en="Every browser that can control this screen will need the new pairing code."/>
   <translation tag="Every extruder&apos;s temperature at once" en="Every extruder&apos;s temperature at once"/>
   <translation tag="Every object is set to skip, so there is nothing to print" en="Every object is set to skip, so there is nothing to print"/>
   <translation tag="Every tool&apos;s offsets are measured again and replace the current ones. Save afterwards to keep the result." en="Every tool&apos;s offsets are measured again and replace the current ones. Save afterwards to keep the result."/>
@@ -1422,6 +1425,8 @@
   <translation tag="Force/weight sensors" en="Force/weight sensors"/>
   <translation tag="Forget" en="Forget"/>
   <translation tag="Forget Network?" en="Forget Network?"/>
+  <translation tag="Forget Paired Browsers" en="Forget Paired Browsers"/>
+  <translation tag="Forget Paired Browsers?" en="Forget Paired Browsers?"/>
   <translation tag="Forget network &apos;{}&apos;? You will need the password to reconnect." en="Forget network &apos;{}&apos;? You will need the password to reconnect."/>
   <translation tag="Form tip" en="Form tip"/>
   <translation tag="Form tip &amp; retract" en="Form tip &amp; retract"/>
@@ -1807,6 +1812,7 @@
   <translation tag="Length of filament to purge" en="Length of filament to purge"/>
   <translation tag="Length of the cooling tube section" en="Length of the cooling tube section"/>
   <translation tag="Length:" en="Length:"/>
+  <translation tag="Let a browser tap and drag on this screen" en="Let a browser tap and drag on this screen"/>
   <translation tag="Let&apos;s take a quick tour so you can find things fast." en="Let&apos;s take a quick tour so you can find things fast."/>
   <translation tag="Level" en="Level"/>
   <translation tag="Leveling Gantry..." en="Leveling Gantry..."/>
@@ -2352,6 +2358,7 @@
   <translation tag="Pair with" en="Pair with"/>
   <translation tag="Paired" en="Paired"/>
   <translation tag="Paired successfully" en="Paired successfully"/>
+  <translation tag="Pairing Code" en="Pairing Code"/>
   <translation tag="Pairing did not complete — the scanner did not bond. Try turning it off and on, then tap Pair again." en="Pairing did not complete — the scanner did not bond. Try turning it off and on, then tap Pair again."/>
   <translation tag="Pairing failed" en="Pairing failed"/>
   <translation tag="Pairing..." en="Pairing..."/>
@@ -3079,6 +3086,7 @@
   <translation tag="Shadow Intensity" en="Shadow Intensity"/>
   <translation tag="Shake&amp;Tune" en="Shake&amp;Tune"/>
   <translation tag="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together." en="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together."/>
+  <translation tag="Share Screen" en="Share Screen"/>
   <translation tag="Share Usage Data" en="Share Usage Data"/>
   <translation tag="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected." en="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected."/>
   <translation tag="Share this code in Discord or support:" en="Share this code in Discord or support:"/>
@@ -3093,6 +3101,7 @@
   <translation tag="Show sliced colors" en="Show sliced colors"/>
   <translation tag="Show temp for" en="Show temp for"/>
   <translation tag="Show text labels on icon-only home screen widgets" en="Show text labels on icon-only home screen widgets"/>
+  <translation tag="Show this screen as a webcam in Mainsail and Fluidd" en="Show this screen as a webcam in Mainsail and Fluidd"/>
   <translation tag="Show up/down buttons on long lists" en="Show up/down buttons on long lists"/>
   <translation tag="Show whatever curves you last had visible on the full graph." en="Show whatever curves you last had visible on the full graph."/>
   <translation tag="Showing the 50 newest files. See more in the printer&apos;s web UI." en="Showing the 50 newest files. See more in the printer&apos;s web UI."/>

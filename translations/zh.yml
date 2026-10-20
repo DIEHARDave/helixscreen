@@ -251,6 +251,7 @@ translations:
   All time: '全部时间'
   Allow: '允许'
   Allow Home Screen Editing: '允许编辑主屏幕'
+  Allow Remote Control: '允许远程控制'
   Allow cold load/unload: 允许冷态加载/卸载
   Allow display to sleep during active prints: 打印时允许屏幕休眠
   Allwinner: Allwinner
@@ -1165,6 +1166,8 @@ translations:
   Estimating...: 估算中...
   Ethernet: 以太网
   Events appear here after sessions and prints: 会话和打印后事件将显示在此处
+  Every browser needs a new code to control this screen: '每个浏览器都需要新代码才能控制此屏幕'
+  Every browser that can control this screen will need the new pairing code.: '所有可以控制此屏幕的浏览器都需要新的配对码。'
   Every extruder's temperature at once: 同时查看所有挤出机温度
   Everything else was saved. Change them in Spoolman.: 其他内容均已保存。请在 Spoolman 中修改。
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: '其他内容均已保存。请使用字母、数字、空格以及 + - _ . ( ) / 重命名材料'
@@ -1470,6 +1473,8 @@ translations:
   Force/weight sensors: '力/重量传感器'
   Forget: 忘记
   Forget Network?: 忘记网络？
+  Forget Paired Browsers: '忘记已配对的浏览器'
+  Forget Paired Browsers?: '忘记已配对的浏览器？'
   Forget network '{}'? You will need the password to reconnect.: 忘记网络 '{}'？重新连接时需要密码。
   Form tip: '成型尖端'
   Form tip & retract: '成型尖端并回抽'
@@ -1878,6 +1883,7 @@ translations:
   Length of filament to purge: '要排出的耗材长度'
   Length of the cooling tube section: '冷却管段的长度'
   'Length:': 长度：
+  Let a browser tap and drag on this screen: '允许浏览器在此屏幕上点击和拖动'
   Let's take a quick tour so you can find things fast.: 让我们快速浏览一下，帮助您快速找到所需内容。
   Level: 级别
   Leveling Gantry...: 正在调平龙门...
@@ -2438,6 +2444,7 @@ translations:
   Pair with: 配对
   Paired: 已配对
   Paired successfully: 配对成功
+  Pairing Code: '配对码'
   Pairing did not complete — the scanner did not bond. Try turning it off and on, then tap Pair again.: 配对未完成
     — 扫描器未绑定。请尝试关闭再开启扫描器，然后再次点击 Pair。
   Pairing failed: 配对失败
@@ -3185,6 +3192,7 @@ translations:
   Shadow Intensity: 阴影强度
   Shake&Tune: 'Shake&Tune'
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: 沿每条对角线振动工具头，并同时显示两条响应曲线。张力一致的皮带峰值重合。
+  Share Screen: '共享屏幕'
   Share Usage Data: 共享使用数据
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: 分享匿名使用统计数据，帮助我们改进
     HelixScreen。绝不会收集任何个人数据。
@@ -3200,6 +3208,7 @@ translations:
   Show sliced colors: 显示切片颜色
   Show temp for: 显示温度
   Show text labels on icon-only home screen widgets: 在仅图标的主屏小组件上显示文字标签
+  Show this screen as a webcam in Mainsail and Fluidd: '在 Mainsail 和 Fluidd 中将此屏幕显示为网络摄像头'
   Show up/down buttons on long lists: 在长列表中显示上/下按钮
   Show whatever curves you last had visible on the full graph.: 显示您上次在完整图表上可见的曲线。
   Showing the 50 newest files. See more in the printer's web UI.: '仅显示最新的 50 个文件。更多请在打印机网页界面查看。'

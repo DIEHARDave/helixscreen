@@ -45,6 +45,12 @@ bool is_usable_snapshot_url(const std::string& snapshot_url) {
 
 namespace webcam {
 
+bool is_own_screen_webcam(const WebcamInfo& cam) {
+    // Ours, or another screen's on the same Moonraker ("HelixScreen Screen (host)").
+    const std::string own = kRemoteScreenWebcamName;
+    return cam.name == own || cam.name.rfind(own + " (", 0) == 0;
+}
+
 WebcamInfo parse_webcam_entry(const nlohmann::json& entry) {
     WebcamInfo cam;
     if (!entry.is_object())

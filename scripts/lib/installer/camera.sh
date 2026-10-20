@@ -77,10 +77,6 @@ K2CAM_DISABLE_PREFIX="#helix-k2cam-disabled# "
 # We scope both to the /webcam/ block -- the traffic we caused -- and leave the
 # server-level access_log and everything else alone. Reversible on uninstall.
 
-# nginx config path. Env-overridable so the BATS suite can redirect it off the
-# host, same as _initd_dir/_rcd_dir. Resolved per-call, not at source time.
-_nginx_conf_path() { echo "${HELIX_NGINX_CONF:-/etc/nginx/nginx.conf}"; }
-
 # The stock K2 access log fed by that proxy.
 _nginx_access_log_path() { echo "${HELIX_NGINX_ACCESS_LOG:-/var/log/nginx/fluidd-access.log}"; }
 
@@ -94,11 +90,36 @@ _nginx_accesslog_marker_file() { _ledger_path .nginx_webcam_accesslog; }
 # up lines written by the previous version of this installer.
 NGINX_WEBCAM_TAG="helix-managed-webcam"
 
-# True when $2 (a directive name) already appears inside the /webcam/ block,
-# whether we put it there or the user did. Scoped to that block only.
-_webcam_block_has_directive() {
-    awk -v d="$2" '
-        /^[[:space:]]*location[[:space:]]+\/webcam\/[[:space:]]*\{/ { inblk = 1; next }
+# --- Shared nginx edit helpers ----------------------------------------------
+# Used by this module's /webcam/ tuning and by remote_screen.sh's route. Every
+# edit goes through _nginx_edit_validated, so a config nginx rejects is put
+# back byte for byte: we must never be the reason someone's web UI stops
+# serving.
+
+# nginx config path. Env-overridable so the BATS suite can redirect it off the
+# host, same as _initd_dir/_rcd_dir. Resolved per-call, not at source time.
+_nginx_conf_path() { echo "${HELIX_NGINX_CONF:-/etc/nginx/nginx.conf}"; }
+
+# The nginx binary, or nothing. /usr/sbin is not on a non-root user's PATH on
+# Debian, and skipping `nginx -t` there would reload an unvalidated config.
+_nginx_bin() {
+    if command -v nginx >/dev/null 2>&1; then
+        echo nginx
+        return 0
+    fi
+    local d
+    for d in /usr/sbin /usr/local/sbin /sbin; do
+        [ -x "${d}/nginx" ] && { echo "${d}/nginx"; return 0; }
+    done
+    return 1
+}
+
+# True when $3 (a directive name) already appears inside the `location $2`
+# block of config $1, whether we put it there or the user did. Scoped to that
+# block only.
+_nginx_location_has_directive() {
+    awk -v loc="$2" -v d="$3" '
+        $1 == "location" && ($2 == loc || $2 == loc "{") && /\{/ { inblk = 1; next }
         inblk && /^[[:space:]]*\}/ { inblk = 0 }
         inblk && $1 == d { found = 1 }
         END { exit(found ? 0 : 1) }
@@ -106,44 +127,78 @@ _webcam_block_has_directive() {
 }
 
 # Validate the edited config and reload nginx. Returns non-zero if `nginx -t`
-# rejects it, so the caller can roll back -- we must never be the reason
-# someone's web UI stops serving.
+# rejects it, so the caller can roll back.
 _nginx_validate_and_reload() {
-    if command -v nginx >/dev/null 2>&1; then
-        if ! $SUDO nginx -t >/dev/null 2>&1; then
+    local bin initd
+    bin="$(_nginx_bin)"
+    if [ -n "$bin" ]; then
+        if ! $SUDO "$bin" -t >/dev/null 2>&1; then
             return 1
         fi
     fi
-    local initd
     initd="$(_initd_dir)"
     if [ -x "${initd}/nginx" ]; then
         $SUDO "${initd}/nginx" reload >/dev/null 2>&1 || true
+    elif [ -n "$bin" ]; then
+        $SUDO "$bin" -s reload >/dev/null 2>&1 || true
     fi
     return 0
 }
 
-# Add the directives above to the stock /webcam/ proxy block. Idempotent, and
-# per-directive: a block that already has one keeps it and gains only the other.
-# Every unexpected shape is a clean skip, never an error: no nginx.conf, no
-# /webcam/ block (a replaced nginx is not ours to edit), or both already set.
-_tune_webcam_proxy_block() {
-    local conf need_log need_buf
-    conf="$(_nginx_conf_path)"
-    [ -f "$conf" ] || return 0
+# Rewrite config $1 with the output of `$2.. $1` (a filter command that reads
+# the config named last and prints the new one), then validate and reload.
+# The backup and the new copy live outside the config's directory: a file left
+# in sites-enabled/ would be loaded by nginx as a second server block.
+# Returns 0 when the edit is live, 1 when nginx rejected it (the original is
+# back, byte for byte), 2 when nothing was changed (the filter failed or its
+# output equals the original).
+_nginx_edit_validated() {
+    local conf="$1" backup tmp
+    shift
+    tmp="$(mktemp "${TMPDIR:-/tmp}/helix-nginx-new.XXXXXX" 2>/dev/null)" || return 2
+    if ! "$@" "$conf" > "$tmp" 2>/dev/null || cmp -s "$tmp" "$conf"; then
+        rm -f "$tmp"
+        return 2
+    fi
+    backup="$(mktemp "${TMPDIR:-/tmp}/helix-nginx-bak.XXXXXX" 2>/dev/null)" || { rm -f "$tmp"; return 2; }
+    if ! $SUDO cp "$conf" "$backup" 2>/dev/null; then
+        rm -f "$tmp" "$backup"
+        return 2
+    fi
 
-    grep -q '^[[:space:]]*location[[:space:]]\+/webcam/[[:space:]]*{' "$conf" 2>/dev/null || return 0
+    $SUDO cp "$tmp" "$conf"
+    rm -f "$tmp"
 
-    need_log=1; need_buf=1
-    _webcam_block_has_directive "$conf" access_log && need_log=0
-    _webcam_block_has_directive "$conf" proxy_buffering && need_buf=0
-    [ "$need_log" -eq 0 ] && [ "$need_buf" -eq 0 ] && return 0
+    if ! _nginx_validate_and_reload; then
+        $SUDO cp "$backup" "$conf"
+        $SUDO rm -f "$backup"
+        return 1
+    fi
+    $SUDO rm -f "$backup"
+    return 0
+}
 
-    local backup tmp
-    backup="${conf}.helix-bak"
-    tmp="${conf}.helix-new"
-    $SUDO cp "$conf" "$backup" 2>/dev/null || return 0
+# Delete every line of config $1 that carries tag $2. Our inserts are whole
+# tagged lines, so this is their exact inverse. Returns 1 when there was no
+# such line, leaving the file (and its mtime) alone.
+# Written back with cp, which goes through a sites-enabled symlink to the file
+# it names; `sed -i` would replace the link with a copy.
+_nginx_strip_tagged_lines() {
+    local tmp
+    grep -q "$2" "$1" 2>/dev/null || return 1
+    tmp="$(mktemp "${TMPDIR:-/tmp}/helix-nginx-new.XXXXXX" 2>/dev/null)" || return 0
+    grep -v "$2" "$1" > "$tmp" 2>/dev/null
+    $SUDO cp "$tmp" "$1" 2>/dev/null || true
+    rm -f "$tmp"
+    return 0
+}
 
-    if ! awk -v tag="$NGINX_WEBCAM_TAG" -v nlog="$need_log" -v nbuf="$need_buf" '
+# --- /webcam/ tuning ----------------------------------------------------------
+
+# Print config $3 with the directives above added to its first /webcam/ block.
+# $1/$2 = 1 to add access_log off / proxy_buffering off.
+_webcam_tune_filter() {
+    awk -v tag="$NGINX_WEBCAM_TAG" -v nlog="$1" -v nbuf="$2" '
         {
             print
             if (!ins && $0 ~ /^[[:space:]]*location[[:space:]]+\/webcam\/[[:space:]]*\{/) {
@@ -156,22 +211,36 @@ _tune_webcam_proxy_block() {
                 ins = 1
             }
         }
-    ' "$conf" > "$tmp" 2>/dev/null; then
-        $SUDO rm -f "$tmp"
-        return 0
-    fi
+    ' "$3"
+}
 
-    $SUDO cp "$tmp" "$conf"
-    $SUDO rm -f "$tmp"
+# Add the directives above to the stock /webcam/ proxy block. Idempotent, and
+# per-directive: a block that already has one keeps it and gains only the other.
+# Every unexpected shape is a clean skip, never an error: no nginx.conf, no
+# /webcam/ block (a replaced nginx is not ours to edit), or both already set.
+_tune_webcam_proxy_block() {
+    local conf need_log need_buf rc
+    conf="$(_nginx_conf_path)"
+    [ -f "$conf" ] || return 0
 
-    if ! _nginx_validate_and_reload; then
-        log_warn "nginx rejected the config after tuning the /webcam/ block — reverting"
-        $SUDO cp "$backup" "$conf"
-        $SUDO rm -f "$backup"
-        return 1
-    fi
+    grep -q '^[[:space:]]*location[[:space:]]\+/webcam/[[:space:]]*{' "$conf" 2>/dev/null || return 0
 
-    $SUDO rm -f "$backup"
+    need_log=1; need_buf=1
+    _nginx_location_has_directive "$conf" /webcam/ access_log && need_log=0
+    _nginx_location_has_directive "$conf" /webcam/ proxy_buffering && need_buf=0
+    [ "$need_log" -eq 0 ] && [ "$need_buf" -eq 0 ] && return 0
+
+    rc=0
+    _nginx_edit_validated "$conf" _webcam_tune_filter "$need_log" "$need_buf" || rc=$?
+    case "$rc" in
+        0) ;;
+        1)
+            log_warn "nginx rejected the config after tuning the /webcam/ block — reverted"
+            return 1
+            ;;
+        *) return 0 ;;
+    esac
+
     $SUDO touch "$(_nginx_accesslog_marker_file)"
     log_info "Tuned nginx /webcam/ block (no access log, no proxy buffering) so the camera cannot fill the K2's tmpfs"
     return 0
@@ -186,7 +255,7 @@ _restore_webcam_proxy_block() {
 
     conf="$(_nginx_conf_path)"
     if [ -f "$conf" ]; then
-        $SUDO sed -i "/${NGINX_WEBCAM_TAG}/d" "$conf" 2>/dev/null || true
+        _nginx_strip_tagged_lines "$conf" "$NGINX_WEBCAM_TAG" || true
         _nginx_validate_and_reload || \
             log_warn "nginx rejected the config after untuning the /webcam/ block"
         log_info "Restored the stock nginx /webcam/ block"
