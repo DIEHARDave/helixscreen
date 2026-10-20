@@ -10,6 +10,7 @@
 
 #include "color_utils.h"
 #include "helix-xml/src/xml/lv_xml.h"
+#include "panel_widget_size.h"
 #include "sound_manager.h"
 #include "theme_manager.h"
 
@@ -89,7 +90,7 @@ struct SwatchGridFit {
 /// A prompt's button height. A 480x320 screen takes the compact one, so a color
 /// prompt shows its whole swatch grid beside its text buttons and footer.
 int32_t prompt_button_height() {
-    const bool tiny = breakpoint_for(responsive_vertical_dimension(nullptr)) == UiBreakpoint::Tiny;
+    const bool tiny = widget_size::current_breakpoint() == UiBreakpoint::Tiny;
     return theme_manager_get_spacing(tiny ? "button_height_sm" : "button_height");
 }
 
