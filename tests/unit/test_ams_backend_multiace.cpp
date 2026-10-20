@@ -819,6 +819,47 @@ TEST_CASE_METHOD(MultiAceFixture, "coded 525 error files under its head", "[mult
     CHECK_FALSE(b.classify_error("// 0003-0525-0002-0207 echo", idle));
 }
 
+TEST_CASE_METHOD(MultiAceFixture, "a load the firmware fails marks its head unconfirmed",
+                 "[multiace][resume][load_unconfirmed]") {
+    CapturingMultiAce b;
+
+    SECTION("a head the engine does not feed") {
+        b.frame(ace_frame("multi_mode_2ace.json"));
+        REQUIRE(b.load_filament(3).success());
+        REQUIRE(b.sent.back() == "ACE_LOAD_HEAD HEAD=3");
+        b.answer_error("load failed");
+        CHECK(SnapmakerTestAccess::load_unconfirmed(b, 3));
+    }
+    SECTION("a head load from its recorded bay in multi mode") {
+        b.frame(ace_frame("multi_mode_2ace.json"));
+        REQUIRE(b.load_filament(1).success());
+        REQUIRE(b.sent.back() == "ACE_LOAD_HEAD HEAD=1 ACE=1 SLOT=1");
+        b.answer_error("load failed");
+        CHECK(SnapmakerTestAccess::load_unconfirmed(b, 1));
+    }
+    SECTION("a bay loaded into an empty head") {
+        b.frame(ace_frame("head_mode_4ace.json"));
+        REQUIRE(b.load_filament(multiace::bay_global(1, 1)).success());
+        REQUIRE(b.sent.back() == "ACE_LOAD_HEAD HEAD=1 ACE=1 SLOT=1");
+        b.answer_error("load failed");
+        CHECK(SnapmakerTestAccess::load_unconfirmed(b, 1));
+    }
+    SECTION("a bay load that waited for its head to empty") {
+        b.frame(ace_frame("head_mode_4ace.json"));
+        b.frame(json{{"toolhead", {{"extruder", "extruder"}}}});
+        REQUIRE(b.load_filament(multiace::bay_global(0, 1)).success());
+        REQUIRE(b.sent.back() == "ACE_UNLOAD_HEAD HEAD=0");
+        b.answer_ok();
+        json emptied = {{"ace", {{"head_source", {{"2", {{"ace_index", 2}, {"slot", 3}}}}}}}};
+        emptied.update(feed_frame(0, "preload_finish"));
+        b.frame(emptied);
+        REQUIRE(b.sent.back() == "ACE_LOAD_HEAD HEAD=0 ACE=0 SLOT=1");
+        CHECK_FALSE(SnapmakerTestAccess::load_unconfirmed(b, 0));
+        b.answer_error("load failed");
+        CHECK(SnapmakerTestAccess::load_unconfirmed(b, 0));
+    }
+}
+
 TEST_CASE_METHOD(MultiAceFixture, "a failed head load surfaces once", "[multiace]") {
     CapturingMultiAce b;
     b.record_errors();

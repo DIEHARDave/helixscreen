@@ -5379,6 +5379,51 @@ TEST_CASE("AFC get_device_actions includes per-extruder LED toggles in toolchang
     REQUIRE_FALSE(found_generic);
 }
 
+TEST_CASE("AFC per-tool device actions carry the tool as data, not in the label",
+          "[ams][afc][toolchanger][led]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+    helper.setup_toolchanger(2);
+
+    auto find = [](const std::vector<helix::printer::DeviceAction>& actions,
+                   const std::string& id) -> const helix::printer::DeviceAction* {
+        for (const auto& a : actions) {
+            if (a.id == id) {
+                return &a;
+            }
+        }
+        return nullptr;
+    };
+
+    const auto actions = helper.get_device_actions();
+    for (int t = 0; t < 2; ++t) {
+        const std::string suffix = "_T" + std::to_string(t);
+        const struct {
+            const char* id;
+            const char* label;
+        } expected[] = {{"tool_stn", "Sensor to Nozzle"},
+                        {"tool_stn_unload", "Unload Distance"},
+                        {"tool_sensor_after_extruder", "Post-Sensor Clear"},
+                        {"led_extruder", "Turn On Toolhead LED"}};
+        for (const auto& e : expected) {
+            const auto* a = find(actions, e.id + suffix);
+            INFO(e.id << suffix);
+            REQUIRE(a != nullptr);
+            CHECK(a->label == e.label);
+            CHECK(a->tool_index == t);
+        }
+    }
+
+    // The LED label names the action the tap performs next.
+    REQUIRE(helper.execute_device_action("led_extruder_T1").success());
+    const auto after = helper.get_device_actions();
+    REQUIRE(find(after, "led_extruder_T1") != nullptr);
+    CHECK(find(after, "led_extruder_T1")->label == "Turn Off Toolhead LED");
+    CHECK(find(after, "led_extruder_T1")->icon == "light_off");
+    CHECK(find(after, "led_extruder_T0")->label == "Turn On Toolhead LED");
+    CHECK(find(after, "led_extruder_T0")->icon == "lightbulb_on");
+}
+
 TEST_CASE("AFC get_device_actions does not include LED toggles in single-extruder mode",
           "[ams][afc][led]") {
     AmsBackendAfcTestHelper helper;

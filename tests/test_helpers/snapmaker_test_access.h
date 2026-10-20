@@ -41,6 +41,11 @@ class SnapmakerTestAccess {
     static void call_on_started(AmsBackendSnapmaker& b) {
         b.on_started();
     }
+    /// Whether Resume is holding @p head for a load nothing has confirmed.
+    static bool load_unconfirmed(AmsBackendSnapmaker& b, int head) {
+        std::lock_guard<std::mutex> lock(b.mutex_);
+        return b.load_unconfirmed_[static_cast<size_t>(head)];
+    }
     static void seed_override(AmsBackendSnapmaker& b, int slot_index,
                               const helix::ams::FilamentSlotOverride& ovr) {
         {

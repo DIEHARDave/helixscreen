@@ -3580,6 +3580,10 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker forgets a failed load when the pri
     SECTION("disconnect for a printer switch") {
         h.backend.before_disconnect();
     }
+    SECTION("the backend starts again") {
+        SnapmakerTestAccess::call_on_started(h.backend);
+        ResumeRecoveryHarness::drain();
+    }
 
     CHECK(resume_once(h, 0).success());
     CHECK(count_containing(h.client.gcode_script_history(), "AUTO_FEEDING") == 0);
@@ -3661,6 +3665,7 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker resume after a paused manual load 
     INFO(load.technical_msg << " / " << load.user_msg);
     REQUIRE(load.success());
     ResumeRecoveryHarness::drain();
+    CHECK(SnapmakerTestAccess::load_unconfirmed(h.backend, 0));
     h.client.clear_gcode_script_history();
 
     CHECK_FALSE(resume_once(h, 0).success());

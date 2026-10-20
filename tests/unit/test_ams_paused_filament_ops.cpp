@@ -52,6 +52,7 @@
 #include "test_helpers/afc_test_access.h"
 #include "test_helpers/snapmaker_test_access.h"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -554,6 +555,40 @@ TEST_CASE_METHOD(PausedGateFixture, "AFC eject is refused while PRINTING, allowe
         REQUIRE(backend.eject_lane(0).success());
         CHECK(backend.dispatched.size() == 1);
     }
+}
+
+TEST_CASE_METHOD(PausedGateFixture,
+                 "AFC toolhead calibration is refused while a print holds the printer",
+                 "[ams][afc][device_actions][paused]") {
+    helix::AfcEjectPrintGateHelper backend(api.get(), &mock_client);
+    const nlohmann::json help = {
+        {"jsonrpc", "2.0"},
+        {"result", {{"AFC_TOOLHEAD_CALIBRATION", "Open the toolhead variable calibration menu"}}}};
+    REQUIRE(helix::AfcTestAccess::apply_gcode_help_response(backend, help));
+    const auto actions = backend.get_device_actions();
+    const auto it = std::find_if(actions.begin(), actions.end(),
+                                 [](const auto& a) { return a.id == "toolhead_calibration"; });
+    REQUIRE(it != actions.end());
+    CHECK(it->moves_machine);
+
+    auto sent_calibration = [&] {
+        const auto& sent = mock_client.gcode_script_history();
+        return std::any_of(sent.begin(), sent.end(), [](const std::string& g) {
+            return g.find("AFC_TOOLHEAD_CALIBRATION") != std::string::npos;
+        });
+    };
+    mock_client.clear_gcode_script_history();
+
+    for (auto s : {helix::PrintJobState::PRINTING, helix::PrintJobState::PAUSED}) {
+        set_print_state(s);
+        const AmsError err = backend.execute_device_action("toolhead_calibration");
+        CHECK(err.user_msg == "Printer is busy with a print");
+        CHECK_FALSE(sent_calibration());
+    }
+
+    set_print_state(helix::PrintJobState::STANDBY);
+    REQUIRE(backend.execute_device_action("toolhead_calibration").success());
+    CHECK(sent_calibration());
 }
 
 TEST_CASE_METHOD(PausedGateFixture, "AFC is the backend whose cold lane ops the firmware gates",
