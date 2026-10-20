@@ -24,9 +24,10 @@ struct PluginSelfHealTestAccess; // test-only friend (tests/test_helpers/)
  * restart waits for any job to let go and then for its completion flow
  * (decide_plugin_turn(), as the install prompt does). A version pair or a
  * re-pointed link a restart already failed to fix is remembered in the config
- * (PluginSelfHealMemory) and only warned about on later starts. A remote Moonraker is only reported
- * in the log. decide_plugin_self_heal() holds the rule; this class gathers its facts and acts. Main
- * thread only.
+ * (PluginSelfHealMemory) and only warned about on later starts. A plugin set
+ * to `enabled: False` is left to the install prompt. A remote Moonraker is
+ * only reported in the log. decide_plugin_self_heal() holds the rule; this
+ * class gathers its facts and acts. Main thread only.
  */
 class PluginSelfHeal {
   public:

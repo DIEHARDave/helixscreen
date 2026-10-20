@@ -41,6 +41,13 @@ void PluginSelfHeal::on_plugin_reported() {
     }
     ran_this_start_ = true;
 
+    // Switched off by the user, it reads as not installed: the install prompt
+    // offers to turn it on, so its link is no sign it should be left alone.
+    if (printer_state_.plugin_status_state().disabled()) {
+        spdlog::info("[PluginSelfHeal] The HelixPrint plugin is set to enabled: False; the link "
+                     "is not checked and an install turns it back on");
+        return;
+    }
     // A mock Moonraker is not the one install.sh would find on this host.
     if (get_runtime_config()->should_mock_moonraker()) {
         return;

@@ -681,6 +681,9 @@ class PrinterState {
     /// The version the plugin reports (empty when it did not answer); any thread.
     void set_helix_plugin_version(const std::string& version);
 
+    /// Whether the plugin answered with `enabled: False`; any thread.
+    void set_helix_plugin_disabled(bool disabled);
+
     /**
      * @brief Set how many PRINT OPTIONS rows the PRINT_START analysis adds
      *

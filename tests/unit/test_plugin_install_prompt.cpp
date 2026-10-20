@@ -276,36 +276,6 @@ TEST_CASE_METHOD(PromptFixture, "a repeated absent report does not notify plugin
     CHECK(counter.notifications == at_attach + 1);
 }
 
-TEST_CASE_METHOD(
-    PromptFixture,
-    "a plugin set to enabled: False reads as not installed, and an install turns it on",
-    "[plugin_installer][print_select]") {
-    // It answers, but serves nothing. install.sh switches the section back on,
-    // so after the restart the plugin answers enabled and the prompt is done.
-    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", "disabled");
-
-    run_plugin_probe();
-
-    CHECK(plugin_state() == kHelixPluginAbsent);
-    CHECK_FALSE(get_printer_state().plugin_status_state().service_has_helix_plugin());
-    REQUIRE(prompt() != nullptr);
-
-    scripts.write_script("exit 0");
-    const int restarts_before = moonraker_restarts();
-    click("btn_install");
-    CHECK(scripts.script_args() == "--no-restart --auto ");
-    CHECK(moonraker_restarts() == restarts_before + 1);
-    click("btn_ok");
-    REQUIRE(prompt() == nullptr);
-
-    ScopedEnv enabled("HELIX_MOCK_HELIX_PLUGIN", "1");
-    run_plugin_probe();
-
-    CHECK(plugin_state() == kHelixPluginInstalled);
-    CHECK(get_printer_state().plugin_status_state().service_has_helix_plugin());
-    CHECK(prompt() == nullptr);
-}
-
 TEST_CASE_METHOD(PromptFixture, "discovery's probe still reads an absent plugin as absent",
                  "[plugin_installer][print_select]") {
     ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", nullptr);
@@ -480,6 +450,40 @@ TEST_CASE_METHOD(SelfHealFixture,
     CHECK(moonraker_restarts() == restarts_before + 1);
     // The user installed it: an install prompt has nothing to offer.
     PrintSelectPanelTestAccess::recheck_plugin_prompt(*panel_);
+    CHECK(prompt() == nullptr);
+}
+
+TEST_CASE_METHOD(
+    SelfHealFixture,
+    "a plugin set to enabled: False reads as not installed, and an install turns it on",
+    "[plugin_installer][print_select][self_heal]") {
+    // It answers, but serves nothing, while its link and section stay: the
+    // startup check must not take that link as a reason to hold the prompt.
+    ship("1.0.1", 0);
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", "disabled");
+
+    run_plugin_probe();
+    settle();
+
+    CHECK(plugin_state() == kHelixPluginAbsent);
+    CHECK_FALSE(get_printer_state().plugin_status_state().service_has_helix_plugin());
+    CHECK(scripts.script_args().empty());
+    PrintSelectPanelTestAccess::recheck_plugin_prompt(*panel_);
+    REQUIRE(prompt() != nullptr);
+
+    scripts.write_script("exit 0");
+    const int restarts_before = moonraker_restarts();
+    click("btn_install");
+    CHECK(scripts.script_args() == "--no-restart --auto ");
+    CHECK(moonraker_restarts() == restarts_before + 1);
+    click("btn_ok");
+    REQUIRE(prompt() == nullptr);
+
+    ScopedEnv enabled("HELIX_MOCK_HELIX_PLUGIN", "1");
+    run_plugin_probe();
+
+    CHECK(plugin_state() == kHelixPluginInstalled);
+    CHECK_FALSE(get_printer_state().plugin_status_state().disabled());
     CHECK(prompt() == nullptr);
 }
 

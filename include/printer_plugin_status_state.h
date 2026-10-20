@@ -99,6 +99,15 @@ class PrinterPluginStatusState {
         return version_;
     }
 
+    /// The plugin answered but is set to `enabled: False`: configured, and
+    /// reading as not installed until an install turns it on.
+    void set_disabled(bool disabled) {
+        disabled_ = disabled;
+    }
+    bool disabled() const {
+        return disabled_;
+    }
+
     /**
      * @brief Set the discovery-derived helper-macro install status
      *
@@ -172,6 +181,7 @@ class PrinterPluginStatusState {
     bool subjects_initialized_ = false;
     std::string link_dir_;
     std::string version_;
+    bool disabled_ = false;
 
     // Plugin status subjects (tri-state: -1=unknown, 0=no, 1=yes)
     lv_subject_t helix_plugin_installed_{}; // HelixPrint Klipper plugin
