@@ -293,20 +293,29 @@ TEST_CASE("humidity_drop: nothing paints outside the drop, at any size, level or
         for (int h : {kUnknown, 0, 150, 500, 850, 1000}) {
             for (float phase : {0.0f, 1.3f, 2.9f, 4.4f}) {
                 const Canvas c = render(size, size, h, phase);
+                // Counted per render and asserted once, so a per-pixel sweep does
+                // not write an assertion per pixel into the --success report.
+                int painted_outside = 0;
+                int fill_on_outline = 0;
+                int first_x = -1;
+                int first_y = -1;
                 for (int y = 0; y < size; ++y) {
                     for (int x = 0; x < size; ++x) {
                         const float d = signed_distance(s, x + 0.5f, y + 0.5f);
-                        if (d > 1.0f) {
-                            CAPTURE(size, h, phase, x, y, d);
-                            REQUIRE(c.at(x, y).a == 0);
+                        const bool outside = d > 1.0f && c.at(x, y).a != 0;
+                        // Fill keeps clear of the outline's outer edge.
+                        const bool on_outline = is_fill(c.at(x, y)) && !(d < 0.0f);
+                        if ((outside || on_outline) && first_x < 0) {
+                            first_x = x;
+                            first_y = y;
                         }
-                        if (is_fill(c.at(x, y))) {
-                            // Fill keeps clear of the outline's outer edge.
-                            CAPTURE(size, h, phase, x, y, d);
-                            REQUIRE(d < 0.0f);
-                        }
+                        painted_outside += outside ? 1 : 0;
+                        fill_on_outline += on_outline ? 1 : 0;
                     }
                 }
+                CAPTURE(size, h, phase, first_x, first_y);
+                REQUIRE(painted_outside == 0);
+                REQUIRE(fill_on_outline == 0);
             }
         }
     }

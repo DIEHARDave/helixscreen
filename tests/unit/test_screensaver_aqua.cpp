@@ -76,6 +76,7 @@ using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
 using helix::ui::Rgb;
 
+using helix::test::bytes_differing;
 using helix::test::check_replays;
 using helix::test::diff_against;
 using helix::test::reading_at;
@@ -574,7 +575,7 @@ TEST_CASE("the ladder steps to coarser water and ends standing still", "[screens
         const std::vector<uint8_t> before = frame.bytes;
         sim.step(250, frame.target, rng, reading_at(sod), dirty);
         CHECK(dirty.empty());
-        CHECK(frame.bytes == before);
+        CHECK(bytes_differing(frame.bytes, before) == 0);
     }
     const DirtyRect clock = sim.clock_layout().bounds;
     const std::vector<uint8_t> before = frame.bytes;

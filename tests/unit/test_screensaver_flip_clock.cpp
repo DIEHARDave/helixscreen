@@ -24,6 +24,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using helix::test::bytes_differing;
 using helix::test::check_replays;
 using helix::test::diff_against;
 using helix::test::FrameDiff;
@@ -503,7 +504,7 @@ TEST_CASE("different digits draw different cards", "[screensaver][screensaver_fl
         sim.init(frame.target, 2, face);
         const std::vector<uint8_t> card = card_bytes(frame, sim.layout().cards[3]);
         for (const auto& other : seen) {
-            CHECK(card != other);
+            CHECK(bytes_differing(card, other) > 0);
         }
         seen.push_back(card);
     }
@@ -529,23 +530,23 @@ TEST_CASE("a changed card folds over the flip duration while the others stay sti
     REQUIRE(dirty.size() == 1);
     CHECK(dirty[0] == minutes);
     const std::vector<uint8_t> quarter = card_bytes(frame, minutes);
-    CHECK(quarter != start);
+    CHECK(bytes_differing(quarter, start) > 0);
 
     sim.step(kFlipDurationMs / 2, frame.target, next, dirty);
     CHECK(sim.flip_progress(3) == Catch::Approx(0.75f));
     const std::vector<uint8_t> three_quarters = card_bytes(frame, minutes);
-    CHECK(three_quarters != quarter);
+    CHECK(bytes_differing(three_quarters, quarter) > 0);
 
     sim.step(kFlipDurationMs / 4, frame.target, next, dirty);
     CHECK_FALSE(sim.flipping());
     const std::vector<uint8_t> end = card_bytes(frame, minutes);
-    CHECK(end != three_quarters);
+    CHECK(bytes_differing(end, three_quarters) > 0);
 
     // The finished flip draws exactly what a still card of the new digits draws.
     TestFrame still(400, 240, PixelFormat::XRGB8888);
     FlipClockSim fresh;
     fresh.init(still.target, 0, next);
-    CHECK(end == card_bytes(still, minutes));
+    CHECK(bytes_differing(end, card_bytes(still, minutes)) == 0);
 }
 
 TEST_CASE("only the digits that change flip, each on its own card and all at once",
@@ -617,10 +618,10 @@ TEST_CASE("only the digits that change flip, each on its own card and all at onc
                 // Every changed card is at the same point of its own fold.
                 CHECK(sim.flip_progress(i) == Catch::Approx(sim.flip_progress(change.flips[0])));
                 CHECK(sim.flip_progress(i) < 1.0f);
-                CHECK(card_bytes(frame, layout.cards[i]) != before[i]);
+                CHECK(bytes_differing(card_bytes(frame, layout.cards[i]), before[i]) > 0);
             } else {
                 CHECK(sim.flip_progress(i) == 1.0f);
-                CHECK(card_bytes(frame, layout.cards[i]) == before[i]);
+                CHECK(bytes_differing(card_bytes(frame, layout.cards[i]), before[i]) == 0);
             }
         }
     }
@@ -637,7 +638,7 @@ TEST_CASE("between changes a frame writes nothing", "[screensaver][screensaver_f
         sim.step(16, frame.target, face, dirty);
         CHECK(dirty.empty());
     }
-    CHECK(frame.bytes == before);
+    CHECK(bytes_differing(frame.bytes, before) == 0);
 }
 
 TEST_CASE("a level that does not animate swaps the digits at once",
