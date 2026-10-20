@@ -672,6 +672,47 @@ EOF
     [ ! -f "$HELIX_INITD_DIR/ustreamer" ]
 }
 
+@test "install: leaves a k2-improvements Creality WebRTC camera running and says why" {
+    skip_if_no_python
+    # k2-improvements' patched Fluidd plays Creality's own WebRTC stream; taking
+    # the camera device would leave its webcam entry pointing at a dead server.
+    start_fake_moonraker '[{"name":"Front","service":"webrtc-crealityk2rtc","stream_url":"http://10.0.0.5:8000/"}]'
+    printf '#!/bin/sh\n' > "$INSTALL_DIR/bin/ustreamer"; chmod +x "$INSTALL_DIR/bin/ustreamer"
+    make_fake_webrtc webrtc >/dev/null
+
+    run install_camera_k2 "k2"
+    [ "$status" -eq 0 ]
+    contains "webrtc-crealityk2rtc" "$output"
+    contains "re-run" "$output"
+    refute grep -q 'POST /server/webcams/item' "$MR_REQUESTS"
+    refute grep -q 'DELETE /server/webcams/item' "$MR_REQUESTS"
+    [ ! -f "$DISABLED_SERVICES_FILE" ]
+    [ ! -f "$HELIX_INITD_DIR/ustreamer" ]
+    [ -x "$FAKE_INITD/webrtc" ]
+}
+
+@test "install: converges OUR camera even when a Creality WebRTC entry is also present" {
+    skip_if_no_python
+    # A box that already ran our takeover keeps it on upgrade.
+    start_fake_moonraker '[{"name":"Front","service":"webrtc-crealityk2rtc","stream_url":"http://10.0.0.5:8000/"},{"name":"HelixScreen Camera","service":"mjpegstreamer","stream_url":"/webcam/?action=stream"}]'
+    printf '#!/bin/sh\n' > "$INSTALL_DIR/bin/ustreamer"; chmod +x "$INSTALL_DIR/bin/ustreamer"
+
+    run install_camera_k2 "k2"
+    [ "$status" -eq 0 ]
+    [ -f "$HELIX_INITD_DIR/ustreamer" ]
+}
+
+@test "install: explains the stock camera takeover and what it costs" {
+    skip_if_no_python
+    start_fake_moonraker '[]'
+    printf '#!/bin/sh\n' > "$INSTALL_DIR/bin/ustreamer"; chmod +x "$INSTALL_DIR/bin/ustreamer"
+
+    run install_camera_k2 "k2"
+    [ "$status" -eq 0 ]
+    contains "Creality Print" "$output"
+    contains "uninstall" "$output"
+}
+
 @test "install: init script is overwritten when an existing one differs" {
     skip_if_no_python
     start_fake_moonraker '[{"name":"Default","service":"iframe","stream_url":"http://k2/webrtc"}]'
