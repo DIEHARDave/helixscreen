@@ -524,27 +524,6 @@ uninstall() {
     return "$exit_status"
 }
 
-# Wait for Moonraker to become available after restart, at MOONRAKER_URL.
-wait_for_moonraker() {
-    max_attempts=30
-    attempt=0
-    moonraker_url=$(moonraker_local_url "")
-
-    info "Waiting for Moonraker to become available..."
-
-    while [ "$attempt" -lt "$max_attempts" ]; do
-        if moonraker_answers "$moonraker_url/server/info"; then
-            info "Moonraker is ready!"
-            return 0
-        fi
-        attempt=$((attempt + 1))
-        sleep 1
-    done
-
-    warn "Moonraker did not respond within ${max_attempts} seconds"
-    return 1
-}
-
 # Run a command as root: directly when we are root, else through sudo.
 as_root() {
     if [ "$(id -u 2>/dev/null)" = 0 ]; then
@@ -555,12 +534,13 @@ as_root() {
 }
 
 # The restart an auto install or uninstall ends with (restart_moonraker_via),
-# then the wait for Moonraker to answer again. A caller under systemd's
-# NoNewPrivileges (the HelixScreen service) cannot sudo, so it passes
-# --no-restart and restarts Moonraker itself. Returns 1 when Moonraker still
-# needs a restart, a print having held it off included, which the caller
-# reports instead of completion; a slow comeback, or a Moonraker that could
-# not be started again, is a warning on a change that is itself complete.
+# which also waits for Moonraker to answer again and warns when it does not. A
+# caller under systemd's NoNewPrivileges (the HelixScreen service) cannot sudo,
+# so it passes --no-restart and restarts Moonraker itself. Returns 1 when
+# Moonraker still needs a restart, a print having held it off included, and 2
+# when it is down and could not be started; the caller reports either instead
+# of completion. A slow comeback is a warning on a change that is itself
+# complete.
 finish_with_restart() {
     if [ "$NO_RESTART" = "true" ]; then
         info "Leaving the Moonraker restart to the caller"
@@ -570,15 +550,20 @@ finish_with_restart() {
     restarted=0
     restart_moonraker_via as_root "$(moonraker_local_url "")" warn || restarted=$?
     case "$restarted" in
-        0) ;;
-        3) info "Asked Moonraker to restart itself" ;;
-        5)
-            warn "Moonraker is down, so the change has not taken effect: start it, then check that Mainsail or Fluidd reach it"
-            warn "Moonraker did not come back up in time, but $1 itself completed"
+        0 | 3)
+            [ "$restarted" -ne 3 ] || info "Asked Moonraker to restart itself"
+            if moonraker_answers "$(moonraker_local_url "")/server/info"; then
+                info "Moonraker is ready!"
+            fi
             return 0
             ;;
+        5)
+            warn "Moonraker is not running and could not be started, so the change has not taken effect"
+            warn "Start Moonraker, then check that Mainsail or Fluidd reach it"
+            return 2
+            ;;
         4)
-            warn "A print is running, so Moonraker was not restarted and the change has not taken effect"
+            warn "A print is running, or Moonraker is too busy to rule one out, so Moonraker was not restarted and the change has not taken effect"
             warn "Moonraker needs a restart after the print: restart it from Mainsail or Fluidd"
             return 1
             ;;
@@ -588,8 +573,6 @@ finish_with_restart() {
             return 1
             ;;
     esac
-    wait_for_moonraker || warn "Moonraker did not come back up in time, but $1 itself completed"
-    return 0
 }
 
 # Strip phase-tracking instrumentation from PRINT_START via the bundled
@@ -679,10 +662,16 @@ auto_uninstall() {
     # The plugin is already gone, so a restart that never happened is
     # reported, not turned into a failed uninstall.
     MOONRAKER_URL=$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")
-    if ! finish_with_restart "the plugin removal"; then
+    finished=0
+    finish_with_restart "the plugin removal" || finished=$?
+    if [ "$finished" -ne 0 ]; then
         printf '\n'
-        warn "Plugin removed, but Moonraker keeps loading it until it restarts"
         [ "$exit_status" -eq "$EXIT_UNINSTALL_OK" ] || warn "PRINT_START needs a look too - see the warnings above"
+        if [ "$finished" -eq 2 ]; then
+            warn "Plugin removed, but Moonraker is not running"
+            return "$EXIT_UNINSTALL_NEEDS_ATTENTION"
+        fi
+        warn "Plugin removed, but Moonraker keeps loading it until it restarts"
         return "$exit_status"
     fi
 
@@ -848,7 +837,14 @@ auto_install() {
     # reported, never a failure that would roll it back.
     # shellcheck disable=SC2034  # read by moonraker_local_url (helix_print_conf.sh)
     MOONRAKER_URL=$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")
-    if ! finish_with_restart "the plugin install"; then
+    finished=0
+    finish_with_restart "the plugin install" || finished=$?
+    if [ "$finished" -eq 2 ]; then
+        printf '\n'
+        warn "Plugin installed, but Moonraker is not running"
+        return 0
+    fi
+    if [ "$finished" -ne 0 ]; then
         printf '\n'
         warn "Plugin installed, but it does not load until Moonraker restarts"
         return 0

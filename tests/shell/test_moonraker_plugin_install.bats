@@ -375,23 +375,22 @@ setup_instrumented_home() {
     [ ! -e "$home/moonraker/moonraker/components/helix_print.py" ]
 }
 
-@test "auto_uninstall reports a clean exit even when moonraker never comes back" {
-    # curl always failing means wait_for_moonraker's own 30-attempt loop runs
-    # to completion; sleep is stubbed to a no-op so that costs no real time.
-    # A slow or unreachable Moonraker restart must not turn a completed,
-    # clean uninstall into a reported failure.
+@test "auto_uninstall reports a clean exit when a Moonraker that runs never answers" {
+    # A Moonraker process that does not answer may be busy with a print, so
+    # the restart is held off; that must not turn a completed, clean
+    # uninstall into a reported failure.
     local home="$BATS_TEST_TMPDIR/home"
     setup_instrumented_home "$home"
+    moonraker_proc "$home" 700
     mock_real_curl 1
     mock_fake_clock
     local expected="$BATS_TEST_TMPDIR/expected_printer.cfg"
     write_original_printer_cfg "$expected"
 
-    run env HOME="$home" sh "$SCRIPT" --uninstall-auto
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --uninstall-auto
 
-    [ "$status" -eq 0 ]
-    contains "did not come back up in time" "$output"
-    contains "plugin removal itself completed" "$output"
+    [ "$status" -eq 0 ] || fail "want 0, got $status: $output"
+    contains "Moonraker needs a restart" "$output"
     local c="$home/printer_data/config"
     diff "$expected" "$c/printer.cfg"
     [ ! -e "$home/moonraker/moonraker/components/helix_print.py" ]
@@ -400,17 +399,18 @@ setup_instrumented_home() {
 @test "auto_uninstall's needs-attention outcome survives an unreachable moonraker" {
     local home="$BATS_TEST_TMPDIR/home"
     setup_instrumented_home "$home"
+    moonraker_proc "$home" 700
     local c="$home/printer_data/config"
     printf '[gcode_macro PRINT_START]\ngcode:\n    G28\n    # <<< HELIX_TRACKING v2 >>>\n    HELIX_PHASE_HOMING\n' \
         > "$c/printer.cfg"
     mock_real_curl 1
     mock_fake_clock
 
-    run env HOME="$home" sh "$SCRIPT" --uninstall-auto
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --uninstall-auto
 
-    [ "$status" -eq 2 ]
+    [ "$status" -eq 2 ] || fail "want 2, got $status: $output"
     contains "next step" "$output"
-    contains "did not come back up in time" "$output"
+    contains "Moonraker needs a restart" "$output"
     [ ! -e "$home/moonraker/moonraker/components/helix_print.py" ]
 }
 
@@ -2105,6 +2105,38 @@ exit 0"
     run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --restart-moonraker
     [ "$status" -eq 0 ] || fail "want 0, got $status: $output"
     if grep -q '^start moonraker' "$log" || grep -q ' start moonraker' "$log"; then fail "started a unit systemd was restarting: $(cat "$log")"; fi
+}
+
+@test "an auto install or uninstall whose restart leaves Moonraker down says so, and never complete" {
+    local home="$BATS_TEST_TMPDIR/home" t="$BATS_TEST_TMPDIR" mode
+    for mode in --auto --uninstall-auto; do
+        rm -rf "$home" "$t/stopping" "$t/init.log"
+        setup_restart_host "$home" '"helix_print"'
+        [ "$mode" = --auto ] || run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+        restart_hook init.restart "rm -rf '$home/proc/700'; touch '$t/stopping'; exit 1"
+        restart_hook init.start "exit 1"
+
+        run env HOME="$home" HELIX_PROC_ROOT="$home/proc" HELIX_RUN_DIR="$t/run" \
+            HELIX_INITD_DIR="$t/etc/init.d" sh "$SCRIPT" "$mode"
+        contains "Moonraker is not running and could not be started" "$output"
+        if printf '%s' "$output" | grep -qi 'complete'; then fail "$mode claimed completion: $output"; fi
+        if [ "$mode" = --uninstall-auto ]; then
+            [ "$status" -eq 2 ] || fail "uninstall: want 2 (needs attention), got $status: $output"
+        fi
+    done
+}
+
+@test "an auto install whose Moonraker does not answer after its restart warns once" {
+    local home="$BATS_TEST_TMPDIR/home" t="$BATS_TEST_TMPDIR"
+    setup_restart_host "$home" '"helix_print"'
+    restart_hook init.restart "mv '$home/proc/700' '$home/proc/701'; touch '$t/stopping'"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" HELIX_RUN_DIR="$t/run" \
+        HELIX_INITD_DIR="$t/etc/init.d" HELIX_MOONRAKER_UP_SECS=10 sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    [ "$(printf '%s\n' "$output" | grep -c 'did not respond\|did not come back')" -eq 1 ] ||
+        fail "want one warning about the slow Moonraker: $output"
+    if printf '%s' "$output" | grep -q 'Moonraker is ready'; then fail "called a silent Moonraker ready: $output"; fi
 }
 
 @test "interactive install refuses a components dir that takes no link, and a plugin Moonraker cannot read" {

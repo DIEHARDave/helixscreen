@@ -882,7 +882,7 @@ restart_moonraker() {
     case "$restarted" in
         0) ;;
         3) log_info "Asked Moonraker to restart itself to apply configuration" ;;
-        4) log_warn "A print is running, so Moonraker was not restarted: restart it after the print for the configuration change to take effect." ;;
+        4) log_warn "A print is running, or Moonraker is too busy to rule one out, so it was not restarted: restart it after the print for the configuration change to take effect." ;;
         5) log_error "Moonraker is down after its restart and could not be started: start it for Mainsail, Fluidd and HelixScreen to reach the printer." ;;
         *) log_warn "Could not find a way to restart Moonraker - restart it manually for the configuration change to take effect." ;;
     esac
