@@ -150,14 +150,14 @@ running_moonraker_identity() {
 }
 
 # Whether the Moonraker process whose running_moonraker_identity was @1 has
-# gone, waiting up to 5s for it. True at once when @1 is empty: with no
-# Moonraker seen before a restart there is nothing to compare, and the wait
-# for Moonraker to answer judges that restart.
+# gone, waiting up to @2 seconds (default 5) for it. True at once when @1 is
+# empty: with no Moonraker seen before a restart there is nothing to compare,
+# and the wait for Moonraker to answer judges that restart.
 moonraker_restarted_since() {
     [ -n "$1" ] || return 0
     _mrs_waited=0
     while [ "$(running_moonraker_identity)" = "$1" ]; do
-        [ "$_mrs_waited" -lt 5 ] || return 1
+        [ "$_mrs_waited" -lt "${2:-5}" ] || return 1
         sleep 1
         _mrs_waited=$((_mrs_waited + 1))
     done
@@ -258,21 +258,26 @@ moonraker_job_active() {
         grep -Eq '"state"[[:space:]]*:[[:space:]]*"(printing|paused)"'
 }
 
-# POST /server/restart to the Moonraker at base URL @1 (default: MOONRAKER_URL,
-# else port 7125). Moonraker re-launches itself in place, the one restart that
-# works where no service manager reaches it (Forge-X's chroot) or where sudo
-# wants a password. Clients in moonraker_get's order; an HTTP error (a 401)
-# is a failure. Returns 0 when Moonraker accepted it.
-request_moonraker_restart() {
-    _rmr_url="${1:-$(moonraker_local_url "")}/server/restart"
-    if _has_real_curl && curl -sf --max-time 5 -X POST "$_rmr_url" >/dev/null 2>&1; then
+# POST an empty body to URL @1, waiting at most @2 seconds (default 5).
+# Clients in moonraker_get's order; an HTTP error (a 401) is a failure.
+moonraker_post() {
+    _mp_wait="${2:-5}"
+    if _has_real_curl && curl -sf --max-time "$_mp_wait" -X POST "$1" >/dev/null 2>&1; then
         return 0
     fi
     if command -v wget >/dev/null 2>&1; then
-        wget -q -T 5 -O /dev/null --post-data='' "$_rmr_url" >/dev/null 2>&1
+        wget -q -T "$_mp_wait" -O /dev/null --post-data='' "$1" >/dev/null 2>&1
         return
     fi
-    ! _has_real_curl && python_http POST "$_rmr_url" 5 >/dev/null 2>&1
+    ! _has_real_curl && python_http POST "$1" "$_mp_wait" >/dev/null 2>&1
+}
+
+# POST /server/restart to the Moonraker at base URL @1 (default: MOONRAKER_URL,
+# else port 7125). Moonraker re-launches itself in place, the one restart that
+# works where no service manager reaches it (Forge-X's chroot) or where sudo
+# wants a password. Returns 0 when Moonraker accepted it.
+request_moonraker_restart() {
+    moonraker_post "${1:-$(moonraker_local_url "")}/server/restart" 5
 }
 
 # request_moonraker_restart at base URL @1 (default as there), then up to 5s
@@ -416,9 +421,12 @@ moonraker_bring_back() {
 # when /server/info lists helix_print among its components, and is the
 # fallback when Moonraker refuses the request. A service command counts only
 # when the Moonraker running before it is gone after
-# (moonraker_restarted_since): one can exit 0 and restart nothing. Every
-# attempt ends in moonraker_bring_back, so a restart that stopped Moonraker
-# never leaves it down. Returns 0 when the service manager restarted it, 3
+# (moonraker_restarted_since): one can exit 0 and restart nothing. With
+# helix_print loaded and no service command restarting it, Moonraker is asked
+# to restart its own service (POST /machine/services/restart) before its
+# in-place restart. Every attempt ends in moonraker_bring_back, so a restart
+# that stopped Moonraker never leaves it down. Returns 0 when a service
+# manager restarted its process, 3
 # when Moonraker restarted itself, 4 when an active print holds the restart
 # off, 5 when Moonraker is down and could not be started, and 1 when nothing
 # restarted it.
@@ -478,6 +486,18 @@ restart_moonraker_via() {
         fi
     done
     IFS=$_rmv_ifs
+    # Moonraker restarts its own service with its own rights when
+    # moonraker.asvc allows it, which reaches a new process where this
+    # caller's service commands could not. Accepting the request proves
+    # nothing; only a Moonraker process that changed counts.
+    if [ "$_rmv_http" = last ] && [ -n "$_rmv_before" ] &&
+        moonraker_post "$_rmv_url/machine/services/restart?service=moonraker" 5 &&
+        moonraker_restarted_since "$_rmv_before" 15; then
+        _rmv_up=0
+        moonraker_bring_back "$_rmv_pre" "$_rmv_url" "$_rmv_warn" || _rmv_up=$?
+        [ "$_rmv_up" -ne 3 ] || return 5
+        return 0
+    fi
     if [ "$_rmv_http" = last ] && moonraker_restart_over_http "$_rmv_url"; then
         _rmv_up=0
         moonraker_bring_back "$_rmv_pre" "$_rmv_url" "$_rmv_warn" || _rmv_up=$?

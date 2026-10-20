@@ -1348,6 +1348,42 @@ exit 0"
     if grep -q 'server/restart' "$curl_log"; then fail "asked Moonraker to restart in place: $(cat "$curl_log")"; fi
 }
 
+@test "--restart-moonraker that systemctl refuses asks Moonraker to restart its own service" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log" curl_log="$BATS_TEST_TMPDIR/curl.log"
+    setup_loaded_plugin_on_systemd "$home" "$log" "$curl_log"
+    # The app's user may not manage the unit; Moonraker, through moonraker.asvc, may.
+    mock_command_script "systemctl" "printf '%s\\n' \"\$*\" >> '$log'
+case \"\$*\" in *' restart moonraker') echo 'Access denied' >&2; exit 1;; esac
+exit 0"
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$curl_log'
+case \"\$*\" in
+    *machine/services/restart?service=moonraker*) mv '$home/proc/700' '$home/proc/701' ;;
+    *server/info*) printf '%s' '{\"result\":{\"components\":[\"helix_print\"]}}' ;;
+esac
+exit 0"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 0 ] || fail "want 0 (process restart), got $status: $output"
+    grep -q -- '-X POST http://127.0.0.1:7125/machine/services/restart?service=moonraker' "$curl_log" ||
+        fail "never asked Moonraker to restart its service: $(cat "$curl_log")"
+    [ -d "$home/proc/701" ] || fail "the Moonraker process was not replaced: $output"
+    if grep -q 'server/restart' "$curl_log"; then fail "fell back to the in-place restart: $(cat "$curl_log")"; fi
+}
+
+@test "--restart-moonraker whose service request leaves the same process counts only the in-place restart" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log" curl_log="$BATS_TEST_TMPDIR/curl.log"
+    setup_loaded_plugin_on_systemd "$home" "$log" "$curl_log"
+    mock_command_script "systemctl" "printf '%s\\n' \"\$*\" >> '$log'
+case \"\$*\" in *' restart moonraker') exit 1;; esac
+exit 0"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 3 ] || fail "want 3 (in place), got $status: $output"
+    grep -q 'machine/services/restart?service=moonraker' "$curl_log" || fail "never asked for the service restart"
+    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$curl_log" || fail "no in-place restart: $(cat "$curl_log")"
+}
+
 @test "--restart-moonraker during a print restarts nothing and exits 4" {
     local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log" curl_log="$BATS_TEST_TMPDIR/curl.log"
     setup_loaded_plugin_on_systemd "$home" "$log" "$curl_log"
