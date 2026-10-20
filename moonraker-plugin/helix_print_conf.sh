@@ -192,16 +192,58 @@ _has_real_curl() {
     [ "$_REAL_CURL" = "yes" ]
 }
 
+# The python an HTTP request falls back on when this host has neither real
+# curl nor wget (Creality K2 firmware ships neither): python3, else python,
+# whichever imports urllib.request. Cached like _REAL_CURL.
+_HTTP_PY=""
+_HTTP_PY_PROBED=""
+_has_http_python() {
+    if [ -z "$_HTTP_PY_PROBED" ]; then
+        _HTTP_PY_PROBED=1
+        for _hhp_cand in python3 python; do
+            if command -v "$_hhp_cand" >/dev/null 2>&1 &&
+                "$_hhp_cand" -c 'import urllib.request' >/dev/null 2>&1; then
+                _HTTP_PY="$_hhp_cand"
+                break
+            fi
+        done
+    fi
+    [ -n "$_HTTP_PY" ]
+}
+
+# Request URL @2 with method @1 (GET prints the body; POST sends an empty
+# one) through _has_http_python's python, waiting at most @3 seconds. An HTTP
+# error is a failure, as curl -f makes it.
+python_http() {
+    _has_http_python || return 1
+    HELIX_HTTP_METHOD="$1" HELIX_HTTP_URL="$2" HELIX_HTTP_TIMEOUT="$3" "$_HTTP_PY" - <<'PYEOF'
+import os, sys, urllib.request
+method = os.environ["HELIX_HTTP_METHOD"]
+try:
+    req = urllib.request.Request(os.environ["HELIX_HTTP_URL"],
+                                 data=b"" if method == "POST" else None, method=method)
+    with urllib.request.urlopen(req, timeout=float(os.environ["HELIX_HTTP_TIMEOUT"])) as resp:
+        sys.stdout.buffer.write(resp.read())
+except Exception:
+    sys.exit(1)
+PYEOF
+}
+
 # Print the body of a GET of URL @1, waiting at most @2 seconds (default 2):
-# real curl, else wget. BusyBox systems (Forge-X outside its chroot) carry
-# wget but no curl, and a K1's /usr/bin/curl is an impostor that rejects -s
-# and -f. -f and wget's own status make an HTTP error a failure.
+# real curl, then wget, and python only when neither is here. BusyBox systems
+# (Forge-X outside its chroot) carry wget but no curl, a K1's /usr/bin/curl is
+# an impostor that rejects -s and -f, and a K2 has python3 alone. -f, wget's
+# own status and urllib make an HTTP error a failure.
 moonraker_get() {
     _mg_wait="${2:-2}"
     if _has_real_curl && curl -sf --max-time "$_mg_wait" "$1" 2>/dev/null; then
         return 0
     fi
-    command -v wget > /dev/null 2>&1 && wget -q -T "$_mg_wait" -O - "$1" 2>/dev/null
+    if command -v wget > /dev/null 2>&1; then
+        wget -q -T "$_mg_wait" -O - "$1" 2>/dev/null
+        return
+    fi
+    ! _has_real_curl && python_http GET "$1" "$_mg_wait"
 }
 
 # Whether a GET of URL @1 succeeds within @2 seconds (default 2).
@@ -219,15 +261,18 @@ moonraker_job_active() {
 # POST /server/restart to the Moonraker at base URL @1 (default: MOONRAKER_URL,
 # else port 7125). Moonraker re-launches itself in place, the one restart that
 # works where no service manager reaches it (Forge-X's chroot) or where sudo
-# wants a password. Real curl first, then wget; -sf and wget's own status make
-# an HTTP error (a 401) a failure. Returns 0 when Moonraker accepted it.
+# wants a password. Clients in moonraker_get's order; an HTTP error (a 401)
+# is a failure. Returns 0 when Moonraker accepted it.
 request_moonraker_restart() {
     _rmr_url="${1:-$(moonraker_local_url "")}/server/restart"
     if _has_real_curl && curl -sf --max-time 5 -X POST "$_rmr_url" >/dev/null 2>&1; then
         return 0
     fi
-    command -v wget >/dev/null 2>&1 &&
+    if command -v wget >/dev/null 2>&1; then
         wget -q -T 5 -O /dev/null --post-data='' "$_rmr_url" >/dev/null 2>&1
+        return
+    fi
+    ! _has_real_curl && python_http POST "$_rmr_url" 5 >/dev/null 2>&1
 }
 
 # request_moonraker_restart at base URL @1 (default as there), then up to 5s

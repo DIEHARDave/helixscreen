@@ -662,6 +662,38 @@ user_conf_of() {
     printf '%s' "$1/data/.mod/.forge-x/root/printer_data/config/mod_data/user.moonraker.conf"
 }
 
+@test "with no curl and no wget, as on a Creality K2, the auto install restarts and waits through python3" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/python.log"
+    setup_plain_home "$home"
+    mkdir -p "$BATS_TEST_TMPDIR/run"
+    # urllib's import probe passes; a request logs its method and URL and
+    # answers, with the body /server/info would carry.
+    mock_command_script "python3" "[ \"\$1\" = -c ] && exit 0
+cat > /dev/null
+printf '%s %s %s\\n' \"\$HELIX_HTTP_METHOD\" \"\$HELIX_HTTP_URL\" \"\$HELIX_HTTP_TIMEOUT\" >> '$log'
+case \"\$HELIX_HTTP_URL\" in *server/info*) printf '%s' '{\"result\":{\"components\":[]}}' ;; esac
+exit 0"
+    mock_command_script "sleep" 'exit 0'
+
+    local bin="$BATS_TEST_TMPDIR/k2-path"
+    mkdir -p "$bin"
+    local tool p
+    for tool in sh dirname basename cp mv rm ln grep awk sed tail tr cat date readlink id find mkdir chmod head; do
+        p="$(command -v "$tool")" && ln -sf "$p" "$bin/$tool"
+    done
+    for tool in python3 sleep sudo service; do
+        ln -sf "$BATS_TEST_TMPDIR/bin/$tool" "$bin/$tool"
+    done
+
+    run env HOME="$home" HELIX_RUN_DIR="$BATS_TEST_TMPDIR/run" PATH="$bin:$HELIX_TEST_SANDBOX_BIN" \
+        sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    grep -q '^POST http://127.0.0.1:7125/server/restart ' "$log" || fail "no self-restart request: $(cat "$log" 2>/dev/null)"
+    grep -q '^GET http://127.0.0.1:7125/server/info ' "$log" || fail "never asked Moonraker: $(cat "$log" 2>/dev/null)"
+    contains "Moonraker is ready" "$output"
+    if printf '%s' "$output" | grep -q 'did not respond'; then fail "waited out a Moonraker that answers: $output"; fi
+}
+
 @test "a Klipper that skips dot-directories gets a visible symlink_dir" {
     local root="$BATS_TEST_TMPDIR/fx"
     setup_forgex_layout "$root"
