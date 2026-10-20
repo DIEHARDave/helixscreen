@@ -218,9 +218,8 @@ void PluginSelfHeal::on_restarted(PluginRestartOutcome outcome) {
     switch (outcome) {
     case PluginRestartOutcome::Restarted:
         spdlog::info("[PluginSelfHeal] Moonraker restarted for the HelixPrint plugin");
-        ToastManager::instance().show(
-            ToastSeverity::INFO, lv_tr("HelixPrint plugin updated. Moonraker is restarting..."),
-            kRestartToastMs);
+        ToastManager::instance().show(ToastSeverity::INFO, lv_tr("HelixPrint plugin updated."),
+                                      kRestartToastMs);
         return;
     case PluginRestartOutcome::TimedOut:
         spdlog::error("[PluginSelfHeal] The Moonraker restart for the HelixPrint plugin ran past "

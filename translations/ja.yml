@@ -1611,7 +1611,7 @@ translations:
   'Heating: %d / %d°C': '加熱中: %d / %d°C'
   Heightmap and flatness of the active bed mesh: '有効なベッドメッシュの高さマップと平面度'
   HelixPrint Plugin: 'HelixPrintプラグイン'
-  HelixPrint plugin updated. Moonraker is restarting...: 'HelixPrintプラグインを更新しました。Moonraker を再起動中...'
+  HelixPrint plugin updated.: 'HelixPrintプラグインを更新しました。'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen がクラッシュしました
   HelixScreen Macros: 'HelixScreenマクロ'

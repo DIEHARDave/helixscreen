@@ -1701,7 +1701,7 @@ translations:
   'Heating: %d / %d°C': 'Riscaldamento: %d / %d°C'
   Heightmap and flatness of the active bed mesh: 'Mappa delle altezze e planarità della mesh del piano attiva'
   HelixPrint Plugin: 'Plugin HelixPrint'
-  HelixPrint plugin updated. Moonraker is restarting...: 'Plugin HelixPrint aggiornato. Moonraker è in riavvio...'
+  HelixPrint plugin updated.: 'Plugin HelixPrint aggiornato.'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen si è arrestato
   HelixScreen Macros: 'Macro HelixScreen'

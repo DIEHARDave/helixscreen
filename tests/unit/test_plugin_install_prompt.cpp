@@ -716,6 +716,25 @@ TEST_CASE_METHOD(SelfHealFixture,
 }
 
 TEST_CASE_METHOD(SelfHealFixture,
+                 "a finished restart's toast says the plugin was updated and not that Moonraker "
+                 "is restarting",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.0.1", 3);
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", nullptr);
+    std::vector<std::string> messages;
+    helix::ui::set_test_toast_hook(
+        [&](ToastSeverity, const std::string& message, uint32_t) { messages.push_back(message); });
+
+    run_plugin_probe();
+    settle();
+
+    REQUIRE(restarts() == 1);
+    REQUIRE(messages.size() == 1);
+    CHECK(messages[0].find("updated") != std::string::npos);
+    CHECK(messages[0].find("restarting") == std::string::npos);
+}
+
+TEST_CASE_METHOD(SelfHealFixture,
                  "a restart that did not load a plugin Moonraker never ran is tried again",
                  "[plugin_installer][print_select][self_heal]") {
     ship("1.0.1", 3);
