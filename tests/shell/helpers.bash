@@ -178,7 +178,9 @@ exec '$real_date' \"\$@\""
 # files under $1: up (it answers at all), auth (every request is answered
 # 401), print_state (print_stats.state, default standby), version (what
 # /server/helix/status reports; without it a 404), new_version (the version a
-# service restart loads), refuse (every POST is answered 403). An accepted
+# service restart loads), refuse (every POST is answered 403), system_info
+# (the body of /machine/system_info; without it one Moonraker running as the
+# "moonraker" service). An accepted
 # /server/restart makes the next request go unanswered, as Moonraker does
 # while it restarts. Every request is logged to $1/log as "METHOD URL".
 # Starts up and idle, with the fake clock (mock_fake_clock) running.
@@ -236,6 +238,9 @@ else
         *print_stats*)
             out="{\"result\":{\"status\":{\"print_stats\":{\"state\":\"$(cat "$d/print_state" 2>/dev/null || echo standby)\"}}}}" ;;
         */server/info) out='{"result":{"klippy_state":"ready","components":["file_manager"]}}' ;;
+        */machine/system_info)
+            out=$(cat "$d/system_info" 2>/dev/null ||
+                echo '{"result":{"system_info":{"provider":"systemd_dbus","available_services":["klipper","moonraker"],"instance_ids":{"moonraker":"moonraker","klipper":"klipper"}}}}') ;;
     esac
 fi
 printf '%s' "$out"

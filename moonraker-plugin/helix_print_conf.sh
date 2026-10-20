@@ -393,6 +393,34 @@ moonraker_plugin_version() {
             sub(/"$/, "", s); print s; exit }'
 }
 
+# Print the name of the service the Moonraker at base URL @1 runs under, the
+# one /machine/services/restart restarts it by, from /machine/system_info:
+# its instance_ids.moonraker, when available_services lists it too, so its
+# service manager can act on it. Moonraker reports "moonraker" when it cannot
+# tell, so that name beside another moonraker unit names nothing for sure.
+# Fails, printing nothing, when the name is not certain.
+moonraker_service_name() {
+    _msn_body=$(moonraker_get "$1/machine/system_info" 2 | tr -d '\n') || return 1
+    _msn_name=$(printf '%s' "$_msn_body" | awk 'match($0, /"instance_ids"[[:space:]]*:[[:space:]]*\{[^}]*\}/) {
+        s = substr($0, RSTART, RLENGTH)
+        if (match(s, /"moonraker"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
+            s = substr(s, RSTART, RLENGTH); sub(/^"moonraker"[[:space:]]*:[[:space:]]*"/, "", s)
+            sub(/"$/, "", s); print s } }')
+    [ -n "$_msn_name" ] || return 1
+    _msn_listed=$(printf '%s' "$_msn_body" | awk -v name="$_msn_name" '
+        match($0, /"available_services"[[:space:]]*:[[:space:]]*\[[^]]*\]/) {
+            s = substr($0, RSTART, RLENGTH); sub(/^[^[]*\[/, "", s); sub(/\]$/, "", s)
+            n = split(s, a, ",")
+            for (i = 1; i <= n; i++) {
+                gsub(/^[[:space:]]*"|"[[:space:]]*$/, "", a[i])
+                if (a[i] == name) found = 1
+                else if (a[i] ~ /^moonraker/) other = 1
+            } }
+        END { if (found && !(name == "moonraker" && other)) print "yes" }')
+    [ "$_msn_listed" = yes ] || return 1
+    printf '%s' "$_msn_name"
+}
+
 # Print the seconds since boot, from /proc/uptime (HELIX_UPTIME_FILE, where
 # tests keep a clock), else the wall clock's seconds. Every wait here runs on
 # this clock, so a probe that takes seconds of its own counts against the wait
@@ -452,10 +480,10 @@ HELIX_RESTART_DOWN=7
 #           the config again
 #   plugin  helix_print.py over a plugin Moonraker already loaded: an
 #           in-place restart keeps the module it imported, so POST
-#           /machine/services/restart?service=moonraker has Moonraker restart
-#           its own service with its own rights, and the restart counts once
-#           /server/helix/status reports version @5. With @5 empty, once
-#           Moonraker answers again.
+#           /machine/services/restart has Moonraker restart its own service
+#           (moonraker_service_name; none when that is not certain) with its
+#           own rights, and the restart counts once /server/helix/status
+#           reports version @5. With @5 empty, once Moonraker answers again.
 # @3 and @4 are called with each line to report, as information and as a
 # warning. A Moonraker that does not answer (a 401 answers) is left alone. A
 # print printing or paused holds the restart off (moonraker_job_state);
@@ -507,7 +535,12 @@ moonraker_restart() {
     esac
 
     if [ "$_mrs_mode" = plugin ]; then
-        _mrs_path="/machine/services/restart?service=moonraker"
+        if ! _mrs_service=$(moonraker_service_name "$_mrs_url"); then
+            "$_mrs_warn" "Moonraker does not say which service it runs as, so it was not restarted"
+            "$_mrs_warn" "$_mrs_redo"
+            return "$HELIX_RESTART_MANUAL"
+        fi
+        _mrs_path="/machine/services/restart?service=$_mrs_service"
     else
         _mrs_path="/server/restart"
     fi

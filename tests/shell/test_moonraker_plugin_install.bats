@@ -1730,6 +1730,33 @@ bundled_version() {
     contains "Restart Moonraker or reboot the printer to finish the plugin update" "$output"
 }
 
+@test "--restart-moonraker restarts the service Moonraker names as its own, and none when that is unclear" {
+    local home="$BATS_TEST_TMPDIR/home" mr="$BATS_TEST_TMPDIR/mr" info
+    setup_plain_home "$home"
+    mock_moonraker_http "$mr"
+    echo 0.0.1 > "$mr/version"
+    bundled_version > "$mr/new_version"
+    printf '%s' '{"result":{"system_info":{"available_services":["klipper-2","moonraker","moonraker-2"],"instance_ids":{"moonraker":"moonraker-2","klipper":"klipper-2"}}}}' > "$mr/system_info"
+
+    run env HOME="$home" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 0 ] || fail "want 0, got $status: $output"
+    grep -qx 'POST http://127.0.0.1:7125/machine/services/restart?service=moonraker-2' "$mr/log" ||
+        fail "did not restart its own unit: $(cat "$mr/log")"
+
+    # No service manager behind Moonraker; then a default name beside another
+    # Moonraker's unit, which may be someone else's printer.
+    for info in '{"result":{"system_info":{"provider":"none","available_services":[],"instance_ids":{"moonraker":"moonraker","klipper":"klipper"}}}}' \
+        '{"result":{"system_info":{"available_services":["klipper","moonraker","moonraker-2"],"instance_ids":{"moonraker":"moonraker","klipper":"klipper"}}}}'; do
+        echo 0.0.1 > "$mr/version"
+        printf '%s' "$info" > "$mr/system_info"
+        : > "$mr/log"
+        run env HOME="$home" sh "$SCRIPT" --restart-moonraker
+        [ "$status" -eq 3 ] || fail "$info: want 3, got $status: $output"
+        if grep -q '^POST' "$mr/log"; then fail "$info: restarted a guessed service: $(cat "$mr/log")"; fi
+        contains "Restart Moonraker or reboot the printer to finish the plugin update" "$output"
+    done
+}
+
 @test "an auto install over a running plugin of another version restarts Moonraker's service" {
     local home="$BATS_TEST_TMPDIR/home"
     setup_plain_home "$home"
