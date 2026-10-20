@@ -1510,14 +1510,25 @@ void PrintSelectDetailView::set_prefer_sliced_colors(bool prefer_sliced) {
 }
 
 void PrintSelectDetailView::on_ams_state_changed() {
-    // Cheap guard: no work while closed / not yet loaded. on_deactivate() clears
-    // gcode_loaded_ and on_ui_destroyed() nulls gcode_viewer_, so this also
-    // protects against a dangling viewer pointer after the view is torn down.
-    if (!is_visible() || !gcode_loaded_ || !gcode_viewer_) {
+    if (!is_visible()) {
         return;
     }
-    // Refresh loaded slot colors WITHOUT recomputing mappings (preserve remap).
-    filament_mapping_card_.refresh_slot_data();
+    // Slots landing can change whether the card shows, not only its chips: the
+    // multi-tool test reads the slot count, and the availability and bypass
+    // gates read the backend. A shown card refreshes its slots WITHOUT
+    // recomputing mappings, so a remap survives; a hidden one has none to keep
+    // and is decided afresh from the file's palette.
+    if (filament_mapping_card_.should_show()) {
+        filament_mapping_card_.refresh_slot_data();
+    } else {
+        filament_mapping_card_.update(current_filament_colors_, current_filament_materials_);
+    }
+    publish_card_visibility();
+    // on_deactivate() clears gcode_loaded_ and on_ui_destroyed() nulls
+    // gcode_viewer_, so the preview half waits for a loaded, live viewer.
+    if (!gcode_loaded_ || !gcode_viewer_) {
+        return;
+    }
     refresh_preview_colors_and_mismatch();
 }
 

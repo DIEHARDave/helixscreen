@@ -935,6 +935,111 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A bypassed single-lane print renders no fil
     }
 }
 
+// The card's visibility reads the AMS slot count, so slots that land after
+// show() (a detail opened during startup discovery or a backend reconnect) must
+// re-decide it, not only repaint the chips of a card that stays hidden.
+TEST_CASE_METHOD(LVGLUITestFixture, "AMS slots landing after show() reveal the mapping card",
+                 "[print_select][detail_view][subjects][filament_mapping]") {
+    CacheDirGuard guard;
+    register_xml_callbacks({
+        {"on_print_select_detail_backdrop", detail_noop_cb},
+        {"on_print_select_print_button", detail_noop_cb},
+        {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
+        {"on_print_detail_back_clicked", detail_noop_cb},
+        {"on_toggle_sliced_colors", detail_noop_cb},
+        {"on_print_select_detail_objects", detail_noop_cb},
+    });
+
+    // The view observes AmsState's slots version from init_subjects(), so the
+    // subjects exist before any backend does.
+    helix::AmsState::instance().init_subjects(false);
+    helix::ui::PrintSelectDetailView view;
+    view.init_subjects();
+    lv_obj_t* const root = view.create(test_screen());
+    REQUIRE(root != nullptr);
+
+    constexpr size_t kSize = 777;
+    constexpr time_t kMtime = 3333;
+    helix::tools_used_cache().store("sub/late_slots.gcode", {kSize, kMtime}, {0});
+    const std::vector<std::string> palette{"#FF0000"};
+    const std::vector<std::string> materials{"PLA"};
+    lv_subject_t* const visible = lv_xml_get_subject(nullptr, "filament_mapping_visible");
+    REQUIRE(visible != nullptr);
+
+    std::optional<ScopedAmsBackend> ams;
+    struct CloseOnExit {
+        helix::ui::PrintSelectDetailView& v;
+        ~CloseOnExit() {
+            v.hide();
+            helix::ui::UpdateQueue::instance().drain();
+            lv_timer_handler();
+        }
+    } closer{view};
+
+    // No backend yet: a single-tool file on what looks like a single extruder.
+    view.show("late_slots.gcode", "sub", "PLA", palette, materials, kSize, kMtime);
+    REQUIRE(lv_subject_get_int(visible) == 0);
+
+    // A four-lane backend comes up: one used tool is now worth mapping.
+    ams.emplace(4);
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    REQUIRE(lv_subject_get_int(helix::AmsState::instance().get_slot_count_subject()) == 4);
+    CHECK(lv_subject_get_int(visible) == 1);
+    CHECK(lv_obj_find_by_name(root, "top_band") != nullptr);
+    // Decided afresh, so the one used tool is seeded onto a lane.
+    const auto mappings = view.get_filament_mappings();
+    REQUIRE(mappings.size() == 1);
+    CHECK(mappings[0].tool_index == 0);
+}
+
+// The other direction: slot state that arrives later can also take the card
+// away. Bypass engaging after show() hides a single-lane print's lane mapping.
+TEST_CASE_METHOD(LVGLUITestFixture, "Bypass engaging after show() hides the mapping card",
+                 "[print_select][detail_view][subjects][filament_mapping][bypass]") {
+    CacheDirGuard guard;
+    ScopedAmsBackend ams(4);
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    register_xml_callbacks({
+        {"on_print_select_detail_backdrop", detail_noop_cb},
+        {"on_print_select_print_button", detail_noop_cb},
+        {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
+        {"on_print_detail_back_clicked", detail_noop_cb},
+        {"on_toggle_sliced_colors", detail_noop_cb},
+        {"on_print_select_detail_objects", detail_noop_cb},
+    });
+
+    helix::ui::PrintSelectDetailView view;
+    view.init_subjects();
+    lv_obj_t* const root = view.create(test_screen());
+    REQUIRE(root != nullptr);
+    struct CloseOnExit {
+        helix::ui::PrintSelectDetailView& v;
+        ~CloseOnExit() {
+            v.hide();
+            helix::ui::UpdateQueue::instance().drain();
+            lv_timer_handler();
+        }
+    } closer{view};
+
+    constexpr size_t kSize = 778;
+    constexpr time_t kMtime = 3334;
+    helix::tools_used_cache().store("sub/late_bypass.gcode", {kSize, kMtime}, {0});
+    lv_subject_t* const visible = lv_xml_get_subject(nullptr, "filament_mapping_visible");
+    REQUIRE(visible != nullptr);
+
+    view.show("late_bypass.gcode", "sub", "PLA", {"#FF0000"}, {"PLA"}, kSize, kMtime);
+    REQUIRE(lv_subject_get_int(visible) == 1);
+
+    REQUIRE(helix::test::unload_for_bypass(*ams.backend));
+    REQUIRE(ams.backend->enable_bypass().success());
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    REQUIRE(helix::AmsState::instance().any_bypass_active());
+    CHECK(lv_subject_get_int(visible) == 0);
+    CHECK(lv_obj_find_by_name(root, "top_band") == nullptr);
+}
+
 // The chevron and the card's clickable flag both read color_card_remappable,
 // and it is now published from the same call that publishes the card's
 // visibility. This walks the whole `card_visible && remap available`
