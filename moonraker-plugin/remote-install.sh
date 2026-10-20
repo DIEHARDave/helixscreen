@@ -121,15 +121,14 @@ fetch_file() {
     return 1
 }
 
-# The git ref of release @1: main stays main, any version becomes its tag
-# (v1.2.0-beta.3), with or without the leading v, build metadata dropped.
+# The git ref of release @1: a version becomes its tag (v1.2.0-beta.3), with or
+# without the leading v, build metadata dropped; anything else (main, dev) is
+# main. The app's plugin_release_ref() holds the same rule.
 release_ref() {
-    case "$1" in
-        main) printf 'main' ;;
-        *)
-            _rr="${1#v}"
-            printf 'v%s' "${_rr%%+*}"
-            ;;
+    _rr="${1#v}"
+    case "$_rr" in
+        [0-9]*) printf 'v%s' "${_rr%%+*}" ;;
+        *) printf 'main' ;;
     esac
 }
 
@@ -204,7 +203,12 @@ main() {
     if [ "$uninstall" = true ]; then
         status=0
         sh "$stage/install.sh" --uninstall-auto < /dev/null || status=$?
-        [ "$status" -ne 1 ] || error "Uninstall failed - $PLUGIN_DIR left in place"
+        # 0 removed, 2 removed with a config file needing a look; anything
+        # else stopped part-way (an error, a missing command, ^C).
+        case "$status" in
+            0 | 2) ;;
+            *) error "Uninstall failed (exit $status) - $PLUGIN_DIR left in place" ;;
+        esac
         if is_plugin_dir "$PLUGIN_DIR"; then
             rm -rf "$PLUGIN_DIR"
             info "Removed $PLUGIN_DIR"

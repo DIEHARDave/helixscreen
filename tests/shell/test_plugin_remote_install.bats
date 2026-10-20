@@ -119,6 +119,28 @@ run_wrapper() {
     grep -q '/v1.2.3/moonraker-plugin/helix_print.py' "$FETCH_LOG"
 }
 
+@test "a ref that is not a version pins main, as the app's own rule does" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_home "$home"
+    publish_release main
+
+    run_wrapper "$home" dev
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    grep -q '/main/moonraker-plugin/helix_print.py' "$FETCH_LOG" || fail "fetched: $(cat "$FETCH_LOG")"
+}
+
+@test "an uninstall that stops on an unexpected status keeps the plugin directory" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_home "$home"
+    run_wrapper "$home" v1.2.3
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    printf '#!/bin/sh\nexit 130\n' > "$RELEASE_ROOT/v1.2.3/moonraker-plugin/install.sh"
+
+    run_wrapper "$home" v1.2.3 --uninstall
+    [ "$status" -ne 0 ] || fail "an interrupted uninstall reported success"
+    [ -f "$home/helix_print/helix_print.py" ] || fail "the plugin directory went"
+}
+
 @test "the wrapper piped into sh runs to the end without git or bash" {
     local home="$BATS_TEST_TMPDIR/home"
     setup_home "$home"
