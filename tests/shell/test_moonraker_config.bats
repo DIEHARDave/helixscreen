@@ -821,7 +821,34 @@ BINEOF
 # restart_moonraker
 # =============================================================================
 
+# Point the systemd check at a /run whose systemd runtime directory exists
+# when $1 is "systemd", and is missing otherwise.
+stage_init() {
+    export HELIX_RUN_DIR="$BATS_TEST_TMPDIR/run"
+    mkdir -p "$HELIX_RUN_DIR"
+    [ "$1" != systemd ] || mkdir -p "$HELIX_RUN_DIR/systemd/system"
+}
+
+# A process tree under HELIX_PROC_ROOT holding one Moonraker at pid $1 that
+# started at clock tick $2.
+stage_running_moonraker() {
+    export HELIX_PROC_ROOT="$BATS_TEST_TMPDIR/proc"
+    local dir="$HELIX_PROC_ROOT/$1"
+    mkdir -p "$dir"
+    printf '%s\0' python3 /home/pi/moonraker/moonraker/moonraker.py > "$dir/cmdline"
+    printf '%s (python3) S 1 %s %s 0 -1 4194560 0 0 0 0 0 0 0 0 20 0 1 0 %s 0 0\n' \
+        "$1" "$1" "$1" "$2" > "$dir/stat"
+}
+
+# A command body that restarts the Moonraker stage_running_moonraker made at
+# pid $1: it comes back as pid $2.
+moonraker_respawn_body() {
+    printf 'mv "%s/%s" "%s/%s"; sed -i "s/^%s /%s /" "%s/%s/stat"' \
+        "$HELIX_PROC_ROOT" "$1" "$HELIX_PROC_ROOT" "$2" "$1" "$2" "$HELIX_PROC_ROOT" "$2"
+}
+
 @test "restart_moonraker: systemctl available and moonraker active restarts" {
+    stage_init systemd
     local restart_called="$BATS_TEST_TMPDIR/restart_called"
     mock_command_script "systemctl" '
         case "$*" in
@@ -880,6 +907,71 @@ MOONEOF
     restart_moonraker
 
     [ -f "$STAGED_MOONRAKER_MARKER" ]
+}
+
+@test "restart_moonraker: a systemctl that exits 0 for everything is not systemd, so the init script restarts Moonraker" {
+    # Creality K1 firmware's /usr/bin/systemctl handles only reboot and poweroff.
+    stage_init none
+    local log="$BATS_TEST_TMPDIR/systemctl.log"
+    mock_command_script "systemctl" "printf '%s\\n' \"\$*\" >> '$log'; exit 0"
+    stage_running_moonraker 300 5000
+    stage_sysv_moonraker "S56moonraker_service"
+    local initd="$HELIX_INITD_DIR"
+    printf '#!/bin/sh\n[ "$1" = restart ] && touch "%s"\n%s\n' "$STAGED_MOONRAKER_MARKER" \
+        "$(moonraker_respawn_body 300 301)" > "$initd/S56moonraker_service"
+    local curl_log="$BATS_TEST_TMPDIR/curl.log"
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$curl_log'; exit 0"
+    mock_command_script "sleep" 'exit 0'
+
+    run restart_moonraker
+
+    [ "$status" -eq 0 ]
+    [ -f "$STAGED_MOONRAKER_MARKER" ] || fail "the init script was not run: $output"
+    if grep -q restart "$log" 2>/dev/null; then fail "restarted through the systemctl shim: $(cat "$log")"; fi
+    if grep -q 'server/restart' "$curl_log" 2>/dev/null; then fail "fell back to HTTP after a restart that worked"; fi
+    [[ "$output" != *"manually"* ]]
+}
+
+@test "restart_moonraker: a restart that exits 0 and leaves the same Moonraker running falls back to HTTP" {
+    stage_init systemd
+    stage_running_moonraker 300 5000
+    local log="$BATS_TEST_TMPDIR/systemctl.log"
+    mock_command_script "systemctl" "printf '%s\\n' \"\$*\" >> '$log'; exit 0"
+    export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
+    mkdir -p "$HELIX_INITD_DIR"
+    local curl_log="$BATS_TEST_TMPDIR/curl.log"
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$curl_log'; exit 0"
+    mock_command_script "sleep" 'exit 0'
+
+    run restart_moonraker
+
+    [ "$status" -eq 0 ]
+    grep -qx 'restart moonraker' "$log" || fail "systemctl was not asked to restart: $(cat "$log" 2>/dev/null)"
+    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$curl_log" ||
+        fail "no fallback to Moonraker's own restart: $output"
+    [[ "$output" == *"kept running"* ]] || fail "the failed restart went unreported: $output"
+    [[ "$output" == *"Asked Moonraker to restart itself"* ]] || fail "$output"
+}
+
+@test "restart_moonraker: a Moonraker that comes back under its old pid with a new start time counts as restarted" {
+    stage_init systemd
+    stage_running_moonraker 300 5000
+    mock_command_script "systemctl" "case \"\$1\" in is-active) exit 0;; restart)
+    sed -i 's/ 5000 / 5100 /' '$HELIX_PROC_ROOT/300/stat';; esac; exit 0"
+    local curl_log="$BATS_TEST_TMPDIR/curl.log"
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$curl_log'; exit 0"
+    mock_command_script "sleep" 'exit 0'
+    export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
+    mkdir -p "$HELIX_INITD_DIR"
+
+    run restart_moonraker
+
+    [ "$status" -eq 0 ]
+    if grep -q 'server/restart' "$curl_log" 2>/dev/null; then fail "a restart that worked fell back to HTTP: $output"; fi
+    [[ "$output" != *"kept running"* ]] || fail "$output"
 }
 
 @test "restart_moonraker: warns and succeeds when no restart mechanism exists" {

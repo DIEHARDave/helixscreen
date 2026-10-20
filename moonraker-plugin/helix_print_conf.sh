@@ -133,6 +133,45 @@ running_moonraker_ids() {
         END { if (u != "") print u " " g gs }' "$_rmi_proc/status" 2>/dev/null || true
 }
 
+# Print the start time of the process at /proc directory @1, in clock ticks
+# since boot: field 22 of its stat, counted after the last ')' since the
+# command name may hold spaces.
+proc_start_ticks() {
+    sed 's/.*) //' "$1/stat" 2>/dev/null | awk '{ print $20 }'
+}
+
+# Print the running Moonraker's pid and start time, which tell one Moonraker
+# process from the next even when a pid is reused. Empty when none runs.
+running_moonraker_identity() {
+    _rmy_proc=$(running_moonraker_process) || return 0
+    _rmy_proc="${_rmy_proc%%
+*}"
+    printf '%s %s' "${_rmy_proc##*/}" "$(proc_start_ticks "$_rmy_proc")"
+}
+
+# Whether the Moonraker process whose running_moonraker_identity was @1 has
+# gone, waiting up to 5s for it. True at once when @1 is empty: with no
+# Moonraker seen before a restart there is nothing to compare, and the wait
+# for Moonraker to answer judges that restart.
+moonraker_restarted_since() {
+    [ -n "$1" ] || return 0
+    _mrs_waited=0
+    while [ "$(running_moonraker_identity)" = "$1" ]; do
+        [ "$_mrs_waited" -lt 5 ] || return 1
+        sleep 1
+        _mrs_waited=$((_mrs_waited + 1))
+    done
+    return 0
+}
+
+# Whether systemd is the init of the host whose /run is @1, judged by its
+# runtime directory there. A systemctl on PATH proves nothing:
+# Creality K1 firmware ships /usr/bin/systemctl as a shell script that handles
+# reboot and poweroff and exits 0 for anything else.
+systemd_is_init() {
+    [ -d "$1/systemd/system" ]
+}
+
 # The same probe as _has_real_curl in scripts/lib/installer/release.sh and
 # moonraker-plugin/remote-install.sh, which run where this file is not sourced.
 # Detect whether `curl` is curl proper, with the flags we pass it. Creality K1
@@ -206,53 +245,68 @@ moonraker_restart_over_http() {
     return 0
 }
 
-# Print how this host's service manager restarts Moonraker: "systemd" when the
-# moonraker unit is active, else the first init script for it under
+# Print each way this host's service manager can restart Moonraker, one per
+# line, in the order to try them: "systemd" when systemd is init
+# (systemd_is_init on HELIX_RUN_DIR, else /run) and the moonraker unit is active, then the first init script for it under
 # HELIX_INITD_DIR, then /etc/init.d (S56moonraker_service on Creality K1 and
 # Simple AF, a plain moonraker on COSMOS and the rest). Prints nothing when no
 # service manager runs it, as for Moonraker in Forge-X's chroot.
 moonraker_service() {
-    if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet moonraker 2>/dev/null; then
-        printf 'systemd'
-        return 0
+    if systemd_is_init "${HELIX_RUN_DIR:-/run}" && command -v systemctl >/dev/null 2>&1 &&
+        systemctl is-active --quiet moonraker 2>/dev/null; then
+        printf 'systemd\n'
     fi
     for _ms_script in "${HELIX_INITD_DIR:-/etc/init.d}/S56moonraker_service" \
                       "${HELIX_INITD_DIR:-/etc/init.d}/moonraker" \
                       /etc/init.d/S56moonraker_service /etc/init.d/moonraker; do
         if [ -x "$_ms_script" ] || [ -f "$_ms_script" ]; then
-            printf '%s' "$_ms_script"
+            printf '%s\n' "$_ms_script"
             return 0
         fi
     done
     return 0
 }
 
-# Restart Moonraker through moonraker_service, the command run under prefix
-# @1 (a word list: a root wrapper, or empty), else by asking the Moonraker at
-# base URL @2 (default as for request_moonraker_restart) to restart itself,
-# which needs no root. Command @3, when set, is called with a line saying why
-# a service-manager restart failed. The request over HTTP is never made while
-# a print is printing or paused: a Moonraker restart drops Klipper's API
-# clients mid-job. Returns 0 when the service manager restarted it, 3 when
-# Moonraker accepted the request, 4 when an active print holds the restart
-# off, and 1 when nothing restarted it.
+# Restart Moonraker through each way moonraker_service prints, the command run
+# under prefix @1 (a word list: a root wrapper, or empty), until one restarts
+# it, else by asking the Moonraker at base URL @2 (default as for
+# request_moonraker_restart) to restart itself, which needs no root. A way
+# counts only when the Moonraker process running before it is gone after
+# (moonraker_restarted_since): a service command can exit 0 and restart
+# nothing. Command @3, when set, is called with a line saying why a way
+# failed. The request over HTTP is never made while a print is printing or
+# paused: a Moonraker restart drops Klipper's API clients mid-job. Returns 0
+# when the service manager restarted it, 3 when Moonraker accepted the
+# request, 4 when an active print holds the restart off, and 1 when nothing
+# restarted it.
 restart_moonraker_via() {
     _rmv_pre="$1"
     _rmv_url="${2:-$(moonraker_local_url "")}"
-    _rmv_service=$(moonraker_service)
-    case "$_rmv_service" in
-        '') ;;
-        systemd)
-            # shellcheck disable=SC2086  # the prefix is a word list
-            $_rmv_pre systemctl restart moonraker && return 0
-            [ -z "${3:-}" ] || "$3" "Could not restart Moonraker via systemctl"
-            ;;
-        *)
-            # shellcheck disable=SC2086
-            $_rmv_pre "$_rmv_service" restart && return 0
-            [ -z "${3:-}" ] || "$3" "Could not restart Moonraker with $_rmv_service"
-            ;;
-    esac
+    _rmv_warn="${3:-}"
+    _rmv_ways=$(moonraker_service)
+    _rmv_before=$(running_moonraker_identity)
+    _rmv_ifs=$IFS
+    IFS='
+'
+    for _rmv_way in $_rmv_ways; do
+        IFS=$_rmv_ifs
+        if [ "$_rmv_way" = systemd ]; then
+            set -- systemctl restart moonraker
+            _rmv_name="via systemctl"
+        else
+            set -- "$_rmv_way" restart
+            _rmv_name="with $_rmv_way"
+        fi
+        # shellcheck disable=SC2086  # the prefix is a word list
+        if ! $_rmv_pre "$@"; then
+            [ -z "$_rmv_warn" ] || "$_rmv_warn" "Could not restart Moonraker $_rmv_name"
+        elif moonraker_restarted_since "$_rmv_before"; then
+            return 0
+        else
+            [ -z "$_rmv_warn" ] || "$_rmv_warn" "Moonraker kept running through a restart $_rmv_name"
+        fi
+    done
+    IFS=$_rmv_ifs
     moonraker_job_active "$_rmv_url" && return 4
     moonraker_restart_over_http "$_rmv_url" && return 3
     return 1

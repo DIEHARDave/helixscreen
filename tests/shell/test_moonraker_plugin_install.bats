@@ -120,13 +120,20 @@ printf '%s\\n' \"\$*\" >> '$log'"
 exit $status"
 }
 
+# Point the systemd check at a /run where systemd is init.
+stage_systemd_init() {
+    export HELIX_RUN_DIR="$BATS_TEST_TMPDIR/run"
+    mkdir -p "$HELIX_RUN_DIR/systemd/system"
+}
+
 # Build a scratch HOME shaped like a real printer's: a Moonraker checkout
 # with the plugin symlinked in, and printer_data/config holding an
-# instrumented printer.cfg plus the real helix_macros.cfg. Shims sudo,
-# service and curl so auto_uninstall's restart/wait steps are no-ops;
-# systemctl is shadowed inert by `load helpers` already.
+# instrumented printer.cfg plus the real helix_macros.cfg, on a systemd host.
+# Shims sudo, service and curl so auto_uninstall's restart/wait steps are
+# no-ops; systemctl is shadowed inert by `load helpers` already.
 setup_instrumented_home() {
     local home="$1"
+    stage_systemd_init
     mkdir -p "$home/moonraker/moonraker/components" "$home/printer_data/config" "$home/plugin"
     : > "$home/plugin/helix_print.py"
     ln -s "$home/plugin/helix_print.py" "$home/moonraker/moonraker/components/helix_print.py"
@@ -728,9 +735,11 @@ exit 0'
     mock_command_script "wget" 'exit 8'
     mock_command_script "sleep" 'exit 0'
     # The service manager's restart works, so the wait is what is judged.
-    mock_command_script "systemctl" 'exit 0'
+    mkdir -p "$root/run/systemd/system"
+    mock_command_script "systemctl" "case \"\$1\" in restart) mv '$root/proc/1925' '$root/proc/1926';; esac; exit 0"
+    mock_command_script "sudo" 'exec "$@"'
 
-    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" HELIX_RUN_DIR="$root/run" \
         sh "$chroot$FORGEX_PLUGIN/install.sh" --auto
     contains "did not respond" "$output"
     ! contains "Moonraker is ready" "$output"
@@ -1283,6 +1292,7 @@ setup_forgex_bind_mounted_app() {
 # A systemd host where the moonraker unit is listed but sudo refuses, as for
 # a user whose sudo wants a password. $1 logs every curl call.
 mock_systemd_without_sudo() {
+    stage_systemd_init
     mock_command_script "systemctl" 'case "$1" in list-units) echo "moonraker.service loaded active running";; esac; exit 0'
     mock_command_script "sudo" 'echo "sudo: a password is required" >&2; exit 1'
     mock_real_curl 0 "$1"
@@ -1575,6 +1585,27 @@ exit 0'
     [ "$status" -eq 0 ] || fail "install failed: $output"
     [ -e "$BATS_TEST_TMPDIR/init.restarted" ] || fail "the init script was not run: $(cat "$log" 2>/dev/null)"
     if grep -q 'systemctl restart' "$log" 2>/dev/null; then fail "restarted a unit that is not moonraker's"; fi
+    contains "Auto-install complete" "$output"
+}
+
+@test "an auto install on a K1, whose systemctl exits 0 for everything, restarts Moonraker through its init script" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log"
+    setup_plain_home "$home"
+    mkdir -p "$BATS_TEST_TMPDIR/run" "$home/proc/700"
+    printf '%s\0' python3 "$home/moonraker/moonraker/moonraker.py" > "$home/proc/700/cmdline"
+    mock_command_script "systemctl" "printf '%s\\n' \"\$*\" >> '$log'; exit 0"
+    mock_command_script "sudo" 'exec "$@"'
+    local initd="$BATS_TEST_TMPDIR/etc/init.d"
+    mkdir -p "$initd"
+    printf '#!/bin/sh\n[ "$1" = restart ] && mv "%s" "%s"\n' "$home/proc/700" "$home/proc/701" \
+        > "$initd/S56moonraker_service"
+    chmod +x "$initd/S56moonraker_service"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" HELIX_RUN_DIR="$BATS_TEST_TMPDIR/run" \
+        HELIX_INITD_DIR="$initd" sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    [ -d "$home/proc/701" ] || fail "the init script did not restart Moonraker: $output"
+    if grep -q restart "$log" 2>/dev/null; then fail "restarted through the systemctl shim: $(cat "$log")"; fi
     contains "Auto-install complete" "$output"
 }
 

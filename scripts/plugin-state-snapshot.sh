@@ -93,7 +93,7 @@ conf_sh() {
 # fails the snapshot instead of recording a wrong path.
 REQUIRED_FUNCS="components_under running_moonraker_proc running_moonraker_args
 install_sh_moonraker_root running_moonraker_arg find_moonraker_components
-find_config_dir helix_conf_file moonraker_conf_files"
+find_config_dir helix_conf_file moonraker_conf_files proc_start_ticks systemd_is_init"
 
 emit_remote() {
     printf '%s\n' "SNAP_ROOT=$(shquote "$ROOT")"
@@ -142,11 +142,6 @@ home_of() { # <user>
     [ -n "$1" ] || return 0
     awk -F: -v n="$1" '$1 == n { print $6; exit }' "$SNAP_ROOT/etc/passwd" 2>/dev/null
 }
-# Field 22 of stat, counted after the last ')' since comm may hold spaces.
-proc_start() { # <proc dir>
-    sed 's/.*) //' "$1/stat" 2>/dev/null | awk '{ print $20 }'
-}
-
 # The HelixScreen process: argv[0] named helix-screen.
 app_proc() {
     for f in "$HELIX_PROC_ROOT"/[0-9]*/cmdline; do
@@ -164,7 +159,7 @@ if [ -n "$mproc" ]; then
     mpid=${mproc##*/}
     moonraker_uid=$(proc_uid "$mproc")
     moonraker_user=$(user_of "$moonraker_uid")
-    moonraker_start=$(proc_start "$mproc")
+    moonraker_start=$(proc_start_ticks "$mproc")
 fi
 
 aproc=$(app_proc) || aproc=""
@@ -217,7 +212,7 @@ if [ -n "$install_dir" ] && [ -f "$SNAP_ROOT$install_dir/release_info.json" ]; t
     version=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$SNAP_ROOT$install_dir/release_info.json" | awk 'NR == 1')
 fi
 
-if [ -d "$SNAP_ROOT/run/systemd/system" ]; then init=systemd
+if systemd_is_init "$SNAP_ROOT/run"; then init=systemd
 elif [ -x "$SNAP_ROOT/sbin/procd" ]; then init=procd
 else init=sysv
 fi
