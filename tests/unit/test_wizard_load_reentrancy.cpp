@@ -19,9 +19,13 @@
 #include "../test_helpers/scoped_runtime_config.h"
 #include "config.h"
 #include "helix-xml/src/xml/lv_xml.h"
+#include "src/ui/wizard_step_registry.h"
 #include "wizard_step.h"
+#include "wizard_step_logic.h"
 
+#include <algorithm>
 #include <memory>
+#include <string>
 
 #include "../catch_amalgamated.hpp"
 
@@ -107,4 +111,71 @@ TEST_CASE_METHOD(WizardLoadFixture,
 
     cfg->set<bool>("/wizard_completed", was_completed);
     cfg->set<bool>(cfg->df() + "wizard_completed", was_completed);
+}
+
+TEST_CASE_METHOD(WizardLoadFixture,
+                 "wizard: a completion and a new wizard in one drain leave the old content alone",
+                 "[wizard][drain_reentrancy]") {
+    auto* cfg = helix::Config::get_instance();
+    const bool was_completed = cfg->get<bool>("/wizard_completed", false);
+    navigate(StepId::Wifi);
+    const uint32_t wifi_children = lv_obj_get_child_count(content_);
+    REQUIRE(wifi_children > 0);
+    lv_obj_t* wifi_screen = lv_obj_get_child(content_, 0);
+    int wifi_screen_deleted = 0;
+    lv_obj_add_event_cb(
+        wifi_screen, [](lv_event_t* e) { ++*static_cast<int*>(lv_event_get_user_data(e)); },
+        LV_EVENT_DELETE, &wifi_screen_deleted);
+
+    lv_obj_t* fresh = nullptr;
+    helix::ui::UpdateQueue::instance().queue("test::complete_then_create", [this, &fresh]() {
+        ui_wizard_complete();
+        fresh = ui_wizard_create(test_screen());
+    });
+    ui_wizard_navigate_to_step(StepId::Connection);
+
+    REQUIRE(fresh != nullptr);
+    CHECK(wifi_screen_deleted == 0);
+    CHECK(lv_obj_get_child_count(content_) == wifi_children);
+    lv_obj_t* fresh_content = lv_obj_find_by_name(fresh, "wizard_content");
+    REQUIRE(fresh_content != nullptr);
+    CHECK(lv_obj_get_child_count(fresh_content) == 0);
+    process_lvgl(80);
+
+    cfg->set<bool>("/wizard_completed", was_completed);
+    cfg->set<bool>(cfg->df() + "wizard_completed", was_completed);
+}
+
+// Leaving PrinterIdentify decides whether the requested step is now skipped.
+// A load run by that load's drain takes over the decision for its own target.
+TEST_CASE_METHOD(WizardLoadFixture,
+                 "wizard: a step change drained after leaving printer identify keeps the redirect",
+                 "[wizard][drain_reentrancy]") {
+    auto* cfg = helix::Config::get_instance();
+    const std::string preset_key = cfg->df() + "preset";
+    const auto prior_preset = cfg->get<std::string>(preset_key, "");
+    navigate(StepId::PrinterIdentify);
+    REQUIRE(current_step() == static_cast<int>(StepId::PrinterIdentify));
+
+    // A preset collapses the hardware pickers for this run.
+    cfg->set<std::string>(preset_key, "drain_reentrancy_preset");
+    helix::wizard_mark_preset_applied_this_session();
+    const auto skips = helix::wizard::skip_vector(helix::wizard::build_context());
+    const auto fan = std::find_if(skips.begin(), skips.end(), [](const helix::StepSkip& s) {
+        return s.id == StepId::FanSelect;
+    });
+    REQUIRE(fan != skips.end());
+    REQUIRE(fan->skipped);
+    const auto expected = helix::wizard_next(StepId::FanSelect, skips);
+    REQUIRE(expected.has_value());
+
+    helix::ui::UpdateQueue::instance().queue(
+        "test::queued_step_change", []() { ui_wizard_navigate_to_step(StepId::FanSelect); });
+    ui_wizard_navigate_to_step(StepId::HeaterSelect);
+    process_lvgl(80);
+
+    CHECK(current_step() == static_cast<int>(*expected));
+
+    cfg->set<std::string>(preset_key, prior_preset);
+    helix::wizard_reset_preset_session_state();
 }
