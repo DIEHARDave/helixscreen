@@ -547,6 +547,27 @@ CONF
     [ "$(stat -c %a "$real")" = 640 ] || fail "mode $(stat -c %a "$real")"
 }
 
+@test "remove_moonraker_plugin follows an absolute include as a chrooted Moonraker reads it" {
+    local chroot="$BATS_TEST_TMPDIR/data/.mod/.forge-x"
+    local proc="$BATS_TEST_TMPDIR/proc"
+    local conf="$chroot/root/printer_data/config/moonraker.conf"
+    local inc="$chroot/root/printer_data/config/helix.conf"
+    mkdir -p "$(dirname "$conf")" "$proc/1925"
+    printf '%s\0' /root/moonraker-env/bin/python3 /root/moonraker/moonraker/moonraker.py \
+        > "$proc/1925/cmdline"
+    ln -s "$chroot" "$proc/1925/root"
+    printf '[server]\nhost: 0.0.0.0\n\n[include /root/printer_data/config/helix.conf]\n' > "$conf"
+    printf '[helix_print]\nenabled: True\n\n[octoprint_compat]\n' > "$inc"
+    KLIPPER_HOME=""
+    KLIPPER_CONFIG_DIR=""
+    MOONRAKER_CONF_PATHS="$conf"
+
+    HELIX_PROC_ROOT="$proc" remove_moonraker_plugin 2>/dev/null
+
+    refute_grep '^\[helix_print\]' "$inc"
+    grep -q '^\[octoprint_compat\]' "$inc" || fail "the include's other sections were lost"
+}
+
 @test "remove_moonraker_plugin removes the updater entry a git-clone plugin install wrote" {
     local symlink conf
     setup_helix_print_symlink

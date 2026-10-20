@@ -101,22 +101,42 @@ find_moonraker_update_manager_dir() {
     echo ""
 }
 
-# Print the running Moonraker's python package directory (the one holding
-# moonraker.py) as a path from here: its argv names paths inside its own
-# root, which is a chroot's directory when it runs in one. Empty when no
-# Moonraker is running. HELIX_PROC_ROOT is the tests' seam.
-running_moonraker_package_dir() {
-    local proc="${HELIX_PROC_ROOT:-/proc}" f script root
+# Print the running Moonraker's /proc/<pid> directory and, on the next line,
+# the moonraker.py its argv names. Nothing when no Moonraker is running.
+# HELIX_PROC_ROOT is the tests' seam.
+running_moonraker_process() {
+    local proc="${HELIX_PROC_ROOT:-/proc}" f script
     for f in "$proc"/[0-9]*/cmdline; do
         [ -r "$f" ] || continue
         script=$(tr '\000' '\n' < "$f" 2>/dev/null | awk '/moonraker\.py$/ { print; exit }')
         case "$script" in /*) ;; *) continue ;; esac
-        root=$(readlink "$(dirname "$f")/root" 2>/dev/null) || root=""
-        [ "$root" = "/" ] && root=""
-        echo "${root%/}$(dirname "$script")"
+        printf '%s\n%s\n' "$(dirname "$f")" "$script"
         return 0
     done
-    echo ""
+}
+
+# Print where the running Moonraker's "/" is from here: empty when it shares
+# ours or none is running, the chroot's directory when it runs in one. Every
+# path in its argv and every absolute [include] it reads is relative to that.
+running_moonraker_root_dir() {
+    local pdir root
+    pdir=$(running_moonraker_process | sed -n 1p)
+    [ -n "$pdir" ] || return 0
+    root=$(readlink "$pdir/root" 2>/dev/null) || root=""
+    [ "$root" = "/" ] && root=""
+    echo "${root%/}"
+}
+
+# Print the running Moonraker's python package directory (the one holding
+# moonraker.py) as a path from here. Empty when no Moonraker is running.
+running_moonraker_package_dir() {
+    local script
+    script=$(running_moonraker_process | sed -n 2p)
+    if [ -z "$script" ]; then
+        echo ""
+        return 0
+    fi
+    echo "$(running_moonraker_root_dir)$(dirname "$script")"
 }
 
 # Probe whether the installed Moonraker honours release_info.json's asset_name.
@@ -753,7 +773,7 @@ _remove_helix_print_inline() {
     # Every file Moonraker reads the plugin's sections from: the conf and its
     # includes. That covers the [update_manager helix_print] a git-clone
     # install of the plugin wrote.
-    for section_conf in $(helix_print_owned_files "$conf"); do
+    for section_conf in $(helix_print_owned_files "$conf" "$(running_moonraker_root_dir)"); do
         if host_path_is_mod_owned "$section_conf"; then
             log_warn "[helix_print] is in $section_conf, which the firmware mod owns - leaving it in place"
             continue
@@ -795,7 +815,7 @@ remove_moonraker_plugin() {
     conf=$(find_moonraker_conf)
 
     local has_section=false
-    if [ -n "$conf" ] && [ -n "$(helix_print_owned_files "$conf")" ]; then
+    if [ -n "$conf" ] && [ -n "$(helix_print_owned_files "$conf" "$(running_moonraker_root_dir)")" ]; then
         has_section=true
     fi
 
