@@ -132,6 +132,9 @@ NetworkSettingsOverlay::~NetworkSettingsOverlay() {
         }
     }
 
+    // The dropdown's language handler reads this object and its subjects.
+    detach_country_dropdown();
+
     // Deinitialize subjects to disconnect observers
     if (subjects_initialized_) {
         subjects_.deinit_all();
@@ -263,15 +266,12 @@ lv_obj_t* NetworkSettingsOverlay::create(lv_obj_t* parent_screen) {
     country_dropdown_ =
         helix::ui::find_required(overlay_root_, "wifi_country_dropdown", get_name());
     if (country_dropdown_) {
+        // The hint follows the radio; refresh_country() sets it once the radio answers.
+        country_hint_5ghz_ = false;
         fill_country_options();
-        // DECLARATIVE_OK: the options are C++-built data; the handler dies with the dropdown.
-        lv_obj_add_event_cb(
-            country_dropdown_,
-            [](lv_event_t* e) {
-                static_cast<NetworkSettingsOverlay*>(lv_event_get_user_data(e))
-                    ->fill_country_options();
-            },
-            LV_EVENT_TRANSLATION_LANGUAGE_CHANGED, this);
+        // DECLARATIVE_OK: the options are C++-built data, rebuilt in the new language.
+        lv_obj_add_event_cb(country_dropdown_, on_country_language_changed,
+                            LV_EVENT_TRANSLATION_LANGUAGE_CHANGED, this);
     }
 
     // Note: Back button is wired via header_bar.xml default callback (on_header_back_clicked)
@@ -425,9 +425,9 @@ void NetworkSettingsOverlay::cleanup() {
     ethernet_manager_.reset();
     network_tester_.reset();
 
+    detach_country_dropdown();
     parent_screen_ = nullptr;
     networks_list_ = nullptr;
-    country_dropdown_ = nullptr;
 
     current_ssid_[0] = '\0';
     current_network_is_secured_ = false;
@@ -462,6 +462,18 @@ void NetworkSettingsOverlay::refresh_country() {
                                                       wifi_manager_->supports_5ghz(), effective);
             show_country_choice(index, country_hint_5ghz_);
         });
+}
+
+void NetworkSettingsOverlay::on_country_language_changed(lv_event_t* e) {
+    static_cast<NetworkSettingsOverlay*>(lv_event_get_user_data(e))->fill_country_options();
+}
+
+void NetworkSettingsOverlay::detach_country_dropdown() {
+    // The tree can be deleted out from under this object, leaving the pointer freed.
+    if (country_dropdown_ && lv_is_initialized() && lv_obj_is_valid(country_dropdown_)) {
+        lv_obj_remove_event_cb_with_user_data(country_dropdown_, on_country_language_changed, this);
+    }
+    country_dropdown_ = nullptr;
 }
 
 void NetworkSettingsOverlay::fill_country_options() {

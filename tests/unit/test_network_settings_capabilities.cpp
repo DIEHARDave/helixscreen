@@ -12,8 +12,10 @@
 #include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_helpers/lvgl_event_hook_probe.h"
 #include "../test_helpers/network_settings_overlay_test_access.h"
 #include "../test_helpers/scoped_runtime_config.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "system_settings_manager.h"
 #include "wifi_backend_mock.h"
 #include "wifi_country.h"
@@ -129,6 +131,68 @@ TEST_CASE_METHOD(CapabilityFixture,
     // Closed, it shows the code alone; the open list carries the name.
     REQUIRE(lv_dropdown_get_text(dropdown) != nullptr);
     CHECK(std::string(lv_dropdown_get_text(dropdown)) == "DE");
+}
+
+TEST_CASE_METHOD(CapabilityFixture,
+                 "Network settings re-translates the country dropdown on a language switch",
+                 "[network_settings][wifi_country][i18n]") {
+    auto& settings = helix::SystemSettingsManager::instance();
+    settings.set_wifi_country("");
+    NetworkSettingsOverlay overlay;
+    lv_obj_t* root = open_overlay(overlay, std::make_unique<WifiBackendMock>());
+    lv_obj_t* dropdown = lv_obj_find_by_name(root, "wifi_country_dropdown");
+    REQUIRE(dropdown != nullptr);
+    auto shown = [dropdown] {
+        const char* text = lv_dropdown_get_text(dropdown);
+        return std::string(text ? text : "");
+    };
+    REQUIRE(wait_until([&] { return shown() == "2.4 GHz only"; }));
+
+    settings.set_language("ru");
+    helix::ui::UpdateQueue::instance().drain();
+    const std::string hint = lv_tr("2.4 GHz only");
+    const std::string not_set = lv_tr("Not set");
+    REQUIRE(hint != "2.4 GHz only");
+    CHECK(shown() == hint);
+    CHECK(std::string(lv_dropdown_get_options(dropdown)).rfind(not_set + "\n", 0) == 0);
+    settings.set_language("en");
+}
+
+TEST_CASE_METHOD(CapabilityFixture,
+                 "Network settings keeps the chosen country across a language switch",
+                 "[network_settings][wifi_country][i18n]") {
+    auto& settings = helix::SystemSettingsManager::instance();
+    settings.set_wifi_country("");
+    auto backend = std::make_unique<WifiBackendMock>();
+    backend->set_country_for_test("DE");
+    NetworkSettingsOverlay overlay;
+    lv_obj_t* root = open_overlay(overlay, std::move(backend));
+    const int de = helix::wifi::country::dropdown_index("DE");
+    REQUIRE(
+        wait_until([&] { return lv_subject_get_int(&Access::wifi_country_index(overlay)) == de; }));
+    lv_obj_t* dropdown = lv_obj_find_by_name(root, "wifi_country_dropdown");
+    REQUIRE(dropdown != nullptr);
+
+    settings.set_language("ru");
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(static_cast<int>(lv_dropdown_get_selected(dropdown)) == de);
+    REQUIRE(lv_dropdown_get_text(dropdown) != nullptr);
+    CHECK(std::string(lv_dropdown_get_text(dropdown)) == "DE");
+    settings.set_language("en");
+}
+
+TEST_CASE_METHOD(CapabilityFixture,
+                 "Network settings leaves no language handler on its dropdown when destroyed",
+                 "[network_settings][wifi_country][teardown]") {
+    auto overlay = std::make_unique<NetworkSettingsOverlay>();
+    lv_obj_t* root = open_overlay(*overlay, std::make_unique<WifiBackendMock>());
+    lv_obj_t* dropdown = lv_obj_find_by_name(root, "wifi_country_dropdown");
+    REQUIRE(dropdown != nullptr);
+    const void* dead = overlay.get();
+    REQUIRE(event_hook_installed(dropdown, dead));
+
+    overlay.reset();
+    CHECK_FALSE(event_hook_installed(dropdown, dead));
 }
 
 TEST_CASE_METHOD(CapabilityFixture, "Picking a country in the dropdown sets it on the radio",
