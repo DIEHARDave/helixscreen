@@ -7,7 +7,6 @@
 
 #include "../lvgl_test_fixture.h"
 #include "app_globals.h"
-#include "http_executor.h"
 #include "moonraker_client_mock.h"
 #include "plugin_backend.h"
 #include "printer_state.h"
@@ -93,7 +92,9 @@ TEST_CASE("plan_http_target leaves an https URL unpinned", "[plugin][backend]") 
 }
 
 TEST_CASE("app backend http refuses the printer's own host", "[plugin][backend]") {
-    helix::http::HttpExecutor::slow().start();
+    // The slow lane is process-wide and already running for every case. Stopping
+    // it here would leave the next case's reset to start a fresh worker, which
+    // the isolation listener reports as a thread leaked by that next case.
     auto b = make_app_backend();
     std::promise<RpcResult> done;
     auto ready = done.get_future();
@@ -103,7 +104,6 @@ TEST_CASE("app backend http refuses the printer's own host", "[plugin][backend]"
     RpcResult r = ready.get();
     CHECK_FALSE(r.ok);
     CHECK(r.error.find("printer host") != std::string::npos);
-    helix::http::HttpExecutor::slow().stop();
 }
 
 namespace {
