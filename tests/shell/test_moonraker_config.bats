@@ -975,6 +975,57 @@ stage_moonraker_on_port() {
     [ -z "$HTTP_STATUS" ]
 }
 
+@test "moonraker_request: GNU wget tries once, and reads its status in the C locale whatever the host's" {
+    local log="$BATS_TEST_TMPDIR/wget.log"
+    mock_command_script "curl" 'exit 127'
+    # A German GNU wget words its status line its own way unless LC_ALL=C.
+    mock_command_script "wget" "case \"\$1\" in --version) echo 'GNU Wget 1.21.4 built on linux-gnu.'; exit 0;; esac
+printf '%s|%s\\n' \"\${LC_ALL:-}\" \"\$*\" >> '$log'
+if [ \"\${LC_ALL:-}\" = C ]; then echo 'HTTP request sent, awaiting response... 401 Unauthorized' >&2
+else echo 'HTTP-Anforderung gesendet, auf Antwort wird gewartet ... 401 Unauthorized' >&2; fi
+exit 1"
+    _REAL_CURL=""
+
+    LC_ALL=de_DE.UTF-8 LANG=de_DE.UTF-8 moonraker_request POST http://127.0.0.1:7125/server/restart 5 && fail "a 401 is not a success"
+    [ "$HTTP_STATUS" = 401 ] || fail "POST read as '$HTTP_STATUS': $(cat "$log")"
+    [ "$(grep -c . "$log")" -eq 1 ] || fail "POST ran wget more than once: $(cat "$log")"
+    : > "$log"
+    LC_ALL=de_DE.UTF-8 LANG=de_DE.UTF-8 moonraker_request GET http://127.0.0.1:7125/server/info 2 && fail "a 401 is not a success"
+    [ "$HTTP_STATUS" = 401 ] || fail "GET read as '$HTTP_STATUS': $(cat "$log")"
+    while IFS='|' read -r locale args; do
+        [ "$locale" = C ] || fail "wget ran in locale '$locale'"
+        case " $args " in *" --tries=1 "*) ;; *) fail "GNU wget may retry: $args" ;; esac
+    done < "$log"
+}
+
+@test "moonraker_request: a wget GET that used its whole timeout is not run again for a status" {
+    local log="$BATS_TEST_TMPDIR/wget.log"
+    mock_command_script "curl" 'exit 127'
+    mock_fake_clock
+    # Each run stands in for one that waited its full -T and heard nothing.
+    mock_command_script "wget" "[ \"\$1\" != --version ] || exit 1; echo x >> '$log'; echo \$((\$(cat '$BATS_TEST_TMPDIR/clock') + 5)) > '$BATS_TEST_TMPDIR/clock'; exit 4"
+    _REAL_CURL=""
+
+    moonraker_request GET http://127.0.0.1:7125/server/info 5 && fail "nothing answered"
+    [ -z "$HTTP_STATUS" ] || fail "status '$HTTP_STATUS'"
+    [ "$(grep -c . "$log")" -eq 1 ] || fail "ran wget $(grep -c . "$log") times"
+}
+
+@test "moonraker_request: BusyBox wget, which may reject --tries, is never given it" {
+    local log="$BATS_TEST_TMPDIR/wget.log"
+    mock_command_script "curl" 'exit 127'
+    mock_command_script "wget" "for a; do case \"\$a\" in --version | --tries* | -t) echo \"wget: unrecognized option '\$a'\" >&2; exit 1;; esac; done
+printf '%s\\n' \"\$*\" >> '$log'
+case \"\$*\" in *-O\\ -*) printf '{\"result\":{}}';; esac
+exit 0"
+    _REAL_CURL=""
+
+    moonraker_request POST http://127.0.0.1:7125/server/restart 5 || fail "POST: '$HTTP_STATUS'"
+    moonraker_request GET http://127.0.0.1:7125/server/info 2 || fail "GET: '$HTTP_STATUS'"
+    [ "$HTTP_BODY" = '{"result":{}}' ] || fail "body '$HTTP_BODY'"
+    [ "$(grep -c . "$log")" -eq 2 ] || fail "$(cat "$log")"
+}
+
 # =============================================================================
 # remove_update_manager_section (edge cases)
 # =============================================================================

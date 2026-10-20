@@ -19,9 +19,9 @@ namespace helix {
 namespace {
 // install.sh --relink walks /proc and greps the config; it never waits on Moonraker.
 constexpr int kRelinkTimeoutSeconds = 30;
-// install.sh --restart-moonraker spends at most about 80s at its defaults
-// (moonraker_restart in helix_print_conf.sh): a 60s wait for Moonraker to come
-// back plus the HTTP probes around it, each capped at 5s or less.
+// install.sh --restart-moonraker: a 60s wait for Moonraker to come back plus
+// the capped HTTP probes around it. moonraker_restart in helix_print_conf.sh
+// counts its worst case, which stays well inside this.
 constexpr int kRestartTimeoutSeconds = 180;
 constexpr uint32_t kRestartToastMs = 4000;
 // How often a restart waiting for the screen looks again.

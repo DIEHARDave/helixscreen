@@ -240,6 +240,26 @@ _has_real_curl() {
     [ "$_REAL_CURL" = "yes" ]
 }
 
+# Run wget with arguments @..., once and with its messages in English, which
+# wget_error_status reads. GNU wget retries a failed request up to 20 times
+# by default, a POST included, so it is told --tries=1; a BusyBox wget never
+# retries, and one built without long options refuses the flag, so it is
+# not. Whether wget is GNU's is probed once, like _REAL_CURL.
+_GNU_WGET=""
+helix_wget() {
+    if [ -z "$_GNU_WGET" ]; then
+        _GNU_WGET=no
+        case "$(wget --version 2>/dev/null)" in
+            "GNU Wget"*) _GNU_WGET=yes ;;
+        esac
+    fi
+    if [ "$_GNU_WGET" = yes ]; then
+        LC_ALL=C LANG=C wget --tries=1 "$@"
+    else
+        LC_ALL=C LANG=C wget "$@"
+    fi
+}
+
 # The python an HTTP request falls back on when this host has neither real
 # curl nor wget (Creality K2 firmware ships neither): python3, else python,
 # whichever imports urllib.request in isolated mode (-I, Python 3.4 on), which
@@ -292,7 +312,9 @@ PYEOF
 # alone. Sets HTTP_STATUS to the status the server answered with, empty when
 # nothing answered, and HTTP_BODY to the body of a 2xx answer. Returns 0 for
 # a 2xx answer. wget reports no status of its own: a success is taken as
-# 200, and a failure's status is read from its error message.
+# 200, and a failure's status is read from its error message. One request
+# lasts @3 seconds at most through curl, and twice that through wget or
+# python, whose limit holds for the connect and again for each read.
 moonraker_request() {
     HTTP_STATUS=""
     HTTP_BODY=""
@@ -304,16 +326,22 @@ moonraker_request() {
 *}"
     elif command -v wget >/dev/null 2>&1; then
         if [ "$1" = POST ]; then
-            if _mrq_out=$(wget -T "$3" -O /dev/null --post-data='' "$2" 2>&1); then
+            if _mrq_out=$(helix_wget -T "$3" -O /dev/null --post-data='' "$2" 2>&1); then
                 HTTP_STATUS=200
             else
                 HTTP_STATUS=$(printf '%s\n' "$_mrq_out" | wget_error_status)
             fi
-        elif HTTP_BODY=$(wget -q -T "$3" -O - "$2" 2>/dev/null); then
-            HTTP_STATUS=200
         else
-            HTTP_BODY=""
-            HTTP_STATUS=$(wget -T "$3" -O /dev/null "$2" 2>&1 | wget_error_status)
+            # A failed GET is asked again for its status, unless the first
+            # try already used its time: nothing answered then.
+            _mrq_t0=$(helix_now)
+            if HTTP_BODY=$(helix_wget -q -T "$3" -O - "$2" 2>/dev/null); then
+                HTTP_STATUS=200
+            else
+                HTTP_BODY=""
+                [ "$(($(helix_now) - _mrq_t0))" -ge "$3" ] ||
+                    HTTP_STATUS=$(helix_wget -T "$3" -O /dev/null "$2" 2>&1 | wget_error_status)
+            fi
         fi
     elif _mrq_out=$(python_http "$1" "$2" "$3"); then
         HTTP_STATUS="${_mrq_out%%
@@ -356,9 +384,10 @@ moonraker_answers() {
 }
 
 # Print the HelixPrint plugin version the Moonraker at base URL @1 runs, from
-# /server/helix/status; nothing when it runs none or does not say.
+# /server/helix/status, waiting at most @2 seconds (default 5); nothing when
+# it runs none or does not say.
 moonraker_plugin_version() {
-    moonraker_get "$1/server/helix/status" 5 |
+    moonraker_get "$1/server/helix/status" "${2:-5}" |
         awk 'match($0, /"version"[[:space:]]*:[[:space:]]*"[^"]*"/) {
             s = substr($0, RSTART, RLENGTH); sub(/^"version"[[:space:]]*:[[:space:]]*"/, "", s)
             sub(/"$/, "", s); print s; exit }'
@@ -436,6 +465,12 @@ HELIX_RESTART_DOWN=7
 # code: DONE; MANUAL when Moonraker refused the request or still runs the old
 # plugin; HELD for a print; UNCHECKED when the print state cannot be read;
 # DOWN when Moonraker does not answer, before the request or after it.
+#
+# Its worst case, with every request running to its limit and each limit
+# doubled for wget or python (moonraker_request): /server/info 4s, the print
+# state 10s, the request 10s, the 60s wait by the clock, one more probe and
+# sleep past its end 5s, and the closing /server/info 4s: 93 seconds. The
+# app stops it at kRestartTimeoutSeconds (src/ui/plugin_self_heal.cpp), 180.
 moonraker_restart() {
     _mrs_mode="$1"
     _mrs_url="$2"
@@ -504,7 +539,7 @@ moonraker_restart() {
     _mrs_n=0
     while :; do
         if [ "$_mrs_mode" = plugin ] && [ -n "$_mrs_version" ]; then
-            [ "$(moonraker_plugin_version "$_mrs_url")" != "$_mrs_version" ] || break
+            [ "$(moonraker_plugin_version "$_mrs_url" 2)" != "$_mrs_version" ] || break
         else
             moonraker_request GET "$_mrs_url/server/info" 2 || :
             [ -z "$HTTP_STATUS" ] || break
