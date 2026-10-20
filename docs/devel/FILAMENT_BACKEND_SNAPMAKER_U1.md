@@ -449,8 +449,11 @@ stopped short of the nozzle, so it vouches for nothing. A load that errors, time
 answers OK with the feeder short of that test (the refeed, a Load from the filament panel),
 and a feeder frame naming a `*_fail` state or a channel_error fault from any source, mark
 the head's load unconfirmed for the current print. The refeed's OK can arrive before the
-frame naming `load_finish`, so it is judged on the head's next settled frame, or after 3 s
-without one. While a head is marked, `prepare_for_resume` never reaches RESUME: on the head
+frame naming `load_finish`, so it is judged on the head's next decisive frame (loaded with
+no error, or a failure; `load_finish` can land a frame before its error reads `ok`), or
+after 3 s without one. One refeed runs at a time: another Resume meanwhile is answered busy.
+A feeder still mid-load or mid-hand-feed on the head (a `load_*` or `manual_sta_*` state in
+progress, e.g. started from the printer's own screen) refuses Resume outright. While a head is marked, `prepare_for_resume` never reaches RESUME: on the head
 it resumes on it retries the refeed, and on another head the print uses (`extruders_used`)
 it refuses, since loading that head would leave it picked up when RESUME runs; a head the
 print does not use holds nothing. A Resume after a failed load is the
@@ -461,8 +464,10 @@ with tapping Resume to retry the load as the way forward. Even with nothing mark
 an automatic feeder serves whose feeder reports a failure runs the refeed first, the motion
 sensor's present reading notwithstanding. Settled states that are no failure resume as they
 are: `load_finish`, `unload_finish` (filament back at the feeder), `manual_sta_finish` (a hand
-load), `preload_finish`. The mark clears when that feeder reaches `load_finish` with no
-error and when the print leaves printing/paused. It survives a reconnect to a print still
+load), `preload_finish`. The mark clears when that feeder reaches `load_finish`, or finishes a
+hand feed (`manual_sta_finish`), with no error, and when the print leaves printing/paused.
+A bare sensor reading never clears it: `FEED_AUTO` returns OK without feeding on an empty
+port, and filament stopped at the head switch reads present. It survives a reconnect to a print still
 running, since the first print state a connection reads is no change of print, and the
 subscription's first frame marks any head whose feeder still reports a failure
 (`src/printer/ams_backend_snapmaker.cpp#mark_load_unconfirmed_locked`).

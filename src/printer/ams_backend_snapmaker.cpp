@@ -1078,6 +1078,26 @@ void AmsBackendSnapmaker::prepare_for_resume(int slot_index, ResumeReadyCallback
         return;
     }
 
+    // A load or hand feed still moving filament on the head (started from the
+    // printer's own screen, say) is answered before anything is sent: RESUME
+    // would extrude into it, and a refeed would race it.
+    if (slot >= 0 && slot < kNumTools) {
+        ChannelSnapshot snap;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            snap = channel_snapshots_[slot];
+        }
+        if (feeder_serves_head(snap) && helix::snapmaker::channel_state_in_progress(snap.state)) {
+            spdlog::warn("{} prepare_for_resume: tool {} feeder is mid-operation ('{}') — "
+                         "refusing RESUME",
+                         backend_log_tag(), slot, snap.state);
+            if (on_ready) {
+                on_ready(AmsErrorHelper::busy(snap.state));
+            }
+            return;
+        }
+    }
+
     // The presence switch cannot vouch for a head whose last load failed:
     // filament can reach it and stop short of the nozzle. Resume is the retry
     // for the head it resumes on; any other head has to be loaded first, since
@@ -1200,6 +1220,20 @@ void AmsBackendSnapmaker::run_runout_refeed(int slot, ResumeReadyCallback on_rea
         }
         return;
     }
+    {
+        // One refeed at a time: a second Resume tap while one runs would send a
+        // second AUTO_FEEDING and leave the first caller unanswered.
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (refeed_in_flight_) {
+            spdlog::warn("{} prepare_for_resume: tool {} refeed already running", backend_log_tag(),
+                         slot);
+            if (on_ready) {
+                on_ready(AmsErrorHelper::busy("refeed"));
+            }
+            return;
+        }
+        refeed_in_flight_ = true;
+    }
 
     std::string chain = fmt::format("AUTO_FEEDING EXTRUDER={0} LOAD=1 PRINTING=1", slot);
     spdlog::info("{} prepare_for_resume: tool {} runout latched — driving AMS load "
@@ -1237,6 +1271,7 @@ void AmsBackendSnapmaker::run_runout_refeed(int slot, ResumeReadyCallback on_rea
                 {
                     std::lock_guard<std::mutex> lock(mutex_);
                     mark_load_unconfirmed_locked(slot, msg);
+                    refeed_in_flight_ = false;
                 }
                 // Load failed → RESUME is never dispatched; report failure.
                 // The copy names the head, not the firmware's own error
@@ -1286,7 +1321,7 @@ void AmsBackendSnapmaker::await_refeed_outcome(int slot, ResumeReadyCallback on_
     bool wait = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        wait = !load_confirmed(channel_snapshots_[slot]);
+        wait = !feeder_reports_loaded(channel_snapshots_[slot]);
         if (wait) {
             // The status frame naming load_finish can trail the command's
             // answer; the head's next settled frame, or the timeout, decides.
@@ -1324,7 +1359,8 @@ void AmsBackendSnapmaker::settle_refeed(int slot, ResumeReadyCallback on_ready) 
     bool confirmed = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        confirmed = load_confirmed(channel_snapshots_[slot]);
+        confirmed = feeder_reports_loaded(channel_snapshots_[slot]);
+        refeed_in_flight_ = false;
         if (confirmed) {
             load_unconfirmed_[slot] = false;
         } else {
@@ -1950,7 +1986,7 @@ void AmsBackendSnapmaker::apply_feed_channel_locked(const snapmaker::FeedChannel
     // never carries the motion sensor's enabled flag, so that field rides the
     // same rule).
     ChannelSnapshot snap = channel_snapshots_[static_cast<size_t>(i)];
-    const bool was_load_confirmed = load_confirmed(snap);
+    const bool was_load_confirmed = feeder_reports_loaded(snap);
     const std::string prev_state = snap.state;
     const std::string prev_action_state = snap.action_state;
     if (channel.channel_state) {
@@ -1977,9 +2013,9 @@ void AmsBackendSnapmaker::apply_feed_channel_locked(const snapmaker::FeedChannel
     // when the outcome survives in channel_action_state alone.
     const std::optional<std::string> settled_outcome =
         helix::snapmaker::settled_op_outcome(snap.state, prev_action_state, snap.action_state);
-    if (load_confirmed(snap) && !was_load_confirmed && load_unconfirmed_[i]) {
-        spdlog::info("{} tool {} reports load_finish with no error; Resume may proceed",
-                     backend_log_tag(), i);
+    if (feeder_reports_loaded(snap) && !was_load_confirmed && load_unconfirmed_[i]) {
+        spdlog::info("{} tool {} reports '{}' with no error; Resume may proceed", backend_log_tag(),
+                     i, snap.state);
         load_unconfirmed_[i] = false;
     }
     channel_snapshots_[static_cast<size_t>(i)] = std::move(snap);
@@ -2016,9 +2052,15 @@ void AmsBackendSnapmaker::apply_feed_channel_locked(const snapmaker::FeedChannel
         feed_failure_reported(channel_snapshots_[static_cast<size_t>(i)])) {
         mark_load_unconfirmed_locked(i, op_state);
     }
-    if (refeed_wait_ && refeed_wait_->slot == i && channel.channel_state &&
-        !helix::snapmaker::channel_state_in_progress(state)) {
-        fx.refeed_settled = true;
+    // A frame settles the refeed only when it is decisive: loaded with no
+    // error, or a failure. load_finish can land a frame before channel_error
+    // turns ok; that frame waits for the next one, within the timeout.
+    if (refeed_wait_ && refeed_wait_->slot == i &&
+        (channel.channel_state || channel.channel_error)) {
+        const ChannelSnapshot& now = channel_snapshots_[static_cast<size_t>(i)];
+        if (feeder_reports_loaded(now) || feed_failure_reported(now)) {
+            fx.refeed_settled = true;
+        }
     }
 
     apply_channel_progress_locked(i, state, info, fx);

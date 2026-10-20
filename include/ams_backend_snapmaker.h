@@ -998,6 +998,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// The refeed waiting on its head's frame. Under mutex_.
     std::optional<RefeedWait> refeed_wait_;
 
+    /// A refeed was sent and has not been judged. Under mutex_.
+    bool refeed_in_flight_ = false;
+
     /// Ends refeed_wait_ at kRefeedFrameWait. Main thread.
     helix::ui::LvglTimerGuard refeed_wait_timer_;
 
@@ -1146,6 +1149,12 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// none of which is one.
     [[nodiscard]] static bool channel_error_is_fault(const std::string& error) {
         return error != "ok" && !error.empty() && error != "none" && error != "no_filament";
+    }
+
+    /// The feeder's own word that the head holds filament it loaded: a load
+    /// finished at the nozzle, or a hand feed finished, either with no error.
+    [[nodiscard]] static bool feeder_reports_loaded(const ChannelSnapshot& snap) {
+        return load_confirmed(snap) || (snap.state == "manual_sta_finish" && snap.error == "ok");
     }
 
     /// The feeder reports this channel failed: a *_fail state, or a

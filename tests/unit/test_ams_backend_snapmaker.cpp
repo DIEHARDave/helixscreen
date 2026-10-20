@@ -3609,6 +3609,61 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker judges a refeed on the frame that 
         REQUIRE(answer.has_value());
         CHECK_FALSE(answer->success());
     }
+    SECTION("load_finish a frame before its error reads ok waits for that frame") {
+        SnapmakerTestAccess::handle_status(h.backend,
+                                           make_feed_status(0, "load_finish", true, "none"));
+        ResumeRecoveryHarness::drain();
+        CHECK_FALSE(answer.has_value());
+        SnapmakerTestAccess::handle_status(
+            h.backend, json{{"filament_feed left", {{"extruder0", {{"channel_error", "ok"}}}}}});
+        ResumeRecoveryHarness::drain();
+        REQUIRE(answer.has_value());
+        CHECK(answer->success());
+    }
+    SECTION("a second Resume while the refeed runs is refused, the first still answered") {
+        std::optional<AmsError> second;
+        h.backend.prepare_for_resume(0, [&](const AmsError& err) { second = err; });
+        ResumeRecoveryHarness::drain();
+        REQUIRE(second.has_value());
+        CHECK(second->result == AmsResult::BUSY);
+        CHECK(count_containing(h.client.gcode_script_history(), "AUTO_FEEDING") == 1);
+        SnapmakerTestAccess::handle_status(h.backend, make_feed_status(0, "load_finish"));
+        ResumeRecoveryHarness::drain();
+        REQUIRE(answer.has_value());
+        CHECK(answer->success());
+    }
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker takes a hand load as the load a failed head needed",
+                 "[ams][snapmaker][resume][load_unconfirmed]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    ResumeRecoveryHarness h;
+    fail_refeed_then_switch_present(h);
+    SnapmakerTestAccess::handle_status(h.backend, make_feed_status(0, "manual_sta_finish"));
+    CHECK(resume_once(h, 0).success());
+    CHECK(count_containing(h.client.gcode_script_history(), "AUTO_FEEDING") == 0);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker refuses RESUME into a head its feeder is still loading",
+                 "[ams][snapmaker][resume][load_unconfirmed]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    ResumeRecoveryHarness h;
+    SnapmakerTestAccess::set_sensor_present(h.backend, 0, true);
+    const std::string state =
+        GENERATE(std::string("load_heating"), std::string("manual_sta_extruding"));
+    SnapmakerTestAccess::handle_status(h.backend, json{{"filament_feed left",
+                                                        {{"extruder0",
+                                                          {{"filament_detected", true},
+                                                           {"channel_state", state},
+                                                           {"channel_error", "ok"},
+                                                           {"module_exist", true},
+                                                           {"disable_auto", false}}}}}});
+    const AmsError err = resume_once(h, 0);
+    CHECK(err.result == AmsResult::BUSY);
+    CHECK(h.client.gcode_script_history().empty());
 }
 
 TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker keeps a failed load across a reconnect",

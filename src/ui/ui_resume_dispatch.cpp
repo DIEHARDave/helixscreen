@@ -78,8 +78,11 @@ void restart_print_from_beginning(IMoonrakerAPI* api, const std::string& filenam
     // A filament system whose firmware forgets per-print preferences between
     // prints gets them again here, once the cancel has left the printer idle.
     // The restart carries no routing, so a firmware that holds a map for the
-    // next print gets only its clear; one whose routing returns to identity at
-    // each print end is told which heads the file uses, as a reprint is.
+    // next print gets only its clear. One that tells which heads a print uses
+    // without a map is told the file's (build_unrouted_preprint_gcode()). This
+    // cancel does not reset the firmware's map (SDCARD_RESET_FILE never reaches
+    // its print-end reset), so that builder names heads only while the live
+    // map still reads its default for every used tool.
     auto send = [api, filename, log_prefix, on_failure](const std::set<int>& tools) {
         std::string prep = "SDCARD_RESET_FILE\nCANCEL_PRINT_BASE";
         if (AmsBackend* backend = AmsState::instance().get_backend();
