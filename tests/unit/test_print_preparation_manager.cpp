@@ -1185,6 +1185,33 @@ TEST_CASE_METHOD(HelixTestFixture,
     }
 }
 
+/**
+ * Input shaping is not a pre-print step: a U1 start offers no shaper option
+ * and sends no SHAPER_CALIBRATE preference.
+ */
+TEST_CASE_METHOD(HelixTestFixture, "PrintPreparationManager: a U1 start sends no SHAPER_CALIBRATE",
+                 "[print_preparation][pre_print_options][snapmaker_u1]") {
+    lv_init_safe();
+
+    PrinterState& printer_state = get_printer_state();
+    PrinterStateTestAccess::reset(printer_state);
+    printer_state.init_subjects(false);
+    printer_state.set_printer_type_sync("Snapmaker U1");
+
+    REQUIRE(printer_state.profile_state().pre_print_option_set().find("shaper_calibrate") ==
+            nullptr);
+
+    PrintPreparationManager manager;
+    manager.set_dependencies(nullptr, &printer_state);
+    // Even a provider answering "on" for a shaper id it was never offered
+    // changes nothing.
+    manager.set_option_state_provider([](const std::string&) { return 1; });
+
+    auto lines = PrintPreparationManagerTestAccess::get_pre_start_gcode_lines(manager);
+    REQUIRE(line_containing(lines, "SHAPER").empty());
+    REQUIRE(line_containing(lines, "BED_LEVEL") == "SET_PRINT_PREFERENCES BED_LEVEL=1");
+}
+
 // ============================================================================
 // T3b: build_pre_start_gcode_block — the actual join contract
 // ============================================================================

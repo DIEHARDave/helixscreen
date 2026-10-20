@@ -127,9 +127,6 @@ std::string PrePrintOptionsRenderer::default_icon_for(const std::string& id) {
     if (id == "bed_mesh") {
         return "grid_large";
     }
-    if (id == "shaper_calibrate") {
-        return "sine_wave";
-    }
     if (id == "flow_calibrate") {
         return "gauge";
     }
