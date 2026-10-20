@@ -327,11 +327,22 @@ PluginLinkCheck relink_plugin(const std::string& script_path, int timeout_second
  * @brief What `install.sh --restart-moonraker` did
  */
 enum class PluginRestartOutcome {
-    Restarted,    ///< Moonraker runs again, as a new process or restarted in place
-    HeldForPrint, ///< a print is printing or paused, so nothing restarted
-    LeftDown,     ///< Moonraker is down and could not be started
-    Failed,       ///< nothing restarted Moonraker, or the script failed, timed out or could not run
+    Restarted,        ///< Moonraker runs again as a new process
+    RestartedInPlace, ///< Moonraker restarted itself in place, keeping the plugin it had loaded
+    HeldForPrint,     ///< a print is printing or paused, or could not be ruled out
+    LeftDown,         ///< Moonraker is down and could not be started
+    TimedOut, ///< the script outlived its timeout and was stopped; Moonraker's state is unknown
+    Failed,   ///< nothing restarted Moonraker, or the script failed or could not run
 };
+
+/**
+ * @brief Whether a restart with @p outcome counts as done for the plugin it was for
+ *
+ * The next app start repeats only a restart that did not count. One that timed
+ * out counts: it may still have restarted Moonraker, and repeating it could
+ * restart Moonraker a second time.
+ */
+bool plugin_restart_finished(PluginRestartOutcome outcome);
 
 /**
  * @brief Run `install.sh --restart-moonraker` at @p script_path and read its outcome

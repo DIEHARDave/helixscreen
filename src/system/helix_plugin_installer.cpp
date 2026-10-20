@@ -475,7 +475,11 @@ PluginRestartOutcome restart_moonraker_for_plugin(const std::string& script_path
     }
     const WaitResult result = run_install_script(script_path, "--restart-moonraker",
                                                  timeout_seconds, "Moonraker restart", false);
-    if (result.spawn_failed || result.timed_out || result.error) {
+    if (result.timed_out) {
+        log_script_output(result.output, false);
+        return PluginRestartOutcome::TimedOut;
+    }
+    if (result.spawn_failed || result.error) {
         log_script_output(result.output, false);
         return PluginRestartOutcome::Failed;
     }
@@ -488,7 +492,7 @@ PluginRestartOutcome restart_moonraker_for_plugin(const std::string& script_path
         log_script_output(result.output, false);
         spdlog::info("[PluginInstaller] Moonraker restarted itself in place; no service "
                      "manager restart reached it");
-        return PluginRestartOutcome::Restarted;
+        return PluginRestartOutcome::RestartedInPlace;
     case kRestartExitHeldForPrint:
         log_script_output(result.output, true);
         return PluginRestartOutcome::HeldForPrint;
@@ -499,6 +503,20 @@ PluginRestartOutcome restart_moonraker_for_plugin(const std::string& script_path
         log_script_output(result.output, false);
         return PluginRestartOutcome::Failed;
     }
+}
+
+bool plugin_restart_finished(PluginRestartOutcome outcome) {
+    switch (outcome) {
+    case PluginRestartOutcome::Restarted:
+    case PluginRestartOutcome::RestartedInPlace:
+    case PluginRestartOutcome::TimedOut:
+        return true;
+    case PluginRestartOutcome::HeldForPrint:
+    case PluginRestartOutcome::LeftDown:
+    case PluginRestartOutcome::Failed:
+        return false;
+    }
+    return false;
 }
 
 std::string parse_plugin_version(std::string_view text) {

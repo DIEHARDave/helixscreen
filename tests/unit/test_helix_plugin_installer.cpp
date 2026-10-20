@@ -454,9 +454,9 @@ TEST_CASE("restart_moonraker_for_plugin reads install.sh --restart-moonraker's e
         CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::Restarted);
         CHECK(sandbox.script_args() == "--restart-moonraker ");
     }
-    SECTION("an in-place restart is a restart") {
+    SECTION("an in-place restart is told apart: it keeps the plugin Moonraker loaded") {
         sandbox.write_script("exit 3");
-        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::Restarted);
+        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::RestartedInPlace);
     }
     SECTION("a print holds it off") {
         sandbox.write_script("exit 4");
@@ -474,6 +474,22 @@ TEST_CASE("restart_moonraker_for_plugin reads install.sh --restart-moonraker's e
         CHECK(helix::restart_moonraker_for_plugin("", 10) == Outcome::Failed);
         CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::Failed);
     }
+    SECTION("a script that outlives the timeout timed out, which is not a failure") {
+        sandbox.write_script("exec sleep 30");
+        CHECK(helix::restart_moonraker_for_plugin(script, 1) == Outcome::TimedOut);
+    }
+}
+
+TEST_CASE("plugin_restart_finished: which restart outcomes the next start does not repeat",
+          "[plugin_installer]") {
+    using Outcome = helix::PluginRestartOutcome;
+    CHECK(helix::plugin_restart_finished(Outcome::Restarted));
+    CHECK(helix::plugin_restart_finished(Outcome::RestartedInPlace));
+    // It may still be restarting Moonraker: repeating it would restart Moonraker twice.
+    CHECK(helix::plugin_restart_finished(Outcome::TimedOut));
+    CHECK_FALSE(helix::plugin_restart_finished(Outcome::HeldForPrint));
+    CHECK_FALSE(helix::plugin_restart_finished(Outcome::LeftDown));
+    CHECK_FALSE(helix::plugin_restart_finished(Outcome::Failed));
 }
 
 // ============================================================================

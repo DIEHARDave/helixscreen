@@ -19,9 +19,11 @@ namespace helix {
 namespace {
 // install.sh --relink walks /proc and greps the config; it never waits on Moonraker.
 constexpr int kRelinkTimeoutSeconds = 30;
-// install.sh --restart-moonraker waits for Moonraker to answer again, up to
-// 90s for each way it tries to bring it back.
-constexpr int kRestartTimeoutSeconds = 300;
+// install.sh --restart-moonraker waits at most about 700s at its defaults (the
+// timing notes above restart_moonraker_via in helix_print_conf.sh), plus the
+// run time of the service commands it issues, which their service manager
+// bounds.
+constexpr int kRestartTimeoutSeconds = 1200;
 constexpr uint32_t kRestartToastMs = 4000;
 // How often a restart waiting for the screen looks again.
 constexpr uint32_t kRestartRecheckMs = 1000;
@@ -207,14 +209,29 @@ void PluginSelfHeal::remember(const PluginSelfHealFacts& facts, bool restart_fin
 }
 
 void PluginSelfHeal::on_restarted(PluginRestartOutcome outcome) {
+    if (plugin_restart_finished(outcome)) {
+        restart_facts_.memory = load_memory();
+        remember(restart_facts_, true);
+    }
     switch (outcome) {
     case PluginRestartOutcome::Restarted:
         spdlog::info("[PluginSelfHeal] Moonraker restarted for the HelixPrint plugin");
-        restart_facts_.memory = load_memory();
-        remember(restart_facts_, true);
         ToastManager::instance().show(
             ToastSeverity::INFO, lv_tr("HelixPrint plugin updated. Moonraker is restarting..."),
             kRestartToastMs);
+        return;
+    case PluginRestartOutcome::RestartedInPlace:
+        spdlog::warn("[PluginSelfHeal] Moonraker restarted itself in place, which keeps the "
+                     "HelixPrint plugin it had loaded; restart the moonraker service to load {}",
+                     restart_facts_.plugin_file);
+        ToastManager::instance().show(ToastSeverity::WARNING,
+                                      lv_tr("Restart Moonraker to finish the plugin change"));
+        return;
+    case PluginRestartOutcome::TimedOut:
+        spdlog::error("[PluginSelfHeal] The Moonraker restart for the HelixPrint plugin ran past "
+                      "{}s and was stopped; Moonraker may still be restarting. The next start "
+                      "does not repeat it",
+                      kRestartTimeoutSeconds);
         return;
     case PluginRestartOutcome::HeldForPrint:
         spdlog::info("[PluginSelfHeal] Moonraker reports a print running; restarting it for the "
