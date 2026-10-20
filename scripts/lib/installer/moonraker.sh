@@ -869,23 +869,14 @@ open_plugin_to_moonraker() {
     return 0
 }
 
-# Restart Moonraker to pick up configuration changes, through
-# restart_moonraker_via under $SUDO: Moonraker's own restart over HTTP or its
-# service manager, held off by an active print, and never leaving Moonraker
-# down when it can be started again. HELIX_INITD_DIR points
-# the init-script lookup elsewhere (camera.sh shares it). Always returns 0: a
-# failed restart must never abort an install.
+# Restart Moonraker to pick up configuration changes: moonraker_restart's
+# config change, over Moonraker's HTTP API at installer_moonraker_url. It
+# reports what it did and what is left to the user, a Moonraker that is not
+# running or a print holding the restart off included. Always returns 0: a
+# restart that did not happen must never abort an install.
 restart_moonraker() {
-    local restarted=0
     log_info "Restarting Moonraker to apply configuration..."
-    restart_moonraker_via "run_logged $SUDO" "$(installer_moonraker_url)" log_warn || restarted=$?
-    case "$restarted" in
-        0) ;;
-        3) log_info "Asked Moonraker to restart itself to apply configuration" ;;
-        4) log_warn "A print is running, or Moonraker is too busy to rule one out, so it was not restarted: restart it after the print for the configuration change to take effect." ;;
-        5) log_error "Moonraker is down after its restart and could not be started: start it for Mainsail, Fluidd and HelixScreen to reach the printer." ;;
-        *) log_warn "Could not find a way to restart Moonraker - restart it manually for the configuration change to take effect." ;;
-    esac
+    moonraker_restart config "$(installer_moonraker_url)" log_info log_warn || :
     return 0
 }
 

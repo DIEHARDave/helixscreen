@@ -41,12 +41,12 @@ EXIT_RELINK_DONE=3
 EXIT_RELINK_NOT_OURS=4
 
 # Exit codes for --restart-moonraker (HelixPluginInstaller reads them), those
-# of restart_moonraker_via in helix_print_conf.sh:
-#   0 - the service manager restarted Moonraker's process
-#   3 - Moonraker restarted itself in place
+# of moonraker_restart in helix_print_conf.sh:
+#   0 - Moonraker restarted and runs this tree's plugin
+#   3 - Moonraker needs a manual restart: it refused, or runs the old plugin
 #   4 - a print is printing or paused; nothing restarted
-#   5 - Moonraker is down and could not be started
-#   1 - nothing restarted Moonraker
+#   6 - the print state could not be read; nothing restarted
+#   7 - Moonraker does not answer
 
 # Colors for output (works with printf)
 RED='\033[0;31m'
@@ -524,54 +524,37 @@ uninstall() {
     return "$exit_status"
 }
 
-# Run a command as root: directly when we are root, else through sudo.
-as_root() {
-    if [ "$(id -u 2>/dev/null)" = 0 ]; then
-        "$@"
-    else
-        sudo "$@"
-    fi
+# The version in this tree's helix_print.py, its PLUGIN_VERSION line.
+bundled_plugin_version() {
+    sed -n 's/^PLUGIN_VERSION = "\([^"]*\)"[[:space:]]*$/\1/p' "$PLUGIN_FILE" 2>/dev/null | awk 'NR == 1'
 }
 
-# The restart an auto install or uninstall ends with (restart_moonraker_via),
-# which also waits for Moonraker to answer again and warns when it does not. A
-# caller under systemd's NoNewPrivileges (the HelixScreen service) cannot sudo,
-# so it passes --no-restart and restarts Moonraker itself. Returns 1 when
-# Moonraker still needs a restart, a print having held it off included, and 2
-# when it is down and could not be started; the caller reports either instead
-# of completion. A slow comeback is a warning on a change that is itself
-# complete.
+# The restart an auto install (@1 install) or uninstall (@1 uninstall) ends
+# with, through moonraker_restart at MOONRAKER_URL: an install over a plugin
+# Moonraker runs at another version is a plugin change, anything else a config
+# change. --no-restart leaves it to the caller (the app restarts Moonraker over
+# its own API). Returns 0 when Moonraker restarted, 2 when it does not answer,
+# and 1 when it still needs a restart; moonraker_restart has said why.
 finish_with_restart() {
     if [ "$NO_RESTART" = "true" ]; then
         info "Leaving the Moonraker restart to the caller"
         return 0
     fi
     info "Restarting Moonraker..."
+    restart_url=$(moonraker_local_url "")
+    restart_mode=config
+    bundled=""
+    if [ "$1" = install ]; then
+        bundled=$(bundled_plugin_version)
+        running=$(moonraker_plugin_version "$restart_url")
+        [ -z "$running" ] || [ "$running" = "$bundled" ] || restart_mode=plugin
+    fi
     restarted=0
-    restart_moonraker_via as_root "$(moonraker_local_url "")" warn || restarted=$?
+    moonraker_restart "$restart_mode" "$restart_url" info warn "$bundled" || restarted=$?
     case "$restarted" in
-        0 | 3)
-            [ "$restarted" -ne 3 ] || info "Asked Moonraker to restart itself"
-            if moonraker_answers "$(moonraker_local_url "")/server/info"; then
-                info "Moonraker is ready!"
-            fi
-            return 0
-            ;;
-        5)
-            warn "Moonraker is not running and could not be started, so the change has not taken effect"
-            warn "Start Moonraker, then check that Mainsail or Fluidd reach it"
-            return 2
-            ;;
-        4)
-            warn "A print is running, or Moonraker is too busy to rule one out, so Moonraker was not restarted and the change has not taken effect"
-            warn "Moonraker needs a restart after the print: restart it from Mainsail or Fluidd"
-            return 1
-            ;;
-        *)
-            warn "Could not restart Moonraker, so the change has not taken effect"
-            warn "Moonraker needs a restart: run 'sudo systemctl restart moonraker', or restart it from Mainsail or Fluidd"
-            return 1
-            ;;
+        "$HELIX_RESTART_DONE") return 0 ;;
+        "$HELIX_RESTART_DOWN") return 2 ;;
+        *) return 1 ;;
     esac
 }
 
@@ -663,15 +646,15 @@ auto_uninstall() {
     # reported, not turned into a failed uninstall.
     MOONRAKER_URL=$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")
     finished=0
-    finish_with_restart "the plugin removal" || finished=$?
+    finish_with_restart uninstall || finished=$?
     if [ "$finished" -ne 0 ]; then
         printf '\n'
         [ "$exit_status" -eq "$EXIT_UNINSTALL_OK" ] || warn "PRINT_START needs a look too - see the warnings above"
         if [ "$finished" -eq 2 ]; then
-            warn "Plugin removed, but Moonraker is not running"
-            return "$EXIT_UNINSTALL_NEEDS_ATTENTION"
+            warn "Plugin removed; Moonraker starts without it"
+        else
+            warn "Plugin removed, but Moonraker keeps it loaded until it restarts"
         fi
-        warn "Plugin removed, but Moonraker keeps loading it until it restarts"
         return "$exit_status"
     fi
 
@@ -838,7 +821,7 @@ auto_install() {
     # shellcheck disable=SC2034  # read by moonraker_local_url (helix_print_conf.sh)
     MOONRAKER_URL=$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")
     finished=0
-    finish_with_restart "the plugin install" || finished=$?
+    finish_with_restart install || finished=$?
     if [ "$finished" -eq 2 ]; then
         printf '\n'
         warn "Plugin installed, but Moonraker is not running"
@@ -854,28 +837,16 @@ auto_install() {
     info "Auto-install complete!"
 }
 
-# Run a command without asking for a password: systemctl gets
-# --no-ask-password, so a caller with no rights fails at once instead of
-# waiting on a polkit agent.
-run_unprompted() {
-    if [ "$1" = systemctl ]; then
-        shift
-        systemctl --no-ask-password "$@"
-    else
-        "$@"
-    fi
-}
-
 # Restart Moonraker so it runs the plugin code on disk (--restart-moonraker):
 # what the app runs after --relink re-pointed the link, or when the running
-# plugin reports another version than this tree's. A loaded helix_print.py is
-# replaced only by a new process, which restart_moonraker_via tries first.
-# No sudo: the app runs under NoNewPrivileges, so service commands run as the
-# caller. Returns restart_moonraker_via's code.
+# plugin reports another version than this tree's. HELIX_JOB_STATE, when the
+# app sets it, says whether a job holds the printer. Returns moonraker_restart's
+# code.
 restart_for_plugin() {
     config_dir=$(find_config_dir)
-    restart_moonraker_via run_unprompted \
-        "$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")" warn
+    moonraker_restart plugin \
+        "$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")" \
+        info warn "$(bundled_plugin_version)"
 }
 
 show_help() {
@@ -893,9 +864,10 @@ show_help() {
     printf '%s\n' "  --relink                Re-point an installed plugin's link at this copy;"
     printf '%s\n' "                          exit 0 already current, 3 re-pointed, 4 nothing of"
     printf '%s\n' "                          ours to repair, 1 failed. Never restarts Moonraker"
-    printf '%s\n' "  --restart-moonraker     Restart Moonraker's process so it loads the plugin on"
-    printf '%s\n' "                          disk; exit 0 restarted, 3 restarted in place, 4 held"
-    printf '%s\n' "                          off by a print, 5 left down, 1 not restarted"
+    printf '%s\n' "  --restart-moonraker     Ask Moonraker to restart its service so it loads the"
+    printf '%s\n' "                          plugin on disk; exit 0 restarted, 3 needs a manual"
+    printf '%s\n' "                          restart, 4 held off by a print, 6 print state unknown,"
+    printf '%s\n' "                          7 Moonraker not answering"
     printf '%s\n' "  --help, -h              Show this help message"
     printf '\n'
     printf '%s\n' "Exit codes for --uninstall and --uninstall-auto:"

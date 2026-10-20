@@ -487,22 +487,20 @@ teardown() {
     [ "$status" -eq 1 ]
 }
 
-# The K2's Moonraker as restart_moonraker finds it: no systemd, an init script
-# in the fake init.d exiting $1 and touching $BATS_TEST_TMPDIR/mr_restarted,
-# and a curl logging every request to $BATS_TEST_TMPDIR/curl.log.
+# The K2's Moonraker as restart_moonraker finds it: an init script in the
+# fake init.d and a systemctl, each touching $BATS_TEST_TMPDIR/mr_restarted,
+# which nothing may run, and Moonraker's HTTP API (mock_moonraker_http),
+# logging every request to $BATS_TEST_TMPDIR/mr-http/log.
 stage_moonraker_restart() {
-    mock_command_script "systemctl" 'exit 1'
-    printf '#!/bin/sh\ntouch "%s"\nexit %s\n' "$BATS_TEST_TMPDIR/mr_restarted" "$1" > "$HELIX_INITD_DIR/moonraker"
+    mock_command_script "systemctl" "touch '$BATS_TEST_TMPDIR/mr_restarted'"
+    printf '#!/bin/sh\ntouch "%s"\n' "$BATS_TEST_TMPDIR/mr_restarted" > "$HELIX_INITD_DIR/moonraker"
     chmod +x "$HELIX_INITD_DIR/moonraker"
-    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
-printf '%s\\n' \"\$*\" >> '$BATS_TEST_TMPDIR/curl.log'; exit 0"
-    mock_fake_clock
+    mock_moonraker_http "$BATS_TEST_TMPDIR/mr-http"
 }
 
 @test "_disable_k2cam_webcam: comments the [webcam Default] block and is idempotent" {
-    # Moonraker answers, so it is asked to restart itself and the init
-    # script, which would fail, is never run.
-    stage_moonraker_restart 1
+    # Moonraker is asked to restart itself; no service manager is touched.
+    stage_moonraker_restart
 
     local mr_dir="$BATS_TEST_TMPDIR/usr/share/moonraker"
     mkdir -p "$mr_dir"
@@ -535,9 +533,9 @@ EOF
 
     # Marker records the affected conf path.
     grep -qF "$conf" "$(_k2cam_marker_file)"
-    grep -q -- "-X POST $MOONRAKER_URL/server/restart" "$BATS_TEST_TMPDIR/curl.log" ||
-        fail "Moonraker was not asked to restart itself: $(cat "$BATS_TEST_TMPDIR/curl.log" 2>/dev/null)"
-    [ ! -f "$BATS_TEST_TMPDIR/mr_restarted" ] || fail "the init script ran while Moonraker answered"
+    grep -q "^POST $MOONRAKER_URL/server/restart\$" "$BATS_TEST_TMPDIR/mr-http/log" ||
+        fail "Moonraker was not asked to restart itself: $(cat "$BATS_TEST_TMPDIR/mr-http/log" 2>/dev/null)"
+    [ ! -f "$BATS_TEST_TMPDIR/mr_restarted" ] || fail "a service manager was run"
 
     # Idempotent: a second pass must not double-comment.
     _disable_k2cam_webcam
@@ -548,7 +546,7 @@ EOF
 }
 
 @test "uninstall: un-comments the K2-Camera-main [webcam Default] block (round-trip)" {
-    stage_moonraker_restart 0
+    stage_moonraker_restart
 
     local mr_dir="$BATS_TEST_TMPDIR/usr/share/moonraker"
     mkdir -p "$mr_dir"
@@ -576,11 +574,12 @@ EOF
     # No prior ustreamer install state — only the k2cam marker matters here.
     rm -f "$CAMERA_MARKER" "$WEBCAM_BACKUP"
 
-    rm -f "$BATS_TEST_TMPDIR/mr_restarted" "$BATS_TEST_TMPDIR/curl.log"
+    rm -f "$BATS_TEST_TMPDIR/mr_restarted" "$BATS_TEST_TMPDIR/mr-http/log"
     run uninstall_camera_k2 "k2"
     [ "$status" -eq 0 ]
-    grep -q -- "-X POST $MOONRAKER_URL/server/restart" "$BATS_TEST_TMPDIR/curl.log" ||
+    grep -q "^POST $MOONRAKER_URL/server/restart\$" "$BATS_TEST_TMPDIR/mr-http/log" ||
         fail "uninstall did not restart Moonraker"
+    [ ! -f "$BATS_TEST_TMPDIR/mr_restarted" ] || fail "a service manager was run"
 
     # The disable prefix is gone; content matches the original.
     refute grep -q 'helix-k2cam-disabled' "$conf"
@@ -590,7 +589,7 @@ EOF
 }
 
 @test "install_camera_k2: detects the mod and disables its [webcam Default] entry" {
-    stage_moonraker_restart 0
+    stage_moonraker_restart
 
     # Mod signature present (source dir).
     export HELIX_K2CAM_DIR="$BATS_TEST_TMPDIR/K2-Camera-main"

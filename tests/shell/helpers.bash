@@ -155,21 +155,97 @@ MOCK_EOF
     export PATH="$BATS_TEST_TMPDIR/bin:$PATH"
 }
 
-# A clock for code that waits by `date +%s`, with sleep mocked: `sleep N`
-# moves it N seconds and `date +%s` reads it, so a wait of minutes runs at
-# once. Every other date call reaches the real date. $1, when set, is shell
-# run after each tick with the new time in $now (a process that exits at a
-# given second). The clock file is $BATS_TEST_TMPDIR/clock, starting at 1000.
+# A clock for code that waits by `date +%s` or by /proc/uptime (read from
+# HELIX_UPTIME_FILE, which this exports), with sleep mocked: `sleep N` moves
+# it N seconds and both read it, so a wait of minutes runs at once. Every
+# other date call reaches the real date. $1, when set, is shell run after each
+# tick with the new time in $now (a process that exits at a given second). The
+# clock file is $BATS_TEST_TMPDIR/clock, starting at 1000.
 mock_fake_clock() {
     local clock="$BATS_TEST_TMPDIR/clock" real_date
     real_date=$(command -v date)
     [ "$real_date" != "$BATS_TEST_TMPDIR/bin/date" ] || real_date=/bin/date
     echo 1000 > "$clock"
+    export HELIX_UPTIME_FILE="$clock"
     mock_command_script "sleep" "now=\$((\$(cat '$clock') + \${1%%.*}))
 echo \"\$now\" > '$clock'
 ${1:-}"
     mock_command_script "date" "[ \"\$*\" = +%s ] && exec cat '$clock'
 exec '$real_date' \"\$@\""
+}
+
+# A curl proper that stands in for Moonraker's HTTP API, its state held in
+# files under $1: up (it answers at all), auth (every request is answered
+# 401), print_state (print_stats.state, default standby), version (what
+# /server/helix/status reports; without it a 404), new_version (the version a
+# service restart loads), refuse (every POST is answered 403). An accepted
+# /server/restart makes the next request go unanswered, as Moonraker does
+# while it restarts. Every request is logged to $1/log as "METHOD URL".
+# Starts up and idle, with the fake clock (mock_fake_clock) running.
+mock_moonraker_http() {
+    local d="$1"
+    mkdir -p "$d"
+    : > "$d/up"
+    local body
+    body="d='$d'
+$(cat <<'MOCK'
+case "$1" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0 ;; esac
+method=GET url='' fmt='' fail=''
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -X) method=$2; shift ;;
+        -w) fmt=$2; shift ;;
+        --max-time | --connect-timeout | -o | -A | -m) shift ;;
+        -*f*) fail=1 ;;
+        -*) ;;
+        *) url=$1 ;;
+    esac
+    shift
+done
+printf '%s %s\n' "$method" "$url" >> "$d/log"
+if [ -e "$d/bounce" ]; then
+    rm -f "$d/bounce"
+    [ -z "$fmt" ] || printf '\n000'
+    exit 7
+fi
+if [ ! -e "$d/up" ]; then
+    [ -z "$fmt" ] || printf '\n000'
+    exit 7
+fi
+code=200 out='{"result":{}}'
+if [ -e "$d/auth" ]; then
+    code=401 out=''
+elif [ "$method" = POST ]; then
+    if [ -e "$d/refuse" ]; then
+        code=403 out=''
+    else
+        out='{"result":"ok"}'
+        case "$url" in
+            */machine/services/restart*) [ ! -e "$d/new_version" ] || cp "$d/new_version" "$d/version" ;;
+            */server/restart) : > "$d/bounce" ;;
+        esac
+    fi
+else
+    case "$url" in
+        */server/helix/status)
+            if [ -e "$d/version" ]; then
+                out="{\"result\":{\"enabled\":true,\"version\":\"$(cat "$d/version")\"}}"
+            else
+                code=404 out=''
+            fi ;;
+        *print_stats*)
+            out="{\"result\":{\"status\":{\"print_stats\":{\"state\":\"$(cat "$d/print_state" 2>/dev/null || echo standby)\"}}}}" ;;
+        */server/info) out='{"result":{"klippy_state":"ready","components":["file_manager"]}}' ;;
+    esac
+fi
+printf '%s' "$out"
+[ -z "$fmt" ] || printf '\n%s' "$code"
+[ -z "$fail" ] || [ "$code" -lt 400 ] || exit 22
+exit 0
+MOCK
+)"
+    mock_command_script "curl" "$body"
+    mock_fake_clock
 }
 
 # Create temp directory structure mimicking a Pi system
