@@ -185,3 +185,26 @@ TEST_CASE_METHOD(LVGLTestFixture, "teardown_overlay_ui: aliased root and cached 
     process_async_timers();
     CHECK_FALSE(lv_obj_is_valid(deferred_raw));
 }
+
+// The drain runs queued work, which can include a close callback that tears the
+// same overlay down. That inner teardown completes it; the outer call must not
+// run the owner's hooks a second time against what the inner one released.
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "teardown_overlay_ui: a teardown the drain completes runs the hooks once",
+                 "[overlay_teardown][drain_reentrancy]") {
+    lv_obj_t* root = lv_obj_create(lv_screen_active());
+    int before_runs = 0;
+    int after_runs = 0;
+    auto hooks = [&]() { return TeardownHooks{[&] { ++before_runs; }, [&] { ++after_runs; }}; };
+
+    helix::ui::UpdateQueue::instance().queue("test::nested_overlay_teardown", [&]() {
+        teardown_overlay_ui(root, "NestedCase", TeardownDelete::Deferred, nullptr, hooks());
+    });
+    CHECK_FALSE(
+        teardown_overlay_ui(root, "NestedCase", TeardownDelete::Deferred, nullptr, hooks()));
+
+    CHECK(root == nullptr);
+    CHECK(before_runs == 1);
+    CHECK(after_runs == 1);
+    process_async_timers();
+}

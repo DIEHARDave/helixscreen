@@ -6,7 +6,6 @@
 #include "ui_next_tick.h"
 #include "ui_timer_guard.h"
 #include "ui_toast_manager.h"
-#include "ui_update_queue.h"
 #include "ui_utils.h"
 #include "ui_widget_catalog_overlay.h"
 
@@ -807,8 +806,6 @@ void GridEditMode::destroy_selection_chrome() {
     if (!configure_btn_ && !remove_btn_ && !selection_overlay_) {
         return;
     }
-    auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-    helix::ui::UpdateQueue::instance().drain();
     // Reparent to lv_layer_top() + async delete.  This is called during
     // input event processing where synchronous lv_obj_delete corrupts
     // LVGL's child iteration.  Reparenting ensures lv_obj_clean(container_)
@@ -2460,8 +2457,6 @@ void GridEditMode::update_snap_preview(int col, int row, int colspan, int rowspa
 
 void GridEditMode::destroy_snap_preview() {
     if (snap_preview_[0]) {
-        auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-        helix::ui::UpdateQueue::instance().drain();
         delete_outline(snap_preview_);
     }
     snap_preview_col_ = -1;
@@ -2793,8 +2788,6 @@ void GridEditMode::rebuild_lattice() {
     // press target, so replacing it mid-gesture is indev-neutral by LVGL's own
     // rules.
     if (delete_page_btn_) {
-        auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-        helix::ui::UpdateQueue::instance().drain();
         helix::ui::safe_delete_deferred(delete_page_btn_);
     }
 

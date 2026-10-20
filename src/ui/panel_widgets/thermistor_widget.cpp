@@ -12,7 +12,6 @@
 #include "ui_icon_picker.h"
 #include "ui_temperature_utils.h"
 #include "ui_text.h"
-#include "ui_update_queue.h"
 #include "ui_utils.h"
 
 #include "app_globals.h"
@@ -30,6 +29,7 @@
 
 #include <cstring>
 #include <set>
+#include <utility>
 
 namespace helix {
 void register_thermistor_widget() {
@@ -231,10 +231,11 @@ void ThermistorWidget::attach_carousel() {
     // Observe sensor count to rebind when sensors are discovered
     auto& tsm = helix::sensors::TemperatureSensorManager::instance();
     auto token = lifetime_.token();
+    sensor_count_seen_ = false;
     version_observer_ = helix::ui::observe<int>(
         tsm.get_sensor_count_subject(), this,
         [token](ThermistorWidget* self, int /*count*/) {
-            if (token.expired())
+            if (token.expired() || !std::exchange(self->sensor_count_seen_, true))
                 return;
             self->bind_carousel_sensors();
         },
@@ -250,10 +251,8 @@ void ThermistorWidget::bind_carousel_sensors() {
     if (!widget_obj_)
         return;
 
-    // Reentrancy guard: drain() can process a queued version_observer callback
-    // that recursively calls bind_carousel_sensors(). Without this guard, the
-    // recursive call creates pages that the outer call then destroys via
-    // lv_obj_clean(), leaving stale temp_label pointers in carousel_pages_.
+    // A nested bind would create pages that the outer call then cleans,
+    // leaving stale temp_label pointers in carousel_pages_.
     if (binding_in_progress_)
         return;
     binding_in_progress_ = true;
@@ -264,19 +263,17 @@ void ThermistorWidget::bind_carousel_sensors() {
         return;
     }
 
-    // Freeze update queue while tearing down observers and widgets.
     // Lifetimes must clear BEFORE observers so weak_ptr-tracked subject-death
     // detection in ObserverGuard::reset() correctly skips lv_observer_remove()
-    // on a recreated subject (#705 ordering rule).
+    // on a recreated subject (#705 ordering rule). Clearing the observers drops
+    // their queued callbacks, so none reaches the pages cleaned below.
     {
-        auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
         carousel_lifetimes_.clear();
         carousel_observers_.clear();
         carousel_pages_.clear();
 
         auto* state_ptr = ui_carousel_get_state(carousel);
         if (state_ptr && state_ptr->scroll_container) {
-            helix::ui::UpdateQueue::instance().drain();
             helix::ui::safe_clean_children(state_ptr->scroll_container);
             state_ptr->real_tiles.clear();
             ui_carousel_rebuild_indicators(carousel);
@@ -419,8 +416,6 @@ void ThermistorWidget::detach() {
     sensor_picker_.hide();
     configure_picker_.hide();
     {
-        auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-        helix::ui::UpdateQueue::instance().drain();
         version_observer_.reset();
         // Lifetimes reset BEFORE observers (#705 ordering rule).
         carousel_lifetimes_.clear();

@@ -13,7 +13,6 @@
 #include "ui_icon_codepoints.h"
 #include "ui_icon_picker.h"
 #include "ui_row_text.h"
-#include "ui_update_queue.h"
 #include "ui_utils.h"
 
 #include "app_globals.h"
@@ -192,13 +191,9 @@ void FanStackWidget::detach() {
     lifetime_.invalidate();
     picker_.hide();
 
-    // Freeze queue, drain pending deferred callbacks, THEN tear down observers
-    // and animations. Without the freeze, the WebSocket thread can enqueue new
-    // callbacks between drain() and pointer cleanup → use-after-free.
+    // Resetting each observer drops its queued callbacks, so none of them runs
+    // against the pointers cleared below.
     {
-        auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-        helix::ui::UpdateQueue::instance().drain();
-
         part_observer_.reset();
         hotend_observer_.reset();
         aux_observer_.reset();
@@ -562,10 +557,8 @@ void FanStackWidget::bind_carousel_fans() {
     if (!widget_obj_)
         return;
 
-    // Guard against re-entrancy: drain() below can process a pending
-    // version_observer_ callback which calls bind_carousel_fans() again.
-    // The inner call would create widgets that the outer call then destroys
-    // via lv_obj_clean(), leaving stale pointers in carousel_pages_.
+    // A nested bind would create widgets that the outer call then cleans,
+    // leaving stale pointers in carousel_pages_.
     if (rebuilding_carousel_)
         return;
     rebuilding_carousel_ = true;
@@ -577,19 +570,13 @@ void FanStackWidget::bind_carousel_fans() {
         return;
     }
 
-    // Freeze the update queue while tearing down observers and widgets to
-    // prevent the WebSocket thread from enqueuing callbacks for destroyed objects.
+    // Resetting the observers drops their queued callbacks, so none reaches the
+    // pages cleared below.
     {
-        auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
         part_observer_.reset();
         hotend_observer_.reset();
         aux_observer_.reset();
         carousel_observers_.clear();
-
-        // Drain pending callbacks BEFORE clearing pages/widgets — pending
-        // callbacks may reference carousel_pages_ entries or their LVGL objects.
-        // The freeze prevents new callbacks from being enqueued during cleanup.
-        helix::ui::UpdateQueue::instance().drain();
 
         for (auto& page : carousel_pages_) {
             if (page.fan_icon)
@@ -598,9 +585,6 @@ void FanStackWidget::bind_carousel_fans() {
         carousel_pages_.clear();
 
         // Clear existing carousel pages (the carousel may have pages from a previous bind).
-        // Drain BEFORE clean to process any pending callbacks that reference these widgets.
-        // The freeze prevents new callbacks from being enqueued during the clean.
-        helix::ui::UpdateQueue::instance().drain();
         auto* state_ptr = ui_carousel_get_state(carousel);
         if (state_ptr && state_ptr->scroll_container) {
             helix::ui::safe_clean_children(state_ptr->scroll_container);
@@ -838,11 +822,15 @@ void FanStackWidget::setup_common_observers(std::function<void()> on_anim_change
         },
         DisplaySettingsManager::instance().get_subjects_lifetime());
 
+    // Both attach paths bind right after this, against the current version.
+    lv_subject_t* version_subject = printer_state_.fan_state().get_fans_version_subject();
+    bound_fans_version_ = lv_subject_get_int(version_subject);
     version_observer_ = helix::ui::observe<int>(
-        printer_state_.fan_state().get_fans_version_subject(), this,
-        [token, on_fans_version](FanStackWidget* /*self*/, int /*version*/) {
-            if (token.expired())
+        version_subject, this,
+        [token, on_fans_version](FanStackWidget* self, int version) {
+            if (token.expired() || version == self->bound_fans_version_)
                 return;
+            self->bound_fans_version_ = version;
             on_fans_version();
         },
         printer_state_.get_subjects_lifetime());

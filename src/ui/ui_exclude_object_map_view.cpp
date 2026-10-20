@@ -2,7 +2,6 @@
 #include "ui_exclude_object_map_view.h"
 
 #include "ui_open_instances.h"
-#include "ui_update_queue.h"
 #include "ui_utils.h"
 
 #include "bed_dimensions.h"
@@ -279,11 +278,9 @@ void ExcludeObjectMapView::destroy() {
     // during the delete cascade cannot reach this view.
     open_map_views().remove(this);
 
-    // Freeze queue, drain pending callbacks, then delete widgets
+    // The observers released above were the only queued work that reaches
+    // these widgets.
     {
-        auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-        helix::ui::UpdateQueue::instance().drain();
-
         object_rects_.clear();
         mapper_.reset();
 

@@ -201,6 +201,18 @@ struct GridEditModeTestAccess {
         return em.delete_page_btn_;
     }
 
+    /// Release the selection chrome, the snap preview, and redraw the lattice,
+    /// each as edit mode's own paths do.
+    static void destroy_selection_chrome(GridEditMode& em) {
+        em.destroy_selection_chrome();
+    }
+    static void destroy_snap_preview(GridEditMode& em) {
+        em.destroy_snap_preview();
+    }
+    static void rebuild_lattice(GridEditMode& em) {
+        em.rebuild_lattice();
+    }
+
     /// A committed resize is still easing into its cell: the rebuild that lays
     /// the resized widget out has not been scheduled yet.
     static bool snap_animating(const GridEditMode& em) {

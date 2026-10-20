@@ -8,7 +8,6 @@
 #include "ui_observer_guard.h"
 #include "ui_spool_canvas.h"
 #include "ui_swatch.h"
-#include "ui_update_queue.h"
 #include "ui_utils.h"
 
 #include "ams_lane_state.h"
@@ -370,8 +369,6 @@ static void register_lane_spool_data(lv_obj_t* obj, LaneSpoolData* data) {
 static void unregister_lane_spool_data(lv_obj_t* obj) {
     auto it = s_lane_spool_registry.find(obj);
     if (it != s_lane_spool_registry.end()) {
-        auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-        helix::ui::UpdateQueue::instance().drain();
         std::unique_ptr<LaneSpoolData> data(it->second);
         if (data) {
             // Expire a secondary backend's token before its observers (#705

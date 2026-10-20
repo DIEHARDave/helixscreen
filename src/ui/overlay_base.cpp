@@ -151,6 +151,11 @@ bool helix::ui::teardown_overlay_ui(lv_obj_t*& root, const char* owner_name, Tea
     // panel pointers. Processing them here prevents use-after-free.
     auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
     helix::ui::UpdateQueue::instance().drain();
+    // The drained work can include a close callback that tore this overlay
+    // down already; its hooks have run and must not run twice.
+    if (!root) {
+        return false;
+    }
 
     // Unregister from NavigationManager before deleting the widget. Doing it
     // first also prevents double-invocation when destroy is called manually

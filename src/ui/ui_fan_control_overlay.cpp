@@ -242,14 +242,10 @@ void FanControlOverlay::on_deactivating(DeactivateReason) {
 void FanControlOverlay::cleanup() {
     spdlog::debug("[{}] Cleanup", get_name());
 
-    // Freeze queue, drain pending deferred callbacks, THEN tear down observers
-    // and animations to prevent use-after-free from stale queued callbacks.
-    {
-        auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-        helix::ui::UpdateQueue::instance().drain();
-
-        release_fan_widgets();
-    }
+    // Resetting the observers drops their queued callbacks, and the queued fan
+    // rebuild checks the overlay is visible, so nothing queued reaches the
+    // dials released here.
+    release_fan_widgets();
     OverlayBase::cleanup();
 }
 
