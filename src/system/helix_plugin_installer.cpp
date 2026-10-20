@@ -5,9 +5,11 @@
 
 #include "config.h"
 #include "helix_fs.h"
+#include "helix_version.h"
 #include "host_identity.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "text_io.h"
 
 #include <spdlog/spdlog.h>
 
@@ -47,6 +49,22 @@ struct WaitResult {
     std::string output;
 };
 
+/**
+ * @brief Log install.sh's output line by line.
+ *
+ * The script's own messages are the only record of why it failed, so a
+ * failure logs them at warn; a success keeps them at debug.
+ */
+static void log_script_output(const std::string& output, bool succeeded) {
+    for (const auto& line : script_output_lines(output)) {
+        if (succeeded) {
+            spdlog::debug("[PluginInstaller] install.sh: {}", line);
+        } else {
+            spdlog::warn("[PluginInstaller] install.sh: {}", line);
+        }
+    }
+}
+
 #if !defined(ESP_PLATFORM)
 // install.sh prints a handful of lines; anything past this is noise.
 constexpr size_t kMaxScriptOutputBytes = 16 * 1024;
@@ -69,22 +87,6 @@ static void drain_output(int fd, std::string& out) {
             continue;
         }
         return;
-    }
-}
-
-/**
- * @brief Log install.sh's output line by line.
- *
- * The script's own messages are the only record of why it failed, so a
- * failure logs them at warn; a success keeps them at debug.
- */
-static void log_script_output(const std::string& output, bool succeeded) {
-    for (const auto& line : script_output_lines(output)) {
-        if (succeeded) {
-            spdlog::debug("[PluginInstaller] install.sh: {}", line);
-        } else {
-            spdlog::warn("[PluginInstaller] install.sh: {}", line);
-        }
     }
 }
 
@@ -211,7 +213,6 @@ static WaitResult run_install_script(const std::string& script_path, const char*
     close(fds[1]);
     result = wait_for_child_with_timeout(pid, timeout_seconds, operation_name, fds[0]);
     close(fds[0]);
-    log_script_output(result.output, !result.timed_out && !result.error && result.exit_code == 0);
     return result;
 #endif
 }
@@ -304,6 +305,7 @@ HelixPluginInstaller::SyncInstallResult HelixPluginInstaller::install_local_sync
 
     WaitResult result =
         run_install_script(script_path, "--auto", script_timeout_seconds_, "Installation");
+    log_script_output(result.output, !result.timed_out && !result.error && result.exit_code == 0);
 
     if (result.spawn_failed) {
         state_.store(PluginInstallState::FAILED);
@@ -323,7 +325,7 @@ HelixPluginInstaller::SyncInstallResult HelixPluginInstaller::install_local_sync
     if (result.exit_code == 0) {
         state_.store(PluginInstallState::SUCCESS);
         spdlog::info("[PluginInstaller] Installation completed successfully");
-        return {true, lv_tr("Plugin installed successfully. Moonraker is restarting...")};
+        return {true, lv_tr("Plugin installed successfully.")};
     }
 
     state_.store(PluginInstallState::FAILED);
@@ -363,6 +365,7 @@ void HelixPluginInstaller::uninstall_local(UninstallCallback callback) {
 
     WaitResult result = run_install_script(script_path, "--uninstall-auto", script_timeout_seconds_,
                                            "Uninstallation");
+    log_script_output(result.output, !result.timed_out && !result.error && result.exit_code == 0);
 
     if (result.spawn_failed) {
         state_.store(PluginInstallState::FAILED);
@@ -417,8 +420,143 @@ void HelixPluginInstaller::uninstall_local(UninstallCallback callback) {
     }
 }
 
+namespace {
+// install.sh --relink exit codes (moonraker-plugin/install.sh, EXIT_RELINK_*).
+constexpr int kRelinkExitCurrent = 0;
+constexpr int kRelinkExitDone = 3;
+constexpr int kRelinkExitNotOurs = 4;
+} // namespace
+
+PluginLinkCheck relink_plugin(const std::string& script_path, int timeout_seconds) {
+    if (script_path.empty()) {
+        return PluginLinkCheck::Failed;
+    }
+    const WaitResult result =
+        run_install_script(script_path, "--relink", timeout_seconds, "Plugin relink");
+    if (result.spawn_failed || result.timed_out || result.error) {
+        log_script_output(result.output, false);
+        return PluginLinkCheck::Failed;
+    }
+    switch (result.exit_code) {
+    case kRelinkExitCurrent:
+        log_script_output(result.output, true);
+        return PluginLinkCheck::Current;
+    case kRelinkExitDone:
+        log_script_output(result.output, true);
+        return PluginLinkCheck::Relinked;
+    case kRelinkExitNotOurs:
+        log_script_output(result.output, true);
+        return PluginLinkCheck::NotOurs;
+    default:
+        log_script_output(result.output, false);
+        return PluginLinkCheck::Failed;
+    }
+}
+
+std::string parse_plugin_version(std::string_view text) {
+    constexpr std::string_view kPrefix = "PLUGIN_VERSION = \"";
+    size_t at = 0;
+    while ((at = text.find(kPrefix, at)) != std::string_view::npos) {
+        if (at == 0 || text[at - 1] == '\n') {
+            const size_t start = at + kPrefix.size();
+            const size_t end = text.find('"', start);
+            const size_t eol = text.find('\n', start);
+            if (end != std::string_view::npos && end < eol) {
+                return std::string(text.substr(start, end - start));
+            }
+        }
+        at += kPrefix.size();
+    }
+    return "";
+}
+
+bool plugin_versions_differ(const PluginSelfHealFacts& facts) {
+    return !facts.reported_version.empty() && !facts.bundled_version.empty() &&
+           facts.reported_version != facts.bundled_version;
+}
+
+PluginSelfHealStep decide_plugin_self_heal(const PluginSelfHealFacts& facts) {
+    const bool version_differs = plugin_versions_differ(facts);
+    if (!facts.local) {
+        return version_differs ? PluginSelfHealStep::ReportOnly : PluginSelfHealStep::Nothing;
+    }
+    if (facts.link == PluginLinkCheck::Current && version_differs &&
+        facts.memory.restarted_for_bundled == facts.bundled_version &&
+        facts.memory.restarted_for_reported == facts.reported_version) {
+        return PluginSelfHealStep::GiveUp;
+    }
+    if (facts.link == PluginLinkCheck::Relinked && !facts.plugin_file.empty() &&
+        facts.memory.relinked_for == facts.plugin_file) {
+        return PluginSelfHealStep::GiveUp;
+    }
+    const bool needs_restart = facts.link == PluginLinkCheck::Relinked ||
+                               (facts.link == PluginLinkCheck::Current && version_differs);
+    if (!needs_restart) {
+        return PluginSelfHealStep::Nothing;
+    }
+    return facts.job_holds ? PluginSelfHealStep::WaitForJob : PluginSelfHealStep::RestartNow;
+}
+
+PluginSelfHealMemory remember_plugin_self_heal(const PluginSelfHealFacts& facts,
+                                               PluginSelfHealStep step) {
+    PluginSelfHealMemory memory = facts.memory;
+    const bool version_differs = plugin_versions_differ(facts);
+    if (step == PluginSelfHealStep::RestartNow || step == PluginSelfHealStep::WaitForJob) {
+        if (version_differs) {
+            memory.restarted_for_bundled = facts.bundled_version;
+            memory.restarted_for_reported = facts.reported_version;
+        }
+        if (facts.link == PluginLinkCheck::Relinked) {
+            memory.relinked_for = facts.plugin_file;
+        }
+    } else if (!version_differs) {
+        memory.restarted_for_bundled.clear();
+        memory.restarted_for_reported.clear();
+    }
+    if (facts.link == PluginLinkCheck::Current) {
+        memory.relinked_for.clear();
+    }
+    return memory;
+}
+
+std::string HelixPluginInstaller::bundled_plugin_file() const {
+    const std::string script = get_install_script_path();
+    if (script.empty()) {
+        return "";
+    }
+    return std::string(hfs::parent_path(script)) + "/helix_print.py";
+}
+
+std::string HelixPluginInstaller::bundled_plugin_version() const {
+    const std::string plugin = bundled_plugin_file();
+    if (plugin.empty()) {
+        return "";
+    }
+    // PLUGIN_VERSION sits near the top; the rest of the file is not needed.
+    const auto text = text_io::read_file(plugin, 16 * 1024);
+    if (!text) {
+        spdlog::warn("[PluginInstaller] Cannot read {}", plugin);
+        return "";
+    }
+    return parse_plugin_version(*text);
+}
+
+std::string plugin_release_ref(std::string_view version) {
+    if (version.empty() || version.front() < '0' || version.front() > '9') {
+        return "main";
+    }
+    return "v" + std::string(version.substr(0, version.find('+')));
+}
+
+std::string plugin_remote_install_command(std::string_view ref) {
+    // -f: an HTTP error pipes nothing into sh rather than an error page.
+    const std::string r(ref);
+    return "curl -fsSL https://raw.githubusercontent.com/prestonbrown/helixscreen/" + r +
+           "/moonraker-plugin/remote-install.sh | sh -s -- " + r;
+}
+
 std::string HelixPluginInstaller::get_remote_install_command() const {
-    return std::string("curl -sSL ") + kRemoteInstallUrl + " | bash";
+    return plugin_remote_install_command(plugin_release_ref(helix_version()));
 }
 
 std::string HelixPluginInstaller::get_install_script_path() const {
@@ -504,9 +642,20 @@ bool HelixPluginInstaller::should_prompt_install() const {
         return false;
     }
 
+    if (prompt_settled_for_session_) {
+        spdlog::debug("[PluginInstaller] Plugin prompt already settled this session");
+        return false;
+    }
+
     // If user previously declined, don't prompt
     bool declined = config->get<bool>(kPrefInstallDeclined, false);
     return !declined;
+}
+
+bool HelixPluginInstaller::prompt_settled_for_session_ = false;
+
+void HelixPluginInstaller::settle_prompt_for_session() {
+    prompt_settled_for_session_ = true;
 }
 
 void HelixPluginInstaller::set_install_declined() {

@@ -10,8 +10,8 @@
 #   ./install.sh --auto       # Full auto-install (updates config, restarts Moonraker)
 #   ./install.sh --uninstall  # Remove the plugin
 #
-# Remote install (from GitHub):
-#   curl -sSL https://raw.githubusercontent.com/prestonbrown/helixscreen/main/moonraker-plugin/remote-install.sh | sh
+# On a Moonraker host HelixScreen does not run on, remote-install.sh fetches
+# a release's plugin files and runs this script from them.
 
 set -e
 
@@ -29,6 +29,16 @@ AUTO_MODE=false
 EXIT_UNINSTALL_OK=0
 EXIT_UNINSTALL_FAILED=1
 EXIT_UNINSTALL_NEEDS_ATTENTION=2
+
+# Exit codes for --relink (HelixPluginInstaller reads them):
+#   0 - the link already names this tree's plugin; nothing done
+#   3 - the link was re-pointed at this tree's plugin
+#   4 - no plugin of ours to repair (no link, a regular file, or no
+#       [helix_print] section); nothing done
+#   1 - the link could not be repaired
+EXIT_RELINK_CURRENT=0
+EXIT_RELINK_DONE=3
+EXIT_RELINK_NOT_OURS=4
 
 # Colors for output (works with printf)
 RED='\033[0;31m'
@@ -48,6 +58,11 @@ error() {
     printf "${RED}[ERROR]${NC} %s\n" "$1"
     exit 1
 }
+
+# helix_print_section_files and friends: which config files hold our sections.
+[ -f "$SCRIPT_DIR/helix_print_conf.sh" ] || error "Missing $SCRIPT_DIR/helix_print_conf.sh"
+# shellcheck source=moonraker-plugin/helix_print_conf.sh
+. "$SCRIPT_DIR/helix_print_conf.sh"
 
 # Moonraker source roots on known vendor layouts. Keep in step with
 # MOONRAKER_SRC_PATHS in scripts/lib/installer/moonraker.sh; a bats test
@@ -284,30 +299,56 @@ ensure_visible_symlink_dir() {
         return 0
     fi
     info "Klipper skips hidden directories here: setting symlink_dir: helix_print"
-    awk '{ print } !done && /^\[helix_print\]/ { print "symlink_dir: helix_print"; done = 1 }' \
-        "$file" > "$file.tmp" && cat "$file.tmp" > "$file" && rm -f "$file.tmp"
+    helix_rewrite_conf "$file" \
+        '{ print } !done && /^\[helix_print\]/ { print "symlink_dir: helix_print"; done = 1 }'
 }
 
-# Remove the [helix_print] section from one config file, with a backup.
-# Returns 1 when the file had the section and could not be edited.
+# Set `enabled: True` in place of any `enabled` option in @1's [helix_print]
+# section that reads as false to Moonraker (false, no, off or 0, any case),
+# with a backup. A file with no such line is left untouched. Exits through
+# error() when the file needs the edit and cannot take it.
+enable_helix_section() {
+    file="$1"
+    # shellcheck disable=SC2016  # awk's own $ fields
+    _eh_disabled='/^\[/ { s = ($0 ~ /^\[helix_print\]/) }
+        s && tolower($0) ~ /^[ \t]*enabled[ \t]*[:=][ \t]*(false|no|off|0)[ \t\r]*$/'
+    awk "$_eh_disabled { found = 1 } END { exit !found }" "$file" || return 0
+    backup_file=$(backup_config "$file") || error "Could not back up $file"
+    info "Created backup: $backup_file"
+    info "Turning the plugin back on: enabled: True in $(basename "$file")"
+    helix_rewrite_conf "$file" "$_eh_disabled { print \"enabled: True\"; next } { print }" ||
+        error "Could not write $file - see $backup_file"
+}
+
+# Copy config file @1 to @1.bak.helix.<timestamp>, keeping only that newest of
+# the backups this script makes of it, and print the backup's path. Backups
+# anyone else made are never touched. Returns 1 when the copy failed; older
+# backups are then left alone.
+backup_config() {
+    _bk_new="$1.bak.helix.$(date +%Y%m%d_%H%M%S)"
+    cp "$1" "$_bk_new" || return 1
+    for _bk_old in "$1".bak.helix.[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]; do
+        if [ -f "$_bk_old" ] && [ "$_bk_old" != "$_bk_new" ]; then
+            rm -f "$_bk_old"
+        fi
+    done
+    printf '%s' "$_bk_new"
+}
+
+# Remove the sections whose header matches extended regex @2 from config file
+# @1 with awk program @3 (helix_strip_awk), with a backup. Returns 1 when the
+# file had such a section and could not be edited.
 remove_helix_section() {
     file="$1"
-    [ -f "$file" ] && grep -q '^\[helix_print\]' "$file" || return 0
-    backup_file="${file}.bak.$(date +%Y%m%d_%H%M%S)"
-    if ! cp "$file" "$backup_file"; then
-        warn "Could not back up $(basename "$file") - leaving the [helix_print] section in place"
+    [ -f "$file" ] && grep -Eq "$2" "$file" || return 0
+    if ! backup_file=$(backup_config "$file"); then
+        warn "Could not back up $(basename "$file") - leaving its HelixPrint sections in place"
         return 1
     fi
     info "Created backup: $backup_file"
-    info "Removing [helix_print] section from $(basename "$file")"
-    # Use awk for cross-platform config section removal
-    # This correctly handles helix_print as the last section in the file
-    if ! (awk '
-        /^\[helix_print\]/ { skip = 1; next }
-        /^\[/ { skip = 0 }
-        !skip { print }
-    ' "$file" > "$file.tmp" && cat "$file.tmp" > "$file" && rm -f "$file.tmp"); then
-        warn "Could not remove [helix_print] from $(basename "$file") - see $backup_file"
+    info "Removing HelixPrint sections from $(basename "$file")"
+    if ! helix_rewrite_conf "$file" "$3"; then
+        warn "Could not remove HelixPrint sections from $(basename "$file") - see $backup_file"
         return 1
     fi
     return 0
@@ -565,16 +606,16 @@ auto_uninstall() {
         strip_phase_tracking_instrumentation "$config_dir" || exit_status=$EXIT_UNINSTALL_NEEDS_ATTENTION
     fi
 
-    # Remove config section if possible, from moonraker.conf and from the
-    # user file a mod-owned moonraker.conf includes. The plugin itself is
-    # already gone at this point, so a failure backing up or editing a config
-    # here is "needs attention", not a failed uninstall, and must not trip
-    # set -e and skip the rest of this function.
+    # Remove the plugin's sections from every file Moonraker reads them from:
+    # moonraker.conf and anything it includes, such as the user file a
+    # mod-owned moonraker.conf includes. The plugin itself is already gone at
+    # this point, so a failure backing up or editing a config here is "needs
+    # attention", not a failed uninstall, and must not trip set -e and skip
+    # the rest of this function.
     if [ -n "$config_dir" ] && [ -f "$config_dir/moonraker.conf" ]; then
-        section_file=$(helix_conf_file "$config_dir")
-        for file in "$config_dir/moonraker.conf" "$section_file"; do
-            remove_helix_section "$file" || exit_status=$EXIT_UNINSTALL_NEEDS_ATTENTION
-            [ "$section_file" = "$config_dir/moonraker.conf" ] && break
+        for file in $(helix_print_owned_files "$config_dir/moonraker.conf" "$(running_moonraker_root)"); do
+            remove_helix_section "$file" "$HELIX_PRINT_OWNED_RE" "$HELIX_PRINT_STRIP_AWK" ||
+                exit_status=$EXIT_UNINSTALL_NEEDS_ATTENTION
         done
     fi
 
@@ -595,6 +636,58 @@ auto_uninstall() {
     fi
 
     return "$exit_status"
+}
+
+# Re-point an installed plugin's link at this tree (--relink): what the app
+# runs at startup, so a plugin installed from an install directory that has
+# since moved, or been replaced, loads from the tree beside the running app.
+# Touches the link only, never the config, and never creates a link that is
+# not there: an install is the user's choice. Returns an EXIT_RELINK_* code.
+relink() {
+    components_dir=$(find_moonraker_components "")
+    [ -n "$components_dir" ] || error "Could not auto-detect Moonraker installation."
+    target="$components_dir/helix_print.py"
+
+    if [ ! -L "$target" ]; then
+        info "No plugin link at $target - nothing to repair"
+        return "$EXIT_RELINK_NOT_OURS"
+    fi
+    current=$(readlink "$target")
+    case "$current" in
+        */helix_print.py) ;;
+        *)
+            info "$target links to $current, not a HelixPrint plugin - leaving it"
+            return "$EXIT_RELINK_NOT_OURS"
+            ;;
+    esac
+    config_dir=$(find_config_dir)
+    if [ -z "$config_dir" ] ||
+        [ -z "$(helix_print_section_files "$config_dir/moonraker.conf" "$(running_moonraker_root)")" ]; then
+        info "No [helix_print] section configured - leaving $target alone"
+        return "$EXIT_RELINK_NOT_OURS"
+    fi
+
+    # The link text is Moonraker's path, which differs from ours in a chroot.
+    # Compared as files, not paths: through a bind mount (Forge-X binds
+    # /opt/config) one file has two paths that resolve apart. -ef is in dash,
+    # BusyBox ash and bash, every shell this runs under.
+    mroot=$(running_moonraker_root)
+    case "$current" in
+        /*) seen="$mroot$current" ;;
+        *) seen="$components_dir/$current" ;;
+    esac
+    # shellcheck disable=SC3013
+    if [ -e "$seen" ] && [ "$seen" -ef "$PLUGIN_FILE" ]; then
+        info "The plugin link already names $PLUGIN_FILE"
+        return "$EXIT_RELINK_CURRENT"
+    fi
+
+    link_to=$(path_for_moonraker "$PLUGIN_FILE")
+    [ -f "$mroot$link_to" ] || error "Moonraker cannot see $PLUGIN_FILE from its root ($mroot)"
+    [ -w "$components_dir" ] || error "Cannot write to components directory: $components_dir"
+    ln -sf "$link_to" "$target" || error "Could not re-point $target"
+    info "Re-pointed $target -> $link_to (was $current)"
+    return "$EXIT_RELINK_DONE"
 }
 
 # Auto-install function (non-interactive, for HelixScreen integration)
@@ -650,44 +743,65 @@ auto_install() {
         error "Moonraker cannot see $PLUGIN_FILE from its root ($(running_moonraker_root))"
     fi
 
-    # Use ln -sf for atomic replacement (removes existing symlink first)
-    ln -sf "$link_to" "$target"
-    info "Created symlink: $target -> $link_to"
-
     # Auto-configure moonraker.conf if possible
     if [ -n "$section_file" ]; then
-        # Check if [helix_print] section already exists
-        if grep -q '^\[helix_print\]' "$config_dir/moonraker.conf" "$section_file" 2>/dev/null; then
-            info "Config section [helix_print] already exists"
+        # A section in any file Moonraker reads counts, so the install never
+        # writes a second one beside it.
+        section_holder=""
+        for file in $(helix_print_section_files "$config_dir/moonraker.conf" "$(running_moonraker_root)"); do
+            [ -n "$section_holder" ] || section_holder="$file"
+            # An install ends with the plugin working, so a section that
+            # switches it off is switched back on.
+            enable_helix_section "$file"
+        done
+        if [ -n "$section_holder" ]; then
+            info "Config section [helix_print] already exists in $section_holder"
         else
             # Create backup before modifying config
             if [ -f "$section_file" ]; then
-                backup_file="${section_file}.bak.$(date +%Y%m%d_%H%M%S)"
-                cp "$section_file" "$backup_file"
+                backup_file=$(backup_config "$section_file")
                 info "Created backup: $backup_file"
             fi
 
             info "Adding [helix_print] section to $section_file"
+            # End an unterminated last line first. The blank line after it is
+            # the one HELIX_PRINT_STRIP_AWK takes back out on uninstall.
+            if [ -s "$section_file" ] && [ -n "$(tail -c 1 "$section_file")" ]; then
+                printf '\n' >> "$section_file"
+            fi
             printf '\n' >> "$section_file"
             printf '%s\n' "[helix_print]" >> "$section_file"
             printf '%s\n' "# HelixScreen plugin - auto-configured" >> "$section_file"
+            section_holder="$section_file"
         fi
 
         if klipper_hides_dot_dirs; then
-            section_holder="$section_file"
-            grep -q '^\[helix_print\]' "$section_file" 2>/dev/null \
-                || section_holder="$config_dir/moonraker.conf"
             ensure_visible_symlink_dir "$section_holder"
         fi
+
+        # An updater entry for a git checkout of the plugin follows a tree
+        # Moonraker no longer loads once the link points here.
+        for file in $(helix_conf_files_matching "$config_dir/moonraker.conf" "$(running_moonraker_root)" "$HELIX_PRINT_UPDATER_RE"); do
+            remove_helix_section "$file" "$HELIX_PRINT_UPDATER_RE" "$HELIX_PRINT_UPDATER_STRIP_AWK" ||
+                error "Could not remove [update_manager helix_print] from $file"
+        done
     else
         warn "Could not find moonraker.conf - manual config required"
     fi
 
+    # The link goes last: an install that stops on a config write before it
+    # leaves the previous link naming the tree it named, which a caller that
+    # put that tree back (remote-install.sh) relies on. ln -sf replaces an
+    # existing symlink atomically.
+    ln -sf "$link_to" "$target"
+    info "Created symlink: $target -> $link_to"
+
     # Restart Moonraker
     restart_moonraker
 
-    # Wait for Moonraker to come back up
-    wait_for_moonraker
+    # Wait for Moonraker to come back up. The install itself is done by now, so
+    # a slow restart is a warning, never a failure that would roll it back.
+    wait_for_moonraker || warn "Moonraker did not come back up in time, but the plugin install itself completed"
 
     printf '\n'
     info "Auto-install complete!"
@@ -705,6 +819,9 @@ show_help() {
     printf '%s\n' "  --uninstall-auto        Full auto-uninstall: removes the symlink and config"
     printf '%s\n' "                          section, strips PRINT_START instrumentation, restarts"
     printf '%s\n' "                          Moonraker"
+    printf '%s\n' "  --relink                Re-point an installed plugin's link at this copy;"
+    printf '%s\n' "                          exit 0 already current, 3 re-pointed, 4 nothing of"
+    printf '%s\n' "                          ours to repair, 1 failed. Never restarts Moonraker"
     printf '%s\n' "  --help, -h              Show this help message"
     printf '\n'
     printf '%s\n' "Exit codes for --uninstall and --uninstall-auto:"
@@ -744,6 +861,11 @@ while [ $# -gt 0 ]; do
         --uninstall-auto)
             auto_uninstall
             exit $?
+            ;;
+        --relink)
+            status=0
+            relink || status=$?
+            exit "$status"
             ;;
         --help|-h)
             show_help

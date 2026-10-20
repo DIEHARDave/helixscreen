@@ -25,6 +25,7 @@
 #include "helix_plugin_installer.h"
 #include "in_flight_guard.h"
 #include "moonraker_error.h"
+#include "plugin_self_heal.h"
 #include "print_file_data.h"
 #include "print_history_manager.h"
 #include "print_select_button_view.h"
@@ -1021,6 +1022,28 @@ class PrintSelectPanel : public PanelBase {
     // Plugin installer for helix_print Moonraker plugin
     helix::HelixPluginInstaller plugin_installer_;
     PluginInstallModal plugin_install_modal_;
+    /// The startup repair of an installed plugin; after plugin_installer_, which it uses.
+    helix::PluginSelfHeal plugin_self_heal_{
+        printer_state_, plugin_installer_,
+        [this]() { return helix::ui::request_moonraker_restart_for_plugin(api_); },
+        []() { return plugin_screen_state(); }};
+
+    /// What on screen a plugin action waits behind (helix::decide_plugin_turn()).
+    static helix::PluginScreenState plugin_screen_state();
+
+    /// The install modal, from the boot-time prompt or the card's Set up tap.
+    /// A successful install restarts Moonraker so the plugin loads.
+    void show_plugin_install_modal();
+
+    /// The boot-time prompt: opens once a session when discovery finds the
+    /// plugin absent, following helix::decide_plugin_turn(). A wait for the
+    /// job is resumed by the lifecycle observer, a wait for the screen by
+    /// plugin_prompt_timer_.
+    void maybe_prompt_plugin_install();
+    helix::PluginTurnStep plugin_prompt_wait_ = helix::PluginTurnStep::Stop;
+    helix::ui::LvglTimerGuard plugin_prompt_timer_;
+    /// How often a prompt waiting for the screen looks again.
+    static constexpr uint32_t kPluginPromptRecheckMs = 1000;
 
     //
     // === Internal Methods ===

@@ -659,6 +659,16 @@ void PrinterState::set_helix_plugin_link_dir(const std::string& dir) {
                           [this, dir]() { plugin_status_state_.set_link_dir(dir); });
 }
 
+void PrinterState::set_helix_plugin_version(const std::string& version) {
+    async_lifetime_.defer("PrinterState::set_helix_plugin_version",
+                          [this, version]() { plugin_status_state_.set_version(version); });
+}
+
+void PrinterState::set_helix_plugin_disabled(bool disabled) {
+    async_lifetime_.defer("PrinterState::set_helix_plugin_disabled",
+                          [this, disabled]() { plugin_status_state_.set_disabled(disabled); });
+}
+
 void PrinterState::set_macro_option_count(size_t count) {
     macro_option_count_ = count;
     update_gcode_modification_visibility();

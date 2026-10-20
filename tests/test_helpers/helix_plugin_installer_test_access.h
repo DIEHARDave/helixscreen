@@ -19,6 +19,11 @@ struct HelixPluginInstallerTestAccess {
     static void set_script_timeout_seconds(HelixPluginInstaller& installer, int seconds) {
         installer.script_timeout_seconds_ = seconds;
     }
+
+    /// A new session: the install prompt may open again.
+    static void reset_prompt_session() {
+        HelixPluginInstaller::prompt_settled_for_session_ = false;
+    }
 };
 
 } // namespace helix

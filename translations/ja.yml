@@ -552,6 +552,7 @@ translations:
   Canceling turns the chamber target off so the wait ends, then stops the print.: 'キャンセルするとチャンバーの目標温度をオフにして待機を終了し、その後印刷を停止します。'
   'Cannot add to queue: internal error': 'キューに追加できません: 内部エラー'
   Cannot be changed from here on a multi-unit MMU: マルチユニット MMU ではここから変更できません
+  Cannot change the HelixPrint plugin while printing: 印刷中はHelixPrintプラグインを変更できません
   'Cannot control timelapse: printer not connected': 'タイムラプスを制御できません: プリンター未接続'
   'Cannot delete file: printer not connected': 'ファイルを削除できません: プリンター未接続'
   'Cannot modify G-code: no temp directory available': 'G-code を変更できません: 一時ディレクトリがありません'
@@ -1612,6 +1613,7 @@ translations:
   'Heating: %d / %d°C': '加熱中: %d / %d°C'
   Heightmap and flatness of the active bed mesh: '有効なベッドメッシュの高さマップと平面度'
   HelixPrint Plugin: 'HelixPrintプラグイン'
+  HelixPrint plugin updated. Moonraker is restarting...: 'HelixPrintプラグインを更新しました。Moonraker を再起動中...'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen がクラッシュしました
   HelixScreen Macros: 'HelixScreenマクロ'

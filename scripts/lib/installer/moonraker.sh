@@ -101,22 +101,42 @@ find_moonraker_update_manager_dir() {
     echo ""
 }
 
-# Print the running Moonraker's python package directory (the one holding
-# moonraker.py) as a path from here: its argv names paths inside its own
-# root, which is a chroot's directory when it runs in one. Empty when no
-# Moonraker is running. HELIX_PROC_ROOT is the tests' seam.
-running_moonraker_package_dir() {
-    local proc="${HELIX_PROC_ROOT:-/proc}" f script root
+# Print the running Moonraker's /proc/<pid> directory and, on the next line,
+# the moonraker.py its argv names. Nothing when no Moonraker is running.
+# HELIX_PROC_ROOT is the tests' seam.
+running_moonraker_process() {
+    local proc="${HELIX_PROC_ROOT:-/proc}" f script
     for f in "$proc"/[0-9]*/cmdline; do
         [ -r "$f" ] || continue
         script=$(tr '\000' '\n' < "$f" 2>/dev/null | awk '/moonraker\.py$/ { print; exit }')
         case "$script" in /*) ;; *) continue ;; esac
-        root=$(readlink "$(dirname "$f")/root" 2>/dev/null) || root=""
-        [ "$root" = "/" ] && root=""
-        echo "${root%/}$(dirname "$script")"
+        printf '%s\n%s\n' "$(dirname "$f")" "$script"
         return 0
     done
-    echo ""
+}
+
+# Print where the running Moonraker's "/" is from here: empty when it shares
+# ours or none is running, the chroot's directory when it runs in one. Every
+# path in its argv and every absolute [include] it reads is relative to that.
+running_moonraker_root_dir() {
+    local pdir root
+    pdir=$(running_moonraker_process | sed -n 1p)
+    [ -n "$pdir" ] || return 0
+    root=$(readlink "$pdir/root" 2>/dev/null) || root=""
+    [ "$root" = "/" ] && root=""
+    echo "${root%/}"
+}
+
+# Print the running Moonraker's python package directory (the one holding
+# moonraker.py) as a path from here. Empty when no Moonraker is running.
+running_moonraker_package_dir() {
+    local script
+    script=$(running_moonraker_process | sed -n 2p)
+    if [ -z "$script" ]; then
+        echo ""
+        return 0
+    fi
+    echo "$(running_moonraker_root_dir)$(dirname "$script")"
 }
 
 # Probe whether the installed Moonraker honours release_info.json's asset_name.
@@ -303,8 +323,12 @@ migrate_to_web_type() {
 
     log_info "Migrating update_manager to type: web..."
 
-    # Remove old section
-    remove_update_manager_section "$conf" 2>/dev/null || true
+    # Remove old section. Adding the web section after a failed removal would
+    # leave two [update_manager helixscreen] sections, which Moonraker rejects.
+    if ! remove_update_manager_section "$conf" 2>/dev/null; then
+        log_warn "Could not remove the old update_manager section; leaving it as it is"
+        return 1
+    fi
 
     # Add new web section
     add_update_manager_section "$conf"
@@ -747,26 +771,27 @@ _remove_helix_print_inline() {
         log_warn "$target is a regular file, not a symlink this installer created - leaving it in place"
     fi
 
-    local conf
+    local conf section_conf
     conf=$(find_moonraker_conf)
-    if [ -n "$conf" ] && grep -q '^\[helix_print\]' "$conf" 2>/dev/null; then
-        local fs
-        fs=$(file_sudo "$conf")
-        $fs cp "$conf" "${conf}.bak.helixscreen-uninstall" 2>/dev/null || true
-        log_info "Removing [helix_print] section from $conf..."
-        local prog='
-            /^\[helix_print\]/ { skip = 1; next }
-            /^\[/ { skip = 0 }
-            !skip { print }
-        '
-        # The program is passed as an argument rather than interpolated into the
-        # -c string, so its $0 and $1 stay awk's and are never expanded by a shell.
-        if $fs sh -c 'awk "$1" "$2" > "$2.helixtmp" && mv "$2.helixtmp" "$2"' sh "$prog" "$conf"; then
-            log_success "Removed [helix_print] section from $conf"
-        else
-            log_warn "Could not remove [helix_print] from $conf - edit it by hand, backup at ${conf}.bak.helixscreen-uninstall"
+    [ -n "$conf" ] || return 0
+    # Every file Moonraker reads the plugin's sections from: the conf and its
+    # includes. That covers the [update_manager helix_print] a git-clone
+    # install of the plugin wrote.
+    for section_conf in $(helix_print_owned_files "$conf" "$(running_moonraker_root_dir)"); do
+        if host_path_is_mod_owned "$section_conf"; then
+            log_warn "[helix_print] is in $section_conf, which the firmware mod owns - leaving it in place"
+            continue
         fi
-    fi
+        local fs
+        fs=$(file_sudo "$section_conf")
+        $fs cp "$section_conf" "${section_conf}.bak.helixscreen-uninstall" 2>/dev/null || true
+        log_info "Removing HelixPrint sections from $section_conf..."
+        if helix_rewrite_conf "$section_conf" "$HELIX_PRINT_STRIP_AWK" "$fs"; then
+            log_success "Removed HelixPrint sections from $section_conf"
+        else
+            log_warn "Could not remove HelixPrint sections from $section_conf - edit it by hand, backup at ${section_conf}.bak.helixscreen-uninstall"
+        fi
+    done
 }
 
 # Remove the HelixPrint Moonraker plugin: the helix_print.py symlink in
@@ -794,7 +819,7 @@ remove_moonraker_plugin() {
     conf=$(find_moonraker_conf)
 
     local has_section=false
-    if [ -n "$conf" ] && grep -q '^\[helix_print\]' "$conf" 2>/dev/null; then
+    if [ -n "$conf" ] && [ -n "$(helix_print_owned_files "$conf" "$(running_moonraker_root_dir)")" ]; then
         has_section=true
     fi
 
@@ -1009,8 +1034,7 @@ configure_moonraker_updates() {
         local removed_stale=0
         if has_update_manager_section "$conf"; then
             log_warn "Removing the existing [update_manager helixscreen] section."
-            remove_update_manager_section
-            removed_stale=1
+            remove_update_manager_section && removed_stale=1
         fi
 
         # These two are orthogonal to the updater and must not regress just
@@ -1041,7 +1065,7 @@ configure_moonraker_updates() {
     # Migrate old git_repo or zip config to type: web
     # (type: zip shows perpetual UP-TO-DATE in Mainsail — see mainsail-crew/mainsail#2444)
     if has_old_git_repo_section "$conf" || has_old_zip_section "$conf"; then
-        migrate_to_web_type "$conf"
+        migrate_to_web_type "$conf" || true
         # Where the OS has no package manager, silence the provider warnings.
         disable_system_updates_on_buildroot "$conf"
         ensure_moonraker_asvc "$conf"
@@ -1082,6 +1106,7 @@ configure_moonraker_updates() {
 
 # Remove update_manager section from moonraker.conf
 # Called during uninstallation
+# Returns: 1 when the file needed the edit and could not take it (left whole)
 remove_update_manager_section() {
     local conf
     conf=$(find_moonraker_conf)
@@ -1137,9 +1162,10 @@ remove_update_manager_section() {
         }
         END { for (j = 1; j <= n; j++) print buf[j] }
     '
-    # The program is passed as an argument rather than interpolated into the
-    # -c string, so its $0 and $1 stay awk's and are never expanded by a shell.
-    $fs sh -c 'awk "$1" "$2" > "$2.helixtmp" && mv "$2.helixtmp" "$2"' sh "$prog" "$conf"
+    if ! helix_rewrite_conf "$conf" "$prog" "$fs"; then
+        log_warn "Could not remove the update_manager section from $conf - edit it by hand, backup at ${conf}.bak.helixscreen-uninstall"
+        return 1
+    fi
 
     log_success "Removed update_manager section from $conf"
 }

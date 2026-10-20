@@ -360,6 +360,33 @@ struct FrChartRun {
 // NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
 [[nodiscard]] std::vector<FrChartRun> fr_chart_finite_runs(const float* amps, size_t count);
 
+/// Fill opacity right under the curve; it fades linearly to transparent at the
+/// plot bottom.
+// NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
+inline constexpr lv_opa_t kFrFillTopOpa = 90;
+
+/// Gradient start opacities for one segment's two fill triangles: @c first is
+/// (top_a, top_b, bottom under a), whose top row is the segment's higher point;
+/// @c second is (top_b, bottom under b, bottom under a), whose top row is top_b.
+// NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
+struct FrFillSegmentOpa {
+    lv_opa_t first;
+    lv_opa_t second;
+};
+
+/**
+ * @brief Fill gradient for one curve segment, top rows @p top_a_y / @p top_b_y (pure)
+ *
+ * The tint follows the curve: kFrFillTopOpa at the segment's higher point,
+ * however low on the plot that is, fading to 0 at @p bottom_y. LVGL spans a
+ * triangle's vertical gradient over that triangle's own bounding box, so the
+ * lower-topped triangle starts at the ramp's value for its top row and both
+ * triangles shade every row they share alike.
+ */
+// NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
+[[nodiscard]] FrFillSegmentOpa fr_chart_fill_segment_opa(int32_t top_a_y, int32_t top_b_y,
+                                                         int32_t bottom_y);
+
 // ============================================================================
 // Data Management
 // ============================================================================

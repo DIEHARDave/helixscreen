@@ -543,6 +543,7 @@
   <translation tag="Canceling turns the chamber target off so the wait ends, then stops the print." it="L&apos;annullamento spegne il target della camera per terminare l&apos;attesa, poi ferma la stampa."/>
   <translation tag="Cannot add to queue: internal error" it="Impossibile aggiungere alla coda: errore interno"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" it="Non modificabile da qui su un MMU multi-unità"/>
+  <translation tag="Cannot change the HelixPrint plugin while printing" it="Impossibile modificare il plugin HelixPrint durante la stampa"/>
   <translation tag="Cannot control timelapse: printer not connected" it="Impossibile controllare timelapse: stampante non connessa"/>
   <translation tag="Cannot delete file: printer not connected" it="Impossibile eliminare file: stampante non connessa"/>
   <translation tag="Cannot modify G-code: no temp directory available" it="Impossibile modificare G-code: directory temporanea non disponibile"/>
@@ -1553,6 +1554,7 @@
   <translation tag="Heating: %d / %d°C" it="Riscaldamento: %d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" it="Mappa delle altezze e planarità della mesh del piano attiva"/>
   <translation tag="HelixPrint Plugin" it="Plugin HelixPrint"/>
+  <translation tag="HelixPrint plugin updated. Moonraker is restarting..." it="Plugin HelixPrint aggiornato. Moonraker è in riavvio..."/>
   <translation tag="HelixScreen" it="HelixScreen"/>
   <translation tag="HelixScreen Crashed" it="HelixScreen si è arrestato"/>
   <translation tag="HelixScreen Macros" it="Macro HelixScreen"/>

@@ -7,6 +7,11 @@
 
 namespace helix {
 
+/// helix_plugin_installed values once the probe has answered (-1 before). A
+/// plugin set to `enabled: False` serves nothing, so it reads as absent.
+constexpr int kHelixPluginAbsent = 0;
+constexpr int kHelixPluginInstalled = 1;
+
 enum class MacroInstallStatus;
 
 /**
@@ -86,6 +91,23 @@ class PrinterPluginStatusState {
         return link_dir_;
     }
 
+    /// The version the running plugin reports; empty when it did not answer.
+    void set_version(const std::string& version) {
+        version_ = version;
+    }
+    const std::string& version() const {
+        return version_;
+    }
+
+    /// The plugin answered but is set to `enabled: False`: configured, and
+    /// reading as not installed until an install turns it on.
+    void set_disabled(bool disabled) {
+        disabled_ = disabled;
+    }
+    bool disabled() const {
+        return disabled_;
+    }
+
     /**
      * @brief Set the discovery-derived helper-macro install status
      *
@@ -121,7 +143,7 @@ class PrinterPluginStatusState {
     // Subject accessors
     // ========================================================================
 
-    /// Tri-state: -1=unknown, 0=not installed, 1=installed
+    /// -1 unknown, else a kHelixPlugin* value (0 absent, 1 installed and enabled)
     lv_subject_t* get_helix_plugin_installed_subject() {
         return &helix_plugin_installed_;
     }
@@ -158,6 +180,8 @@ class PrinterPluginStatusState {
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
     std::string link_dir_;
+    std::string version_;
+    bool disabled_ = false;
 
     // Plugin status subjects (tri-state: -1=unknown, 0=no, 1=yes)
     lv_subject_t helix_plugin_installed_{}; // HelixPrint Klipper plugin

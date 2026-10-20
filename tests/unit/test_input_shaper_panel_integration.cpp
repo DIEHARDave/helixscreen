@@ -28,6 +28,8 @@
 #include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
+#include "lvgl/src/misc/lv_area_private.h" // lv_area_intersect
+#include "theme_manager.h"
 
 #include <spdlog/sinks/ringbuffer_sink.h>
 #include <spdlog/spdlog.h>
@@ -877,4 +879,105 @@ TEST_CASE_METHOD(InputShaperPreviewFixture,
     CHECK(style.glow == live.glow);
     CHECK(style.fill == live.fill);
     CHECK(lv_color_eq(ui_frequency_response_chart_get_series_color(results, raw), live_color));
+}
+
+namespace {
+
+/// The part of @p obj a user can see: its box clipped by every scrolling or
+/// clipping ancestor.
+lv_area_t visible_area(lv_obj_t* obj) {
+    lv_area_t area;
+    lv_obj_get_coords(obj, &area);
+    for (lv_obj_t* p = lv_obj_get_parent(obj); p != nullptr; p = lv_obj_get_parent(p)) {
+        lv_area_t parent_area;
+        lv_obj_get_coords(p, &parent_area);
+        if (!lv_area_intersect(&area, &area, &parent_area)) {
+            return lv_area_t{0, 0, -1, -1};
+        }
+    }
+    return area;
+}
+
+bool fully_visible(lv_obj_t* obj) {
+    lv_area_t box;
+    lv_obj_get_coords(obj, &box);
+    const lv_area_t seen = visible_area(obj);
+    return seen.x1 == box.x1 && seen.y1 == box.y1 && seen.x2 == box.x2 && seen.y2 == box.y2;
+}
+
+bool overlaps(lv_obj_t* a, lv_obj_t* b) {
+    lv_area_t aa;
+    lv_area_t bb;
+    lv_area_t common;
+    lv_obj_get_coords(a, &aa);
+    lv_obj_get_coords(b, &bb);
+    return lv_area_intersect(&common, &aa, &bb);
+}
+
+} // namespace
+
+TEST_CASE_METHOD(InputShaperPreviewFixture, "the results view's legend, colors and table fit",
+                 "[input_shaper][panel][results]") {
+    ispta::InputShaperPanelTestAccess::set_parent_screen(*panel_, test_screen());
+    REQUIRE(panel_->rebuild());
+    view_ = panel_->get_root();
+    helix::ui::UpdateQueue::instance().drain();
+    set_reachable(true);
+
+    panel_->handle_calibrate_x_clicked();
+    REQUIRE(run_until([&] { return subject_int("is_measuring_has_chart") == 1; }));
+    REQUIRE(chart().chart() != nullptr);
+    const lv_color_t measured = theme_manager_get_color("chart_measured");
+    CHECK(lv_color_eq(ui_frequency_response_chart_get_series_color(chart().chart(), 0), measured));
+
+    REQUIRE(run_until([&] { return panel_state() == 2; }));
+    lv_obj_update_layout(view_);
+
+    SECTION("the measured curve and its legend dot take chart_measured") {
+        auto* results = ispta::InputShaperPanelTestAccess::results_chart(*panel_, 'X');
+        REQUIRE(results != nullptr);
+        const int raw = ispta::InputShaperPanelTestAccess::raw_series_id(*panel_, 'X');
+        REQUIRE(raw >= 0);
+        CHECK(lv_color_eq(ui_frequency_response_chart_get_series_color(results, raw), measured));
+        CHECK(lv_color_eq(
+            lv_obj_get_style_bg_color(view_widget(view_, "legend_x_measured_dot"), LV_PART_MAIN),
+            measured));
+    }
+
+    SECTION("the legend shows in full on the opened results, clear of Save") {
+        lv_obj_t* save = view_widget(view_, "btn_save");
+        for (const char* name : {"legend_x_measured_dot", "legend_x_measured_label",
+                                 "legend_x_shaper_dot", "chart_container_x"}) {
+            lv_obj_t* w = view_widget(view_, name);
+            INFO(name);
+            CHECK(fully_visible(w));
+            CHECK_FALSE(overlaps(w, save));
+        }
+    }
+
+    SECTION("every comparison table row fits its table") {
+        lv_obj_t* table = view_widget(view_, "shaper_table_x");
+        lv_area_t table_box;
+        lv_obj_get_coords(table, &table_box);
+        const uint32_t rows = lv_obj_get_child_count(table);
+        int checked = 0;
+        for (uint32_t r = 0; r < rows; ++r) {
+            lv_obj_t* row = lv_obj_get_child(table, static_cast<int32_t>(r));
+            if (lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN) || lv_obj_get_child_count(row) < 4) {
+                continue;
+            }
+            lv_area_t row_box;
+            lv_obj_get_coords(row, &row_box);
+            const int32_t content_right =
+                row_box.x2 - lv_obj_get_style_pad_right(row, LV_PART_MAIN);
+            lv_area_t last;
+            lv_obj_get_coords(lv_obj_get_child(row, -1), &last);
+            INFO("row " << r << " last cell ends at " << last.x2 << ", content at " << content_right
+                        << ", table at " << table_box.x2);
+            CHECK(last.x2 <= content_right);
+            CHECK(row_box.x2 <= table_box.x2);
+            ++checked;
+        }
+        CHECK(checked >= 6);
+    }
 }

@@ -16,6 +16,8 @@
  * Both install and uninstall restart Moonraker over its API once the script
  * succeeds: the script runs under the service's NoNewPrivileges and cannot
  * sudo, so without that restart Moonraker never loads or drops the plugin.
+ * That restart is why both rows refuse, with a warning, while a job holds the
+ * machine.
  */
 
 #include "ui_modal.h"
@@ -24,10 +26,14 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/advanced_panel_test_access.h"
+#include "../test_helpers/plugin_script_sandbox.h"
+#include "../test_helpers/print_state_test_drivers.h"
+#include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "printer_state.h"
 
 #include <string>
+#include <vector>
 
 #include "../catch_amalgamated.hpp"
 
@@ -69,7 +75,27 @@ struct PluginUninstallFixture : LVGLUITestFixture {
     }
 
     ~PluginUninstallFixture() override {
+        helix::test::set_wire_state(get_printer_state(), PrintJobState::STANDBY);
         UpdateQueue::instance().drain();
+    }
+
+    std::vector<std::string> warnings;
+
+    void start_print() {
+        helix::ui::set_test_notification_warning_hook(
+            [this](const std::string& message) { warnings.push_back(message); });
+        helix::test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
+        UpdateQueue::instance().drain();
+        REQUIRE(job_holds_machine(get_printer_state().print_state().get_print_lifecycle()));
+    }
+
+    bool warned_about_printing() const {
+        for (const auto& w : warnings) {
+            if (w.find("while printing") != std::string::npos) {
+                return true;
+            }
+        }
+        return false;
     }
 
     int plugin_installed() {
@@ -92,6 +118,22 @@ struct PluginUninstallFixture : LVGLUITestFixture {
         lv_obj_send_event(button, LV_EVENT_CLICKED, nullptr);
         process_lvgl(50);
         UpdateQueue::instance().drain();
+    }
+
+    /// The install row, then the modal's Install button, with a stub install.sh
+    /// running @p script_body. Returns the result text the modal shows.
+    std::string install_with_script(const std::string& script_body) {
+        helix::test::PluginScriptSandbox scripts(AdvancedPanelTestAccess::plugin_installer(panel));
+        scripts.write_script(script_body);
+        AdvancedPanelTestAccess::tap_install_row(panel);
+        process_lvgl(50);
+        answer_modal("btn_install");
+        REQUIRE(scripts.script_args() == "--no-restart --auto ");
+        lv_obj_t* dialog = ModalStack::instance().top_dialog();
+        REQUIRE(dialog != nullptr);
+        lv_obj_t* message = lv_obj_find_by_name(dialog, "result_message");
+        REQUIRE(message != nullptr);
+        return lv_label_get_text(message);
     }
 
     /// A backdrop tap: the dismissal path no button answers.
@@ -173,6 +215,7 @@ TEST_CASE_METHOD(PluginUninstallFixture, "a needs-attention uninstall still clea
 
     CHECK(uninstall_runs == 1);
     CHECK(plugin_installed() == 0);
+    CHECK(restarts == 1);
 }
 
 TEST_CASE_METHOD(PluginUninstallFixture,
@@ -182,10 +225,11 @@ TEST_CASE_METHOD(PluginUninstallFixture,
     UpdateQueue::instance().drain();
     REQUIRE(plugin_installed() == 0);
 
-    AdvancedPanelTestAccess::finish_install(panel, true);
-    UpdateQueue::instance().drain();
+    const std::string message = install_with_script("exit 0");
 
     CHECK(restarts == 1);
+    CHECK(message.find("restarting") != std::string::npos);
+    // Files on disk are not a loaded plugin: the reconnect's check decides.
     CHECK(plugin_installed() == 0);
 }
 
@@ -194,9 +238,70 @@ TEST_CASE_METHOD(PluginUninstallFixture, "a failed install restarts nothing",
     get_printer_state().set_helix_plugin_installed(false);
     UpdateQueue::instance().drain();
 
-    AdvancedPanelTestAccess::finish_install(panel, false);
-    UpdateQueue::instance().drain();
+    const std::string message = install_with_script("exit 1");
 
     CHECK(restarts == 0);
+    CHECK(message.find("restarting") == std::string::npos);
     CHECK(plugin_installed() == 0);
+}
+
+TEST_CASE_METHOD(PluginUninstallFixture, "the uninstall row refuses while a job holds the machine",
+                 "[advanced][plugin_installer]") {
+    start_print();
+
+    tap_row();
+
+    CHECK(ModalStack::instance().stack_empty());
+    CHECK(uninstall_runs == 0);
+    CHECK(restarts == 0);
+    CHECK(plugin_installed() == 1);
+    CHECK(warned_about_printing());
+}
+
+TEST_CASE_METHOD(PluginUninstallFixture,
+                 "a job that starts while the uninstall confirmation is open stops the uninstall",
+                 "[advanced][plugin_installer]") {
+    tap_row();
+    REQUIRE(ModalStack::instance().top_dialog() != nullptr);
+    start_print();
+
+    answer_modal("btn_primary");
+
+    CHECK(uninstall_runs == 0);
+    CHECK(restarts == 0);
+    CHECK(plugin_installed() == 1);
+    CHECK(warned_about_printing());
+}
+
+TEST_CASE_METHOD(PluginUninstallFixture, "the install row refuses while a job holds the machine",
+                 "[advanced][plugin_installer]") {
+    get_printer_state().set_helix_plugin_installed(false);
+    UpdateQueue::instance().drain();
+    start_print();
+
+    AdvancedPanelTestAccess::tap_install_row(panel);
+    process_lvgl(50);
+
+    CHECK(ModalStack::instance().stack_empty());
+    CHECK(restarts == 0);
+    CHECK(warned_about_printing());
+}
+
+TEST_CASE_METHOD(PluginUninstallFixture,
+                 "a job that starts while the install modal is open refuses the install",
+                 "[advanced][plugin_installer]") {
+    get_printer_state().set_helix_plugin_installed(false);
+    UpdateQueue::instance().drain();
+    helix::test::PluginScriptSandbox scripts(AdvancedPanelTestAccess::plugin_installer(panel));
+    scripts.write_script("exit 0");
+    AdvancedPanelTestAccess::tap_install_row(panel);
+    process_lvgl(50);
+    REQUIRE(ModalStack::instance().top_dialog() != nullptr);
+    start_print();
+
+    answer_modal("btn_install");
+
+    CHECK(scripts.script_args().empty());
+    CHECK(restarts == 0);
+    CHECK(warned_about_printing());
 }

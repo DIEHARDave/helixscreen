@@ -543,6 +543,7 @@
   <translation tag="Canceling turns the chamber target off so the wait ends, then stops the print." zh="取消会关闭腔体目标温度以结束等待，然后停止打印。"/>
   <translation tag="Cannot add to queue: internal error" zh="无法添加到队列：内部错误"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" zh="多单元 MMU 无法在此处更改"/>
+  <translation tag="Cannot change the HelixPrint plugin while printing" zh="打印时无法更改 HelixPrint 插件"/>
   <translation tag="Cannot control timelapse: printer not connected" zh="无法控制延时摄影: 打印机未连接"/>
   <translation tag="Cannot delete file: printer not connected" zh="无法删除文件: 打印机未连接"/>
   <translation tag="Cannot modify G-code: no temp directory available" zh="无法修改 G-code: 无可用临时目录"/>
@@ -1553,6 +1554,7 @@
   <translation tag="Heating: %d / %d°C" zh="加热中：%d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" zh="当前热床网格的高度图和平整度"/>
   <translation tag="HelixPrint Plugin" zh="HelixPrint 插件"/>
+  <translation tag="HelixPrint plugin updated. Moonraker is restarting..." zh="HelixPrint 插件已更新。Moonraker 正在重启..."/>
   <translation tag="HelixScreen" zh="HelixScreen"/>
   <translation tag="HelixScreen Crashed" zh="HelixScreen 崩溃"/>
   <translation tag="HelixScreen Macros" zh="HelixScreen 宏"/>

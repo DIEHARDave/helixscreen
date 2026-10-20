@@ -125,7 +125,7 @@
         </lv_obj>
 
         <!-- HelixPrint Plugin (INSTALLED - show Uninstall row) -->
-        <!-- Shows ONLY when value == 1 (installed), hidden otherwise (-1 or 0) -->
+        <!-- Shows ONLY when value == 1 (installed and enabled), hidden otherwise (-1 or 0) -->
         <lv_obj name="container_helix_plugin_uninstall"
                 width="100%" height="content" style_pad_top="0" style_pad_left="0" style_pad_bottom="0"
                 scrollable="false">

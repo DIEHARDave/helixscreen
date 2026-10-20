@@ -16,8 +16,9 @@
 
 #include "../../include/config.h"
 #include "../../include/helix_plugin_installer.h"
+#include "../../include/helix_version.h"
 #include "../test_helpers/helix_plugin_installer_test_access.h"
-#include "../test_helpers/unique_temp_dir.h"
+#include "../test_helpers/plugin_script_sandbox.h"
 
 #include <chrono>
 #include <filesystem>
@@ -31,43 +32,18 @@ using namespace helix;
 
 namespace {
 
-/// An installer whose install.sh lookup is confined to an empty temp dir, so
-/// nothing a test does can reach the repository's moonraker-plugin/install.sh.
-/// write_script() puts a stub there that records its arguments and then runs
-/// the given body.
-struct SandboxedInstaller {
-    SandboxedInstaller() : root(helix::test::unique_temp_dir("helix_plugin_installer")) {
-        std::filesystem::create_directories(root + "/moonraker-plugin");
-        HelixPluginInstallerTestAccess::set_script_search_root(installer, root);
-        installer.set_websocket_url("ws://localhost:7125/websocket");
-    }
-
-    ~SandboxedInstaller() {
-        std::error_code ec;
-        std::filesystem::remove_all(root, ec);
-    }
-
-    std::string script_path() const {
-        return root + "/moonraker-plugin/install.sh";
-    }
-
-    void write_script(const std::string& body) const {
-        std::ofstream(script_path()) << "#!/bin/sh\n"
-                                     << "printf '%s ' \"$@\" > '" << root << "/args'\n"
-                                     << body << "\n";
-    }
-
-    /// The arguments the stub was run with, space-separated; empty if it never ran.
-    std::string script_args() const {
-        std::ifstream in(root + "/args");
-        return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-    }
-
-    std::string root;
+struct InstallerHolder {
     HelixPluginInstaller installer;
 };
 
+/// An installer whose install.sh lookup is confined to an empty temp dir, so
+/// nothing a test does can reach the repository's moonraker-plugin/install.sh.
+struct SandboxedInstaller : InstallerHolder, helix::test::PluginScriptSandbox {
+    SandboxedInstaller() : PluginScriptSandbox(installer) {}
+};
+
 } // namespace
+
 TEST_CASE("HelixPluginInstaller is_local_moonraker WSS handling", "[plugin_installer]") {
     SECTION("is_local_moonraker answers from the URL the installer was given") {
         // The predicate itself is tested once, in test_host_identity.cpp. What
@@ -143,26 +119,174 @@ TEST_CASE("HelixPluginInstaller", "[plugin_installer]") {
         REQUIRE(installer.is_local_moonraker() == false);
     }
 
-    SECTION("get_remote_install_command returns valid curl command") {
+    SECTION("get_remote_install_command pins the command to this app's release") {
         helix::HelixPluginInstaller installer;
+        const std::string ref = plugin_release_ref(helix_version());
 
-        std::string cmd = installer.get_remote_install_command();
-
-        // Should start with curl
-        REQUIRE(cmd.find("curl") == 0);
-
-        // Should use -sSL flags (silent, show errors, follow redirects)
-        REQUIRE(cmd.find("-sSL") != std::string::npos);
-
-        // Should pipe to bash
-        REQUIRE(cmd.find("| bash") != std::string::npos);
-
-        // Should reference the remote-install.sh script
-        REQUIRE(cmd.find("remote-install.sh") != std::string::npos);
-
-        // Should be from GitHub raw
-        REQUIRE(cmd.find("raw.githubusercontent.com") != std::string::npos);
+        CHECK(installer.get_remote_install_command() == plugin_remote_install_command(ref));
     }
+}
+
+TEST_CASE("plugin_release_ref names the release tag of an app version", "[plugin_installer]") {
+    CHECK(plugin_release_ref("1.2.0") == "v1.2.0");
+    CHECK(plugin_release_ref("1.1.0-beta.10") == "v1.1.0-beta.10");
+    CHECK(plugin_release_ref("1.1.0-beta+abc1234") == "v1.1.0-beta");
+    // A build that is no release reads its plugin from main.
+    CHECK(plugin_release_ref("dev") == "main");
+    CHECK(plugin_release_ref("") == "main");
+}
+
+TEST_CASE("parse_plugin_version reads helix_print.py's PLUGIN_VERSION line", "[plugin_installer]") {
+    CHECK(parse_plugin_version("import os\n\nPLUGIN_VERSION = \"1.2.0\"\n") == "1.2.0");
+    CHECK(parse_plugin_version("PLUGIN_VERSION = \"2.0.0-rc1\"\nx = 1\n") == "2.0.0-rc1");
+    // Only an assignment at the start of a line counts, not a mention.
+    CHECK(parse_plugin_version("log(f\"v{PLUGIN_VERSION}\")\n# PLUGIN_VERSION = \"9\"\n") == "");
+    CHECK(parse_plugin_version("PLUGIN_VERSION = \"unterminated\nnext\n") == "");
+    CHECK(parse_plugin_version("") == "");
+}
+
+TEST_CASE("decide_plugin_self_heal: what the startup check does about the plugin",
+          "[plugin_installer]") {
+    PluginSelfHealFacts f;
+    f.local = true;
+    f.bundled_version = "1.2.0";
+    f.reported_version = "1.2.0";
+
+    SECTION("a link this app re-pointed needs a restart to load the plugin") {
+        f.link = PluginLinkCheck::Relinked;
+        f.reported_version = ""; // a dangling link loaded nothing
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
+    }
+    SECTION("a current link running the version this app ships is left alone") {
+        f.link = PluginLinkCheck::Current;
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::Nothing);
+    }
+    SECTION("a current link running another version is reloaded") {
+        f.link = PluginLinkCheck::Current;
+        f.reported_version = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
+    }
+    SECTION("a restart waits while a job holds the machine") {
+        f.link = PluginLinkCheck::Relinked;
+        f.job_holds = true;
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::WaitForJob);
+    }
+    SECTION("a plugin this app did not find installed is never touched") {
+        f.link = PluginLinkCheck::NotOurs;
+        f.reported_version = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::Nothing);
+    }
+    SECTION("a failed relink restarts nothing") {
+        f.link = PluginLinkCheck::Failed;
+        f.reported_version = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::Nothing);
+    }
+    SECTION("an unknown version on either side is no mismatch") {
+        f.link = PluginLinkCheck::Current;
+        f.bundled_version = "";
+        f.reported_version = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::Nothing);
+    }
+    SECTION("a mismatch an earlier start already restarted for is not restarted for again") {
+        f.link = PluginLinkCheck::Current;
+        f.reported_version = "1.1.0";
+        f.memory.restarted_for_bundled = "1.2.0";
+        f.memory.restarted_for_reported = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::GiveUp);
+        // ... nor while a job holds the machine.
+        f.job_holds = true;
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::GiveUp);
+    }
+    SECTION("a new version pair gets one fresh attempt") {
+        f.link = PluginLinkCheck::Current;
+        f.reported_version = "1.1.0";
+        f.memory.restarted_for_bundled = "1.1.5"; // the app updated since
+        f.memory.restarted_for_reported = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
+        f.memory.restarted_for_bundled = "1.2.0";
+        f.memory.restarted_for_reported = "1.0.9"; // the plugin moved since
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
+    }
+    SECTION("a re-pointed link restarts even for a pair already tried") {
+        f.link = PluginLinkCheck::Relinked;
+        f.reported_version = "1.1.0";
+        f.memory.restarted_for_bundled = "1.2.0";
+        f.memory.restarted_for_reported = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
+    }
+    SECTION("a link re-pointed at the same file again after its restart is not restarted for") {
+        f.link = PluginLinkCheck::Relinked;
+        f.plugin_file = "/opt/helixscreen/moonraker-plugin/helix_print.py";
+        f.memory.relinked_for = f.plugin_file;
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::GiveUp);
+        f.job_holds = true;
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::GiveUp);
+        // A link re-pointed at another file is a new problem.
+        f.job_holds = false;
+        f.memory.relinked_for = "/home/pi/helixscreen/moonraker-plugin/helix_print.py";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
+    }
+    SECTION("a remote Moonraker's mismatch is only reported, whatever the link") {
+        f.local = false;
+        f.link = PluginLinkCheck::Relinked;
+        f.reported_version = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::ReportOnly);
+        f.reported_version = "1.2.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::Nothing);
+    }
+}
+
+TEST_CASE("remember_plugin_self_heal: what the startup check keeps for the next start",
+          "[plugin_installer]") {
+    PluginSelfHealFacts f;
+    f.local = true;
+    f.bundled_version = "1.2.0";
+    f.reported_version = "1.1.0";
+    f.plugin_file = "/opt/helixscreen/moonraker-plugin/helix_print.py";
+
+    SECTION("a restart for a mismatch keeps the pair it is for") {
+        f.link = PluginLinkCheck::Current;
+        const auto m = remember_plugin_self_heal(f, PluginSelfHealStep::RestartNow);
+        CHECK(m.restarted_for_bundled == "1.2.0");
+        CHECK(m.restarted_for_reported == "1.1.0");
+        CHECK(m.relinked_for.empty());
+    }
+    SECTION("a restart for a re-pointed link keeps the file, even when it waits for a job") {
+        f.link = PluginLinkCheck::Relinked;
+        f.reported_version = "";
+        const auto m = remember_plugin_self_heal(f, PluginSelfHealStep::WaitForJob);
+        CHECK(m.relinked_for == f.plugin_file);
+        CHECK(m.restarted_for_bundled.empty());
+    }
+    SECTION("a link found current forgets the file; agreeing versions forget the pair") {
+        f.link = PluginLinkCheck::Current;
+        f.reported_version = "1.2.0";
+        f.memory = {"1.2.0", "1.1.0", f.plugin_file};
+        const auto m = remember_plugin_self_heal(f, PluginSelfHealStep::Nothing);
+        CHECK(m == PluginSelfHealMemory{});
+    }
+    SECTION("giving up keeps what the restart was for") {
+        f.link = PluginLinkCheck::Relinked;
+        f.memory.relinked_for = f.plugin_file;
+        const auto m = remember_plugin_self_heal(f, PluginSelfHealStep::GiveUp);
+        CHECK(m.relinked_for == f.plugin_file);
+    }
+    SECTION("a failed check forgets nothing about the link") {
+        f.link = PluginLinkCheck::Failed;
+        f.memory.relinked_for = f.plugin_file;
+        CHECK(remember_plugin_self_heal(f, PluginSelfHealStep::Nothing).relinked_for ==
+              f.plugin_file);
+    }
+}
+
+TEST_CASE("the remote install command runs one release's wrapper with sh, pinned to it",
+          "[plugin_installer]") {
+    const std::string cmd = plugin_remote_install_command("v1.1.0-beta.10");
+
+    CHECK(cmd == "curl -fsSL https://raw.githubusercontent.com/prestonbrown/helixscreen/"
+                 "v1.1.0-beta.10/moonraker-plugin/remote-install.sh | sh -s -- v1.1.0-beta.10");
+    CHECK(cmd.find("bash") == std::string::npos);
+    CHECK(cmd.find("/main/") == std::string::npos);
 }
 
 // ============================================================================
@@ -291,6 +415,8 @@ TEST_CASE("HelixPluginInstaller install_local_sync runs the script it finds",
         CHECK(result.success);
         CHECK(installer.get_state() == helix::PluginInstallState::SUCCESS);
         CHECK(sandbox.script_args() == "--no-restart --auto ");
+        // The script restarts nothing, so the result must not say Moonraker is restarting.
+        CHECK(result.message.find("restarting") == std::string::npos);
     }
 
     SECTION("non-zero exit: fails") {
@@ -432,4 +558,21 @@ TEST_CASE("script_output_lines strips install.sh color codes and blank lines",
     CHECK(lines[0] == "[INFO] HelixPrint Auto-Install Mode");
     CHECK(lines[1] == "[ERROR] Could not auto-detect Moonraker installation.");
     CHECK(lines[2] == "trailing without newline");
+}
+
+TEST_CASE("decide_plugin_turn keeps a plugin action off a print and what follows it",
+          "[plugin_installer]") {
+    using helix::decide_plugin_turn;
+    using Step = helix::PluginTurnStep;
+
+    // wanted, job_holds, waited_for_job, {modal_up, print_status_open}
+    CHECK(decide_plugin_turn(false, false, false, {false, false}) == Step::Stop);
+    CHECK(decide_plugin_turn(false, true, true, {true, true}) == Step::Stop);
+    CHECK(decide_plugin_turn(true, true, false, {false, false}) == Step::WaitForJob);
+    CHECK(decide_plugin_turn(true, true, true, {true, true}) == Step::WaitForJob);
+    // The first look after a job lets go waits for its completion flow.
+    CHECK(decide_plugin_turn(true, false, true, {false, false}) == Step::WaitForScreen);
+    CHECK(decide_plugin_turn(true, false, false, {true, false}) == Step::WaitForScreen);
+    CHECK(decide_plugin_turn(true, false, false, {false, true}) == Step::WaitForScreen);
+    CHECK(decide_plugin_turn(true, false, false, {false, false}) == Step::Go);
 }
