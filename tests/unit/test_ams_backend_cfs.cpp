@@ -5452,6 +5452,23 @@ TEST_CASE("CFS phase verify: only the matching sensor edge retires a fault", "[a
     CHECK_FALSE(AmsBackendCfs::phase_fault_resolved(V::Unverifiable, true));
 }
 
+TEST_CASE("CFS box runout notice: a fresh mid-job runout with a fed toolhead",
+          "[ams][cfs][runout]") {
+    using B = AmsBackendCfs;
+    CHECK(B::box_runout_needs_notice(0, 1, /*job_running=*/true, /*toolhead=*/true));
+
+    // The latch reads 1 on an idle machine and on the first frame after
+    // connect; neither is a runout that just happened.
+    CHECK_FALSE(B::box_runout_needs_notice(-1, 1, true, true));
+    CHECK_FALSE(B::box_runout_needs_notice(1, 1, true, true));
+    // Reload, not runout.
+    CHECK_FALSE(B::box_runout_needs_notice(1, 0, true, true));
+    // No job: nothing is consuming the tube.
+    CHECK_FALSE(B::box_runout_needs_notice(0, 1, false, true));
+    // Toolhead already empty: the firmware's own runout fault covers it.
+    CHECK_FALSE(B::box_runout_needs_notice(0, 1, true, false));
+}
+
 TEST_CASE("CFS phase verify: a good load completes to IDLE with no fault", "[ams][cfs][968]") {
     CfsRemapHelper backend;
 

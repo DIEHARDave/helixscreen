@@ -6,6 +6,7 @@
 #include "ui_error_reporting.h"
 #include "ui_insert_notice.h"
 #include "ui_temperature_utils.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "ams_bypass_policy.h"
@@ -1663,7 +1664,7 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
     // (2026-06-18, live K2 runout->reload): runout / path-empty signal —
     // 1 when no filament at the box gate (pre-load, runout), 0 when loaded
     // and feeding. Reads only the notification's own fields — no
-    // system_info_ access, so no lock needed here. No UI effect yet.
+    // system_info_ access, so no lock needed for the transition itself.
     if (box.contains("filament_useup") && box["filament_useup"].is_number()) {
         int useup = box["filament_useup"].get<int>();
         if (useup != last_filament_useup_) {
@@ -1679,7 +1680,31 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
                           helix::json_util::safe_int(box, "filament", -1),
                           helix::json_util::safe_int(box, "auto_refill", -1),
                           helix::json_util::safe_int(box, "enable", -1));
+            const int prev_useup = last_filament_useup_;
             last_filament_useup_ = useup;
+
+            bool toolhead_has_filament = false;
+            std::string slot_name;
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                toolhead_has_filament = filament_sensor_seen_ && last_filament_detected_;
+                slot_name = CfsMaterialDb::slot_to_tnn(system_info_.current_slot);
+            }
+            if (box_runout_needs_notice(prev_useup, useup, print_holds_machine,
+                                        toolhead_has_filament)) {
+                spdlog::info("[AMS CFS] box ran out of filament on {} mid-job; toolhead still fed",
+                             slot_name.empty() ? "?" : slot_name);
+                const std::string msg =
+                    slot_name.empty()
+                        ? std::string(lv_tr("The CFS ran out of filament. Printing continues on "
+                                            "what is left in the tube."))
+                        : fmt::format(fmt::runtime(lv_tr("The CFS ran out of filament in {}. "
+                                                         "Printing continues on what is left "
+                                                         "in the tube.")),
+                                      slot_name);
+                // handle_status runs on the main thread, so the toast is raised directly.
+                ToastManager::instance().show(ToastSeverity::WARNING, msg.c_str(), 10000);
+            }
         }
     }
 
@@ -4157,6 +4182,13 @@ bool AmsBackendCfs::phase_fault_resolved(PhaseVerdict verdict, bool filament_det
         break;
     }
     return false;
+}
+
+bool AmsBackendCfs::box_runout_needs_notice(int prev_useup, int useup, bool job_running,
+                                            bool toolhead_has_filament) {
+    // filament_useup is a sticky latch that reads 1 on an idle machine, so only
+    // a fresh 0 -> 1 edge is a runout; the first reading (-1) is not.
+    return prev_useup == 0 && useup == 1 && job_running && toolhead_has_filament;
 }
 
 void AmsBackendCfs::retire_resolved_phase_fault_locked(bool filament_detected) {
