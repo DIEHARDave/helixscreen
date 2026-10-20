@@ -249,3 +249,63 @@ TEST_CASE_METHOD(LVGLTestFixture, "GCode viewer: no two viewers ever share a loa
     lv_obj_delete(neighbour);
     lv_obj_delete(successor);
 }
+
+namespace {
+
+/// The viewer's loading card: the child holding the spinner.
+lv_obj_t* loading_card(lv_obj_t* viewer) {
+    for (uint32_t i = 0; i < lv_obj_get_child_count(viewer); ++i) {
+        lv_obj_t* child = lv_obj_get_child(viewer, static_cast<int32_t>(i));
+        for (uint32_t j = 0; j < lv_obj_get_child_count(child); ++j) {
+            if (lv_obj_check_type(lv_obj_get_child(child, static_cast<int32_t>(j)),
+                                  &lv_spinner_class)) {
+                return child;
+            }
+        }
+    }
+    return nullptr;
+}
+
+} // namespace
+
+// A load can start inside a queued callback (a file pick delivered through the
+// queue), where running queued work or deleting synchronously corrupts the
+// batch it runs in. Replacing the previous load's card does neither.
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "GCode viewer: a new load replaces the loading card without running queued work",
+                 "[gcode][viewer][drain_reentrancy]") {
+    const std::string first = find_test_asset("xyz-10mm-calibration-cube.gcode");
+    REQUIRE_FALSE(first.empty()); // run helix-tests from the repo root
+    helix::ScopedEnv restore_streaming("HELIX_GCODE_STREAMING");
+    ::setenv("HELIX_GCODE_STREAMING", "off", 1);
+
+    lv_obj_t* viewer = ui_gcode_viewer_create(test_screen());
+    REQUIRE(viewer != nullptr);
+    lv_obj_set_size(viewer, 240, 240);
+    lv_obj_update_layout(viewer);
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+
+    ui_gcode_viewer_load_file(viewer, first.c_str());
+    lv_obj_t* old_card = loading_card(viewer);
+    REQUIRE(old_card != nullptr);
+
+    int old_card_deleted = 0;
+    lv_obj_add_event_cb(
+        old_card, [](lv_event_t* e) { ++*static_cast<int*>(lv_event_get_user_data(e)); },
+        LV_EVENT_DELETE, &old_card_deleted);
+
+    bool ran = false;
+    helix::ui::UpdateQueue::instance().queue("test::drain_canary", [&ran]() { ran = true; });
+    ui_gcode_viewer_load_file(viewer, first.c_str());
+
+    CHECK_FALSE(ran);
+    // Deferred: the old card is freed on LVGL's async tick, not under the load.
+    CHECK(old_card_deleted == 0);
+
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    CHECK(ran);
+    process_lvgl(20);
+    CHECK(old_card_deleted == 1);
+    lv_obj_delete(viewer);
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+}

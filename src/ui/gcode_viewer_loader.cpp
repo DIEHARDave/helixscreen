@@ -322,16 +322,9 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
     spdlog::info("[GCode Viewer] File size: {}KB, streaming mode: {}", file_size / 1024,
                  use_streaming ? "ON" : "OFF");
 
-    // Clean up previous loading UI if it exists — freeze queue to prevent
-    // background thread from enqueueing spinner animation callbacks mid-delete
-    if (st->loading_container) {
-        auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-        helix::ui::UpdateQueue::instance().drain();
-        helix::ui::safe_delete(st->loading_container);
-        st->loading_container = nullptr;
-        st->loading_spinner = nullptr;
-        st->loading_label = nullptr;
-    }
+    // The previous load's card. The generation bump above already turns that
+    // load's queued results into no-ops, so nothing queued reaches the card.
+    remove_loading_ui(st);
 
     // =========================================================================
     // STREAMING MODE PATH
