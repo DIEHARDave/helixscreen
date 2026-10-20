@@ -102,7 +102,8 @@ find_moonraker_update_manager_dir() {
 }
 
 # Print the running Moonraker's python package directory (the one holding
-# moonraker.py) as a path from here. Empty when no Moonraker is running.
+# moonraker.py) as a path from here. Empty when no Moonraker is running, or
+# when it runs as a module (python -m moonraker), which names no file.
 running_moonraker_package_dir() {
     local script
     script=$(running_moonraker_process | sed -n 2p)

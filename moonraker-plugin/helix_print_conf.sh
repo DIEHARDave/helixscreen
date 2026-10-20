@@ -89,19 +89,30 @@ moonraker_local_url() {
     printf 'http://127.0.0.1:%s' "$(moonraker_conf_port "$1" "${2:-}")"
 }
 
+# The awk program that reads a process's argv, one element per line, and
+# prints what makes it Moonraker: the moonraker.py it runs, or "-m" and the
+# module it runs (python3 -m moonraker.moonraker on the CC1). Moonraker is a
+# python interpreter (argv[0] python, python3, python3.11, ...); an init
+# script, editor or log viewer whose argv names the file comes and goes
+# beside it and is not Moonraker. scripts/helix-launcher.sh matches the same
+# two shapes. Prints nothing for any other process.
+# shellcheck disable=SC2016  # awk's own $
+HELIX_MOONRAKER_ARGV_AWK='
+    NR == 1 { n = split($0, part, "/"); if (part[n] !~ /^python[0-9.]*$/) exit; next }
+    module { if ($0 ~ /^moonraker(\.moonraker)?$/) print "-m " $0; exit }
+    $0 == "-m" { module = 1; next }
+    /^-m/ { if ($0 ~ /^-mmoonraker(\.moonraker)?$/) print "-m " substr($0, 3); exit }
+    /(^|\/)moonraker\.py$/ { print; exit }'
+
 # Print the running Moonraker's /proc/<pid> directory under HELIX_PROC_ROOT
-# (tests point it at a fixture tree), else /proc, and, on the next line, the
-# moonraker.py its argv names. Moonraker is a python interpreter (argv[0] python, python3,
-# python3.11, ...) running moonraker.py; an init script, editor or log viewer
-# whose argv names the file comes and goes beside it and is not Moonraker.
-# Returns 1, printing nothing, when no Moonraker runs.
+# (tests point it at a fixture tree), else /proc, and, on the next line, what
+# HELIX_MOONRAKER_ARGV_AWK printed for it: the moonraker.py its argv names, or
+# "-m <module>". Returns 1, printing nothing, when no Moonraker runs.
 running_moonraker_process() {
     _rmp_root="${HELIX_PROC_ROOT:-/proc}"
     for _rmp_f in "$_rmp_root"/[0-9]*/cmdline; do
         [ -r "$_rmp_f" ] || continue
-        _rmp_script=$(tr '\000' '\n' < "$_rmp_f" 2>/dev/null | awk '
-            NR == 1 { n = split($0, part, "/"); if (part[n] !~ /^python[0-9.]*$/) exit; next }
-            /(^|\/)moonraker\.py$/ { print; exit }')
+        _rmp_script=$(tr '\000' '\n' < "$_rmp_f" 2>/dev/null | awk "$HELIX_MOONRAKER_ARGV_AWK")
         [ -n "$_rmp_script" ] || continue
         printf '%s\n%s\n' "$(dirname "$_rmp_f")" "$_rmp_script"
         return 0
@@ -149,19 +160,55 @@ running_moonraker_identity() {
     printf '%s %s' "${_rmy_proc##*/}" "$(proc_start_ticks "$_rmy_proc")"
 }
 
-# Whether the Moonraker process whose running_moonraker_identity was @1 has
-# gone, waiting up to @2 seconds (default 5) for it. True at once when @1 is
-# empty: with no Moonraker seen before a restart there is nothing to compare,
-# and the wait for Moonraker to answer judges that restart.
-moonraker_restarted_since() {
-    [ -n "$1" ] || return 0
-    _mrs_waited=0
-    while [ "$(running_moonraker_identity)" = "$1" ]; do
-        [ "$_mrs_waited" -lt "${2:-5}" ] || return 1
+# Whether the process whose running_moonraker_identity was @1 still runs:
+# one read of its stat, with no walk over /proc.
+moonraker_identity_alive() {
+    [ -n "$1" ] || return 1
+    _mia_proc="${HELIX_PROC_ROOT:-/proc}/${1%% *}"
+    [ -d "$_mia_proc" ] && [ "$(proc_start_ticks "$_mia_proc")" = "${1#* }" ]
+}
+
+# Print the time in whole seconds. Every wait here runs on this clock, so an
+# HTTP probe or a /proc walk that takes seconds of its own counts against the
+# wait instead of stretching it.
+helix_now() {
+    date +%s
+}
+
+# Wait up to @2 seconds for the Moonraker process whose identity was @1 to
+# exit. True once it has, and at once when @1 is empty.
+moonraker_wait_gone() {
+    _mwg_end=$(($(helix_now) + $2))
+    while moonraker_identity_alive "$1"; do
+        [ "$(helix_now)" -lt "$_mwg_end" ] || return 1
         sleep 1
-        _mrs_waited=$((_mrs_waited + 1))
     done
     return 0
+}
+
+# Watch the Moonraker at base URL @2, whose process had identity @1 before a
+# restart was asked of it, for up to @3 seconds. Returns 0 once the restart is
+# seen under way: that process is gone, or, when @4 says Moonraker answered
+# before, it failed to answer two checks in a row. Returns 1 when nothing
+# changed by the end.
+moonraker_restart_seen() {
+    _mrs_end=$(($(helix_now) + $3))
+    _mrs_quiet=0
+    while :; do
+        if [ -n "$1" ] && ! moonraker_identity_alive "$1"; then
+            return 0
+        fi
+        if [ -z "${4:-}" ]; then
+            :
+        elif moonraker_answers "$2/server/info"; then
+            _mrs_quiet=0
+        else
+            _mrs_quiet=$((_mrs_quiet + 1))
+            [ "$_mrs_quiet" -lt 2 ] || return 0
+        fi
+        [ "$(helix_now)" -lt "$_mrs_end" ] || return 1
+        sleep 1
+    done
 }
 
 # Whether systemd is the init of the host whose /run is @1, judged by its
@@ -251,11 +298,41 @@ moonraker_answers() {
     moonraker_get "$1" "${2:-}" > /dev/null
 }
 
-# Whether the Moonraker at base URL @1 reports a print that is printing or
-# paused. False when it cannot be asked: then no job is known to be at risk.
-moonraker_job_active() {
-    moonraker_get "$1/printer/objects/query?print_stats=state" 5 |
-        grep -Eq '"state"[[:space:]]*:[[:space:]]*"(printing|paused)"'
+# Print what the Moonraker at base URL @1 reports of a print: "active" for one
+# printing or paused, "idle" for none, "unknown" when it cannot be asked in
+# time. /server/info's body @2, when it names a Klipper that is not ready,
+# means no print runs.
+moonraker_job_state() {
+    if printf '%s' "${2:-}" | grep -q '"klippy_state"' &&
+        ! printf '%s' "${2:-}" | grep -Eq '"klippy_state"[[:space:]]*:[[:space:]]*"ready"'; then
+        printf 'idle'
+        return 0
+    fi
+    if ! _mjs_body=$(moonraker_get "$1/printer/objects/query?print_stats=state" 5); then
+        printf 'unknown'
+    elif printf '%s' "$_mjs_body" | grep -Eq '"state"[[:space:]]*:[[:space:]]*"(printing|paused)"'; then
+        printf 'active'
+    else
+        printf 'idle'
+    fi
+}
+
+# Whether a print holds off a restart of the Moonraker at base URL @1: one is
+# printing or paused, or one cannot be ruled out, because a Moonraker process
+# runs and does not answer in time (a busy board answers slowly mid-print). A
+# Moonraker with no process and no answer holds nothing off: no client of it
+# is left to drop. Sets MOONRAKER_UP to 1 when Moonraker answered, else
+# empty, and MOONRAKER_INFO to the body of its /server/info.
+moonraker_restart_held() {
+    MOONRAKER_UP=1
+    if ! MOONRAKER_INFO=$(moonraker_get "$1/server/info" 2); then
+        MOONRAKER_INFO=""
+        MOONRAKER_UP=""
+        running_moonraker_process >/dev/null || return 1
+        MOONRAKER_INFO=$(moonraker_get "$1/server/info" 10) || return 0
+        MOONRAKER_UP=1
+    fi
+    [ "$(moonraker_job_state "$1" "$MOONRAKER_INFO")" != idle ]
 }
 
 # POST an empty body to URL @1, waiting at most @2 seconds (default 5).
@@ -287,10 +364,9 @@ request_moonraker_restart() {
 moonraker_restart_over_http() {
     _mro_url="${1:-$(moonraker_local_url "")}"
     request_moonraker_restart "$_mro_url" || return 1
-    _mro_quiet=0
-    while [ "$_mro_quiet" -lt 5 ] && moonraker_answers "$_mro_url/server/info"; do
+    _mro_end=$(($(helix_now) + 5))
+    while [ "$(helix_now)" -lt "$_mro_end" ] && moonraker_answers "$_mro_url/server/info"; do
         sleep 1
-        _mro_quiet=$((_mro_quiet + 1))
     done
     return 0
 }
@@ -323,39 +399,86 @@ moonraker_service() {
     return 0
 }
 
+# Whether systemd reports the moonraker unit between states (activating, as
+# during its Restart= delay, or deactivating): a missing process is then no
+# sign that nothing is coming back.
+moonraker_unit_in_transition() {
+    systemd_is_init "${HELIX_RUN_DIR:-/run}" && command -v systemctl >/dev/null 2>&1 || return 1
+    case "$(systemctl is-active moonraker 2>/dev/null)" in
+        activating | deactivating | reloading) return 0 ;;
+    esac
+    return 1
+}
+
 # Wait for the Moonraker at base URL @1 to answer, up to HELIX_MOONRAKER_UP_SECS
 # seconds (default 90: a slow board logs "Starting Moonraker" 3 to 5s after
 # launch and answers well after that, and a restart's own component and
 # database loads come on top). With @2 "watch", stop early once no Moonraker
-# process has been seen for 3 checks in a row: nothing is coming back then.
-# Returns 0 when it answers, 2 when no process is left, 1 on the timeout.
+# process has been seen for 3 seconds and systemd is not bringing one back:
+# nothing is coming back then. Returns 0 when it answers, 2 when no process
+# is left, 1 on the timeout.
 moonraker_wait_up() {
-    _mwu_secs="${HELIX_MOONRAKER_UP_SECS:-90}"
-    _mwu_waited=0
-    _mwu_gone=0
+    _mwu_end=$(($(helix_now) + ${HELIX_MOONRAKER_UP_SECS:-90}))
+    _mwu_gone=""
     while ! moonraker_answers "$1/server/info"; do
+        _mwu_now=$(helix_now)
         if [ "${2:-}" = watch ]; then
-            if running_moonraker_process >/dev/null; then
-                _mwu_gone=0
+            if running_moonraker_process >/dev/null || moonraker_unit_in_transition; then
+                _mwu_gone=""
             else
-                _mwu_gone=$((_mwu_gone + 1))
-                [ "$_mwu_gone" -lt 3 ] || return 2
+                [ -n "$_mwu_gone" ] || _mwu_gone=$_mwu_now
+                [ $((_mwu_now - _mwu_gone)) -lt 3 ] || return 2
             fi
         fi
-        [ "$_mwu_waited" -lt "$_mwu_secs" ] || return 1
+        [ "$_mwu_now" -lt "$_mwu_end" ] || return 1
         sleep 1
-        _mwu_waited=$((_mwu_waited + 1))
     done
     return 0
 }
 
+# Whether Moonraker at base URL @1 may be started: no Moonraker process runs
+# and nothing answers on its port. A start beside a Moonraker that runs (one
+# still coming up, or one whose argv this host's matcher misses) would run a
+# second instance against the same port and database.
+moonraker_start_safe() {
+    ! running_moonraker_process >/dev/null && ! moonraker_answers "$1/server/info" 5
+}
+
+# Run action @3 (restart or start) of Moonraker's service way @2 (systemd, or
+# an init script's path) under prefix @1. systemd starts Moonraker under its
+# own context. An init script starts it as a child of this script, so it runs
+# detached: a new session where setsid exists, nice 0, oom_score_adj 0, stdio
+# on /dev/null, and nothing from the environment but PATH. A Moonraker it
+# starts then carries nothing of the caller's: HelixScreen's raised nice and
+# OOM score, its malloc settings, or the output pipe that closes when this
+# script exits.
+moonraker_service_run() {
+    if [ "$2" = systemd ]; then
+        # shellcheck disable=SC2086  # the prefix is a word list
+        $1 systemctl "$3" moonraker < /dev/null
+        return
+    fi
+    # shellcheck disable=SC2016,SC2086  # the -c string's own $; a word-list prefix
+    $1 sh -c 'renice 0 -p $$ > /dev/null 2>&1
+echo 0 2> /dev/null > "/proc/$$/oom_score_adj"
+cd /
+if command -v setsid > /dev/null 2>&1; then
+    exec env -i PATH="$PATH" HOME=/ setsid "$1" "$2"
+fi
+exec env -i PATH="$PATH" HOME=/ "$1" "$2"' sh "$2" "$3" < /dev/null > /dev/null 2>&1
+}
+
 # After a restart attempt, make sure the Moonraker at base URL @2 answers
 # again, starting it through moonraker_service start, run under prefix @1,
-# when no Moonraker process is left: a service script's restart can stop it
-# and fail to start it (start-stop-daemon refuses while the old process still
-# holds its pidfile). @3, when set, is called with a line for each problem.
+# when it is down: a service script's restart can stop it and fail to start
+# it (start-stop-daemon refuses while the old process still holds its
+# pidfile). @3, when set, is called with a line for each problem. @4 is the
+# identity of the Moonraker process before the restart, empty when none was
+# seen: then a missing process proves nothing, so Moonraker gets the whole
+# wait before anything starts it. Nothing is started while a Moonraker
+# process runs or anything answers on its port (moonraker_start_safe).
 # Returns 0 when it answers, 1 when it answers because this started it, 2
-# when it does not answer yet but a process runs or none can be seen to, and
+# when it does not answer yet but a process runs or none can be started, and
 # 3 when it is down and could not be started.
 moonraker_bring_back() {
     _mbb_pre="$1"
@@ -364,45 +487,51 @@ moonraker_bring_back() {
     _mbb_secs="${HELIX_MOONRAKER_UP_SECS:-90}"
     _mbb_ways=$(moonraker_service start)
     _mbb_watch=""
-    [ -z "$_mbb_ways" ] || _mbb_watch=watch
+    [ -z "$_mbb_ways" ] || [ -z "${4:-}" ] || _mbb_watch=watch
     _mbb_up=0
     moonraker_wait_up "$_mbb_url" "$_mbb_watch" || _mbb_up=$?
     [ "$_mbb_up" -ne 0 ] || return 0
-    if [ "$_mbb_up" -eq 1 ]; then
+    if [ -z "$_mbb_ways" ] || ! moonraker_start_safe "$_mbb_url"; then
         [ -z "$_mbb_warn" ] || "$_mbb_warn" "Moonraker did not respond within ${_mbb_secs} seconds of the restart"
         return 2
     fi
     _mbb_hint=""
+    _mbb_started=""
     _mbb_ifs=$IFS
     IFS='
 '
     for _mbb_way in $_mbb_ways; do
         IFS=$_mbb_ifs
         if [ "$_mbb_way" = systemd ]; then
-            set -- systemctl start moonraker
             _mbb_name="via systemctl"
             _mbb_hint=${_mbb_hint:-"sudo systemctl start moonraker"}
         else
-            set -- "$_mbb_way" start
             _mbb_name="with $_mbb_way"
             _mbb_hint=${_mbb_hint:-"$_mbb_way start"}
         fi
-        # shellcheck disable=SC2086  # the prefix is a word list
-        if $_mbb_pre "$@"; then
-            _mbb_up=0
-            moonraker_wait_up "$_mbb_url" watch || _mbb_up=$?
-            if [ "$_mbb_up" -eq 0 ]; then
-                [ -z "$_mbb_warn" ] || "$_mbb_warn" "Moonraker was not running after the restart, so it was started $_mbb_name"
-                return 1
-            fi
-            if [ "$_mbb_up" -eq 1 ]; then
-                [ -z "$_mbb_warn" ] || "$_mbb_warn" "Moonraker was started $_mbb_name but did not respond within ${_mbb_secs} seconds"
-                return 2
-            fi
+        # A start that failed may still have started it.
+        moonraker_start_safe "$_mbb_url" || break
+        if moonraker_service_run "$_mbb_pre" "$_mbb_way" start; then
+            _mbb_started="$_mbb_name"
+            break
         fi
         [ -z "$_mbb_warn" ] || "$_mbb_warn" "Could not start Moonraker $_mbb_name"
     done
     IFS=$_mbb_ifs
+    if [ -n "$_mbb_started" ] || ! moonraker_start_safe "$_mbb_url"; then
+        _mbb_up=0
+        moonraker_wait_up "$_mbb_url" "${_mbb_started:+watch}" || _mbb_up=$?
+        if [ "$_mbb_up" -eq 0 ]; then
+            [ -z "$_mbb_started" ] || [ -z "$_mbb_warn" ] ||
+                "$_mbb_warn" "Moonraker was not running after the restart, so it was started $_mbb_started"
+            [ -z "$_mbb_started" ] || return 1
+            return 0
+        fi
+        if ! moonraker_start_safe "$_mbb_url"; then
+            [ -z "$_mbb_warn" ] || "$_mbb_warn" "Moonraker runs but did not respond within ${_mbb_secs} seconds"
+            return 2
+        fi
+    fi
     if [ -n "$_mbb_warn" ]; then
         "$_mbb_warn" "MOONRAKER IS NOT RUNNING and could not be started. Start it now:"
         "$_mbb_warn" "  $_mbb_hint"
@@ -410,101 +539,138 @@ moonraker_bring_back() {
     return 3
 }
 
+# Moonraker restart timing, in seconds on helix_now's clock, each overridable
+# from the environment:
+#   HELIX_MOONRAKER_UP_SECS (90)    how long Moonraker gets to answer after a
+#                                   restart or a start, and an old process to exit
+#   HELIX_MOONRAKER_STOP_SECS (30)  how long a restart that reported success
+#                                   gets to be seen under way
+#   HELIX_MOONRAKER_SETTLE_SECS (5) the same for a restart that failed, which
+#                                   may still have signalled Moonraker to stop
+# A probe overruns a wait by at most its own cap, doubled where curl and wget
+# both try: 4s for /server/info. At the defaults restart_moonraker_via waits
+# at most about 700 seconds in all: four print checks (34s each: 4 + 20 +
+# 10), three attempts that restart nothing (44s each: a 10s request and the
+# 34s watch), the last attempt (44s), the old process's exit (94s),
+# Moonraker's answer (94s), up to four start checks (14s each) and a started
+# Moonraker's answer (94s), rounded up. The run
+# time of the service commands themselves comes on top: systemd bounds one by
+# the unit's stop and start timeouts, and an init script returns once it has
+# signalled. HelixPluginInstaller's timeout for --restart-moonraker exceeds
+# both.
+
 # Restart Moonraker, the command run under prefix @1 (a word list: a root
 # wrapper, or empty) for the service manager, Moonraker at base URL @2
 # (default as for request_moonraker_restart); command @3, when set, is called
-# with a line for each problem. While Moonraker answers, a print printing or
-# paused holds every restart off (it drops Klipper's API clients mid-job), and
-# its own in-place restart over HTTP comes first: it needs no root and no
-# service manager, and races no pidfile. The service manager
-# (moonraker_service) comes first instead when Moonraker does not answer, or
-# when /server/info lists helix_print among its components, and is the
-# fallback when Moonraker refuses the request. A service command counts only
-# when the Moonraker running before it is gone after
-# (moonraker_restarted_since): one can exit 0 and restart nothing. With
-# helix_print loaded and no service command restarting it, Moonraker is asked
-# to restart its own service (POST /machine/services/restart) before its
-# in-place restart. Every attempt ends in moonraker_bring_back, so a restart
-# that stopped Moonraker never leaves it down. Returns 0 when a service
-# manager restarted its process, 3
-# when Moonraker restarted itself, 4 when an active print holds the restart
-# off, 5 when Moonraker is down and could not be started, and 1 when nothing
-# restarted it.
+# with a line for each problem. A print printing or paused holds every
+# attempt off (it drops Klipper's API clients mid-job), checked again right
+# before each one (moonraker_restart_held). While Moonraker answers, its own
+# in-place restart over HTTP comes first: it needs no root and no service
+# manager, and races no pidfile. The service manager (moonraker_service) comes
+# first instead when Moonraker does not answer, or when /server/info lists
+# helix_print among its components (an in-place restart keeps every module it
+# has imported), and then Moonraker is asked to restart its own service
+# (POST /machine/services/restart) before its in-place restart.
+# One restart at a time: an attempt that Moonraker accepted, or that is seen
+# under way (moonraker_restart_seen), is the last, so no second restart lands
+# on one in flight. Every attempt that may have stopped Moonraker ends in
+# moonraker_bring_back, after the old process exits, so Moonraker is never
+# left down while it can be started. Returns 0 when a service manager
+# restarted its process, 3 when Moonraker restarted itself, 4 when a print
+# holds the restart off or cannot be ruled out, 5 when Moonraker is down and
+# could not be started, and 1 when nothing restarted it.
 restart_moonraker_via() {
     _rmv_pre="$1"
     _rmv_url="${2:-$(moonraker_local_url "")}"
     _rmv_warn="${3:-}"
-    _rmv_http=none
-    if _rmv_info=$(moonraker_get "$_rmv_url/server/info"); then
-        moonraker_job_active "$_rmv_url" && return 4
-        # Moonraker's in-place restart keeps every module it has imported, so
-        # a helix_print.py replaced under a loaded component runs only once
-        # the process itself restarts.
-        case "$_rmv_info" in
-            *'"helix_print"'*) _rmv_http=last ;;
-            *) _rmv_http=first ;;
-        esac
-    fi
-    if [ "$_rmv_http" = first ] && moonraker_restart_over_http "$_rmv_url"; then
-        _rmv_up=0
-        moonraker_bring_back "$_rmv_pre" "$_rmv_url" "$_rmv_warn" || _rmv_up=$?
-        [ "$_rmv_up" -ne 3 ] || return 5
-        return 3
-    fi
-    _rmv_ways=$(moonraker_service)
     _rmv_before=$(running_moonraker_identity)
+    moonraker_restart_held "$_rmv_url" && return 4
+    _rmv_order=$(moonraker_service)
+    case "$MOONRAKER_UP$MOONRAKER_INFO" in
+        '') ;;
+        *'"helix_print"'*) _rmv_order="$_rmv_order
+services
+inplace" ;;
+        *) _rmv_order="inplace
+$_rmv_order" ;;
+    esac
+    _rmv_kind=""
+    _rmv_held=""
+    _rmv_first=1
     _rmv_ifs=$IFS
     IFS='
 '
-    for _rmv_way in $_rmv_ways; do
+    for _rmv_way in $_rmv_order; do
         IFS=$_rmv_ifs
-        if [ "$_rmv_way" = systemd ]; then
-            set -- systemctl restart moonraker
-            _rmv_name="via systemctl"
-        else
-            set -- "$_rmv_way" restart
-            _rmv_name="with $_rmv_way"
+        # Moonraker's own service restart can be judged only by its process.
+        [ "$_rmv_way" != services ] || [ -n "$_rmv_before" ] || continue
+        if [ -z "$_rmv_first" ] && moonraker_restart_held "$_rmv_url"; then
+            _rmv_held=1
+            break
         fi
-        # shellcheck disable=SC2086  # the prefix is a word list
-        if ! $_rmv_pre "$@"; then
-            [ -z "$_rmv_warn" ] || "$_rmv_warn" "Could not restart Moonraker $_rmv_name"
-            # A restart that stopped Moonraker and failed to start it again
-            # leaves it to moonraker_bring_back.
-            if [ -n "$_rmv_before" ] && moonraker_restarted_since "$_rmv_before"; then
-                _rmv_up=0
-                moonraker_bring_back "$_rmv_pre" "$_rmv_url" "$_rmv_warn" || _rmv_up=$?
-                [ "$_rmv_up" -ne 3 ] || return 5
-                return 0
+        _rmv_first=""
+        _rmv_ok=""
+        case "$_rmv_way" in
+            inplace)
+                _rmv_name="over HTTP"
+                if moonraker_restart_over_http "$_rmv_url"; then
+                    _rmv_kind=inplace
+                    break
+                fi
+                ;;
+            services)
+                _rmv_name="through Moonraker's own service restart"
+                if moonraker_post "$_rmv_url/machine/services/restart?service=moonraker" 5; then
+                    _rmv_kind=service
+                    break
+                fi
+                ;;
+            *)
+                if [ "$_rmv_way" = systemd ]; then
+                    _rmv_name="via systemctl"
+                else
+                    _rmv_name="with $_rmv_way"
+                fi
+                ! moonraker_service_run "$_rmv_pre" "$_rmv_way" restart || _rmv_ok=1
+                ;;
+        esac
+        _rmv_secs="${HELIX_MOONRAKER_SETTLE_SECS:-5}"
+        [ -z "$_rmv_ok" ] || _rmv_secs="${HELIX_MOONRAKER_STOP_SECS:-30}"
+        # With no process seen and no answer before it, nothing tells an
+        # attempt's effect but its own exit status.
+        if [ -z "$_rmv_before" ] && [ -z "$MOONRAKER_UP" ]; then
+            if [ -n "$_rmv_ok" ]; then
+                _rmv_kind=service
+                break
             fi
-        elif moonraker_restarted_since "$_rmv_before"; then
-            _rmv_up=0
-            moonraker_bring_back "$_rmv_pre" "$_rmv_url" "$_rmv_warn" || _rmv_up=$?
-            [ "$_rmv_up" -ne 3 ] || return 5
-            return 0
+        elif moonraker_restart_seen "$_rmv_before" "$_rmv_url" "$_rmv_secs" "$MOONRAKER_UP"; then
+            _rmv_kind=service
+            break
+        fi
+        if [ -z "$_rmv_warn" ]; then
+            :
+        elif [ -n "$_rmv_ok" ]; then
+            "$_rmv_warn" "Moonraker kept running through a restart $_rmv_name"
         else
-            [ -z "$_rmv_warn" ] || "$_rmv_warn" "Moonraker kept running through a restart $_rmv_name"
+            "$_rmv_warn" "Could not restart Moonraker $_rmv_name"
         fi
     done
     IFS=$_rmv_ifs
-    # Moonraker restarts its own service with its own rights when
-    # moonraker.asvc allows it, which reaches a new process where this
-    # caller's service commands could not. Accepting the request proves
-    # nothing; only a Moonraker process that changed counts.
-    if [ "$_rmv_http" = last ] && [ -n "$_rmv_before" ] &&
-        moonraker_post "$_rmv_url/machine/services/restart?service=moonraker" 5 &&
-        moonraker_restarted_since "$_rmv_before" 15; then
-        _rmv_up=0
-        moonraker_bring_back "$_rmv_pre" "$_rmv_url" "$_rmv_warn" || _rmv_up=$?
-        [ "$_rmv_up" -ne 3 ] || return 5
-        return 0
+    if [ -z "$_rmv_kind" ]; then
+        [ -z "$_rmv_held" ] || return 4
+        return 1
     fi
-    if [ "$_rmv_http" = last ] && moonraker_restart_over_http "$_rmv_url"; then
-        _rmv_up=0
-        moonraker_bring_back "$_rmv_pre" "$_rmv_url" "$_rmv_warn" || _rmv_up=$?
-        [ "$_rmv_up" -ne 3 ] || return 5
-        return 3
+    # A service restart's old process exits before a new one can start.
+    if [ "$_rmv_kind" = service ] &&
+        ! moonraker_wait_gone "$_rmv_before" "${HELIX_MOONRAKER_UP_SECS:-90}"; then
+        [ -z "$_rmv_warn" ] || "$_rmv_warn" "Moonraker kept running through a restart $_rmv_name"
     fi
-    return 1
+    _rmv_up=0
+    moonraker_bring_back "$_rmv_pre" "$_rmv_url" "$_rmv_warn" "$_rmv_before" || _rmv_up=$?
+    [ "$_rmv_up" -ne 3 ] || return 5
+    [ "$_rmv_kind" != inplace ] || return 3
+    ! moonraker_identity_alive "$_rmv_before" || return 1
+    return 0
 }
 
 # Section headers this plugin owns in a Moonraker config: its own section, and

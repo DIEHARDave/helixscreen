@@ -383,7 +383,7 @@ setup_instrumented_home() {
     local home="$BATS_TEST_TMPDIR/home"
     setup_instrumented_home "$home"
     mock_real_curl 1
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
     local expected="$BATS_TEST_TMPDIR/expected_printer.cfg"
     write_original_printer_cfg "$expected"
 
@@ -404,7 +404,7 @@ setup_instrumented_home() {
     printf '[gcode_macro PRINT_START]\ngcode:\n    G28\n    # <<< HELIX_TRACKING v2 >>>\n    HELIX_PHASE_HOMING\n' \
         > "$c/printer.cfg"
     mock_real_curl 1
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
 
     run env HOME="$home" sh "$SCRIPT" --uninstall-auto
 
@@ -673,7 +673,7 @@ cat > /dev/null
 printf '%s %s %s\\n' \"\$HELIX_HTTP_METHOD\" \"\$HELIX_HTTP_URL\" \"\$HELIX_HTTP_TIMEOUT\" >> '$log'
 case \"\$HELIX_HTTP_URL\" in *server/info*) printf '%s' '{\"result\":{\"components\":[]}}' ;; esac
 exit 0"
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
 
     local bin="$BATS_TEST_TMPDIR/k2-path"
     mkdir -p "$bin"
@@ -747,7 +747,7 @@ exit 0"
 @test "the shared Moonraker helpers are defined once, in helix_print_conf.sh" {
     local fn f
     for fn in request_moonraker_restart moonraker_answers moonraker_restart_over_http moonraker_local_url \
-        moonraker_get moonraker_job_active moonraker_service restart_moonraker_via \
+        moonraker_get moonraker_job_state moonraker_service restart_moonraker_via \
         running_moonraker_root running_moonraker_ids; do
         grep -q "^$fn() {$" "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh" || fail "helix_print_conf.sh lacks $fn"
         for f in "$SCRIPT" "$REPO_ROOT"/scripts/lib/installer/*.sh; do
@@ -771,12 +771,16 @@ exit 0"
     local root="$BATS_TEST_TMPDIR/fx"
     setup_forgex_layout "$root"
     local chroot="$root/data/.mod/.forge-x"
-    # Moonraker answering 401: curl exits 0 unless -f makes that a 22.
-    mock_command_script "curl" 'case "$1" in --version) echo "curl 8.5.0"; exit 0;; esac
-for a in "$@"; do case "$a" in -f|-sf) exit 22;; esac; done
-exit 0'
+    # Moonraker answering 401 once restarted: curl exits 0 unless -f makes that a 22.
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
+if [ ! -d '$root/proc/1926' ]; then
+    case \"\$*\" in *server/info*) printf '%s' '{\"result\":{\"components\":[\"helix_print\"]}}' ;; esac
+    exit 0
+fi
+for a in \"\$@\"; do case \"\$a\" in -f|-sf) exit 22;; esac; done
+exit 0"
     mock_command_script "wget" 'exit 8'
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
     # The service manager's restart works, so the wait is what is judged.
     mkdir -p "$root/run/systemd/system"
     mock_command_script "systemctl" "case \"\$1\" in restart) mv '$root/proc/1925' '$root/proc/1926';; esac; exit 0"
@@ -1333,7 +1337,7 @@ setup_loaded_plugin_on_systemd() {
 case \"\$*\" in *' restart moonraker') mv '$home/proc/700' '$home/proc/701';; esac
 exit 0"
     mock_command_script "sudo" 'echo "sudo: The no new privileges flag is set" >&2; exit 1'
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
     mock_curl_helix_print_loaded "$curl_log"
 }
 
@@ -1371,7 +1375,7 @@ exit 0"
     if grep -q 'server/restart' "$curl_log"; then fail "fell back to the in-place restart: $(cat "$curl_log")"; fi
 }
 
-@test "--restart-moonraker whose service request leaves the same process counts only the in-place restart" {
+@test "--restart-moonraker whose accepted service request leaves the same process restarts nothing more" {
     local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log" curl_log="$BATS_TEST_TMPDIR/curl.log"
     setup_loaded_plugin_on_systemd "$home" "$log" "$curl_log"
     mock_command_script "systemctl" "printf '%s\\n' \"\$*\" >> '$log'
@@ -1379,9 +1383,9 @@ case \"\$*\" in *' restart moonraker') exit 1;; esac
 exit 0"
 
     run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --restart-moonraker
-    [ "$status" -eq 3 ] || fail "want 3 (in place), got $status: $output"
+    [ "$status" -eq 1 ] || fail "want 1 (nothing restarted), got $status: $output"
     grep -q 'machine/services/restart?service=moonraker' "$curl_log" || fail "never asked for the service restart"
-    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$curl_log" || fail "no in-place restart: $(cat "$curl_log")"
+    if grep -q 'server/restart' "$curl_log"; then fail "an in-place restart on top of the accepted one: $(cat "$curl_log")"; fi
 }
 
 @test "--restart-moonraker during a print restarts nothing and exits 4" {
@@ -1451,7 +1455,7 @@ mock_systemd_without_sudo() {
     setup_plain_home "$home"
     mock_systemd_without_sudo "$log"
     mock_real_curl 22 "$log"
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
 
     run env HOME="$home" sh "$SCRIPT" --auto
     [ "$status" -eq 0 ] || fail "install failed: $output"
@@ -1467,7 +1471,7 @@ mock_systemd_without_sudo() {
     setup_instrumented_home "$home"
     mock_systemd_without_sudo "$log"
     mock_real_curl 22 "$log"
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
 
     run env HOME="$home" sh "$SCRIPT" --uninstall-auto
     [ "$status" -eq 0 ] || fail "uninstall failed: $output"
@@ -1480,7 +1484,7 @@ mock_systemd_without_sudo() {
     local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log" n="$BATS_TEST_TMPDIR/info.count"
     setup_plain_home "$home"
     mock_systemd_without_sudo "$log"
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
     # /server/info answers the restart's first look and once more from the
     # stopping instance, fails once while it is down, then answers from the
     # new one, for the restart's own wait and then the installer's.
@@ -1746,7 +1750,7 @@ exit 0'
     mock_command_script "systemctl" 'exit 0'
     mock_command_script "sudo" 'exec "$@"'
     mock_real_curl 0 "$curl_log"
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
     local initd="$BATS_TEST_TMPDIR/etc/init.d"
     mkdir -p "$initd"
     printf '#!/bin/sh\necho "$*" >> "%s"\n' "$log" > "$initd/S56moonraker_service"
@@ -1768,7 +1772,7 @@ exit 0'
     printf '%s\0' python3 "$home/moonraker/moonraker/moonraker.py" > "$home/proc/700/cmdline"
     mock_command_script "systemctl" 'exit 0'
     mock_command_script "sudo" 'exec "$@"'
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
     # helix_print is loaded, so the init script goes first; Moonraker answers
     # only while $up exists.
     mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
@@ -1801,13 +1805,306 @@ INITEOF
 @test "moonraker_restart_over_http with no URL asks and waits at moonraker_local_url" {
     local log="$BATS_TEST_TMPDIR/curl.log"
     mock_real_curl 0 "$log"
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
 
     run sh -c 'set -eu; unset MOONRAKER_URL; . "$1"; moonraker_restart_over_http' sh \
         "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh"
     [ "$status" -eq 0 ] || fail "status $status: $output"
     grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$log" || fail "no request: $(cat "$log")"
     grep -q ' http://127.0.0.1:7125/server/info$' "$log" || fail "the wait did not poll Moonraker: $(cat "$log")"
+}
+
+# Write a Moonraker process entry for pid $2 under HOME $1's proc tree: argv
+# python3 and its moonraker.py, or the words after $2 when given.
+moonraker_proc() {
+    local home="$1" pid="$2"
+    shift 2
+    mkdir -p "$home/proc/$pid"
+    if [ "$#" -eq 0 ]; then
+        set -- python3 "$home/moonraker/moonraker/moonraker.py"
+    fi
+    printf '%s\0' "$@" > "$home/proc/$pid/cmdline"
+}
+
+# A host with no systemd (a Creality K1) whose Moonraker runs as pid 700 and
+# lists components $2 ('"helix_print"' or empty) in /server/info, on a fake
+# clock. Hooks, each an executable under $BATS_TEST_TMPDIR when a test writes it:
+#   tick <now>        after every second of the clock
+#   curl.hook <args>  before curl answers
+#   init.<action>     what Moonraker's init script does for that action
+# Moonraker refuses HTTP while $BATS_TEST_TMPDIR/stopping exists. curl logs
+# its argv to curl.log, the init script "<action> <clock>" to init.log.
+setup_restart_host() {
+    local home="$1" components="$2" t="$BATS_TEST_TMPDIR"
+    setup_plain_home "$home"
+    mkdir -p "$t/run" "$t/etc/init.d"
+    moonraker_proc "$home" 700
+    mock_command_script "systemctl" 'exit 0'
+    mock_command_script "sudo" 'exec "$@"'
+    mock_fake_clock "[ ! -x '$t/tick' ] || '$t/tick' \"\$now\""
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$t/curl.log'
+[ ! -x '$t/curl.hook' ] || '$t/curl.hook' \"\$@\" || exit
+[ ! -e '$t/stopping' ] || exit 7
+case \"\$*\" in *server/info*) printf '%s' '{\"result\":{\"components\":[$components]}}' ;; esac
+exit 0"
+    cat > "$t/etc/init.d/S56moonraker_service" <<EOF
+#!/bin/sh
+echo "\$1 \$(cat '$t/clock')" >> '$t/init.log'
+[ ! -x '$t/init.'"\$1" ] || exec '$t/init.'"\$1"
+EOF
+    chmod +x "$t/etc/init.d/S56moonraker_service"
+}
+
+# Write executable hook $1 under $BATS_TEST_TMPDIR with body $2.
+restart_hook() {
+    printf '#!/bin/sh\n%s\n' "$2" > "$BATS_TEST_TMPDIR/$1"
+    chmod +x "$BATS_TEST_TMPDIR/$1"
+}
+
+# install.sh --restart-moonraker on setup_restart_host's host at HOME $1,
+# with any further VAR=value words in its environment.
+run_restart() {
+    local home="$1"
+    shift
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" HELIX_RUN_DIR="$BATS_TEST_TMPDIR/run" \
+        HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d" "$@" sh "$SCRIPT" --restart-moonraker
+}
+
+@test "an init restart that fails while Moonraker takes 7s to exit starts Moonraker once it has exited" {
+    local home="$BATS_TEST_TMPDIR/home" t="$BATS_TEST_TMPDIR"
+    setup_restart_host "$home" '"helix_print"'
+    # BusyBox start-stop-daemon -K returns once SIGTERM is sent; start refuses
+    # while the old process lives.
+    restart_hook init.restart "touch '$t/stopping'; echo \$((\$(cat '$t/clock') + 7)) > '$t/exit_at'; exit 1"
+    restart_hook init.start "[ ! -d '$home/proc/700' ] || exit 1
+mkdir -p '$home/proc/701'; printf '%s\\0' python3 '$home/moonraker/moonraker/moonraker.py' > '$home/proc/701/cmdline'
+rm -f '$t/stopping'"
+    restart_hook tick "[ ! -e '$t/exit_at' ] || [ \"\$1\" -lt \"\$(cat '$t/exit_at')\" ] || rm -rf '$home/proc/700'"
+
+    run_restart "$home"
+    [ "$status" -eq 0 ] || fail "want 0, got $status: $output"
+    grep -q '^start ' "$t/init.log" || fail "Moonraker was left down: $(cat "$t/init.log")"
+    [ "$(awk '$1 == "start" { print $2 }' "$t/init.log")" -ge "$(cat "$t/exit_at")" ] ||
+        fail "started before the old process exited: $(cat "$t/init.log")"
+    [ -d "$home/proc/701" ] || fail "no Moonraker runs: $output"
+    if grep -q 'restart' "$t/curl.log"; then fail "a second restart over HTTP: $(cat "$t/curl.log")"; fi
+}
+
+@test "an init restart that exits 0 and stops Moonraker 7s later is waited out, with no second restart" {
+    local home="$BATS_TEST_TMPDIR/home" t="$BATS_TEST_TMPDIR"
+    setup_restart_host "$home" '"helix_print"'
+    # procd hands the restart to ubus: it stops the process, then starts the next.
+    restart_hook init.restart "touch '$t/stopping'; echo \$((\$(cat '$t/clock') + 7)) > '$t/exit_at'"
+    restart_hook tick "[ -e '$t/exit_at' ] || exit 0
+at=\$(cat '$t/exit_at')
+[ \"\$1\" -lt \"\$at\" ] || rm -rf '$home/proc/700'
+if [ \"\$1\" -ge \$((at + 2)) ] && [ ! -d '$home/proc/701' ]; then
+    mkdir -p '$home/proc/701'; printf '%s\\0' python3 x/moonraker.py > '$home/proc/701/cmdline'; rm -f '$t/stopping'
+fi"
+
+    run_restart "$home"
+    [ "$status" -eq 0 ] || fail "want 0, got $status: $output"
+    if grep -q 'restart' "$t/curl.log"; then fail "a second restart over HTTP: $(cat "$t/curl.log")"; fi
+    if grep -q '^start ' "$t/init.log"; then fail "started a second Moonraker: $(cat "$t/init.log")"; fi
+}
+
+@test "a CC1 Moonraker run as python -m moonraker.moonraker restarts in place and is never started beside itself" {
+    local home="$BATS_TEST_TMPDIR/home" t="$BATS_TEST_TMPDIR"
+    setup_restart_host "$home" ''
+    rm -rf "$home/proc/700"
+    moonraker_proc "$home" 700 /usr/bin/python3 -X no_debug_ranges -m moonraker.moonraker -d /usr/data/printer_data
+    # Accepted, the in-place restart leaves Moonraker unanswering for 6s.
+    restart_hook curl.hook "case \"\$*\" in *server/restart*) echo \$((\$(cat '$t/clock') + 6)) > '$t/up_at' ;; esac"
+    restart_hook tick "[ -e '$t/up_at' ] || exit 0
+if [ \"\$1\" -lt \"\$(cat '$t/up_at')\" ]; then touch '$t/stopping'; else rm -f '$t/stopping'; fi"
+
+    run_restart "$home"
+    [ "$status" -eq 3 ] || fail "want 3 (in place), got $status: $output"
+    if grep -q '^start ' "$t/init.log" 2>/dev/null; then fail "started a second Moonraker: $(cat "$t/init.log")"; fi
+    if printf '%s' "$output" | grep -q 'NOT RUNNING'; then fail "called a running Moonraker down: $output"; fi
+}
+
+@test "a Moonraker whose process no matcher knows is never started while it may be coming back" {
+    local home="$BATS_TEST_TMPDIR/home" t="$BATS_TEST_TMPDIR"
+    setup_restart_host "$home" ''
+    rm -rf "$home/proc/700"
+    moonraker_proc "$home" 700 /usr/local/bin/moonraker-daemon -d /data
+    # Accepted, the in-place restart leaves Moonraker unanswering for 6s.
+    restart_hook curl.hook "case \"\$*\" in *server/restart*) echo \$((\$(cat '$t/clock') + 6)) > '$t/up_at' ;; esac"
+    restart_hook tick "[ -e '$t/up_at' ] || exit 0
+if [ \"\$1\" -lt \"\$(cat '$t/up_at')\" ]; then touch '$t/stopping'; else rm -f '$t/stopping'; fi"
+
+    run_restart "$home"
+    [ "$status" -eq 3 ] || fail "want 3 (in place), got $status: $output"
+    if grep -q '^start ' "$t/init.log" 2>/dev/null; then fail "started a second Moonraker: $(cat "$t/init.log")"; fi
+}
+
+@test "running_moonraker_process knows Moonraker as moonraker.py or as a python module, and nothing else" {
+    local p="$BATS_TEST_TMPDIR/proc" conf_sh="$REPO_ROOT/moonraker-plugin/helix_print_conf.sh" argv want
+    for argv in "python3 -m moonraker.moonraker -d /d|-m moonraker.moonraker" \
+                "/usr/bin/python3.11 -X no_debug_ranges -m moonraker|-m moonraker" \
+                "python3 -mmoonraker|-m moonraker" \
+                "/home/pi/moonraker-env/bin/python /home/pi/moonraker/moonraker/moonraker.py -d x|/home/pi/moonraker/moonraker/moonraker.py" \
+                "python3 -m http.server 7125|" \
+                "vi /home/pi/moonraker/moonraker/moonraker.py|" \
+                "python3 -m pip install moonraker|"; do
+        rm -rf "$p"
+        mkdir -p "$p/42"
+        want="${argv#*|}"
+        # shellcheck disable=SC2086  # the words are the argv
+        printf '%s\0' ${argv%|*} > "$p/42/cmdline"
+        run env HELIX_PROC_ROOT="$p" sh -c '. "$1"; running_moonraker_process | sed -n 2p' sh "$conf_sh"
+        [ "$output" = "$want" ] || fail "${argv%|*}: want '$want', got '$output'"
+    done
+}
+
+@test "an accepted service restart whose process outlasts 15s is waited out, never followed by an in-place restart" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log" curl_log="$BATS_TEST_TMPDIR/curl.log" t="$BATS_TEST_TMPDIR"
+    setup_loaded_plugin_on_systemd "$home" "$log" "$curl_log"
+    mock_command_script "systemctl" "printf '%s\\n' \"\$*\" >> '$log'
+case \"\$*\" in *' restart moonraker') echo 'Access denied' >&2; exit 1;; esac
+exit 0"
+    mock_fake_clock "if [ -e '$t/switch_at' ] && [ \"\$now\" -ge \"\$(cat '$t/switch_at')\" ] && [ -d '$home/proc/700' ]; then mv '$home/proc/700' '$home/proc/701'; fi"
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$curl_log'
+case \"\$*\" in
+    *machine/services/restart?service=moonraker*) echo \$((\$(cat '$t/clock') + 20)) > '$t/switch_at' ;;
+    *server/info*) printf '%s' '{\"result\":{\"components\":[\"helix_print\"]}}' ;;
+esac
+exit 0"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 0 ] || fail "want 0 (process restart), got $status: $output"
+    [ -d "$home/proc/701" ] || fail "the Moonraker process was not replaced: $output"
+    if grep -q 'server/restart' "$curl_log"; then fail "an in-place restart on top: $(cat "$curl_log")"; fi
+}
+
+@test "--restart-moonraker holds off when the first /server/info is slow and a print is running" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log" curl_log="$BATS_TEST_TMPDIR/curl.log"
+    setup_loaded_plugin_on_systemd "$home" "$log" "$curl_log"
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$curl_log'
+case \"\$*\" in
+    *'--max-time 2 '*server/info*) exit 28 ;;
+    *server/info*) printf '%s' '{\"result\":{\"components\":[\"helix_print\"]}}' ;;
+    *objects/query*print_stats*) printf '%s' '{\"result\": {\"status\": {\"print_stats\": {\"state\": \"printing\"}}}}' ;;
+esac
+exit 0"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 4 ] || fail "want 4 (held for the print), got $status: $output"
+    if grep -q restart "$log" 2>/dev/null; then fail "restarted mid-print: $(cat "$log")"; fi
+    [ -d "$home/proc/700" ] || fail "the Moonraker process was replaced mid-print"
+}
+
+@test "--restart-moonraker holds off a Moonraker that runs but never answers: no print can be ruled out" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log" curl_log="$BATS_TEST_TMPDIR/curl.log"
+    setup_loaded_plugin_on_systemd "$home" "$log" "$curl_log"
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$curl_log'
+exit 28"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 4 ] || fail "want 4 (held), got $status: $output"
+    if grep -q restart "$log" 2>/dev/null; then fail "restarted with the job unknown: $(cat "$log")"; fi
+}
+
+@test "--restart-moonraker checks for a print again before each attempt" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log" curl_log="$BATS_TEST_TMPDIR/curl.log" n="$BATS_TEST_TMPDIR/query.count"
+    setup_loaded_plugin_on_systemd "$home" "$log" "$curl_log"
+    mock_command_script "systemctl" "printf '%s\\n' \"\$*\" >> '$log'
+case \"\$*\" in *' restart moonraker') echo 'Access denied' >&2; exit 1;; esac
+exit 0"
+    # A print starts from Mainsail after the first check.
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$curl_log'
+case \"\$*\" in
+    *server/info*) printf '%s' '{\"result\":{\"components\":[\"helix_print\"]}}' ;;
+    *objects/query*print_stats*)
+        c=\$((\$(cat '$n' 2>/dev/null || echo 0) + 1)); echo \"\$c\" > '$n'
+        if [ \"\$c\" -eq 1 ]; then s=standby; else s=printing; fi
+        printf '{\"result\": {\"status\": {\"print_stats\": {\"state\": \"%s\"}}}}' \"\$s\" ;;
+esac
+exit 0"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 4 ] || fail "want 4 (held for the print), got $status: $output"
+    if grep -q 'restart' "$curl_log"; then fail "restarted over HTTP mid-print: $(cat "$curl_log")"; fi
+}
+
+@test "--restart-moonraker goes ahead when Klipper is not ready, though its print state cannot be read" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log" curl_log="$BATS_TEST_TMPDIR/curl.log"
+    setup_loaded_plugin_on_systemd "$home" "$log" "$curl_log"
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$curl_log'
+case \"\$*\" in
+    *server/info*) printf '%s' '{\"result\":{\"klippy_state\": \"shutdown\", \"components\":[\"helix_print\"]}}' ;;
+    *objects/query*) exit 22 ;;
+esac
+exit 0"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 0 ] || fail "want 0 (service restart), got $status: $output"
+    grep -q 'restart moonraker$' "$log" || fail "no systemctl restart: $(cat "$log" 2>/dev/null)"
+}
+
+@test "a Moonraker an init script starts for the app inherits none of its environment, output or session" {
+    local home="$BATS_TEST_TMPDIR/home" t="$BATS_TEST_TMPDIR"
+    setup_restart_host "$home" '"helix_print"'
+    restart_hook init.restart "rm -rf '$home/proc/700'; touch '$t/stopping'; exit 1"
+    restart_hook init.start "env > '$t/start.env'
+fd0=\$(readlink /proc/\$\$/fd/0); fd1=\$(readlink /proc/\$\$/fd/1); fd2=\$(readlink /proc/\$\$/fd/2)
+printf '%s\\n' \"\$fd0\" \"\$fd1\" \"\$fd2\" > '$t/start.fd'
+sed 's/.*) //' /proc/\$\$/stat | awk -v pid=\$\$ '{ print (\$4 == pid) ? \"leader\" : \"member\" }' > '$t/start.sid'
+mkdir -p '$home/proc/701'; printf '%s\\0' python3 x/moonraker.py > '$home/proc/701/cmdline'; rm -f '$t/stopping'"
+
+    run_restart "$home" HELIX_OOM_SCORE_ADJ=300 MALLOC_PERTURB_=165
+    [ "$status" -eq 0 ] || fail "want 0, got $status: $output"
+    [ -e "$t/start.env" ] || fail "Moonraker was never started: $output"
+    if grep -E '^(HELIX_|MALLOC_)' "$t/start.env"; then fail "Moonraker inherited the app's environment"; fi
+    [ "$(sort -u "$t/start.fd")" = /dev/null ] || fail "Moonraker's stdio: $(cat "$t/start.fd")"
+    if command -v setsid >/dev/null 2>&1; then
+        [ "$(cat "$t/start.sid")" = leader ] || fail "Moonraker runs in the app's session"
+    fi
+}
+
+@test "moonraker_wait_up gives Moonraker its seconds by the clock, however long each probe takes" {
+    local log="$BATS_TEST_TMPDIR/curl.log" clock="$BATS_TEST_TMPDIR/clock"
+    mock_fake_clock
+    # Each probe of a Moonraker that does not answer takes 3 seconds.
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+echo \$((\$(cat '$clock') + 3)) > '$clock'
+printf '%s\\n' \"\$*\" >> '$log'
+exit 28"
+    mock_command_script "wget" 'exit 8'
+
+    run env HELIX_MOONRAKER_UP_SECS=12 sh -c '. "$1"; moonraker_wait_up http://127.0.0.1:7125' sh \
+        "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh"
+    [ "$status" -eq 1 ] || fail "want 1 (timed out), got $status"
+    [ "$(cat "$clock")" -le 1017 ] || fail "waited $(($(cat "$clock") - 1000))s of a 12s budget"
+}
+
+@test "a systemd unit in its restart delay is waited for, never started by hand" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log" curl_log="$BATS_TEST_TMPDIR/curl.log" t="$BATS_TEST_TMPDIR"
+    setup_loaded_plugin_on_systemd "$home" "$log" "$curl_log"
+    # The restart's new process dies on start; systemd brings one back 10s later.
+    mock_command_script "systemctl" "printf '%s\\n' \"\$*\" >> '$log'
+case \"\$*\" in
+    *' restart moonraker') rm -rf '$home/proc/700'; echo \$((\$(cat '$t/clock') + 10)) > '$t/back_at' ;;
+    'is-active moonraker') if [ -d '$home/proc/701' ]; then echo active; else echo activating; fi ;;
+esac
+exit 0"
+    mock_fake_clock "if [ -e '$t/back_at' ] && [ \"\$now\" -ge \"\$(cat '$t/back_at')\" ] && [ ! -d '$home/proc/701' ]; then mkdir -p '$home/proc/701'; printf '%s\\0' python3 x/moonraker.py > '$home/proc/701/cmdline'; fi"
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$curl_log'
+[ ! -e '$t/back_at' ] || [ -d '$home/proc/701' ] || exit 7
+case \"\$*\" in *server/info*) printf '%s' '{\"result\":{\"components\":[\"helix_print\"]}}' ;; esac
+exit 0"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 0 ] || fail "want 0, got $status: $output"
+    if grep -q '^start moonraker' "$log" || grep -q ' start moonraker' "$log"; then fail "started a unit systemd was restarting: $(cat "$log")"; fi
 }
 
 @test "interactive install refuses a components dir that takes no link, and a plugin Moonraker cannot read" {

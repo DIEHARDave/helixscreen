@@ -937,7 +937,7 @@ MOONEOF
         "$(moonraker_respawn_body 300 301)" > "$initd/S56moonraker_service"
     local curl_log="$BATS_TEST_TMPDIR/curl.log"
     mock_moonraker_curl "$curl_log" loaded
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
 
     run restart_moonraker
 
@@ -948,7 +948,7 @@ MOONEOF
     [[ "$output" != *"manually"* ]]
 }
 
-@test "restart_moonraker: a restart that exits 0 and leaves the same Moonraker running falls back to HTTP" {
+@test "restart_moonraker: a restart that exits 0 and leaves the same Moonraker running falls back to its own service restart, and no further" {
     stage_init systemd
     stage_running_moonraker 300 5000
     local log="$BATS_TEST_TMPDIR/systemctl.log"
@@ -957,16 +957,16 @@ MOONEOF
     mkdir -p "$HELIX_INITD_DIR"
     local curl_log="$BATS_TEST_TMPDIR/curl.log"
     mock_moonraker_curl "$curl_log" loaded
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
 
     run restart_moonraker
 
     [ "$status" -eq 0 ]
     grep -qx 'restart moonraker' "$log" || fail "systemctl was not asked to restart: $(cat "$log" 2>/dev/null)"
-    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$curl_log" ||
-        fail "no fallback to Moonraker's own restart: $output"
+    grep -q 'machine/services/restart?service=moonraker' "$curl_log" ||
+        fail "no fallback to Moonraker's own service restart: $output"
+    if grep -q 'server/restart' "$curl_log"; then fail "an in-place restart on top of an accepted one: $(cat "$curl_log")"; fi
     [[ "$output" == *"kept running"* ]] || fail "the failed restart went unreported: $output"
-    [[ "$output" == *"Asked Moonraker to restart itself"* ]] || fail "$output"
 }
 
 @test "restart_moonraker: a Moonraker that comes back under its old pid with a new start time counts as restarted" {
@@ -976,7 +976,7 @@ MOONEOF
     sed -i 's/ 5000 / 5100 /' '$HELIX_PROC_ROOT/300/stat';; esac; exit 0"
     local curl_log="$BATS_TEST_TMPDIR/curl.log"
     mock_moonraker_curl "$curl_log" loaded
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
     export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
     mkdir -p "$HELIX_INITD_DIR"
 
@@ -997,7 +997,7 @@ MOONEOF
     export HELIX_INITD_DIR="$initd"
     local curl_log="$BATS_TEST_TMPDIR/curl.log"
     mock_moonraker_curl "$curl_log"
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
 
     run restart_moonraker
 
@@ -1020,7 +1020,7 @@ case \"\$1\" in restart) $(moonraker_respawn_body 300 301);; esac; exit 0"
     mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
 case \"\$*\" in *'-X POST'*) exit 22;; esac; exit 0"
     mock_command_script "wget" 'exit 8'
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
 
     run restart_moonraker
 
@@ -1061,7 +1061,7 @@ INITEOF
     local init_log="$BATS_TEST_TMPDIR/init.log" curl_log="$BATS_TEST_TMPDIR/curl.log"
     stage_racing_init_script "$init_log"
     mock_moonraker_curl "$curl_log" loaded "$MOONRAKER_UP_FILE"
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
 
     run restart_moonraker
 
@@ -1084,7 +1084,7 @@ INITEOF
     export HELIX_INITD_DIR="$initd"
     local curl_log="$BATS_TEST_TMPDIR/curl.log"
     mock_moonraker_curl "$curl_log" loaded "$HELIX_PROC_ROOT/300"
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
 
     run restart_moonraker
 
@@ -1114,7 +1114,7 @@ INITEOF
     local log="$BATS_TEST_TMPDIR/curl.log"
     mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
 printf '%s\\n' \"\$*\" >> '$log'; exit 0"
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
     export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
     mkdir -p "$HELIX_INITD_DIR"
 
@@ -1973,7 +1973,7 @@ stage_moonraker_on_port() {
     export HELIX_PROC_ROOT="$BATS_TEST_TMPDIR/proc"
     mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
 printf '%s\\n' \"\$*\" >> '$BATS_TEST_TMPDIR/curl.log'; exit 0"
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
 }
 
 @test "installer_moonraker_url: loopback on the port moonraker.conf names" {

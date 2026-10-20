@@ -496,7 +496,7 @@ stage_moonraker_restart() {
     chmod +x "$HELIX_INITD_DIR/moonraker"
     mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
 printf '%s\\n' \"\$*\" >> '$BATS_TEST_TMPDIR/curl.log'; exit 0"
-    mock_command_script "sleep" 'exit 0'
+    mock_fake_clock
 }
 
 @test "_disable_k2cam_webcam: comments the [webcam Default] block and is idempotent" {

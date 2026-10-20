@@ -155,6 +155,23 @@ MOCK_EOF
     export PATH="$BATS_TEST_TMPDIR/bin:$PATH"
 }
 
+# A clock for code that waits by `date +%s`, with sleep mocked: `sleep N`
+# moves it N seconds and `date +%s` reads it, so a wait of minutes runs at
+# once. Every other date call reaches the real date. $1, when set, is shell
+# run after each tick with the new time in $now (a process that exits at a
+# given second). The clock file is $BATS_TEST_TMPDIR/clock, starting at 1000.
+mock_fake_clock() {
+    local clock="$BATS_TEST_TMPDIR/clock" real_date
+    real_date=$(command -v date)
+    [ "$real_date" != "$BATS_TEST_TMPDIR/bin/date" ] || real_date=/bin/date
+    echo 1000 > "$clock"
+    mock_command_script "sleep" "now=\$((\$(cat '$clock') + \${1%%.*}))
+echo \"\$now\" > '$clock'
+${1:-}"
+    mock_command_script "date" "[ \"\$*\" = +%s ] && exec cat '$clock'
+exec '$real_date' \"\$@\""
+}
+
 # Create temp directory structure mimicking a Pi system
 setup_mock_pi() {
     export MOCK_ROOT="$BATS_TEST_TMPDIR/root"
