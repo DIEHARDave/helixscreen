@@ -50,7 +50,7 @@ These docs are **end-user facing**. They must be written for people who are NOT 
 | `guide/settings/devices.md` | Hardware health, camera, fans, sensors, LEDs, power devices, Spoolman |
 | `guide/settings/led-settings.md` | LED strip selection, auto-state, macro devices, setup guides |
 | `guide/settings/safety.md` | Safety & Alerts: E-Stop confirmation, cancel escalation, macro confirmation, spaghetti detection, print completion alert, on-screen alerts |
-| `guide/settings/connection.md` | Network settings, printers, Moonraker host |
+| `guide/settings/connection.md` | Network settings, printers, Moonraker host, screen sharing (webcam, remote control, pairing) |
 | `guide/settings/language-time.md` | Language, timezone, time format |
 | `guide/settings/system.md` | Security, performance, telemetry, log level, restart, factory reset |
 | `guide/settings/updates.md` | Update channel, check and install, firmware-managed and can't-update notices |

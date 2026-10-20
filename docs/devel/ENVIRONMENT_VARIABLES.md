@@ -551,6 +551,16 @@ HELIX_REQUIRE_POINTER=0 ./build/bin/helix-screen -vv
 
 Note the asymmetry: only the literal strings `0` and `false` disable the requirement. `HELIX_REQUIRE_POINTER=no` leaves it enabled.
 
+### `HELIX_REMOTE_SCREEN`
+
+Set to `firmware` by a platform hook whose firmware serves the screen to browsers itself. The built-in screen server (`docs/devel/REMOTE_SCREEN.md`) then never starts and its Settings > Connection rows stay hidden. `HELIX_REMOTE_SCREEN_FB0` implies the same.
+
+| Property | Value |
+|----------|-------|
+| **Values** | `firmware`; anything else is ignored |
+| **Default** | Unset: the built-in server is available |
+| **File** | `src/application/remote_screen_service.cpp` (`remote_screen_firmware_provides`) |
+
 ### `HELIX_REMOTE_SCREEN_FB0`
 
 Mirror every rendered frame into a framebuffer device in addition to the normal display output. Set by the Snapmaker U1 platform hook so the firmware's `fb-http` snapshot daemon — which reads `/dev/fb0` — keeps serving the remote-screen view while HelixScreen renders through its own backend.

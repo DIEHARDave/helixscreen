@@ -41,8 +41,8 @@ bool remote_screen_firmware_provides() {
     if (mode && std::strcmp(mode, "firmware") == 0) {
         return true;
     }
-    const char* fb0 = std::getenv("HELIX_REMOTE_SCREEN_FB0");
-    return fb0 && *fb0;
+    // Presence, like DisplayManager's own gate on it: set at all means the mirror is attached.
+    return std::getenv("HELIX_REMOTE_SCREEN_FB0") != nullptr;
 }
 
 std::string remote_screen_route(const std::string& route_file) {

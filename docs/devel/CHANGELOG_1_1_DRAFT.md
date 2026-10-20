@@ -745,6 +745,13 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Setup and settings**
 
+- **Share the screen with Mainsail and Fluidd** (#1825) - Settings > Connection > Share
+  Screen adds a **HelixScreen Screen** webcam that shows the printer's screen, and Allow
+  Remote Control lets you tap and drag on it from the browser. Behind nginx it follows
+  Moonraker's own access rules; on printers with nothing in front of Moonraker (AD5M, CC1)
+  a browser pairs once with a six-digit code shown on the screen. A small icon on the
+  printer shows while someone is driving it remotely. Off by default, and it costs nothing
+  while nobody watches. Printers whose firmware already shares the screen keep theirs.
 - **Find your printer by searching** (#1028) - first-run printer selection replaces the
   scroll through about 105 machines with a search box, a grid of vendors and a list per
   vendor.
