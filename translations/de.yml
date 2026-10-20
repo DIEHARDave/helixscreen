@@ -1138,8 +1138,6 @@ translations:
   ETA {}: 'Ende {}'
   EXTRAS: EXTRAS
   Each fan can only be selected once: Jeder Lüfter kann nur einmal ausgewählt werden
-  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
-  : 'Jeder Werkzeugkopf nach dem ersten pausiert den Druck bei seiner ersten Verwendung, weil der Drucker ihn nicht lädt oder vorbereitet. Das Filament wird am Druckende nicht entladen.'
   Edit: Bearbeiten
   Edit Filament: Filament bearbeiten
   Edit Slot: Slot bearbeiten
@@ -1718,7 +1716,6 @@ translations:
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen abgestürzt
   HelixScreen Macros: 'HelixScreen-Makros'
-  HelixScreen couldn't read which toolheads this file uses, so the printer wasn't told.: 'HelixScreen konnte nicht lesen, welche Werkzeugköpfe diese Datei verwendet, daher wurde es dem Drucker nicht mitgeteilt.'
   HelixScreen is detecting your display orientation: HelixScreen erkennt Ihre Display-Ausrichtung
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     wird sich mit Ihrem Filamentwechsler für Multi-Spulen/Farb-Druckoperationen integrieren.
@@ -3952,7 +3949,6 @@ translations:
     Druck benötigt etwa %.0fg, aber die Spule hat noch etwa %.0fg übrig. Trotzdem
     starten?
   This print never reports layer {}.: 'Dieser Druck meldet Schicht {} nie.'
-  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: 'Dieser Druck wurde außerhalb von HelixScreen gestartet, daher weiß der Drucker nicht, welche Werkzeugköpfe er verwendet.'
   This printer cannot calibrate tool offsets automatically: Dieser Drucker kann Werkzeug-Offsets nicht automatisch kalibrieren
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Dieser Drucker füllt seine Gates aus Spoolman. HelixScreen hat seine eigene Kopie gelöscht; entferne die Spule in Spoolman.
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: Dieser Drucker füllt seine Gates aus Spoolman. Ändere Farbe, Material und Spule in Spoolman.
@@ -4566,6 +4562,7 @@ translations:
   '{} left': 'noch {}'
   '{} lines in helixscreen.env were ignored': '{} Zeilen in helixscreen.env wurden ignoriert'
   '{} kept crashing the panel; switched back to {}': '{} hat den Bildschirm wiederholt abstürzen lassen; zurück zu {} gewechselt'
+  "{} isn't loaded. The print will pause when it needs it.": '{} ist nicht geladen. Der Druck pausiert, wenn er ihn braucht.'
   '{} kept crashing the panel; pick a printer to connect': '{} hat den Bildschirm wiederholt abstürzen lassen; Drucker zum Verbinden auswählen'
   '{} looser than {}': "{} lockerer als {}"
   '{} m': '{} m'

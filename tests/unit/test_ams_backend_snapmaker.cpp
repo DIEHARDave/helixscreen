@@ -6532,10 +6532,8 @@ TEST_CASE_METHOD(SnapmakerFixture,
 }
 
 // ============================================================================
-// A print whose task names no used head: started without the task setup, so
-// the firmware neither refeeds a head on runout nor unloads at the end.
-// SET_PRINT_USED_EXTRUDERS is refused while printing or paused, so the user
-// is told once per print instead.
+// At a print's start, each head its file uses that its feeder reports not
+// loaded, and that the firmware will not load itself, gets one warning.
 // ============================================================================
 
 namespace {
@@ -6547,155 +6545,193 @@ json used_heads(const std::vector<bool>& used) {
     return json{{"print_task_config", {{"extruders_used", arr}}}};
 }
 
-struct StickyWarnings {
+/// Head @p head's feeder, served automatically, reading @p state with no error.
+json feeder(int head, const std::string& state) {
+    const char* side = head <= 1 ? "filament_feed left" : "filament_feed right";
+    return json{{side,
+                 {{"extruder" + std::to_string(head),
+                   {{"filament_detected", true},
+                    {"channel_state", state},
+                    {"channel_error", "ok"},
+                    {"module_exist", true},
+                    {"disable_auto", false}}}}}};
+}
+
+struct Warnings {
     std::vector<std::string> seen;
-    StickyWarnings() {
-        helix::ui::set_test_notification_sticky_warning_hook(
+    Warnings() {
+        helix::ui::set_test_notification_warning_hook(
             [this](const std::string& m) { seen.push_back(m); });
     }
-    ~StickyWarnings() {
-        helix::ui::set_test_notification_sticky_warning_hook(nullptr);
+    ~Warnings() {
+        helix::ui::set_test_notification_warning_hook(nullptr);
     }
-    StickyWarnings(const StickyWarnings&) = delete;
-    StickyWarnings& operator=(const StickyWarnings&) = delete;
+    Warnings(const Warnings&) = delete;
+    Warnings& operator=(const Warnings&) = delete;
 };
-} // namespace
 
-namespace {
-/// The file check answers @p later_tool and records the files it was asked about.
+/// The file read answers @p tools and records the files it was asked about.
 struct FileToolsProbe {
     std::vector<std::string> asked;
-    FileToolsProbe(AmsBackendSnapmaker& b, bool later_tool) {
+    FileToolsProbe(AmsBackendSnapmaker& b, std::set<int> tools) {
         SnapmakerTestAccess::set_file_tools_probe(
-            b, [this, later_tool](const std::string& file, std::function<void(bool)> answer) {
+            b, [this, tools](const std::string& file, std::function<void(std::set<int>)> answer) {
                 asked.push_back(file);
-                answer(later_tool);
+                answer(tools);
             });
     }
 };
+
+/// A slicer-started print: no task, heads 0 and 1 loaded, 2 and 3 not.
+void slicer_print_ready(FilamentRecordHarness& h) {
+    h.frame(used_heads({false, false, false, false}));
+    h.frame(feeder(0, "load_finish"));
+    h.frame(feeder(1, "manual_sta_finish"));
+    h.frame(feeder(2, "unload_finish"));
+    h.frame(feeder(3, "wait_insert"));
+}
 } // namespace
 
-TEST_CASE_METHOD(SnapmakerFixture,
-                 "Snapmaker warns once about a print with no used heads that uses a later tool",
-                 "[ams][snapmaker][task_config_notice]") {
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker warns once about a used head that is not loaded",
+                 "[ams][snapmaker][unloaded_head_notice]") {
     lv_init_safe();
     helix::ui::UpdateQueue::instance().init();
-    StickyWarnings warnings;
-    FilamentRecordHarness h("task_notice_slicer");
-    FileToolsProbe probe(h.backend, /*later_tool=*/true);
-    h.frame(used_heads({false, false, false, false}));
+    Warnings warnings;
+    FilamentRecordHarness h("unloaded_head_used");
+    FileToolsProbe probe(h.backend, {0, 2});
+    slicer_print_ready(h);
 
-    h.frame(json{{"print_stats", {{"state", "printing"}, {"filename", "orca_4color.gcode"}}}});
+    h.frame(json{{"print_stats", {{"state", "printing"}, {"filename", "orca.gcode"}}}});
+    REQUIRE(probe.asked == std::vector<std::string>{"orca.gcode"});
     REQUIRE(warnings.seen.size() == 1);
-    CHECK(warnings.seen[0].find("started outside HelixScreen") != std::string::npos);
-    CHECK(warnings.seen[0].find("pause the print the first time") != std::string::npos);
-    REQUIRE(probe.asked.size() == 1);
-    CHECK(probe.asked[0] == "orca_4color.gcode");
+    CHECK(warnings.seen[0] ==
+          "Toolhead 3 (T2) isn't loaded. The print will pause when it needs it.");
 
-    // Status keeps arriving through the print, a pause and its resume.
+    // Frames keep arriving through the print, a pause and its resume.
     h.frame(used_heads({false, false, false, false}));
     h.print("paused");
     h.print("printing");
     CHECK(warnings.seen.size() == 1);
 
-    // The next print is judged afresh.
+    // The next print is checked afresh.
     h.print("complete");
     h.print("printing");
     CHECK(warnings.seen.size() == 2);
 }
 
-TEST_CASE_METHOD(SnapmakerFixture,
-                 "Snapmaker says nothing about a print that uses only the first tool",
-                 "[ams][snapmaker][task_config_notice]") {
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker says nothing when every used head is loaded",
+                 "[ams][snapmaker][unloaded_head_notice]") {
     lv_init_safe();
     helix::ui::UpdateQueue::instance().init();
-    StickyWarnings warnings;
-    FilamentRecordHarness h("task_notice_t0");
-    FileToolsProbe probe(h.backend, /*later_tool=*/false);
-    h.frame(used_heads({false, false, false, false}));
+    Warnings warnings;
+    FilamentRecordHarness h("unloaded_head_all_loaded");
+
+    SECTION("used heads loaded, unused heads empty") {
+        FileToolsProbe probe(h.backend, {0, 1});
+        slicer_print_ready(h);
+        h.print("printing");
+        CHECK(probe.asked.size() == 1);
+    }
+    SECTION("the file's tools cannot be read") {
+        FileToolsProbe probe(h.backend, {});
+        slicer_print_ready(h);
+        h.print("printing");
+        CHECK(probe.asked.size() == 1);
+    }
+    SECTION("a head the task names: the firmware loads it itself") {
+        FileToolsProbe probe(h.backend, {0, 2});
+        slicer_print_ready(h);
+        h.frame(used_heads({true, false, true, false}));
+        h.print("printing");
+    }
+    SECTION("a head still loading") {
+        FileToolsProbe probe(h.backend, {0, 2});
+        slicer_print_ready(h);
+        h.frame(feeder(2, "load_feeding"));
+        h.print("printing");
+    }
+    CHECK(warnings.seen.empty());
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker checks a restart against the file it starts",
+                 "[ams][snapmaker][unloaded_head_notice]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    Warnings warnings;
+    FilamentRecordHarness h("unloaded_head_restart_file");
+    FileToolsProbe probe(h.backend, {2});
+    slicer_print_ready(h);
+    h.frame(json{{"print_stats", {{"state", "printing"}, {"filename", "a.gcode"}}}});
+    REQUIRE(probe.asked == std::vector<std::string>{"a.gcode"});
+
+    // A restart into another file: the cancel and the new start never leave
+    // the print, and a frame of the old one still reads printing.
+    h.print("paused");
+    h.backend.note_print_start_from_here();
     h.print("printing");
     CHECK(probe.asked.size() == 1);
-    CHECK(warnings.seen.empty());
+    h.frame(json{{"print_stats", {{"filename", "b.gcode"}}}});
+    REQUIRE(probe.asked.size() == 2);
+    CHECK(probe.asked[1] == "b.gcode");
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker routes a used tool through the task's map",
+                 "[ams][snapmaker][unloaded_head_notice]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    Warnings warnings;
+    FilamentRecordHarness h("unloaded_head_task_map");
+    FileToolsProbe probe(h.backend, {0});
+    slicer_print_ready(h);
+    // The task maps T0 to head 2, unloaded and not among the heads it names.
+    // Under the default routing T0 would be head 0, loaded, and silent.
+    json task = {{"print_task_config",
+                  {{"extruders_used", {false, true, false, false}},
+                   {"extruder_map_table", {2, 1, 2, 3, 0, 0, 0, 0}}}}};
+    h.frame(task);
+    h.print("printing");
+    REQUIRE(warnings.seen.size() == 1);
+    CHECK(warnings.seen[0].find("Toolhead 3 (T2)") == 0);
 }
 
 TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker drops a file answer that lands after its print ended",
-                 "[ams][snapmaker][task_config_notice]") {
+                 "[ams][snapmaker][unloaded_head_notice]") {
     lv_init_safe();
     helix::ui::UpdateQueue::instance().init();
-    StickyWarnings warnings;
-    FilamentRecordHarness h("task_notice_late");
-    std::function<void(bool)> held;
+    Warnings warnings;
+    FilamentRecordHarness h("unloaded_head_late");
+    std::function<void(std::set<int>)> held;
     SnapmakerTestAccess::set_file_tools_probe(
-        h.backend, [&](const std::string&, std::function<void(bool)> answer) { held = answer; });
-    h.frame(used_heads({false, false, false, false}));
+        h.backend,
+        [&](const std::string&, std::function<void(std::set<int>)> answer) { held = answer; });
+    slicer_print_ready(h);
     h.print("printing");
     h.print("cancelled");
     REQUIRE(held);
-    held(true);
+    held({2});
     CHECK(warnings.seen.empty());
-}
-
-TEST_CASE_METHOD(SnapmakerFixture,
-                 "Snapmaker says nothing about a print whose task names its heads",
-                 "[ams][snapmaker][task_config_notice]") {
-    lv_init_safe();
-    helix::ui::UpdateQueue::instance().init();
-    StickyWarnings warnings;
-    FilamentRecordHarness h("task_notice_own");
-    FileToolsProbe probe(h.backend, /*later_tool=*/true);
-    h.frame(used_heads({false, true, false, false}));
-    h.print("printing");
-
-    // The firmware clears the flags as the print ends, while print_stats can
-    // still read printing.
-    h.frame(used_heads({false, false, false, false}));
-    CHECK(warnings.seen.empty());
-    CHECK(probe.asked.empty());
-}
-
-TEST_CASE_METHOD(SnapmakerFixture,
-                 "Snapmaker never says a print this screen started came from outside",
-                 "[ams][snapmaker][task_config_notice]") {
-    lv_init_safe();
-    helix::ui::UpdateQueue::instance().init();
-    StickyWarnings warnings;
-    FilamentRecordHarness h("task_notice_started_here");
-    FileToolsProbe probe(h.backend, /*later_tool=*/true);
-    h.frame(used_heads({false, false, false, false}));
-
-    // A start from here whose file's tools were never read sends no used heads.
-    h.backend.note_print_start_from_here();
-    h.print("printing");
-    REQUIRE(warnings.seen.size() == 1);
-    CHECK(warnings.seen[0].find("couldn't read which toolheads") != std::string::npos);
-    CHECK(warnings.seen[0].find("outside HelixScreen") == std::string::npos);
-
-    // The mark belongs to that one print: the next, started elsewhere, is not ours.
-    h.print("complete");
-    h.print("printing");
-    REQUIRE(warnings.seen.size() == 2);
-    CHECK(warnings.seen[1].find("outside HelixScreen") != std::string::npos);
 }
 
 TEST_CASE_METHOD(SnapmakerFixture,
                  "Snapmaker starts a print's state over when a restart never leaves the print",
-                 "[ams][snapmaker][task_config_notice][load_unconfirmed]") {
+                 "[ams][snapmaker][unloaded_head_notice][load_unconfirmed]") {
     lv_init_safe();
     helix::ui::UpdateQueue::instance().init();
-    StickyWarnings warnings;
+    Warnings warnings;
     FilamentRecordHarness h("restart_coalesced");
-    FileToolsProbe probe(h.backend, /*later_tool=*/true);
-    h.frame(used_heads({false, false, false, false}));
+    FileToolsProbe probe(h.backend, {2});
+    slicer_print_ready(h);
+    h.print("printing");
+    REQUIRE(warnings.seen.size() == 1);
     h.print("paused");
     h.frame(make_feed_status(1, "load_fail"));
-    REQUIRE(warnings.seen.size() == 1); // the paused print, judged as started elsewhere
 
     // The cancel and the new start reach this backend as one unbroken print.
     h.backend.note_print_start_from_here();
+    h.frame(feeder(1, "wait_insert")); // no failure now, and no load either
     h.print("printing");
-    h.frame(used_heads({false, false, false, false}));
-    REQUIRE(warnings.seen.size() == 2);
-    CHECK(warnings.seen[1].find("couldn't read which toolheads") != std::string::npos);
+    h.frame(json{{"print_stats", {{"filename", "restarted.gcode"}}}});
+    CHECK(warnings.seen.size() == 2); // the new print is checked
 
     SnapmakerTestAccess::set_current_slot(h.backend, 1);
     SnapmakerTestAccess::set_sensor_present(h.backend, 1, true);
@@ -6704,51 +6740,6 @@ TEST_CASE_METHOD(SnapmakerFixture,
     h.backend.prepare_for_resume(1, [&](const AmsError& err) { ok = err.success(); });
     FilamentRecordHarness::drain();
     CHECK(ok); // the old print's failed load no longer holds the new one
-}
-
-TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker lets a start from here lapse when no print follows",
-                 "[ams][snapmaker][task_config_notice]") {
-    lv_init_safe();
-    helix::ui::UpdateQueue::instance().init();
-    StickyWarnings warnings;
-    FilamentRecordHarness h("task_notice_lapsed");
-    FileToolsProbe probe(h.backend, /*later_tool=*/true);
-    h.frame(used_heads({false, false, false, false}));
-
-    h.backend.note_print_start_from_here();
-    SnapmakerTestAccess::age_start_from_here(h.backend, std::chrono::minutes(5));
-    h.print("printing");
-    REQUIRE(warnings.seen.size() == 1);
-    CHECK(warnings.seen[0].find("outside HelixScreen") != std::string::npos);
-}
-
-TEST_CASE("Snapmaker reads a later tool from the file's tools, weights, then palette",
-          "[ams][snapmaker][task_config_notice]") {
-    helix::FileStartFacts facts;
-    SECTION("scanned tools") {
-        facts.tools_used = {0};
-        CHECK_FALSE(SnapmakerTestAccess::file_uses_later_tool(facts));
-        facts.tools_used = {0, 2};
-        CHECK(SnapmakerTestAccess::file_uses_later_tool(facts));
-    }
-    SECTION("nothing known counts as a later tool") {
-        CHECK(SnapmakerTestAccess::file_uses_later_tool(facts));
-    }
-    SECTION("per-tool weights") {
-        facts.metadata = FileMetadata{};
-        facts.metadata->filament_weights = {12.5, 0.0, 0.0, 0.0};
-        facts.metadata->filament_colors = {"#FF0000", "#00FF00", "#0000FF", "#FFFFFF"};
-        CHECK_FALSE(SnapmakerTestAccess::file_uses_later_tool(facts));
-        facts.metadata->filament_weights = {12.5, 0.0, 3.0, 0.0};
-        CHECK(SnapmakerTestAccess::file_uses_later_tool(facts));
-    }
-    SECTION("palette when there are no weights") {
-        facts.metadata = FileMetadata{};
-        facts.metadata->filament_colors = {"#FF0000"};
-        CHECK_FALSE(SnapmakerTestAccess::file_uses_later_tool(facts));
-        facts.metadata->filament_colors = {"#FF0000", "#00FF00"};
-        CHECK(SnapmakerTestAccess::file_uses_later_tool(facts));
-    }
 }
 
 TEST_CASE_METHOD(SnapmakerFixture,

@@ -2,6 +2,8 @@
 
 End-to-end guide for the FlashForge Adventurer 5X running the ZMOD firmware modification: install, update, and uninstall.
 
+> **Easy installer:** support for the Adventurer 5X in the [HelixScreen easy installer](https://helixscreen.org/installer/) is coming. Until then this guide is the way to install.
+
 > **Tested and working.** Prebuilt `ad5x` binaries are included in releases. Installation is handled through ZMOD.
 
 ## Prerequisites

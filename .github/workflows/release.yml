@@ -1431,6 +1431,11 @@ jobs:
           echo "Generated manifest for ${CHANNEL}:"
           cat "release-files/manifest-${CHANNEL}.json" | jq .
 
+          # The ESP32 entries are checked against the zips on disk before the
+          # manifest goes live, so a bad entry stops the release with nothing
+          # published.
+          scripts/check-esp32-manifest.sh "release-files/manifest-${CHANNEL}.json" release-files
+
           echo "Uploading ${R2_PREFIX}${CHANNEL}/manifest.json..."
           s3cp "release-files/manifest-${CHANNEL}.json" \
             "s3://${R2_BUCKET}/${R2_PREFIX}${CHANNEL}/manifest.json" \
@@ -1444,8 +1449,10 @@ jobs:
           # (cf-cache-status: DYNAMIC), so a mismatch after a few reads is real.
           echo "Verifying ${R2_PREFIX}${CHANNEL}/manifest.json serves v${RELEASE_VERSION}..."
           served=""
+          body=""
           for attempt in 1 2 3 4; do
-            served=$(curl -fsS "${R2_PUBLIC_URL}/${R2_PREFIX}${CHANNEL}/manifest.json" | jq -r '.version // empty')
+            body=$(curl -fsS "${R2_PUBLIC_URL}/${R2_PREFIX}${CHANNEL}/manifest.json" || true)
+            served=$(jq -r '.version // empty' <<<"$body" 2>/dev/null || true)
             [ "$served" = "$RELEASE_VERSION" ] && break
             echo "  attempt ${attempt}: served '${served:-<none>}', expected '${RELEASE_VERSION}'; retrying in 5s..."
             sleep 5
@@ -1454,6 +1461,23 @@ jobs:
             echo "::error::${CHANNEL} manifest serves '${served:-<none>}', expected '${RELEASE_VERSION}' -- release would be invisible to in-app updaters"
             exit 1
           fi
+
+          # Every ESP32 zip the manifest lists must be downloadable. A failure
+          # is recorded and reported after every channel is published: it must
+          # not cost another channel its manifest.
+          while IFS= read -r esp_url; do
+            [ -n "$esp_url" ] || continue
+            reached=false
+            for attempt in 1 2 3 4; do
+              if curl -fsSI "$esp_url" >/dev/null; then reached=true; break; fi
+              echo "  attempt ${attempt}: ${esp_url} not reachable; retrying in 5s..."
+              sleep 5
+            done
+            if [ "$reached" != true ]; then
+              echo "::error::${CHANNEL} manifest lists ${esp_url}, which is not downloadable"
+              ESP_FAILED="${ESP_FAILED:-} ${esp_url}"
+            fi
+          done < <(jq -r '.assets | to_entries[] | select(.key | startswith("esp32-")) | .value.url' <<<"$body")
 
           echo "=== ${CHANNEL} manifest uploaded and verified (v${served}) ==="
         done
@@ -1472,6 +1496,10 @@ jobs:
         for CHANNEL in $UPLOAD_CHANNELS; do
           echo "  ${CHANNEL}: ${R2_PUBLIC_URL}/${R2_PREFIX}${CHANNEL}/manifest.json"
         done
+        if [ -n "${ESP_FAILED:-}" ]; then
+          echo "::error::ESP32 zips listed in a manifest but not downloadable:${ESP_FAILED}"
+          exit 1
+        fi
 
     - name: Clean up old releases (retain 5 most recent)
       if: env.RELEASE_MODE == 'publish'

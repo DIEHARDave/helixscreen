@@ -1024,7 +1024,6 @@
   <translation tag="ETA {}" en="ETA {}"/>
   <translation tag="EXTRAS" en="EXTRAS"/>
   <translation tag="Each fan can only be selected once" en="Each fan can only be selected once"/>
-  <translation tag="Each toolhead after the first will pause the print the first time it is used, because the printer won&apos;t load or prime it. Filament won&apos;t unload when the print ends." en="Each toolhead after the first will pause the print the first time it is used, because the printer won&apos;t load or prime it. Filament won&apos;t unload when the print ends."/>
   <translation tag="Edit" en="Edit"/>
   <translation tag="Edit Filament" en="Edit Filament"/>
   <translation tag="Edit Slot" en="Edit Slot"/>
@@ -1558,7 +1557,6 @@
   <translation tag="HelixScreen" en="HelixScreen"/>
   <translation tag="HelixScreen Crashed" en="HelixScreen Crashed"/>
   <translation tag="HelixScreen Macros" en="HelixScreen Macros"/>
-  <translation tag="HelixScreen couldn&apos;t read which toolheads this file uses, so the printer wasn&apos;t told." en="HelixScreen couldn&apos;t read which toolheads this file uses, so the printer wasn&apos;t told."/>
   <translation tag="HelixScreen is detecting your display orientation" en="HelixScreen is detecting your display orientation"/>
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." en="HelixScreen will integrate with your filament changer for multi-spool/color print operations."/>
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." en="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect."/>
@@ -3564,7 +3562,6 @@
   <translation tag="This print does not report layers, so no layer pause can be scheduled." en="This print does not report layers, so no layer pause can be scheduled."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" en="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?"/>
   <translation tag="This print never reports layer {}." en="This print never reports layer {}."/>
-  <translation tag="This print was started outside HelixScreen, so the printer doesn&apos;t know which toolheads it uses." en="This print was started outside HelixScreen, so the printer doesn&apos;t know which toolheads it uses."/>
   <translation tag="This printer cannot calibrate tool offsets automatically" en="This printer cannot calibrate tool offsets automatically"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." en="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman."/>
   <translation tag="This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman." en="This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman."/>
@@ -4125,6 +4122,7 @@
   <translation tag="{} is not available on this device. Printing original file." en="{} is not available on this device. Printing original file."/>
   <translation tag="{} is not set up on this printer" en="{} is not set up on this printer"/>
   <translation tag="{} is still printing. The print keeps running after you switch." en="{} is still printing. The print keeps running after you switch."/>
+  <translation tag="{} isn&apos;t loaded. The print will pause when it needs it." en="{} isn&apos;t loaded. The print will pause when it needs it."/>
   <translation tag="{} kept crashing the panel; pick a printer to connect" en="{} kept crashing the panel; pick a printer to connect"/>
   <translation tag="{} kept crashing the panel; switched back to {}" en="{} kept crashing the panel; switched back to {}"/>
   <translation tag="{} left" en="{} left"/>

@@ -563,29 +563,3 @@ TEST_CASE_METHOD(LoaderFixture,
     CHECK(scripts_containing(client, "SET_PRINT_EXTRUDER_MAP").empty());
     CHECK(started);
 }
-
-TEST_CASE_METHOD(LoaderFixture, "a start whose pre-print step fails leaves no started-here mark",
-                 "[print_start_inputs][reprint][task_config_notice]") {
-    get_printer_state().update_from_status(nlohmann::json{{"webhooks", {{"state", "ready"}}}});
-    helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> backend_reg(api.get(), nullptr);
-    helix::SnapmakerTestAccess::set_file_tools_probe(
-        *backend_reg, [](const std::string&, std::function<void(bool)> answer) { answer(true); });
-    std::vector<std::string> warnings;
-    helix::ui::set_test_notification_sticky_warning_hook(
-        [&warnings](const std::string& m) { warnings.push_back(m); });
-    helix::ui::PrintStartController controller(get_printer_state(), api.get());
-
-    client.fail_next("printer.gcode.script");
-    controller.initiate_reprint("benchy.gcode", "", {0, 2}, [] {}, [] {});
-    drain();
-
-    // A print another client starts next is not mistaken for this screen's.
-    helix::SnapmakerTestAccess::handle_status(
-        *backend_reg,
-        nlohmann::json{{"print_task_config", {{"extruders_used", {false, false, false, false}}}},
-                       {"print_stats", {{"state", "printing"}, {"filename", "other.gcode"}}}});
-    drain();
-    REQUIRE(warnings.size() == 1);
-    CHECK(warnings[0].find("outside HelixScreen") != std::string::npos);
-    helix::ui::set_test_notification_sticky_warning_hook(nullptr);
-}

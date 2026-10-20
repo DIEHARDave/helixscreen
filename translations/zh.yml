@@ -1061,8 +1061,6 @@ translations:
   ETA {}: '预计 {}'
   EXTRAS: 其他
   Each fan can only be selected once: 每个风扇只能选择一次
-  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
-  : '打印机不会装载或预挤出后续工具头，因此第一个之后的每个工具头在首次使用时都会暂停打印。打印结束时也不会卸载耗材。'
   Edit: 编辑
   Edit Filament: 编辑耗材
   Edit Slot: 编辑槽位
@@ -1613,7 +1611,6 @@ translations:
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen 崩溃
   HelixScreen Macros: 'HelixScreen 宏'
-  HelixScreen couldn't read which toolheads this file uses, so the printer wasn't told.: 'HelixScreen 无法读取此文件使用哪些工具头，因此未告知打印机。'
   HelixScreen is detecting your display orientation: HelixScreen正在检测显示屏方向
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     将与您的耗材更换器集成，用于多料盘/多色打印操作。
@@ -3710,7 +3707,6 @@ translations:
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: 本次打印需要约
     %.0fg，但料盘仅剩约 %.0fg。仍要开始吗？
   This print never reports layer {}.: '此打印从不报告第 {} 层。'
-  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: '此打印是在 HelixScreen 之外启动的，因此打印机不知道它使用哪些工具头。'
   This printer cannot calibrate tool offsets automatically: 此打印机无法自动校准工具偏移
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: 此打印机的通道信息来自 Spoolman。HelixScreen 已清除本地副本；请在 Spoolman 中移除该线轴。
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: 此打印机的通道信息来自 Spoolman。请在 Spoolman 中更改颜色、材料和线轴。
@@ -4292,6 +4288,7 @@ translations:
   '{} left': '剩余 {}'
   '{} lines in helixscreen.env were ignored': 'helixscreen.env 中有 {} 行被忽略'
   '{} kept crashing the panel; switched back to {}': '{} 反复导致屏幕崩溃，已切换回 {}'
+  "{} isn't loaded. The print will pause when it needs it.": '{}未装载。打印需要时将暂停。'
   '{} kept crashing the panel; pick a printer to connect': '{} 反复导致屏幕崩溃，请选择要连接的打印机'
   '{} looser than {}': "{} 比 {} 松"
   '{} m': '{} 米'

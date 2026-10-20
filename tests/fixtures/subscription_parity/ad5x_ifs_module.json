@@ -77,7 +77,8 @@
     "estimated_time",
     "info",
     "message",
-    "power_loss"
+    "power_loss",
+    "exception"
   ],
   "save_variables": null,
   "stepper_enable": [

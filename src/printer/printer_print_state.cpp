@@ -514,6 +514,11 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
             lv_subject_set_int(&print_elapsed_, total_elapsed);
         }
 
+        ++print_stats_frames_;
+        const bool frame_has_exception = [&stats] {
+            auto exc = stats.find("exception");
+            return exc != stats.end() && exc->is_object() && !exc->empty();
+        }();
         if (auto state_it = stats.find("state"); state_it != stats.end() && state_it->is_string()) {
             std::string state_str = state_it->get<std::string>();
             PrintJobState new_state = parse_print_job_state(state_str.c_str());
@@ -532,6 +537,11 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
                 // RAW_PRINT_STATE_OK: the exception belongs to the printer's own
                 // pause, so the wire state is what scopes it.
                 if (new_state != PrintJobState::PAUSED) {
+                    clear_print_exception();
+                } else if (!frame_has_exception &&
+                           print_stats_frames_ - print_exception_frame_ > 1) {
+                    // An exception published earlier in the print describes
+                    // something else; this pause has none of its own yet.
                     clear_print_exception();
                 }
                 // Entering a terminal state: record the outcome
@@ -692,6 +702,7 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
         if (auto exc_it = stats.find("exception"); exc_it != stats.end()) {
             if (exc_it->is_object() && !exc_it->empty()) {
                 const auto& exc = *exc_it;
+                print_exception_frame_ = print_stats_frames_;
                 if (auto id_it = exc.find("id"); id_it != exc.end() && id_it->is_number_integer()) {
                     print_exception_id_ = id_it->get<int>();
                 } else {

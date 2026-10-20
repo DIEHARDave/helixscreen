@@ -2000,16 +2000,22 @@ bool AmsEditOverlay::needs_identity_confirmation(const SlotInfo& original, const
     return is_material_identity_change(original, edited);
 }
 
+void AmsEditOverlay::stage_pending_color_into_working() {
+    if (!details_color_set_)
+        return;
+    working_info_.color_rgb = details_color_;
+    // The hex is the colour. A stored name would describe the previous one,
+    // and every label that wants words computes them from the hex.
+    working_info_.color_name.clear();
+    working_info_.multi_color_hexes.clear();
+}
+
 void AmsEditOverlay::handle_add_to_spoolman() {
     // The quiet link: create a Spoolman spool from what the slot holds (then
     // print its label). Stages the selection first so the created spool
     // carries the dropdowns' identity, not the pre-edit one.
     stage_selection_into_working();
-    if (details_color_set_) {
-        working_info_.color_rgb = details_color_;
-        working_info_.color_name = helix::get_color_name_from_hex(details_color_);
-        working_info_.multi_color_hexes.clear();
-    }
+    stage_pending_color_into_working();
     const helix::MissingFilamentFields missing =
         helix::SpoolmanSlotSaver::missing_filament_fields(working_info_);
     if (missing.any()) {
@@ -2040,11 +2046,7 @@ void AmsEditOverlay::handle_save() {
     }
 
     stage_selection_into_working();
-    if (details_color_set_) {
-        working_info_.color_rgb = details_color_;
-        working_info_.color_name = helix::get_color_name_from_hex(details_color_);
-        working_info_.multi_color_hexes.clear();
-    }
+    stage_pending_color_into_working();
 
     // The More section's Spoolman-owned fields (price/location/lot/notes):
     // PATCH the spool record's diff before committing, the way the identity

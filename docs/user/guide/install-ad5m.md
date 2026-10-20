@@ -2,6 +2,8 @@
 
 Everything you need to run HelixScreen on a Flashforge Adventurer 5M or 5M Pro (AD5M): install, update, service control, and uninstall. HelixScreen runs directly on the printer's stock 4.3" touchscreen, replacing GuppyScreen (on Forge-X), KlipperScreen (on Klipper Mod) or the stock screen (on ZMOD).
 
+> **Easy installer:** the [HelixScreen easy installer](https://helixscreen.org/installer/) can update HelixScreen on a Forge-X Adventurer 5M from a desktop app. Installing the firmware mod and a first install are still done by hand with this guide.
+
 > **Tested versions:** Most thoroughly tested on Forge-X 1.4.0 with Flashforge firmware 3.1.5. Other versions may work fine.
 
 ---

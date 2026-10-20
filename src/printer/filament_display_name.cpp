@@ -186,7 +186,9 @@ FilamentLabelParts resolve_filament_label_parts(const SlotInfo& slot, const Spoo
 }
 
 std::string slot_card_name(const SlotInfo& slot, const SpoolIdentity* identity) {
-    return resolve_filament_label_parts(slot, identity, std::string_view()).name;
+    const SpoolIdentity* id = (identity != nullptr && identity->valid()) ? identity : nullptr;
+    const std::string_view id_name = id ? std::string_view(id->filament_name) : std::string_view();
+    return normalize_ws(first_non_blank({slot.spool_name, id_name, slot.product_name}));
 }
 
 SlotCardLines slot_card_lines(std::string_view name, std::string_view material,

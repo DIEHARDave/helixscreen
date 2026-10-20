@@ -653,7 +653,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture,
-                 "PrePrintOptionsRenderer: Snapmaker U1 live DB renders four preference toggles",
+                 "PrePrintOptionsRenderer: Snapmaker U1 live DB renders three preference toggles",
                  "[print_file_detail][pre_print_options][db][snapmaker_u1]") {
     // Every U1 row drives SET_PRINT_PREFERENCES, which is a setter: an absent
     // parameter leaves the stored preference at its previous value, so each
@@ -661,9 +661,13 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     // silently keep the old setting.
     auto set = PrinterDetector::get_pre_print_option_set("Snapmaker U1");
     REQUIRE_FALSE(set.empty());
-    REQUIRE(set.options.size() == 4);
+    REQUIRE(set.options.size() == 3);
 
-    for (const char* id : {"bed_mesh", "shaper_calibrate", "flow_calibrate", "u1_timelapse"}) {
+    // Input shaping is never offered as a pre-print step.
+    REQUIRE(set.find("shaper_calibrate") == nullptr);
+    REQUIRE_FALSE(set.declares_capability("shaper_calibrate"));
+
+    for (const char* id : {"bed_mesh", "flow_calibrate", "u1_timelapse"}) {
         CAPTURE(id);
         const PrePrintOption* opt = set.find(id);
         REQUIRE(opt != nullptr);
@@ -695,7 +699,6 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
 TEST_CASE("PrePrintOptionsRenderer: default icon per option id", "[pre_print_options][icons]") {
     CHECK(PrePrintOptionsRenderer::default_icon_for("bed_mesh") == "grid_large");
-    CHECK(PrePrintOptionsRenderer::default_icon_for("shaper_calibrate") == "sine_wave");
     CHECK(PrePrintOptionsRenderer::default_icon_for("flow_calibrate") == "gauge");
     CHECK(PrePrintOptionsRenderer::default_icon_for("timelapse") == "camera_timer");
     CHECK(PrePrintOptionsRenderer::default_icon_for("u1_timelapse") == "camera_timer");

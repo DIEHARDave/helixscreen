@@ -1299,6 +1299,12 @@ class PrinterPrintState {
     int print_exception_id_ = -1;
     int print_exception_code_ = -1;
     std::string print_exception_message_;
+    /// print_stats frames parsed, and the one the latched exception arrived
+    /// in: a pause takes an exception from its own frame, a later one, or the
+    /// frame just before it (the firmware can publish the two across a status
+    /// interval), never one latched further back in the print.
+    uint64_t print_stats_frames_ = 0;
+    uint64_t print_exception_frame_ = 0;
 
     // String buffers for subject storage
     char print_filename_buf_[256]{};

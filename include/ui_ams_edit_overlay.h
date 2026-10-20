@@ -419,6 +419,9 @@ class AmsEditOverlay : public OverlayBase {
     /// Presets the showing colour grid displays.
     int visible_preset_count();
     void stage_selection_into_working();
+    /// Copy a colour picked in the editor into working_info_, dropping any
+    /// stored colour name.
+    void stage_pending_color_into_working();
     void handle_quick_swatch(lv_obj_t* swatch);
     void handle_picker_search(const char* text);
     void fetch_recents();

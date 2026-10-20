@@ -1412,104 +1412,113 @@ void AmsBackendSnapmaker::apply_print_state_locked(const std::string& state) {
     const bool was_in_progress = print_in_progress_locked();
     print_state_ = state;
     const bool in_progress = print_in_progress_locked();
-    // A load's outcome and the task judgement each belong to one print. The
+    // A load's outcome and the used-heads check each belong to one print. The
     // first state a connection reads is no change of print: a reconnect
     // mid-print keeps them, and one that finds no print forgets them.
     if ((had_state && was_in_progress != in_progress) || (!had_state && !in_progress)) {
         load_unconfirmed_.fill(false);
-        task_config_judged_ = false;
+        used_heads_checked_ = false;
+        awaiting_restart_file_ = false;
         ++print_generation_;
-        print_started_here_ = false;
-    }
-    if (was_in_progress != in_progress) {
-        if (in_progress && start_from_here_at_) {
-            print_started_here_ =
-                std::chrono::steady_clock::now() - *start_from_here_at_ <= kStartFromHereWindow;
-            start_from_here_at_.reset();
-        }
     }
 }
 
 void AmsBackendSnapmaker::note_print_start_from_here() {
     std::lock_guard<std::mutex> lock(mutex_);
-    start_from_here_at_ = std::chrono::steady_clock::now();
     if (print_in_progress_locked()) {
-        // A restart cancels and starts again; the two can reach this backend
-        // as one unbroken print, so the new print's state starts here.
         load_unconfirmed_.fill(false);
-        task_config_judged_ = false;
+        used_heads_checked_ = false;
+        awaiting_restart_file_ = true;
         ++print_generation_;
-        print_started_here_ = true;
     }
 }
 
-bool AmsBackendSnapmaker::file_uses_later_tool(const FileStartFacts& facts) {
-    if (const std::set<int> tools = file_tools_used(facts); !tools.empty()) {
-        return std::any_of(tools.begin(), tools.end(), [](int tool) { return tool > 0; });
+bool AmsBackendSnapmaker::used_heads_check_due_locked(bool frame_names_state,
+                                                      bool frame_names_file) {
+    // A frame naming the print's state or file arms the check. After a
+    // restart that never left the print, frames of the cancelled print can
+    // still read printing, so only the new file's name arms it.
+    const bool names_this_print =
+        awaiting_restart_file_ ? frame_names_file : (frame_names_state || frame_names_file);
+    if (used_heads_checked_ || !names_this_print || !print_state_ || *print_state_ != "printing") {
+        return false;
     }
-    if (!facts.metadata) {
-        return true;
-    }
-    if (!facts.metadata->filament_weights.empty()) {
-        return false; // weights given, none past zero
-    }
-    return facts.metadata->filament_colors.size() > 1;
+    awaiting_restart_file_ = false;
+    used_heads_checked_ = true;
+    return true;
 }
 
-void AmsBackendSnapmaker::warn_if_unset_task_uses_later_tool(const std::string& filename,
-                                                             uint32_t print,
-                                                             TaskConfigNotice notice) {
-    auto on_answer = [this, filename, print, notice](bool later_tool) {
+std::set<int> AmsBackendSnapmaker::heads_for_tools_locked(const std::set<int>& tools) const {
+    const std::vector<int> task_map = task_routing(extruders_used_, extruder_map_table_);
+    const helix::FirmwareRouting routing = default_routing();
+    std::set<int> heads;
+    for (int tool : tools) {
+        int head = routing.head(tool);
+        if (tool >= 0 && static_cast<size_t>(tool) < task_map.size()) {
+            head = task_map[static_cast<size_t>(tool)];
+        }
+        if (head >= 0 && head < kNumTools) {
+            heads.insert(head);
+        }
+    }
+    return heads;
+}
+
+void AmsBackendSnapmaker::warn_unloaded_used_heads(const std::string& filename, uint32_t print) {
+    auto on_tools = [this, filename, print](std::set<int> tools) {
+        if (tools.empty()) {
+            spdlog::debug("{} '{}': tools not readable; no used-head check", backend_log_tag(),
+                          filename);
+            return;
+        }
+        std::vector<int> unloaded;
         {
             std::lock_guard<std::mutex> lock(mutex_);
             if (print != print_generation_) {
                 return;
             }
+            for (int head : heads_for_tools_locked(tools)) {
+                const ChannelSnapshot& snap = channel_snapshots_[static_cast<size_t>(head)];
+                // The firmware feeds a head the task names before it is used.
+                const bool firmware_loads = static_cast<size_t>(head) < extruders_used_.size() &&
+                                            extruders_used_[static_cast<size_t>(head)];
+                if (!feeder_serves_head(snap) || firmware_loads || feeder_reports_loaded(snap) ||
+                    helix::snapmaker::channel_state_in_progress(snap.state)) {
+                    continue;
+                }
+                unloaded.push_back(head);
+            }
         }
-        spdlog::warn("{} '{}' running with no used heads in print_task_config; {}",
-                     backend_log_tag(), filename,
-                     later_tool ? "it uses a tool past the first, warning"
-                                : "it uses the first tool only, no warning");
-        if (!later_tool) {
-            return;
+        for (int head : unloaded) {
+            const std::string tool = helix::ui::tool_label_in_form(
+                tool_noun(), helix::ui::tool_label(head), head, helix::ui::ToolLabelForm::Full);
+            spdlog::warn("{} '{}' uses tool {}, whose feeder reports it not loaded",
+                         backend_log_tag(), filename, head);
+            ui_notification_warning(
+                fmt::format(fmt::runtime(lv_tr("{} isn't loaded. The print will pause when it "
+                                               "needs it.")),
+                            tool)
+                    .c_str());
         }
-        ui_notification_warning_sticky(
-            notice == TaskConfigNotice::ToolsUnknown
-                ? lv_tr("HelixScreen couldn't read which toolheads this file uses, so the "
-                        "printer wasn't told.")
-                : lv_tr("This print was started outside HelixScreen, so the printer doesn't "
-                        "know which toolheads it uses."),
-            lv_tr("Each toolhead after the first will pause the print the first time it is "
-                  "used, because the printer won't load or prime it. Filament won't unload "
-                  "when the print ends."));
     };
     if (file_tools_probe_) {
-        file_tools_probe_(filename, std::move(on_answer));
+        file_tools_probe_(filename, std::move(on_tools));
         return;
     }
     if (!api_ || filename.empty()) {
-        on_answer(true);
         return;
     }
     if (!file_facts_) {
         file_facts_ = std::make_unique<FileStartFactsLoader>(api_);
     }
+    // The footer at most: the check must not cost a download of the file.
     // The loader is owned here and drops its answer when destroyed.
-    file_facts_->load(filename, [on_answer = std::move(on_answer)](FileStartFacts facts) {
-        on_answer(file_uses_later_tool(facts));
-    });
-}
-
-AmsBackendSnapmaker::TaskConfigNotice AmsBackendSnapmaker::judge_task_config_locked() {
-    if (task_config_judged_ || !print_in_progress_locked() || extruders_used_.empty()) {
-        return TaskConfigNotice::None;
-    }
-    task_config_judged_ = true;
-    if (std::any_of(extruders_used_.begin(), extruders_used_.end(),
-                    [](bool used) { return used; })) {
-        return TaskConfigNotice::None;
-    }
-    return print_started_here_ ? TaskConfigNotice::ToolsUnknown : TaskConfigNotice::OtherClient;
+    file_facts_->load(
+        filename,
+        [on_tools = std::move(on_tools)](FileStartFacts facts) {
+            on_tools(file_tools_used(facts));
+        },
+        nullptr, nullptr, FileRead::Footer);
 }
 
 // ============================================================================
@@ -2925,14 +2934,18 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
       // with sync_from_backend() which acquires mutex_ via get_system_info()
         std::lock_guard<std::mutex> lock(mutex_);
 
+        bool frame_names_state = false;
+        bool frame_names_file = false;
         if (const nlohmann::json* ps = helix::json_util::find_member(status, "print_stats")) {
             if (const nlohmann::json* file = helix::json_util::find_member(*ps, "filename");
                 file && file->is_string()) {
                 print_filename_ = file->get<std::string>();
+                frame_names_file = true;
             }
             if (const nlohmann::json* state = helix::json_util::find_member(*ps, "state");
                 state && state->is_string()) {
                 apply_print_state_locked(state->get<std::string>());
+                frame_names_state = true;
             }
         }
         if (const auto main_state = snapmaker::screws_tilt::main_state_from_status(status)) {
@@ -2955,9 +2968,9 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
         apply_working_slot_locked(fx);
 
         apply_print_task_config_locked(delta, fx);
-        fx.task_config_unset = judge_task_config_locked();
-        fx.task_config_unset_file = print_filename_;
-        fx.task_config_print = print_generation_;
+        fx.check_used_heads = used_heads_check_due_locked(frame_names_state, frame_names_file);
+        fx.check_used_heads_file = print_filename_;
+        fx.check_used_heads_print = print_generation_;
 
         apply_toolhead_sensors_locked(delta, fx);
 
@@ -3027,13 +3040,13 @@ void AmsBackendSnapmaker::dispatch_effects(const FrameEffects& fx) {
         finish_refeed_wait();
     }
 
-    if (fx.task_config_unset != TaskConfigNotice::None) {
-        std::string file = fx.task_config_unset_file;
+    if (fx.check_used_heads) {
+        std::string file = fx.check_used_heads_file;
         if (file.empty()) {
             file = lv_subject_get_string(
                 get_printer_state().print_state().get_print_filename_subject());
         }
-        warn_if_unset_task_uses_later_tool(file, fx.task_config_print, fx.task_config_unset);
+        warn_unloaded_used_heads(file, fx.check_used_heads_print);
     }
 
     if (fx.changed) {

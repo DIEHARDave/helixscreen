@@ -430,6 +430,46 @@ TEST_CASE("PrinterState: parses print_stats.exception structured object",
     }
 }
 
+TEST_CASE("PrinterState: a pause takes no exception latched earlier in the print",
+          "[state][progress][pause]") {
+    lv_init_safe();
+    PrinterState& state = get_printer_state();
+    PrinterStateTestAccess::reset(state);
+    state.init_subjects(false);
+    state.update_from_status(json{{"print_stats", {{"state", "printing"}}}});
+    const json dirty_bed = {{"id", 532}, {"code", 1}, {"message", "detected dirty bed"}};
+
+    SECTION("published while printing, then a later pause without one: a plain pause") {
+        state.update_from_status(json{{"print_stats", {{"exception", dirty_bed}}}});
+        state.update_from_status(json{{"print_stats", {{"print_duration", 12.0}}}});
+        state.update_from_status(json{{"print_stats", {{"print_duration", 13.0}}}});
+        state.update_from_status(json{{"print_stats", {{"state", "paused"}}}});
+        CHECK(state.print_state().get_print_exception_id() == -1);
+        CHECK(state.print_state().get_print_exception_code() == -1);
+    }
+    SECTION("carried in the pause's own frame") {
+        state.update_from_status(
+            json{{"print_stats", {{"state", "paused"}, {"exception", dirty_bed}}}});
+        CHECK(state.print_state().get_print_exception_id() == 532);
+    }
+    SECTION("published in the frame just before the pause") {
+        state.update_from_status(json{{"print_stats", {{"exception", dirty_bed}}}});
+        state.update_from_status(json{{"print_stats", {{"state", "paused"}}}});
+        CHECK(state.print_state().get_print_exception_id() == 532);
+    }
+    SECTION("arriving after the pause") {
+        state.update_from_status(json{{"print_stats", {{"state", "paused"}}}});
+        state.update_from_status(json{{"print_stats", {{"exception", dirty_bed}}}});
+        CHECK(state.print_state().get_print_exception_id() == 532);
+    }
+    SECTION("a resume clears it") {
+        state.update_from_status(
+            json{{"print_stats", {{"state", "paused"}, {"exception", dirty_bed}}}});
+        state.update_from_status(json{{"print_stats", {{"state", "printing"}}}});
+        CHECK(state.print_state().get_print_exception_id() == -1);
+    }
+}
+
 TEST_CASE("PrinterState: Progress percentage edge cases", "[state][progress][edge]") {
     lv_init_safe();
     PrinterState& state = get_printer_state();

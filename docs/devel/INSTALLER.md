@@ -409,6 +409,41 @@ A run that fails before platform detection (a bad argument, for one) sends `resu
 
 Tabs, newlines and carriage returns inside a title or detail become single spaces, so a record never splits. All emission goes through `_progress_emit` in `scripts/lib/installer/common.sh`; without `--progress` it prints nothing.
 
+## The Desktop Installer as a Consumer
+
+The desktop easy installer ([`prestonbrown/helix-installer`](https://github.com/prestonbrown/helix-installer), a Tauri app) installs HelixScreen by driving this installer over SSH. It never reimplements an install: it fetches a release and `install.sh` on the user's computer, uploads both to the printer, and runs `install.sh` there. The contract it relies on is in this repository, so a change to any of the following needs the app's maintainers told and its `helix_install` step (`crates/core/src/steps/helix_install.rs` in that repo) re-checked.
+
+### What it runs
+
+For an install or update it uploads `install.sh` and the platform's release zip to a recipe-chosen directory on the printer (`/tmp` by default, `/usr/data` on a K1, `/mnt/UDISK` on a K2, `/data` on an AD5M) and starts, detached:
+
+```
+sh <dir>/install.sh --local <dir>/<zip> --progress [--update] [--dry-run]
+```
+
+An uninstall uploads only the script and runs `sh <dir>/install.sh --uninstall --progress`. A non-root login runs the whole command through `sudo -S`, since a detached job can't answer a sudo prompt; `install.sh` then finds the Klipper service user itself, never from who started it.
+
+- **`--dry-run`** is how the app proves the printer will take the install before it commits. It runs first, with the same arguments, and must exit at the confirm point having changed nothing. A check that would stop the real install must therefore fail the dry run too, which is already true because every such check runs before `confirm_point`. The app then runs the real install without `--dry-run`.
+- **`--progress`** is how it follows the run. It parses the tab-separated `HELIX-PROGRESS` lines described under [Machine-readable progress](#machine-readable-progress) from the job's output and ignores every other line. A run is a success only when the app sees `result<TAB>ok`. The `platform` line is checked as soon as it appears: if it names a platform other than the one the printer's recipe chose, the app kills the run before the first change. Keep `platform` as the first event, before anything that changes the machine.
+- **Version gate.** Before uploading, the app reads the fetched `install.sh` and refuses one with no `--progress)` case arm, so an older script that would only print its usage is never sent.
+- **Silence.** If `install.sh` prints nothing for 15 minutes the app treats it as hung. Extracting on a MIPS printer's flash can take minutes without a line, so a step that waits on slow hardware should keep emitting.
+
+### What it reads from a release
+
+| Input | Where | Used for |
+|-------|-------|----------|
+| Release list | `https://releases.helixscreen.org/<channel>/manifest.json` for `stable` and `beta` | `tag`, an optional `version`, and `assets.<platform>` = `{url, sha256}`. The app picks the newest of the channels it is allowed to read and downloads the platform's `url`, checking its `sha256` |
+| `install.sh` | The GitHub release `tag`'s asset named `install.sh` | Uploaded to the printer. The app checks it against the asset's `digest` |
+| Platform keys | `assets.<platform>` | The keys the app asks for today: `pi` and `pi32` (generic Klipper hosts, picked from the host's CPU, and QIDI printers, which use `pi`), `k1`, `k2`, `ad5m`. A key the release list lacks makes the install fail with "has no build for platform" |
+
+The zip's file name is taken from the last segment of its `url` and has to be a plain name (letters, digits, `.`, `-`, `_`, `+`).
+
+An update never installs an older version over a newer one: the app reads the running `helix-screen` (its release info file or its `--version` line), and with nothing running, the highest version found in any install location and Moonraker. If it can't tell, it refuses.
+
+### Release assets that must keep their names
+
+The unversioned `helixscreen-ad5m.zip` and `helixscreen-ad5x.zip` release assets **must stay**, even though the release also publishes versioned archives. ZMOD seeds a release info file on the printer whose `asset_name` is `helixscreen-ad5m.zip` or `helixscreen-ad5x.zip`, and the Moonraker `type: web` update manager then downloads the asset of that name from the latest release. Renaming or dropping either leaves ZMOD printers unable to update HelixScreen, with no error on our side. `release.yml` likewise keeps publishing the `k1` and `ad5x` archives under their retired board keys for the same reason: deployed binaries still ask for them.
+
 ## Mod-Managed Hosts: the Payload Contract (Forge-X)
 
 Some Adventurer hosts run a firmware **mod** - a git-managed tree that owns the machine's

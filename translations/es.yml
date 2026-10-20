@@ -1134,8 +1134,6 @@ translations:
   EXTRAS: EXTRAS
   Each fan can only be selected once: Cada ventilador solo se puede seleccionar una
     vez
-  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
-  : 'Cada cabezal después del primero pausará la impresión la primera vez que se use, porque la impresora no lo cargará ni lo cebará. El filamento no se descargará al terminar la impresión.'
   Edit: Editar
   Edit Filament: Editar filamento
   Edit Slot: Editar Ranura
@@ -1709,7 +1707,6 @@ translations:
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen se Bloqueó
   HelixScreen Macros: 'Macros de HelixScreen'
-  HelixScreen couldn't read which toolheads this file uses, so the printer wasn't told.: 'HelixScreen no pudo leer qué cabezales usa este archivo, así que no se le indicó a la impresora.'
   HelixScreen is detecting your display orientation: HelixScreen está detectando la
     orientación de su pantalla
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
@@ -3946,7 +3943,6 @@ translations:
     impresión necesita aproximadamente %.0fg pero la bobina tiene aproximadamente
     %.0fg restantes. ¿Iniciar de todos modos?
   This print never reports layer {}.: 'Esta impresión nunca informa la capa {}.'
-  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: 'Esta impresión se inició fuera de HelixScreen, así que la impresora no sabe qué cabezales usa.'
   This printer cannot calibrate tool offsets automatically: Esta impresora no puede calibrar los offsets de herramienta automáticamente
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Esta impresora llena sus gates desde Spoolman. HelixScreen borró su propia copia; quita la bobina en Spoolman.
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: Esta impresora llena sus gates desde Spoolman. Haz los cambios de color, material y bobina en Spoolman.
@@ -4557,6 +4553,7 @@ translations:
   '{} left': 'quedan {}'
   '{} lines in helixscreen.env were ignored': '{} líneas de helixscreen.env fueron ignoradas'
   '{} kept crashing the panel; switched back to {}': '{} bloqueó la pantalla repetidamente; se volvió a {}'
+  "{} isn't loaded. The print will pause when it needs it.": '{} no está cargado. La impresión se pausará cuando lo necesite.'
   '{} kept crashing the panel; pick a printer to connect': '{} bloqueó la pantalla repetidamente; elige una impresora para conectar'
   '{} looser than {}': "{} más floja que {}"
   '{} m': '{} m'

@@ -1271,6 +1271,10 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a linked slot still saves a color while Spo
 
     REQUIRE(fired);
     CHECK(captured.slot_info.color_rgb == 0x112233U);
+    // A picked colour has no name: the old one described a different colour,
+    // and nothing computed from the hex is stored in its place.
+    REQUIRE_FALSE(tracked_slot().color_name.empty());
+    CHECK(captured.slot_info.color_name.empty());
     CHECK(captured.slot_info.material == tracked_slot().material);
     CHECK(captured.slot_info.brand == tracked_slot().brand);
 }

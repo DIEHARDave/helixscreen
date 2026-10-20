@@ -533,35 +533,29 @@ TEST_CASE("a cancelled read_entry_head answers nothing", "[three_mf][reader][sca
 }
 
 TEST_CASE_METHOD(ArchiveStart, "a reprint before Print Files is built runs the pre-print step",
-                 "[print_status][reprint][task_config_notice]") {
+                 "[print_status][reprint]") {
     helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(&printer.api, nullptr);
-    AmsBackendSnapmaker& backend = *backend_reg;
-    SnapmakerTestAccess::set_file_tools_probe(
-        backend, [](const std::string&, std::function<void(bool)> answer) { answer(true); });
-    std::vector<std::string> warnings;
-    helix::ui::set_test_notification_sticky_warning_hook(
-        [&warnings](const std::string& m) { warnings.push_back(m); });
+    helix::PlantedGcode file("reprint_fallback_t0t2.gcode", "",
+                             "; filament_type = PLA;PLA;PETG\n"
+                             "G28\nT0\nT2\n"
+                             "; filament used [g] = 1.50, 0.00, 2.25\n");
+    printer.client.clear_gcode_script_history();
 
     PrintStatusPanel panel{printer.state, &printer.api};
     panel.init_subjects();
     helix::ui::PrintStartController controller(printer.state, &printer.api);
     PrintStatusPanelTestAccess::reprint_through(panel, controller,
-                                                helix::gcode::ReprintTarget{"benchy.gcode", 0});
+                                                helix::gcode::ReprintTarget{file.name(), 0});
     drain_until_quiet();
     REQUIRE(printer.api.job_mock().started_prints().size() == 1);
 
-    // The start went through the pre-print step, so the print it began is
-    // known as this screen's: never "started outside HelixScreen".
-    SnapmakerTestAccess::handle_status(
-        backend,
-        nlohmann::json{{"print_task_config", {{"extruders_used", {false, false, false, false}}}},
-                       {"print_stats", {{"state", "printing"}, {"filename", "benchy.gcode"}}}});
-    drain_until_quiet();
-    REQUIRE(warnings.size() == 1);
-    CHECK(warnings[0].find("outside HelixScreen") == std::string::npos);
-    CHECK(warnings[0].find("couldn't read which toolheads") != std::string::npos);
-
-    helix::ui::set_test_notification_sticky_warning_hook(nullptr);
+    // The pre-print step named the file's heads before the start.
+    bool used_heads = false;
+    for (const auto& script : printer.client.gcode_script_history()) {
+        used_heads = used_heads ||
+                     script.find("SET_PRINT_USED_EXTRUDERS EXTRUDERS=0,2") != std::string::npos;
+    }
+    CHECK(used_heads);
     panel.deinit_subjects();
 }
 

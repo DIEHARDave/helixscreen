@@ -1024,7 +1024,6 @@
   <translation tag="ETA {}" fr="Fin {}"/>
   <translation tag="EXTRAS" fr="SUPPLÉMENTS"/>
   <translation tag="Each fan can only be selected once" fr="Chaque ventilateur ne peut être sélectionné qu&apos;une fois"/>
-  <translation tag="Each toolhead after the first will pause the print the first time it is used, because the printer won&apos;t load or prime it. Filament won&apos;t unload when the print ends." fr="Chaque tête d&apos;outil après la première mettra l&apos;impression en pause lors de sa première utilisation, car l&apos;imprimante ne la chargera ni ne l&apos;amorcera. Le filament ne sera pas déchargé à la fin de l&apos;impression."/>
   <translation tag="Edit" fr="Modifier"/>
   <translation tag="Edit Filament" fr="Modifier le filament"/>
   <translation tag="Edit Slot" fr="Modifier le slot"/>
@@ -1558,7 +1557,6 @@
   <translation tag="HelixScreen" fr="HelixScreen"/>
   <translation tag="HelixScreen Crashed" fr="HelixScreen a planté"/>
   <translation tag="HelixScreen Macros" fr="Macros HelixScreen"/>
-  <translation tag="HelixScreen couldn&apos;t read which toolheads this file uses, so the printer wasn&apos;t told." fr="HelixScreen n&apos;a pas pu lire quelles têtes d&apos;outil ce fichier utilise, l&apos;imprimante n&apos;en a donc pas été informée."/>
   <translation tag="HelixScreen is detecting your display orientation" fr="HelixScreen détecte l&apos;orientation de votre écran"/>
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." fr="HelixScreen s&apos;intégrera avec votre changeur de filament pour les opérations d&apos;impression multi-bobines/couleurs."/>
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." fr="HelixScreen écrira ceci dans printer.cfg et redémarrera Klipper. L&apos;imprimante se déconnectera brièvement."/>
@@ -3564,7 +3562,6 @@
   <translation tag="This print does not report layers, so no layer pause can be scheduled." fr="Cette impression ne signale pas ses couches, aucune pause par couche ne peut donc être prévue."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" fr="Cette impression nécessite environ %.0fg mais il reste environ %.0fg sur la bobine. Démarrer quand même ?"/>
   <translation tag="This print never reports layer {}." fr="Cette impression ne signale jamais la couche {}."/>
-  <translation tag="This print was started outside HelixScreen, so the printer doesn&apos;t know which toolheads it uses." fr="Cette impression a été lancée en dehors de HelixScreen, l&apos;imprimante ne sait donc pas quelles têtes d&apos;outil elle utilise."/>
   <translation tag="This printer cannot calibrate tool offsets automatically" fr="Cette imprimante ne peut pas calibrer les offsets d&apos;outil automatiquement"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." fr="Cette imprimante remplit ses gates depuis Spoolman. HelixScreen a effacé sa propre copie ; retirez la bobine dans Spoolman."/>
   <translation tag="This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman." fr="Cette imprimante remplit ses gates depuis Spoolman. Effectuez les changements de couleur, matériau et bobine dans Spoolman."/>
@@ -4125,6 +4122,7 @@
   <translation tag="{} is not available on this device. Printing original file." fr="{} n&apos;est pas disponible sur cet appareil. Impression du fichier original."/>
   <translation tag="{} is not set up on this printer" fr="{} n&apos;est pas configuré sur cette imprimante"/>
   <translation tag="{} is still printing. The print keeps running after you switch." fr="{} imprime encore. L&apos;impression continue après le changement."/>
+  <translation tag="{} isn&apos;t loaded. The print will pause when it needs it." fr="{} n&apos;est pas chargé. L&apos;impression se mettra en pause quand elle en aura besoin."/>
   <translation tag="{} kept crashing the panel; pick a printer to connect" fr="{} a planté l&apos;écran à plusieurs reprises ; choisissez une imprimante à connecter"/>
   <translation tag="{} kept crashing the panel; switched back to {}" fr="{} a planté l&apos;écran à plusieurs reprises ; retour à {}"/>
   <translation tag="{} left" fr="{} restant"/>

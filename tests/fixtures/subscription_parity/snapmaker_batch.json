@@ -79,7 +79,8 @@
     "estimated_time",
     "info",
     "message",
-    "power_loss"
+    "power_loss",
+    "exception"
   ],
   "print_task_config": null,
   "stepper_enable": [

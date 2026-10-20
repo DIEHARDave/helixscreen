@@ -403,6 +403,60 @@ NET_DEPLOY_NO_ASSET='class NetDeploy(AppDeploy):
     grep -q '^\[update_manager mainsail\]' "$conf"
 }
 
+# A Creality K2: procd starts Moonraker with -c /usr/share/moonraker/moonraker.conf,
+# and printer_data/config under KLIPPER_HOME=/mnt/UDISK holds no moonraker.conf.
+# Sets K2_CONF to the conf Moonraker loads.
+setup_k2_moonraker() {
+    local root="$BATS_TEST_TMPDIR/k2"
+    K2_CONF="$root/usr/share/moonraker/moonraker.conf"
+    create_moonraker_conf "$K2_CONF"
+    mkdir -p "$root/mnt/UDISK/printer_data/config" "$root/proc/28594"
+    printf '%s\0' /usr/share/moonraker-env/bin/python /usr/share/moonraker/moonraker.py \
+        -c "$K2_CONF" -l "$root/mnt/UDISK/printer_data/logs/moonraker.log" \
+        > "$root/proc/28594/cmdline"
+    export HELIX_PROC_ROOT="$root/proc"
+    KLIPPER_HOME="$root/mnt/UDISK"
+    MOONRAKER_CONF_PATHS="/nonexistent/moonraker.conf"
+    rm -f "$INSTALL_DIR/bin/helix-screen"
+    mock_command_script "systemctl" 'exit 0'
+}
+
+@test "configure_moonraker_updates: K2 writes the stanza into the conf Moonraker's -c loads" {
+    setup_k2_moonraker
+    fake_moonraker_src "net_deploy.py" "$NET_DEPLOY_MODERN" package >/dev/null
+
+    configure_moonraker_updates "k2"
+
+    grep -q '^\[update_manager helixscreen\]' "$K2_CONF"
+    grep -q '^\[server\]' "$K2_CONF"
+}
+
+@test "configure_moonraker_updates: stock K2 Moonraker finds the loaded conf, then the gate warns" {
+    setup_k2_moonraker
+    # The K2's stock Moonraker: zip_deploy.py with no asset_name, no net_deploy.py.
+    fake_moonraker_src "zip_deploy.py" "class ZipDeploy(AppDeploy): pass" package >/dev/null
+
+    configure_moonraker_updates "k2" >"$BATS_TEST_TMPDIR/gate.log" 2>&1
+
+    grep -qF "Using moonraker.conf at: $K2_CONF" "$BATS_TEST_TMPDIR/gate.log"
+    refute_grep 'Could not find moonraker.conf' "$BATS_TEST_TMPDIR/gate.log"
+    grep -q 'predates release_info.json asset_name support' "$BATS_TEST_TMPDIR/gate.log"
+    refute_grep '^\[update_manager helixscreen\]' "$K2_CONF"
+}
+
+@test "configure_moonraker_updates: stock K2 Moonraker unloads a stanza from the conf it loads" {
+    setup_k2_moonraker
+    create_moonraker_conf_with_helix "$K2_CONF"
+    # The K2's stock Moonraker: zip_deploy.py with no asset_name, no net_deploy.py.
+    fake_moonraker_src "zip_deploy.py" "class ZipDeploy(AppDeploy): pass" package >/dev/null
+
+    configure_moonraker_updates "k2" 2>"$BATS_TEST_TMPDIR/gate.log"
+
+    refute_grep '^\[update_manager helixscreen\]' "$K2_CONF"
+    grep -q 'predates release_info.json asset_name support' "$BATS_TEST_TMPDIR/gate.log"
+    grep -q '^\[server\]' "$K2_CONF"
+}
+
 @test "configure_moonraker_updates: unsupported does not migrate an old git_repo stanza" {
     local conf
     conf=$(setup_moonraker_home)

@@ -133,7 +133,9 @@ TEST_CASE("Subscription: print_stats fields cover printer_print_state reads",
     json subs = fx.build();
 
     // printer_print_state reads: state, filename, info, estimated_time,
-    //   filament_used, print_duration, total_duration
+    //   filament_used, print_duration, total_duration, exception (the pause
+    //   cause defect detection and the resume classifier read)
+    REQUIRE(has_field(subs, "print_stats", "exception"));
     REQUIRE(has_field(subs, "print_stats", "state"));
     REQUIRE(has_field(subs, "print_stats", "filename"));
     REQUIRE(has_field(subs, "print_stats", "info"));

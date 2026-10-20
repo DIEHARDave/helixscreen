@@ -119,30 +119,39 @@ SlotInfo named_slot(const char* spool_name, const char* color_name, const char* 
 // 1. The pure decision
 // ============================================================================
 
-TEST_CASE("slot_card_name: spool name, then Spoolman name, then colour name",
+TEST_CASE("slot_card_name: spool name, then Spoolman name, then product name",
           "[ams][slot_name][pure]") {
     SpoolIdentity identity;
     identity.filament_name = "Ambrosia Pink";
     identity.material = "PLA";
 
-    CHECK(helix::slot_card_name(named_slot("Bone White", "White", "PLA"), &identity) ==
-          "Bone White");
-    CHECK(helix::slot_card_name(named_slot("", "White", "PLA"), &identity) == "Ambrosia Pink");
-    CHECK(helix::slot_card_name(named_slot("", "White", "PLA"), nullptr) == "White");
+    SlotInfo slot = named_slot("Bone White", "White", "PLA");
+    slot.product_name = "PLA+ 2.0";
+    CHECK(helix::slot_card_name(slot, &identity) == "Bone White");
+    slot.spool_name.clear();
+    CHECK(helix::slot_card_name(slot, &identity) == "Ambrosia Pink");
+    CHECK(helix::slot_card_name(slot, nullptr) == "PLA+ 2.0");
 }
 
-TEST_CASE("slot_card_name: an unnamed lane gets no algorithmic colour name",
-          "[ams][slot_name][pure]") {
-    // AFC's shape: a colour and a material, and nothing that names the spool.
-    SlotInfo slot = named_slot("", "", "PLA");
-    slot.color_rgb = 0xFFB6C1;
+TEST_CASE("slot_card_name: a colour is never the card's name", "[ams][slot_name][pure]") {
+    // The spool graphic under the label already shows the colour, so neither a
+    // stored colour name nor one computed from the hex reaches the card.
+    SlotInfo slot = named_slot("", "Medium Vibrant Teal", "PLA");
+    slot.color_rgb = 0x00BCD4;
     CHECK(helix::slot_card_name(slot, nullptr).empty());
 
     // An identity with nothing a label can use is a miss, not a name.
     SpoolIdentity ids_only;
     ids_only.filament_id = 7;
-    ids_only.color_hex = "#FFB6C1";
+    ids_only.color_hex = "#00BCD4";
     CHECK(helix::slot_card_name(slot, &ids_only).empty());
+}
+
+TEST_CASE("slot_card_lines: a product name that states the material is the one line",
+          "[ams][slot_name][pure]") {
+    const SlotCardLines lines = helix::slot_card_lines("PLA+ 2.0", "PLA", "PLA", 4, false);
+    CHECK(lines.name.empty());
+    CHECK(lines.lower == "PLA+ 2.0");
 }
 
 TEST_CASE("slot_card_lines: the name sits over the material", "[ams][slot_name][pure]") {

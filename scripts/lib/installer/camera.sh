@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Module: camera
 # K2 ustreamer camera setup: replace the stock proprietary WebRTC pipeline
-# (which HelixScreen and fluidd cannot consume) with a static ustreamer MJPEG
+# (which HelixScreen and stock fluidd/mainsail cannot consume) with a static ustreamer MJPEG
 # server, point both UIs at it, and make uninstall fully restore stock state.
 #
 # Reuses the framework's reversal machinery: the stock webrtc init scripts are
@@ -497,6 +497,20 @@ sys.exit(1)           # not ours
 PYEOF
 }
 
+# Returns 0 if moonraker lists a camera played straight from Creality's own
+# WebRTC server (service "webrtc-crealityk2rtc", which the k2-improvements
+# Fluidd patch adds). That setup needs cam_app running, so taking the camera
+# device for ustreamer would leave its entry pointing at a dead server.
+_moonraker_has_creality_webrtc_cam() {
+    local cams
+    cams="$(_moonraker_get_webcams_json)" || return 1
+    printf '%s' "$cams" | "$_PY_BIN" -c '
+import json, sys
+cams = json.load(sys.stdin)
+sys.exit(0 if any((c.get("service") or "").lower() == "webrtc-crealityk2rtc" for c in cams) else 1)
+' 2>/dev/null
+}
+
 # Probe whether ustreamer is listening on the given port (busybox-compatible).
 # Tries python3 socket connect first; falls back to the /snapshot endpoint.
 # Args: $1 = port. Returns 0 if reachable.
@@ -668,6 +682,13 @@ install_camera_k2() {
         log_info "Moonraker already exposes a usable MJPEG camera we did not install — leaving it untouched"
         return 0
     fi
+    if _moonraker_has_creality_webrtc_cam && ! _moonraker_has_our_webcam; then
+        log_info "Found a camera using Creality's own WebRTC stream (service webrtc-crealityk2rtc,"
+        log_info "e.g. from k2-improvements' Fluidd patch) — leaving the stock camera running."
+        log_info "HelixScreen can only show MJPEG, so its camera view will stay empty. To use"
+        log_info "HelixScreen's camera instead, delete that camera in Fluidd and re-run the installer."
+        return 0
+    fi
 
     # (b) Verify the bundled ustreamer binary is present + executable.
     local ustreamer_bin="${INSTALL_DIR}/bin/ustreamer"
@@ -682,6 +703,13 @@ install_camera_k2() {
     # pattern and is recorded as sysv-chmod so uninstall's
     # reenable_disabled_services() chmod +x's them back. cam_app is
     # hotplug-launched (no watchdog) so killing it is clean.
+    log_info "Switching the K2 camera from Creality's WebRTC stream to MJPEG (ustreamer):"
+    log_info "  HelixScreen and stock Fluidd/Mainsail cannot play Creality's WebRTC stream,"
+    log_info "  and only one program can hold the camera at a time."
+    log_warn "  While HelixScreen is installed, the camera in Creality Print, Creality Cloud"
+    log_warn "  and Creality's AI camera features will not work. Running the HelixScreen"
+    log_warn "  uninstaller restores the stock camera."
+
     local initd script
     initd="$(_initd_dir)"
     for script in "${initd}/webrtc" "${initd}/webrtc_local"; do

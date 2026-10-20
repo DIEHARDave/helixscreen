@@ -1024,7 +1024,6 @@
   <translation tag="ETA {}" es="Fin {}"/>
   <translation tag="EXTRAS" es="EXTRAS"/>
   <translation tag="Each fan can only be selected once" es="Cada ventilador solo se puede seleccionar una vez"/>
-  <translation tag="Each toolhead after the first will pause the print the first time it is used, because the printer won&apos;t load or prime it. Filament won&apos;t unload when the print ends." es="Cada cabezal después del primero pausará la impresión la primera vez que se use, porque la impresora no lo cargará ni lo cebará. El filamento no se descargará al terminar la impresión."/>
   <translation tag="Edit" es="Editar"/>
   <translation tag="Edit Filament" es="Editar filamento"/>
   <translation tag="Edit Slot" es="Editar Ranura"/>
@@ -1558,7 +1557,6 @@
   <translation tag="HelixScreen" es="HelixScreen"/>
   <translation tag="HelixScreen Crashed" es="HelixScreen se Bloqueó"/>
   <translation tag="HelixScreen Macros" es="Macros de HelixScreen"/>
-  <translation tag="HelixScreen couldn&apos;t read which toolheads this file uses, so the printer wasn&apos;t told." es="HelixScreen no pudo leer qué cabezales usa este archivo, así que no se le indicó a la impresora."/>
   <translation tag="HelixScreen is detecting your display orientation" es="HelixScreen está detectando la orientación de su pantalla"/>
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." es="HelixScreen se integrará con su cambiador de filamento para operaciones de impresión multi-bobina/color."/>
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." es="HelixScreen escribirá esto en printer.cfg y reiniciará Klipper. La impresora se desconectará brevemente."/>
@@ -3564,7 +3562,6 @@
   <translation tag="This print does not report layers, so no layer pause can be scheduled." es="Esta impresión no informa capas, así que no se puede programar una pausa en una capa."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" es="Esta impresión necesita aproximadamente %.0fg pero la bobina tiene aproximadamente %.0fg restantes. ¿Iniciar de todos modos?"/>
   <translation tag="This print never reports layer {}." es="Esta impresión nunca informa la capa {}."/>
-  <translation tag="This print was started outside HelixScreen, so the printer doesn&apos;t know which toolheads it uses." es="Esta impresión se inició fuera de HelixScreen, así que la impresora no sabe qué cabezales usa."/>
   <translation tag="This printer cannot calibrate tool offsets automatically" es="Esta impresora no puede calibrar los offsets de herramienta automáticamente"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." es="Esta impresora llena sus gates desde Spoolman. HelixScreen borró su propia copia; quita la bobina en Spoolman."/>
   <translation tag="This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman." es="Esta impresora llena sus gates desde Spoolman. Haz los cambios de color, material y bobina en Spoolman."/>
@@ -4125,6 +4122,7 @@
   <translation tag="{} is not available on this device. Printing original file." es="{} no está disponible en este dispositivo. Se imprimirá el archivo original."/>
   <translation tag="{} is not set up on this printer" es="{} no está configurado en esta impresora"/>
   <translation tag="{} is still printing. The print keeps running after you switch." es="{} sigue imprimiendo. La impresión continúa después de cambiar."/>
+  <translation tag="{} isn&apos;t loaded. The print will pause when it needs it." es="{} no está cargado. La impresión se pausará cuando lo necesite."/>
   <translation tag="{} kept crashing the panel; pick a printer to connect" es="{} bloqueó la pantalla repetidamente; elige una impresora para conectar"/>
   <translation tag="{} kept crashing the panel; switched back to {}" es="{} bloqueó la pantalla repetidamente; se volvió a {}"/>
   <translation tag="{} left" es="quedan {}"/>

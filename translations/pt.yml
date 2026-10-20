@@ -1133,8 +1133,6 @@ translations:
   ETA {}: 'Término {}'
   EXTRAS: EXTRAS
   Each fan can only be selected once: Cada ventoinha só pode ser selecionada uma vez
-  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
-  : 'Cada cabeçote depois do primeiro pausará a impressão na primeira vez em que for usado, porque a impressora não vai carregá-lo nem prepará-lo. O filamento não será descarregado ao final da impressão.'
   Edit: Editar
   Edit Filament: Editar Filamento
   Edit Slot: Editar Slot
@@ -1709,7 +1707,6 @@ translations:
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen Travou
   HelixScreen Macros: 'Macros do HelixScreen'
-  HelixScreen couldn't read which toolheads this file uses, so the printer wasn't told.: 'O HelixScreen não conseguiu ler quais cabeçotes este arquivo usa, então a impressora não foi informada.'
   HelixScreen is detecting your display orientation: HelixScreen está detectando a
     orientação do seu ecrã
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
@@ -3950,7 +3947,6 @@ translations:
     impressão precisa de cerca de %.0fg, mas o carretel tem cerca de %.0fg restantes.
     Iniciar mesmo assim?
   This print never reports layer {}.: 'Esta impressão nunca informa a camada {}.'
-  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: 'Esta impressão foi iniciada fora do HelixScreen, então a impressora não sabe quais cabeçotes ela usa.'
   This printer cannot calibrate tool offsets automatically: Esta impressora não consegue calibrar os offsets de ferramenta automaticamente
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Esta impressora preenche seus gates a partir do Spoolman. O HelixScreen limpou a própria cópia; remova a bobina no Spoolman.
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: Esta impressora preenche seus gates a partir do Spoolman. Faça alterações de cor, material e bobina no Spoolman.
@@ -4561,6 +4557,7 @@ translations:
   '{} left': '{} restantes'
   '{} lines in helixscreen.env were ignored': '{} linhas do helixscreen.env foram ignoradas'
   '{} kept crashing the panel; switched back to {}': '{} travou a tela repetidamente; voltou para {}'
+  "{} isn't loaded. The print will pause when it needs it.": '{} não está carregado. A impressão vai pausar quando precisar dele.'
   '{} kept crashing the panel; pick a printer to connect': '{} travou a tela repetidamente; escolha uma impressora para conectar'
   '{} looser than {}': "{} mais frouxa que {}"
   '{} m': '{} m'

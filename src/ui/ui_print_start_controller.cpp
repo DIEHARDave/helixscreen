@@ -403,8 +403,8 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
         }
         return;
     }
-    // The mark goes down when the start itself is dispatched, after the
-    // pre-print step went through.
+    // The backend hears of the start as it is dispatched, after the pre-print
+    // step went through.
     on_done = [on_done = std::move(on_done)]() {
         if (AmsBackend* b = AmsState::instance().get_backend()) {
             b->note_print_start_from_here();
