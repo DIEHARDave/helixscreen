@@ -114,19 +114,6 @@ components_under() {
     return 1
 }
 
-# Print the running Moonraker's /proc directory (running_moonraker_process).
-running_moonraker_proc() {
-    proc=$(running_moonraker_process | sed -n 1p)
-    [ -n "$proc" ] || return 1
-    printf '%s' "$proc"
-}
-
-# Print the running Moonraker's argv, one argument per line.
-running_moonraker_args() {
-    proc=$(running_moonraker_proc) || return 1
-    tr '\000' '\n' < "$proc/cmdline" 2>/dev/null
-}
-
 # Translate a path on this side into the same file as the running Moonraker
 # names it: strip its chroot prefix when the path lies inside the chroot. A
 # path outside it is only visible to Moonraker through a bind mount at the
@@ -137,12 +124,6 @@ path_for_moonraker() {
         "$mroot"/*) [ -n "$mroot" ] && { printf '%s' "${1#"$mroot"}"; return 0; } ;;
     esac
     printf '%s' "$1"
-}
-
-# Print the argument following the first of the given flags in the running
-# Moonraker's argv.
-running_moonraker_arg() {
-    running_moonraker_args | awk -v a="$1" -v b="$2" 'p == a || p == b { print; exit } { p = $0 }'
 }
 
 # Whether a process with ids @1 (uid, then groups) holds permission @2 (r
@@ -265,18 +246,16 @@ find_moonraker_components() {
 }
 
 # Find the directory holding moonraker.conf: the user's home first, then the
-# running Moonraker's -c/-d arguments, then the known vendor layouts.
+# conf the running Moonraker loads, then the known vendor layouts. A directory,
+# not a file, because helix_conf_file and its callers name <dir>/moonraker.conf;
+# a running conf under another basename fails the check below and the next
+# candidate is tried.
 find_config_dir() {
-    mroot=$(running_moonraker_root)
-    conf=$(running_moonraker_arg -c --configfile)
-    data=$(running_moonraker_arg -d --datapath)
-    conf="${conf:+$mroot$conf}"
-    data="${data:+$mroot$data}"
+    conf=$(running_moonraker_conf)
     for loc in \
         "$HOME/printer_data/config" \
         "$HOME/klipper_config" \
         "${conf:+$(dirname "$conf")}" \
-        "${data:+$data/config}" \
         $MOONRAKER_CONFIG_DIRS
     do
         if [ -n "$loc" ] && [ -d "$loc" ] && [ -f "$loc/moonraker.conf" ]; then

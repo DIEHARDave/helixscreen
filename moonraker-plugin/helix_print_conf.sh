@@ -89,24 +89,45 @@ moonraker_local_url() {
     printf 'http://127.0.0.1:%s' "$(moonraker_conf_port "$1" "${2:-}")"
 }
 
-# Print the running Moonraker's /proc/<pid> directory under HELIX_PROC_ROOT
-# (tests point it at a fixture tree), else /proc, and, on the next line, the
-# moonraker.py its argv names. Moonraker is a python interpreter (argv[0] python, python3,
-# python3.11, ...) running moonraker.py; an init script, editor or log viewer
-# whose argv names the file comes and goes beside it and is not Moonraker.
-# Returns 1, printing nothing, when no Moonraker runs.
-running_moonraker_process() {
-    _rmp_root="${HELIX_PROC_ROOT:-/proc}"
-    for _rmp_f in "$_rmp_root"/[0-9]*/cmdline; do
-        [ -r "$_rmp_f" ] || continue
-        _rmp_script=$(tr '\000' '\n' < "$_rmp_f" 2>/dev/null | awk '
+# Print one line per running Moonraker: its /proc/<pid> directory under
+# HELIX_PROC_ROOT (tests point it at a fixture tree), else /proc, a blank, and
+# the moonraker.py its argv names. Moonraker is a python interpreter (argv[0]
+# python, python3, python3.11, ...) running moonraker.py; an init script, editor
+# or log viewer whose argv names the file comes and goes beside it and is not
+# Moonraker. Prints nothing when no Moonraker runs.
+running_moonrakers() {
+    _rms_root="${HELIX_PROC_ROOT:-/proc}"
+    for _rms_f in "$_rms_root"/[0-9]*/cmdline; do
+        [ -r "$_rms_f" ] || continue
+        _rms_script=$(tr '\000' '\n' < "$_rms_f" 2>/dev/null | awk '
             NR == 1 { n = split($0, part, "/"); if (part[n] !~ /^python[0-9.]*$/) exit; next }
             /(^|\/)moonraker\.py$/ { print; exit }')
-        [ -n "$_rmp_script" ] || continue
-        printf '%s\n%s\n' "$(dirname "$_rmp_f")" "$_rmp_script"
-        return 0
+        [ -n "$_rms_script" ] || continue
+        printf '%s %s\n' "$(dirname "$_rms_f")" "$_rms_script"
     done
-    return 1
+    return 0
+}
+
+# Print the first running Moonraker's /proc/<pid> directory and, on the next
+# line, its moonraker.py (running_moonrakers). Returns 1, printing nothing,
+# when no Moonraker runs.
+running_moonraker_process() {
+    _rmp_first=$(running_moonrakers | sed -n 1p)
+    [ -n "$_rmp_first" ] || return 1
+    printf '%s\n%s\n' "${_rmp_first%% *}" "${_rmp_first#* }"
+}
+
+# Print the running Moonraker's /proc directory (running_moonraker_process).
+running_moonraker_proc() {
+    _rmq_proc=$(running_moonraker_process) || return 1
+    printf '%s' "${_rmq_proc%%
+*}"
+}
+
+# Print the running Moonraker's argv, one argument per line.
+running_moonraker_args() {
+    _rmg_proc=$(running_moonraker_proc) || return 1
+    tr '\000' '\n' < "$_rmg_proc/cmdline" 2>/dev/null
 }
 
 # Print where the running Moonraker's "/" is from here: empty when it shares
@@ -114,20 +135,56 @@ running_moonraker_process() {
 # Moonraker in /data/.mod/.forge-x). Every path in its argv and every absolute
 # [include] it reads is relative to that.
 running_moonraker_root() {
-    _rmd_proc=$(running_moonraker_process) || return 0
-    _rmd_proc="${_rmd_proc%%
-*}"
+    _rmd_proc=$(running_moonraker_proc) || return 0
     _rmd_root=$(readlink "$_rmd_proc/root" 2>/dev/null) || return 0
     [ "$_rmd_root" = "/" ] && return 0
     printf '%s' "${_rmd_root%/}"
 }
 
+# Print the value the running Moonraker's argv gives option @1 (its short
+# form) or @2 (its long form): the next argument, or what follows "=" or the
+# short flag in the same one. A long form may be abbreviated, as Python's
+# argparse accepts. Empty when no Moonraker runs or neither form appears.
+running_moonraker_arg() {
+    running_moonraker_args | awk -v s="$1" -v l="$2" '
+        function is_long(a) { return length(a) > 2 && index(l, a) == 1 }
+        take { print; exit }
+        $0 == s || is_long($0) { take = 1; next }
+        /^--[^=]+=/ { eq = index($0, "="); if (is_long(substr($0, 1, eq - 1))) { print substr($0, eq + 1); exit } }
+        length($0) > 2 && substr($0, 1, 2) == s { print substr($0, 3); exit }'
+}
+
+# Print the moonraker.conf the running Moonraker loads, as a path from here:
+# the file its -c names, else config/moonraker.conf under the data path its -d
+# names, whichever is first a file. Paths are absolute in its root; a relative
+# one names nothing from here and is skipped. Empty when no Moonraker runs,
+# when it names neither (it then loads its user's ~/printer_data, which a
+# caller finds by home), or when more than one runs: several instances
+# (KIAUH printer_1_data, printer_2_data) list in no stable order, so the
+# caller's own lookup decides. On Creality K2 this is the only way to the
+# answer: procd starts Moonraker with -c /usr/share/moonraker/moonraker.conf.
+running_moonraker_conf() {
+    running_moonrakers | awk 'END { exit NR != 1 }' || return 0
+    _rmc_root=$(running_moonraker_root)
+    _rmc_data=$(running_moonraker_arg -d --datapath)
+    for _rmc_conf in "$(running_moonraker_arg -c --configfile)" \
+                     "${_rmc_data:+${_rmc_data%/}/config/moonraker.conf}"; do
+        case "$_rmc_conf" in
+            /*) ;;
+            *) continue ;;
+        esac
+        if [ -f "$_rmc_root$_rmc_conf" ]; then
+            printf '%s' "$_rmc_root$_rmc_conf"
+            return 0
+        fi
+    done
+    return 0
+}
+
 # Print the running Moonraker's effective uid, then its groups (primary
 # first), space-separated. Empty when no Moonraker runs here.
 running_moonraker_ids() {
-    _rmi_proc=$(running_moonraker_process) || return 0
-    _rmi_proc="${_rmi_proc%%
-*}"
+    _rmi_proc=$(running_moonraker_proc) || return 0
     awk '/^Uid:/ { u = $3 } /^Gid:/ { g = $3 }
         /^Groups:/ { for (i = 2; i <= NF; i++) gs = gs " " $i }
         END { if (u != "") print u " " g gs }' "$_rmi_proc/status" 2>/dev/null || true
