@@ -1687,7 +1687,7 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
         collector_state_ = CollectorState::CALCULATING;
         // The percent is meaningless in this phase (the UI shows a spinner plus
         // elapsed time); the report exists to carry the phase change itself.
-        emit_progress(0, ShaperCalibrationPhase::Analyzing, "Calculating results...");
+        emit_progress(0, ShaperCalibrationPhase::Analyzing, 0.0f, "Calculating results...");
     }
 
     void parse_sweep_line(const std::string& line) {
@@ -1725,7 +1725,7 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
 
             char status[64];
             snprintf(status, sizeof(status), "Testing frequency %.0f Hz", freq);
-            emit_progress(percent, ShaperCalibrationPhase::Sweeping, status);
+            emit_progress(percent, ShaperCalibrationPhase::Sweeping, freq, status);
 
             // Structural end-of-sweep: reaching the configured ceiling means
             // the toolhead is done regardless of what the firmware prints
@@ -1835,9 +1835,10 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
         }
     }
 
-    void emit_progress(int percent, ShaperCalibrationPhase phase, const std::string& status) {
+    void emit_progress(int percent, ShaperCalibrationPhase phase, float freq_hz,
+                       const std::string& status) {
         if (on_progress_) {
-            on_progress_(percent, phase);
+            on_progress_(percent, phase, freq_hz);
         }
         spdlog::trace("[InputShaperCollector] Progress: {}% - {}", percent, status);
     }
@@ -1856,7 +1857,7 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
         unregister();
 
         // Emit 100% progress
-        emit_progress(100, ShaperCalibrationPhase::Complete, "Complete");
+        emit_progress(100, ShaperCalibrationPhase::Complete, 0.0f, "Complete");
 
         if (on_success_) {
             InputShaperResult result;
@@ -1986,10 +1987,11 @@ class BeltResonanceCollector : public std::enable_shared_from_this<BeltResonance
   public:
     BeltResonanceCollector(IMoonrakerClient& client,
                            MoonrakerAdvancedAPI::BeltSweepProgressCallback on_progress,
-                           MoonrakerAdvancedAPI::BeltCurveCallback on_success,
-                           MoonrakerAdvancedAPI::ErrorCallback on_error)
+                           MoonrakerAdvancedAPI::BeltResponseCallback on_success,
+                           MoonrakerAdvancedAPI::ErrorCallback on_error,
+                           std::optional<calibration::BeltSweepWindow> window = std::nullopt)
         : core_(client, "belt_resonance_collector_"), on_progress_(std::move(on_progress)),
-          on_success_(std::move(on_success)), on_error_(std::move(on_error)) {}
+          on_success_(std::move(on_success)), on_error_(std::move(on_error)), window_(window) {}
 
     void start() {
         auto self = shared_from_this();
@@ -2003,6 +2005,10 @@ class BeltResonanceCollector : public std::enable_shared_from_this<BeltResonance
     /// against the default range would misreport the sweep's start.
     void set_config(const calibration::ResonanceTesterConfig& cfg) {
         cfg_ = cfg;
+        if (window_) {
+            cfg_.min_freq = window_->freq_start_hz;
+            cfg_.max_freq = window_->freq_end_hz;
+        }
         config_received_.store(true);
     }
 
@@ -2070,7 +2076,7 @@ class BeltResonanceCollector : public std::enable_shared_from_this<BeltResonance
         const calibration::ResonanceCsvData data = calibration::parse_resonance_csv(path);
         switch (data.error) {
         case calibration::ResonanceCsvError::NONE:
-            complete_success(data.curve);
+            complete_success(calibration::BeltResponse{data.curve, data.in_plane});
             return;
         case calibration::ResonanceCsvError::MISSING:
             complete_error(fmt::format(
@@ -2088,7 +2094,7 @@ class BeltResonanceCollector : public std::enable_shared_from_this<BeltResonance
         }
     }
 
-    void complete_success(const calibration::BeltCurve& curve) {
+    void complete_success(const calibration::BeltResponse& response) {
         // unregister() below drops the client handler map's reference, which is
         // the collector's only strong owner. Pin the object for the rest of the
         // callback chain (prestonbrown/helixscreen#1543).
@@ -2096,17 +2102,20 @@ class BeltResonanceCollector : public std::enable_shared_from_this<BeltResonance
         if (!core_.try_complete()) {
             return;
         }
-        spdlog::info("[BeltResonanceCollector] Complete with {} curve points", curve.size());
+        spdlog::info("[BeltResonanceCollector] Complete with {} curve points ({} in-plane)",
+                     response.xyz.size(), response.in_plane.size());
         core_.unregister();
         if (on_success_) {
-            on_success_(curve);
+            on_success_(response);
         }
     }
 
     CalibrationCollectorCore core_;
     MoonrakerAdvancedAPI::BeltSweepProgressCallback on_progress_;
-    MoonrakerAdvancedAPI::BeltCurveCallback on_success_;
+    MoonrakerAdvancedAPI::BeltResponseCallback on_success_;
     MoonrakerAdvancedAPI::ErrorCallback on_error_;
+    /// Progress scales against this instead of the printer's range when set.
+    std::optional<calibration::BeltSweepWindow> window_;
 
     /// Written once by set_config() on the RPC path, read on the notification
     /// path; the seq-cst flag below orders the two.
@@ -3271,12 +3280,13 @@ void MoonrakerAdvancedAPI::detect_belt_hardware(BeltHardwareCallback on_complete
 
 MoonrakerAdvancedAPI::BeltRunCancel MoonrakerAdvancedAPI::test_belt_resonance(
     const std::string& axis_param, const std::string& output_name,
-    BeltSweepProgressCallback on_progress, BeltCurveCallback on_complete, ErrorCallback on_error) {
+    BeltSweepProgressCallback on_progress, BeltResponseCallback on_complete, ErrorCallback on_error,
+    std::optional<calibration::BeltSweepWindow> window) {
     spdlog::info("[MoonrakerAPI] Starting belt resonance test: axis={}, name={}", axis_param,
                  output_name);
 
     auto collector = std::make_shared<BeltResonanceCollector>(
-        client_, std::move(on_progress), std::move(on_complete), std::move(on_error));
+        client_, std::move(on_progress), std::move(on_complete), std::move(on_error), window);
     collector->start();
 
     // Ask the printer what range it will sweep, so progress is scaled by the
@@ -3290,9 +3300,16 @@ MoonrakerAdvancedAPI::BeltRunCancel MoonrakerAdvancedAPI::test_belt_resonance(
     // [resonance_tester] defaults to sweeping: the slow sweep smooths over the
     // mechanical faults a belt comparison looks for. Firmware without the
     // parameter ignores it.
+    std::string freq_range;
+    if (window) {
+        // Inward to whole Hz: Klipper takes any FREQ_END up to 300 Hz, so rounding
+        // the end up could sweep past the printer's max_freq.
+        freq_range = fmt::format(" FREQ_START={:.0f} FREQ_END={:.0f}",
+                                 std::ceil(window->freq_start_hz), std::floor(window->freq_end_hz));
+    }
     const std::string gcode =
-        fmt::format("TEST_RESONANCES AXIS={} OUTPUT=resonances NAME={} SWEEPING_PERIOD=0",
-                    axis_param, output_name);
+        fmt::format("TEST_RESONANCES AXIS={}{} OUTPUT=resonances NAME={} SWEEPING_PERIOD=0",
+                    axis_param, freq_range, output_name);
     // A sweep takes minutes, so the request rides the long calibration timeout
     // rather than the tracker default. A transport loss only means the RPC
     // reply vanished - Klipper keeps sweeping and the console lines keep

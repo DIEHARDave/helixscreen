@@ -264,6 +264,7 @@ def ams_error_app(request, tmp_path):
         app = HelixApp(binary=_BINARY, socket_path=tmp_path / "control.sock",
                        log_path=tmp_path / "app.log")
         with app:
+            app.wait_for("nav_buttons_enabled", 1, timeout=30)
             app.navigate("filament")
             app.wait_idle()
             app.click("ams_mini_status")

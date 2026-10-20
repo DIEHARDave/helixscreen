@@ -390,14 +390,12 @@
           <calib_tile icon="z_closer"
                       label="Z Calibration" callback="on_calibration_zoffset" button_name="btn_z_calibration"
                       icon_name="btn_z_calibration_icon" moves_machine="true">
-            <bind_flag_if cond="printer_has_tool_offset_cal eq 1 and show_beta_features eq 1 and hide_manual_z_calibration eq 1"
-                          flag="hidden"/>
+            <bind_flag_if cond="printer_has_tool_offset_cal eq 1 and hide_manual_z_calibration eq 1" flag="hidden"/>
           </calib_tile>
           <calib_tile icon="axis_arrow"
                       label="Tool Offsets" callback="on_calibration_tool_offsets" button_name="btn_tool_offsets"
                       icon_name="btn_tool_offsets_icon" moves_machine="true" hidden="true">
-            <bind_flag_if cond="printer_has_tool_offset_cal eq 0 or (printer_tool_offset_cal_is_beta eq 1 and show_beta_features eq 0)"
-                          flag="hidden"/>
+            <bind_flag_if_eq subject="printer_has_tool_offset_cal" flag="hidden" ref_value="0"/>
           </calib_tile>
           <calib_tile icon="spirit_level"
                       label="QGL" callback="on_controls_qgl" button_name="btn_qgl" icon_name="btn_qgl_icon"

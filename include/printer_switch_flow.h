@@ -25,6 +25,14 @@ class Config;
 /// wizard, and backing out of that wizard. It decides what the config says and in which
 /// order the restart steps run; the steps arrive as hooks, because the desktop rebuilds the
 /// whole UI while the K-Touch retargets its one connection.
+///
+/// Every restart runs from a top-level LVGL timer tick, never inside an UpdateQueue drain:
+/// panel code calls UpdateQueue::drain() from its own methods, and a restart run by that
+/// drain would destroy the panel still on the stack under it. A public call made during a
+/// drain is moved to the next tick and returns false. One request waits for that tick at a
+/// time, and the latest one wins: a later switch, add or confirmed switch replaces the one
+/// waiting, and a wizard cancel drops it. A cancel restores the previous printer at once and
+/// leaves only its restart for the tick, which runs before any request made after it.
 class PrinterSwitchFlow {
   public:
     /// Teardown releases the current printer, rebuild brings up the active one and reports
@@ -50,7 +58,7 @@ class PrinterSwitchFlow {
     /// Switches to `printer_id`, asking first when the current printer is printing.
     /// Picking the connected printer does nothing while its connection is up, and connects it
     /// otherwise. A pick that switches clears a boot-crash connection hold. Returns whether it
-    /// switched before returning; asking first returns false.
+    /// switched before returning; asking first, or moving to the next tick, returns false.
     bool request_switch(const std::string& printer_id);
 
     /// Adds the printer at `host`:`port` and switches to it the way request_switch() does. An
@@ -78,7 +86,7 @@ class PrinterSwitchFlow {
     void add_printer_via_wizard();
 
     /// Abandons the printer the wizard was adding, restores the previous one and restarts
-    /// onto it. The restart is deferred past the click handler that called this.
+    /// onto it. The restart runs on the next tick, past the click handler that called this.
     void cancel_add_printer_wizard();
 
     /// The printer to restore if the add-printer wizard is cancelled; empty when no such
@@ -137,6 +145,33 @@ class PrinterSwitchFlow {
     /// started connecting (`connecting` false), takes the card down at once.
     void await_connection(const std::string& title, bool connecting);
     void dismiss_interstitial();
+
+    /// The latest switch or add request waiting for the next tick; empty when none is.
+    std::function<void()> m_pending_request;
+    /// A wizard cancel restored the previous printer and its restart waits for the tick.
+    bool m_cancel_restart_pending = false;
+    /// The tick that runs the waiting work is already posted.
+    bool m_restart_tick_armed = false;
+
+    /// Posts the one LVGL timer that runs the waiting work, unless it is already posted.
+    /// Skipped when the owner's guard has expired by then.
+    void arm_restart_tick();
+    /// The tick: a waiting cancel's restart, then the waiting request.
+    void run_waiting_restarts();
+    /// Makes `request` the one that runs on the next tick, replacing any request waiting.
+    void post_request(std::function<void()> request);
+
+    /// During an UpdateQueue drain, posts `work` through post_request() and returns true.
+    /// Otherwise this call is newer than anything waiting: it runs a waiting cancel's
+    /// restart in place, drops a waiting request, and returns false for the caller to go on.
+    bool deferred_out_of_drain(const char* entry, std::function<void()> work);
+
+    /// The teardown hook. Entered inside an UpdateQueue drain it asserts in debug builds and
+    /// logs an error in release builds, where the teardown still runs.
+    void tear_down();
+
+    /// The restart cancel_add_printer_wizard() leaves for the tick.
+    void restart_onto_restored_printer();
 
     /// Saves the config, telling the user when it could not.
     bool save_or_report();

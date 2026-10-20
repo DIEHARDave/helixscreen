@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "accel_batch_source_mock.h"
 #include "axis.h"
 #include "mock_persona.h"
 #include "moonraker_client.h"
@@ -757,6 +758,16 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
         return resonance_hz_per_sec_;
     }
 
+    /// Whether `[resonance_tester]` reports probe_points (at the bed centre,
+    /// 20 mm up). Klipper requires them; off reproduces a fork that omits them.
+    void set_resonance_probe_points(bool reported) {
+        resonance_probe_points_ = reported;
+    }
+
+    /// `configfile.settings.resonance_tester` as the query and subscribe
+    /// responses report it.
+    [[nodiscard]] json resonance_tester_settings() const;
+
     /**
      * @name TEST_RESONANCES belt simulation
      * @{
@@ -769,6 +780,16 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// toward the other path's, so the defaults start with a visible delta.
     void set_belt_peaks_hz(float a_hz, float b_hz);
 
+    /// Script one path's peak across its sweeps after the first, full or
+    /// windowed; the last entry holds once the list runs out. A NaN entry
+    /// writes a featureless curve (floor plus noise, no peak). While either
+    /// path has a script, no sweep applies the re-measure walk.
+    void set_belt_tune_script(char path_letter, std::vector<float> peaks_hz);
+
+    /// Parse and apply a `<A|B>:<hz|flat>,...` script (HELIX_MOCK_BELT_TUNE_SCRIPT).
+    /// Bad items are skipped with a warning; a bad path letter drops the spec.
+    void apply_belt_tune_script(const std::string& spec);
+
     /// Switch the next TEST_RESONANCES to a failure mode (NONE = normal).
     void set_belt_failure(BeltMockFailure f) {
         belt_failure_ = f;
@@ -779,6 +800,23 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     void set_belt_line_interval_ms(uint32_t ms) {
         belt_line_interval_ms_ = ms;
     }
+
+    /// SHAPER_CALIBRATE plays whole-Hz sweep lines at the cadence
+    /// TEST_RESONANCES uses (hz_per_sec and the sim speed) instead of the
+    /// compact 20-line transcript, so the live preview has a sweep to follow.
+    /// MoonrakerManager turns it on for the app; unit tests keep the compact one.
+    void set_shaper_sweep_realtime(bool realtime) {
+        shaper_sweep_realtime_ = realtime;
+    }
+
+    /// What the sweep this mock started last resonates like, matching the CSV
+    /// it will write. Defaults until a sweep starts.
+    [[nodiscard]] helix::calibration::MockSweepResponse active_sweep_response() const;
+
+    /// The live preview's stream for a sweep of this mock: MockAccelBatchSource
+    /// over active_sweep_response() at this mock's sim speed.
+    [[nodiscard]] std::unique_ptr<helix::calibration::IAccelBatchSource>
+    make_accel_batch_source(const helix::calibration::SweepPlan& plan) const;
 
     /**
      * @brief Path the next TEST_RESONANCES for @p name writes
@@ -1667,6 +1705,11 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     void play_console_steps(std::vector<std::function<void()>> steps, uint32_t interval_ms,
                             std::function<void()> on_done);
 
+    /// Milliseconds between whole-Hz "Testing frequency" lines: the
+    /// set_belt_line_interval_ms() override, else one simulated second per
+    /// hz_per_sec Hz shortened by the sim speed. Shared by both sweeps.
+    [[nodiscard]] uint32_t sweep_line_interval_ms() const;
+
     /**
      * @brief Dispatch TEST_RESONANCES response sequence
      *
@@ -2258,17 +2301,26 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     json extra_config_settings_ = json::object();   ///< set_config_settings_section() sections
     std::atomic<int> skip_flags_[3] = {1, 1, 1};    ///< `_HELIX_PREP` run_* by skip_wrappers::Op
     json object_status_overrides_ = json::object(); ///< set_object_status() statuses
-    double resonance_min_freq_{5.0};   ///< [resonance_tester] min_freq the mock reports/sweeps
-    double resonance_max_freq_{135.0}; ///< [resonance_tester] max_freq the mock reports/sweeps
-    double resonance_hz_per_sec_{1.0}; ///< [resonance_tester] hz_per_sec the mock reports/sweeps
+    double resonance_min_freq_{5.0};    ///< [resonance_tester] min_freq the mock reports/sweeps
+    double resonance_max_freq_{135.0};  ///< [resonance_tester] max_freq the mock reports/sweeps
+    double resonance_hz_per_sec_{1.0};  ///< [resonance_tester] hz_per_sec the mock reports/sweeps
+    bool resonance_probe_points_{true}; ///< [resonance_tester] reports probe_points
     /// Simulated belt peaks, index 0 = path A ('1,1'), 1 = path B ('1,-1').
     float belt_peaks_hz_[2]{110.0f, 98.0f};
     /// Measurements taken per path; every one after the first walks that
     /// path's peak toward the other's, so repeated tuning converges.
     int belt_measure_count_[2]{0, 0};
+    /// Per-path scripted peaks for every sweep after the first (NaN = flat)
+    /// and the next entry to play.
+    std::vector<float> belt_script_[2];
+    size_t belt_script_pos_[2]{0, 0};
     BeltMockFailure belt_failure_{BeltMockFailure::NONE};
     /// 0 = derive the line interval from hz_per_sec and the sim speed.
     uint32_t belt_line_interval_ms_{0};
+    bool shaper_sweep_realtime_{false};
+    /// Set where a sweep is dispatched, read where the preview attaches.
+    mutable std::mutex sweep_response_mutex_;
+    helix::calibration::MockSweepResponse sweep_response_;
 
     bool mmu_enabled_{true}; ///< MMU available (default true for existing tests)
 

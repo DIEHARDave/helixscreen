@@ -173,7 +173,7 @@
         <lv_obj width="100%"
                 height="content" style_pad_all="0" flex_flow="row" style_flex_main_place="start"
                 style_flex_cross_place="center" style_pad_gap="#space_sm" scrollable="false">
-          <!-- Beta feature. On printers with the layer-pause macros, a tap during a print
+          <!-- On printers with the layer-pause macros, a tap during a print
                opens the Pause at Layer modal (layer_pause_modal.xml): a muted
                pause glyph marks it as tappable, and turns into the pending
                layer number while a pause is scheduled. -->
@@ -181,8 +181,7 @@
                   height="content" flex_grow="1" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
                   style_pad_gap="#space_xs" scrollable="false" clickable="false" style_radius="#border_radius">
             <style name="styles.press_wash" selector="pressed"/>
-            <bind_flag_if cond="show_beta_features eq 1 and printer_has_layer_pause and layer_pause_availability gt 0"
-                          flag="clickable"/>
+            <bind_flag_if cond="printer_has_layer_pause and layer_pause_availability gt 0" flag="clickable"/>
             <event_cb trigger="clicked" callback="on_layer_pause_open"/>
             <icon name="layer_icon" src="layers" size="xs" variant="secondary" clickable="false" event_bubble="true"/>
             <text_small name="layer_progress_label"
@@ -190,14 +189,13 @@
                         event_bubble="true"/>
             <icon name="layer_pause_hint"
                   src="pause" size="xs" variant="muted" clickable="false" event_bubble="true" hidden="true">
-              <bind_flag_if cond="show_beta_features eq 1 and printer_has_layer_pause and layer_pause_availability gt 0 and layer_pause_layer eq 0"
+              <bind_flag_if cond="printer_has_layer_pause and layer_pause_availability gt 0 and layer_pause_layer eq 0"
                             flag="hidden" invert="true"/>
             </icon>
             <lv_obj name="layer_pause_chip"
                     width="content" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
                     style_pad_gap="#space_xxs" scrollable="false" clickable="false" event_bubble="true" hidden="true">
-              <bind_flag_if cond="show_beta_features eq 1 and printer_has_layer_pause and layer_pause_layer gt 0"
-                            flag="hidden" invert="true"/>
+              <bind_flag_if cond="printer_has_layer_pause and layer_pause_layer gt 0" flag="hidden" invert="true"/>
               <icon src="pause" size="xs" variant="warning" clickable="false" event_bubble="true"/>
               <text_small name="layer_pause_chip_label"
                           bind_text="layer_pause_layer" style_text_color="#warning" event_bubble="true"/>

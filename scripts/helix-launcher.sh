@@ -33,6 +33,9 @@
 # ("label:reason" entries joined by '|', capped). The app turns them into
 # startup notifications; see docs/devel/ENVIRONMENT_VARIABLES.md.
 #
+# HELIX_LAUNCHER_PID is likewise exported, never read: it marks the processes
+# this launcher started so its exit sweep stops only those.
+#
 # All other options are passed through to helix-screen.
 #
 # Logging behavior:
@@ -779,6 +782,194 @@ helix_load_env_file() {
         _helix_skipped _hes_count _hes_more _helix_env_file
 }
 
+# Process inspection for the predecessor wait and the exit sweep below. Same
+# rules as helix_klipper_co_hosted: read $HELIX_PROC_ROOT directly, never pgrep,
+# and treat a process that vanishes mid-read as gone.
+HELIX_NL='
+'
+# Binaries a launcher starts, by program name. comm is truncated to 15
+# characters, so names are taken from argv instead.
+HELIX_UI_PROGS="helix-watchdog helix-screen helix-screen-fbdev helix-screen-egl"
+
+# Sets _hps_ppid and _hps_start (clock ticks after boot) from <pid>/stat.
+# Fields are counted from the LAST ')' because comm may hold spaces and ')'.
+helix_proc_stat() {
+    _hps_ppid="" _hps_start="" _hps_line=""
+    { IFS= read -r _hps_line < "$HELIX_PROC_ROOT/$1/stat"; } 2>/dev/null || return 1
+    # shellcheck disable=SC2086  # field splitting is the point
+    set -- ${_hps_line##*) }
+    _hps_ppid=${2:-}
+    _hps_start=${20:-}
+    [ -n "$_hps_ppid" ]
+}
+
+# Sets _hpp_prog to the program a process runs: the basename of argv[0], or of
+# argv[1] when argv[0] is a shell running a script (a shebang exec or
+# `sh script`). _hpp_argv holds argv one entry per line. Both are empty for a
+# process that is gone, unreadable, or plainly something else.
+helix_proc_prog() {
+    _hpp_prog="" _hpp_argv="" _hpp_comm=""
+    # comm is a fork-free prefilter: the cmdline read below costs a process,
+    # and this runs over every PID on a board with a slow CPU.
+    { IFS= read -r _hpp_comm < "$HELIX_PROC_ROOT/$1/comm"; } 2>/dev/null || _hpp_comm=""
+    case "$_hpp_comm" in
+        ""|helix-*|sh|ash|bash|dash) ;;
+        *) return 0 ;;
+    esac
+    _hpp_argv=$(tr '\0' '\n' 2>/dev/null < "$HELIX_PROC_ROOT/$1/cmdline") || _hpp_argv=""
+    [ -n "$_hpp_argv" ] || return 0
+    _hpp_prog=${_hpp_argv%%"$HELIX_NL"*}
+    _hpp_prog=${_hpp_prog##*/}
+    case "$_hpp_prog" in
+        sh|ash|bash|dash)
+            case "$_hpp_argv" in
+                *"$HELIX_NL"*)
+                    _hpp_prog=${_hpp_argv#*"$HELIX_NL"}
+                    _hpp_prog=${_hpp_prog%%"$HELIX_NL"*}
+                    _hpp_prog=${_hpp_prog##*/}
+                    ;;
+            esac
+            ;;
+    esac
+    return 0
+}
+
+# Is any helix-watchdog or helix-screen process alive?
+helix_ui_running() {
+    for _hur_d in "$HELIX_PROC_ROOT"/[0-9]*; do
+        helix_proc_prog "${_hur_d##*/}"
+        case " $HELIX_UI_PROGS " in
+            *" $_hpp_prog "*) return 0 ;;
+        esac
+    done
+    return 1
+}
+
+# Is unsigned decimal $1 >= $2? 0 = yes, 1 = no, 2 = either is not a plain
+# number. Compared as text, longest first, then in 9-digit chunks, so a
+# value past 2^31 (a start time after ~248 days of uptime) still compares
+# right in a 32-bit shell's test.
+helix_uint_ge() {
+    case "$1" in ''|*[!0-9]*) return 2 ;; esac
+    case "$2" in ''|*[!0-9]*) return 2 ;; esac
+    if [ "${#1}" -ne "${#2}" ]; then
+        [ "${#1}" -gt "${#2}" ]
+        return
+    fi
+    _hug_a=$1 _hug_b=$2
+    while [ "${#_hug_a}" -gt 9 ]; do
+        _hug_ra=${_hug_a#?????????} _hug_rb=${_hug_b#?????????}
+        _hug_ha=${_hug_a%"$_hug_ra"} _hug_hb=${_hug_b%"$_hug_rb"}
+        if [ "$_hug_ha" != "$_hug_hb" ]; then
+            [ "$_hug_ha" -gt "$_hug_hb" ]
+            return
+        fi
+        _hug_a=$_hug_ra _hug_b=$_hug_rb
+    done
+    [ "$_hug_a" -ge "$_hug_b" ]
+}
+
+# Sets _hlp_pids to the other launchers that started before this one. Not
+# counted: this shell and its own subshells, its ancestors (a launcher that
+# runs a hook which asks this question), and the --print-env and
+# --wait-for-predecessor queries, which start nothing. A launcher that started
+# after this one is not a predecessor, so two launchers racing each other never
+# wait on each other.
+helix_launcher_predecessors() {
+    _hlp_pids="" _hlp_self_start="" _hlp_ancestors=" $$ "
+    _hlp_pid=$PPID _hlp_hops=0
+    while [ "$_hlp_pid" -gt 1 ] 2>/dev/null && [ "$_hlp_hops" -lt 64 ]; do
+        _hlp_ancestors="$_hlp_ancestors$_hlp_pid "
+        helix_proc_stat "$_hlp_pid" || break
+        _hlp_pid=$_hps_ppid
+        _hlp_hops=$((_hlp_hops + 1))
+    done
+    helix_proc_stat "$$" && _hlp_self_start=$_hps_start
+    for _hlp_d in "$HELIX_PROC_ROOT"/[0-9]*; do
+        _hlp_pid=${_hlp_d##*/}
+        case "$_hlp_ancestors" in
+            *" $_hlp_pid "*) continue ;;
+        esac
+        helix_proc_prog "$_hlp_pid"
+        [ "$_hpp_prog" = "helix-launcher.sh" ] || continue
+        case "$HELIX_NL$_hpp_argv$HELIX_NL" in
+            *"${HELIX_NL}--print-env${HELIX_NL}"*|*"${HELIX_NL}--wait-for-predecessor${HELIX_NL}"*)
+                continue ;;
+        esac
+        helix_proc_stat "$_hlp_pid" || continue
+        [ "$_hps_ppid" != "$$" ] || continue
+        # Only a start time that reads as earlier than ours counts; one that
+        # cannot be compared is not evidence of a predecessor.
+        if [ -n "$_hlp_self_start" ]; then
+            _hlp_cmp=0
+            helix_uint_ge "$_hps_start" "$_hlp_self_start" || _hlp_cmp=$?
+            [ "$_hlp_cmp" -eq 1 ] || continue
+        fi
+        _hlp_pids="${_hlp_pids:+$_hlp_pids }$_hlp_pid"
+    done
+}
+
+# Wait, bounded, for older launchers to exit. A launcher that is exiting still
+# owns the instance lock through its helix-screen, and its exit trap sweeps the
+# children it started, so starting on top of it races both. Always returns 0:
+# after the bound the caller proceeds, and helix-watchdog's restart policy
+# covers a lock that is still held.
+# HELIX_LAUNCHER_PREDECESSOR_WAIT (seconds, default 10, 0 = never wait) is an
+# environment override for tests and diagnosis, not a helixscreen.env key.
+helix_wait_for_predecessor() {
+    # $1 = "query": the UI coming back (a predecessor's respawn) also ends it.
+    _hwp_query=${1:-}
+    _hwp_bound=${HELIX_LAUNCHER_PREDECESSOR_WAIT:-10}
+    case "$_hwp_bound" in
+        ''|*[!0-9]*) _hwp_bound=10 ;;
+    esac
+    [ "$_hwp_bound" -gt 0 ] || return 0
+    _hwp_waited=0
+    helix_launcher_predecessors
+    [ -n "$_hlp_pids" ] || return 0
+    log "Waiting up to ${_hwp_bound}s for exiting launcher (PID ${_hlp_pids})"
+    while [ -n "$_hlp_pids" ]; do
+        if [ "$_hwp_waited" -ge "$_hwp_bound" ]; then
+            log "Launcher (PID ${_hlp_pids}) still running after ${_hwp_waited}s; proceeding"
+            return 0
+        fi
+        sleep 1
+        _hwp_waited=$((_hwp_waited + 1))
+        if [ "$_hwp_query" = "query" ] && helix_ui_running; then
+            log "UI came back after ${_hwp_waited}s; launcher (PID ${_hlp_pids}) is not exiting"
+            return 0
+        fi
+        helix_launcher_predecessors
+    done
+    log "Previous launcher exited after ${_hwp_waited}s"
+    return 0
+}
+
+# On exit, stop what THIS launcher started and nothing else. Every child
+# inherits HELIX_LAUNCHER_PID=$$ (exported before the first one starts), so a
+# helix-screen or splash orphaned by a SIGKILLed watchdog still carries this
+# launcher's PID, while a successor's processes carry their own launcher's. A
+# sweep by name would take the successor down with us: Z-Mod restarts the UI
+# by killing it by name and starting a new launcher while this one exits.
+helix_stop_own_children() {
+    for _hso_d in "$HELIX_PROC_ROOT"/[0-9]*; do
+        _hso_pid=${_hso_d##*/}
+        [ "$_hso_pid" != "$$" ] || continue
+        helix_proc_prog "$_hso_pid"
+        case " $HELIX_UI_PROGS helix-splash " in
+            *" $_hpp_prog "*) ;;
+            *) continue ;;
+        esac
+        _hso_env=$(tr '\0' '\n' 2>/dev/null < "$_hso_d/environ") || continue
+        case "$HELIX_NL$_hso_env$HELIX_NL" in
+            *"${HELIX_NL}HELIX_LAUNCHER_PID=$$${HELIX_NL}"*)
+                log "Stopping ${_hpp_prog} (PID ${_hso_pid}) left behind by this launcher"
+                kill "$_hso_pid" 2>/dev/null || true
+                ;;
+        esac
+    done
+}
+
 # --print-env NAME: resolve NAME exactly as the env-file read resolves it
 # (shell environment first, then the file, first definition wins) and print
 # the value, exiting before any other launcher work — no display side
@@ -798,6 +989,26 @@ if [ "${1:-}" = "--print-env" ]; then
     eval "printf '%s\n' \"\${$2:-}\""
     exit 0
 fi
+
+# --wait-for-predecessor: the platform hooks' and init script's question
+# "is the launcher in the pidfile a running UI, or one on its way out?". With a
+# helix-watchdog or helix-screen alive the UI is up, so answer at once; with
+# neither, any older launcher is exiting, so wait for it (bounded). Z-Mod's own
+# S80helixscreen reads a live launcher PID as "already running" and returns, so
+# without this wait a restart lands while the old launcher exits and leaves no
+# UI at all. A caller that asked exports HELIX_PREDECESSOR_WAITED=1, so the
+# launcher it then starts does not wait the whole bound a second time.
+if [ "${1:-}" = "--wait-for-predecessor" ]; then
+    helix_ui_running || helix_wait_for_predecessor query
+    exit 0
+fi
+
+# Unset either way: a value inherited by a later, unrelated start must not
+# skip that start's wait.
+if [ "${HELIX_PREDECESSOR_WAITED:-0}" != "1" ]; then
+    helix_wait_for_predecessor
+fi
+unset HELIX_PREDECESSOR_WAITED
 
 # Stop firmware display-management services that conflict with HelixScreen.
 # Creality SonicPad/Nebula Pad ships display-sleep.sh which polls X11 DPMS via
@@ -1201,14 +1412,24 @@ HELIX_SHUTTING_DOWN=0
 cleanup() {
     HELIX_SHUTTING_DOWN=1
     log "Shutting down..."
-    # Kill watchdog/helix-screen if we started them
-    killall helix-watchdog helix-screen helix-screen-fbdev helix-screen-egl helix-splash 2>/dev/null || true
+    # A trap runs only after the foreground child returns, so what is left is
+    # an orphan of a SIGKILLed watchdog. Never sweep by name: that is the
+    # init script's stop(), and here it would also kill a successor.
+    helix_stop_own_children
     # Remove the GUI pidfile we advertised (CC1 gui-switcher) so a stale PID
-    # can't be signalled after we exit. HELIX_GUI_PIDFILE is exported by the
-    # platform hook; unset elsewhere this is a harmless no-op.
-    [ -n "${HELIX_GUI_PIDFILE:-}" ] && rm -f "${HELIX_GUI_PIDFILE}" 2>/dev/null || true
+    # can't be signalled after we exit, unless a successor's live watchdog has
+    # already rewritten it. HELIX_GUI_PIDFILE is exported by the platform hook;
+    # unset elsewhere this is a harmless no-op.
+    if [ -n "${HELIX_GUI_PIDFILE:-}" ] && [ -f "${HELIX_GUI_PIDFILE}" ]; then
+        _gui_pid=$(cat "${HELIX_GUI_PIDFILE}" 2>/dev/null || true)
+        if [ -z "${_gui_pid}" ] || ! kill -0 "${_gui_pid}" 2>/dev/null; then
+            rm -f "${HELIX_GUI_PIDFILE}" 2>/dev/null || true
+        fi
+    fi
 }
 
+# Marks every process this launcher starts (see helix_stop_own_children).
+export HELIX_LAUNCHER_PID=$$
 trap cleanup EXIT INT TERM
 
 log "Starting main application"

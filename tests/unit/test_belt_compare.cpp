@@ -1,6 +1,7 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "belt_tension_types.h"
+#include "belt_test_curves.h"
 #include "shaper_csv_parser.h"
 
 #include <cmath>
@@ -41,14 +42,9 @@ BeltComparison compare_fixture(const std::string& printer, float lo, float hi) {
                               load_fixture(printer + "_axis_1_1.csv"), lo, hi);
 }
 
-/// Lorentzian peak on a noise floor, 5-135 Hz at Klipper's 3200/4096 Hz spacing.
+/// One Lorentzian peak on a noise floor, 5-135 Hz at Klipper's 3200/4096 Hz spacing.
 BeltCurve curve_with_peak(float peak_hz, float height = 1e4f, float floor = 50.0f) {
-    BeltCurve c;
-    for (float f = 5.0f; f < 135.0f; f += 0.78125f) {
-        const float d = (f - peak_hz) / 5.0f;
-        c.emplace_back(f, floor + height / (1.0f + d * d));
-    }
-    return c;
+    return test::lorentzian_curve({{peak_hz, height}}, 5.0f, 135.0f, 3200.0f / 4096.0f, floor);
 }
 
 BeltPeak peak(float hz, float amp) {

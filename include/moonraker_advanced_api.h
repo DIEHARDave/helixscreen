@@ -491,7 +491,7 @@ class MoonrakerAdvancedAPI : public helix::IAdvancedAPI {
 
     /// Mirrors IAdvancedAPI (contracts live there).
     using BeltSweepProgressCallback = IAdvancedAPI::BeltSweepProgressCallback;
-    using BeltCurveCallback = IAdvancedAPI::BeltCurveCallback;
+    using BeltResponseCallback = IAdvancedAPI::BeltResponseCallback;
     using BeltRunCancel = IAdvancedAPI::BeltRunCancel;
 
     /// Callback for belt hardware detection
@@ -516,20 +516,21 @@ class MoonrakerAdvancedAPI : public helix::IAdvancedAPI {
      * Executes TEST_RESONANCES with OUTPUT=resonances and SWEEPING_PERIOD=0
      * (pulse-only excitation) and collects the console sweep, then reads the
      * CSV Klipper names in its "Resonances data written to" line and hands
-     * back the parsed curve.
+     * back the parsed curves.
      *
      * @param axis_param Axis parameter: "1,-1" for CoreXY Path A, "1,1" for Path B
      * @param output_name Name for the CSV output file
      * @param on_progress Called with progress percentage (0-100) and current frequency
-     * @param on_complete Called with the parsed curve on success
+     * @param on_complete Called with the parsed curves (psd_xyz and psd_x + psd_y) on success
      * @param on_error Called on failure
+     * @param window Optional frequency range to limit the sweep to
      * @return Cancel handle; stops listening and suppresses every later callback
      */
-    [[nodiscard]] BeltRunCancel test_belt_resonance(const std::string& axis_param,
-                                                    const std::string& output_name,
-                                                    BeltSweepProgressCallback on_progress,
-                                                    BeltCurveCallback on_complete,
-                                                    ErrorCallback on_error) override;
+    [[nodiscard]] BeltRunCancel test_belt_resonance(
+        const std::string& axis_param, const std::string& output_name,
+        BeltSweepProgressCallback on_progress, BeltResponseCallback on_complete,
+        ErrorCallback on_error,
+        std::optional<helix::calibration::BeltSweepWindow> window = std::nullopt) override;
 
   protected:
     helix::IMoonrakerClient& client_;

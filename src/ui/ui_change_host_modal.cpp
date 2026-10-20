@@ -4,6 +4,7 @@
 #include "ui_change_host_modal.h"
 
 #include "ui_emergency_stop.h"
+#include "ui_next_tick.h"
 #include "ui_printer_list_overlay.h"
 #include "ui_printer_switch_menu.h"
 #include "ui_update_queue.h"
@@ -16,6 +17,7 @@
 #include "lvgl/lvgl.h"
 #include "moonraker_events.h"
 #include "moonraker_manager.h"
+#include "platform_info.h"
 #include "printer_retarget.h"
 #include "printer_state.h"
 #include "text_io.h"
@@ -284,7 +286,11 @@ void ChangeHostModal::on_test_failure() {
     if (!is_visible())
         return;
 
-    set_status("icon_close_circle", "danger", "Connection failed");
+    IMoonrakerClient* client = get_moonraker_client();
+    const ConnectFailureKind kind =
+        client ? client->last_connect_failure() : ConnectFailureKind::Unknown;
+    set_status("icon_close_circle", "danger",
+               lv_tr(connect_failure_hint(kind, helix::is_android_platform())));
     lv_subject_set_int(&testing_subject_, 0);
 
     spdlog::debug("[ChangeHostModal] Test failed, keeping Save disabled");
@@ -363,11 +369,13 @@ void ChangeHostModal::handle_save() {
 void ChangeHostModal::commit_add(const std::string& host, int port) {
     // A switch retargets the client itself, so the hand-back waits for the caller and runs
     // only when it did not switch: a declined or unsaved switch leaves the client on the
-    // saved printer, and an add that switches cycles the transport once.
+    // saved printer, and an add that switches cycles the transport once. The caller runs on
+    // the next tick, outside any UpdateQueue drain, where a switch runs in place and its
+    // answer is final.
     const bool borrowed = std::exchange(client_borrowed_, false);
     hide();
     auto on_add = add_callback_;
-    helix::ui::queue_update("ChangeHostModal::handle_add", [on_add, host, port, borrowed]() {
+    helix::ui::run_next_tick([on_add, host, port, borrowed]() {
         if (!on_add(host, port) && borrowed) {
             reconnect_active_printer();
         }

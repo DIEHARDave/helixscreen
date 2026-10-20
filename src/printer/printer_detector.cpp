@@ -1697,6 +1697,17 @@ bool PrinterDetector::is_enclosed(const std::string& printer_name) {
     return printer_flag(printer_name, "enclosed");
 }
 
+helix::calibration::BeltTensionerKind
+PrinterDetector::get_belt_tensioner(const std::string& printer_name) {
+    using helix::calibration::BeltTensionerKind;
+    const std::string kind = printer_field(printer_name, "belt_tensioner");
+    if (kind == "screw")
+        return BeltTensionerKind::SCREW;
+    if (kind == "spring")
+        return BeltTensionerKind::SPRING;
+    return BeltTensionerKind::UNKNOWN;
+}
+
 bool PrinterDetector::klipper_hides_dot_dirs(const std::string& printer_name) {
     return printer_flag(printer_name, "klipper_hides_dot_dirs");
 }

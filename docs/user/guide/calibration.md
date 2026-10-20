@@ -79,7 +79,7 @@ The reference screw is labeled **base** (it is the one everything else is measur
 
 ## Input Shaper
 
-![Input Shaper Panel](../../images/user/advanced-shaper.png)
+![Input Shaper results: the X axis chart with shaper chips, the legend and the top of the comparison table](../../images/user/advanced-shaper.png)
 
 Tune vibration compensation for smoother, faster prints:
 
@@ -87,14 +87,15 @@ Tune vibration compensation for smoother, faster prints:
 2. Review your current shaper configuration displayed at the top
 3. Pre-flight check verifies accelerometer is connected
 4. Select axis to test (X or Y)
-5. Tap **Calibrate** to run the resonance test. While the printer sweeps, a progress bar fills from 0 to 100%; the sweep covers the frequency range your printer's own resonance-tester config specifies, so progress tracks the real sweep rather than a fixed span. Once the sweep finishes it is replaced by a spinner with an "Analyzing data... Ns" counter while the printer's host crunches the samples. On slower printers the analysis alone can take a few minutes per axis; that wait is why the whole run gets a 10-minute timeout
+5. Tap **Calibrate** to run the resonance test. While the printer sweeps, a compact header shows a progress bar and the **Stop** button, and below it a chart draws the measured vibration live as the sweep climbs through the frequencies (see [The live chart](#the-live-chart) below). The sweep covers the frequency range your printer's own resonance-tester config specifies, so progress tracks the real sweep rather than a fixed span. Once the sweep finishes, the progress bar gives way to a spinner with an "Analyzing data... Ns" counter while the printer's host crunches the samples, and the chart stays on screen with the full curve. On slower printers the analysis alone can take a few minutes per axis; that wait is why the whole run gets a 10-minute timeout
+   **Stop** (the red button with an octagon icon, also shown in the setup wizard's Input Shaper step) ends a running test. It is an emergency stop followed by a firmware restart, because the printer cannot cancel a resonance test partway through. Use it only when something is wrong.
 6. View the **frequency response chart**; tap a shaper's chip to select it - the chart highlights what that shaper would leave behind
 7. Review the **comparison table** showing recommended shaper and alternatives (frequency, vibration reduction, smoothing)
 8. Check the **change summary** under the table: it shows what was active before the run ("ei @ 69.8 Hz -> mzv @ 53.8 Hz") and, when the chart has data, how much vibration the old setting would leave on today's measurements versus the new one ("Old setting on today's data: 8.4% residual - now: 7.8%")
 9. Tap **Save**. One button does both jobs: it writes your selected shaper for each axis to the Klipper config and restarts the printer's firmware, so the new setting is active immediately and persists across reboots.
 
-![Mid-sweep: the progress bar fills as frequencies are tested (step 5)](../../images/screenshot-shaper-sweep.png)
-![After the sweep: the spinner counts analysis seconds (step 5)](../../images/screenshot-shaper-analysis.png)
+![Mid-sweep: the compact header shows progress and Stop, and the live chart draws the vibration as the frequencies climb (step 5)](../../images/screenshot-shaper-sweep.png)
+![After the sweep: the header counts analysis seconds while the finished live chart stays on screen (step 5)](../../images/screenshot-shaper-analysis.png)
 ![The change summary under the comparison table (step 8)](../../images/screenshot-shaper-delta.png)
 
 **Chart features:**
@@ -103,6 +104,12 @@ Tune vibration compensation for smoother, faster prints:
 - The shaper chips act as a selector, not a stack of switches: one shaper per axis is selected, the selected chip is what **Save** writes, and tapping the selected chip again keeps it selected
 - Platform-adaptive: full interactive charts on desktop, simplified on embedded hardware
 - Per-axis results shown independently
+
+### The live chart
+
+While a test runs, the Input Shaper screen and the setup wizard's Input Shaper step draw the axis's response as the accelerometer measures it, so you can watch the peaks appear instead of waiting minutes for a result. When the test finishes, Klipper's own analysis replaces the live curve. The live curve is only a preview: the recommended shaper, the comparison table and everything you save come from Klipper's analysis.
+
+The live chart needs HelixScreen to reach Klipper's accelerometer stream, which works when HelixScreen runs on the printer's own computer. Without it, or on the smallest screens (480x272), the test shows the progress bar alone and the results arrive as usual.
 
 > **Creality K1/K2 note:** some Creality firmware versions overwrite the saved X-axis result with the Y-axis values when you calibrate both axes. HelixScreen detects this and shows a warning on the X results card — the X values it measured were correct, but the printer's saved config discards them. (On a Y-only run the warning appears on the Y card instead, since there is no X card to carry it.) Re-run **Calibrate X** alone and save if you want the measured X values kept.
 
@@ -157,11 +164,11 @@ HelixScreen picks the right calibration command for your setup (`PROBE_CALIBRATE
 
 > **Quick access:** A **Z Calibration** button is also available on the Controls panel for one-tap access.
 
-> **Tool changer?** Some printers can also measure Z automatically for every tool, including the reference one, as part of [automatic Tool Offsets calibration](#tool-offsets-beta) — on those, this paper-test flow is hidden. Most tool changers only measure the *other* tools' offsets relative to the reference tool, so the paper test stays available to set the reference tool's own Z.
+> **Tool changer?** Some printers can also measure Z automatically for every tool, including the reference one, as part of [automatic Tool Offsets calibration](#tool-offsets) — on those, this paper-test flow is hidden. Most tool changers only measure the *other* tools' offsets relative to the reference tool, so the paper test stays available to set the reference tool's own Z.
 
 ---
 
-## Tool Offsets *(Beta)*
+## Tool Offsets
 
 > Added in 1.1.
 
@@ -185,7 +192,7 @@ A tool that has never been calibrated shows `--` on each axis instead of a numbe
 
 1. Navigate to **Advanced > Tool Offsets** —
 
-   ![Tool Offsets row in the Advanced panel](../../images/user/advanced-beta-tool-offsets-row.png)
+   ![Tool Offsets row in the Advanced panel](../../images/user/advanced-tool-offsets-row.png)
 
    — or tap **Tool Offsets** on the Controls panel:
 
@@ -197,7 +204,7 @@ A tool that has never been calibrated shows `--` on each axis instead of a numbe
 
 3. Tap **Calibrate all tools**, then confirm. The printer measures each tool in turn against its sensor; the row for whichever tool is currently being probed gets a highlighted border so it's clear which one is changing, while the rest keep showing their last known values
 
-![Tool Offsets Panel while running](../../images/user/advanced-tool-offsets-running.png)
+![Tool Offsets mid-run: the tool being probed has a highlighted border, and the red Stop button ends the run](../../images/user/advanced-tool-offsets-running.png)
 
 4. When the status line reads **Calibration complete**, tap **Save offsets** to write the results to your Klipper config (this briefly restarts Klipper, same as any other offset save)
 
@@ -205,11 +212,11 @@ A tool that has never been calibrated shows `--` on each axis instead of a numbe
 
 5. If the run fails partway through, the status line explains why and the run stops there — clean the affected tool's nozzle and try again
 
-Tapping **Stop** during a run performs an emergency stop, since the calibration macro can't be paused partway through — only canceled outright.
+Tapping **Stop** during a run performs an emergency stop, since the calibration macro can't be paused partway through, only canceled outright.
 
 ---
 
-## Belt Tension *(Beta)*
+## Belt Tension
 
 > Added in 1.1.
 
@@ -217,7 +224,7 @@ For CoreXY printers: compares the tension of the two belt paths by driving each 
 
 ### Requirements
 
-The row appears under **Advanced > Calibration** once [beta features are enabled](beta-features.md), and only when your Klipper config has an accelerometer. **Start check** stays disabled until all of these hold:
+The row appears under **Advanced > Calibration** on a CoreXY printer whose Klipper config has an accelerometer. **Start Check** stays disabled until all of these hold:
 
 - A **CoreXY** printer. The check compares the two diagonals only a CoreXY has, so it is unavailable on other kinematics
 - An **accelerometer** configured in Klipper, and exactly one. When more than one accelerometer reports during the sweep, the check stops with a message rather than guess which one to compare
@@ -229,12 +236,14 @@ The row appears under **Advanced > Calibration** once [beta features are enabled
 
 1. Navigate to **Advanced > Belt Tension**
 2. The panel shows what it found: your kinematics, your accelerometer, and the frequency range the sweep will cover. If a requirement is not met, the reason appears above the Start button
-3. Tap **Start check**. The printer homes first if it needs to, then sweeps each belt path in turn: the toolhead moves back and forth along one diagonal while the accelerometer listens, then the other. Two full sweeps take about 5 minutes at Klipper's default settings - keep clear of the printer while it moves
+3. Tap **Start Check**. The printer homes first if it needs to, runs three quick laps to settle the belts, then sweeps each belt path in turn: the toolhead moves back and forth along one diagonal while the accelerometer listens, then the other. Two full sweeps take about 5 minutes at Klipper's default settings - keep clear of the printer while it moves. Each path's curve draws live on the chart while it sweeps, as on the [Input Shaper live chart](#the-live-chart), and Klipper's analysis replaces it when the sweep ends
 4. Both curves appear on one chart, each path in its own color
+
+The sweeps stay inside the frequency range set in your printer's `[resonance_tester]` section; nothing goes past its `max_freq`. On a printer with less than 512 MB of memory or a single-core processor, the panel shows the results without a chart.
 
 The check always uses Klipper's plain pulse test, even on printers set up for the newer sweeping test: the sweeping test smooths over exactly the kind of mechanical difference a belt comparison looks for.
 
-**Stop** aborts the run with an emergency stop followed by a firmware restart: a sweep cannot be paused or canceled partway. Use it only when something is actually wrong.
+**Stop** ends the run with an emergency stop followed by a firmware restart: a sweep cannot be paused or canceled partway. Use it only when something is actually wrong.
 
 ### Reading the Results
 
@@ -253,7 +262,68 @@ HelixScreen's similarity reads lower than Shake&Tune's for the same printer. Sha
 After adjusting a belt, you do not need to re-run both paths:
 
 - **Re-test A** / **Re-test B** sweeps just that one path and keeps the other's previous result. The path's old curve stays on the chart as a faint line, so you can see which way, and how far, your adjustment moved it
-- **Test both** discards both and starts a fresh run of the full check
+- **Test Both** discards both and starts a fresh run of the full check
+
+### Tuning Your Belts
+
+When the results show the paths differ, **Tune Belts** (**Fine-tune** if they already match well) walks you through closing the gap one belt at a time. Instead of repeating the full check after every adjustment, it re-measures only the stretch of the spectrum where the two paths disagree, which takes a fraction of the time. The same requirements as the full check apply, and every Measure, Re-measure, Next Zone and Confirm checks them again: if a print has started or Klipper has dropped out, the sweep is refused with the reason. Tuning needs to know your printer's sweep range, so Tune Belts stays disabled until the printer has reported its `[resonance_tester]` settings.
+
+Before every sweep that can follow a belt adjustment, the toolhead runs three quick laps around the bed. A turned tensioner first changes only the stretch of belt next to it; the laps spread the change around the whole belt so the reading reflects it. On a printer with several toolheads the laps stay in the middle of the bed, clear of the parked tools.
+
+**If your belts already match.** Tune Belts tells you so ("Belts already match", with how close they are) and asks nothing of you. **Good Enough** goes back to your results; **Calibrate Anyway** carries on to the calibration turn below if you want to tune further.
+
+**The calibration turn.** Your printer may show several peaks, and the tallest one is not always the belt: it can be a frame resonance that tension hardly moves. So HelixScreen first asks you to tighten the looser belt one full turn ("Tighten B one full turn"; on printers it does not recognise, "Tighten B noticeably"), then tap **Measure**. It sweeps both paths in full and looks for the peaks that moved with your turn; those are the ones it tunes.
+
+- "That turn didn't register yet": the readings did not move enough to tell. Tighten the same belt one more full turn and Measure again. On some printers this is normal for the first turn
+- "Nothing followed 2 turns of B. Turn B back 2 turns, then check the mechanics": nothing moved with your turns. Undo them and look for a mechanical problem (see below) before tuning further
+
+Once a turn registers, HelixScreen measures the chosen zone twice straight away, to check that the readings repeat, and then shows its first advice.
+
+What the screen shows:
+
+- **The instruction** at the top: which path to adjust and which way ("Tighten A", "Loosen B"). A higher frequency means a tighter belt, and clockwise tightens
+- **The amount**, on printers HelixScreen knows have screw tensioners (the Voron 2.4 and Trident): how far to turn, in quarter turns, from half a turn up to two, or a quarter turn once the belts are nearly matched. The calibration turn gives a first idea of how many Hz a turn moves on your machine, and later rounds refine it
+- **The gap gauge**: the distance between the two paths. The middle band is "matched". The solid marker is this round's gap and the hollow one is last round's, so you can see which way it moved. The color tells you how far off you are
+- **The chart**: the zone being tuned, with the adjusted path's earlier rounds fading behind it
+
+To work through it:
+
+1. Follow the instruction: turn the named tensioner by the amount shown, use the plus and minus buttons to set what you actually turned, then tap **Re-measure**. The printer settles the belts and sweeps both paths over the zone only. Leaving the stepper at "Not turned" makes the round a repeat check: it shows how much the reading wanders on its own, and nothing is counted as a turn
+2. Read the note under the gauge:
+   - "last turn: N Hz closer": keep going
+   - "No turn: the gap moved N Hz": a repeat check; that is how far a reading wanders by itself
+   - "Went past X": the turn was too big, back it off a little
+   - "The gap didn't close": try a bigger turn
+   - "The gap grew after tightening": the other belt, or the other direction, probably moved. Check which tensioner you turned
+   - "Path X's peak left the zone": the belt you were not adjusting moved. Check that only the named tensioner was turned
+   - "That reading jumped too far to trust": a measurement glitch. Re-measure without turning anything; your last turn still counts
+   - "No clear peak in this zone": the sweep found nothing to compare there. Try again, or see below
+   - "peak moved out of the zone. Widening it.": nothing to do, the next sweep covers the wider range
+3. When the gap is inside the matched band, the zone is **matched**. Three things can follow:
+   - **Keep Tuning** goes back to the same zone if you want to close the gap further. The turn counter starts again at "Not turned"
+   - **Next Zone**, if another zone moved with your calibration turn, moves on to it and measures it at once (twice, as above); on larger screens the button shows how long that takes
+   - **Confirm**, when there is no other zone, runs a full two-path check and shows the result against the one you started from, with the rounds taken and the total turns per belt, calibration turns included. The round count only counts the rounds where you adjusted a belt. If the belts already matched when the zone was first measured, no count is shown
+4. **Adjust X instead** switches which belt you are tuning, if the other one is easier to reach or you turned the wrong one. During the calibration turn it is offered only before your first Measure, and it turns the instruction into loosening the tighter belt instead. **Good Enough** leaves tuning with your starting results
+
+The screen can dim or show the screensaver while you are at the tensioner; waking it returns you to the same round. On printers with little memory the low-memory warning is asked once, at the first sweep of a tuning session.
+
+**"These readings aren't repeatable"** means two sweeps of the same zone, with nothing turned in between, disagreed. Tuning advice would only chase noise, so none is given. Check the mechanics (below), then **Re-measure** for a fresh pair, or leave with **Good Enough**.
+
+**"Curves differ in shape"** means the tallest peak on one path has no partner on the other. Tuning still follows the zone that moved with your turn, but something besides tension may be shaping the response. **"Path B resonates much more than A"** means the tuned zone is far stronger on one path than the other, which also points at a mechanical difference rather than tension. Tap either warning for the list of things to check:
+
+- a worn, frayed or mis-tracking belt
+- a loose or slipping pulley grub screw
+- an idler or bearing that binds
+- debris in the belt teeth, or a belt rubbing a flange
+- a loose accelerometer mount
+
+The shape warning also appears if the gap is not closing after many rounds.
+
+**Spring-tensioned and unrecognised printers** get direction-only advice, with no amount in turns, since HelixScreen cannot know what your tensioner does per turn. A spring-tensioned printer skips the calibration turn and starts measuring at once; its instruction is to release the tensioner, let the spring settle and lock it again, which resets the belt to whatever the spring gives. If two re-seats in a row do not improve things, the mechanical hint appears.
+
+**On small, tall and very wide screens.** The same steps apply, laid out to fit. On a small or tall (portrait) screen the instruction, amount and gap gauge collapse into one line: tap the thin gauge to adjust the other path instead, and the two Re-test buttons share one **Re-test** menu. Buttons wrap onto their own lines in portrait so every label stays readable. On a very wide screen the chart takes the left side and the buttons and status sit in a column on the right.
+
+The matched band and the other limits are provisional while they are being checked against more printers, so treat a "matched" result as a good sign and the final full check as the verdict.
 
 ---
 
@@ -279,7 +349,7 @@ Leaving the screen while it is still heating stops the run. Once measuring has s
 
 ## Pressure Advance Tuning (test tower)
 
-> Added in 1.1. A [beta feature](beta-features.md).
+> Added in 1.1.
 
 Works on any Klipper printer. HelixScreen prints a small test tower, raises pressure advance as the tower grows, and lets you take over while you watch the corners. You pick the height that looked best, and that value is applied.
 
@@ -309,7 +379,7 @@ You can leave the tuner during the print; the steps keep going. Open it again fr
 Calibrate temperature controllers for stable heating. HelixScreen supports two calibration methods:
 
 - **PID** — Classic proportional-integral-derivative tuning. Works on all Klipper firmware.
-- **MPC** *(Beta)* — Model Predictive Control. A physics-based thermal model that can provide more stable temperatures. Requires [Kalico](https://github.com/KalicoCrew/kalico) firmware (a Klipper fork with MPC support).
+- **MPC**: Model Predictive Control. A physics-based thermal model that can provide more stable temperatures. Requires [Kalico](https://github.com/KalicoCrew/kalico) firmware (a Klipper fork with MPC support).
 
 ### PID Calibration
 
@@ -322,7 +392,7 @@ Calibrate temperature controllers for stable heating. HelixScreen supports two c
 **During calibration:**
 - **Live temperature graph** shows the heater cycling in real-time
 - **Progress percentage** updates as calibration proceeds
-- **Abort button** available if you need to stop early
+- **Stop** ends the run early. It is an emergency stop followed by a firmware restart, because the heater test cannot be paused partway through, so use it only when something is wrong
 - A **20-minute timeout** acts as a safety net for stuck calibrations (slow-cooling beds can legitimately take longer than 15 minutes, so the limit sits above that)
 
 **When complete:**
@@ -331,12 +401,12 @@ Calibrate temperature controllers for stable heating. HelixScreen supports two c
 
 > **Tip:** Run PID tuning after any hardware change (new heater, thermistor, or hotend) and with the fan speed you typically use while printing.
 
-### MPC Calibration (Beta — Kalico Only)
+### MPC Calibration (Kalico Only)
 
-If you are running Kalico firmware and have [beta features enabled](beta-features.md), a **Method** selector appears with MPC and PID options. HelixScreen auto-detects Kalico — the selector only appears when it is detected.
+If you are running Kalico firmware, a **Method** selector appears with MPC and PID options. HelixScreen detects Kalico on its own, and the selector only appears when it does.
 
 1. Navigate to **Advanced > Heater Calibration**
-2. Select **MPC** in the Method selector (marked with a BETA badge)
+2. Select **MPC** in the Method selector
 3. Select **Nozzle** or **Bed**
 4. Choose a target temperature preset
 5. For nozzle calibration, select a **fan calibration level**: Quick (3 points), Detailed (5 points), or Thorough (7 points) — more points improve accuracy but take longer
@@ -348,8 +418,6 @@ If you are running Kalico firmware and have [beta features enabled](beta-feature
 **When complete:**
 - View MPC model parameters: Heat Capacity, Sensor Response, Ambient Transfer, and Fan Transfer (nozzle only)
 - Results are automatically saved to your Klipper configuration
-
----
 
 ---
 

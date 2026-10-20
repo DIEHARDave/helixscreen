@@ -18,6 +18,7 @@
 #include "../../include/moonraker_api.h"
 #include "../../include/moonraker_client_mock.h"
 #include "../../include/printer_state.h"
+#include "../../include/resonance_console.h"
 #include "../../lvgl/lvgl.h"
 #include "../test_helpers/log_capture.h"
 #include "../test_helpers/update_queue_test_access.h"
@@ -129,7 +130,7 @@ TEST_CASE_METHOD(InputShaperTestFixture, "start_resonance_test accepts X axis",
     InputShaperResult captured_result;
 
     api_->advanced().start_resonance_test(
-        'X', [](int, ShaperCalibrationPhase) {}, // progress callback
+        'X', [](int, ShaperCalibrationPhase, float) {}, // progress callback
         [&](const InputShaperResult& result) {
             captured_result = result;
             complete_called = true;
@@ -156,7 +157,7 @@ TEST_CASE_METHOD(InputShaperTestFixture, "start_resonance_test accepts Y axis",
     InputShaperResult captured_result;
 
     api_->advanced().start_resonance_test(
-        'Y', [](int, ShaperCalibrationPhase) {}, // progress callback
+        'Y', [](int, ShaperCalibrationPhase, float) {}, // progress callback
         [&](const InputShaperResult& result) {
             captured_result = result;
             complete_called = true;
@@ -180,7 +181,7 @@ TEST_CASE_METHOD(InputShaperTestFixture, "start_resonance_test sends correct G-c
     std::atomic<bool> complete_called{false};
 
     api_->advanced().start_resonance_test(
-        'X', [](int, ShaperCalibrationPhase) {},
+        'X', [](int, ShaperCalibrationPhase, float) {},
         [&](const InputShaperResult& result) {
             complete_called = true;
             // Verify parsed values from mock response
@@ -233,7 +234,7 @@ TEST_CASE_METHOD(InputShaperTestFixture,
     InputShaperResult captured_result;
 
     api_->advanced().start_resonance_test(
-        'X', [](int, ShaperCalibrationPhase) {},
+        'X', [](int, ShaperCalibrationPhase, float) {},
         [&](const InputShaperResult& result) {
             captured_result = result;
             complete_called = true;
@@ -264,7 +265,7 @@ TEST_CASE_METHOD(InputShaperTestFixture,
     InputShaperResult captured_result;
 
     api_->advanced().start_resonance_test(
-        'X', [](int, ShaperCalibrationPhase) {},
+        'X', [](int, ShaperCalibrationPhase, float) {},
         [&](const InputShaperResult& result) {
             captured_result = result;
             complete_called = true;
@@ -294,7 +295,7 @@ TEST_CASE_METHOD(InputShaperTestFixture,
 
     SECTION("without the marker line the flag stays clear") {
         api_->advanced().start_resonance_test(
-            'Y', [](int, ShaperCalibrationPhase) {},
+            'Y', [](int, ShaperCalibrationPhase, float) {},
             [&](const InputShaperResult& result) { captured_result = result; },
             [&](const MoonrakerError&) { FAIL("Error callback should not be called"); });
 
@@ -311,7 +312,7 @@ TEST_CASE_METHOD(InputShaperTestFixture,
 
     SECTION("the marker line flags the result and spares the Y recommendation") {
         api_->advanced().start_resonance_test(
-            'Y', [](int, ShaperCalibrationPhase) {},
+            'Y', [](int, ShaperCalibrationPhase, float) {},
             [&](const InputShaperResult& result) { captured_result = result; },
             [&](const MoonrakerError&) { FAIL("Error callback should not be called"); });
 
@@ -642,7 +643,7 @@ TEST_CASE_METHOD(InputShaperTestFixture, "start_resonance_test returns all shape
     InputShaperResult captured_result;
 
     api_->advanced().start_resonance_test(
-        'X', [](int, ShaperCalibrationPhase) {}, // progress callback
+        'X', [](int, ShaperCalibrationPhase, float) {}, // progress callback
         [&](const InputShaperResult& result) {
             captured_result = result;
             complete_called = true;
@@ -855,7 +856,7 @@ TEST_CASE_METHOD(InputShaperTestFixture, "collector parses new Klipper recommend
     InputShaperResult captured_result;
 
     api_->advanced().start_resonance_test(
-        'X', [](int, ShaperCalibrationPhase) {},
+        'X', [](int, ShaperCalibrationPhase, float) {},
         [&](const InputShaperResult& result) {
             captured_result = result;
             complete_called = true;
@@ -882,7 +883,7 @@ TEST_CASE_METHOD(InputShaperTestFixture, "collector parses max_accel per shaper"
     InputShaperResult captured_result;
 
     api_->advanced().start_resonance_test(
-        'X', [](int, ShaperCalibrationPhase) {},
+        'X', [](int, ShaperCalibrationPhase, float) {},
         [&](const InputShaperResult& result) {
             captured_result = result;
             complete_called = true;
@@ -929,7 +930,7 @@ TEST_CASE_METHOD(InputShaperTestFixture, "collector captures CSV path",
     InputShaperResult captured_result;
 
     api_->advanced().start_resonance_test(
-        'X', [](int, ShaperCalibrationPhase) {},
+        'X', [](int, ShaperCalibrationPhase, float) {},
         [&](const InputShaperResult& result) {
             captured_result = result;
             complete_called = true;
@@ -953,7 +954,9 @@ TEST_CASE_METHOD(InputShaperTestFixture, "collector emits progress callbacks dur
 
     api_->advanced().start_resonance_test(
         'X',
-        [&](int percent, ShaperCalibrationPhase phase) { reports.emplace_back(percent, phase); },
+        [&](int percent, ShaperCalibrationPhase phase, float) {
+            reports.emplace_back(percent, phase);
+        },
         [&](const InputShaperResult&) { complete_called = true; },
         [&](const MoonrakerError& err) { FAIL("Error: " << err.message); });
 
@@ -994,7 +997,7 @@ TEST_CASE_METHOD(InputShaperTestFixture,
     InputShaperResult captured_result;
 
     api_->advanced().start_resonance_test(
-        'Y', [](int, ShaperCalibrationPhase) {},
+        'Y', [](int, ShaperCalibrationPhase, float) {},
         [&](const InputShaperResult& result) {
             captured_result = result;
             complete_called = true;
@@ -1171,7 +1174,7 @@ struct ProgressRecorder {
     std::vector<std::pair<int, ShaperCalibrationPhase>> samples;
 
     [[nodiscard]] helix::ShaperProgressCallback callback() {
-        return [this](int percent, ShaperCalibrationPhase phase) {
+        return [this](int percent, ShaperCalibrationPhase phase, float) {
             samples.emplace_back(percent, phase);
         };
     }
@@ -1511,4 +1514,50 @@ TEST_CASE_METHOD(InputShaperTestFixture, "set_machine_limits writes each limit w
     CHECK(last_script_containing(mock_client_, "SET_VELOCITY_LIMIT") ==
           "SET_VELOCITY_LIMIT VELOCITY=300.0 ACCEL=3000.0 ACCEL_TO_DECEL=1501.0 "
           "SQUARE_CORNER_VELOCITY=5.2");
+}
+
+TEST_CASE_METHOD(InputShaperTestFixture, "sweep progress carries each console frequency",
+                 "[calibration][input_shaper][sweep_preview]") {
+    std::atomic<bool> complete_called{false};
+    std::vector<std::pair<ShaperCalibrationPhase, float>> reports;
+    std::vector<float> console_hz;
+    mock_client_.register_method_callback(
+        "notify_gcode_response", "freq_progress_test", [&console_hz](const nlohmann::json& msg) {
+            const auto line = msg["params"][0].get<std::string>();
+            if (const auto hz = helix::calibration::parse_testing_frequency(line)) {
+                console_hz.push_back(*hz);
+            }
+        });
+
+    api_->advanced().start_resonance_test(
+        'X',
+        [&](int, ShaperCalibrationPhase phase, float freq_hz) {
+            reports.emplace_back(phase, freq_hz);
+        },
+        [&](const InputShaperResult&) { complete_called = true; },
+        [&](const MoonrakerError& err) { FAIL("Error: " << err.message); });
+
+    for (int i = 0; i < 200 && !complete_called; ++i) {
+        lv_tick_inc(100);
+        lv_timer_handler_safe();
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    mock_client_.unregister_method_callback("notify_gcode_response", "freq_progress_test");
+    REQUIRE(complete_called);
+
+    std::vector<float> sweep_hz;
+    bool saw_analyzing = false;
+    for (const auto& [phase, hz] : reports) {
+        if (phase == ShaperCalibrationPhase::Sweeping) {
+            sweep_hz.push_back(hz);
+        } else {
+            saw_analyzing = saw_analyzing || phase == ShaperCalibrationPhase::Analyzing;
+            CHECK(hz == 0.0f);
+        }
+    }
+    CHECK(saw_analyzing);
+    REQUIRE(console_hz.size() == 20);
+    CHECK(console_hz.front() == 5.0f);
+    CHECK(console_hz.back() == 135.0f);
+    CHECK(sweep_hz == console_hz);
 }

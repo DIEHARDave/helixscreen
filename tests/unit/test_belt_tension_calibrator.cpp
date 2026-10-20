@@ -17,23 +17,28 @@
  * 5. State machine - BeltTensionCalibrator lifecycle
  */
 
+#include "../../include/belt_settle.h"
 #include "../../include/belt_tension_calibrator.h"
 #include "../../include/belt_tension_types.h"
+#include "../../include/mock_persona.h"
 #include "../../include/moonraker_api.h"
 #include "../../include/moonraker_client_mock.h"
 #include "../../include/printer_state.h"
 #include "../../lvgl/lvgl.h"
 #include "../test_helpers/printer_state_test_access.h"
+#include "../test_helpers/script_lines.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cfloat>
 #include <chrono>
 #include <cmath>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -433,25 +438,43 @@ TEST_CASE("belt path names match Klipper's axis syntax", "[belt_tension][calibra
     CHECK(std::string(BeltTensionCalibrator::output_name(BeltPath::PATH_B)) == "helix_belt_b");
 }
 
-TEST_CASE_METHOD(BeltCalibratorFixture, "measure_path sweeps its path and reports the peak",
+TEST_CASE_METHOD(BeltCalibratorFixture, "measure_path reports both curves",
                  "[belt_tension][calibrator]") {
     std::atomic<bool> done{false};
-    BeltCurve got;
+    BeltResponse got;
     int last_percent = -1;
     calibrator_->measure_path(
         BeltPath::PATH_B, [&](int percent, float) { last_percent = percent; },
-        [&](BeltCurve curve) {
-            got = std::move(curve);
+        [&](BeltResponse response) {
+            got = std::move(response);
             done = true;
         },
         [&](const std::string& msg) { FAIL(msg); });
     REQUIRE(pump_until(done));
     CHECK(last_percent == 100);
-    REQUIRE_FALSE(got.empty());
-    auto peak = find_peak_frequency(got, 20.0f, got.back().first);
+    REQUIRE_FALSE(got.xyz.empty());
+    auto peak = find_peak_frequency(got.xyz, 20.0f, got.xyz.back().first);
     REQUIRE(peak.found);
     CHECK(peak.frequency == Catch::Approx(mock_client_.belt_peak_hz('B')).margin(1.0f));
+    REQUIRE(got.in_plane.size() == got.xyz.size());
+    for (size_t i = 0; i < got.xyz.size(); ++i) {
+        CHECK(got.in_plane[i].first == got.xyz[i].first);
+    }
     CHECK(calibrator_->get_state() == BeltTensionCalibrator::State::IDLE);
+}
+
+TEST_CASE_METHOD(BeltCalibratorFixture, "measure_path forwards its window",
+                 "[belt_tension][calibrator]") {
+    mock_client_.clear_gcode_script_history();
+    std::atomic<bool> done{false};
+    calibrator_->measure_path(
+        BeltPath::PATH_A, nullptr, [&](BeltResponse) { done = true; },
+        [&](const std::string& msg) { FAIL(msg); }, BeltSweepWindow{88.4f, 119.6f});
+    REQUIRE(pump_until(done));
+    const auto history = mock_client_.gcode_script_history();
+    CHECK(std::any_of(history.begin(), history.end(), [](const std::string& g) {
+        return g.find("TEST_RESONANCES AXIS=1,-1 FREQ_START=89 FREQ_END=119 ") == 0;
+    }));
 }
 
 TEST_CASE_METHOD(BeltCalibratorFixture, "cancel while homing never starts the sweep",
@@ -460,7 +483,7 @@ TEST_CASE_METHOD(BeltCalibratorFixture, "cancel while homing never starts the sw
     mock_client_.clear_gcode_script_history();
     bool called = false;
     calibrator_->measure_path(
-        BeltPath::PATH_A, [&](int, float) { called = true; }, [&](BeltCurve) { called = true; },
+        BeltPath::PATH_A, [&](int, float) { called = true; }, [&](BeltResponse) { called = true; },
         [&](const std::string&) { called = true; });
     calibrator_->cancel();
     for (int i = 0; i < 500; ++i) {
@@ -484,11 +507,145 @@ TEST_CASE_METHOD(BeltCalibratorFixture, "cancel silences the run's callbacks",
                  "[belt_tension][calibrator]") {
     bool called = false;
     calibrator_->measure_path(
-        BeltPath::PATH_A, [&](int, float) { called = true; }, [&](BeltCurve) { called = true; },
+        BeltPath::PATH_A, [&](int, float) { called = true; }, [&](BeltResponse) { called = true; },
         [&](const std::string&) { called = true; });
     calibrator_->cancel();
     CHECK(calibrator_->get_state() == BeltTensionCalibrator::State::IDLE);
     for (int i = 0; i < 500; ++i) {
+        lv_tick_inc(2);
+        lv_timer_handler_safe();
+    }
+    CHECK_FALSE(called);
+}
+
+namespace {
+
+/// Settle inputs for the fixture's VORON_24 persona, probe point at the bed centre.
+BeltSettleInputs voron_settle_inputs() {
+    const auto axis_max =
+        helix::mock::descriptor(MoonrakerClientMock::PrinterType::VORON_24).axis_max;
+    BeltSettleInputs in;
+    in.x_max = static_cast<float>(axis_max.x);
+    in.y_max = static_cast<float>(axis_max.y);
+    in.has_xy_limits = true;
+    in.probe_point = std::array<float, 3>{in.x_max / 2.0f, in.y_max / 2.0f, 20.0f};
+    in.max_velocity_mm_s = 500.0f;
+    return in;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(BeltCalibratorFixture, "settle sends the planned laps and reports on the ack",
+                 "[belt_tension][calibrator][settle]") {
+    const auto inputs = voron_settle_inputs();
+    const auto plan = plan_belt_settle(inputs);
+    REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
+    mock_client_.clear_gcode_script_history();
+
+    std::atomic<bool> done{false};
+    calibrator_->settle(
+        inputs, [&]() { done = true; },
+        [&](BeltSettleRefusal r) { FAIL("refused: " << static_cast<int>(r)); },
+        [&](const std::string& msg) { FAIL(msg); });
+    REQUIRE(pump_until(done));
+    CHECK(mock_client_.gcode_script_history() == helix::test::script_lines(plan.gcode));
+    CHECK(calibrator_->get_state() == BeltTensionCalibrator::State::IDLE);
+}
+
+TEST_CASE_METHOD(BeltCalibratorFixture, "settle homes first when XY is not homed",
+                 "[belt_tension][calibrator][settle]") {
+    lv_subject_copy_string(get_printer_state().motion_state().get_homed_axes_subject(), "");
+    const auto inputs = voron_settle_inputs();
+    const auto plan = plan_belt_settle(inputs);
+    REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
+    mock_client_.clear_gcode_script_history();
+
+    std::atomic<bool> done{false};
+    calibrator_->settle(
+        inputs, [&]() { done = true; },
+        [&](BeltSettleRefusal r) { FAIL("refused: " << static_cast<int>(r)); },
+        [&](const std::string& msg) { FAIL(msg); });
+    REQUIRE(pump_until(done));
+    auto expected = helix::test::script_lines(plan.gcode);
+    expected.insert(expected.begin(), "G28");
+    CHECK(mock_client_.gcode_script_history() == expected);
+}
+
+TEST_CASE_METHOD(BeltCalibratorFixture, "settle sends the laps with the plan's timeout",
+                 "[belt_tension][calibrator][settle]") {
+    // 10 mm/s max velocity laps at 6 mm/s: the plan's timeout is far past the
+    // default a G-code request gets.
+    auto inputs = voron_settle_inputs();
+    inputs.max_velocity_mm_s = 10.0f;
+    const auto plan = plan_belt_settle(inputs);
+    REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
+    REQUIRE(plan.timeout_ms > belt_settle::kMinTimeoutMs);
+
+    std::atomic<bool> done{false};
+    calibrator_->settle(
+        inputs, [&]() { done = true; },
+        [&](BeltSettleRefusal r) { FAIL("refused: " << static_cast<int>(r)); },
+        [&](const std::string& msg) { FAIL(msg); });
+    REQUIRE(pump_until(done));
+    CHECK(mock_client_.last_send_timeout_ms() == plan.timeout_ms);
+}
+
+TEST_CASE_METHOD(BeltCalibratorFixture, "a refused settle sends nothing",
+                 "[belt_tension][calibrator][settle]") {
+    // Unhomed too: a refusal known before homing must not home either.
+    lv_subject_copy_string(get_printer_state().motion_state().get_homed_axes_subject(), "");
+    auto inputs = voron_settle_inputs();
+    inputs.probe_point.reset();
+    mock_client_.clear_gcode_script_history();
+
+    std::optional<BeltSettleRefusal> refusal;
+    bool other = false;
+    calibrator_->settle(
+        inputs, [&]() { other = true; }, [&](BeltSettleRefusal r) { refusal = r; },
+        [&](const std::string&) { other = true; });
+    for (int i = 0; i < 50; ++i) {
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+        lv_tick_inc(10);
+        lv_timer_handler_safe();
+    }
+    REQUIRE(refusal.has_value());
+    CHECK(*refusal == BeltSettleRefusal::NO_PROBE_POINT);
+    CHECK_FALSE(other);
+    CHECK(mock_client_.gcode_script_history().empty());
+    CHECK(calibrator_->get_state() == BeltTensionCalibrator::State::IDLE);
+}
+
+TEST_CASE_METHOD(BeltCalibratorFixture, "a lap the printer rejects is a settle error",
+                 "[belt_tension][calibrator][settle]") {
+    // Limits 100 mm past the persona's travel put the far corners out of range.
+    auto inputs = voron_settle_inputs();
+    inputs.x_max += 100.0f;
+    inputs.y_max += 100.0f;
+    std::atomic<bool> failed{false};
+    std::string message;
+    calibrator_->settle(
+        inputs, [&]() { FAIL("laps outside the travel were acked"); },
+        [&](BeltSettleRefusal r) { FAIL("refused: " << static_cast<int>(r)); },
+        [&](const std::string& msg) {
+            message = msg;
+            failed = true;
+        });
+    REQUIRE(pump_until(failed));
+    CHECK(message.find("Move out of range") != std::string::npos);
+    CHECK(calibrator_->get_state() == BeltTensionCalibrator::State::ERROR);
+}
+
+TEST_CASE_METHOD(BeltCalibratorFixture, "cancel during settle silences its ack",
+                 "[belt_tension][calibrator][settle]") {
+    bool called = false;
+    calibrator_->settle(
+        voron_settle_inputs(), [&]() { called = true; }, [&](BeltSettleRefusal) { called = true; },
+        [&](const std::string&) { called = true; });
+    CHECK(calibrator_->get_state() == BeltTensionCalibrator::State::SETTLING);
+    calibrator_->cancel();
+    CHECK(calibrator_->get_state() == BeltTensionCalibrator::State::IDLE);
+    for (int i = 0; i < 500; ++i) {
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
         lv_tick_inc(2);
         lv_timer_handler_safe();
     }

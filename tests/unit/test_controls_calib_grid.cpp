@@ -140,8 +140,9 @@ class ControlsCalibGridFixture : public LVGLUITestFixture {
     }
 
     /// Bed Mesh and Z Calibration are always shown; each flag adds one tile.
+    /// Beta features stay off: no tile depends on them.
     void show(int qgl, int z_tilt, int pa, int screws, int tool_offsets) {
-        set("show_beta_features", tool_offsets);
+        set("show_beta_features", 0);
         set("printer_has_tool_offset_cal", tool_offsets);
         set("hide_manual_z_calibration", 0);
         set("printer_has_qgl", qgl);
@@ -255,33 +256,34 @@ TEST_CASE_METHOD(ControlsCalibGridFixture,
     }
 }
 
-TEST_CASE_METHOD(
-    ControlsCalibGridFixture,
-    "the Tool Offsets tile waits for the beta switch only where the calibration is beta",
-    "[controls][calib-grid][tool_offset_cal]") {
+TEST_CASE_METHOD(ControlsCalibGridFixture,
+                 "Controls Z Calibration steps aside for a full tool offset routine with beta off",
+                 "[controls][calib-grid][tool_offsets]") {
     build();
     show(0, 0, 0, 0, 1);
-    lv_obj_t* tile = lv_obj_find_by_name(panel_obj, "btn_tool_offsets");
-    REQUIRE(tile != nullptr);
-    auto shown = [&] {
-        for (lv_obj_t* o = tile; o && o != panel_obj; o = lv_obj_get_parent(o)) {
-            if (lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN)) {
-                return false;
+    auto tile_hidden = [this](const char* name) {
+        lv_obj_t* obj = lv_obj_find_by_name(panel_obj, name);
+        REQUIRE(obj != nullptr);
+        for (; obj && obj != grid(); obj = lv_obj_get_parent(obj)) {
+            if (lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN)) {
+                return true;
             }
         }
-        return true;
+        return false;
     };
 
-    set("show_beta_features", 0);
-    set("printer_tool_offset_cal_is_beta", 0);
     settle();
-    CHECK(shown());
+    CHECK_FALSE(tile_hidden("btn_tool_offsets"));
+    CHECK_FALSE(tile_hidden("btn_z_calibration"));
 
-    set("printer_tool_offset_cal_is_beta", 1);
+    set("hide_manual_z_calibration", 1);
     settle();
-    CHECK_FALSE(shown());
+    CHECK(tile_hidden("btn_z_calibration"));
+    CHECK_FALSE(tile_hidden("btn_tool_offsets"));
 
-    set("show_beta_features", 1);
+    set("printer_has_tool_offset_cal", 0);
     settle();
-    CHECK(shown());
+    CHECK_FALSE(tile_hidden("btn_z_calibration"));
+    CHECK(tile_hidden("btn_tool_offsets"));
+    set("hide_manual_z_calibration", 0);
 }

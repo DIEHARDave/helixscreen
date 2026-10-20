@@ -238,6 +238,12 @@ class ToolState {
     /// the ones a heater target can be aimed at.
     [[nodiscard]] std::vector<PhysicalHead> heated_heads() const;
 
+    /// Whether the printer has several physical toolheads: a tool changer or
+    /// more than one hotend. AMS slots feeding one hotend do not count.
+    [[nodiscard]] bool has_multiple_toolheads() const {
+        return physical_heads().size() > 1;
+    }
+
     /// Returns "Nozzle" for single-tool, "Nozzle 1" for multi-tool (active tool),
     /// or the tool's configured Klipper name ("Nozzle Left") when it has one.
     [[nodiscard]] std::string nozzle_label() const;

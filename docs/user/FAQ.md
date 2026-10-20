@@ -313,7 +313,7 @@ For layout customization, use Edit Mode on the Home panel — long-press the das
 
 ### Does it support multiple printers?
 
-**Yes!** You can configure multiple Klipper printers and switch between them from the navigation bar or Settings. You view one printer at a time, but switching is instant. Enable beta features first (**Settings** → **Help & About** → **About**, then tap the version button 7 times), then add printers via **Settings** → **Connection** → **Printers**.
+**Yes!** You can configure multiple Klipper printers and switch between them from the navigation bar or Settings. You view one printer at a time, but switching is instant. Add printers via **Settings** → **Connection** → **Printers**.
 
 ### Can I view print history?
 

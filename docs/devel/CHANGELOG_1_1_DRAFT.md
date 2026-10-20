@@ -80,7 +80,7 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 **Calibration**
 
 - **Pressure advance tuning on a live test print** (#982) - Advanced > Calibration > Pressure
-  Advance Tuning (beta) prints a small test tower and raises pressure advance with height; tap - or
+  Advance Tuning prints a small test tower and raises pressure advance with height; tap - or
   + at any moment to take over, then pick the height band that looked best from what the
   printer reported. The result is applied, can be saved to the spool's Spoolman filament
   (applied again whenever that filament becomes active, never mid-print), and is kept in
@@ -313,7 +313,7 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Tool Offsets screen with automatic calibration** (#1480) - per-tool X, Y and Z offsets in
   one place, and a one-tap calibration that runs your printer's own routine, follows it
   live, and saves every axis with a single restart. Where that routine calibrates every
-  tool, the manual paper test is hidden. Beta-gated for now. (thanks @Monstrofil)
+  tool, the manual paper test is hidden. (thanks @Monstrofil)
 - **Per-tool Z offset from Print Tune** - Print Tune has a Global / T0..Tn selector, so each
   tool keeps its own first-layer height, and the save button appears whenever any tool's
   offset is unsaved and writes it permanently. It used to vanish after the next Klipper
@@ -365,7 +365,7 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   boxes that can do different things are listed side by side. When the dryer can only heat
   some boxes at a time, the waiting ones say they are queued and which box is using the
   heater.
-- **Happy Hare 4: dry only the lanes you choose** (#1026, beta) - with beta features on, on a unit with a heater per lane,
+- **Happy Hare 4: dry only the lanes you choose** (#1026) - on a unit with a heater per lane,
   the drying screen shows a chip per lane, all selected to start. Clear some to dry just the
   rest, turn on Rotate to have an eSpooler turn the spools while they dry, and Stop with a
   selection stops only those lanes. Each spool on the Filament panel shows a small badge while
@@ -498,12 +498,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Printing**
 
-- **Pause a running print at a layer (beta)** (#1703) - tap the layer count on the print
+- **Pause a running print at a layer** (#1703) - tap the layer count on the print
   screen to pause at the next layer or one you pick, see the scheduled layer beside the count
   and as a tick on the progress bar, and cancel it. Uses the printer's own
   `SET_PAUSE_NEXT_LAYER` / `SET_PAUSE_AT_LAYER` macros (Mainsail and Fluidd client macros,
   Snapmaker U1 stock firmware) and needs a slicer that reports layers; hidden on printers
-  without the macros and while beta features are off.
+  without the macros.
 - **Heater duty on every heater** (#1290) - the Controls and print status screens show how
   hard each heater is working as a percentage beside its status, so a nozzle running flat
   out and falling behind looks different from one holding temperature easily.
@@ -598,20 +598,29 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   row under Advanced > Calibration opens it too. The Snapmaker U1 applies and keeps the
   value; on the FlashForge Creator 5 Pro you copy it into the slicer. Takes a few minutes and
   heats and purges. (thanks @Monstrofil)
-- **Belt tension is measured by plucking, not by a driven sweep (#1303, #1231)** - park the
-  gantry, pluck each belt by hand, and the tool listens on Klipper's live accelerometer
-  stream and reports the belt's fundamental, with a live waveform and spectrum. It reads the
-  fundamental off the whole harmonic series rather than the tallest peak, which is what the
-  old sweep got wrong: a belt whose 2nd harmonic dominates reported exactly one octave sharp.
-  The number you act on is the median of five accepted plucks. The `TEST_RESONANCES` sweep,
-  the strobe path and the never-measurable Z-belt path are deleted.
-
-  > **⚠ RELEASE BLOCKER - do not ship 1.1 with this marked done.** This is green in CI and
-  > has **never measured a real belt**. Its gate thresholds were measured against captures
-  > from one Voron 2.4 on one evening, and the algorithm was then tuned against that same
-  > set - circular, and not yet broken. It stays beta-gated and must not be promoted until
-  > the hardware matrix in `BELT_TUNER.md` § Validation status has actually been run.
-  > Delete this box only when that is done, not when the code looks finished.
+- **Belt Tension check** (#1303, #1721) - on a CoreXY printer with an accelerometer,
+  Advanced > Belt Tension drives each belt path with the motors and compares the two
+  responses on one chart: a similarity score, the peaks both paths share and the ones only
+  one path has. Re-test A or B sweeps one path again and keeps the other, with the old curve
+  ghosted so you can see what your adjustment moved. Needs HelixScreen on the printer's own
+  computer, and warns first on boards with little memory.
+- **Guided belt tuning** (#1736) - after a Belt Tension check, Tune Belts walks you through
+  closing the gap one belt at a time. It tells you when the belts already match, finds the
+  zone to tune with one calibration turn instead of trusting the tallest peak, runs short
+  settling laps before each sweep, and re-measures only the stretch of the spectrum that moved,
+  always inside your printer's sweep range. It checks that readings repeat before it advises
+  anything, and flags a path that resonates far harder than the other as a mechanical problem
+  rather than tension. On Voron 2.4 and Trident it suggests how far to turn, in quarter turns;
+  other printers get direction-only advice. Tune Belts stays greyed out until the printer has
+  reported its sweep range, so it never sends a sweep your machine cannot take. The screen fits
+  small, portrait and very wide displays, with the chart beside the controls on a wide one, and
+  the chart's axis labels no longer clip. The thresholds are provisional until it has run on
+  more hardware.
+- **Live sweep graphs** (#1812) - the Input Shaper screen, the setup wizard's Input Shaper
+  step and Belt Tension draw the response live while the printer sweeps, instead of a bare
+  progress bar for minutes. Klipper's own analysis replaces the live curve when the sweep
+  ends, and every recommendation still comes from that analysis. Needs HelixScreen on the
+  printer's own computer; the smallest screens keep the progress bar alone.
 
 - **Switch a Kalico heater between PID and MPC** (#1237) - the method selector on Kalico
   printers is out of beta. It migrates your config in both directions, and cancelling a
@@ -824,7 +833,18 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 ### Changed
 
+- **Stop buttons say "Stop"** - the red button that ends a running Input Shaper test, a heater
+  (PID) calibration, a tool offset calibration, the setup wizard's Input Shaper step and a belt
+  tension check now all read "Stop" with the same octagon icon, instead of "Abort", "Cancel" or
+  a plain cross. They still do what they did: an emergency stop followed by a firmware restart,
+  because none of these can be paused partway through.
+
 **Screens and settings**
+
+- **Beta features gates two things** - the Dev update channel and the prompt offering to install
+  the HelixPrint plugin. The Z Calibration button on Controls, the Macro Browser and
+  multi-printer management work without it, and so does everything new in 1.1: Belt Tension,
+  both pressure advance tools, Tool Offsets, pausing at a layer and choosing lanes to dry.
 
 - **Settings is one list of twelve pages in three groups** (#1023) - Screen (Display, Appearance,
   Touch & Input, Sound), Printer (Printing, Devices, Safety & Alerts, Connection) and HelixScreen
@@ -1005,6 +1025,11 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   turns them on.
 
 ### Fixed
+
+- **Chart axis labels no longer clip** - on the Input Shaper results graph and the belt tension
+  chart, the vertical percent labels and the "100 Hz" style labels at the chart edges were cut
+  off on screens where the text is large. The space for the labels now follows the text size,
+  and the labels stay inside the chart.
 
 **Performance**
 
@@ -1445,6 +1470,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 ### Internal
 
+- The pluck-based belt tuner libraries (#1303, #1231: pluck detection, harmonic pitch
+  estimation, the five-pluck median) stay in the tree with no UI. They have never measured a
+  real belt and their thresholds come from one Voron's captures; `BELT_TUNER.md` § Validation
+  status lists the hardware runs needed before any screen uses them.
 - helix-xml warns on a style attribute written with `:` for its state selector
   (`style_bg_opa:checked`, which applies nothing) and on a negated const reference (`-#space_md`,
   which it drops), and the unknown-attribute check now covers misspelled `style_*` names on

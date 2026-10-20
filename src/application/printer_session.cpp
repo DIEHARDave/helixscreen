@@ -890,13 +890,12 @@ void PrinterSession::teardown_printer_scope(TeardownScope scope, DisplayManager*
     KeyboardManager::instance().reset(); // widget pointers dangle after the tree delete
 
     // Delete the LVGL widget tree (panels already released their references). The display
-    // stays alive, so no lv_deinit(). cancel_add_printer_wizard() reaches here inside a
-    // queue_update() batch, where a synchronous lv_obj_del() would delete inside
-    // UpdateQueue::process_pending() and can corrupt LVGL's global event list (#776/#190/#80);
-    // m_app_layout is also the Home widget grid, where a relayout racing teardown could
-    // iterate a freed container (#983). safe_delete_subtree() detaches the tree off-screen
-    // synchronously (so the immediate init_printer_state() rebuild sees a clean m_screen),
-    // forces LV_LAYOUT_NONE, and frees it asynchronously outside the batch.
+    // stays alive, so no lv_deinit(). A synchronous lv_obj_del() of the tree the current
+    // event or callback may still be walking can corrupt LVGL's global event list
+    // (#776/#190/#80); m_app_layout is also the Home widget grid, where a relayout racing
+    // teardown could iterate a freed container (#983). safe_delete_subtree() detaches the
+    // tree off-screen synchronously (so the immediate init_printer_state() rebuild sees a
+    // clean m_screen), forces LV_LAYOUT_NONE, and frees it asynchronously.
     if (m_app_layout) {
         helix::ui::safe_delete_subtree(m_app_layout);
         m_app_layout = nullptr;

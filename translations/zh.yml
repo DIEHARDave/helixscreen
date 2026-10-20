@@ -5,7 +5,10 @@ translations:
   ' (timed out)': （超时）
   ' frames': ' 帧'
   ' left': ' 剩余'
-  ' · was {:.0f}%': ' · 原为 {:.0f}%'
+  ' · Tuned in {} round': " · 用 {} 轮调好"
+  ' · Tuned in {} rounds': " · 用 {} 轮调好"
+  ' · {} loosened about {}': " · {} 放松约 {}"
+  ' · {} tightened about {}': " · {} 拉紧约 {}"
   '"%s" failed to load': '"%s" 加载失败'
   '%d additional fan': '%d 个额外风扇'
   '%d additional fans': '%d 个额外风扇'
@@ -229,6 +232,7 @@ translations:
   'Adds to:': '添加到:'
   Adjust screen brightness level: 调整屏幕亮度
   Adjust screws, then re-probe.: 调整螺丝，然后重新探测。
+  Adjust {} instead: "改为调整 {}"
   Adjustments stay active until restart. Save after print completes.: 调整在重启前保持有效。打印完成后保存。
   Adjusts individual characteristics of your heaters for optimal control: 调整加热器的各项参数以实现最佳控制
   Advanced: 高级
@@ -395,6 +399,7 @@ translations:
   Belt Tension: 皮带张力
   Belt Tension Check: 皮带张力检查
   Belt Tension needs a CoreXY printer. This one is {}.: '皮带张力需要 CoreXY 打印机。此打印机为{}。'
+  Belts already match: "皮带已经匹配"
   Beta: 测试版
   'Beta features: OFF': '测试版功能: 关'
   'Beta features: ON': '测试版功能: 开'
@@ -484,6 +489,7 @@ translations:
   Calculator: 计算器
   Calibrate: 校准
   Calibrate All: 全部校准
+  Calibrate Anyway: "仍然校准"
   Calibrate Bowden: '校准波顿管'
   Calibrate Cutter: 校准切刀
   Calibrate Encoder: '校准编码器'
@@ -744,6 +750,8 @@ translations:
   Configured filament sensor not found: '未找到已配置的耗材传感器'
   Configured hardware no longer present: '已配置的硬件已不存在'
   Configuring Moonraker...: 正在配置 Moonraker...
+  Confirm: 确认
+  Confirm (full, ~{} min): "确认(完整,约 {} 分钟)"
   Confirm PIN: 确认 PIN 码
   Confirm before running macros: 运行宏前进行确认
   Confirm tool changes: '确认切换工具'
@@ -901,6 +909,7 @@ translations:
   'Current: %d°C | Target: %d°C': '当前: %d°C | 目标: %d°C'
   Currently Loaded: 当前已装载
   Currently printing: 正在打印
+  Curves differ in shape. Check the mechanics before chasing a perfect match.: "曲线形状不同。在追求完美匹配之前请先检查机械部分。"
   Custom: 自定义
   Custom...: 自定义...
   Customize Macro Button: 自定义宏按钮
@@ -1437,6 +1446,7 @@ translations:
   Fine: 细调
   Fine Inner: 细调内圈
   Fine Outer: 细调外圈
+  Fine-tune: "微调"
   Finish: 完成
   Finish or cancel the print before loading, unloading, or changing filament: 在装载、卸载或更换耗材之前，请先完成或取消打印
   Finish or cancel the print first: 请先完成或取消打印
@@ -1508,6 +1518,7 @@ translations:
   Global: 全局
   Good: 良好
   Good Accuracy: 精度良好
+  Good Enough: "足够了"
   Good match: "匹配良好"
   Got it: 知道了
   Gray: 灰色
@@ -1801,6 +1812,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: '在此屏幕上保存自己的数据（最多256 KB）。'
   Keep the bypass spool visible when bypass is off: 旁路关闭时保持料盘可见
+  Keep Tuning: "继续调整"
   Keep waiting: '继续等待'
   Kick away: '拨除废料'
   Kinematics: 运动学
@@ -1950,6 +1962,10 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 长按任意磁贴进入编辑模式 — 重新排列、调整大小、移除或添加小组件，并为您喜欢的布局添加额外页面。
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): '长按主屏幕网格可重新排列小组件（若误触请关闭）'
   Longest Disconnect: 最长断开时长
+  Loosen {0} noticeably: "明显放松 {0}"
+  Loosen {0} one full turn: "将 {0} 放松一整圈"
+  Loosen {0} {1}: '放松 {0} {1}'
+  Loosen {}: "放松 {}"
   Looking for the active spool...: 正在查找当前料盘...
   Lost connection during print — try again: 打印过程中连接丢失 — 请重试
   Lost connection to CFS unit: 与 CFS 单元的连接已断开
@@ -2029,6 +2045,9 @@ translations:
   Master volume level: 主音量
   Match Mode: '匹配模式'
   Match your typical print fan speed: 匹配您常用的打印风扇速度
+  Matched at {:.1f} Hz: "在 {:.1f} Hz 处匹配"
+  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still follows the zone that moved with the turn, but check these before chasing a perfect match."
+  : "张力一致的皮带会得到形状相同的曲线。当一条路径的最高峰在另一条路径上没有对应峰时,说明除张力外还有其他因素在影响响应:\n\n- 皮带磨损、起毛或跑偏\n- 同步轮顶丝松动或打滑\n- 惰轮或轴承卡滞\n- 齿间有杂物,或皮带摩擦挡边\n- 加速度计安装松动\n\n调整仍跟随随转动而移动的区间,但在追求完美匹配之前请先检查这些。"
   Matching printers: 匹配的打印机
   Material: 材料
   'Material Comfort:': 材料适配度：
@@ -2045,9 +2064,11 @@ translations:
   Maximum acceleration (mm/s²): 最大加速度 (mm/s²)
   Maximum toolhead speed (mm/s): 打印头最大速度 (mm/s)
   Measure: '测量'
+  Measure (~{} min): "测量 (约 {} 分钟)"
   Measure each toolhead's X, Y and Z offset (about 20 minutes): 测量每个工具头的 X、Y、Z 偏移（约 20 分钟）
   Measure every tool's XYZ offset automatically: 自动测量每个工具的 XYZ 偏移
   Measure pressure advance automatically: '自动测量压力提前'
+  Measure this zone first: "请先测量此区间"
   ? Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed.
   : 从热床开始测量高度。边角干净、没有多余也没有缺口的位置对应正确的K值。每一行是一个高度范围,以及打印时打印机报告的K值。
   Measured (shaper off): 实测（关闭整形）
@@ -2165,6 +2186,8 @@ translations:
   New printer successfully added: 新打印机已成功添加
   New profile name: 新配置名称
   Next: 下一步
+  Next Zone: "下一区间"
+  Next Zone (~{} min): "下一区间(约 {} 分钟)"
   Next Layer: '下一层'
   'Next: {}': '下一个：{}'
   Niimbot (Bluetooth): Niimbot（蓝牙）
@@ -2193,10 +2216,13 @@ translations:
   No USB printers found: 未找到 USB 打印机
   No actions right now: '当前没有可用操作'
   No active Spoolman spool.: Spoolman中没有当前料盘。
+  "No answer: check the IP address and that this device is on the printer's Wi-Fi, not mobile data.": "无响应:请检查 IP 地址,并确认此设备连接的是打印机的 Wi-Fi,而不是移动数据。"
+  "No answer: check the IP address and that this device is on the printer's network.": "无响应:请检查 IP 地址,并确认此设备与打印机在同一网络。"
   No buffer data available: 无可用缓冲区数据
   No camera — use USB barcode scanner: 无摄像头 — 请使用 USB 条码扫描器
   No chamber temperature sensor detected: '未检测到腔体温度传感器'
   No changes to revert: 没有可撤销的更改
+  No clear peak in this zone: "此区间没有明显的峰"
   No color: 无颜色
   No connection to the printer.: 未连接到打印机。
   No dryer available. Store filament in a sealed dry box with desiccant for best results.: 无可用烘干机。建议将耗材存放在带干燥剂的密封干燥箱中。
@@ -2260,6 +2286,7 @@ translations:
   No temperature sensors detected: '未检测到温度传感器'
   No timelapse videos found: 未找到延时视频
   No tools to calibrate: 没有可校准的工具
+  'No turn: the gap moved {:.1f} Hz': "未转动:差距移动了 {:.1f} Hz"
   No unit has a filament buffer: "没有单元带耗材缓冲器"
   No unit has a moving selector: "没有单元带可移动选择器"
   No unit has a servo: "没有单元带舵机"
@@ -2296,14 +2323,18 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: 没有足够的空间放置此小组件。请重新排列或移除小组件以腾出空间。
   'Not in your spools? Set it up': 不在您的料盘中？立即设置
   Not now: 暂不
+  Not turned: '未转动'
   Not set: 未设置
   Not yet available on this display: '此屏幕暂不支持'
   Not yet calibrated: 尚未校准
   Notes: 备注
   Notes (optional): 备注（可选）
+  Nothing followed the turns on {0}. Undo them, then check the mechanics.: "{0} 的转动没有带来变化。请撤回这些转动,然后检查机械部分。"
+  Nothing followed {1} turns of {0}. Turn {0} back {1} turns, then check the mechanics.: "{0} 转了 {1} 圈没有带来变化。请将 {0} 反向转回 {1} 圈,然后检查机械部分。"
   Nothing loaded: 未装载耗材
   Nothing starred yet. Tap the star on a filament to add it here.: '还没有收藏。点击耗材行的星标即可收藏到这里。'
   Nothing to remap: 没有可重新映射的内容
+  Nothing to tune here: "这里没有需要调整的"
   'Nothing to unload: no filament at the nozzle': '没有可卸载的耗材: 喷嘴处没有耗材'
   'Which lane is in the toolhead?': '哪个料道在打印头里？'
   'Choose which lane is in the toolhead to unload it': '请选择打印头里的料道以卸载'
@@ -2448,8 +2479,14 @@ translations:
   Password: 密码
   Password cannot be empty: 密码不能为空
   Password is required for secured networks: 加密网络需要密码
+  Path A tensioner: "路径 A 张紧器"
+  Path B tensioner: "路径 B 张紧器"
+  ? Path {0} resonates much more than {1} at {2:.0f} Hz. That points at a mechanical difference (pulley grub screws, idler bearings, belt tracking), not tension.
+  : "路径 {0} 在 {2:.0f} Hz 处的共振远强于 {1}。这说明是机械差异(同步轮顶丝、惰轮轴承、皮带走向),而不是张力。"
+  Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.: "路径 {0} 的峰离开了区间。请确认只转动了路径 {1} 的张紧器。"
   Path {}: 路径 {}
   Path {} before: 路径 {}（之前）
+  Path {} earlier round: "路径 {} 上一轮"
   Pause: 暂停
   Pause Layer: '暂停层'
   Pause at Layer: '在指定层暂停'
@@ -2460,8 +2497,8 @@ translations:
   Pause, resume, or stop the print: 暂停、恢复或停止打印
   Paused: 已暂停
   Paused (attention needed): 已暂停（需要处理）
-  ? Pauses a print at a chosen layer, for a filament swap or an insert. During a print, set the layer from the preview card on the print status screen. This is a beta feature.
-  : '在选定的层暂停打印，用于换料或放入嵌件。打印时，在打印状态页面的预览卡片中设置层。这是测试版功能。'
+  ? Pauses a print at a chosen layer, for a filament swap or an insert. During a print, set the layer from the preview card on the print status screen.
+  : '在选定的层暂停打印，用于换料或放入嵌件。打印时，在打印状态页面的预览卡片中设置层。'
   Pausing at layer {}.: '将在第 {} 层暂停。'
   Pausing...: 暂停中...
   Peak Freq: 峰值频率
@@ -2767,13 +2804,16 @@ translations:
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: 重新识别
   Re-measure: '重新测量'
+  Re-measure (~{} min): "重新测量(约 {} 分钟)"
   Re-measuring Path {}: 正在重新测量路径 {}
   Re-probe: 重新探测
   Re-read spool RFID tags and remaining length: '重新读取料盘 RFID 标签与剩余长度'
   Re-seat the Bowden tube connector on the CFS unit: 请重新插紧 CFS 单元上的鲍登管接头
   Re-syncs Happy Hare's tracked state with the hardware.: 将 Happy Hare 跟踪的状态与硬件重新同步。
+  Re-test: 重新测试
   Re-test A: 重新测试 A
   Re-test B: 重新测试 B
+  Readings don't repeat: "读数无法重复"
   Readings from extra temperature sensors: 额外温度传感器的读数
   Ready: 就绪
   Ready for filament operations: 可进行耗材操作
@@ -2818,6 +2858,7 @@ translations:
   Release filament: 松开耗材
   Release or grip the filament by hand: 手动松开或夹持耗材
   Release the filament: 松开耗材
+  Release {}'s tensioner, let the spring settle, lock it: "松开 {} 的张紧器,让弹簧复位,再锁紧"
   Remaining: '剩余'
   Remaining (g): 剩余 (g)
   Remaining Weight (g): 剩余重量（克）
@@ -2956,6 +2997,7 @@ translations:
   Rotation: 旋转
   'Rotation: %d° - %ds remaining (or wait to retry)': '旋转: %d° - 剩余%ds
     (或等待重试)'
+  Round {}: "第 {} 轮"
   Rounded: 圆角
   Run: 运行
   Run Calibration Wizard: '运行校准向导'
@@ -3161,6 +3203,7 @@ translations:
   Settings: 设置
   Settings Snapshot: 设置快照
   Settings reset to defaults. Restarting...: 设置已重置为默认值。正在重启...
+  Settling belts: '正在稳定皮带'
   Setup: '设置向导'
   Setup Timelapse: 设置延时摄影
   Several printers match - choose yours: 多台打印机匹配 - 请选择您的打印机
@@ -3474,9 +3517,14 @@ translations:
   Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: 感谢！完全匿名的使用数据有助于改进
     HelixScreen。
   That print is no longer paused: '该打印已不再暂停'
+  That reading jumped too far to trust. Re-measure without turning.: "这次读数跳动过大,不可信。请不转动再测量一次。"
   'That setting cannot be changed while a print is running': '打印进行中无法更改该设置'
   That slot cannot stand in for this one: 该槽位无法替代当前槽位
   That tool is already loaded: 该工具已加载耗材
+  That turn didn't register yet. Loosen {0} a little more.: "这次转动还没有体现出来。请将 {0} 再放松一点。"
+  That turn didn't register yet. Loosen {0} one more full turn.: "这次转动还没有体现出来。请将 {0} 再放松一整圈。"
+  That turn didn't register yet. Tighten {0} a little more.: "这次转动还没有体现出来。请将 {0} 再拉紧一点。"
+  That turn didn't register yet. Tighten {0} one more full turn.: "这次转动还没有体现出来。请将 {0} 再拉紧一整圈。"
   The CFS odometer hardware is faulty and needs repair or replacement: CFS 计量硬件故障，需维修或更换
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
@@ -3489,6 +3537,7 @@ translations:
   : 为防止动画屏保干扰打印，已在此设备上将其关闭。您可以在设置 > 显示中重新启用。
   The bed has cooled. Take the spools off the plate, then confirm.: 热床已冷却。请从热床上取下料盘,然后确认。
 
+  The bed is too small for settling laps.: '打印床太小，无法进行稳定绕圈。'
   The bed heater. Set its temperature and watch its graph on the bed temperature screen.: '热床加热器。在热床温度界面设置温度并查看曲线。'
   The bed is too small for the test tower, or its size is unknown.: 热床太小放不下测试塔,或尺寸未知。
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: 热床将关闭。在你确认取下之前,料盘仍视为在热床上。
@@ -3509,6 +3558,10 @@ translations:
   The filament may not have fully retracted — try again or manually pull: 耗材可能未完全回抽。请重试或手动抽出
   The filament system needs attention: '耗材系统需要处理'
   The filament system reported an error: 耗材系统报告错误
+  The gap didn't close (moved {:.1f} Hz). Try a bigger turn.: "差距没有缩小(移动了 {:.1f} Hz)。请转得更多一些。"
+  The gap grew after loosening {0}. Check you turned Path {0}'s tensioner.: "放松 {0} 后差距变大了。请确认转动的是路径 {0} 的张紧器。"
+  The gap grew after tightening {0}. Check you turned Path {0}'s tensioner.: "拉紧 {0} 后差距变大了。请确认转动的是路径 {0} 的张紧器。"
+  The gap is not closing. Something besides tension may be shaping it.: "差距没有缩小。可能有张力以外的因素在影响。"
   The heated bed and enclosure can dry spools placed on the bed. Start a cycle from the bed drying dialog.: '热床和机箱可以烘干放在热床上的料盘。在热床烘干对话框中启动周期。'
   The heater can't be changed while the printer is waiting.: '打印机等待期间无法更改加热器。'
   The heater did not accept the printer's credentials.: '加热器不接受打印机的凭据。'
@@ -3549,6 +3602,8 @@ translations:
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: '打印机在角落挤出并重复，直到读数一致为止。你无需用肉眼判断任何东西。'
   The printer finishes this measurement on its own.: '打印机会自行完成这次测量。'
   The printer halted this print and cannot resume it. Restart from the beginning?: 打印机已停止此打印且无法恢复。从头重新开始？
+  The printer has not reported its axis limits yet.: '打印机尚未报告其轴限位。'
+  The printer has not reported its maximum velocity yet.: '打印机尚未报告其最大速度。'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
   : '打印机会加热喷嘴，在打印板角落进行几次短促的测试挤出并自行测量。它会重复直到读数一致，然后给出一个数值。'
   The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.: 打印机将归零并扫过切刀（约1分钟）。请保持料路畅通。
@@ -3565,6 +3620,7 @@ translations:
   The printer lost power during a print. The resumed layer may not line up exactly.: 打印机在打印过程中断电。恢复后的层可能无法完全对准。
   The printer lost power while printing {}. Resume where it left off?: 打印机在打印 {} 时断电。是否从中断处继续？
   The printer lost power while printing {}. The resumed layer may not line up exactly.: 打印机在打印 {} 时断电。恢复后的层可能无法完全对准。
+  'The printer refused that port: check the port (Moonraker is usually 7125).': "打印机拒绝了该端口:请检查端口(Moonraker 通常为 7125)。"
   The printer rejected the filament configuration. The print was not started.: 打印机拒绝了该耗材配置。打印未启动。
   The printer reports measured fan speeds. HelixScreen shows them on the Fans screen.: '打印机会报告测得的风扇转速。HelixScreen 在风扇界面显示。'
   The printer swaps between several toolheads. Manage the tools on the filament system screen.: '打印机在多个工具头之间切换。在耗材系统界面管理工具。'
@@ -3594,6 +3650,7 @@ translations:
   There is no cycle to stop: '没有可停止的周期'
   ? There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
   : "可用内存不足，无法运行此测试。Klipper 的分析会耗尽内存，使打印机卡住，直到断电重启。"
+  These readings aren't repeatable, so tuning can't be steered. Check the mechanics first.: "这些读数无法重复,因此无法引导调整。请先检查机械部分。"
   'These tools have a different filament grade loaded:': 以下工具装载的耗材等级不同：
   'These tools have incompatible materials loaded:': 这些工具加载了不兼容的材料：
   'These tools have no filament loaded:': '以下工具未加载耗材:'
@@ -3685,6 +3742,10 @@ translations:
   Thorough: 全面
   Thumbnail Only: 仅缩略图
   'Thumbnail: ': '缩略图: '
+  Tighten {0} noticeably: "明显拉紧 {0}"
+  Tighten {0} one full turn: "将 {0} 拉紧一整圈"
+  Tighten {0} {1}: '拉紧 {0} {1}'
+  Tighten {}: "拉紧 {}"
   Time: 时间
   Time Format: 时间格式
   Time to wait before escalating to emergency stop: 升级为紧急停止前的等待时间
@@ -3769,6 +3830,7 @@ translations:
   Try the operation again. If it persists, check for mechanical issues.: 请重试该操作。如果问题持续存在，请检查是否有机械故障。
   Trying again...: '正在重试...'
   Tune: 调优
+  Tune Belts: "调整皮带"
   Tuner: 调校
   Tuning tower enabled - start a print to test: 调优塔已启用 - 开始打印以测试
   Turbo: 极速
@@ -3956,6 +4018,7 @@ translations:
     also synced when prints start, pause, or complete.
   : 重量数据从 Spoolman 同步以显示剩余耗材。打印开始、暂停或完成时也会同步更改。
   Welcome to HelixScreen: 欢迎使用 HelixScreen
+  Went past {} by {:.1f} Hz. Back it off a little.: "超过 {} {:.1f} Hz。请稍微回调。"
   What We Collect: 我们收集的内容
   What happens when a print ends: '打印结束时的操作'
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: 启用时仅运行宏。禁用时先设置温度，然后运行宏。
@@ -3966,6 +4029,8 @@ translations:
   Which macro the Close feeder button sends: “关闭送料器”按钮发送的宏
   Which macro the Open feeder button sends: “打开送料器”按钮发送的宏
   White: 白色
+  Why the curves differ: "曲线为何不同"
+  Why?: "为什么?"
   Wi-Fi: WiFi
   Wi-Fi or ethernet connection status: WiFi 或以太网连接状态
   Wi-Fi {}: WiFi {}
@@ -3996,6 +4061,7 @@ translations:
   Wifi: Wi-Fi
   Will not switch spools on runout: 耗材用尽时不会切换料盘
   Wipe nozzle on silicone cleaning strip: '在硅胶清洁条上擦拭喷嘴'
+  Within {0:.1f} Hz of each other at {1:.0f} Hz: "在 {1:.0f} Hz 处相差 {0:.1f} Hz 以内"
   Wiping {}...: 正在擦拭{}...
   Wizard Error: 向导错误
   Working...: 处理中...
@@ -4063,6 +4129,8 @@ translations:
   'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.': 'Z 偏移保存已关闭，因此 HelixScreen 未保存此值。Klipper 会保留它，直到下次保存配置。'
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
+  Zone {:.0f}-{:.0f} Hz: "区间 {:.0f}-{:.0f} Hz"
+  '[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps.': '[resonance_tester] 没有 probe_points，因此打印头没有进行稳定绕圈的安全高度。'
   already loaded: '已加载'
   attempt {}: '第 {} 次尝试'
   auto: 自动
@@ -4076,6 +4144,7 @@ translations:
   direct drive: 直驱
   disable: 禁用
   disabled: 已禁用
+  done: '完成'
   done at {} · {}%: "{} 完成 · {}%"
   drying: 烘干中
   e.g. Jet Black: 例如 炭黑
@@ -4109,6 +4178,7 @@ translations:
   just now: 刚刚
   last 60 s · LOOSE up, TIGHT down: '最近 60 秒 · 上松下紧'
   last 60 s · pressure, target dashed: 最近 60 秒 · 压力，目标为虚线
+  'last turn: {:.1f} Hz closer': "上一次: 接近 {:.1f} Hz"
   layers: 层
   left: 剩余
   loaded: '已加载'
@@ -4160,6 +4230,9 @@ translations:
   v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: v%s 没有适用于 %s 的版本，因此无法在此安装。请选择有更新版本的更新通道。
   v{} installed! Restarting...: 已安装 v{}！正在重启...
   v{} is available. Tap to update.: v{} 可用。点击以更新。
+  was {:.0f}%: '原为 {:.0f}%'
+  what you turned: "你转动的量"
+  within one bin: "在一个频点内"
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant 未运行。WiFi 功能不可用。
   you have: 您有
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 约 {} 分钟'
@@ -4207,6 +4280,7 @@ translations:
   '{} lines in helixscreen.env were ignored': 'helixscreen.env 中有 {} 行被忽略'
   '{} kept crashing the panel; switched back to {}': '{} 反复导致屏幕崩溃，已切换回 {}'
   '{} kept crashing the panel; pick a printer to connect': '{} 反复导致屏幕崩溃，请选择要连接的打印机'
+  '{} looser than {}': "{} 比 {} 松"
   '{} m': '{} 米'
   '{} macro not configured': '{} 宏未配置'
   '{} matches.': '{} 匹配。'
@@ -4231,6 +4305,9 @@ translations:
   '{} spool cleared': '{} 料盘已清除'
   '{} started': '已开始{}'
   '{} target set to {}°C': '{} 目标已设为 {}°C'
+  '{} tighter than {}': "{} 比 {} 紧"
+  '{} turn': "{} 圈"
+  '{} turns': "{} 圈"
   '{} updated': '{} 已更新'
   '{} widgets': '{} 个小组件'
   ? '{} will switch to a slot whose filament type AND color both match the active spool and whose own port sensor reads filament present.'
@@ -4239,8 +4316,9 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — 响应超时'
   '{} → {}: no filament loaded.': '{} → {}: 未加载耗材。'
-  '{}% left': '剩余 {}%'
+  "{}'s peak moved out of the zone. Widening it.": "{} 的峰移出了区间。正在扩大区间。"
   '{}:{:02} elapsed': 已用时 {}:{:02}
+  '{}% left': '剩余 {}%'
   'Basic': '标准'
   'Recycled': '再生'
   'Add to Spoolman + label': '添加到 Spoolman + 标签'
@@ -4257,3 +4335,4 @@ translations:
   'Variant': '变体'
   'from tag': '来自标签'
   'Browse catalog...': '浏览目录...'
+  ~{:.1f} Hz / turn: "约 {:.1f} Hz / 圈"

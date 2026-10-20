@@ -5,7 +5,10 @@ translations:
   ' (timed out)': ' (timed out)'
   ' frames': ' frames'
   ' left': ' left'
-  ' · was {:.0f}%': ' · was {:.0f}%'
+  ' · Tuned in {} round': ' · Tuned in {} round'
+  ' · Tuned in {} rounds': ' · Tuned in {} rounds'
+  ' · {} loosened about {}': ' · {} loosened about {}'
+  ' · {} tightened about {}': ' · {} tightened about {}'
   '"%s" failed to load': '"%s" failed to load'
   '%d additional fan': '%d additional fan'
   '%d additional fans': '%d additional fans'
@@ -233,6 +236,7 @@ translations:
   'Adds to:': 'Adds to:'
   Adjust screen brightness level: Adjust screen brightness level
   Adjust screws, then re-probe.: Adjust screws, then re-probe.
+  Adjust {} instead: Adjust {} instead
   Adjustments stay active until restart. Save after print completes.: Adjustments
     stay active until restart. Save after print completes.
   Adjusts individual characteristics of your heaters for optimal control: Adjusts
@@ -409,6 +413,7 @@ translations:
   Belt Tension: Belt Tension
   Belt Tension Check: Belt Tension Check
   Belt Tension needs a CoreXY printer. This one is {}.: Belt Tension needs a CoreXY printer. This one is {}.
+  Belts already match: Belts already match
   Beta: Beta
   'Beta features: OFF': 'Beta features: OFF'
   'Beta features: ON': 'Beta features: ON'
@@ -502,6 +507,7 @@ translations:
   Calculator: Calculator
   Calibrate: Calibrate
   Calibrate All: Calibrate All
+  Calibrate Anyway: Calibrate Anyway
   Calibrate Bowden: Calibrate Bowden
   Calibrate Cutter: Calibrate Cutter
   Calibrate Encoder: Calibrate Encoder
@@ -782,6 +788,8 @@ translations:
   Configured filament sensor not found: Configured filament sensor not found
   Configured hardware no longer present: Configured hardware no longer present
   Configuring Moonraker...: Configuring Moonraker...
+  Confirm: Confirm
+  Confirm (full, ~{} min): Confirm (full, ~{} min)
   Confirm PIN: Confirm PIN
   Confirm before running macros: Confirm before running macros
   Confirm tool changes: Confirm tool changes
@@ -940,6 +948,7 @@ translations:
   'Current: %d°C | Target: %d°C': 'Current: %d°C | Target: %d°C'
   Currently Loaded: Currently Loaded
   Currently printing: Currently printing
+  Curves differ in shape. Check the mechanics before chasing a perfect match.: Curves differ in shape. Check the mechanics before chasing a perfect match.
   Custom: Custom
   Custom...: Custom...
   Customize Macro Button: Customize Macro Button
@@ -1483,6 +1492,7 @@ translations:
   Fine: Fine
   Fine Inner: Fine Inner
   Fine Outer: Fine Outer
+  Fine-tune: Fine-tune
   Finish: Finish
   Finish or cancel the print before loading, unloading, or changing filament: Finish or cancel the print before loading, unloading, or changing filament
   Finish or cancel the print first: Finish or cancel the print first
@@ -1553,6 +1563,7 @@ translations:
   Global: Global
   Good: Good
   Good Accuracy: Good Accuracy
+  Good Enough: Good Enough
   Good match: Good match
   Got it: Got it
   Gray: Gray
@@ -1863,6 +1874,7 @@ translations:
   Keep hands clear. The printer moves on its own.: Keep hands clear. The printer moves on its own.
   Keep its own data on this screen (up to 256 KB).: Keep its own data on this screen (up to 256 KB).
   Keep the bypass spool visible when bypass is off: Keep the bypass spool visible when bypass is off
+  Keep Tuning: Keep Tuning
   Keep waiting: Keep waiting
   Kick away: Kick away
   Kinematics: Kinematics
@@ -2018,6 +2030,10 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): Long-press the home grid to rearrange widgets (turn off if it triggers by accident)
   Longest Disconnect: Longest Disconnect
+  Loosen {0} noticeably: Loosen {0} noticeably
+  Loosen {0} one full turn: Loosen {0} one full turn
+  Loosen {0} {1}: Loosen {0} {1}
+  Loosen {}: Loosen {}
   Looking for the active spool...: Looking for the active spool...
   Lost connection during print — try again: Lost connection during print — try again
   Lost connection to CFS unit: Lost connection to CFS unit
@@ -2098,6 +2114,9 @@ translations:
   Master volume level: Master volume level
   Match Mode: Match Mode
   Match your typical print fan speed: Match your typical print fan speed
+  Matched at {:.1f} Hz: Matched at {:.1f} Hz
+  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still follows the zone that moved with the turn, but check these before chasing a perfect match."
+  : "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still follows the zone that moved with the turn, but check these before chasing a perfect match."
   Matching printers: Matching printers
   Material: Material
   'Material Comfort:': 'Material Comfort:'
@@ -2114,9 +2133,11 @@ translations:
   Maximum acceleration (mm/s²): Maximum acceleration (mm/s²)
   Maximum toolhead speed (mm/s): Maximum toolhead speed (mm/s)
   Measure: Measure
+  Measure (~{} min): Measure (~{} min)
   Measure each toolhead's X, Y and Z offset (about 20 minutes): Measure each toolhead's X, Y and Z offset (about 20 minutes)
   Measure every tool's XYZ offset automatically: Measure every tool's XYZ offset automatically
   Measure pressure advance automatically: Measure pressure advance automatically
+  Measure this zone first: Measure this zone first
   ? Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed.
   : Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed.
   Measured (shaper off): Measured (shaper off)
@@ -2242,6 +2263,8 @@ translations:
   New printer successfully added: New printer successfully added
   New profile name: New profile name
   Next: Next
+  Next Zone: Next Zone
+  Next Zone (~{} min): Next Zone (~{} min)
   Next Layer: Next Layer
   'Next: {}': 'Next: {}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
@@ -2271,10 +2294,13 @@ translations:
   No USB printers found: No USB printers found
   No actions right now: No actions right now
   No active Spoolman spool.: No active Spoolman spool.
+  "No answer: check the IP address and that this device is on the printer's Wi-Fi, not mobile data.": "No answer: check the IP address and that this device is on the printer's Wi-Fi, not mobile data."
+  "No answer: check the IP address and that this device is on the printer's network.": "No answer: check the IP address and that this device is on the printer's network."
   No buffer data available: No buffer data available
   No camera — use USB barcode scanner: No camera — use USB barcode scanner
   No chamber temperature sensor detected: No chamber temperature sensor detected
   No changes to revert: No changes to revert
+  No clear peak in this zone: No clear peak in this zone
   No color: No color
   No connection to the printer.: No connection to the printer.
   No dryer available. Store filament in a sealed dry box with desiccant for best results.: No
@@ -2340,6 +2366,7 @@ translations:
   No temperature sensors detected: No temperature sensors detected
   No timelapse videos found: No timelapse videos found
   No tools to calibrate: No tools to calibrate
+  'No turn: the gap moved {:.1f} Hz': 'No turn: the gap moved {:.1f} Hz'
   No unit has a filament buffer: No unit has a filament buffer
   No unit has a moving selector: No unit has a moving selector
   No unit has a servo: No unit has a servo
@@ -2375,14 +2402,18 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Not enough room for this widget. Rearrange or remove widgets to make space.
   Not in your spools? Set it up: Not in your spools? Set it up
   Not now: Not now
+  Not turned: Not turned
   Not set: Not set
   Not yet available on this display: Not yet available on this display
   Not yet calibrated: Not yet calibrated
   Notes: Notes
   Notes (optional): Notes (optional)
+  Nothing followed the turns on {0}. Undo them, then check the mechanics.: Nothing followed the turns on {0}. Undo them, then check the mechanics.
+  Nothing followed {1} turns of {0}. Turn {0} back {1} turns, then check the mechanics.: Nothing followed {1} turns of {0}. Turn {0} back {1} turns, then check the mechanics.
   Nothing loaded: Nothing loaded
   Nothing starred yet. Tap the star on a filament to add it here.: Nothing starred yet. Tap the star on a filament to add it here.
   Nothing to remap: Nothing to remap
+  Nothing to tune here: Nothing to tune here
   'Nothing to unload: no filament at the nozzle': 'Nothing to unload: no filament at the nozzle'
   'Which lane is in the toolhead?': 'Which lane is in the toolhead?'
   'Choose which lane is in the toolhead to unload it': 'Choose which lane is in the toolhead to unload it'
@@ -2528,8 +2559,14 @@ translations:
   Password: Password
   Password cannot be empty: Password cannot be empty
   Password is required for secured networks: Password is required for secured networks
+  Path A tensioner: Path A tensioner
+  Path B tensioner: Path B tensioner
+  ? Path {0} resonates much more than {1} at {2:.0f} Hz. That points at a mechanical difference (pulley grub screws, idler bearings, belt tracking), not tension.
+  : Path {0} resonates much more than {1} at {2:.0f} Hz. That points at a mechanical difference (pulley grub screws, idler bearings, belt tracking), not tension.
+  Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.: Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.
   Path {}: Path {}
   Path {} before: Path {} before
+  Path {} earlier round: Path {} earlier round
   Pause: Pause
   Pause Layer: Pause Layer
   Pause at Layer: Pause at Layer
@@ -2541,8 +2578,8 @@ translations:
   Pause, resume, or stop the print: Pause, resume, or stop the print
   Paused: Paused
   Paused (attention needed): Paused (attention needed)
-  ? Pauses a print at a chosen layer, for a filament swap or an insert. During a print, set the layer from the preview card on the print status screen. This is a beta feature.
-  : Pauses a print at a chosen layer, for a filament swap or an insert. During a print, set the layer from the preview card on the print status screen. This is a beta feature.
+  ? Pauses a print at a chosen layer, for a filament swap or an insert. During a print, set the layer from the preview card on the print status screen.
+  : Pauses a print at a chosen layer, for a filament swap or an insert. During a print, set the layer from the preview card on the print status screen.
   Pausing at layer {}.: Pausing at layer {}.
   Pausing...: Pausing...
   Peak Freq: Peak Freq
@@ -2859,14 +2896,17 @@ translations:
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Re-identify
   Re-measure: Re-measure
+  Re-measure (~{} min): Re-measure (~{} min)
   Re-measuring Path {}: Re-measuring Path {}
   Re-probe: Re-probe
   Re-read spool RFID tags and remaining length: Re-read spool RFID tags and remaining length
   Re-seat the Bowden tube connector on the CFS unit: Re-seat the Bowden tube connector on the CFS unit
   Re-syncs Happy Hare's tracked state with the hardware.: Re-syncs Happy Hare's tracked
     state with the hardware.
+  Re-test: Re-test
   Re-test A: Re-test A
   Re-test B: Re-test B
+  Readings don't repeat: Readings don't repeat
   Readings from extra temperature sensors: Readings from extra temperature sensors
   Ready: Ready
   Ready for filament operations: Ready for filament operations
@@ -2915,6 +2955,7 @@ translations:
   Release filament: Release filament
   Release or grip the filament by hand: Release or grip the filament by hand
   Release the filament: Release the filament
+  Release {}'s tensioner, let the spring settle, lock it: Release {}'s tensioner, let the spring settle, lock it
   Remaining: Remaining
   Remaining (g): Remaining (g)
   Remaining Weight (g): Remaining Weight (g)
@@ -3056,6 +3097,7 @@ translations:
   Rotation: Rotation
   'Rotation: %d° - %ds remaining (or wait to retry)': 'Rotation: %d°
     - %ds remaining (or wait to retry)'
+  Round {}: Round {}
   Rounded: Rounded
   Run: Run
   Run Calibration Wizard: Run Calibration Wizard
@@ -3276,6 +3318,7 @@ translations:
   Settings: Settings
   Settings Snapshot: Settings Snapshot
   Settings reset to defaults. Restarting...: Settings reset to defaults. Restarting...
+  Settling belts: Settling belts
   Setup: Setup
   Setup Timelapse: Setup Timelapse
   Several printers match - choose yours: Several printers match - choose yours
@@ -3602,9 +3645,14 @@ translations:
   Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: Thanks! TOTALLY
     anonymous usage data helps improve HelixScreen.
   That print is no longer paused: That print is no longer paused
+  That reading jumped too far to trust. Re-measure without turning.: That reading jumped too far to trust. Re-measure without turning.
   'That setting cannot be changed while a print is running': 'That setting cannot be changed while a print is running'
   That slot cannot stand in for this one: That slot cannot stand in for this one
   That tool is already loaded: That tool is already loaded
+  That turn didn't register yet. Loosen {0} a little more.: That turn didn't register yet. Loosen {0} a little more.
+  That turn didn't register yet. Loosen {0} one more full turn.: That turn didn't register yet. Loosen {0} one more full turn.
+  That turn didn't register yet. Tighten {0} a little more.: That turn didn't register yet. Tighten {0} a little more.
+  That turn didn't register yet. Tighten {0} one more full turn.: That turn didn't register yet. Tighten {0} one more full turn.
   The CFS odometer hardware is faulty and needs repair or replacement: The CFS odometer hardware is faulty and needs repair or replacement
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
@@ -3618,6 +3666,7 @@ translations:
   : The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
   The bed has cooled. Take the spools off the plate, then confirm.: The bed has cooled. Take the spools off the plate, then confirm.
+  The bed is too small for settling laps.: The bed is too small for settling laps.
   The bed heater. Set its temperature and watch its graph on the bed temperature screen.: The bed heater. Set its temperature and watch its graph on the bed temperature screen.
   The bed is too small for the test tower, or its size is unknown.: The bed is too small for the test tower, or its size is unknown.
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: The bed turns off. The spools stay latched on the bed until you confirm they are off.
@@ -3637,6 +3686,10 @@ translations:
   The filament may not have fully retracted — try again or manually pull: The filament may not have fully retracted — try again or manually pull
   The filament system needs attention: The filament system needs attention
   The filament system reported an error: The filament system reported an error
+  The gap didn't close (moved {:.1f} Hz). Try a bigger turn.: The gap didn't close (moved {:.1f} Hz). Try a bigger turn.
+  The gap grew after loosening {0}. Check you turned Path {0}'s tensioner.: The gap grew after loosening {0}. Check you turned Path {0}'s tensioner.
+  The gap grew after tightening {0}. Check you turned Path {0}'s tensioner.: The gap grew after tightening {0}. Check you turned Path {0}'s tensioner.
+  The gap is not closing. Something besides tension may be shaping it.: The gap is not closing. Something besides tension may be shaping it.
   The heated bed and enclosure can dry spools placed on the bed. Start a cycle from the bed drying dialog.: The heated bed and enclosure can dry spools placed on the bed. Start a cycle from the bed drying dialog.
   The heater can't be changed while the printer is waiting.: The heater can't be changed while the printer is waiting.
   The heater did not accept the printer's credentials.: The heater did not accept the printer's credentials.
@@ -3678,6 +3731,8 @@ translations:
   The printer finishes this measurement on its own.: 'The printer finishes this measurement on its own.'
   The printer halted this print and cannot resume it. Restart from the beginning?: The
     printer halted this print and cannot resume it. Restart from the beginning?
+  The printer has not reported its axis limits yet.: The printer has not reported its axis limits yet.
+  The printer has not reported its maximum velocity yet.: The printer has not reported its maximum velocity yet.
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
   : The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
   The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.: The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.
@@ -3692,6 +3747,7 @@ translations:
   The printer lost power during a print. The resumed layer may not line up exactly.: The printer lost power during a print. The resumed layer may not line up exactly.
   The printer lost power while printing {}. Resume where it left off?: The printer lost power while printing {}. Resume where it left off?
   The printer lost power while printing {}. The resumed layer may not line up exactly.: The printer lost power while printing {}. The resumed layer may not line up exactly.
+  'The printer refused that port: check the port (Moonraker is usually 7125).': 'The printer refused that port: check the port (Moonraker is usually 7125).'
   The printer rejected the filament configuration. The print was not started.: The
     printer rejected the filament configuration. The print was not started.
   The printer reports measured fan speeds. HelixScreen shows them on the Fans screen.: The printer reports measured fan speeds. HelixScreen shows them on the Fans screen.
@@ -3725,6 +3781,7 @@ translations:
   There is no cycle to stop: There is no cycle to stop
   ? There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
   : There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
+  These readings aren't repeatable, so tuning can't be steered. Check the mechanics first.: These readings aren't repeatable, so tuning can't be steered. Check the mechanics first.
   'These tools have a different filament grade loaded:': 'These tools have a different filament grade loaded:'
   'These tools have incompatible materials loaded:': 'These tools have incompatible
     materials loaded:'
@@ -3831,6 +3888,10 @@ translations:
   Thorough: Thorough
   Thumbnail Only: Thumbnail Only
   'Thumbnail: ': 'Thumbnail: '
+  Tighten {0} noticeably: Tighten {0} noticeably
+  Tighten {0} one full turn: Tighten {0} one full turn
+  Tighten {0} {1}: Tighten {0} {1}
+  Tighten {}: Tighten {}
   Time: Time
   Time Format: Time Format
   Time to wait before escalating to emergency stop: Time to wait before escalating
@@ -3916,6 +3977,7 @@ translations:
   Try the operation again. If it persists, check for mechanical issues.: Try the operation again. If it persists, check for mechanical issues.
   Trying again...: Trying again...
   Tune: Tune
+  Tune Belts: Tune Belts
   Tuner: Tuner
   Tuning tower enabled - start a print to test: Tuning tower enabled - start a print
     to test
@@ -4114,6 +4176,7 @@ translations:
   : Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   Welcome to HelixScreen: Welcome to HelixScreen
+  Went past {} by {:.1f} Hz. Back it off a little.: Went past {} by {:.1f} Hz. Back it off a little.
   What We Collect: What We Collect
   What happens when a print ends: What happens when a print ends
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: When
@@ -4126,6 +4189,8 @@ translations:
   Which macro the Close feeder button sends: Which macro the Close feeder button sends
   Which macro the Open feeder button sends: Which macro the Open feeder button sends
   White: White
+  Why the curves differ: Why the curves differ
+  Why?: Why?
   Wi-Fi: Wi-Fi
   Wi-Fi or ethernet connection status: Wi-Fi or ethernet connection status
   Wi-Fi {}: Wi-Fi {}
@@ -4156,6 +4221,7 @@ translations:
   Wifi: Wifi
   Will not switch spools on runout: Will not switch spools on runout
   Wipe nozzle on silicone cleaning strip: Wipe nozzle on silicone cleaning strip
+  Within {0:.1f} Hz of each other at {1:.0f} Hz: Within {0:.1f} Hz of each other at {1:.0f} Hz
   Wiping {}...: Wiping {}...
   Wizard Error: Wizard Error
   Working...: Working...
@@ -4228,6 +4294,8 @@ translations:
   'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.': 'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.'
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
+  Zone {:.0f}-{:.0f} Hz: Zone {:.0f}-{:.0f} Hz
+  '[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps.': '[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps.'
   already loaded: already loaded
   attempt {}: attempt {}
   auto: auto
@@ -4241,6 +4309,7 @@ translations:
   direct drive: direct drive
   disable: disable
   disabled: disabled
+  done: done
   done at {} · {}%: done at {} · {}%
   drying: drying
   e.g. Jet Black: e.g. Jet Black
@@ -4275,6 +4344,7 @@ translations:
   just now: just now
   last 60 s · LOOSE up, TIGHT down: last 60 s · LOOSE up, TIGHT down
   last 60 s · pressure, target dashed: last 60 s · pressure, target dashed
+  'last turn: {:.1f} Hz closer': 'last turn: {:.1f} Hz closer'
   layers: layers
   left: left
   loaded: loaded
@@ -4320,6 +4390,9 @@ translations:
   v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.
   v{} installed! Restarting...: v{} installed! Restarting...
   v{} is available. Tap to update.: v{} is available. Tap to update.
+  was {:.0f}%: was {:.0f}%
+  what you turned: what you turned
+  within one bin: within one bin
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant is not running. WiFi features unavailable.
   you have: you have
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · about {} min'
@@ -4367,6 +4440,7 @@ translations:
   '{} lines in helixscreen.env were ignored': '{} lines in helixscreen.env were ignored'
   '{} kept crashing the panel; switched back to {}': '{} kept crashing the panel; switched back to {}'
   '{} kept crashing the panel; pick a printer to connect': '{} kept crashing the panel; pick a printer to connect'
+  '{} looser than {}': '{} looser than {}'
   '{} m': '{} m'
   '{} macro not configured': '{} macro not configured'
   '{} matches.': '{} matches.'
@@ -4392,6 +4466,9 @@ translations:
   '{} spool cleared': '{} spool cleared'
   '{} started': '{} started'
   '{} target set to {}°C': '{} target set to {}°C'
+  '{} tighter than {}': '{} tighter than {}'
+  '{} turn': '{} turn'
+  '{} turns': '{} turns'
   '{} updated': '{} updated'
   '{} widgets': '{} widgets'
   ? '{} will switch to a slot whose filament type AND color both match the active spool and whose own port sensor reads filament present.'
@@ -4400,7 +4477,9 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — response timed out'
   '{} → {}: no filament loaded.': '{} → {}: no filament loaded.'
-  '{}% left': '{}% left'
+  "{}'s peak moved out of the zone. Widening it.": "{}'s peak moved out of the zone. Widening it."
   '{}:{:02} elapsed': '{}:{:02} elapsed'
+  '{}% left': '{}% left'
   'Basic': 'Basic'
   'Recycled': 'Recycled'
+  ~{:.1f} Hz / turn: ~{:.1f} Hz / turn

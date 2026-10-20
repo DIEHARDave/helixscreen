@@ -259,7 +259,7 @@ bool parse_github_release(const json& j, UpdateChecker::ReleaseInfo& info, std::
             }
         }
         // No fallback to arbitrary assets — wrong-platform binaries can brick devices
-        if (!found) {
+        if (!found && !asset_keys.empty()) {
             spdlog::warn("[UpdateChecker] No asset found for platform {} in release {}",
                          describe_asset_keys(asset_keys), info.version);
         }
@@ -691,8 +691,13 @@ bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInf
     }
 }
 
+bool release_has_build_for(const UpdateChecker::ReleaseInfo& info,
+                           const std::vector<std::string>& asset_keys) {
+    return asset_keys.empty() || !info.download_url.empty();
+}
+
 bool release_has_build_for_this_board(const UpdateChecker::ReleaseInfo& info) {
-    return !info.download_url.empty();
+    return release_has_build_for(info, this_build_release_asset_keys());
 }
 
 std::string no_build_message(const std::string& version, const std::string& board_name) {
@@ -706,6 +711,12 @@ std::string no_build_message(const std::string& version, const std::string& boar
 
 CheckOutcome decide_check_outcome(const std::string& installed,
                                   const UpdateChecker::ReleaseInfo& info) {
+    return decide_check_outcome(installed, info, this_build_release_asset_keys());
+}
+
+CheckOutcome decide_check_outcome(const std::string& installed,
+                                  const UpdateChecker::ReleaseInfo& info,
+                                  const std::vector<std::string>& asset_keys) {
     CheckOutcome out;
     switch (compare_channel_version(installed, info.version)) {
     case ChannelVersionRelation::Older:
@@ -714,7 +725,7 @@ CheckOutcome decide_check_outcome(const std::string& installed,
     case ChannelVersionRelation::Newer:
         // A release offered with nothing this board can install is refused up
         // front, rather than as a dead Install button.
-        if (release_has_build_for_this_board(info)) {
+        if (release_has_build_for(info, asset_keys)) {
             out.status = UpdateChecker::Status::UpdateAvailable;
         } else {
             out.status = UpdateChecker::Status::Error;
@@ -760,6 +771,9 @@ bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseI
         }
         // Same as parse_github_release(): the version is real, the download stays
         // empty, and the caller decides what a release with no build means.
+        if (asset_keys.empty()) {
+            return true;
+        }
         spdlog::warn("[UpdateChecker] No asset found for platform {} in manifest {}",
                      describe_asset_keys(asset_keys), info.version);
         return true;
