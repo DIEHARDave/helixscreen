@@ -768,9 +768,7 @@ TEST_CASE_METHOD(IdentityCacheFixture,
 
     lv_subject_t* name = AmsState::instance().get_slot_name_subject(0);
     REQUIRE(name != nullptr);
-    // Unnamed so far: the card shows only the colour's computed name.
-    const std::string colour_name = helix::get_color_name_from_hex(slot.color_rgb);
-    REQUIRE(std::string(lv_subject_get_string(name)) == colour_name);
+    REQUIRE(std::string(lv_subject_get_string(name)).empty());
     REQUIRE(IdTA::cache_size(SpoolmanManager::instance()) == 0);
 
     h.poll();
@@ -778,7 +776,6 @@ TEST_CASE_METHOD(IdentityCacheFixture,
     const auto identity = SpoolmanManager::find_identity(1);
     REQUIRE(identity.has_value());
     REQUIRE_FALSE(identity->filament_name.empty());
-    REQUIRE(identity->filament_name != colour_name);
     CHECK(std::string(lv_subject_get_string(name)) == identity->filament_name);
 }
 
@@ -808,12 +805,8 @@ TEST_CASE_METHOD(IdentityCacheFixture,
 
     SpoolmanManager::clear_identity_cache();
     AmsState::instance().sync_from_backend();
-    // The slot itself carries no name: only the identity can supply one, so the
-    // card falls back to the colour's computed name meanwhile.
-    const std::string colour_name =
-        helix::get_color_name_from_hex(h.backend->get_slot_info(0).color_rgb);
-    REQUIRE(colour_name != learned);
-    REQUIRE(std::string(lv_subject_get_string(name)) == colour_name);
+    // The slot itself carries no name: only the identity can supply one.
+    REQUIRE(std::string(lv_subject_get_string(name)).empty());
 
     h.poll();
     CHECK(std::string(lv_subject_get_string(name)) == learned);

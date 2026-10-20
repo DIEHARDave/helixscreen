@@ -1579,8 +1579,8 @@ class AmsState {
      *
      * Holds the name the slot card shows above its material
      * (helix::slot_card_name(): spool name, then the cached Spoolman filament
-     * name, then the stored colour name, then the colour's computed name), or
-     * "" when nothing names the spool. Written
+     * name, then the catalog product name), or "" when nothing names the
+     * spool. Written
      * wherever the material subject is, and re-derived by refresh_slot_names()
      * when a Spoolman identity arrives.
      *

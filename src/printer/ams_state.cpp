@@ -1336,8 +1336,7 @@ bool AmsState::clear_unused_slot_subjects(int total_slots) {
 
 bool AmsState::write_slot_name(lv_subject_t* subject, size_t buf_size, const SlotInfo& slot) {
     const auto identity = SpoolmanManager::find_identity(slot.spoolman_id);
-    const std::string name = helix::slot_card_name(slot, identity ? &*identity : nullptr,
-                                                   helix::get_color_name_from_hex(slot.color_rgb));
+    const std::string name = helix::slot_card_name(slot, identity ? &*identity : nullptr);
     // buf_size - 1 leaves room for the NUL; cutting here keeps a long name on a
     // codepoint boundary instead of letting the copy split one.
     const std::string bounded(helix::text_io::utf8_prefix(name, buf_size - 1));
