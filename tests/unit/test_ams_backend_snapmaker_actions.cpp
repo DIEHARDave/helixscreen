@@ -209,8 +209,9 @@ TEST_CASE_METHOD(
     REQUIRE(find_action(actions, "snapmaker_end_unload_t0")->enabled);
 
     REQUIRE(backend.build_preference_gcode("snapmaker_end_unload_t1", std::any(true)).empty());
+    // Listed disabled, so the device-action gate refuses it before the backend.
     REQUIRE(backend.execute_device_action("snapmaker_end_unload_t1", std::any(true)).result ==
-            AmsResult::NOT_SUPPORTED);
+            AmsResult::WRONG_STATE);
     // The saved choice stays for when the head holds a hard filament again.
     REQUIRE(SettingsManager::instance().get_end_of_print_unload_tools() == 0b0011);
 

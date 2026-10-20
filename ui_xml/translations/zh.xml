@@ -2196,6 +2196,7 @@
   <translation tag="Not Now" zh="暂不"/>
   <translation tag="Not Supported" zh="不支持"/>
   <translation tag="Not available here. Update from a terminal." zh="此处不可用。请通过终端更新。"/>
+  <translation tag="Not available now" zh="当前不可用"/>
   <translation tag="Not available on Android" zh="Android 上不可用"/>
   <translation tag="Not calibrated" zh="未校准"/>
   <translation tag="Not configured" zh="未配置"/>

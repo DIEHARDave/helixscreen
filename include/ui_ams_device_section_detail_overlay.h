@@ -109,6 +109,8 @@ class AmsDeviceSectionDetailOverlay : public OverlayBase {
     void before_show() override;
 
   private:
+    friend class AmsDeviceSectionDetailOverlayTestAccess;
+
     /// The always-1 subject a disabled action's row names as its `disabled` subject.
     static constexpr const char* kActionDisabledSubject = "ams_device_action_disabled";
 

@@ -1877,6 +1877,7 @@ TEST_CASE("Happy Hare device sections include accessories", "[ams][happy_hare][v
 TEST_CASE("Happy Hare espooler_mode action sends MMU_ESPOOLER", "[ams][happy_hare][v4]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
     helper.set_running(true);
 
@@ -1888,6 +1889,7 @@ TEST_CASE("Happy Hare espooler_mode action sends MMU_ESPOOLER", "[ams][happy_har
 TEST_CASE("Happy Hare clog_detection action sends MMU_TEST_CONFIG", "[ams][happy_hare][v4]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
     helper.set_running(true);
 
@@ -2539,6 +2541,7 @@ TEST_CASE("Happy Hare espooler_mode without value returns error", "[ams][happy_h
 TEST_CASE("Happy Hare clog_detection Manual maps to 1", "[ams][happy_hare][v4][edge]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
     helper.set_running(true);
 
@@ -3948,6 +3951,7 @@ TEST_CASE("execute_device_action sends correct G-code for speed sliders",
           "[ams][happy_hare][device_actions]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
 
     SECTION("gear_from_buffer_speed") {
@@ -3991,6 +3995,7 @@ TEST_CASE("execute_device_action sends correct G-code for toolhead distances",
           "[ams][happy_hare][device_actions]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
 
     SECTION("toolhead_sensor_to_nozzle") {
@@ -4022,6 +4027,7 @@ TEST_CASE("execute_device_action sends correct G-code for sync toggle",
           "[ams][happy_hare][device_actions]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
 
     SECTION("enable sync") {
@@ -4398,6 +4404,7 @@ TEST_CASE("Happy Hare runtime gear_sync toggles MMU_SYNC_GEAR_MOTOR",
           "[ams][happy_hare][device_actions]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
 
     REQUIRE(helper.execute_device_action("gear_sync", std::any(true)).success());
@@ -5272,6 +5279,7 @@ find_action(const std::vector<helix::printer::DeviceAction>& all, const std::str
 TEST_CASE("Happy Hare motors toggle turns motors on and off without homing",
           "[ams][happy_hare][device_actions]") {
     AmsBackendHappyHareTestHelper helper;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
 
     REQUIRE(helper.execute_device_action("motors_toggle", std::any(true)).success());
     REQUIRE(helper.execute_device_action("motors_toggle", std::any(false)).success());
@@ -5341,6 +5349,22 @@ TEST_CASE("Happy Hare extruder-only load and unload are refused mid-print",
     CHECK(helper.captured_gcodes.empty());
 }
 
+TEST_CASE("Happy Hare refuses a listed but unavailable device action",
+          "[ams][happy_hare][device_actions]") {
+    AmsBackendHappyHareTestHelper helper;
+    helper.initialize_test_gates(4);
+    helper.set_config_defaults_for_test();
+    helper.set_selector_type("VirtualSelector"); // no servo on any unit
+    const auto actions = helper.get_device_actions();
+    const auto* buzz = find_action(actions, "servo_buzz");
+    REQUIRE(buzz != nullptr);
+    REQUIRE_FALSE(buzz->enabled);
+
+    const AmsError refused = helper.execute_device_action("servo_buzz");
+    CHECK(refused.result == AmsResult::WRONG_STATE);
+    CHECK(helper.captured_gcodes.empty());
+}
+
 TEST_CASE("Happy Hare runs only the device actions it offers",
           "[ams][happy_hare][device_actions]") {
     AmsBackendHappyHareTestHelper helper;
@@ -5354,6 +5378,7 @@ TEST_CASE("Happy Hare machine-motion actions are refused while a print holds the
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg(fx.api.get(),
                                                                              &fx.mock_client);
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
     helper.set_running(true);
 

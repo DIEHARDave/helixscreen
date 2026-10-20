@@ -102,9 +102,9 @@ class AmsSubscriptionBackend : public AmsBackend {
     AmsError load_filament_batch(const std::vector<int>& slots) final;
 
     /// Runs a device action through do_execute_device_action(). Refuses an id
-    /// get_device_actions() does not list now, and one it marks moves_machine while
-    /// a print holds the printer (refuse_motion_if_printing(), or refuse_if_printing()
-    /// for one allowed_while_paused), so no backend can skip the rule.
+    /// get_device_actions() does not list now or lists disabled, and one it marks moves_machine
+    /// while a print holds the printer (refuse_motion_if_printing(), or refuse_if_printing() for
+    /// one allowed_while_paused), so no backend can skip the rule.
     AmsError execute_device_action(const std::string& action_id, const std::any& value = {}) final;
     AmsError unload_filament_batch(const std::vector<int>& slots) final;
 

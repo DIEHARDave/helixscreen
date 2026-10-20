@@ -581,6 +581,14 @@ AmsError AmsSubscriptionBackend::execute_device_action(const std::string& action
                      action_id);
         return AmsErrorHelper::not_supported("Device action " + action_id);
     }
+    // Listed but unavailable (no hardware for it, config still loading): every
+    // caller is refused, the UI's own checks aside.
+    if (!it->enabled) {
+        spdlog::warn("{} Refusing device action '{}': {}", backend_log_tag(), action_id,
+                     it->disable_reason);
+        return AmsError(AmsResult::WRONG_STATE, "Device action " + action_id + " is unavailable",
+                        lv_tr("Not available now"), lv_tr(it->disable_reason.c_str()));
+    }
     if (it->moves_machine) {
         AmsError refused =
             it->allowed_while_paused ? refuse_if_printing() : refuse_motion_if_printing();

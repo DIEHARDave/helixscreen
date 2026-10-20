@@ -542,16 +542,10 @@ TEST_CASE("Config actions fail gracefully when config not loaded",
         CHECK_FALSE(result.success());
     }
 
-    SECTION("purge_enabled sends G-code so succeeds even without config") {
-        // purge_enabled now uses AFC_TOGGLE_MACRO, not config edits
-        auto result = backend.execute_device_action("purge_enabled", std::any(true));
-        CHECK(result.success());
-    }
-
-    SECTION("brush_enabled sends G-code so succeeds even without config") {
-        // brush_enabled now uses AFC_TOGGLE_MACRO, not config edits
-        auto result = backend.execute_device_action("brush_enabled", std::any(false));
-        CHECK(result.success());
+    SECTION("purge and brush toggles wait for the config that holds their state") {
+        // They are offered disabled until it loads, so the gate refuses them.
+        CHECK_FALSE(backend.execute_device_action("purge_enabled", std::any(true)).success());
+        CHECK_FALSE(backend.execute_device_action("brush_enabled", std::any(false)).success());
     }
 
     SECTION("purge_length fails without config") {

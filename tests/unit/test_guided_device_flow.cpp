@@ -40,6 +40,18 @@ using helix::printer::DeviceAction;
 using helix::printer::DeviceSection;
 using helix::ui::get_ams_device_section_detail_overlay;
 
+namespace helix::ui {
+class AmsDeviceSectionDetailOverlayTestAccess {
+  public:
+    static void open_keypad_for(AmsDeviceSectionDetailOverlay& o, const std::string& id) {
+        o.keypad_action_id_ = id;
+    }
+    static void keypad_value(float value) {
+        AmsDeviceSectionDetailOverlay::on_keypad_value(value, nullptr);
+    }
+};
+} // namespace helix::ui
+
 namespace {
 
 class CountingMock : public AmsBackendMock {
@@ -443,4 +455,35 @@ TEST_CASE_METHOD(GuidedFlowFixture,
 
     click(btn);
     CHECK(last_executed().empty());
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture, "a keypad value for an action disabled meanwhile sends nothing",
+                 "[ams][device-section]") {
+    using helix::ui::AmsDeviceSectionDetailOverlayTestAccess;
+    DeviceAction len = DeviceAction::slider("len", "Length", "prefs", 50.0f, 0.0f, 100.0f, "mm");
+    open_prefs({len});
+    auto& overlay = get_ams_device_section_detail_overlay();
+    AmsDeviceSectionDetailOverlayTestAccess::open_keypad_for(overlay, "len");
+
+    // While the keypad is up the backend disables it, and the section rebuilds.
+    len.enabled = false;
+    len.disable_reason = "Loading configuration...";
+    backend->set_device_actions({len});
+    overlay.refresh();
+    settle();
+
+    AmsDeviceSectionDetailOverlayTestAccess::keypad_value(42.0f);
+    settle();
+    CHECK(last_executed().empty());
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture, "a keypad value for an available action is sent",
+                 "[ams][device-section]") {
+    using helix::ui::AmsDeviceSectionDetailOverlayTestAccess;
+    open_prefs({DeviceAction::slider("len", "Length", "prefs", 50.0f, 0.0f, 100.0f, "mm")});
+    AmsDeviceSectionDetailOverlayTestAccess::open_keypad_for(
+        get_ams_device_section_detail_overlay(), "len");
+    AmsDeviceSectionDetailOverlayTestAccess::keypad_value(42.0f);
+    settle();
+    CHECK(last_executed() == "len");
 }

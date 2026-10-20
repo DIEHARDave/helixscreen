@@ -612,6 +612,12 @@ void AmsDeviceSectionDetailOverlay::on_keypad_value(float value, void* /*user_da
     auto& overlay = get_ams_device_section_detail_overlay();
     for (const auto& action : overlay.cached_actions_) {
         if (action.id == overlay.keypad_action_id_) {
+            // A refresh while the keypad was open can have made it unavailable.
+            if (!action.enabled) {
+                spdlog::info("[AmsDeviceSectionDetailOverlay] Keypad value for '{}' dropped: {}",
+                             action.id, action.disable_reason);
+                return;
+            }
             const helix::printer::DeviceAction typed = action;
             overlay.apply_slider_value(typed, value);
             return;
