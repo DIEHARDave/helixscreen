@@ -21,8 +21,11 @@
 #include "ui_ams_slot.h"
 #include "ui_update_queue.h"
 
+#include "../lvgl_ui_test_fixture.h"
 #include "../test_fixtures.h"
 #include "../test_helpers/grid_edit_mode_test_access.h"
+#include "../test_helpers/panel_widget_size_harness.h"
+#include "../test_helpers/thermistor_test_access.h"
 #include "ams_state.h"
 #include "config.h"
 #include "grid_edit_mode.h"
@@ -30,8 +33,14 @@
 #include "panel_widget.h"
 #include "panel_widget_config.h"
 #include "panel_widget_manager.h"
+#include "src/ui/panel_widgets/fan_stack_widget.h"
+#include "src/ui/panel_widgets/fan_widget.h"
+#include "src/ui/panel_widgets/thermistor_widget.h"
+#include "temperature_sensor_manager.h"
 
+#include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "../catch_amalgamated.hpp"
@@ -206,4 +215,69 @@ TEST_CASE_METHOD(XMLTestFixture, "AMS widget delete runs no queued callback",
         lv_obj_delete(obj);
     }
     process_lvgl(20);
+}
+
+namespace {
+
+/// Run @p op with a canary queued ahead of it, and check the canary waited for
+/// the next drain instead of running under @p op.
+void check_runs_no_queued_callback(const char* what, const std::function<void()>& op) {
+    INFO(what);
+    bool ran = false;
+    queue_canary(ran, [] {});
+    op();
+    CHECK_FALSE(ran);
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(ran);
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture, "home widget carousel bind and detach run no queued callback",
+                 "[panel_widget][drain_reentrancy]") {
+    SECTION("fan_stack carousel") {
+        std::optional<PanelWidgetHarness<FanStackWidget>> h;
+        lv_obj_t* speed_label = nullptr;
+        check_runs_no_queued_callback("attach binds the carousel", [&] {
+            h.emplace(test_screen(), HarnessConfig{{{"display_mode", "carousel"}}}, "fan_stack",
+                      state());
+            speed_label = h->child("speed_label");
+        });
+        REQUIRE(speed_label != nullptr);
+        // The fans-version observer's first notification, run by that drain,
+        // asks for the bind attach already ran: the pages it built stay.
+        process_lvgl(30);
+        CHECK(h->child("speed_label") == speed_label);
+        check_runs_no_queued_callback("detach", [&] { h.reset(); });
+    }
+
+    SECTION("thermistor carousel") {
+        helix::sensors::TemperatureSensorManager::instance().init_subjects();
+        helix::sensors::TemperatureSensorManager::instance().discover(
+            {"temperature_sensor helix_drain_a", "temperature_sensor helix_drain_b"});
+        std::optional<PanelWidgetHarness<ThermistorWidget>> h;
+        lv_obj_t* temp_label = nullptr;
+        check_runs_no_queued_callback("attach binds the carousel", [&] {
+            h.emplace(test_screen(),
+                      HarnessConfig{{{"sensors",
+                                      std::vector<std::string>{"temperature_sensor helix_drain_a",
+                                                               "temperature_sensor helix_drain_b"}},
+                                     {"display_mode", "carousel"}}},
+                      "thermistor");
+            temp_label = ThermistorTestAccess::carousel_temp_label(h->widget(), 0);
+        });
+        REQUIRE(ThermistorTestAccess::carousel_page_count(h->widget()) == 2);
+        REQUIRE(temp_label != nullptr);
+        // The sensor-count observer's first notification, run by that drain,
+        // asks for the bind attach already ran: the pages it built stay.
+        process_lvgl(30);
+        CHECK(ThermistorTestAccess::carousel_temp_label(h->widget(), 0) == temp_label);
+        check_runs_no_queued_callback("detach", [&] { h.reset(); });
+    }
+
+    SECTION("fan") {
+        std::optional<PanelWidgetHarness<FanWidget>> h;
+        h.emplace(test_screen(), "fan");
+        check_runs_no_queued_callback("detach", [&] { h.reset(); });
+    }
 }
