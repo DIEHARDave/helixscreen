@@ -205,6 +205,7 @@ PrePrintOptionSet parse_pre_print_option_set(const nlohmann::json& j) {
 
     set.macro_name = helix::json_util::safe_string(j, "macro_name");
     set.setup_gcode = helix::json_util::safe_string(j, "setup_gcode");
+    set.fixed_gcode = helix::json_util::safe_string(j, "fixed_gcode");
 
     if (j.contains("options")) {
         const auto& arr = j["options"];
@@ -293,7 +294,7 @@ bool is_macro_gate_closed(const PrePrintOption& opt) {
 }
 
 PrePrintOptionSet filter_macro_gated_options(const PrePrintOptionSet& input) {
-    PrePrintOptionSet out = input; // copies macro_name + setup_gcode + options
+    PrePrintOptionSet out = input; // copies everything but the gated options
     out.options.erase(
         std::remove_if(out.options.begin(), out.options.end(),
                        [](const PrePrintOption& o) { return is_macro_gate_closed(o); }),

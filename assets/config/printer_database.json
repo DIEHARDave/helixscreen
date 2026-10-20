@@ -6987,6 +6987,7 @@
         }
       ],
       "pre_print_options": {
+        "fixed_gcode": "SET_PRINT_PREFERENCES SHAPER_CALIBRATE=0",
         "options": [
           {
             "id": "bed_mesh",
@@ -6995,16 +6996,6 @@
             "default_enabled": true,
             "strategy": "pre_start_gcode",
             "gcode_template": "SET_PRINT_PREFERENCES BED_LEVEL={value}",
-            "emit_when_disabled": true
-          },
-          {
-            "id": "shaper_calibrate",
-            "category": "mechanical",
-            "order": 20,
-            "default_enabled": false,
-            "label_key": "Input Shaper Calibration",
-            "strategy": "pre_start_gcode",
-            "gcode_template": "SET_PRINT_PREFERENCES SHAPER_CALIBRATE={value}",
             "emit_when_disabled": true
           },
           {

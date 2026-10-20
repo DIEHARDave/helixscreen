@@ -44,6 +44,7 @@
 #include <spdlog/sinks/null_sink.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <filesystem>
@@ -1183,6 +1184,40 @@ TEST_CASE_METHOD(HelixTestFixture,
         auto lines = PrintPreparationManagerTestAccess::get_pre_start_gcode_lines(manager);
         REQUIRE(line_containing(lines, "LOAD_AI_RUN").empty());
     }
+}
+
+/**
+ * The U1 offers no input shaper option, yet every start still turns the
+ * firmware's stored SHAPER_CALIBRATE preference off: the firmware keeps it
+ * across prints, so a 1 left by the stock screen would otherwise run a
+ * resonance sweep at the start of a HelixScreen print.
+ */
+TEST_CASE_METHOD(HelixTestFixture,
+                 "PrintPreparationManager: a U1 start always sends SHAPER_CALIBRATE=0",
+                 "[print_preparation][pre_print_options][snapmaker_u1]") {
+    lv_init_safe();
+
+    PrinterState& printer_state = get_printer_state();
+    PrinterStateTestAccess::reset(printer_state);
+    printer_state.init_subjects(false);
+    printer_state.set_printer_type_sync("Snapmaker U1");
+
+    REQUIRE(printer_state.profile_state().pre_print_option_set().find("shaper_calibrate") ==
+            nullptr);
+
+    PrintPreparationManager manager;
+    manager.set_dependencies(nullptr, &printer_state);
+    // Even a provider answering "on" for a shaper id it was never offered
+    // changes nothing.
+    manager.set_option_state_provider([](const std::string&) { return 1; });
+
+    auto lines = PrintPreparationManagerTestAccess::get_pre_start_gcode_lines(manager);
+    REQUIRE(std::count_if(lines.begin(), lines.end(), [](const std::string& l) {
+                return l.find("SHAPER_CALIBRATE") != std::string::npos;
+            }) == 1);
+    REQUIRE(line_containing(lines, "SHAPER_CALIBRATE") ==
+            "SET_PRINT_PREFERENCES SHAPER_CALIBRATE=0");
+    REQUIRE(line_containing(lines, "BED_LEVEL") == "SET_PRINT_PREFERENCES BED_LEVEL=1");
 }
 
 // ============================================================================

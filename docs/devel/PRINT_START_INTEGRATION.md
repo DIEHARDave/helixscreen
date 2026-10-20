@@ -196,6 +196,8 @@ This is how the shipped "Auto Bed Mesh" toggle works on the Creality K2 Plus / K
 
 An option with `emit_when_disabled: false` has no "off" gcode at all: unchecking it sends nothing and the firmware's own default sequence runs.
 
+`pre_print_options.fixed_gcode` is a line sent ahead of the option lines at every print start, with no toggle. It pins a firmware setting HelixScreen does not offer but the firmware remembers across prints: the Snapmaker U1 sends `SET_PRINT_PREFERENCES SHAPER_CALIBRATE=0`, so input shaping never runs at print start.
+
 **K1C specifics.** The K1 firmware's `START_PRINT` runs its full preparation chain whenever its `prepare` variable is 0 (homing, nozzle wipe, accurate Z homing, then `CX_PRINT_LEVELING_CALIBRATE`). That command is a 4-corner bed check - it re-meshes the whole bed only when ≥2 corners drift beyond tolerance, and the whole decision is internal: none of it reaches the gcode console. The shipped toggle front-runs exactly what Creality's own app sends - heat, home, nozzle wipe, accurate home, `BED_MESH_CALIBRATE`, then `PRINT_PREPARED` (which makes the file's `START_PRINT` skip its now-redundant chain) - so one preparation pass runs, at print temperature, with a guaranteed mesh.
 
 Only the K1C entries use this. The K1, K1 Max, and K1 SE entries still map `bed_mesh` to the legacy `PREPARE` macro-param, deliberately: their stock firmware ships a different `START_PRINT` (the older K1 macro branches on `custom_macro.leveling_calibration` instead of `prepare`), so the same front-run sequence is unverified there. Convert them only after capturing a real print start from each model.

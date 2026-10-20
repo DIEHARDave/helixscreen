@@ -187,14 +187,20 @@ struct PrePrintOption {
  * printer-level "fire once before START_PRINT" hook, while the strategy
  * emits per-option gcode lines collected by
  * `PrintPreparationManager::collect_pre_start_gcode_lines()`.
+ *
+ * `fixed_gcode` (optional) is a gcode line sent before EVERY print start, with
+ * no toggle behind it. It pins a firmware setting HelixScreen never offers but
+ * the firmware remembers across prints, so a value another screen left behind
+ * cannot carry into our print (the U1's `SHAPER_CALIBRATE=0`).
  */
 struct PrePrintOptionSet {
     std::string macro_name;
     std::string setup_gcode;
+    std::string fixed_gcode;
     std::vector<PrePrintOption> options;
 
     bool empty() const {
-        return macro_name.empty() && setup_gcode.empty() && options.empty();
+        return macro_name.empty() && setup_gcode.empty() && fixed_gcode.empty() && options.empty();
     }
 
     /// Returns nullptr if no option with the given id is present.
