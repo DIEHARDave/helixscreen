@@ -415,6 +415,8 @@ TEST_CASE("HelixPluginInstaller install_local_sync runs the script it finds",
         CHECK(result.success);
         CHECK(installer.get_state() == helix::PluginInstallState::SUCCESS);
         CHECK(sandbox.script_args() == "--no-restart --auto ");
+        // The script restarts nothing, so the result must not say Moonraker is restarting.
+        CHECK(result.message.find("restarting") == std::string::npos);
     }
 
     SECTION("non-zero exit: fails") {

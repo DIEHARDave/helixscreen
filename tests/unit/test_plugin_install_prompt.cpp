@@ -24,6 +24,7 @@
 #include "../test_helpers/helix_plugin_installer_test_access.h"
 #include "../test_helpers/plugin_script_sandbox.h"
 #include "../test_helpers/plugin_self_heal_test_access.h"
+#include "../test_helpers/print_select_detail_view_test_access.h"
 #include "../test_helpers/print_select_panel_fixture.h"
 #include "../test_helpers/print_select_panel_test_access.h"
 #include "../test_helpers/print_state_test_drivers.h"
@@ -196,6 +197,38 @@ TEST_CASE_METHOD(PromptFixture, "a failed install from the prompt restarts nothi
 
     CHECK(moonraker_restarts() == restarts_before);
     CHECK(result_message().find("restarting") == std::string::npos);
+}
+
+TEST_CASE_METHOD(PromptFixture,
+                 "the detail view's Set up tap opens the prompt wired like the boot-time one",
+                 "[plugin_installer][print_select]") {
+    PrintSelectPanelTestAccess::build_detail_view(*panel_);
+    auto* view = PrintSelectPanelTestAccess::detail_view(*panel_);
+    REQUIRE(view != nullptr);
+    scripts.write_script("exit 0");
+
+    SECTION("an install restarts Moonraker to load the plugin") {
+        PrintSelectDetailViewTestAccess::request_plugin_setup(*view);
+        REQUIRE(prompt() != nullptr);
+        const int restarts_before = moonraker_restarts();
+
+        click("btn_install");
+
+        CHECK(scripts.script_args() == "--no-restart --auto ");
+        CHECK(moonraker_restarts() == restarts_before + 1);
+    }
+
+    SECTION("an install is refused while a job holds the machine") {
+        PrintSelectDetailViewTestAccess::request_plugin_setup(*view);
+        REQUIRE(prompt() != nullptr);
+        test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
+        drain();
+        REQUIRE(job_holds_machine(get_printer_state().print_state().get_print_lifecycle()));
+
+        click("btn_install");
+
+        CHECK(scripts.script_args().empty());
+    }
 }
 
 TEST_CASE_METHOD(PromptFixture, "the install prompt stays closed while a job holds the machine",
