@@ -241,6 +241,20 @@ can_link_in() {
     rm -f "$probe"
 }
 
+# The pre-flights every link to the plugin takes before it is made in
+# components directory @1: a link can be made there, Moonraker sees the plugin
+# from its root, and it can read what the link names. Sets link_to to the
+# plugin's path as Moonraker names it, which differs from ours when Moonraker
+# runs in a chroot. Stops through error() when one fails.
+check_plugin_link() {
+    can_link_in "$1" || error "Cannot write to components directory: $1"
+    link_to=$(path_for_moonraker "$PLUGIN_FILE")
+    if [ ! -f "$(running_moonraker_root)$link_to" ]; then
+        error "Moonraker cannot see $PLUGIN_FILE from its root ($(running_moonraker_root))"
+    fi
+    require_moonraker_can_read "$PLUGIN_FILE"
+}
+
 # Find Moonraker's components directory. An explicit path wins, then the
 # user's home, then the Moonraker that is actually running (whatever its
 # layout), then the known vendor roots, then a pip-installed package.
@@ -458,9 +472,10 @@ Please provide the path: ./install.sh /path/to/moonraker"
 Please remove it manually before installing."
     fi
 
+    check_plugin_link "$components_dir"
     # Use ln -sf for atomic replacement (removes existing symlink first)
-    ln -sf "$PLUGIN_FILE" "$target"
-    info "Created symlink: $target -> $PLUGIN_FILE"
+    ln -sf "$link_to" "$target"
+    info "Created symlink: $target -> $link_to"
     printf '\n'
 
     # Remind about configuration
@@ -758,10 +773,7 @@ relink() {
         return "$EXIT_RELINK_CURRENT"
     fi
 
-    link_to=$(path_for_moonraker "$PLUGIN_FILE")
-    [ -f "$mroot$link_to" ] || error "Moonraker cannot see $PLUGIN_FILE from its root ($mroot)"
-    can_link_in "$components_dir" || error "Cannot write to components directory: $components_dir"
-    require_moonraker_can_read "$PLUGIN_FILE"
+    check_plugin_link "$components_dir"
     ln -sf "$link_to" "$target" || error "Could not re-point $target"
     info "Re-pointed $target -> $link_to (was $current)"
     return "$EXIT_RELINK_DONE"
@@ -795,9 +807,7 @@ auto_install() {
 
     # Pre-flight checks, all before the first write: the link can be made,
     # the config can be edited, and Moonraker can read what the link names.
-    if ! can_link_in "$components_dir"; then
-        error "Cannot write to components directory: $components_dir"
-    fi
+    check_plugin_link "$components_dir"
 
     section_file=""
     if [ -n "$config_dir" ] && [ -f "$config_dir/moonraker.conf" ]; then
@@ -813,14 +823,6 @@ auto_install() {
     if [ -f "$target" ] && [ ! -L "$target" ]; then
         error "A file (not symlink) exists at $target"
     fi
-
-    # The link is read by Moonraker, so it names the plugin as Moonraker
-    # sees it, which differs from here when Moonraker runs in a chroot.
-    link_to=$(path_for_moonraker "$PLUGIN_FILE")
-    if [ ! -f "$(running_moonraker_root)$link_to" ]; then
-        error "Moonraker cannot see $PLUGIN_FILE from its root ($(running_moonraker_root))"
-    fi
-    require_moonraker_can_read "$PLUGIN_FILE"
 
     # Auto-configure moonraker.conf if possible
     if [ -n "$section_file" ]; then

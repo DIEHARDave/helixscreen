@@ -1532,3 +1532,22 @@ run_perm_install() {
     [ "$status" -eq 1 ] || fail "want 1, got $status: $output"
     [ "$(readlink "$home/moonraker/moonraker/components/helix_print.py")" = "$home/old/moonraker-plugin/helix_print.py" ]
 }
+
+@test "interactive install refuses a components dir that takes no link, and a plugin Moonraker cannot read" {
+    [ "$(id -u)" -ne 0 ] || skip "root reads everything"
+    local home="$BATS_TEST_TMPDIR/home" real_ln
+    setup_moonraker_as "$home" 4242 4242
+    chmod 0700 "$PERM_TMP/app"
+
+    run_perm_install "$home"
+    [ "$status" -eq 1 ] || fail "unreadable: want 1, got $status: $output"
+    contains "cannot read" "$output"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ] || fail "linked a plugin Moonraker cannot read"
+
+    chmod 0755 "$PERM_TMP/app"
+    real_ln=$(command -v ln)
+    mock_command_script "ln" "for a; do case \"\$a\" in */components/*) echo \"ln: \$a: Read-only file system\" >&2; exit 1;; esac; done; exec '$real_ln' \"\$@\""
+    run_perm_install "$home"
+    [ "$status" -eq 1 ] || fail "read-only: want 1, got $status: $output"
+    contains "Cannot write to components directory" "$output"
+}
