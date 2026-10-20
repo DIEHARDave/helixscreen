@@ -30,6 +30,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "../catch_amalgamated.hpp"
 
@@ -295,4 +296,22 @@ TEST_CASE_METHOD(XMLTestFixture, "nav_width keeps its own horizontal ladder acro
 
     theme_manager_refresh_layout_constants(disp);
     CHECK(token("nav_width") == "76"); // 800x480 → hor ≤ 900 → _small
+}
+
+// motion_mode_row_h cannot reference another token (a "#name" px value is kept as
+// a literal string), so its ladder repeats button_height's by hand. This pins the
+// copy: button_height at every tier but 480x320, which takes button_height_sm.
+TEST_CASE_METHOD(XMLTestFixture, "motion_mode_row_h follows button_height except at tiny",
+                 "[theme][breakpoints][motion-layout]") {
+    const std::pair<int32_t, int32_t> kTiers[] = {{480, 272},  {480, 320},  {640, 400},  {800, 480},
+                                                  {1024, 600}, {1280, 720}, {1920, 1080}};
+    for (const auto& [w, h] : kTiers) {
+        lv_display_t* d = make_test_display(w, h);
+        const auto tokens = theme_manager_resolve_px_tokens(d);
+        const bool tiny = breakpoint_for(h) == UiBreakpoint::Tiny;
+        INFO(w << "x" << h);
+        CHECK(resolved(tokens, "motion_mode_row_h") ==
+              resolved(tokens, tiny ? "button_height_sm" : "button_height"));
+        lv_display_delete(d);
+    }
 }
