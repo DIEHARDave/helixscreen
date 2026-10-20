@@ -125,7 +125,7 @@ bool RuntimeConfig::should_show_runout_modal() const {
         // single-extruder printer. Bypass doesn't apply to tool changers.
         if (auto* backend = ams.get_backend(0);
             backend && backend->supports_per_tool_spool_assignment()) {
-            spdlog::debug("[RuntimeConfig] Tool-changer AMS - showing runout modal");
+            spdlog::debug("[RuntimeConfig] Tool-changer AMS - runout modal allowed");
             return true;
         }
 
@@ -151,7 +151,7 @@ bool RuntimeConfig::should_show_runout_modal() const {
                           helix::ams_type_to_string(type));
             return true;
         }
-        spdlog::debug("[RuntimeConfig] AMS bypass active - showing runout modal");
+        spdlog::debug("[RuntimeConfig] AMS bypass active - runout modal allowed");
     }
 
     // No AMS or AMS with bypass active - show modal
