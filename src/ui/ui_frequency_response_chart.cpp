@@ -288,13 +288,15 @@ std::vector<FrChartRun> fr_chart_finite_runs(const float* amps, size_t count) {
 }
 
 // NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
-lv_opa_t fr_chart_fill_opa_at(int32_t y, int32_t plot_y1, int32_t plot_y2) {
-    if (plot_y2 <= plot_y1) {
-        return LV_OPA_TRANSP;
+FrFillSegmentOpa fr_chart_fill_segment_opa(int32_t top_a_y, int32_t top_b_y, int32_t bottom_y) {
+    const int32_t ramp_top = std::min(top_a_y, top_b_y);
+    if (bottom_y <= ramp_top) {
+        return {LV_OPA_TRANSP, LV_OPA_TRANSP};
     }
-    const int32_t row = std::clamp(y, plot_y1, plot_y2);
-    return static_cast<lv_opa_t>(static_cast<int32_t>(kFrFillTopOpa) * (plot_y2 - row) /
-                                 (plot_y2 - plot_y1));
+    const int32_t row = std::clamp(top_b_y, ramp_top, bottom_y);
+    const auto second = static_cast<lv_opa_t>(static_cast<int32_t>(kFrFillTopOpa) *
+                                              (bottom_y - row) / (bottom_y - ramp_top));
+    return {kFrFillTopOpa, second};
 }
 
 // NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
@@ -1394,10 +1396,8 @@ static void draw_styled_series_cb(lv_event_t* e) {
             lv_draw_triangle_dsc_t tri_dsc;
             lv_draw_triangle_dsc_init(&tri_dsc);
             tri_dsc.opa = LV_OPA_COVER;
-            // LVGL spans a triangle's vertical gradient over that triangle's own
-            // bounding box. Every triangle here reaches the plot bottom, so
-            // starting each one at the plot-wide ramp's value for its top row
-            // shades every row identically across triangles.
+            // Each segment's tint runs from the curve down to the plot bottom;
+            // fr_chart_fill_segment_opa() keeps its two triangles in step.
             tri_dsc.grad.dir = LV_GRAD_DIR_VER;
             tri_dsc.grad.stops_count = 2;
             tri_dsc.grad.stops[0].color = series->color;
@@ -1416,19 +1416,20 @@ static void draw_styled_series_cb(lv_event_t* e) {
 
                     // One quad per segment down to the plot bottom, split into
                     // two triangles.
+                    const FrFillSegmentOpa opa = fr_chart_fill_segment_opa(
+                        static_cast<int32_t>(top_a.y), static_cast<int32_t>(top_b.y), plot.y2);
+
                     tri_dsc.p[0] = top_a;
                     tri_dsc.p[1] = top_b;
                     tri_dsc.p[2].x = top_a.x;
                     tri_dsc.p[2].y = plot.y2;
-                    tri_dsc.grad.stops[0].opa = fr_chart_fill_opa_at(
-                        static_cast<int32_t>(std::min(top_a.y, top_b.y)), plot.y1, plot.y2);
+                    tri_dsc.grad.stops[0].opa = opa.first;
                     lv_draw_triangle(layer, &tri_dsc);
 
                     tri_dsc.p[0] = top_b;
                     tri_dsc.p[1].x = top_b.x;
                     tri_dsc.p[1].y = plot.y2;
-                    tri_dsc.grad.stops[0].opa =
-                        fr_chart_fill_opa_at(static_cast<int32_t>(top_b.y), plot.y1, plot.y2);
+                    tri_dsc.grad.stops[0].opa = opa.second;
                     lv_draw_triangle(layer, &tri_dsc);
                 }
             }
