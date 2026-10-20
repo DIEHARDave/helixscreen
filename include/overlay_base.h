@@ -488,6 +488,12 @@ struct TeardownHooks {
  * The owner object (subjects, state) survives — only the widget tree is
  * destroyed; the next open re-creates it.
  *
+ * The owner must outlive the step-1 drain: @p root and the hooks point into it,
+ * and nothing here detects an owner freed by queued work. Every owner is a
+ * static or lazy_global panel, freed only by StaticPanelRegistry teardown,
+ * which never runs inside a drain. An owner without that lifetime must not
+ * call this.
+ *
  * @param root Root widget to tear down; nulled on return
  * @param owner_name Logged and breadcrumbed owner name
  * @param how Delete strategy (see TeardownDelete)
