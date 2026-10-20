@@ -84,6 +84,15 @@ void restart_print_from_beginning(IMoonrakerAPI* api, const std::string& filenam
     // its print-end reset), so that builder names heads only while the live
     // map still reads its default for every used tool.
     auto send = [api, filename, log_prefix, on_failure](const std::set<int>& tools) {
+        // The file read answers later; a printer switch meanwhile replaces the
+        // API this restart was asked of, and the restart belongs to the old one.
+        if (IMoonrakerAPI* now = get_moonraker_api(); now && now != api) {
+            spdlog::warn("{} restart of {} dropped: the printer connection changed", log_prefix,
+                         filename);
+            if (on_failure)
+                on_failure();
+            return;
+        }
         std::string prep = "SDCARD_RESET_FILE\nCANCEL_PRINT_BASE";
         if (AmsBackend* backend = AmsState::instance().get_backend();
             backend && backend->requires_preprint_send()) {
@@ -132,7 +141,10 @@ void restart_print_from_beginning(IMoonrakerAPI* api, const std::string& filenam
     AmsBackend* backend = AmsState::instance().get_backend();
     if (backend && backend->requires_preprint_send() &&
         backend->print_routing_resets_to_identity()) {
-        print_start_controller_for(get_printer_state(), api).read_file_tools(filename, send);
+        // Metadata and the tools cache only: a download of the whole file would
+        // hold the cancel back for as long as the transfer takes.
+        print_start_controller_for(get_printer_state(), api)
+            .read_file_tools(filename, send, /*read_file=*/false);
         return;
     }
     send({});
@@ -235,6 +247,11 @@ void dispatch_prepared_resume(IMoonrakerAPI* api, std::string log_prefix,
     backend->prepare_for_resume(slot, [api, dispatch = std::move(dispatch), log_prefix,
                                        on_failure](const AmsError& err) mutable {
         if (err.result == AmsResult::RESUME_REQUIRES_RESTART) {
+            // The resume is over: what follows is a restart the user may or
+            // may not ask for, so the resume's pending state ends here and its
+            // backstop cannot fire over a restart in progress.
+            if (on_failure)
+                on_failure();
             // virtual_sdcard.is_active=false — RESUME would no-op.
             // Surface the restart-from-beginning modal instead of
             // firing the resume macro chain. Filename comes from

@@ -321,6 +321,29 @@ TEST_CASE_METHOD(LoaderFixture, "a failed metadata read still answers",
     CHECK(answer->palette.colors.size() == 2);
 }
 
+TEST_CASE_METHOD(LoaderFixture, "a metadata-only load reads nothing of the file",
+                 "[print_start_inputs][loader]") {
+    helix::PlantedGcode file("loader_metaonly.gcode", "", kTwoToolFooter);
+    FileStartFactsLoader loader(api.get());
+    // Without the metadata only the file's own footer could name its tools.
+    client.fail_next("server.files.metadata");
+
+    int downloads = 0;
+    std::optional<FileStartFacts> answer;
+    loader.load(
+        file.name(), [&answer](FileStartFacts facts) { answer = std::move(facts); },
+        [&downloads](std::function<void(bool, const std::string&)> done) {
+            ++downloads;
+            done(false, {});
+        },
+        nullptr, /*read_file=*/false);
+    drain();
+
+    REQUIRE(answer.has_value());
+    CHECK(answer->tools_used.empty());
+    CHECK(downloads == 0);
+}
+
 TEST_CASE_METHOD(LoaderFixture, "a later load supersedes an unanswered one",
                  "[print_start_inputs][loader]") {
     helix::PlantedGcode first("loader_first.gcode", "", kTwoToolFooter);

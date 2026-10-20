@@ -481,16 +481,21 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
 }
 
 void PrintStartController::read_file_tools(const std::string& filename,
-                                           std::function<void(std::set<int>)> on_tools) {
+                                           std::function<void(std::set<int>)> on_tools,
+                                           bool read_file) {
     if (!reprint_facts_) {
         reprint_facts_ = std::make_unique<helix::FileStartFactsLoader>(api_);
     }
     reprint_facts_->set_api(api_);
-    reprint_facts_->load(filename, [on_tools = std::move(on_tools)](helix::FileStartFacts facts) {
-        std::set<int> tools = helix::file_tools_used(facts);
-        spdlog::info("[PrintStartController] {} tools read from {}", tools.size(), facts.filename);
-        on_tools(std::move(tools));
-    });
+    reprint_facts_->load(
+        filename,
+        [on_tools = std::move(on_tools)](helix::FileStartFacts facts) {
+            std::set<int> tools = helix::file_tools_used(facts);
+            spdlog::info("[PrintStartController] {} tools read from {}", tools.size(),
+                         facts.filename);
+            on_tools(std::move(tools));
+        },
+        nullptr, nullptr, read_file);
 }
 
 void PrintStartController::report_preprint_failure(const std::string& reason) {

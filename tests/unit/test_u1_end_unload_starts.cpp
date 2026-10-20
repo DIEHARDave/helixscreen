@@ -16,6 +16,7 @@
 #include "../test_helpers/registered_backend.h"
 #include "../test_helpers/snapmaker_test_access.h"
 #include "ams_backend_snapmaker.h"
+#include "app_globals.h"
 #include "config.h"
 #include "moonraker_api.h"
 #include "moonraker_client_mock.h"
@@ -118,6 +119,28 @@ TEST_CASE_METHOD(U1StartFx, "a U1 restart from the beginning names the file's he
     CHECK(sent.find("CANCEL_PRINT_BASE\nSET_PRINT_USED_EXTRUDERS EXTRUDERS=0,2") !=
           std::string::npos);
     CHECK(sent.find("SET_PRINT_EXTRUDER_MAP") == std::string::npos);
+}
+
+TEST_CASE_METHOD(U1StartFx, "a U1 restart drops when the printer connection changed meanwhile",
+                 "[end_unload][preprint][reprint]") {
+    MoonrakerAPI api{client, ps};
+    MoonrakerAPI next_printer{client, ps};
+    test::RegisteredBackend<AmsBackendSnapmaker> backend(nullptr, nullptr);
+    report_heads(*backend);
+    IMoonrakerAPI* previous = get_moonraker_api();
+
+    int failures = 0;
+    helix::ui::restart_print_from_beginning(&api, "cal.gcode", "[test]",
+                                            [&failures]() { ++failures; });
+    // A printer switch lands while the file's tools are read.
+    set_moonraker_api(&next_printer);
+    for (int i = 0; i < 8; ++i) {
+        helix::ui::UpdateQueue::instance().drain();
+    }
+    set_moonraker_api(previous);
+
+    CHECK(all_scripts().find("CANCEL_PRINT_BASE") == std::string::npos);
+    CHECK(failures == 1);
 }
 
 #endif // HELIX_HAS_SNAPMAKER

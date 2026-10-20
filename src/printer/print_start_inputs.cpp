@@ -145,7 +145,7 @@ void FileStartFactsLoader::cancel() {
 }
 
 void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, DownloadFn download,
-                                MetadataFn on_metadata) {
+                                MetadataFn on_metadata, bool read_file) {
     const uint32_t generation = ++generation_;
     if (!api_) {
         FileStartFacts facts;
@@ -155,8 +155,8 @@ void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, D
     }
 
     auto after_metadata = [this, generation, filename, on_ready = std::move(on_ready),
-                           download = std::move(download), on_metadata = std::move(on_metadata)](
-                              std::optional<FileMetadata> metadata) {
+                           download = std::move(download), on_metadata = std::move(on_metadata),
+                           read_file](std::optional<FileMetadata> metadata) {
         if (generation != generation_) {
             return;
         }
@@ -174,6 +174,10 @@ void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, D
         auto cached = tools_used_cache().lookup(filename, version);
         if (cached) {
             facts->tools_used = *cached;
+        }
+        if (!read_file) {
+            on_ready(std::move(*facts));
+            return;
         }
 
         ScanRequest req;

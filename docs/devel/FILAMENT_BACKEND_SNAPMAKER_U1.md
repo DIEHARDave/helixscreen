@@ -467,7 +467,16 @@ are: `load_finish`, `unload_finish` (filament back at the feeder), `manual_sta_f
 load), `preload_finish`. The mark clears when that feeder reaches `load_finish`, or finishes a
 hand feed (`manual_sta_finish`), with no error, and when the print leaves printing/paused.
 A bare sensor reading never clears it: `FEED_AUTO` returns OK without feeding on an empty
-port, and filament stopped at the head switch reads present. It survives a reconnect to a print still
+port, and filament stopped at the head switch reads present. For a head already loaded,
+`<klipper>/klippy/extras/filament_feed.py`'s `cmd_FEED_AUTO` returns OK at once when
+`channel_state` is `load_finish` and `channel_error` is `ok`, changing nothing and sending
+no frame, so the refeed judges it on the snapshot it already holds; a hand-loaded head
+(`manual_sta_finish`) is not that early return, and its own frame clears the mark before
+Resume refeeds anything. The marks live in the app: after the app restarts (not a websocket
+drop), a mark from an `AUTO_FEEDING` error or an OK with no `load_finish` is gone, and only
+a feeder still reporting a `*_fail` state or an error fault marks the head again. A restart
+from the beginning reads the file's tools from Moonraker's metadata and the tools cache only,
+never downloading the file, and a printer switch during that read drops the restart It survives a reconnect to a print still
 running, since the first print state a connection reads is no change of print, and the
 subscription's first frame marks any head whose feeder still reports a failure
 (`src/printer/ams_backend_snapmaker.cpp#mark_load_unconfirmed_locked`).

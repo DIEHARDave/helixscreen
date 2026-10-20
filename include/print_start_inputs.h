@@ -108,8 +108,10 @@ class FileStartFactsLoader {
     /// Gather facts for @p filename and answer once, on the main thread. A
     /// failed metadata read, footer read or download still answers, with what
     /// it has. A later load() supersedes an unanswered one.
+    /// @p read_file false answers from Moonraker's metadata and the tools
+    /// cache alone: no footer read, no download.
     void load(const std::string& filename, ReadyFn on_ready, DownloadFn download = nullptr,
-              MetadataFn on_metadata = nullptr);
+              MetadataFn on_metadata = nullptr, bool read_file = true);
 
     /// One file's tools/palette/grams read: the half of load() after the metadata.
     struct ScanRequest {
