@@ -13,8 +13,9 @@ _HELIX_PRINT_CONF_SOURCED=1
 # directory of the file that names it, as the path was given (a symlinked
 # moonraker.conf resolves against the link's directory). A glob expands the way
 # Moonraker expands it. @2, when set, is prefixed to an absolute include: the
-# root Moonraker runs under, seen from here. Paths holding blanks are not
-# supported; no Moonraker layout uses them.
+# root Moonraker runs under, seen from here. A file is walked once however
+# many paths lead to it, so an include cycle ends. Paths holding blanks are
+# not supported; no Moonraker layout uses them.
 moonraker_conf_files() {
     _mcf_root="${2:-}"
     _mcf_todo="$1"
@@ -26,9 +27,11 @@ moonraker_conf_files() {
             *) _mcf_todo="" ;;
         esac
         [ -n "$_mcf_file" ] || continue
-        case "$_mcf_seen" in *" $_mcf_file "*) continue ;; esac
-        _mcf_seen="$_mcf_seen$_mcf_file "
         [ -f "$_mcf_file" ] || continue
+        _mcf_key=$(readlink -f "$_mcf_file" 2>/dev/null) || _mcf_key=""
+        [ -n "$_mcf_key" ] || _mcf_key="$_mcf_file"
+        case "$_mcf_seen" in *" $_mcf_key "*) continue ;; esac
+        _mcf_seen="$_mcf_seen$_mcf_key "
         printf '%s\n' "$_mcf_file"
         _mcf_dir=$(dirname "$_mcf_file")
         # Trailing blanks after "]" include the CR of a file saved on Windows.

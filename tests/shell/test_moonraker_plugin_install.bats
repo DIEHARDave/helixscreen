@@ -1260,3 +1260,15 @@ setup_forgex_bind_mounted_app() {
         [ "$status" -eq 0 ] || fail "relink run $run_no: want 0 (current), got $status: $output"
     done
 }
+
+@test "an include cycle through .. is walked once" {
+    local c="$BATS_TEST_TMPDIR/cfg"
+    mkdir -p "$c/conf.d"
+    printf '[server]\n\n[include conf.d/*.conf]\n' > "$c/moonraker.conf"
+    printf '[helix_print]\n\n[include ../moonraker.conf]\n' > "$c/conf.d/a.conf"
+
+    run timeout 10 sh -c '. "$1"; moonraker_conf_files "$2"' sh \
+        "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh" "$c/moonraker.conf"
+    [ "$status" -eq 0 ] || fail "walk did not end (status $status)"
+    [ "$(printf '%s\n' "$output" | wc -l)" -eq 2 ] || fail "files: $(printf '%s\n' "$output" | head -n 4)"
+}
