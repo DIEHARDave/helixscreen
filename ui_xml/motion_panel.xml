@@ -31,7 +31,9 @@
     <px name="bed_map_home_size_medium" value="72"/>
     <px name="bed_map_home_size_large" value="88"/>
     <!-- The landscape jog mode row: button_height, except the compact height on
-         a 480x320 screen, which leaves the jog pad its room. -->
+         a 480x320 screen, which leaves the jog pad its room. A px value cannot
+         reference another token, so these repeat button_height's ladder; the
+         "motion_mode_row_h follows button_height" test pins the copy. -->
     <px name="motion_mode_row_h_micro" value="26"/>
     <px name="motion_mode_row_h_tiny" value="28"/>
     <px name="motion_mode_row_h_small" value="48"/>
