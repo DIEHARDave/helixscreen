@@ -319,6 +319,11 @@ class NetworkSettingsOverlay : public OverlayBase {
     void refresh_country();
     // What the closed country dropdown reads for selection @p index.
     void show_country_choice(int index, bool hint_5ghz);
+    // Fills the country list in the current language and re-shows the choice.
+    void fill_country_options();
+    static void on_country_language_changed(lv_event_t* e);
+    // Removes the dropdown's language handler, whose user_data is this object.
+    void detach_country_dropdown();
     lv_obj_t* country_dropdown_ = nullptr;
     std::string country_button_text_;
     bool country_hint_5ghz_ = false; // 5 GHz radio left in the world domain

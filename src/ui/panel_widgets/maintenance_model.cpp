@@ -262,7 +262,6 @@ void attach_observers() {
                          on_connection_changed, printer_life));
     s_observers.push_back(ui::observe<int>(ps.print_state().get_print_active_subject(), &s_anchor,
                                            on_print_active, printer_life));
-    s_language_observer = ui::observe_language_change(&s_anchor, [](int*) { publish(); });
 }
 
 void teardown() {
@@ -336,8 +335,13 @@ void init_subjects() {
             }
         },
         teardown);
-    if (!created)
+    // Replacing the guard drops one left on settings subjects since torn down and rebuilt,
+    // so every call re-arms it, and publish() catches up on a switch it missed.
+    s_language_observer = ui::observe_language_change(&s_anchor, [](int*) { publish(); });
+    if (!created) {
+        publish();
         return;
+    }
     // After ensure_init(): publish() writes only to subjects it reports as initialized.
     load();
     attach_observers();
