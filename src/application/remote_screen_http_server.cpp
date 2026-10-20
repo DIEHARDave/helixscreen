@@ -3,6 +3,7 @@
 
 #include "remote_screen_http_server.h"
 
+#include "helix_thread.h"
 #include "http_listen_socket.h"
 #include "hv/HttpServer.h"
 #include "json_utils.h"
@@ -201,7 +202,8 @@ bool ScreenHttpServer::start(const ScreenServerConfig& cfg) {
         return false;
     }
 
-    impl->stream_thread = std::thread([this, raw = impl.get(), cap] { run_streams(raw, cap); });
+    impl->stream_thread =
+        helix::make_thread([this, raw = impl.get(), cap] { run_streams(raw, cap); });
     impl_ = std::move(impl);
     port_ = port;
     spdlog::info("[RemoteScreen] Screen server listening on {}:{}", cfg.bind_host, port);
