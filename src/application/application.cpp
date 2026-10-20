@@ -65,6 +65,7 @@
 #include "remote_control_server.h"
 #endif
 #include "audio_settings_manager.h"
+#include "remote_screen_service.h"
 #include "rpc_error_correlation.h"
 #include "screenshot.h"
 #include "sensor_state.h"
@@ -962,6 +963,10 @@ int Application::run(int argc, char** argv) {
                           "`ctl` will report that no instance is running");
         }
 #endif
+
+        // Phase 14d: Built-in screen server, if the user shares the screen (#1825)
+        helix::RemoteScreenService::instance().init(&m_display->remote_screen());
+        helix::RemoteScreenService::instance().watch_print_state();
 
         // Phase 15: Start memory monitoring (logs at TRACE level, -vvv)
         helix::MemoryMonitor::instance().start(5000);
@@ -2515,6 +2520,7 @@ void Application::shutdown() {
 #ifdef HELIX_ENABLE_REMOTE_CONTROL
     m_remote_control.stop();
 #endif
+    helix::RemoteScreenService::instance().shutdown();
 
     // Stop memory monitor
     helix::MemoryMonitor::instance().stop();

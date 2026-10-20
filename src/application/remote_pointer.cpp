@@ -5,7 +5,23 @@
 
 #include <spdlog/spdlog.h>
 
+#include <thread>
+
 namespace helix::remote {
+
+lv_point_t remote_image_to_indev_point(lv_display_rotation_t rot, int32_t orig_w, int32_t orig_h,
+                                       int32_t x, int32_t y) {
+    switch (rot) {
+    case LV_DISPLAY_ROTATION_90:
+        return {y, orig_h - x - 1};
+    case LV_DISPLAY_ROTATION_180:
+        return {orig_w - x - 1, orig_h - y - 1};
+    case LV_DISPLAY_ROTATION_270:
+        return {orig_w - y - 1, x};
+    default:
+        return {x, y};
+    }
+}
 
 RemotePointer& RemotePointer::instance() {
     static RemotePointer inst;
@@ -54,7 +70,45 @@ void RemotePointer::set_state(int32_t x, int32_t y, bool pressed) {
     // handling assumes.
     x_.store(x, std::memory_order_release);
     y_.store(y, std::memory_order_release);
+    logical_x_.store(x, std::memory_order_release);
+    logical_y_.store(y, std::memory_order_release);
     pressed_.store(pressed, std::memory_order_release);
+}
+
+bool RemotePointer::set_logical_state(int32_t x, int32_t y, bool pressed) {
+    if (indev_ == nullptr) {
+        return false;
+    }
+    lv_display_t* disp = lv_indev_get_display(indev_);
+    if (disp == nullptr) {
+        set_state(x, y, pressed);
+        return true;
+    }
+    const lv_point_t raw = remote_image_to_indev_point(
+        lv_display_get_rotation(disp), lv_display_get_original_horizontal_resolution(disp),
+        lv_display_get_original_vertical_resolution(disp), x, y);
+    set_state(raw.x, raw.y, pressed);
+    logical_x_.store(x, std::memory_order_release);
+    logical_y_.store(y, std::memory_order_release);
+    return true;
+}
+
+RemotePointer::WaitResult
+RemotePointer::wait_for_samples(uint64_t baseline, std::chrono::milliseconds timeout,
+                                const std::function<bool()>& keep_going) const {
+    constexpr auto kPoll = std::chrono::milliseconds(5);
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    const uint64_t target = baseline + 2;
+    while (read_count() < target) {
+        if (keep_going && !keep_going()) {
+            return WaitResult::Stopped;
+        }
+        if (std::chrono::steady_clock::now() >= deadline) {
+            return WaitResult::TimedOut;
+        }
+        std::this_thread::sleep_for(kPoll);
+    }
+    return WaitResult::Sampled;
 }
 
 uint64_t RemotePointer::read_count() const {
@@ -66,11 +120,11 @@ bool RemotePointer::is_created() const {
 }
 
 int32_t RemotePointer::x() const {
-    return x_.load(std::memory_order_acquire);
+    return logical_x_.load(std::memory_order_acquire);
 }
 
 int32_t RemotePointer::y() const {
-    return y_.load(std::memory_order_acquire);
+    return logical_y_.load(std::memory_order_acquire);
 }
 
 bool RemotePointer::pressed() const {

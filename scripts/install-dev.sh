@@ -57,6 +57,7 @@ if [ -z "${_HELIX_BUNDLED_INSTALLER:-}" ]; then
     . "$LIB_DIR/audio.sh"
     . "$LIB_DIR/moonraker.sh"
     . "$LIB_DIR/camera.sh"           # K2 ustreamer camera (replaces stock WebRTC)
+    . "$LIB_DIR/remote_screen.sh"    # nginx route for the built-in screen server
     . "$LIB_DIR/recovery.sh"
     . "$LIB_DIR/kiauh.sh"
     . "$LIB_DIR/uninstall.sh"  # uses functions from other modules

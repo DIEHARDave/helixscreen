@@ -82,7 +82,7 @@ flowchart LR
 | [`include/remote_control_server.h`](../../../include/remote_control_server.h) / [`src/remote/remote_control_server.cpp`](../../../src/remote/remote_control_server.cpp) | JSON-RPC 2.0 server over Unix socket (or HTTP), auto-started in `--test` |
 | [`src/remote/unix_socket_transport.cpp`](../../../src/remote/unix_socket_transport.cpp) / [`http_transport.cpp`](../../../src/remote/http_transport.cpp) | The two `IRemoteTransport`s the server listens through |
 | [`src/remote/widget_resolution.cpp`](../../../src/remote/widget_resolution.cpp) | Widget-by-name lookup and value-control classification (`is_value_control`) |
-| [`src/remote/remote_pointer.cpp`](../../../src/remote/remote_pointer.cpp) | `RemotePointer` - synthetic LVGL input device for gesture RPCs |
+| [`src/application/remote_pointer.cpp`](../../../src/application/remote_pointer.cpp) | `RemotePointer` - synthetic LVGL input device for gesture RPCs and the screen server's remote touch; built into every build |
 | [`src/remote/mock_scenarios.cpp`](../../../src/remote/mock_scenarios.cpp) | Named subject presets behind `ctl scenario` (sample-data screens) |
 | [`src/remote/remote_client.cpp`](../../../src/remote/remote_client.cpp) | The `ctl`/`repl` client, folded into the same binary |
 
@@ -235,7 +235,7 @@ transport is a Unix socket; `RemoteConfig::Transport::Http` switches to a TCP li
 through `ui_queue_update()` and blocks on a `std::promise` until the main thread executes it
 ([`src/remote/remote_control_server.cpp#promise`](../../../src/remote/remote_control_server.cpp)). Name-based targeting resolves through [`widget_resolution.cpp`](../../../src/remote/widget_resolution.cpp), which also
 decides which widget classes accept `set_value` (`is_value_control`); synthetic gestures come from
-`RemotePointer` ([`src/remote/remote_pointer.cpp`](../../../src/remote/remote_pointer.cpp)), an LVGL input device whose read callback publishes atomics
+`RemotePointer` ([`src/application/remote_pointer.cpp`](../../../src/application/remote_pointer.cpp)), an LVGL input device whose read callback publishes atomics
 set by RPC; and [`mock_scenarios.cpp`](../../../src/remote/mock_scenarios.cpp) holds the named subject presets behind `ctl scenario`. The client is the
 same binary: `helix-screen ctl` / `repl` subcommands dispatch before any app init ([`src/main.cpp#main`](../../../src/main.cpp)) into
 [`remote_client.cpp`](../../../src/remote/remote_client.cpp).

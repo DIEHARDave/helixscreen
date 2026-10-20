@@ -59,6 +59,14 @@ cpp	.nginx_webcam_accesslog	written by the installer on the device, never exists
 gradle	.nginx_webcam_accesslog	written by the installer on the device, never exists in a build tree
 strip	.nginx_webcam_accesslog	written by the installer on the device, never exists in a build tree
 deploy	.nginx_webcam_accesslog	written by the installer on the device, never exists in a build tree
+cpp	.nginx_remote_screen	written by the installer on the device, never exists in a build tree
+gradle	.nginx_remote_screen	written by the installer on the device, never exists in a build tree
+strip	.nginx_remote_screen	written by the installer on the device, never exists in a build tree
+deploy	.nginx_remote_screen	written by the installer on the device, never exists in a build tree
+cpp	.remote_screen_route	written by the installer on the device, never exists in a build tree
+gradle	.remote_screen_route	written by the installer on the device, never exists in a build tree
+strip	.remote_screen_route	written by the installer on the device, never exists in a build tree
+deploy	.remote_screen_route	written by the installer on the device, never exists in a build tree
 TABLE
 )"
 

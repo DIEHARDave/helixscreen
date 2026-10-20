@@ -1371,6 +1371,7 @@ void DisplayManager::install_color_transform_hook() {
                     f.src_format = helix::RemoteScreenPixelFormat::Unknown;
                     break;
                 }
+                f.last_in_refresh = lv_display_flush_is_last(d);
                 self->m_remote_screen.on_frame(f);
             }
         }

@@ -1168,6 +1168,11 @@ apply_install() {
     # (stock WebRTC disable is recorded for re-enable on uninstall).
     install_camera_k2 "$platform" || true
 
+    # Route the built-in screen server through the web UI's nginx, behind
+    # Moonraker's auth, where nginx fronts Moonraker. Every platform; skips
+    # cleanly (the app then binds the LAN and pairs) where it cannot.
+    install_remote_screen_route || true
+
     # Install platform-specific helix-recover.sh used by PrinterRecoveryService
     # when klippy_uds is dead and firmware_restart can't proxy. No-op on stock
     # systemd platforms (pi/pi32/x86) where services.restart handles it.
