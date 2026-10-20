@@ -3779,7 +3779,7 @@ TEST_CASE("get_device_actions returns live config values", "[ams][happy_hare][de
     }
 }
 
-TEST_CASE("get_device_actions disables non-buttons when config not loaded",
+TEST_CASE("get_device_actions waits for the config only on config-backed settings",
           "[ams][happy_hare][device_actions]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
@@ -3787,13 +3787,35 @@ TEST_CASE("get_device_actions disables non-buttons when config not loaded",
     // Do NOT call set_config_defaults_for_test() — config_defaults_.loaded is false
 
     auto actions = helper.get_device_actions();
-
-    for (const auto& a : actions) {
-        if (a.type != helix::printer::ActionType::BUTTON) {
-            REQUIRE_FALSE(a.enabled);
-            REQUIRE(a.disable_reason == "Loading configuration...");
+    auto find_action = [](const auto& list, const char* id) -> const helix::printer::DeviceAction* {
+        for (const auto& a : list) {
+            if (a.id == id) {
+                return &a;
+            }
         }
+        return nullptr;
+    };
+    for (const char* id : {"gear_from_buffer_speed", "sync_to_extruder", "clog_detection"}) {
+        INFO(id);
+        const auto* a = find_action(actions, id);
+        REQUIRE(a != nullptr);
+        CHECK_FALSE(a->enabled);
+        CHECK(a->disable_reason == "Loading configuration...");
     }
+    for (const char* id : {"gear_sync", "motors_toggle", "led_mode", "espooler_mode"}) {
+        INFO(id);
+        const auto* a = find_action(actions, id);
+        REQUIRE(a != nullptr);
+        CHECK(a->enabled);
+    }
+
+    // A live command runs; a config-backed setting is refused until the config loads.
+    REQUIRE(helper.execute_device_action("gear_sync", std::any(true)).success());
+    CHECK(helper.has_gcode("MMU_SYNC_GEAR_MOTOR SYNC=1"));
+    helper.clear_captured_gcodes();
+    CHECK(helper.execute_device_action("gear_from_buffer_speed", std::any(200.0f)).result ==
+          AmsResult::WRONG_STATE);
+    CHECK(helper.captured_gcodes.empty());
 }
 
 TEST_CASE("get_device_actions overlays sync_to_extruder as bool",
