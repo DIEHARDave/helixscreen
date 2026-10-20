@@ -18,7 +18,7 @@
 #include "hardware_setup_prompter.h"
 #include "power_device_state.h"
 #include "printer_state.h"
-#include "remote_screen_webcam.h"
+#include "remote_screen_service.h"
 #include "sensor_state.h"
 #include "settings_manager.h"
 #include "spoolman_active_spool_sync.h"
@@ -152,10 +152,11 @@ void manual_probe_autoopen_step(DiscoveryContext& ctx) {
     });
 }
 
-// Keep Moonraker's webcam list in step with the screen server, and refresh the LAN
-// address an absolute entry carries.
-void remote_screen_webcam_step(DiscoveryContext& ctx) {
-    sync_remote_screen_webcam(ctx.api);
+// Re-decide the screen server's mode for this printer (its Moonraker may be on another
+// host) and keep Moonraker's webcam list in step, refreshing the LAN address an
+// absolute entry carries.
+void remote_screen_webcam_step(DiscoveryContext&) {
+    RemoteScreenService::instance().apply_settings();
 }
 
 constexpr DiscoveryStep kTailSteps[] = {

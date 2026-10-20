@@ -130,7 +130,9 @@ void RemoteScreenService::apply_server() {
         return;
     }
 
-    const std::string route = remote_screen_route(writable_path(".remote_screen_route"));
+    const std::string route =
+        remote_screen_effective_route(get_printer_state().is_moonraker_remote(),
+                                      remote_screen_route(writable_path(".remote_screen_route")));
     const bool lan_mode = route.empty();
     settings.set_lan_mode(lan_mode);
     if (server_ && lan_mode != lan_mode_) {

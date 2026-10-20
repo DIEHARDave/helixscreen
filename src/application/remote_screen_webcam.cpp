@@ -3,19 +3,34 @@
 
 #include "remote_screen_webcam.h"
 
+#include "app_globals.h"
 #include "data_root_resolver.h"
 #include "host_identity.h"
 #include "i_moonraker_api.h"
+#include "printer_state.h"
 #include "remote_screen_service.h"
 #include "remote_screen_settings_manager.h"
 #include "webcam_selection.h"
 
 #include <spdlog/spdlog.h>
 
+#include <unistd.h>
+
 namespace helix {
 
-std::optional<nlohmann::json> remote_screen_webcam_item(bool enabled, bool control,
-                                                        const std::string& route,
+std::string remote_screen_webcam_name(bool moonraker_on_this_host, const std::string& hostname) {
+    if (moonraker_on_this_host || hostname.empty()) {
+        return kRemoteScreenWebcamName;
+    }
+    return std::string(kRemoteScreenWebcamName) + " (" + hostname + ")";
+}
+
+std::string remote_screen_effective_route(bool moonraker_remote, const std::string& route) {
+    return moonraker_remote ? std::string() : route;
+}
+
+std::optional<nlohmann::json> remote_screen_webcam_item(const std::string& name, bool enabled,
+                                                        bool control, const std::string& route,
                                                         const std::string& lan_ip, int port) {
     if (!enabled) {
         return std::nullopt;
@@ -30,7 +45,7 @@ std::optional<nlohmann::json> remote_screen_webcam_item(bool enabled, bool contr
     }
     const std::string snapshot = base + "snapshot.jpg";
     nlohmann::json item = {
-        {"name", kRemoteScreenWebcamName},
+        {"name", name},
         {"location", "printer"},
         {"enabled", true},
         {"snapshot_url", snapshot},
@@ -49,9 +64,16 @@ std::optional<nlohmann::json> remote_screen_webcam_item(bool enabled, bool contr
 void sync_remote_screen_webcam(IMoonrakerAPI& api) {
     auto& service = RemoteScreenService::instance();
     const auto& settings = RemoteScreenSettingsManager::instance();
-    const std::string route = remote_screen_route(writable_path(".remote_screen_route"));
+    const bool remote = get_printer_state().is_moonraker_remote();
+    char host[256] = {};
+    if (gethostname(host, sizeof(host) - 1) != 0) {
+        host[0] = '\0';
+    }
+    const std::string name = remote_screen_webcam_name(!remote, host);
+    const std::string route = remote_screen_effective_route(
+        remote, remote_screen_route(writable_path(".remote_screen_route")));
     const auto item =
-        remote_screen_webcam_item(service.running(), settings.get_control(), route,
+        remote_screen_webcam_item(name, service.running(), settings.get_control(), route,
                                   select_lan_ipv4(local_interface_ips()), service.port());
     if (item) {
         api.timelapse().post_webcam(
@@ -65,12 +87,11 @@ void sync_remote_screen_webcam(IMoonrakerAPI& api) {
     // Deleting a missing entry is an error, so look before deleting.
     IMoonrakerAPI* api_ptr = &api;
     api.timelapse().get_webcam_list(
-        [api_ptr](const std::vector<WebcamInfo>& cams) {
+        [api_ptr, name](const std::vector<WebcamInfo>& cams) {
             for (const auto& cam : cams) {
-                if (webcam::is_own_screen_webcam(cam)) {
+                if (cam.name == name) {
                     api_ptr->timelapse().delete_webcam(
-                        kRemoteScreenWebcamName,
-                        [] { spdlog::info("[RemoteScreen] Removed the screen webcam"); },
+                        name, [] { spdlog::info("[RemoteScreen] Removed the screen webcam"); },
                         [](const MoonrakerError& err) {
                             spdlog::warn("[RemoteScreen] Could not remove the screen webcam: {}",
                                          err.message);

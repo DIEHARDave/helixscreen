@@ -45,8 +45,8 @@ constexpr const char* kRemoteScreenWebcamName = "HelixScreen Screen";
 
 namespace webcam {
 
-/// Our own screen, registered by the built-in screen server. Never a camera feed:
-/// the camera view would be showing the screen it is drawn on.
+/// A screen registered by a built-in screen server: ours, or another screen's on the
+/// same Moonraker. Never a camera feed: a screen is not a view of the printer.
 [[nodiscard]] bool is_own_screen_webcam(const WebcamInfo& cam);
 
 /// Read one `server.webcams.list` entry. Unknown or missing fields keep the

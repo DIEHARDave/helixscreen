@@ -28,7 +28,8 @@ using json = nlohmann::json;
 
 TEST_CASE("webcam item: view-only with route is mjpegstreamer on stream.mjpg, relative snapshot",
           "[remote_screen][webcam]") {
-    auto item = remote_screen_webcam_item(true, false, "/helixscreen/screen/", "10.0.0.5", 7130);
+    auto item = remote_screen_webcam_item(kRemoteScreenWebcamName, true, false,
+                                          "/helixscreen/screen/", "10.0.0.5", 7130);
     REQUIRE(item.has_value());
     CHECK((*item)["name"] == kRemoteScreenWebcamName);
     CHECK((*item)["service"] == "mjpegstreamer");
@@ -41,7 +42,8 @@ TEST_CASE("webcam item: view-only with route is mjpegstreamer on stream.mjpg, re
 
 TEST_CASE("webcam item: control with route is iframe pointing at the route",
           "[remote_screen][webcam]") {
-    auto item = remote_screen_webcam_item(true, true, "/helixscreen/screen/", "10.0.0.5", 7130);
+    auto item = remote_screen_webcam_item(kRemoteScreenWebcamName, true, true,
+                                          "/helixscreen/screen/", "10.0.0.5", 7130);
     REQUIRE(item.has_value());
     CHECK((*item)["service"] == "iframe");
     CHECK((*item)["stream_url"] == "/helixscreen/screen/");
@@ -49,19 +51,26 @@ TEST_CASE("webcam item: control with route is iframe pointing at the route",
 }
 
 TEST_CASE("webcam item: LAN mode uses http://ip:port", "[remote_screen][webcam]") {
-    auto view = remote_screen_webcam_item(true, false, "", "192.168.1.40", 7130);
+    auto view =
+        remote_screen_webcam_item(kRemoteScreenWebcamName, true, false, "", "192.168.1.40", 7130);
     REQUIRE(view.has_value());
     CHECK((*view)["snapshot_url"] == "http://192.168.1.40:7130/snapshot.jpg");
-    auto control = remote_screen_webcam_item(true, true, "", "192.168.1.40", 7131);
+    auto control =
+        remote_screen_webcam_item(kRemoteScreenWebcamName, true, true, "", "192.168.1.40", 7131);
     REQUIRE(control.has_value());
     CHECK((*control)["stream_url"] == "http://192.168.1.40:7131/");
 }
 
 TEST_CASE("webcam item: disabled is nullopt", "[remote_screen][webcam]") {
-    CHECK_FALSE(remote_screen_webcam_item(false, false, "/r/", "10.0.0.5", 7130).has_value());
-    CHECK_FALSE(remote_screen_webcam_item(false, true, "", "10.0.0.5", 7130).has_value());
+    CHECK_FALSE(
+        remote_screen_webcam_item(kRemoteScreenWebcamName, false, false, "/r/", "10.0.0.5", 7130)
+            .has_value());
+    CHECK_FALSE(
+        remote_screen_webcam_item(kRemoteScreenWebcamName, false, true, "", "10.0.0.5", 7130)
+            .has_value());
     // LAN mode with no address a browser could reach: registering would only mislead.
-    CHECK_FALSE(remote_screen_webcam_item(true, false, "", "", 7130).has_value());
+    CHECK_FALSE(
+        remote_screen_webcam_item(kRemoteScreenWebcamName, true, false, "", "", 7130).has_value());
 }
 
 TEST_CASE("select_lan_ipv4 skips 127.x, 169.254.x and IPv6", "[remote_screen][webcam]") {
@@ -101,7 +110,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "mock: post then list round-trips; delete remo
         return std::find(v.begin(), v.end(), n) != v.end();
     };
 
-    auto item = remote_screen_webcam_item(true, false, "/helixscreen/screen/", "", 7130);
+    auto item = remote_screen_webcam_item(kRemoteScreenWebcamName, true, false,
+                                          "/helixscreen/screen/", "", 7130);
     REQUIRE(item.has_value());
     bool posted = false;
     api.timelapse().post_webcam(*item, [&] { posted = true; }, [](const MoonrakerError&) {});
@@ -118,4 +128,31 @@ TEST_CASE_METHOD(LVGLTestFixture, "mock: post then list round-trips; delete remo
         kRemoteScreenWebcamName, [&] { deleted = true; }, [](const MoonrakerError&) {});
     CHECK(deleted);
     CHECK_FALSE(has(names(), kRemoteScreenWebcamName));
+}
+
+TEST_CASE("webcam name: the plain name on this host, the host name added for another's Moonraker",
+          "[remote_screen][webcam]") {
+    // Two screens on one Moonraker must not overwrite each other's entry.
+    CHECK(remote_screen_webcam_name(true, "helixpi") == kRemoteScreenWebcamName);
+    CHECK(remote_screen_webcam_name(false, "helixpi") ==
+          std::string(kRemoteScreenWebcamName) + " (helixpi)");
+    CHECK(remote_screen_webcam_name(false, "") == kRemoteScreenWebcamName);
+}
+
+TEST_CASE("is_own_screen_webcam also matches another screen's entry", "[remote_screen][webcam]") {
+    WebcamInfo other_screen;
+    other_screen.name = std::string(kRemoteScreenWebcamName) + " (helixpi)";
+    CHECK(webcam::is_own_screen_webcam(other_screen));
+    WebcamInfo lookalike;
+    lookalike.name = "HelixScreen Screenshots";
+    CHECK_FALSE(webcam::is_own_screen_webcam(lookalike));
+}
+
+TEST_CASE("the nginx route only applies when Moonraker is on this host",
+          "[remote_screen][webcam]") {
+    // The route is this host's nginx guarding this host's Moonraker; a screen pointed at
+    // another printer faces the LAN with pairing instead.
+    CHECK(remote_screen_effective_route(false, "/helixscreen/screen/") == "/helixscreen/screen/");
+    CHECK(remote_screen_effective_route(true, "/helixscreen/screen/").empty());
+    CHECK(remote_screen_effective_route(false, "").empty());
 }
