@@ -635,7 +635,61 @@ FilamentCatalog::products_in_family(const std::string& brand, const std::string&
             out.push_back(&p);
         }
     }
+    sort_for_display(out, family);
     return out;
+}
+
+void sort_for_display(std::vector<const EffectiveFilament*>& products, const std::string& family) {
+    const std::string family_lc = tio::to_lower(family);
+    // 0 = named exactly the family, 1 = the family's name extended with no space
+    // (a grade like "+" or a fill like "-CF"), 2 = everything else.
+    auto tier_of = [&](const EffectiveFilament* p) {
+        const std::string name_lc = tio::to_lower(p->name);
+        if (name_lc == family_lc)
+            return 0;
+        if (name_lc.size() > family_lc.size() &&
+            name_lc.compare(0, family_lc.size(), family_lc) == 0 &&
+            name_lc[family_lc.size()] != ' ')
+            return 1;
+        return 2;
+    };
+    // Tier 2 groups base-type products ahead of each variant type's own run.
+    auto variant_key = [&](const EffectiveFilament* p) -> std::string {
+        std::string type_lc = tio::to_lower(p->type);
+        return type_lc == family_lc ? std::string{} : type_lc;
+    };
+    // Within a run: the product named its own type, then the rest, then
+    // "Support...".
+    auto rank_of = [](const EffectiveFilament* p) {
+        const std::string name_lc = tio::to_lower(p->name);
+        if (name_lc == tio::to_lower(p->type))
+            return 0;
+        if (name_lc.rfind("support", 0) == 0)
+            return 2;
+        return 1;
+    };
+    std::stable_sort(products.begin(), products.end(),
+                     [&](const EffectiveFilament* a, const EffectiveFilament* b) {
+                         const int ta = tier_of(a);
+                         const int tb = tier_of(b);
+                         if (ta != tb)
+                             return ta < tb;
+                         if (ta == 0)
+                             return false;
+                         if (ta == 2) {
+                             const std::string ka = variant_key(a);
+                             const std::string kb = variant_key(b);
+                             if (ka != kb)
+                                 return ka < kb;
+                             const int ra = rank_of(a);
+                             const int rb = rank_of(b);
+                             if (ra != rb)
+                                 return ra < rb;
+                             if (ra != 1)
+                                 return false;
+                         }
+                         return tio::to_lower(a->name) < tio::to_lower(b->name);
+                     });
 }
 
 } // namespace helix::printer

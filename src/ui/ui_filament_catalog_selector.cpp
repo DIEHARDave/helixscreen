@@ -552,50 +552,14 @@ FilamentCatalogSelector::ordered_products_for(const std::string& vendor,
             products.push_back(p);
     }
 
+    // Display order is the catalog's shared rule; starred rows then float
+    // above it, the quick-access payoff of starring, keeping that order among
+    // themselves.
+    helix::printer::sort_for_display(products, family);
     const std::set<std::string> starred(favorite_ids.begin(), favorite_ids.end());
-    const std::string family_lc = helix::text_io::to_lower(family);
-    // Variant grouping key: base-type products ("" sorts first) cluster ahead of
-    // variants, and each variant type ("ASA-CF", "ASA-GF") forms its own
-    // contiguous run so a heading reads as base-then-variants rather than one
-    // interleaved alphabetical soup.
-    auto variant_key = [&](const helix::printer::EffectiveFilament* p) -> std::string {
-        std::string type_lc = helix::text_io::to_lower(p->type);
-        return type_lc == family_lc ? std::string{} : type_lc;
-    };
-    // Within a variant run: 0 = the plain material whose name is just the type,
-    // 1 = everything else (alphabetical), 2 = "Support..." (sunk to the bottom,
-    // file order preserved).
-    auto rank_of = [&](const helix::printer::EffectiveFilament* p) -> int {
-        std::string name_lc = helix::text_io::to_lower(p->name);
-        if (name_lc == helix::text_io::to_lower(p->type))
-            return 0;
-        if (name_lc.rfind("support", 0) == 0)
-            return 2;
-        return 1;
-    };
-    std::stable_sort(products.begin(), products.end(),
-                     [&](const helix::printer::EffectiveFilament* a,
-                         const helix::printer::EffectiveFilament* b) {
-                         // Starred rows float above every unstarred run — the
-                         // quick-access payoff of starring — and keep the
-                         // display ranking among themselves.
-                         const bool fa = starred.count(a->id) > 0;
-                         const bool fb = starred.count(b->id) > 0;
-                         if (fa != fb)
-                             return fa;
-                         std::string ka = variant_key(a);
-                         std::string kb = variant_key(b);
-                         if (ka != kb)
-                             return ka < kb;
-                         int ra = rank_of(a);
-                         int rb = rank_of(b);
-                         if (ra != rb)
-                             return ra < rb;
-                         if (ra != 1)
-                             return false; // stable within ranks 0 and 2
-                         return helix::text_io::to_lower(a->name) <
-                                helix::text_io::to_lower(b->name);
-                     });
+    std::stable_partition(
+        products.begin(), products.end(),
+        [&](const helix::printer::EffectiveFilament* p) { return starred.count(p->id) > 0; });
     return products;
 }
 

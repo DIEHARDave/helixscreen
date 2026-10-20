@@ -164,6 +164,44 @@ TEST_CASE_METHOD(HelixTestFixture, "products_in_family scopes to brand and mater
     CHECK(cat.products_in_family("eSUN", "PETG+HF").size() == 1);
 }
 
+TEST_CASE("product display order: base, then names extending it, then the rest",
+          "[catalog][edit-spool][ordering]") {
+    using helix::printer::EffectiveFilament;
+    auto make = [](const char* name, const char* type) {
+        EffectiveFilament f;
+        f.id = name;
+        f.brand = "SUNLU";
+        f.name = name;
+        f.type = type;
+        return f;
+    };
+    std::vector<EffectiveFilament> owned{
+        make("Wood PLA", "PLA"),   make("PLA Matte", "PLA"), make("PLA+ 2.0", "PLA"),
+        make("Silk PLA+", "PLA"),  make("PLA+", "PLA"),      make("Support for PLA", "PLA"),
+        make("PLA Marble", "PLA"), make("PLA", "PLA"),       make("PLA-CF", "PLA-CF")};
+    std::vector<const EffectiveFilament*> products;
+    for (const auto& f : owned)
+        products.push_back(&f);
+
+    helix::printer::sort_for_display(products, "PLA");
+
+    std::vector<std::string> names;
+    for (const auto* p : products)
+        names.push_back(p->name);
+    CHECK(names == std::vector<std::string>{"PLA", "PLA+", "PLA+ 2.0", "PLA-CF", "PLA Marble",
+                                            "PLA Matte", "Silk PLA+", "Wood PLA",
+                                            "Support for PLA"});
+}
+
+TEST_CASE_METHOD(HelixTestFixture, "products_in_family lists in display order",
+                 "[catalog][edit-spool][ordering]") {
+    auto cat = load_edit_fixture();
+    const auto generic_pla = cat.products_in_family("Generic", "PLA");
+    REQUIRE(generic_pla.size() >= 2);
+    CHECK(generic_pla[0]->name == "PLA");
+    CHECK(generic_pla[1]->name == "PLA+");
+}
+
 TEST_CASE("recent_material_families keeps first-seen order", "[catalog][edit-spool]") {
     std::vector<SpoolInfo> spools{
         spool_with("eSUN", "PLA-CF"), spool_with("Polymaker", "Silk PLA"),

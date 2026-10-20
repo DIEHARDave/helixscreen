@@ -183,7 +183,7 @@ class FilamentCatalog {
     std::vector<std::string> brands_in_family(const std::string& family) const;
 
     /// The products @p brand sells in @p family — that brand's lines for that
-    /// material, catalog order. Case-insensitive on both arguments.
+    /// material, in sort_for_display() order. Case-insensitive on both arguments.
     std::vector<const EffectiveFilament*> products_in_family(const std::string& brand,
                                                              const std::string& family) const;
     std::vector<const EffectiveFilament*> products_for_brand(const std::string& brand) const;
@@ -208,5 +208,12 @@ class FilamentCatalog {
     std::unordered_map<std::string, std::unordered_map<std::string, size_t>> by_code_;
     void index();
 };
+
+/// Order @p products for display under the @p family heading (case-insensitive):
+/// the product named exactly the family ("PLA"), then names that extend it with
+/// no space ("PLA+", "PLA+ 2.0", "PLA-CF"), alphabetical; then everything else,
+/// base-type products ahead of each variant type's own run, alphabetical within
+/// a run with "Support..." last. Stable, so equal rows keep catalog order.
+void sort_for_display(std::vector<const EffectiveFilament*>& products, const std::string& family);
 
 } // namespace helix::printer
