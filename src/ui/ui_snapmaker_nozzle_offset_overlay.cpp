@@ -20,6 +20,8 @@
 #include "i_moonraker_client.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_error.h"
+#include "print_lifecycle_state.h"
+#include "printer_state.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -110,7 +112,12 @@ nozzle_offset::Runner::Hooks SnapmakerNozzleOffsetOverlay::make_hooks() {
                    nozzle_offset::Runner::Completion done) {
                 send(gcode, timeout_ms, std::move(done));
             },
-            [this]() { abort_probe(); }, [this]() { refresh(); }};
+            [this]() { abort_probe(); }, [this]() { refresh(); },
+            []() -> std::string {
+                const auto lifecycle = get_printer_state().print_state().get_print_lifecycle();
+                return job_holds_machine(lifecycle) ? lv_tr("Printer is busy with a print")
+                                                    : std::string();
+            }};
 }
 
 // ============================================================================

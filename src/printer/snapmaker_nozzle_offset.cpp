@@ -377,6 +377,15 @@ void Runner::start() {
     if (phase_ == Phase::Running || phase_ == Phase::AwaitingUser || phase_ == Phase::Finishing) {
         return;
     }
+    if (hooks_.start_refusal) {
+        std::string refused = hooks_.start_refusal();
+        if (!refused.empty()) {
+            spdlog::warn("[NozzleOffsetCal] Not starting: {}", refused);
+            error_ = std::move(refused);
+            set_phase(Phase::Failed);
+            return;
+        }
+    }
     ++run_;
     index_ = 0;
     error_.clear();
