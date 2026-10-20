@@ -195,6 +195,21 @@ TEST_CASE_METHOD(CapabilityFixture,
     CHECK_FALSE(event_hook_installed(dropdown, dead));
 }
 
+TEST_CASE_METHOD(CapabilityFixture,
+                 "Network settings drops its dropdown's language handler on cleanup",
+                 "[network_settings][wifi_country][teardown]") {
+    NetworkSettingsOverlay overlay;
+    lv_obj_t* root = open_overlay(overlay, std::make_unique<WifiBackendMock>());
+    lv_obj_t* dropdown = lv_obj_find_by_name(root, "wifi_country_dropdown");
+    REQUIRE(dropdown != nullptr);
+    REQUIRE(event_hook_installed(dropdown, &overlay));
+
+    // A closed overlay's tree lives on after cleanup(); its handler must not.
+    overlay.cleanup();
+    REQUIRE(lv_obj_is_valid(dropdown));
+    CHECK_FALSE(event_hook_installed(dropdown, &overlay));
+}
+
 TEST_CASE_METHOD(CapabilityFixture, "Picking a country in the dropdown sets it on the radio",
                  "[network_settings][wifi_country]") {
     helix::SystemSettingsManager::instance().set_wifi_country("");
