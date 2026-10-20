@@ -122,6 +122,43 @@ running_moonraker_root() {
     printf '%s' "${_rmd_root%/}"
 }
 
+# Print the value the running Moonraker's argv gives option @1 (its short
+# form) or @2 (its long form): the next argument, or what follows "=" or the
+# short flag in the same one. A long form may be abbreviated, as Python's
+# argparse accepts. Empty when no Moonraker runs or neither form appears.
+running_moonraker_arg() {
+    _rma_proc=$(running_moonraker_process) || return 0
+    _rma_proc="${_rma_proc%%
+*}"
+    tr '\000' '\n' < "$_rma_proc/cmdline" 2>/dev/null | awk -v s="$1" -v l="$2" '
+        function is_long(a) { return length(a) > 2 && index(l, a) == 1 }
+        take { print; exit }
+        $0 == s || is_long($0) { take = 1; next }
+        /^--[^=]+=/ { eq = index($0, "="); if (is_long(substr($0, 1, eq - 1))) { print substr($0, eq + 1); exit } }
+        length($0) > 2 && substr($0, 1, 2) == s { print substr($0, 3); exit }'
+}
+
+# Print the moonraker.conf the running Moonraker loads, as a path from here:
+# the file its -c names, else config/moonraker.conf under the data path its -d
+# names. Empty when no Moonraker runs, it names neither (it then loads its
+# user's ~/printer_data, which a caller finds by home), the path is relative,
+# or no file is there. On Creality K2 this is the only way to the answer:
+# procd starts Moonraker with -c /usr/share/moonraker/moonraker.conf.
+running_moonraker_conf() {
+    _rmc_conf=$(running_moonraker_arg -c --configfile)
+    if [ -z "$_rmc_conf" ]; then
+        _rmc_conf=$(running_moonraker_arg -d --datapath)
+        _rmc_conf="${_rmc_conf:+${_rmc_conf%/}/config/moonraker.conf}"
+    fi
+    case "$_rmc_conf" in
+        /*) ;;
+        *) return 0 ;;
+    esac
+    _rmc_conf="$(running_moonraker_root)$_rmc_conf"
+    [ -f "$_rmc_conf" ] && printf '%s' "$_rmc_conf"
+    return 0
+}
+
 # Print the running Moonraker's effective uid, then its groups (primary
 # first), space-separated. Empty when no Moonraker runs here.
 running_moonraker_ids() {

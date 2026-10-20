@@ -19,6 +19,11 @@ _HELIX_MOONRAKER_SOURCED=1
 #   points KLIPPER_CONFIG_DIR there for platform=cc1, so the dynamic probe below
 #   normally wins; the static entry is the safety net for a COSMOS box that was
 #   not detected as cc1 (forced --platform, future Elegoo model, etc.).
+# Creality K2 note:
+#   procd starts Moonraker with -c /usr/share/moonraker/moonraker.conf, which
+#   find_moonraker_conf reads from the running process. The static entry, last
+#   so no other layout's vendor copy can shadow its own conf, covers a K2 whose
+#   Moonraker is stopped.
 MOONRAKER_CONF_PATHS="
 /home/pi/printer_data/config/moonraker.conf
 /home/biqu/printer_data/config/moonraker.conf
@@ -30,6 +35,7 @@ MOONRAKER_CONF_PATHS="
 /usr/data/config/printer_data/config/moonraker.conf
 /usr/data/printer_data/config/moonraker.conf
 /etc/klipper/config/moonraker.conf
+/usr/share/moonraker/moonraker.conf
 "
 
 # Common Moonraker SOURCE roots (the checkout/package that holds the Python
@@ -189,6 +195,14 @@ find_moonraker_conf() {
             echo "$user_conf"
             return 0
         fi
+    fi
+
+    # The conf the running Moonraker loads, from its command line.
+    local loaded
+    loaded=$(running_moonraker_conf)
+    if [ -n "$loaded" ] && ! host_path_is_mod_owned "$loaded"; then
+        echo "$loaded"
+        return 0
     fi
 
     # Static fallback
