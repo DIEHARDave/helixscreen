@@ -3227,8 +3227,8 @@ AmsBackendHappyHare::get_endless_spool_capabilities() const {
 
 AmsError AmsBackendHappyHare::apply_endless_spool_enabled(bool enabled) {
     // Happy Hare persists the choice itself (mmu_state_enable_endless_spool).
-    return execute_gcode(std::string("MMU_ENDLESS_SPOOL ENABLE=") + (enabled ? "1" : "0") +
-                         " QUIET=1");
+    return send_endless_spool_switch(std::string("MMU_ENDLESS_SPOOL ENABLE=") +
+                                     (enabled ? "1" : "0") + " QUIET=1");
 }
 
 helix::printer::EndlessSpoolConfig AmsBackendHappyHare::get_endless_spool_config() const {
@@ -3956,15 +3956,20 @@ std::vector<helix::printer::DeviceAction> AmsBackendHappyHare::get_device_action
         }
     }
 
-    // If config hasn't loaded yet, disable all non-button actions
-    if (!config_defaults_.loaded) {
+    // Settings whose value comes from the configfile (and is written back with
+    // MMU_TEST_CONFIG) wait for it to load; live commands do not.
+    const bool config_loaded = config_defaults_.loaded;
+    auto config_backed = [](const DeviceAction& a) {
+        return a.type == ActionType::SLIDER || a.id == "sync_to_extruder" ||
+               a.id == "clog_detection";
+    };
+    if (!config_loaded) {
         for (auto& a : actions) {
-            if (a.type != ActionType::BUTTON) {
+            if (config_backed(a)) {
                 a.enabled = false;
                 a.disable_reason = TR_NOOP("Loading configuration...");
             }
         }
-        return actions;
     }
 
     // Helper: effective float value (user override > config default)
@@ -3975,6 +3980,9 @@ std::vector<helix::printer::DeviceAction> AmsBackendHappyHare::get_device_action
 
     // Overlay effective values onto actions
     for (auto& a : actions) {
+        if (!config_loaded && config_backed(a)) {
+            continue;
+        }
         // --- Speed sliders ---
         if (a.id == "gear_from_buffer_speed") {
             a.current_value = eff_f(user_overrides_.gear_from_buffer_speed,

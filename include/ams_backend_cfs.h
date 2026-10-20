@@ -871,6 +871,9 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// SUCCESS for stock schemas and the identified Fork dialect; returns
     /// not_supported for an unidentified Flat implementation.
     [[nodiscard]] AmsError reject_if_flat_schema(const char* operation) const;
+    /// Whether the box speaks a command set we have verified: any non-flat box,
+    /// or a flat one paired with the Fork dialect.
+    [[nodiscard]] bool flat_schema_verified() const;
 
     /// Stock-dialect bypass derivation: filament at the toolhead with no
     /// active CFS lane means the user hand-fed the external holder — map

@@ -109,6 +109,8 @@ class AmsDeviceSectionDetailOverlay : public OverlayBase {
     void before_show() override;
 
   private:
+    friend class AmsDeviceSectionDetailOverlayTestAccess;
+
     /// The always-1 subject a disabled action's row names as its `disabled` subject.
     static constexpr const char* kActionDisabledSubject = "ams_device_action_disabled";
 
@@ -192,6 +194,13 @@ class AmsDeviceSectionDetailOverlay : public OverlayBase {
  *        tool it applies to in the app's one tool-label form ("Tool 1 (T0)").
  */
 [[nodiscard]] std::string device_action_label(const helix::printer::DeviceAction& action);
+
+/**
+ * @brief The bind_state_if expression device_action_button greys a button with,
+ *        beyond moves_machine: for a motion action still allowed on a paused
+ *        print, "motion blocked and not paused"; otherwise one that is never true.
+ */
+[[nodiscard]] std::string device_action_disabled_cond(const helix::printer::DeviceAction& action);
 
 inline AmsDeviceSectionDetailOverlay& get_ams_device_section_detail_overlay() {
     return lazy_global<AmsDeviceSectionDetailOverlay>("AmsDeviceSectionDetailOverlay");

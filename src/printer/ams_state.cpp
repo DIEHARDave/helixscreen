@@ -1585,6 +1585,15 @@ void AmsState::on_backend_event(int backend_index, const std::string& event,
         // User intervention needed
         queue_sync(true, -1);
         spdlog::warn("[AMS State] Attention required - {}", data);
+    } else if (event == AmsBackend::kEventEndlessSpoolRefused) {
+        // The switch flipped itself on the tap; the backend's state never moved,
+        // so an unchanged set would not notify. Re-announce it.
+        helix::ui::queue_update("AmsState::endless_spool_refused", []() {
+            if (ams_state_detail::shutting_down()) {
+                return;
+            }
+            lv_subject_notify(AmsState::instance().get_endless_spool_on_subject());
+        });
     }
 }
 

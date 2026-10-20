@@ -2229,6 +2229,7 @@
   <translation tag="Not Now" it="Non ora"/>
   <translation tag="Not Supported" it="Non supportato"/>
   <translation tag="Not available here. Update from a terminal." it="Non disponibile qui. Aggiorna da un terminale."/>
+  <translation tag="Not available now" it="Non disponibile ora"/>
   <translation tag="Not available on Android" it="Non disponibile su Android"/>
   <translation tag="Not calibrated" it="Non calibrato"/>
   <translation tag="Not configured" it="Non configurato"/>
@@ -4072,7 +4073,6 @@
   <translation tag="you have" it="hai"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" it="{:.0f}-{:.0f} Hz · circa {} min"/>
   <translation tag="{} ({})" it="{} ({})"/>
-  <translation tag="{} - {}" it="{} - {}"/>
   <translation tag="{} Extruders" it="{} estrusori"/>
   <translation tag="{} Hardware Issues" it="{} problemi hardware"/>
   <translation tag="{} Issues Detected" it="{} problemi rilevati"/>

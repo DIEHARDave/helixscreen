@@ -231,7 +231,7 @@ const std::vector<Row>& rows() {
          "auto_color_map", true, SETB(sm().set_auto_color_map), GET(sm().get_auto_color_map),
          SUBJ(sm().subject_auto_color_map)},
         {"unload_after_print", Mgr::Settings, true, "ams/unload_after_print", true, 0, 0, 1,
-         "unload_after_print", true, SETB(sm().set_unload_after_print),
+         "afc_unload_after_print", true, SETB(sm().set_unload_after_print),
          GET(sm().get_unload_after_print), SUBJ(sm().subject_unload_after_print)},
         {"end_of_print_unload_tools", Mgr::Settings, true, "ams/end_of_print_unload_tools", false,
          0, 0, 255, "end_of_print_unload_tools", true, SETI(sm().set_end_of_print_unload_tools),

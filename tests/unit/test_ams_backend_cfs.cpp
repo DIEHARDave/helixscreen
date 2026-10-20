@@ -112,6 +112,17 @@ class CfsRemapHelper : public AmsBackendCfs {
         return AmsErrorHelper::success();
     }
 
+    // The completion form (the Endless Spool switch) captures into the same list.
+    AmsError execute_gcode(const std::string& gcode, std::function<void()> on_complete,
+                           std::function<void(const MoonrakerError&)> /*on_error*/,
+                           bool /*silent*/) override {
+        captured.push_back(gcode);
+        if (on_complete) {
+            on_complete();
+        }
+        return AmsErrorHelper::success();
+    }
+
     // Expose protected firmware-writeback helper for direct test calls.
     // push_slot_identity_to_firmware is protected (called from apply_user_edit
     // but not part of the public IAmsBackend surface).
@@ -440,9 +451,15 @@ class CfsAutoRefillHelper : public CfsRemapHelper {
   public:
     using CfsRemapHelper::execute_gcode;
 
-    AmsError execute_gcode(const std::string& gcode, std::function<void()> on_complete) override {
+    AmsError execute_gcode(const std::string& gcode, std::function<void()> on_complete,
+                           std::function<void(const MoonrakerError&)> on_error,
+                           bool /*silent*/) override {
         captured.push_back(gcode);
-        if (!reject && on_complete) {
+        if (reject) {
+            if (on_error) {
+                on_error(MoonrakerError{});
+            }
+        } else if (on_complete) {
             on_complete();
         }
         return AmsErrorHelper::success();

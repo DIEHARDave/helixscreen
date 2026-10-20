@@ -2465,12 +2465,16 @@ PathSegment AmsBackendCfs::infer_error_segment() const {
 
 // --- Operations ---
 
-AmsError AmsBackendCfs::reject_if_flat_schema(const char* operation) const {
+bool AmsBackendCfs::flat_schema_verified() const {
     // A flat box paired with the Fork dialect is fully driveable — the command
     // set is verified against the module's own registration table. Only a flat
     // box we cannot identify stays gated: emitting the stock CR_BOX_*/BOX_*
     // sequences at an unknown module sends commands it may not define.
-    if (schema_ != CfsSchema::Flat || macro_variant_ == CfsMacroVariant::Fork) {
+    return schema_ != CfsSchema::Flat || macro_variant_ == CfsMacroVariant::Fork;
+}
+
+AmsError AmsBackendCfs::reject_if_flat_schema(const char* operation) const {
+    if (flat_schema_verified()) {
         return AmsErrorHelper::success();
     }
     spdlog::warn("[AMS CFS] {} refused — unrecognized flat box module, no verified dialect",
@@ -4414,7 +4418,7 @@ helix::printer::EndlessSpoolCapabilities AmsBackendCfs::get_endless_spool_capabi
 
     // The box takes an explicit on/off, except a flat module with no verified
     // dialect, where reject_if_flat_schema() refuses the setter.
-    const bool switchable = schema_ != CfsSchema::Flat || macro_variant_ == CfsMacroVariant::Fork;
+    const bool switchable = flat_schema_verified();
     return {.availability = EndlessSpoolAvailability::Available,
             .enabled = enabled,
             .editability = EndlessSpoolEditability::ReadOnly,
@@ -4438,7 +4442,7 @@ AmsError AmsBackendCfs::apply_endless_spool_enabled(bool enabled) {
     // dialect without the command or a rejected send must leave the cache on
     // the box's last word.
     auto token = lifetime_.token();
-    return execute_gcode(setter + (enabled ? "1" : "0"), [this, token, enabled]() {
+    return send_endless_spool_switch(setter + (enabled ? "1" : "0"), [this, token, enabled]() {
         token.defer("AmsBackendCfs::auto_refill_sent",
                     [this, enabled]() { record_auto_refill_sent(enabled); });
     });

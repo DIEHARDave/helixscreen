@@ -63,8 +63,8 @@ std::vector<DeviceAction> hh_default_actions() {
         DA::button("spoolman_refresh", "Refresh Spoolman", "accessories"),
 
         // --- Maintenance section ---
-        DA::button("load_extruder", "Load Extruder", "maintenance").with_machine_motion(),
-        DA::button("unload_extruder", "Unload Extruder", "maintenance").with_machine_motion(),
+        DA::button("load_extruder", "Load Extruder", "maintenance").with_machine_motion(true),
+        DA::button("unload_extruder", "Unload Extruder", "maintenance").with_machine_motion(true),
         DA::button("test_grip", "Test Grip", "maintenance"),
         DA::button("test_load", "Test Load", "maintenance").with_machine_motion(),
         DA::button("test_move", "Test Move", "maintenance").with_machine_motion(),

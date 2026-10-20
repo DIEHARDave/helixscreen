@@ -495,3 +495,22 @@ TEST_CASE("a run is live from start until it ends", "[snapmaker][nozzle_offset][
     // A runner destroyed mid-run stops counting.
     REQUIRE_FALSE(run_live());
 }
+
+TEST_CASE("a run refused at start sends nothing and says why", "[snapmaker][nozzle_offset]") {
+    std::vector<std::string> sent;
+    std::string refusal = "Printer is busy with a print";
+    Runner runner{Runner::Hooks{
+        [&](const std::string& gcode, uint32_t, Runner::Completion) { sent.push_back(gcode); },
+        nullptr, nullptr, [&]() { return refusal; }}};
+    runner.start();
+    CHECK(runner.phase() == Runner::Phase::Failed);
+    CHECK(runner.error() == "Printer is busy with a print");
+    CHECK(sent.empty());
+
+    refusal.clear();
+    runner.reset();
+    runner.start();
+    CHECK(runner.phase() == Runner::Phase::Running);
+    CHECK_FALSE(sent.empty());
+    runner.cancel();
+}

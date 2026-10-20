@@ -2453,6 +2453,7 @@ translations:
   Not Now: Agora Não
   Not Supported: 'Não suportado'
   Not available here. Update from a terminal.: Não disponível aqui. Atualize a partir de um terminal.
+  Not available now: Indisponível no momento
   Not available on Android: Não disponível no Android
   Not calibrated: Não calibrado
   Not configured: Não configurado
@@ -4506,7 +4507,6 @@ translations:
   you have: você tem
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · cerca de {} min'
   '{} ({})': '{} ({})'
-  '{} - {}': "{} - {}"
   '{} Extruders': '{} extrusoras'
   '{} Hardware Issues': '{} problemas de hardware'
   '{} Issues Detected': '{} problemas detectados'

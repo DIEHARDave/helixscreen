@@ -82,4 +82,15 @@ template <typename T>
                           fmt::format(lv_tr("Provide a {}"), lv_tr(label)))};
 }
 
+/// The macro a macro-picker dropdown chose (kAutoMacro or a macro name), refused
+/// when missing, not a string, or empty.
+[[nodiscard]] inline std::pair<std::string, AmsError>
+device_action_macro_choice(const std::any& value) {
+    auto [choice, err] = device_action_value<std::string>(value, "macro");
+    if (err.success() && choice.empty()) {
+        err = AmsErrorHelper::invalid_parameter("No macro selected");
+    }
+    return {std::move(choice), std::move(err)};
+}
+
 } // namespace helix::printer

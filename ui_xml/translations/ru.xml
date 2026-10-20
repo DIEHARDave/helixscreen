@@ -2274,6 +2274,7 @@
   <translation tag="Not Now" ru="Не сейчас"/>
   <translation tag="Not Supported" ru="Не поддерживается"/>
   <translation tag="Not available here. Update from a terminal." ru="Здесь недоступно. Обновите через терминал."/>
+  <translation tag="Not available now" ru="Сейчас недоступно"/>
   <translation tag="Not available on Android" ru="Недоступно на Android"/>
   <translation tag="Not calibrated" ru="Не откалиброван"/>
   <translation tag="Not configured" ru="Не настроено"/>
@@ -4135,7 +4136,6 @@
   <translation tag="you have" ru="у вас"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" ru="{:.0f}-{:.0f} Гц · примерно {} мин"/>
   <translation tag="{} ({})" ru="{} ({})"/>
-  <translation tag="{} - {}" ru="{} - {}"/>
   <translation tag="{} Extruders" ru="Экструдеров: {}"/>
   <translation tag="{} Hardware Issues" ru="Проблем с оборудованием: {}"/>
   <translation tag="{} Issues Detected" ru="Обнаружено проблем: {}"/>

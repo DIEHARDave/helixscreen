@@ -5,6 +5,7 @@
 
 #include "ui_toast_manager.h"
 
+#include "ams_device_action_value.h"
 #include "ams_device_sections.h"
 #include "ams_error.h"
 #include "ams_fault_event.h"
@@ -2440,34 +2441,33 @@ bool AmsBackendToolChanger::feeder_open() const {
 
 AmsError AmsBackendToolChanger::do_execute_device_action(const std::string& action_id,
                                                          const std::any& value) {
-    (void)value;
     if (feeder_.present && (action_id == "open_feeder" || action_id == "close_feeder")) {
         return set_feeder_open(action_id == "open_feeder");
     }
     if (feeder_.present &&
         (action_id == "feeder_open_macro" || action_id == "feeder_close_macro")) {
-        const auto* chosen = std::any_cast<std::string>(&value);
-        if (!chosen || chosen->empty()) {
-            return AmsErrorHelper::invalid_parameter("No macro selected");
+        const auto [chosen, err] = printer::device_action_macro_choice(value);
+        if (!err) {
+            return err;
         }
         const bool is_open = (action_id == "feeder_open_macro");
         // "auto" restores whatever the add-on detected for this machine, so a
         // user who migrates later picks up the new native command without
         // touching this again.
         const std::string resolved = helix::resolve_macro_choice(
-            *chosen, is_open ? feeder_.detected_open : feeder_.detected_close);
+            chosen, is_open ? feeder_.detected_open : feeder_.detected_close);
         {
             std::lock_guard<std::mutex> lock(mutex_);
             (is_open ? feeder_.open_gcode : feeder_.close_gcode) = resolved;
-            (is_open ? feeder_.open_choice : feeder_.close_choice) = *chosen;
+            (is_open ? feeder_.open_choice : feeder_.close_choice) = chosen;
         }
         if (is_open) {
-            helix::SettingsManager::instance().set_feeder_open_macro(*chosen);
+            helix::SettingsManager::instance().set_feeder_open_macro(chosen);
         } else {
-            helix::SettingsManager::instance().set_feeder_close_macro(*chosen);
+            helix::SettingsManager::instance().set_feeder_close_macro(chosen);
         }
         spdlog::info("{} Feeder {} macro set to {} (sends {})", backend_log_tag(),
-                     is_open ? "open" : "close", *chosen, resolved);
+                     is_open ? "open" : "close", chosen, resolved);
         return AmsErrorHelper::success();
     }
     return AmsErrorHelper::not_supported("Device action: " + action_id);

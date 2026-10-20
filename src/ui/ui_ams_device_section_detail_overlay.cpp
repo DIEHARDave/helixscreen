@@ -24,6 +24,7 @@
 #include "ams_types.h"
 #include "display_numbering.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "print_lifecycle_state.h"
 #include "static_panel_registry.h"
 #include "ui/ui_widget_helpers.h"
 
@@ -184,11 +185,21 @@ void AmsDeviceSectionDetailOverlay::refresh() {
 std::string device_action_label(const helix::printer::DeviceAction& action) {
     std::string label = lv_tr(action.label.c_str());
     if (action.tool_index >= 0) {
-        label = fmt::format(lv_tr("{} - {}"), label,
+        // Punctuation only, so the format stays untranslated: a translated format whose
+        // placeholders differ would throw, and the firmware builds without exceptions.
+        label = fmt::format("{} - {}", label,
                             active_tool_label(tool_label(action.tool_index), action.tool_index,
                                               ToolLabelForm::Full));
     }
     return label;
+}
+
+std::string device_action_disabled_cond(const helix::printer::DeviceAction& action) {
+    if (action.moves_machine && action.allowed_while_paused) {
+        return fmt::format("machine_motion_blocked eq 1 and print_lifecycle ne {}",
+                           static_cast<int>(PrintState::Paused));
+    }
+    return "0 eq 1";
 }
 
 namespace {
@@ -352,10 +363,20 @@ void AmsDeviceSectionDetailOverlay::create_button(lv_obj_t* row,
     spdlog::debug("[{}] Creating button in row: {}", get_name(), action.label);
 
     const std::string label = device_action_label(action);
-    const char* attrs[] = {"text",          label.c_str(),
-                           "icon",          action.icon.c_str(),
-                           "disabled",      action.enabled ? "false" : "true",
-                           "moves_machine", action.moves_machine ? "true" : "false",
+    // A motion action a paused print may still run greys only while the printer
+    // is held some other way: printing, preparing, or spools on the bed.
+    const bool paused_ok = action.moves_machine && action.allowed_while_paused;
+    const std::string disabled_cond = device_action_disabled_cond(action);
+    const char* attrs[] = {"text",
+                           label.c_str(),
+                           "icon",
+                           action.icon.c_str(),
+                           "disabled_subject",
+                           action.enabled ? "" : kActionDisabledSubject,
+                           "moves_machine",
+                           action.moves_machine && !paused_ok ? "true" : "false",
+                           "disabled_cond",
+                           disabled_cond.c_str(),
                            nullptr};
     lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(row, "device_action_button", attrs));
     if (!btn) {
@@ -367,8 +388,13 @@ void AmsDeviceSectionDetailOverlay::create_button(lv_obj_t* row,
         lv_obj_set_name(btn_label, fmt::format("{}_label", action.id).c_str());
     }
     if (!action.enabled && !action.disable_reason.empty()) {
-        spdlog::debug("[{}] Action '{}' disabled: {}", get_name(), action.id,
-                      action.disable_reason);
+        // Said under the row, as a setting row says it in its description.
+        const std::string note = fmt::format("{}: {}", label, lv_tr(action.disable_reason.c_str()));
+        const char* note_attrs[] = {"text", note.c_str(), nullptr};
+        if (lv_obj_t* note_obj = static_cast<lv_obj_t*>(
+                lv_xml_create(lv_obj_get_parent(row), "device_action_note", note_attrs))) {
+            lv_obj_set_name(note_obj, fmt::format("{}_reason", action.id).c_str());
+        }
     }
 }
 
@@ -469,7 +495,10 @@ void AmsDeviceSectionDetailOverlay::on_action_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[AmsDeviceSectionDetailOverlay] on_action_clicked");
 
     auto& overlay = get_ams_device_section_detail_overlay();
-    if (const auto* action = overlay.action_for_event(e)) {
+    if (const auto* action = overlay.action_for_event(e); action && !action->enabled) {
+        spdlog::warn("[AmsDeviceSectionDetailOverlay] Ignoring unavailable action '{}'",
+                     action->id);
+    } else if (action) {
         spdlog::debug("[AmsDeviceSectionDetailOverlay] Action clicked: {}", action->id);
         // An action that names a guided flow starts it. The flow owns whatever
         // confirmation the action needs, so a flow that is not registered must
@@ -501,7 +530,14 @@ void AmsDeviceSectionDetailOverlay::on_toggle_changed(lv_event_t* e) {
 
     auto* sw = static_cast<lv_obj_t*>(lv_event_get_target(e));
     auto& overlay = get_ams_device_section_detail_overlay();
-    if (const auto* action = overlay.action_for_event(e)) {
+    if (const auto* action = overlay.action_for_event(e); action && !action->enabled) {
+        // An unavailable toggle never reaches the backend; put the switch back.
+        if (lv_obj_has_state(sw, LV_STATE_CHECKED)) {
+            lv_obj_remove_state(sw, LV_STATE_CHECKED);
+        } else {
+            lv_obj_add_state(sw, LV_STATE_CHECKED);
+        }
+    } else if (action) {
         const bool new_value = lv_obj_has_state(sw, LV_STATE_CHECKED);
         spdlog::debug("[AmsDeviceSectionDetailOverlay] Toggle changed: {} = {}", action->id,
                       new_value);
@@ -582,6 +618,12 @@ void AmsDeviceSectionDetailOverlay::on_keypad_value(float value, void* /*user_da
     auto& overlay = get_ams_device_section_detail_overlay();
     for (const auto& action : overlay.cached_actions_) {
         if (action.id == overlay.keypad_action_id_) {
+            // A refresh while the keypad was open can have made it unavailable.
+            if (!action.enabled) {
+                spdlog::info("[AmsDeviceSectionDetailOverlay] Keypad value for '{}' dropped: {}",
+                             action.id, action.disable_reason);
+                return;
+            }
             const helix::printer::DeviceAction typed = action;
             overlay.apply_slider_value(typed, value);
             return;

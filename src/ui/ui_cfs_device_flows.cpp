@@ -14,6 +14,7 @@
 #include "ams_backend_cfs.h"
 #include "ams_state.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "static_panel_registry.h"
 
 #include <spdlog/fmt/fmt.h>
 
@@ -57,7 +58,10 @@ void set_cutter_row_state(const char* status_text, bool busy) {
     lv_subject_set_int(&s_cfs_cutter_phase, busy ? 1 : (status_text[0] != '\0' ? 2 : 0));
     // The backend greys both calibration actions while one runs; the section
     // shows that once rebuilt from them.
-    get_ams_device_section_detail_overlay().refresh();
+    // Never builds the overlay: a completion can land during teardown.
+    if (auto* overlay = lazy_global_if_exists<AmsDeviceSectionDetailOverlay>()) {
+        overlay->refresh();
+    }
 }
 
 /// Cutter calibration confirm: BOX_FIND_CUT_POS homes X/Y and takes about a

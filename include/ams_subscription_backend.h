@@ -101,9 +101,10 @@ class AmsSubscriptionBackend : public AmsBackend {
     /// the base not_supported refusal.
     AmsError load_filament_batch(const std::vector<int>& slots) final;
 
-    /// Runs a device action through do_execute_device_action(), first refusing one
-    /// get_device_actions() marks moves_machine while a print holds the printer
-    /// (refuse_motion_if_printing()), so no backend can skip the rule.
+    /// Runs a device action through do_execute_device_action(). Refuses an id
+    /// get_device_actions() does not list now or lists disabled, and one it marks moves_machine
+    /// while a print holds the printer (refuse_motion_if_printing(), or refuse_if_printing() for
+    /// one allowed_while_paused), so no backend can skip the rule.
     AmsError execute_device_action(const std::string& action_id, const std::any& value = {}) final;
     AmsError unload_filament_batch(const std::vector<int>& slots) final;
 
@@ -374,6 +375,12 @@ class AmsSubscriptionBackend : public AmsBackend {
     /// not: what a `moves_machine` control greys for. AmsErrorHelper::busy_with_print()
     /// when refused; success when api_ is null (print state unknown).
     AmsError refuse_motion_if_printing() const;
+
+    /// Send an Endless Spool on/off command. A rejection Klipper reports after
+    /// the send emits kEventEndlessSpoolRefused, so a switch the user flipped
+    /// returns to the backend's state. @p on_sent runs once Klipper has run it.
+    AmsError send_endless_spool_switch(const std::string& gcode,
+                                       std::function<void()> on_sent = {});
 
     /// Backend implementation of execute_device_action(), reached only after the
     /// moves_machine gate has passed. Default refuses.

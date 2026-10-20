@@ -200,7 +200,7 @@ class Runner {
         AwaitingUser, ///< prompt() names what the user must do, then confirm()
         Finishing,    ///< the last probe passed; EXIT is in flight
         Done,
-        Failed, ///< error() says why; EXIT was sent
+        Failed, ///< error() says why; EXIT was sent if a step ran
         Cancelled,
     };
 
@@ -214,6 +214,10 @@ class Runner {
         std::function<void()> abort_probe;
         /// Called after every phase or step change.
         std::function<void()> changed;
+        /// Why a run may not start now (a print holds the printer), or empty.
+        /// Optional; a refused start() ends Failed with this as error() and
+        /// sends nothing.
+        std::function<std::string()> start_refusal;
     };
 
     explicit Runner(Hooks hooks);

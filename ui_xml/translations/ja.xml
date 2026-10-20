@@ -2229,6 +2229,7 @@
   <translation tag="Not Now" ja="今はしない"/>
   <translation tag="Not Supported" ja="サポートされていません"/>
   <translation tag="Not available here. Update from a terminal." ja="ここでは利用できません。ターミナルから更新してください。"/>
+  <translation tag="Not available now" ja="現在は利用できません"/>
   <translation tag="Not available on Android" ja="Androidでは利用できません"/>
   <translation tag="Not calibrated" ja="キャリブレーション未実施"/>
   <translation tag="Not configured" ja="未設定"/>
@@ -4072,7 +4073,6 @@
   <translation tag="you have" ja="現在は"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" ja="{:.0f}-{:.0f} Hz · 約{}分"/>
   <translation tag="{} ({})" ja="{}（{}）"/>
-  <translation tag="{} - {}" ja="{} - {}"/>
   <translation tag="{} Extruders" ja="{} エクストルーダー"/>
   <translation tag="{} Hardware Issues" ja="ハードウェアの問題 {} 件"/>
   <translation tag="{} Issues Detected" ja="問題を {} 件検出"/>

@@ -23,6 +23,7 @@
 #include "ams_device_action_value.h"
 #include "ams_error.h"
 #include "ams_state.h"
+#include "helix-xml/src/xml/lv_xml_expr.h"
 #include "static_panel_registry.h"
 #include "theme_manager.h"
 
@@ -39,6 +40,18 @@ using helix::printer::ActionType;
 using helix::printer::DeviceAction;
 using helix::printer::DeviceSection;
 using helix::ui::get_ams_device_section_detail_overlay;
+
+namespace helix::ui {
+class AmsDeviceSectionDetailOverlayTestAccess {
+  public:
+    static void open_keypad_for(AmsDeviceSectionDetailOverlay& o, const std::string& id) {
+        o.keypad_action_id_ = id;
+    }
+    static void keypad_value(float value) {
+        AmsDeviceSectionDetailOverlay::on_keypad_value(value, nullptr);
+    }
+};
+} // namespace helix::ui
 
 namespace {
 
@@ -402,4 +415,108 @@ TEST_CASE_METHOD(GuidedFlowFixture, "an enabled action's row and label read as e
     lv_obj_t* label = lv_obj_find_by_name(lv_obj_find_by_name(root, "off"), "label");
     CHECK(lv_color_to_u32(lv_obj_get_style_text_color(label, LV_PART_MAIN)) !=
           lv_color_to_u32(text));
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture,
+                 "a motion action allowed while paused greys only while printing",
+                 "[ams][device-section]") {
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    lv_obj_t* btn =
+        open_section_and_find({DeviceAction::button("load_extruder", "Load Extruder", "calibration")
+                                   .with_machine_motion(true)},
+                              "load_extruder");
+    CHECK_FALSE(lv_obj_has_state(btn, LV_STATE_DISABLED));
+    helix::test::set_wire_state(state(), PrintJobState::PRINTING);
+    settle();
+    CHECK(lv_obj_has_state(btn, LV_STATE_DISABLED));
+    helix::test::set_wire_state(state(), PrintJobState::PAUSED);
+    settle();
+    CHECK_FALSE(lv_obj_has_state(btn, LV_STATE_DISABLED));
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    settle();
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture,
+                 "an unavailable machine-motion button stays disabled, says why, and does nothing",
+                 "[ams][device-section]") {
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    DeviceAction cal = DeviceAction::button("calibrate_encoder", "Calibrate Encoder", "calibration")
+                           .with_machine_motion();
+    cal.enabled = false;
+    cal.disable_reason = "No unit has an encoder";
+    lv_obj_t* btn = open_section_and_find({cal}, "calibrate_encoder");
+    settle();
+    // machine_motion_blocked is 0 here; moves_machine's binding must not clear it.
+    CHECK(lv_obj_has_state(btn, LV_STATE_DISABLED));
+
+    lv_obj_t* note = lv_obj_find_by_name(get_ams_device_section_detail_overlay().get_root(),
+                                         "calibrate_encoder_reason");
+    REQUIRE(note != nullptr);
+    CHECK(text_of(note, "note") == "Calibrate Encoder: No unit has an encoder");
+
+    click(btn);
+    CHECK(last_executed().empty());
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture, "a keypad value for an action disabled meanwhile sends nothing",
+                 "[ams][device-section]") {
+    using helix::ui::AmsDeviceSectionDetailOverlayTestAccess;
+    DeviceAction len = DeviceAction::slider("len", "Length", "prefs", 50.0f, 0.0f, 100.0f, "mm");
+    open_prefs({len});
+    auto& overlay = get_ams_device_section_detail_overlay();
+    AmsDeviceSectionDetailOverlayTestAccess::open_keypad_for(overlay, "len");
+
+    // While the keypad is up the backend disables it, and the section rebuilds.
+    len.enabled = false;
+    len.disable_reason = "Loading configuration...";
+    backend->set_device_actions({len});
+    overlay.refresh();
+    settle();
+
+    AmsDeviceSectionDetailOverlayTestAccess::keypad_value(42.0f);
+    settle();
+    CHECK(last_executed().empty());
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture, "a keypad value for an available action is sent",
+                 "[ams][device-section]") {
+    using helix::ui::AmsDeviceSectionDetailOverlayTestAccess;
+    open_prefs({DeviceAction::slider("len", "Length", "prefs", 50.0f, 0.0f, 100.0f, "mm")});
+    AmsDeviceSectionDetailOverlayTestAccess::open_keypad_for(
+        get_ams_device_section_detail_overlay(), "len");
+    AmsDeviceSectionDetailOverlayTestAccess::keypad_value(42.0f);
+    settle();
+    CHECK(last_executed() == "len");
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture, "the device button disable expressions parse and evaluate",
+                 "[ams][device-section]") {
+    auto resolve = [](void*, const char* name) { return lv_xml_get_subject(nullptr, name); };
+    auto eval = [&](const std::string& src) {
+        lv_xml_expr_t* expr = lv_xml_expr_compile(src.c_str(), resolve, nullptr);
+        REQUIRE(expr != nullptr);
+        const int32_t v = lv_xml_expr_eval(expr);
+        lv_xml_expr_free(expr);
+        return v;
+    };
+
+    const std::string never =
+        helix::ui::device_action_disabled_cond(DeviceAction::button("b", "B", "s"));
+    CHECK(never == "0 eq 1");
+    const std::string paused_ok = helix::ui::device_action_disabled_cond(
+        DeviceAction::button("b", "B", "s").with_machine_motion(true));
+
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    settle();
+    CHECK(eval(never) == 0);
+    CHECK(eval(paused_ok) == 0);
+    helix::test::set_wire_state(state(), PrintJobState::PRINTING);
+    settle();
+    CHECK(eval(never) == 0);
+    CHECK(eval(paused_ok) != 0);
+    helix::test::set_wire_state(state(), PrintJobState::PAUSED);
+    settle();
+    CHECK(eval(paused_ok) == 0);
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    settle();
 }

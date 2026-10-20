@@ -1885,9 +1885,11 @@ std::vector<helix::printer::DeviceAction> AmsBackendAce::get_device_actions() co
     using DA = helix::printer::DeviceAction;
     std::vector<DA> actions = {
         DA::button("ace_manual_feed", "Manual Feed", "filament_control", "",
-                   "Feed filament from current slot"),
+                   "Feed filament from current slot")
+            .with_machine_motion(),
         DA::button("ace_manual_retract", "Manual Retract", "filament_control", "",
-                   "Retract filament to current slot"),
+                   "Retract filament to current slot")
+            .with_machine_motion(),
         DA::toggle("ace_feed_assist_toggle", "Feed Assist", "maintenance", {}, "",
                    "Enable feed assist for active slot during printing"),
     };
@@ -1956,12 +1958,9 @@ AmsError AmsBackendAce::do_execute_device_action(const std::string& action_id,
     }
 
     if (action_id == "ace_bypass_on_macro" || action_id == "ace_bypass_off_macro") {
-        const auto [chosen, err] = printer::device_action_value<std::string>(value, "macro");
+        const auto [chosen, err] = printer::device_action_macro_choice(value);
         if (!err) {
             return err;
-        }
-        if (chosen.empty()) {
-            return AmsErrorHelper::invalid_parameter("No macro selected");
         }
         auto& settings = helix::SettingsManager::instance();
         if (action_id == "ace_bypass_on_macro") {
@@ -2018,7 +2017,8 @@ helix::printer::EndlessSpoolCapabilities AmsBackendAce::get_endless_spool_capabi
 }
 
 AmsError AmsBackendAce::apply_endless_spool_enabled(bool enabled) {
-    return execute_gcode(enabled ? "ACE_ENABLE_ENDLESS_SPOOL" : "ACE_DISABLE_ENDLESS_SPOOL");
+    return send_endless_spool_switch(enabled ? "ACE_ENABLE_ENDLESS_SPOOL"
+                                             : "ACE_DISABLE_ENDLESS_SPOOL");
 }
 
 helix::printer::EndlessSpoolConfig AmsBackendAce::get_endless_spool_config() const {

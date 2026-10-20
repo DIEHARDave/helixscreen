@@ -2490,6 +2490,7 @@ translations:
   Not Now: Не сейчас
   Not Supported: 'Не поддерживается'
   Not available here. Update from a terminal.: Здесь недоступно. Обновите через терминал.
+  Not available now: Сейчас недоступно
   Not available on Android: Недоступно на Android
   Not calibrated: Не откалиброван
   Not configured: Не настроено
@@ -4543,7 +4544,6 @@ translations:
   you have: у вас
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Гц · примерно {} мин'
   '{} ({})': '{} ({})'
-  '{} - {}': "{} - {}"
   '{} Extruders': 'Экструдеров: {}'
   '{} Hardware Issues': 'Проблем с оборудованием: {}'
   '{} Issues Detected': 'Обнаружено проблем: {}'

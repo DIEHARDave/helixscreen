@@ -775,6 +775,16 @@ TEST_CASE("device_action_value refuses a missing, mistyped or non-finite value",
     }
 }
 
+TEST_CASE("device_action_macro_choice reads a picker's macro",
+          "[ams][device_actions][device_action_value]") {
+    CHECK(device_action_macro_choice(std::any(std::string("ACE_BYPASS_ON"))).first ==
+          "ACE_BYPASS_ON");
+    CHECK(device_action_macro_choice(std::any(std::string(""))).second.result ==
+          helix::AmsResult::WRONG_STATE);
+    CHECK_FALSE(device_action_macro_choice(std::any(3)).second.success());
+    CHECK_FALSE(device_action_macro_choice(std::any{}).second.success());
+}
+
 TEST_CASE("device_action_value reads bools and strings exactly",
           "[ams][device_actions][device_action_value]") {
     CHECK(device_action_value<bool>(std::any(true), "state").first);

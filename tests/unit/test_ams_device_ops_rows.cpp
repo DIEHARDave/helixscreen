@@ -59,6 +59,17 @@ class SwitchableEndlessMock : public AmsBackendMock {
 
     std::vector<bool> requests;
 
+    void set_event_callback(EventCallback callback) override {
+        listener_ = callback;
+        AmsBackendMock::set_event_callback(std::move(callback));
+    }
+
+    /// What a backend reports when Klipper rejects the switch after the send.
+    void report_switch_refused() {
+        REQUIRE(listener_);
+        listener_(AmsBackend::kEventEndlessSpoolRefused, "");
+    }
+
   protected:
     AmsError apply_endless_spool_enabled(bool enabled) override {
         requests.push_back(enabled);
@@ -66,6 +77,7 @@ class SwitchableEndlessMock : public AmsBackendMock {
     }
 
   private:
+    EventCallback listener_;
     bool switchable_ = false;
     bool on_ = false;
 };
@@ -169,6 +181,18 @@ TEST_CASE_METHOD(DeviceOpsRowsFixture, "one Endless Spool switch follows the cap
         lv_obj_send_event(sw, LV_EVENT_VALUE_CHANGED, nullptr);
         settle();
         CHECK(backend->requests == std::vector<bool>{true});
+    }
+
+    SECTION("a rejection Klipper reports after the send puts the switch back") {
+        auto* backend = show_with(std::make_unique<SwitchableEndlessMock>(true, false));
+        lv_obj_t* sw = endless_switch();
+        lv_obj_add_state(sw, LV_STATE_CHECKED);
+        lv_obj_send_event(sw, LV_EVENT_VALUE_CHANGED, nullptr);
+        settle();
+        REQUIRE(lv_obj_has_state(sw, LV_STATE_CHECKED));
+        backend->report_switch_refused();
+        settle();
+        CHECK_FALSE(lv_obj_has_state(sw, LV_STATE_CHECKED));
     }
 }
 

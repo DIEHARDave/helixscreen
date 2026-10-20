@@ -2317,6 +2317,7 @@ translations:
   Not Now: 今はしない
   Not Supported: 'サポートされていません'
   Not available here. Update from a terminal.: ここでは利用できません。ターミナルから更新してください。
+  Not available now: 現在は利用できません
   Not available on Android: Androidでは利用できません
   Not calibrated: キャリブレーション未実施
   Not configured: 未設定
@@ -4247,7 +4248,6 @@ translations:
   you have: 現在は
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 約{}分'
   '{} ({})': '{}（{}）'
-  '{} - {}': "{} - {}"
   '{} Extruders': '{} エクストルーダー'
   '{} Hardware Issues': 'ハードウェアの問題 {} 件'
   '{} Issues Detected': '問題を {} 件検出'
