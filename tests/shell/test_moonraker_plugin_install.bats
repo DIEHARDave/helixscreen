@@ -886,6 +886,33 @@ mock_awk_failing_midway() {
 exec $real \"\$@\""
 }
 
+# An awk whose write to a file stops short and still exits 0, as BusyBox awk
+# does on a full disk, for the section removal's rewrite. Output into a pipe
+# comes through whole; any other awk runs normally.
+mock_awk_cut_short_exiting_0() {
+    local real
+    real=$(command -v awk)
+    mock_command_script "awk" "case \"\$*\" in *'skip = 1'*)
+    if [ -f /dev/stdout ]; then $real \"\$@\" | head -c 30; exit 0; fi ;; esac
+exec $real \"\$@\""
+}
+
+@test "a section removal cut short by a full disk leaves moonraker.conf whole, though awk exits 0" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_instrumented_home "$home"
+    local c="$home/printer_data/config"
+    write_original_printer_cfg "$c/printer.cfg"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+    mock_awk_cut_short_exiting_0
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+
+    [ "$status" -eq 2 ] || fail "want needs-attention (2), got $status: $output"
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" ||
+        fail "moonraker.conf replaced: $(cat "$c/moonraker.conf")"
+    [ -z "$(find "$c" -name 'moonraker.conf.*tmp*')" ] || fail "staging file left: $(ls "$c")"
+}
+
 @test "a section removal whose write fails part-way leaves moonraker.conf whole" {
     local home="$BATS_TEST_TMPDIR/home"
     setup_instrumented_home "$home"

@@ -288,23 +288,6 @@ klipper_hides_dot_dirs() {
     return 1
 }
 
-# Replace config file @1 with the output of awk program @2 run over it. The
-# new text is written beside the real file (a symlinked config is followed and
-# stays a symlink) into a copy that keeps its mode, then renamed over it, so a
-# write that fails part-way leaves the original whole. Returns 1 when the file
-# could not be rewritten.
-rewrite_with_awk() {
-    _rw_real=$(readlink -f "$1" 2>/dev/null) || _rw_real=""
-    [ -n "$_rw_real" ] || _rw_real="$1"
-    _rw_tmp="$_rw_real.helixtmp.$$"
-    if cp -p "$_rw_real" "$_rw_tmp" 2>/dev/null && awk "$2" "$_rw_real" > "$_rw_tmp" \
-        && mv -f "$_rw_tmp" "$_rw_real"; then
-        return 0
-    fi
-    rm -f "$_rw_tmp"
-    return 1
-}
-
 # Give [helix_print] in @1 a visible `symlink_dir: helix_print`, unless the
 # section already sets symlink_dir (the user's value stands).
 ensure_visible_symlink_dir() {
@@ -316,7 +299,7 @@ ensure_visible_symlink_dir() {
         return 0
     fi
     info "Klipper skips hidden directories here: setting symlink_dir: helix_print"
-    rewrite_with_awk "$file" \
+    helix_rewrite_conf "$file" \
         '{ print } !done && /^\[helix_print\]/ { print "symlink_dir: helix_print"; done = 1 }'
 }
 
@@ -333,7 +316,7 @@ enable_helix_section() {
     backup_file=$(backup_config "$file") || error "Could not back up $file"
     info "Created backup: $backup_file"
     info "Turning the plugin back on: enabled: True in $(basename "$file")"
-    rewrite_with_awk "$file" "$_eh_disabled { print \"enabled: True\"; next } { print }" ||
+    helix_rewrite_conf "$file" "$_eh_disabled { print \"enabled: True\"; next } { print }" ||
         error "Could not write $file - see $backup_file"
 }
 
@@ -363,7 +346,7 @@ remove_helix_section() {
     fi
     info "Created backup: $backup_file"
     info "Removing HelixPrint sections from $(basename "$file")"
-    if ! rewrite_with_awk "$file" "$3"; then
+    if ! helix_rewrite_conf "$file" "$3"; then
         warn "Could not remove HelixPrint sections from $(basename "$file") - see $backup_file"
         return 1
     fi

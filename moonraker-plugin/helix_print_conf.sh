@@ -84,6 +84,33 @@ helix_print_owned_files() {
     helix_conf_files_matching "$1" "${2:-}" "$HELIX_PRINT_OWNED_RE"
 }
 
+# Replace config file @1 with the output of awk program @2 run over it, each
+# command run under prefix @3 when set (the main installer's sudo). The new
+# text is written beside the real file (a symlinked config is followed and
+# stays a symlink) into a copy that keeps its mode and owner, then renamed over
+# it, so a write that fails part-way leaves the original whole. BusyBox awk
+# exits 0 when a write fails, so the staged copy must also hold as many bytes
+# as a second run of the program writes into a pipe, which no full disk cuts
+# short. Returns 1 when the file could not be rewritten.
+helix_rewrite_conf() {
+    _rw_pre="${3:-}"
+    _rw_real=$(readlink -f "$1" 2>/dev/null) || _rw_real=""
+    [ -n "$_rw_real" ] || _rw_real="$1"
+    _rw_tmp="$_rw_real.helixtmp.$$"
+    # The program is an argument rather than part of the -c string, so its $0
+    # and $1 stay awk's and are never expanded by a shell.
+    # shellcheck disable=SC2016,SC2086  # the -c string's own $; a word-list prefix
+    if $_rw_pre cp -p "$_rw_real" "$_rw_tmp" 2>/dev/null &&
+        $_rw_pre sh -c 'awk "$1" "$2" > "$3" &&
+            [ "$(awk "$1" "$2" | wc -c)" -eq "$(wc -c < "$3")" ]' sh "$2" "$_rw_real" "$_rw_tmp" &&
+        $_rw_pre mv -f "$_rw_tmp" "$_rw_real"; then
+        return 0
+    fi
+    # shellcheck disable=SC2086
+    $_rw_pre rm -f "$_rw_tmp"
+    return 1
+}
+
 # Print an awk program that prints a config file without the sections whose
 # header matches extended regex @1 (anchored, bracketed: ^\[(a|b)\]). A run of
 # such sections goes as one, along with the "#~# --- HelixPrint Plugin ---"
