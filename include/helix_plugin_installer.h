@@ -158,6 +158,13 @@ class HelixPluginInstaller {
     [[nodiscard]] std::string get_remote_install_command() const;
 
     /**
+     * @brief The PLUGIN_VERSION of the helix_print.py beside install.sh
+     *
+     * The plugin this app ships; empty when it cannot be found or read.
+     */
+    [[nodiscard]] std::string bundled_plugin_version() const;
+
+    /**
      * @brief Get path to bundled install.sh script
      *
      * Searches for install.sh relative to the executable.
@@ -283,6 +290,61 @@ constexpr PluginPromptStep decide_plugin_prompt(bool plugin_absent, bool job_hol
     }
     return PluginPromptStep::Offer;
 }
+
+/**
+ * @brief What `install.sh --relink` found and did
+ */
+enum class PluginLinkCheck {
+    Current,  ///< Moonraker's link already names the plugin beside this app
+    Relinked, ///< the link was re-pointed at the plugin beside this app
+    NotOurs,  ///< no installed plugin to repair: no link, a regular file, no [helix_print]
+    Failed,   ///< the script failed, timed out or could not run
+};
+
+/**
+ * @brief Run `install.sh --relink` at @p script_path and read its outcome
+ *
+ * Blocks while the script runs, up to @p timeout_seconds. Touches no
+ * installer state, so any thread may call it. An empty path is Failed.
+ */
+PluginLinkCheck relink_plugin(const std::string& script_path, int timeout_seconds);
+
+/**
+ * @brief The version in a helix_print.py's `PLUGIN_VERSION = "x"` line, or empty
+ */
+std::string parse_plugin_version(std::string_view helix_print_py);
+
+/**
+ * @brief What the startup check of the installed plugin does next
+ */
+enum class PluginSelfHealStep {
+    Nothing,    ///< nothing to repair, or nothing this app may repair
+    ReportOnly, ///< a remote Moonraker runs another plugin version: log it, change nothing
+    RestartNow, ///< Moonraker must restart to load the plugin this app ships
+    WaitForJob, ///< as RestartNow, once no job holds the machine
+};
+
+/**
+ * @brief The facts the startup check of the installed plugin decides on
+ */
+struct PluginSelfHealFacts {
+    bool local = false;                              ///< Moonraker runs on this host
+    PluginLinkCheck link = PluginLinkCheck::NotOurs; ///< install.sh --relink's outcome (local only)
+    std::string reported_version; ///< what the running plugin reports; empty when it did not answer
+    std::string bundled_version;  ///< what this app ships; empty when unknown
+    bool job_holds = false;       ///< job_holds_machine() of the current print lifecycle
+};
+
+/**
+ * @brief Decide what the startup check does about the installed plugin
+ *
+ * Only a plugin the user installed is repaired, never one installed here, and
+ * only on this host: a remote Moonraker's plugin is the user's to update with
+ * the command the install modal shows. A re-pointed link, or a running plugin
+ * whose version is not the one this app ships, takes a Moonraker restart to
+ * load the right code, which never interrupts a job.
+ */
+PluginSelfHealStep decide_plugin_self_heal(const PluginSelfHealFacts& facts);
 
 /**
  * @brief Split install.sh output into log lines: color escapes removed,

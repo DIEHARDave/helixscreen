@@ -23,6 +23,7 @@
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/helix_plugin_installer_test_access.h"
 #include "../test_helpers/plugin_script_sandbox.h"
+#include "../test_helpers/plugin_self_heal_test_access.h"
 #include "../test_helpers/print_select_panel_fixture.h"
 #include "../test_helpers/print_select_panel_test_access.h"
 #include "../test_helpers/print_state_test_drivers.h"
@@ -30,10 +31,15 @@
 #include "../ui_test_utils.h"
 #include "config.h"
 #include "discovery_steps.h"
+#include "http_executor.h"
 #include "observer_factory.h"
 #include "printer_state.h"
 
+#include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -67,11 +73,15 @@ struct PromptFixture : PrintSelectGlobalStateReset, PrintSelectPanelFixture {
 
     PromptFixture() {
         HelixPluginInstallerTestAccess::reset_prompt_session();
+        // The startup check of the plugin would run install.sh --relink on
+        // every report; its own cases below turn it back on.
+        PluginSelfHealTestAccess::set_ran_this_start(true);
         REQUIRE(prompt() == nullptr);
     }
 
     ~PromptFixture() override {
         HelixPluginInstallerTestAccess::reset_prompt_session();
+        PluginSelfHealTestAccess::set_ran_this_start(true);
     }
 
     void set_plugin_installed(bool installed) {
@@ -407,4 +417,163 @@ TEST_CASE_METHOD(PromptFixture, "a deferred prompt waits until the completion mo
     drain();
     CHECK(prompt() != nullptr);
     CHECK_FALSE(PrintSelectPanelTestAccess::plugin_prompt_waiting_for_screen(*panel_));
+}
+
+// ============================================================================
+// The startup check of an installed plugin (PluginSelfHeal), as the panel runs it
+// ============================================================================
+
+namespace {
+
+/// install.sh stands in for --relink with @p relink_exit (0 current, 3 re-pointed,
+/// 4 nothing of ours, other failed); the bundled helix_print.py says @p bundled.
+struct SelfHealFixture : PromptFixture {
+    SelfHealFixture() {
+        PluginSelfHealTestAccess::set_ran_this_start(false);
+    }
+
+    void ship(const char* bundled, int relink_exit) {
+        std::ofstream(scripts.root + "/moonraker-plugin/helix_print.py")
+            << "import os\n\nPLUGIN_VERSION = \"" << bundled << "\"\n";
+        scripts.write_script("[ \"$2\" = --relink ] && exit " + std::to_string(relink_exit) +
+                             "\nexit 0");
+    }
+
+    /// The check's install.sh runs on the slow lane; wait for it, then for its
+    /// outcome on this thread.
+    void settle() {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        drain();
+        while (http::HttpExecutor::slow().inflight() > 0 &&
+               std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        drain();
+    }
+
+    void forget_script_run() {
+        std::filesystem::remove(scripts.root + "/args");
+    }
+};
+
+} // namespace
+
+TEST_CASE_METHOD(SelfHealFixture,
+                 "a plugin link left naming a moved install is re-pointed and loaded",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.0.1", 3);
+    const int restarts_before = moonraker_restarts();
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", nullptr); // the dangling link loaded nothing
+
+    run_plugin_probe();
+    settle();
+
+    CHECK(scripts.script_args() == "--no-restart --relink ");
+    CHECK(moonraker_restarts() == restarts_before + 1);
+    // The user installed it: an install prompt has nothing to offer.
+    PrintSelectPanelTestAccess::recheck_plugin_prompt(*panel_);
+    CHECK(prompt() == nullptr);
+}
+
+TEST_CASE_METHOD(SelfHealFixture,
+                 "a running plugin of another version than the app ships is reloaded",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.2.0", 0);
+    const int restarts_before = moonraker_restarts();
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", "1"); // the mock reports 1.0.1
+
+    run_plugin_probe();
+    settle();
+
+    CHECK(scripts.script_args() == "--no-restart --relink ");
+    CHECK(moonraker_restarts() == restarts_before + 1);
+}
+
+TEST_CASE_METHOD(SelfHealFixture, "a current plugin of the version the app ships is left alone",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.0.1", 0);
+    const int restarts_before = moonraker_restarts();
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", "1");
+
+    run_plugin_probe();
+    settle();
+
+    CHECK(scripts.script_args() == "--no-restart --relink ");
+    CHECK(moonraker_restarts() == restarts_before);
+}
+
+TEST_CASE_METHOD(SelfHealFixture, "a plugin the user never installed is not installed by the check",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.2.0", 4);
+    const int restarts_before = moonraker_restarts();
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", nullptr);
+
+    run_plugin_probe();
+    settle();
+
+    CHECK(scripts.script_args() == "--no-restart --relink ");
+    CHECK(moonraker_restarts() == restarts_before);
+    // Absent for real, so the install prompt follows the check.
+    PrintSelectPanelTestAccess::recheck_plugin_prompt(*panel_);
+    CHECK(prompt() != nullptr);
+}
+
+TEST_CASE_METHOD(SelfHealFixture, "a plugin restart waits for the job to let go",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.0.1", 3);
+    const int restarts_before = moonraker_restarts();
+    test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
+    drain();
+    REQUIRE(job_holds_machine(get_printer_state().print_state().get_print_lifecycle()));
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", nullptr);
+
+    run_plugin_probe();
+    settle();
+    CHECK(scripts.script_args() == "--no-restart --relink ");
+    CHECK(moonraker_restarts() == restarts_before);
+
+    test::set_wire_state(get_printer_state(), PrintJobState::COMPLETE);
+    drain();
+    CHECK(moonraker_restarts() == restarts_before + 1);
+
+    test::set_wire_state(get_printer_state(), PrintJobState::STANDBY);
+    drain();
+    CHECK(moonraker_restarts() == restarts_before + 1);
+}
+
+TEST_CASE_METHOD(SelfHealFixture,
+                 "the check runs once an app start, and a failed relink waits for the next",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.2.0", 1);
+    const int restarts_before = moonraker_restarts();
+    {
+        ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", "1");
+        run_plugin_probe();
+        settle();
+    }
+    REQUIRE(scripts.script_args() == "--no-restart --relink ");
+    CHECK(moonraker_restarts() == restarts_before);
+
+    forget_script_run();
+    set_plugin_installed(false);
+    set_plugin_installed(true);
+    settle();
+
+    CHECK(scripts.script_args().empty());
+    CHECK(moonraker_restarts() == restarts_before);
+}
+
+TEST_CASE_METHOD(SelfHealFixture, "a remote Moonraker's plugin is only reported, never relinked",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.2.0", 3);
+    PrintSelectPanelTestAccess::plugin_installer(*panel_).set_websocket_url(
+        "ws://203.0.113.5:7125/websocket");
+    const int restarts_before = moonraker_restarts();
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", "1");
+
+    run_plugin_probe();
+    settle();
+
+    CHECK(scripts.script_args().empty());
+    CHECK(moonraker_restarts() == restarts_before);
 }

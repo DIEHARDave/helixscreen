@@ -91,6 +91,14 @@ class PrinterPluginStatusState {
         return link_dir_;
     }
 
+    /// The version the running plugin reports; empty when it did not answer.
+    void set_version(const std::string& version) {
+        version_ = version;
+    }
+    const std::string& version() const {
+        return version_;
+    }
+
     /**
      * @brief Set the discovery-derived helper-macro install status
      *
@@ -163,6 +171,7 @@ class PrinterPluginStatusState {
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
     std::string link_dir_;
+    std::string version_;
 
     // Plugin status subjects (tri-state: -1=unknown, 0=no, 1=yes)
     lv_subject_t helix_plugin_installed_{}; // HelixPrint Klipper plugin

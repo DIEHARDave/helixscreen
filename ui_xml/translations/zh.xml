@@ -1527,6 +1527,7 @@
   <translation tag="Heating: %d / %d°C" zh="加热中：%d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" zh="当前热床网格的高度图和平整度"/>
   <translation tag="HelixPrint Plugin" zh="HelixPrint 插件"/>
+  <translation tag="HelixPrint plugin updated. Moonraker is restarting..." zh="HelixPrint 插件已更新。Moonraker 正在重启..."/>
   <translation tag="HelixScreen" zh="HelixScreen"/>
   <translation tag="HelixScreen Crashed" zh="HelixScreen 崩溃"/>
   <translation tag="HelixScreen Macros" zh="HelixScreen 宏"/>

@@ -108,6 +108,7 @@ void MoonrakerJobAPI::check_helix_plugin(PluginInfoCallback on_result, ErrorCall
                                                         "1.0.0"); // Old plugins lack version
                 info.symlink_dir = helix::json_util::safe_string(r, "symlink_dir", "");
             }
+            info.version = version;
             spdlog::info("[Moonraker API] helix_print plugin v{} detected (enabled={}, links in "
                          "'{}')",
                          version, info.available, info.symlink_dir);

@@ -1527,6 +1527,7 @@
   <translation tag="Heating: %d / %d°C" it="Riscaldamento: %d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" it="Mappa delle altezze e planarità della mesh del piano attiva"/>
   <translation tag="HelixPrint Plugin" it="Plugin HelixPrint"/>
+  <translation tag="HelixPrint plugin updated. Moonraker is restarting..." it="Plugin HelixPrint aggiornato. Moonraker è in riavvio..."/>
   <translation tag="HelixScreen" it="HelixScreen"/>
   <translation tag="HelixScreen Crashed" it="HelixScreen si è arrestato"/>
   <translation tag="HelixScreen Macros" it="Macro HelixScreen"/>

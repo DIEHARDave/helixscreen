@@ -30,6 +30,16 @@ EXIT_UNINSTALL_OK=0
 EXIT_UNINSTALL_FAILED=1
 EXIT_UNINSTALL_NEEDS_ATTENTION=2
 
+# Exit codes for --relink (HelixPluginInstaller reads them):
+#   0 - the link already names this tree's plugin; nothing done
+#   3 - the link was re-pointed at this tree's plugin
+#   4 - no plugin of ours to repair (no link, a regular file, or no
+#       [helix_print] section); nothing done
+#   1 - the link could not be repaired
+EXIT_RELINK_CURRENT=0
+EXIT_RELINK_DONE=3
+EXIT_RELINK_NOT_OURS=4
+
 # Colors for output (works with printf)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -644,6 +654,54 @@ auto_uninstall() {
     return "$exit_status"
 }
 
+# Re-point an installed plugin's link at this tree (--relink): what the app
+# runs at startup, so a plugin installed from an install directory that has
+# since moved, or been replaced, loads from the tree beside the running app.
+# Touches the link only, never the config, and never creates a link that is
+# not there: an install is the user's choice. Returns an EXIT_RELINK_* code.
+relink() {
+    components_dir=$(find_moonraker_components "")
+    [ -n "$components_dir" ] || error "Could not auto-detect Moonraker installation."
+    target="$components_dir/helix_print.py"
+
+    if [ ! -L "$target" ]; then
+        info "No plugin link at $target - nothing to repair"
+        return "$EXIT_RELINK_NOT_OURS"
+    fi
+    current=$(readlink "$target")
+    case "$current" in
+        */helix_print.py) ;;
+        *)
+            info "$target links to $current, not a HelixPrint plugin - leaving it"
+            return "$EXIT_RELINK_NOT_OURS"
+            ;;
+    esac
+    config_dir=$(find_config_dir)
+    if [ -z "$config_dir" ] ||
+        [ -z "$(helix_print_section_files "$config_dir/moonraker.conf" "$(running_moonraker_root)")" ]; then
+        info "No [helix_print] section configured - leaving $target alone"
+        return "$EXIT_RELINK_NOT_OURS"
+    fi
+
+    # The link text is Moonraker's path, which differs from ours in a chroot.
+    mroot=$(running_moonraker_root)
+    case "$current" in
+        /*) seen="$mroot$current" ;;
+        *) seen="$components_dir/$current" ;;
+    esac
+    if [ -e "$seen" ] && [ "$(readlink -f "$seen")" = "$(readlink -f "$PLUGIN_FILE")" ]; then
+        info "The plugin link already names $PLUGIN_FILE"
+        return "$EXIT_RELINK_CURRENT"
+    fi
+
+    link_to=$(path_for_moonraker "$PLUGIN_FILE")
+    [ -f "$mroot$link_to" ] || error "Moonraker cannot see $PLUGIN_FILE from its root ($mroot)"
+    [ -w "$components_dir" ] || error "Cannot write to components directory: $components_dir"
+    ln -sf "$link_to" "$target" || error "Could not re-point $target"
+    info "Re-pointed $target -> $link_to (was $current)"
+    return "$EXIT_RELINK_DONE"
+}
+
 # Auto-install function (non-interactive, for HelixScreen integration)
 auto_install() {
     info "HelixPrint Auto-Install Mode"
@@ -769,6 +827,9 @@ show_help() {
     printf '%s\n' "  --uninstall-auto        Full auto-uninstall: removes the symlink and config"
     printf '%s\n' "                          section, strips PRINT_START instrumentation, restarts"
     printf '%s\n' "                          Moonraker"
+    printf '%s\n' "  --relink                Re-point an installed plugin's link at this copy;"
+    printf '%s\n' "                          exit 0 already current, 3 re-pointed, 4 nothing of"
+    printf '%s\n' "                          ours to repair, 1 failed. Never restarts Moonraker"
     printf '%s\n' "  --help, -h              Show this help message"
     printf '\n'
     printf '%s\n' "Exit codes for --uninstall and --uninstall-auto:"
@@ -808,6 +869,11 @@ while [ $# -gt 0 ]; do
         --uninstall-auto)
             auto_uninstall
             exit $?
+            ;;
+        --relink)
+            status=0
+            relink || status=$?
+            exit "$status"
             ;;
         --help|-h)
             show_help

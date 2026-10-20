@@ -1527,6 +1527,7 @@
   <translation tag="Heating: %d / %d°C" ja="加熱中: %d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" ja="有効なベッドメッシュの高さマップと平面度"/>
   <translation tag="HelixPrint Plugin" ja="HelixPrintプラグイン"/>
+  <translation tag="HelixPrint plugin updated. Moonraker is restarting..." ja="HelixPrintプラグインを更新しました。Moonraker を再起動中..."/>
   <translation tag="HelixScreen" ja="HelixScreen"/>
   <translation tag="HelixScreen Crashed" ja="HelixScreen がクラッシュしました"/>
   <translation tag="HelixScreen Macros" ja="HelixScreenマクロ"/>

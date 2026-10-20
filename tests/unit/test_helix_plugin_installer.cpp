@@ -136,6 +136,67 @@ TEST_CASE("plugin_release_ref names the release tag of an app version", "[plugin
     CHECK(plugin_release_ref("") == "main");
 }
 
+TEST_CASE("parse_plugin_version reads helix_print.py's PLUGIN_VERSION line", "[plugin_installer]") {
+    CHECK(parse_plugin_version("import os\n\nPLUGIN_VERSION = \"1.2.0\"\n") == "1.2.0");
+    CHECK(parse_plugin_version("PLUGIN_VERSION = \"2.0.0-rc1\"\nx = 1\n") == "2.0.0-rc1");
+    // Only an assignment at the start of a line counts, not a mention.
+    CHECK(parse_plugin_version("log(f\"v{PLUGIN_VERSION}\")\n# PLUGIN_VERSION = \"9\"\n") == "");
+    CHECK(parse_plugin_version("PLUGIN_VERSION = \"unterminated\nnext\n") == "");
+    CHECK(parse_plugin_version("") == "");
+}
+
+TEST_CASE("decide_plugin_self_heal: what the startup check does about the plugin",
+          "[plugin_installer]") {
+    PluginSelfHealFacts f;
+    f.local = true;
+    f.bundled_version = "1.2.0";
+    f.reported_version = "1.2.0";
+
+    SECTION("a link this app re-pointed needs a restart to load the plugin") {
+        f.link = PluginLinkCheck::Relinked;
+        f.reported_version = ""; // a dangling link loaded nothing
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
+    }
+    SECTION("a current link running the version this app ships is left alone") {
+        f.link = PluginLinkCheck::Current;
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::Nothing);
+    }
+    SECTION("a current link running another version is reloaded") {
+        f.link = PluginLinkCheck::Current;
+        f.reported_version = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
+    }
+    SECTION("a restart waits while a job holds the machine") {
+        f.link = PluginLinkCheck::Relinked;
+        f.job_holds = true;
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::WaitForJob);
+    }
+    SECTION("a plugin this app did not find installed is never touched") {
+        f.link = PluginLinkCheck::NotOurs;
+        f.reported_version = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::Nothing);
+    }
+    SECTION("a failed relink restarts nothing") {
+        f.link = PluginLinkCheck::Failed;
+        f.reported_version = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::Nothing);
+    }
+    SECTION("an unknown version on either side is no mismatch") {
+        f.link = PluginLinkCheck::Current;
+        f.bundled_version = "";
+        f.reported_version = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::Nothing);
+    }
+    SECTION("a remote Moonraker's mismatch is only reported, whatever the link") {
+        f.local = false;
+        f.link = PluginLinkCheck::Relinked;
+        f.reported_version = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::ReportOnly);
+        f.reported_version = "1.2.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::Nothing);
+    }
+}
+
 TEST_CASE("the remote install command runs one release's wrapper with sh, pinned to it",
           "[plugin_installer]") {
     const std::string cmd = plugin_remote_install_command("v1.1.0-beta.10");

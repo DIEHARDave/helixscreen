@@ -31,6 +31,10 @@
 #                     are the REMOTE-mode command, remote-install.sh piped
 #                     into sh by pi over curl, fetching the plugin from a
 #                     release tree served on 127.0.0.1 (no network, no git)
+#   relocate          plain, but the first install is made from another
+#                     install directory, which then moves to INSTALL_DIR; the
+#                     install step passes when the app's startup relink
+#                     (install.sh --relink) re-points the dangling link there
 #
 # Moonraker v0.8 resolves a relative [include] against the directory of the
 # symlink's target, later versions against the link's own directory; the mod
@@ -71,7 +75,7 @@ layout() { # <layout>
     CONFIG_DIR=/home/pi/printer_data/config
     COMPONENTS_DIR=/home/pi/moonraker/moonraker/components
     case "$1" in
-        plain|legacy|modconf|incsec|remote)
+        plain|legacy|modconf|incsec|remote|relocate)
             cp -a "$MR_SRC" /home/pi/moonraker
             chown -R pi:pi /home/pi/moonraker
             data_dirs /home/pi/printer_data pi
@@ -167,10 +171,48 @@ remote_command() { # [--uninstall]
         sh "$RELEASE_URL" "$RELEASE_REF" "$@"
 }
 
+# Install from a directory beside INSTALL_DIR, move that tree to INSTALL_DIR,
+# and check that the relink the app runs at startup repairs the link.
+relocated_install() {
+    load
+    old="$INSTALL_DIR.old"
+    rm -rf "$old"
+    mkdir -p "$old"
+    mv "$INSTALL_DIR/moonraker-plugin" "$old/moonraker-plugin"
+    chown -R "$APP_USER:$APP_USER" "$old"
+    ( APP_PLUGIN_DIR="$old/moonraker-plugin" as_app --no-restart --auto ) || return 1
+    printf 'installed from %s: %s\n' "$old" "$(readlink "$COMPONENTS_DIR/helix_print.py")"
+    mv "$old/moonraker-plugin" "$INSTALL_DIR/moonraker-plugin"
+    rmdir "$old"
+    if [ -e "$COMPONENTS_DIR/helix_print.py" ]; then
+        echo "the link still resolves after the move" >&2
+        return 1
+    fi
+    status=0
+    ( as_app --no-restart --relink ) || status=$?
+    if [ "$status" -ne 3 ]; then
+        echo "relink exited $status, want 3 (re-pointed)" >&2
+        return 1
+    fi
+    case "$(readlink -f "$COMPONENTS_DIR/helix_print.py")" in
+        "$INSTALL_DIR"/moonraker-plugin/helix_print.py) ;;
+        *) echo "relinked to $(readlink "$COMPONENTS_DIR/helix_print.py")" >&2; return 1 ;;
+    esac
+    status=0
+    ( as_app --no-restart --relink ) || status=$?
+    if [ "$status" -ne 0 ]; then
+        echo "a second relink exited $status, want 0 (current)" >&2
+        return 1
+    fi
+    touch /var/tmp/cell-relocated
+}
+
 # Run install.sh with <args> as the app, confined as its service confines it.
+# APP_PLUGIN_DIR names another copy of the plugin to run it from.
 as_app() { # <args...>
     load
-    set -- env HOME="$APP_HOME" PATH=/usr/local/bin:/usr/bin:/bin sh "$INSTALL_DIR/moonraker-plugin/install.sh" "$@"
+    set -- env HOME="$APP_HOME" PATH=/usr/local/bin:/usr/bin:/bin \
+        sh "${APP_PLUGIN_DIR:-$INSTALL_DIR/moonraker-plugin}/install.sh" "$@"
     if [ "$STRICT" = 1 ]; then
         # The bwrap runs as the app user, so the writes it allows are the
         # app user's own; bwrap sets no_new_privs as NoNewPrivileges does.
@@ -213,6 +255,10 @@ case "${1:-}" in
     install)
         load
         if [ "$LAYOUT" = remote ]; then remote_command; exit; fi
+        if [ "$LAYOUT" = relocate ] && [ ! -e /var/tmp/cell-relocated ]; then
+            relocated_install
+            exit
+        fi
         as_app --no-restart --auto ;;
     uninstall)
         load

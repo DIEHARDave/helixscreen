@@ -815,6 +815,7 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
                 if (self->plugin_prompt_wait_ == helix::PluginPromptStep::WaitForJob) {
                     self->maybe_prompt_plugin_install();
                 }
+                self->plugin_self_heal_.on_job_state_changed();
             },
             printer_state_.get_subjects_lifetime());
     }
@@ -840,6 +841,7 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         helix_plugin_observer_ = observe<int>(
             plugin_subject, this,
             [](PrintSelectPanel* self, int /*plugin_state*/) {
+                self->plugin_self_heal_.on_plugin_reported();
                 self->maybe_prompt_plugin_install();
             },
             printer_state_.get_subjects_lifetime());
@@ -3506,7 +3508,9 @@ void PrintSelectPanel::maybe_prompt_plugin_install() {
     const PluginPromptStep step = helix::decide_plugin_prompt(
         printer_state_.plugin_status_state().helix_plugin_state() == helix::kHelixPluginAbsent,
         job_holds_machine(printer_state_.print_state().get_print_lifecycle()),
-        plugin_prompt_wait_ == PluginPromptStep::WaitForJob, !ModalStack::instance().empty(),
+        plugin_prompt_wait_ == PluginPromptStep::WaitForJob,
+        // The startup check may yet find the plugin installed; wait for it like a modal.
+        !ModalStack::instance().empty() || plugin_self_heal_.checking(),
         print_status && helix::nav::is_in_stack(print_status));
 
     switch (step) {

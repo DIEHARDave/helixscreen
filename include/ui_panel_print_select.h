@@ -25,6 +25,7 @@
 #include "helix_plugin_installer.h"
 #include "in_flight_guard.h"
 #include "moonraker_error.h"
+#include "plugin_self_heal.h"
 #include "print_file_data.h"
 #include "print_history_manager.h"
 #include "print_select_button_view.h"
@@ -1021,6 +1022,10 @@ class PrintSelectPanel : public PanelBase {
     // Plugin installer for helix_print Moonraker plugin
     helix::HelixPluginInstaller plugin_installer_;
     PluginInstallModal plugin_install_modal_;
+    /// The startup repair of an installed plugin; after plugin_installer_, which it uses.
+    helix::PluginSelfHeal plugin_self_heal_{
+        printer_state_, plugin_installer_,
+        [this]() { return helix::ui::request_moonraker_restart_for_plugin(api_); }};
 
     /// The install modal, from the boot-time prompt or the card's Set up tap.
     /// A successful install restarts Moonraker so the plugin loads.

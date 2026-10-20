@@ -1117,3 +1117,89 @@ exec $real \"\$@\""
     grep -q '^\[octoprint_compat\]' "$c/moonraker.conf" || fail "lost the next section"
     [ "$(count_helix_sections "$c")" -eq 1 ]
 }
+
+# A plugin installed from an INSTALL_DIR that has since moved: the link names
+# the old tree, the [helix_print] section is in place.
+setup_moved_install() {
+    local home="$1"
+    setup_plain_home "$home"
+    printf '\n[helix_print]\n' >> "$home/printer_data/config/moonraker.conf"
+    ln -s "$home/old-helixscreen/moonraker-plugin/helix_print.py" \
+        "$home/moonraker/moonraker/components/helix_print.py"
+}
+
+@test "relink re-points a link left by a moved install at this tree" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_moved_install "$home"
+    local c="$home/printer_data/config"
+    cp -R "$c" "$BATS_TEST_TMPDIR/config.before"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --relink
+    [ "$status" -eq 3 ] || fail "want 3 (relinked), got $status: $output"
+
+    [ "$(readlink "$home/moonraker/moonraker/components/helix_print.py")" = "$(dirname "$SCRIPT")/helix_print.py" ] ||
+        fail "link: $(readlink "$home/moonraker/moonraker/components/helix_print.py")"
+    diff -r "$BATS_TEST_TMPDIR/config.before" "$c" || fail "relink edited the config"
+}
+
+@test "relink leaves a link that already names this tree alone" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_moved_install "$home"
+    ln -sf "$(dirname "$SCRIPT")/helix_print.py" "$home/moonraker/moonraker/components/helix_print.py"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --relink
+    [ "$status" -eq 0 ] || fail "want 0 (current), got $status: $output"
+}
+
+@test "relink installs nothing where the plugin was never linked" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    printf '\n[helix_print]\n' >> "$home/printer_data/config/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --relink
+    [ "$status" -eq 4 ] || fail "want 4 (not ours), got $status: $output"
+    [ ! -e "$home/moonraker/moonraker/components/helix_print.py" ] &&
+        [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ] || fail "created a link"
+}
+
+@test "relink leaves a link with no [helix_print] section alone" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    ln -s "$home/old-helixscreen/moonraker-plugin/helix_print.py" \
+        "$home/moonraker/moonraker/components/helix_print.py"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --relink
+    [ "$status" -eq 4 ] || fail "want 4 (not ours), got $status: $output"
+    [ "$(readlink "$home/moonraker/moonraker/components/helix_print.py")" = "$home/old-helixscreen/moonraker-plugin/helix_print.py" ]
+}
+
+@test "relink leaves a regular helix_print.py file alone" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    printf '\n[helix_print]\n' >> "$home/printer_data/config/moonraker.conf"
+    printf '# copied by hand\n' > "$home/moonraker/moonraker/components/helix_print.py"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --relink
+    [ "$status" -eq 4 ] || fail "want 4 (not ours), got $status: $output"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+    grep -q 'copied by hand' "$home/moonraker/moonraker/components/helix_print.py"
+}
+
+@test "relink from outside a Forge-X chroot links the plugin as Moonraker sees it" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    forgex_install "$root"
+    local chroot="$root/data/.mod/.forge-x"
+    local link="$chroot/root/moonraker-env/moonraker/components/helix_print.py"
+    [ "$(readlink "$link")" = "$FORGEX_PLUGIN/helix_print.py" ] || fail "setup: link $(readlink "$link")"
+    ln -sf /opt/config/mod_data/old-helixscreen/moonraker-plugin/helix_print.py "$link"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --no-restart --relink
+    [ "$status" -eq 3 ] || fail "want 3 (relinked), got $status: $output"
+    [ "$(readlink "$link")" = "$FORGEX_PLUGIN/helix_print.py" ] || fail "link: $(readlink "$link")"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --no-restart --relink
+    [ "$status" -eq 0 ] || fail "want 0 (current) on the second run, got $status: $output"
+}

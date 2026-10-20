@@ -9,6 +9,7 @@
 #include "host_identity.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "text_io.h"
 
 #include <spdlog/spdlog.h>
 
@@ -212,7 +213,6 @@ static WaitResult run_install_script(const std::string& script_path, const char*
     close(fds[1]);
     result = wait_for_child_with_timeout(pid, timeout_seconds, operation_name, fds[0]);
     close(fds[0]);
-    log_script_output(result.output, !result.timed_out && !result.error && result.exit_code == 0);
     return result;
 #endif
 }
@@ -305,6 +305,7 @@ HelixPluginInstaller::SyncInstallResult HelixPluginInstaller::install_local_sync
 
     WaitResult result =
         run_install_script(script_path, "--auto", script_timeout_seconds_, "Installation");
+    log_script_output(result.output, !result.timed_out && !result.error && result.exit_code == 0);
 
     if (result.spawn_failed) {
         state_.store(PluginInstallState::FAILED);
@@ -364,6 +365,7 @@ void HelixPluginInstaller::uninstall_local(UninstallCallback callback) {
 
     WaitResult result = run_install_script(script_path, "--uninstall-auto", script_timeout_seconds_,
                                            "Uninstallation");
+    log_script_output(result.output, !result.timed_out && !result.error && result.exit_code == 0);
 
     if (result.spawn_failed) {
         state_.store(PluginInstallState::FAILED);
@@ -416,6 +418,86 @@ void HelixPluginInstaller::uninstall_local(UninstallCallback callback) {
                      lv_tr("Uninstallation failed. Check logs for details."));
         }
     }
+}
+
+namespace {
+// install.sh --relink exit codes (moonraker-plugin/install.sh, EXIT_RELINK_*).
+constexpr int kRelinkExitCurrent = 0;
+constexpr int kRelinkExitDone = 3;
+constexpr int kRelinkExitNotOurs = 4;
+} // namespace
+
+PluginLinkCheck relink_plugin(const std::string& script_path, int timeout_seconds) {
+    if (script_path.empty()) {
+        return PluginLinkCheck::Failed;
+    }
+    const WaitResult result =
+        run_install_script(script_path, "--relink", timeout_seconds, "Plugin relink");
+    if (result.spawn_failed || result.timed_out || result.error) {
+        log_script_output(result.output, false);
+        return PluginLinkCheck::Failed;
+    }
+    switch (result.exit_code) {
+    case kRelinkExitCurrent:
+        log_script_output(result.output, true);
+        return PluginLinkCheck::Current;
+    case kRelinkExitDone:
+        log_script_output(result.output, true);
+        return PluginLinkCheck::Relinked;
+    case kRelinkExitNotOurs:
+        log_script_output(result.output, true);
+        return PluginLinkCheck::NotOurs;
+    default:
+        log_script_output(result.output, false);
+        return PluginLinkCheck::Failed;
+    }
+}
+
+std::string parse_plugin_version(std::string_view text) {
+    constexpr std::string_view kPrefix = "PLUGIN_VERSION = \"";
+    size_t at = 0;
+    while ((at = text.find(kPrefix, at)) != std::string_view::npos) {
+        if (at == 0 || text[at - 1] == '\n') {
+            const size_t start = at + kPrefix.size();
+            const size_t end = text.find('"', start);
+            const size_t eol = text.find('\n', start);
+            if (end != std::string_view::npos && end < eol) {
+                return std::string(text.substr(start, end - start));
+            }
+        }
+        at += kPrefix.size();
+    }
+    return "";
+}
+
+PluginSelfHealStep decide_plugin_self_heal(const PluginSelfHealFacts& facts) {
+    const bool version_differs = !facts.reported_version.empty() &&
+                                 !facts.bundled_version.empty() &&
+                                 facts.reported_version != facts.bundled_version;
+    if (!facts.local) {
+        return version_differs ? PluginSelfHealStep::ReportOnly : PluginSelfHealStep::Nothing;
+    }
+    const bool needs_restart = facts.link == PluginLinkCheck::Relinked ||
+                               (facts.link == PluginLinkCheck::Current && version_differs);
+    if (!needs_restart) {
+        return PluginSelfHealStep::Nothing;
+    }
+    return facts.job_holds ? PluginSelfHealStep::WaitForJob : PluginSelfHealStep::RestartNow;
+}
+
+std::string HelixPluginInstaller::bundled_plugin_version() const {
+    const std::string script = get_install_script_path();
+    if (script.empty()) {
+        return "";
+    }
+    const std::string plugin = std::string(hfs::parent_path(script)) + "/helix_print.py";
+    // PLUGIN_VERSION sits near the top; the rest of the file is not needed.
+    const auto text = text_io::read_file(plugin, 16 * 1024);
+    if (!text) {
+        spdlog::warn("[PluginInstaller] Cannot read {}", plugin);
+        return "";
+    }
+    return parse_plugin_version(*text);
 }
 
 std::string plugin_release_ref(std::string_view version) {
