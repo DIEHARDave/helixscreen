@@ -13,6 +13,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/network_settings_overlay_test_access.h"
 #include "../test_helpers/scoped_runtime_config.h"
+#include "../test_helpers/wifi_manager_test_access.h"
 #include "http_executor.h"
 #include "lvgl/src/misc/lv_event_private.h"
 #include "wifi_backend_mock.h"
@@ -126,6 +127,11 @@ class WlanToggleFixture : public LVGLUITestFixture {
         Access::wlan_toggle_changed(overlay, &e);
     }
 
+    /// The parked radio call has not returned yet.
+    bool backend_answered() const {
+        return wm->is_enabled();
+    }
+
     static bool locked(lv_obj_t* sw) {
         return lv_obj_has_state(sw, LV_STATE_DISABLED);
     }
@@ -175,6 +181,102 @@ TEST_CASE_METHOD(WlanToggleFixture,
     REQUIRE(drain_until([sw] { return !locked(sw); }));
     CHECK_FALSE(lv_obj_has_state(sw, LV_STATE_CHECKED));
 
+    overlay.cleanup();
+    helix::ui::UpdateQueue::instance().drain();
+}
+
+TEST_CASE_METHOD(WlanToggleFixture,
+                 "Closing Network Settings mid-change still unlocks the switch for the next visit",
+                 "[network_settings][wlan_toggle]") {
+    NetworkSettingsOverlay overlay;
+    lv_obj_t* root = open_overlay(overlay);
+    lv_obj_t* sw = lv_obj_find_by_name(root, "wlan_toggle");
+    REQUIRE(sw != nullptr);
+
+    backend->arm(/*fail=*/false);
+    tap(overlay, sw);
+    REQUIRE(drain_until([this] { return backend->entered(); }));
+    REQUIRE(locked(sw));
+
+    overlay.on_deactivate(DeactivateReason::NavigateAway);
+    backend->release();
+    REQUIRE(drain_until([sw] { return !locked(sw); }));
+
+    overlay.on_activate();
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK_FALSE(locked(sw));
+    CHECK(lv_obj_has_state(sw, LV_STATE_CHECKED));
+    CHECK(wm->is_enabled());
+
+    overlay.cleanup();
+    helix::ui::UpdateQueue::instance().drain();
+}
+
+TEST_CASE_METHOD(WlanToggleFixture, "A radio answer arriving after cleanup changes nothing",
+                 "[network_settings][wlan_toggle]") {
+    NetworkSettingsOverlay overlay;
+    lv_obj_t* root = open_overlay(overlay);
+    lv_obj_t* sw = lv_obj_find_by_name(root, "wlan_toggle");
+    REQUIRE(sw != nullptr);
+
+    // A failed enable would revert wifi_enabled to 0 if its answer were folded in.
+    backend->arm(/*fail=*/true);
+    tap(overlay, sw);
+    REQUIRE(drain_until([this] { return backend->entered(); }));
+    REQUIRE(lv_subject_get_int(&Access::wifi_enabled(overlay)) == 1);
+
+    overlay.cleanup();
+    backend->release();
+    // The worker finishes the radio call; give its delivery every chance to land.
+    for (int i = 0; i < 50; ++i) {
+        helix::ui::UpdateQueue::instance().drain();
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    CHECK(lv_subject_get_int(&Access::wifi_enabled(overlay)) == 1);
+}
+
+TEST_CASE_METHOD(WlanToggleFixture,
+                 "Without WiFi hardware the switch stays locked after a radio answer",
+                 "[network_settings][wlan_toggle]") {
+    NetworkSettingsOverlay overlay;
+    lv_obj_t* root = open_overlay(overlay);
+    lv_obj_t* sw = lv_obj_find_by_name(root, "wlan_toggle");
+    REQUIRE(sw != nullptr);
+
+    lv_subject_set_int(&Access::wifi_hardware_available(overlay), 0);
+    Access::finish_wlan_toggle(overlay, /*requested=*/true, /*success=*/true, /*actual=*/true);
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(locked(sw));
+
+    overlay.cleanup();
+    helix::ui::UpdateQueue::instance().drain();
+}
+
+TEST_CASE_METHOD(WlanToggleFixture, "The backstop unlocks a switch whose radio never answers",
+                 "[network_settings][wlan_toggle]") {
+    NetworkSettingsOverlay overlay;
+    lv_obj_t* root = open_overlay(overlay);
+    lv_obj_t* sw = lv_obj_find_by_name(root, "wlan_toggle");
+    REQUIRE(sw != nullptr);
+
+    // Push the manager's own deadline for the radio call past the backstop's,
+    // so only the backstop can answer.
+    WiFiManagerTestAccess::set_user_op_timeouts(*wm, 45000, 600000, 900000);
+    backend->arm(/*fail=*/false);
+    tap(overlay, sw);
+    REQUIRE(drain_until([this] { return backend->entered(); }));
+    REQUIRE(locked(sw));
+
+    REQUIRE_FALSE(backend_answered());
+    lv_tick_inc(46000);
+    lv_timer_handler();
+    REQUIRE_FALSE(backend_answered());
+    CHECK_FALSE(locked(sw));
+    // Reconciled against the radio, which is still off while its call is parked.
+    CHECK_FALSE(lv_obj_has_state(sw, LV_STATE_CHECKED));
+
+    backend->release();
+    REQUIRE(drain_until([sw] { return lv_obj_has_state(sw, LV_STATE_CHECKED); }));
     overlay.cleanup();
     helix::ui::UpdateQueue::instance().drain();
 }
