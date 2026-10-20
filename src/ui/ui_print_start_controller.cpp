@@ -403,7 +403,16 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
         }
         return;
     }
-    backend->note_print_start_from_here();
+    // The mark goes down when the start itself is dispatched, after the
+    // pre-print step went through.
+    on_done = [on_done = std::move(on_done)]() {
+        if (AmsBackend* b = AmsState::instance().get_backend()) {
+            b->note_print_start_from_here();
+        }
+        if (on_done) {
+            on_done();
+        }
+    };
 
     // A remap the backend cannot honor stops the print here, before anything
     // is sent, with the same report a printer-side refusal gets below.
@@ -469,6 +478,24 @@ void PrintStartController::send_backend_preprint_then(const std::set<int>& tools
             });
         },
         15000);
+}
+
+void PrintStartController::read_file_tools(const std::string& filename,
+                                           std::function<void(std::set<int>)> on_tools,
+                                           helix::FileRead read) {
+    if (!reprint_facts_) {
+        reprint_facts_ = std::make_unique<helix::FileStartFactsLoader>(api_);
+    }
+    reprint_facts_->set_api(api_);
+    reprint_facts_->load(
+        filename,
+        [on_tools = std::move(on_tools)](helix::FileStartFacts facts) {
+            std::set<int> tools = helix::file_tools_used(facts);
+            spdlog::info("[PrintStartController] {} tools read from {}", tools.size(),
+                         facts.filename);
+            on_tools(std::move(tools));
+        },
+        nullptr, nullptr, read);
 }
 
 void PrintStartController::report_preprint_failure(const std::string& reason) {
@@ -661,16 +688,7 @@ void PrintStartController::reprint_impl(const std::string& filename, const std::
         // same reading the slicer-start check uses. A file that answers nothing
         // keeps the routing-free step.
         if (tools_used.empty() && archive_plate == 0) {
-            if (!reprint_facts_) {
-                reprint_facts_ = std::make_unique<helix::FileStartFactsLoader>(api_);
-            }
-            reprint_facts_->set_api(api_);
-            reprint_facts_->load(filename, [preprint](helix::FileStartFacts facts) {
-                const std::set<int> tools = helix::file_tools_used(facts);
-                spdlog::info("[PrintStartController] Reprint: {} tools read from {}", tools.size(),
-                             facts.filename);
-                preprint(tools);
-            });
+            read_file_tools(filename, preprint);
         } else {
             preprint(tools_used);
         }

@@ -446,20 +446,41 @@ port reads empty under `PRINTING=1`, and raises 525 (`extruder[N]: state: ..., e
 when its own test, `channel_state == load_finish` with `channel_error == ok`, fails at the
 end. The head presence switch reads present for filament that reached the toolhead and
 stopped short of the nozzle, so it vouches for nothing. A load that errors, times out, or
-answers OK with the feeder short of that test (the refeed, a Load from the filament panel,
-or a `*_fail` load state from any source) marks the head's load unconfirmed for the
-current print. While one is marked, `prepare_for_resume` never reaches RESUME: on the head
-it resumes on it retries the refeed, and on any other head it refuses, since loading that
-head would leave it picked up when RESUME runs. A Resume after a failed load is the
+answers OK with the feeder short of that test (the refeed, a Load from the filament panel),
+and a feeder frame naming a `*_fail` state or a channel_error fault from any source, mark
+the head's load unconfirmed for the current print. The refeed's OK can arrive before the
+frame naming `load_finish`, so it is judged on the head's next decisive frame (loaded with
+no error, or a failure; `load_finish` can land a frame before its error reads `ok`), or
+after 3 s without one. One refeed runs at a time: another Resume meanwhile is answered busy.
+A feeder still mid-load or mid-hand-feed on the head (a `load_*` or `manual_sta_*` state in
+progress, e.g. started from the printer's own screen) refuses Resume outright. While a head is marked, `prepare_for_resume` never reaches RESUME: on the head
+it resumes on it retries the refeed, and on another head the print uses (`extruders_used`)
+it refuses, since loading that head would leave it picked up when RESUME runs; a head the
+print does not use holds nothing. A Resume after a failed load is the
 dangerous action: `INNER_RESUME` extrudes 20 mm (`_CLIENT_EXTRUDE LENGTH=20`) into
 whatever jammed. The refusal names the head and points at the hardware ("Toolhead 2 (T1)
 didn't load. Check that its hotend is seated and do a test extrude before resuming."),
 with tapping Resume to retry the load as the way forward. Even with nothing marked, a head
-an automatic feeder serves resumes only from `load_finish` with no channel fault; the
-motion sensor's present reading is not taken as a load, and any other state runs the
-refeed first. The mark
-clears when that feeder reaches `load_finish` with no error, when the print leaves
-printing/paused, and on disconnect
+an automatic feeder serves whose feeder reports a failure runs the refeed first, the motion
+sensor's present reading notwithstanding. Settled states that are no failure resume as they
+are: `load_finish`, `unload_finish` (filament back at the feeder), `manual_sta_finish` (a hand
+load), `preload_finish`. The mark clears when that feeder reaches `load_finish`, or finishes a
+hand feed (`manual_sta_finish`), with no error, and when the print leaves printing/paused.
+A bare sensor reading never clears it: `FEED_AUTO` returns OK without feeding on an empty
+port, and filament stopped at the head switch reads present. For a head already loaded,
+`<klipper>/klippy/extras/filament_feed.py`'s `cmd_FEED_AUTO` returns OK at once when
+`channel_state` is `load_finish` and `channel_error` is `ok`, changing nothing and sending
+no frame, so the refeed judges it on the snapshot it already holds; a hand-loaded head
+(`manual_sta_finish`) is not that early return, and its own frame clears the mark before
+Resume refeeds anything. The marks live in the app: after the app restarts (not a websocket
+drop), a mark from an `AUTO_FEEDING` error or an OK with no `load_finish` is gone, and only
+a feeder still reporting a `*_fail` state or an error fault marks the head again. A restart
+from the beginning reads the file's tools from Moonraker's metadata, the tools cache and at
+most the footer's one range read (`FileRead::Footer`), never downloading the file: Orca's U1
+profile leaves `filament_weights` out of the metadata but writes `; filament used [g] = ...`
+per filament in the footer. A printer switch during that read drops the restart It survives a reconnect to a print still
+running, since the first print state a connection reads is no change of print, and the
+subscription's first frame marks any head whose feeder still reports a failure
 (`src/printer/ams_backend_snapmaker.cpp#mark_load_unconfirmed_locked`).
 
 **A print started without the task setup.** A slicer upload-and-print or a Fluidd start

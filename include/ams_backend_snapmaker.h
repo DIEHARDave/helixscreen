@@ -3,6 +3,8 @@
 #pragma once
 #if HELIX_HAS_SNAPMAKER
 
+#include "ui_timer_guard.h"
+
 #include "ams_subscription_backend.h"
 #include "filament_slot_override.h"
 #include "filament_slot_override_store.h"
@@ -659,6 +661,13 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         bool material_declared = false;
     };
 
+    /// A refeed whose AUTO_FEEDING answered OK before the feeder's frame
+    /// named its outcome.
+    struct RefeedWait {
+        int slot = -1;
+        ResumeReadyCallback on_ready;
+    };
+
     /// What judge_task_config_locked() found for the running print.
     enum class TaskConfigNotice {
         None,         ///< nothing to say
@@ -696,6 +705,8 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         std::vector<std::pair<int, std::string>> record_restores;
         /// Held record writes this frame released.
         std::vector<std::pair<int, PendingRecordWrite>> record_flushes;
+        /// The head a refeed waits on reached a settled state this frame.
+        bool refeed_settled = false;
         /// The running print's task names no used head: its file is checked
         /// for a tool past the first, and the user told once.
         TaskConfigNotice task_config_unset = TaskConfigNotice::None;
@@ -989,6 +1000,18 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// The running print was started from this screen. Under mutex_.
     bool print_started_here_ = false;
 
+    /// How long a refeed's OK waits for the head's next settled frame.
+    static constexpr std::chrono::milliseconds kRefeedFrameWait{3000};
+
+    /// The refeed waiting on its head's frame. Under mutex_.
+    std::optional<RefeedWait> refeed_wait_;
+
+    /// A refeed was sent and has not been judged. Under mutex_.
+    bool refeed_in_flight_ = false;
+
+    /// Ends refeed_wait_ at kRefeedFrameWait. Main thread.
+    helix::ui::LvglTimerGuard refeed_wait_timer_;
+
     /// Counts prints: bumped each time print_stats.state enters or leaves a
     /// print, so an answer about one print's file is dropped once it ends.
     /// Under mutex_.
@@ -1136,14 +1159,37 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         return error != "ok" && !error.empty() && error != "none" && error != "no_filament";
     }
 
+    /// The feeder's own word that the head holds filament it loaded: a load
+    /// finished at the nozzle, or a hand feed finished, either with no error.
+    [[nodiscard]] static bool feeder_reports_loaded(const ChannelSnapshot& snap) {
+        return load_confirmed(snap) || (snap.state == "manual_sta_finish" && snap.error == "ok");
+    }
+
+    /// The feeder reports this channel failed: a *_fail state, or a
+    /// channel_error that is a fault.
+    [[nodiscard]] static bool feed_failure_reported(const ChannelSnapshot& snap) {
+        return snapmaker::classify_channel_state(snap.state).is_fail ||
+               channel_error_is_fault(snap.error);
+    }
+
     /// An automatic feeder serves this head, so its channel_state says
     /// whether filament is loaded to the nozzle.
     [[nodiscard]] static bool feeder_serves_head(const ChannelSnapshot& snap) {
         return snap.module_exist && !snap.disable_auto && !snap.state.empty();
     }
 
+    /// After a refeed's OK: judge it now when the feeder already reads
+    /// load_finish, else on the head's next settled frame or at
+    /// kRefeedFrameWait. Main thread.
+    void await_refeed_outcome(int slot, ResumeReadyCallback on_ready);
+    /// End a pending refeed wait, judging it on what the feeder reads now.
+    void finish_refeed_wait();
+    /// Judge a refeed on the head's snapshot and answer @p on_ready.
+    void settle_refeed(int slot, ResumeReadyCallback on_ready);
+
     /// The head whose unconfirmed load holds Resume: @p preferred when it is
-    /// one, else the lowest, else -1. Caller holds mutex_.
+    /// one, else the lowest the print is known to use, else -1. Caller holds
+    /// mutex_.
     [[nodiscard]] int unconfirmed_load_head_locked(int preferred) const;
 
     /// Resume refused because @p head's last load is unconfirmed. The detail

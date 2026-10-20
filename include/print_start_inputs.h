@@ -87,6 +87,14 @@ void fill_file_context(PrintStartContext& ctx, const FileStartFacts& facts);
 /// footer read, then a whole-file tools scan when the footer cannot answer.
 /// The file view runs its own scan through the same steps, handing in its
 /// shared download so the viewer preview and the scan use one transfer.
+/// How much of a file FileStartFactsLoader::load() may read past Moonraker's
+/// metadata and the tools cache.
+enum class FileRead {
+    MetadataOnly, ///< nothing of the file itself
+    Footer,       ///< the footer's one bounded range read, never a download
+    Whole,        ///< the footer, then a download and scan when it does not answer
+};
+
 class FileStartFactsLoader {
   public:
     /// Downloads the file and answers ok plus a local path the scan may read.
@@ -108,8 +116,9 @@ class FileStartFactsLoader {
     /// Gather facts for @p filename and answer once, on the main thread. A
     /// failed metadata read, footer read or download still answers, with what
     /// it has. A later load() supersedes an unanswered one.
+    /// @p read bounds how much of the file itself is read (FileRead).
     void load(const std::string& filename, ReadyFn on_ready, DownloadFn download = nullptr,
-              MetadataFn on_metadata = nullptr);
+              MetadataFn on_metadata = nullptr, FileRead read = FileRead::Whole);
 
     /// One file's tools/palette/grams read: the half of load() after the metadata.
     struct ScanRequest {
@@ -123,6 +132,8 @@ class FileStartFactsLoader {
         std::function<std::string()> local_source;
         bool on_moonraker = true; ///< false for a USB file Moonraker has no copy of
         DownloadFn download;      ///< null: download to a temp file, deleted after the scan
+        /// false: a footer that does not answer ends the read; no download.
+        bool allow_full_scan = true;
     };
 
     /// What a scan reports. Each runs on the main thread, and none runs once a

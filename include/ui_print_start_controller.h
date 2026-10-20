@@ -163,6 +163,14 @@ class PrintStartController {
      * @param on_started Called on success (main thread).
      * @param on_error   Called on failure (main thread).
      */
+    /// The tools @p filename uses, read through FileStartFactsLoader and
+    /// file_tools_used(); empty when the file answers nothing. Answers once, on
+    /// the main thread; a later read supersedes an unanswered one.
+    /// @p read bounds the file read: a caller that cannot wait on a download
+    /// passes FileRead::Footer.
+    void read_file_tools(const std::string& filename, std::function<void(std::set<int>)> on_tools,
+                         helix::FileRead read = helix::FileRead::Whole);
+
     void initiate_reprint(const std::string& filename, const std::string& path,
                           const std::set<int>& tools_used, std::function<void()> on_started,
                           std::function<void()> on_error, int archive_plate = 0);

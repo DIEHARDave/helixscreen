@@ -98,11 +98,12 @@ class PrintStatusPanelTestAccess {
         return panel.current_print_filename_;
     }
 
-    /// Reprint through the panel's own controller, the one it uses while Print
-    /// Files has none.
-    static void reprint_with_own_controller(PrintStatusPanel& panel,
-                                            const helix::gcode::ReprintTarget& target) {
-        panel.reprint_through(panel.own_reprint_controller(), target);
+    /// Reprint through @p controller, standing in for the one
+    /// print_start_controller_for() hands out.
+    static void reprint_through(PrintStatusPanel& panel,
+                                helix::ui::PrintStartController& controller,
+                                const helix::gcode::ReprintTarget& target) {
+        panel.reprint_through(controller, target);
     }
 
     static void set_filename(PrintStatusPanel& panel, const char* filename) {

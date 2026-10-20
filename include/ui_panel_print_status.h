@@ -602,10 +602,7 @@ class PrintStatusPanel : public OverlayBase {
     /// firmware needs (the U1's used heads) and the preparing window.
     void reprint_through(helix::ui::PrintStartController& controller,
                          const helix::gcode::ReprintTarget& target);
-    /// Print Files' controller, or this panel's own until Print Files is built
-    /// (the ESP32 build defers that panel to its first visit).
-    [[nodiscard]] helix::ui::PrintStartController& reprint_controller();
-    [[nodiscard]] helix::ui::PrintStartController& own_reprint_controller();
+
     void handle_files_click(); ///< Open print select while this overlay holds the screen
     void handle_resize();
 
@@ -744,9 +741,6 @@ class PrintStatusPanel : public OverlayBase {
 
     /// Manages filament runout guidance (extracted from PrintStatusPanel)
     std::unique_ptr<helix::ui::FilamentRunoutHandler> runout_handler_;
-
-    /// Reprints when Print Files has no controller yet; created on that use.
-    std::unique_ptr<helix::ui::PrintStartController> own_reprint_controller_;
 };
 
 // Global instance accessor (needed by main.cpp)

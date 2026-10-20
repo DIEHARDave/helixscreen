@@ -320,10 +320,6 @@ void AmsBackendSnapmaker::before_disconnect() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         nozzle_offset = nozzle_offset_supported_;
-        // A load's outcome belongs to the printer it ran on; the next
-        // connection reads the feeders afresh.
-        load_unconfirmed_.fill(false);
-        task_config_judged_ = false;
     }
     if (nozzle_offset) {
         snapmaker::nozzle_offset::leave_live_run(client_);
@@ -369,9 +365,9 @@ void AmsBackendSnapmaker::on_started() {
         tag_readings_.fill(std::nullopt);
         tag_has_card_.fill(std::nullopt);
         card_seen_.fill(false);
+        // The first print state the connection reads decides whether the
+        // per-print marks survive (apply_print_state_locked).
         print_state_.reset();
-        load_unconfirmed_.fill(false);
-        task_config_judged_ = false;
         main_state_.reset();
         // The overrides reload below; a held save belongs to the session that
         // made it.
@@ -1087,6 +1083,26 @@ void AmsBackendSnapmaker::prepare_for_resume(int slot_index, ResumeReadyCallback
         return;
     }
 
+    // A load or hand feed still moving filament on the head (started from the
+    // printer's own screen, say) is answered before anything is sent: RESUME
+    // would extrude into it, and a refeed would race it.
+    if (slot >= 0 && slot < kNumTools) {
+        ChannelSnapshot snap;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            snap = channel_snapshots_[slot];
+        }
+        if (feeder_serves_head(snap) && helix::snapmaker::channel_state_in_progress(snap.state)) {
+            spdlog::warn("{} prepare_for_resume: tool {} feeder is mid-operation ('{}') — "
+                         "refusing RESUME",
+                         backend_log_tag(), slot, snap.state);
+            if (on_ready) {
+                on_ready(AmsErrorHelper::busy(snap.state));
+            }
+            return;
+        }
+    }
+
     // The presence switch cannot vouch for a head whose last load failed:
     // filament can reach it and stop short of the nozzle. Resume is the retry
     // for the head it resumes on; any other head has to be loaded first, since
@@ -1146,11 +1162,10 @@ void AmsBackendSnapmaker::prepare_for_resume(int slot_index, ResumeReadyCallback
             snap = channel_snapshots_[slot];
         }
         // The motion sensor reads present partway through a load that then
-        // fails, so on a head an automatic feeder serves only the feeder's own
-        // load_finish vouches for filament at the nozzle. RESUME extrudes into
-        // the head before it prints, which is the wrong thing to do to a jam.
-        if (feeder_serves_head(snap) &&
-            (snap.state != "load_finish" || channel_error_is_fault(snap.error))) {
+        // fails, so on a head an automatic feeder serves, a feeder reporting a
+        // failure outranks it. RESUME extrudes into the head before it prints,
+        // which is the wrong thing to do to a jam.
+        if (feeder_serves_head(snap) && feed_failure_reported(snap)) {
             spdlog::warn("{} prepare_for_resume: tool {} sensor reads present but the feeder "
                          "reads '{}' (error '{}') — {} before RESUME",
                          backend_log_tag(), slot, snap.state, snap.error,
@@ -1210,6 +1225,20 @@ void AmsBackendSnapmaker::run_runout_refeed(int slot, ResumeReadyCallback on_rea
         }
         return;
     }
+    {
+        // One refeed at a time: a second Resume tap while one runs would send a
+        // second AUTO_FEEDING and leave the first caller unanswered.
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (refeed_in_flight_) {
+            spdlog::warn("{} prepare_for_resume: tool {} refeed already running", backend_log_tag(),
+                         slot);
+            if (on_ready) {
+                on_ready(AmsErrorHelper::busy("refeed"));
+            }
+            return;
+        }
+        refeed_in_flight_ = true;
+    }
 
     std::string chain = fmt::format("AUTO_FEEDING EXTRUDER={0} LOAD=1 PRINTING=1", slot);
     spdlog::info("{} prepare_for_resume: tool {} runout latched — driving AMS load "
@@ -1233,35 +1262,10 @@ void AmsBackendSnapmaker::run_runout_refeed(int slot, ResumeReadyCallback on_rea
         [this, tok, on_ready, tag, slot]() mutable {
             // IMoonrakerAPI callbacks fire on the libhv WebSocket thread; defer to
             // main so on_ready (and the backstop arm) run on the UI thread.
-            tok.defer("AmsBackendSnapmaker::prepare_for_resume.ok", [this, cb = std::move(on_ready),
-                                                                     tag, slot]() {
-                bool confirmed = false;
-                {
-                    std::lock_guard<std::mutex> lock(mutex_);
-                    confirmed = load_confirmed(channel_snapshots_[slot]);
-                    if (confirmed) {
-                        load_unconfirmed_[slot] = false;
-                    } else {
-                        mark_load_unconfirmed_locked(slot, "no load_finish after OK");
-                    }
-                }
-                if (!confirmed) {
-                    spdlog::error("{} prepare_for_resume: tool {} AUTO_FEEDING answered "
-                                  "OK but the feeder never reported load_finish",
-                                  tag, slot);
-                    if (cb) {
-                        cb(unconfirmed_load_error(slot, "prepare_for_resume AMS load unconfirmed"));
-                    }
-                    return;
-                }
-                spdlog::info("{} prepare_for_resume: tool {} AMS load complete "
-                             "(load_finish)",
-                             tag, slot);
-                // Hand control back so the caller dispatches RESUME.
-                if (cb) {
-                    cb(AmsErrorHelper::success());
-                }
-            });
+            tok.defer("AmsBackendSnapmaker::prepare_for_resume.ok",
+                      [this, cb = std::move(on_ready), slot]() mutable {
+                          await_refeed_outcome(slot, std::move(cb));
+                      });
         },
         [this, tok, on_ready, tag, slot](const MoonrakerError& err) mutable {
             std::string msg = err.message;
@@ -1272,6 +1276,7 @@ void AmsBackendSnapmaker::run_runout_refeed(int slot, ResumeReadyCallback on_rea
                 {
                     std::lock_guard<std::mutex> lock(mutex_);
                     mark_load_unconfirmed_locked(slot, msg);
+                    refeed_in_flight_ = false;
                 }
                 // Load failed → RESUME is never dispatched; report failure.
                 // The copy names the head, not the firmware's own error
@@ -1307,12 +1312,80 @@ int AmsBackendSnapmaker::unconfirmed_load_head_locked(int preferred) const {
     if (preferred >= 0 && preferred < kNumTools && load_unconfirmed_[preferred]) {
         return preferred;
     }
+    // Another head holds Resume only when the print is known to use it.
     for (int head = 0; head < kNumTools; ++head) {
-        if (load_unconfirmed_[head]) {
+        if (load_unconfirmed_[head] && static_cast<size_t>(head) < extruders_used_.size() &&
+            extruders_used_[static_cast<size_t>(head)]) {
             return head;
         }
     }
     return -1;
+}
+
+void AmsBackendSnapmaker::await_refeed_outcome(int slot, ResumeReadyCallback on_ready) {
+    bool wait = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        wait = !feeder_reports_loaded(channel_snapshots_[slot]);
+        if (wait) {
+            // The status frame naming load_finish can trail the command's
+            // answer; the head's next settled frame, or the timeout, decides.
+            refeed_wait_ = RefeedWait{slot, std::move(on_ready)};
+        }
+    }
+    if (!wait) {
+        settle_refeed(slot, std::move(on_ready));
+        return;
+    }
+    // The guard cancels the timer when the backend is destroyed.
+    refeed_wait_timer_.reset(lv_timer_create(
+        [](lv_timer_t* timer) {
+            auto* self = static_cast<AmsBackendSnapmaker*>(lv_timer_get_user_data(timer));
+            self->finish_refeed_wait();
+        },
+        static_cast<uint32_t>(kRefeedFrameWait.count()), this));
+    lv_timer_set_repeat_count(refeed_wait_timer_.get(), 1);
+}
+
+void AmsBackendSnapmaker::finish_refeed_wait() {
+    std::optional<RefeedWait> wait;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        wait.swap(refeed_wait_);
+    }
+    // Cancelling is safe from inside the timer's own callback.
+    refeed_wait_timer_.reset();
+    if (wait) {
+        settle_refeed(wait->slot, std::move(wait->on_ready));
+    }
+}
+
+void AmsBackendSnapmaker::settle_refeed(int slot, ResumeReadyCallback on_ready) {
+    bool confirmed = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        confirmed = feeder_reports_loaded(channel_snapshots_[slot]);
+        refeed_in_flight_ = false;
+        if (confirmed) {
+            load_unconfirmed_[slot] = false;
+        } else {
+            mark_load_unconfirmed_locked(slot, "no load_finish after OK");
+        }
+    }
+    if (!confirmed) {
+        spdlog::error("{} prepare_for_resume: tool {} AUTO_FEEDING answered OK but the feeder "
+                      "never reported load_finish",
+                      backend_log_tag(), slot);
+        if (on_ready) {
+            on_ready(unconfirmed_load_error(slot, "prepare_for_resume AMS load unconfirmed"));
+        }
+        return;
+    }
+    spdlog::info("{} prepare_for_resume: tool {} AMS load complete (load_finish)",
+                 backend_log_tag(), slot);
+    if (on_ready) {
+        on_ready(AmsErrorHelper::success());
+    }
 }
 
 AmsError AmsBackendSnapmaker::unconfirmed_load_error(int head, std::string technical,
@@ -1335,15 +1408,21 @@ bool AmsBackendSnapmaker::print_in_progress_locked() const {
 }
 
 void AmsBackendSnapmaker::apply_print_state_locked(const std::string& state) {
+    const bool had_state = print_state_.has_value();
     const bool was_in_progress = print_in_progress_locked();
     print_state_ = state;
-    if (was_in_progress != print_in_progress_locked()) {
-        // A load's outcome and the task judgement each belong to one print.
+    const bool in_progress = print_in_progress_locked();
+    // A load's outcome and the task judgement each belong to one print. The
+    // first state a connection reads is no change of print: a reconnect
+    // mid-print keeps them, and one that finds no print forgets them.
+    if ((had_state && was_in_progress != in_progress) || (!had_state && !in_progress)) {
         load_unconfirmed_.fill(false);
         task_config_judged_ = false;
         ++print_generation_;
         print_started_here_ = false;
-        if (print_in_progress_locked() && start_from_here_at_) {
+    }
+    if (was_in_progress != in_progress) {
+        if (in_progress && start_from_here_at_) {
             print_started_here_ =
                 std::chrono::steady_clock::now() - *start_from_here_at_ <= kStartFromHereWindow;
             start_from_here_at_.reset();
@@ -1354,6 +1433,14 @@ void AmsBackendSnapmaker::apply_print_state_locked(const std::string& state) {
 void AmsBackendSnapmaker::note_print_start_from_here() {
     std::lock_guard<std::mutex> lock(mutex_);
     start_from_here_at_ = std::chrono::steady_clock::now();
+    if (print_in_progress_locked()) {
+        // A restart cancels and starts again; the two can reach this backend
+        // as one unbroken print, so the new print's state starts here.
+        load_unconfirmed_.fill(false);
+        task_config_judged_ = false;
+        ++print_generation_;
+        print_started_here_ = true;
+    }
 }
 
 bool AmsBackendSnapmaker::file_uses_later_tool(const FileStartFacts& facts) {
@@ -1904,7 +1991,7 @@ void AmsBackendSnapmaker::apply_feed_channel_locked(const snapmaker::FeedChannel
     // never carries the motion sensor's enabled flag, so that field rides the
     // same rule).
     ChannelSnapshot snap = channel_snapshots_[static_cast<size_t>(i)];
-    const bool was_load_confirmed = load_confirmed(snap);
+    const bool was_load_confirmed = feeder_reports_loaded(snap);
     const std::string prev_state = snap.state;
     const std::string prev_action_state = snap.action_state;
     if (channel.channel_state) {
@@ -1931,9 +2018,9 @@ void AmsBackendSnapmaker::apply_feed_channel_locked(const snapmaker::FeedChannel
     // when the outcome survives in channel_action_state alone.
     const std::optional<std::string> settled_outcome =
         helix::snapmaker::settled_op_outcome(snap.state, prev_action_state, snap.action_state);
-    if (load_confirmed(snap) && !was_load_confirmed && load_unconfirmed_[i]) {
-        spdlog::info("{} tool {} reports load_finish with no error; Resume may proceed",
-                     backend_log_tag(), i);
+    if (feeder_reports_loaded(snap) && !was_load_confirmed && load_unconfirmed_[i]) {
+        spdlog::info("{} tool {} reports '{}' with no error; Resume may proceed", backend_log_tag(),
+                     i, snap.state);
         load_unconfirmed_[i] = false;
     }
     channel_snapshots_[static_cast<size_t>(i)] = std::move(snap);
@@ -1963,8 +2050,22 @@ void AmsBackendSnapmaker::apply_feed_channel_locked(const snapmaker::FeedChannel
         unload_in_flight_[i] = false;
     }
 
-    if (outcome_is_new && op_info.is_fail && op_info.action == AmsAction::LOADING) {
+    // A frame carries a channel's state or error only when it changed, or
+    // whole when a subscription starts, which rebuilds the marks after a
+    // reconnect.
+    if ((channel.channel_state || channel.channel_error) &&
+        feed_failure_reported(channel_snapshots_[static_cast<size_t>(i)])) {
         mark_load_unconfirmed_locked(i, op_state);
+    }
+    // A frame settles the refeed only when it is decisive: loaded with no
+    // error, or a failure. load_finish can land a frame before channel_error
+    // turns ok; that frame waits for the next one, within the timeout.
+    if (refeed_wait_ && refeed_wait_->slot == i &&
+        (channel.channel_state || channel.channel_error)) {
+        const ChannelSnapshot& now = channel_snapshots_[static_cast<size_t>(i)];
+        if (feeder_reports_loaded(now) || feed_failure_reported(now)) {
+            fx.refeed_settled = true;
+        }
     }
 
     apply_channel_progress_locked(i, state, info, fx);
@@ -2920,6 +3021,10 @@ void AmsBackendSnapmaker::dispatch_effects(const FrameEffects& fx) {
                             "in the feeder; writing the declaration back");
     for (const auto& [head, pending] : fx.record_flushes) {
         write_task_filament_record(head, pending.info, pending.material_declared);
+    }
+
+    if (fx.refeed_settled) {
+        finish_refeed_wait();
     }
 
     if (fx.task_config_unset != TaskConfigNotice::None) {

@@ -1823,27 +1823,7 @@ void PrintStatusPanel::handle_reprint_button() {
     // Disable button immediately to prevent double-press
     ui_set_button_enabled(btn_cancel_, false);
 
-    reprint_through(reprint_controller(), target);
-}
-
-helix::ui::PrintStartController& PrintStatusPanel::reprint_controller() {
-    auto* select_panel = get_print_select_panel(printer_state_, api_);
-    if (auto* controller = select_panel ? select_panel->get_print_start_controller() : nullptr) {
-        return *controller;
-    }
-    return own_reprint_controller();
-}
-
-helix::ui::PrintStartController& PrintStatusPanel::own_reprint_controller() {
-    if (!own_reprint_controller_) {
-        spdlog::info("[{}] Print Files not built yet; reprinting through this panel's own "
-                     "print controller",
-                     get_name());
-        own_reprint_controller_ =
-            std::make_unique<helix::ui::PrintStartController>(printer_state_, api_);
-    }
-    own_reprint_controller_->set_api(api_);
-    return *own_reprint_controller_;
+    reprint_through(print_start_controller_for(printer_state_, api_), target);
 }
 
 void PrintStatusPanel::reprint_through(helix::ui::PrintStartController& controller,

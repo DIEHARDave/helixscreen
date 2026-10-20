@@ -96,6 +96,15 @@ class SnapmakerTestAccess {
         std::lock_guard<std::mutex> lock(b.mutex_);
         return b.rfid_tracker_.baseline(slot_index);
     }
+    /// End a refeed's wait for its head's frame, as its timer does.
+    static void expire_refeed_wait(AmsBackendSnapmaker& b) {
+        b.finish_refeed_wait();
+    }
+    /// Forget the print state, as a reconnect's on_started() does.
+    static void forget_print_state(AmsBackendSnapmaker& b) {
+        std::lock_guard<std::mutex> lock(b.mutex_);
+        b.print_state_.reset();
+    }
     /// What start() sets once the subscription is up; filament ops refuse
     /// until it is.
     static void set_running(AmsBackendSnapmaker& b, bool running) {
