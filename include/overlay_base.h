@@ -466,7 +466,8 @@ struct TeardownHooks {
  *
  * Performs, in order:
  * 1. Drains the UpdateQueue under a scoped freeze while all pointers are
- *    still valid (observe<int> callbacks capture raw panel pointers)
+ *    still valid (observe<int> callbacks capture raw panel pointers), and
+ *    stops there when that drain ran a teardown of the same root
  * 2. Unregisters the close callback and overlay instance from
  *    NavigationManager (before deletion, so a manual destroy while the panel
  *    is still stacked cannot double-invoke)
@@ -494,8 +495,9 @@ struct TeardownHooks {
  *                     null when the caller keeps no second copy, and may
  *                     point at @p root itself
  * @param hooks Owner hooks for steps 4 and 7 (either may be empty)
- * @return true if a teardown happened; false when @p root was null (no
- *         hooks run in that case)
+ * @return true if a teardown happened; false when @p root was null, or a
+ *         teardown the drain ran completed it first (no hooks run here in
+ *         either case)
  */
 bool teardown_overlay_ui(lv_obj_t*& root, const char* owner_name, TeardownDelete how,
                          lv_obj_t** cached_panel = nullptr, TeardownHooks hooks = {});
