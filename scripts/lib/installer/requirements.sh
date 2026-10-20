@@ -432,7 +432,8 @@ Moonraker does not appear to be running."
     if ps | grep -v grep | grep -q '[Mm]oonraker'; then
         local mr_url
         mr_url=$(installer_moonraker_url)
-        if ! moonraker_answers "${mr_url}/server/info"; then
+        # 5s: a loaded K1 or AD5M can take that long to answer.
+        if ! moonraker_answers "${mr_url}/server/info" 5; then
             if [ -n "$warnings" ]; then
                 warnings="$warnings
 Moonraker is running but not responding on ${mr_url}."

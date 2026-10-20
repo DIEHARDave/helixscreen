@@ -203,3 +203,18 @@ EOF
     [ "$status" -eq 0 ]
     contains "not responding on http://127.0.0.1:80" "$output"
 }
+
+@test "check_klipper_ecosystem: gives Moonraker 5 seconds to answer" {
+    local ps_file="$BATS_TEST_TMPDIR/ps_output" log="$BATS_TEST_TMPDIR/wget.log"
+    cat > "$ps_file" <<'EOF'
+  PID USER     COMMAND
+  123 root     klippy/klippy.py
+  456 root     moonraker/moonraker.py
+EOF
+    run_klipper_check "ad5m" "$ps_file" 0
+    printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s"\n' "$log" > "$BATS_TEST_TMPDIR/bin/wget"
+
+    run check_klipper_ecosystem "ad5m"
+    [ "$status" -eq 0 ]
+    grep -q -- '-T 5 .*server/info' "$log" || fail "probe: $(cat "$log")"
+}

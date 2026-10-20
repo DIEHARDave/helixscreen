@@ -1909,3 +1909,47 @@ stage_private_install() {
     [ "$status" -eq 0 ]
     [ "$(mode_of "$BATS_TEST_TMPDIR/printer_data/config/helixscreen")" = 755 ] || fail "chmodded printer_data through the link"
 }
+
+# A curl reporting print_stats.state $1 and logging every request to
+# $BATS_TEST_TMPDIR/curl.log.
+mock_curl_print_state() {
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$BATS_TEST_TMPDIR/curl.log'
+case \"\$*\" in *objects/query*print_stats*) printf '{\"result\": {\"eventtime\": 1.0, \"status\": {\"print_stats\": {\"state\": \"%s\"}}}}' '$1' ;; esac
+exit 0"
+}
+
+@test "restart_moonraker: with a print printing or paused, Moonraker is not asked to restart itself" {
+    local state
+    for state in printing paused; do
+        rm -f "$BATS_TEST_TMPDIR/curl.log"
+        stage_moonraker_on_port 7125
+        unset MOONRAKER_URL
+        mock_command_script "systemctl" 'exit 1'
+        export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
+        mkdir -p "$HELIX_INITD_DIR"
+        mock_curl_print_state "$state"
+
+        run restart_moonraker
+
+        [ "$status" -eq 0 ] || fail "$state: aborted the install"
+        grep -q 'print_stats' "$BATS_TEST_TMPDIR/curl.log" || fail "$state: never asked for the print state"
+        if grep -q 'server/restart' "$BATS_TEST_TMPDIR/curl.log"; then fail "$state: restarted Moonraker mid-print"; fi
+        contains "restart it after the print" "$output"
+    done
+}
+
+@test "restart_moonraker: with the printer idle, Moonraker is asked to restart itself" {
+    stage_moonraker_on_port 7125
+    unset MOONRAKER_URL
+    mock_command_script "systemctl" 'exit 1'
+    export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
+    mkdir -p "$HELIX_INITD_DIR"
+    mock_curl_print_state standby
+
+    run restart_moonraker
+
+    [ "$status" -eq 0 ]
+    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$BATS_TEST_TMPDIR/curl.log" ||
+        fail "no self-restart: $(cat "$BATS_TEST_TMPDIR/curl.log")"
+}

@@ -53,8 +53,6 @@ setup() {
     . "$WORKTREE_ROOT/scripts/lib/installer/host_profile.sh"
     . "$WORKTREE_ROOT/scripts/lib/installer/helix_print_conf.sh"  # installer_moonraker_url's
     . "$WORKTREE_ROOT/scripts/lib/installer/moonraker.sh"         # installer_moonraker_url, restart_moonraker
-    unset _HELIX_RELEASE_SOURCED
-    . "$WORKTREE_ROOT/scripts/lib/installer/release.sh"           # _has_real_curl
     . "$WORKTREE_ROOT/scripts/lib/installer/competing_uis.sh"  # record_disabled_service
     . "$WORKTREE_ROOT/scripts/lib/installer/camera.sh"
 

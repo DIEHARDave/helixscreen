@@ -99,9 +99,6 @@ MOONRAKER_CONFIG_DIRS="
 /etc/klipper/config
 "
 
-# Where running processes are listed; tests point it at a fixture tree.
-PROC_ROOT="${HELIX_PROC_ROOT:-/proc}"
-
 # Print Moonraker's components directory under a source root. Three layouts:
 #   <root>/moonraker/components            git checkout (~/moonraker)
 #   <root>/components                      the package directory itself
@@ -119,7 +116,7 @@ components_under() {
 
 # Print the running Moonraker's /proc directory (running_moonraker_process).
 running_moonraker_proc() {
-    proc=$(running_moonraker_process "$PROC_ROOT" | sed -n 1p)
+    proc=$(running_moonraker_process | sed -n 1p)
     [ -n "$proc" ] || return 1
     printf '%s' "$proc"
 }
@@ -128,16 +125,6 @@ running_moonraker_proc() {
 running_moonraker_args() {
     proc=$(running_moonraker_proc) || return 1
     tr '\000' '\n' < "$proc/cmdline" 2>/dev/null
-}
-
-# Print where the running Moonraker's "/" is from here: empty when it shares
-# ours, the chroot directory when it runs in one (Forge-X runs Moonraker in
-# /data/.mod/.forge-x). Every path in its argv is relative to that root.
-running_moonraker_root() {
-    proc=$(running_moonraker_proc) || return 0
-    root=$(readlink "$proc/root" 2>/dev/null) || return 0
-    [ "$root" = "/" ] && return 0
-    printf '%s' "${root%/}"
 }
 
 # Translate a path on this side into the same file as the running Moonraker
@@ -156,15 +143,6 @@ path_for_moonraker() {
 # Moonraker's argv.
 running_moonraker_arg() {
     running_moonraker_args | awk -v a="$1" -v b="$2" 'p == a || p == b { print; exit } { p = $0 }'
-}
-
-# Print the running Moonraker's effective uid, then its groups (primary
-# first), space-separated. Empty when no Moonraker runs here.
-running_moonraker_ids() {
-    proc=$(running_moonraker_proc) || return 0
-    awk '/^Uid:/ { u = $3 } /^Gid:/ { g = $3 }
-        /^Groups:/ { for (i = 2; i <= NF; i++) gs = gs " " $i }
-        END { if (u != "") print u " " g gs }' "$proc/status" 2>/dev/null || true
 }
 
 # Whether a process with ids @1 (uid, then groups) holds permission @2 (r
@@ -335,7 +313,7 @@ helix_conf_file() {
 # Print the running Klipper's extras/virtual_sdcard.py, the code that decides
 # which files SDCARD_PRINT_FILE can open. Empty when no Klipper runs here.
 running_klipper_sdcard_source() {
-    for f in "$PROC_ROOT"/[0-9]*/cmdline; do
+    for f in "${HELIX_PROC_ROOT:-/proc}"/[0-9]*/cmdline; do
         [ -r "$f" ] || continue
         klippy=$(tr '\000' '\n' < "$f" 2>/dev/null | awk '/klippy\/klippy\.py$/ { print; exit }')
         [ -n "$klippy" ] || continue
@@ -538,25 +516,6 @@ uninstall() {
     return "$exit_status"
 }
 
-# The same probe as _has_real_curl in scripts/lib/installer/release.sh.
-# Detect whether `curl` is curl proper, with the flags we pass it. Creality K1
-# firmware ships libhv's example client as /usr/bin/curl: it answers to the name,
-# prints "curl version 1.0.0" and rejects -s, -S, -L, -o and -f. Real curl's first
-# --version output starts "curl <digit>...". Shell builtins only, so it holds on
-# a PATH with no head or grep. Cache the result so we only probe once.
-_REAL_CURL=""
-_has_real_curl() {
-    if [ -z "$_REAL_CURL" ]; then
-        _REAL_CURL=no
-        if command -v curl >/dev/null 2>&1; then
-            case "$(curl --version 2>/dev/null)" in
-                "curl "[0-9]*) _REAL_CURL=yes ;;
-            esac
-        fi
-    fi
-    [ "$_REAL_CURL" = "yes" ]
-}
-
 # Wait for Moonraker to become available after restart, at MOONRAKER_URL.
 wait_for_moonraker() {
     max_attempts=30
@@ -587,40 +546,34 @@ as_root() {
     fi
 }
 
-# Restart Moonraker: through its service manager, else by asking Moonraker
-# (at MOONRAKER_URL) to restart itself, which needs no root and works where
-# sudo wants a password. Returns 1 when neither restarted it.
-restart_moonraker() {
-    info "Restarting Moonraker..."
-    if command -v systemctl > /dev/null 2>&1 && systemctl list-units --type=service 2>/dev/null | grep -q moonraker; then
-        as_root systemctl restart moonraker && return 0
-        warn "Could not restart Moonraker via systemctl"
-    elif command -v service > /dev/null 2>&1; then
-        as_root service moonraker restart && return 0
-        warn "Could not restart Moonraker via service"
-    fi
-    if moonraker_restart_over_http "$(moonraker_local_url "")"; then
-        info "Asked Moonraker to restart itself"
-        return 0
-    fi
-    return 1
-}
-
-# The restart an auto install or uninstall ends with, then the wait for
-# Moonraker to answer again. A caller under systemd's NoNewPrivileges (the
-# HelixScreen service) cannot sudo, so it passes --no-restart and restarts
-# Moonraker itself. Returns 1 when Moonraker still needs a restart, which the
-# caller reports instead of completion; a slow comeback is only a warning.
+# The restart an auto install or uninstall ends with (restart_moonraker_via),
+# then the wait for Moonraker to answer again. A caller under systemd's
+# NoNewPrivileges (the HelixScreen service) cannot sudo, so it passes
+# --no-restart and restarts Moonraker itself. Returns 1 when Moonraker still
+# needs a restart, a print having held it off included, which the caller
+# reports instead of completion; a slow comeback is only a warning.
 finish_with_restart() {
     if [ "$NO_RESTART" = "true" ]; then
         info "Leaving the Moonraker restart to the caller"
         return 0
     fi
-    if ! restart_moonraker; then
-        warn "Could not restart Moonraker, so the change has not taken effect"
-        warn "Moonraker needs a restart: run 'sudo systemctl restart moonraker', or restart it from Mainsail or Fluidd"
-        return 1
-    fi
+    info "Restarting Moonraker..."
+    restarted=0
+    restart_moonraker_via as_root "$(moonraker_local_url "")" warn || restarted=$?
+    case "$restarted" in
+        0) ;;
+        3) info "Asked Moonraker to restart itself" ;;
+        4)
+            warn "A print is running, so Moonraker was not restarted and the change has not taken effect"
+            warn "Moonraker needs a restart after the print: restart it from Mainsail or Fluidd"
+            return 1
+            ;;
+        *)
+            warn "Could not restart Moonraker, so the change has not taken effect"
+            warn "Moonraker needs a restart: run 'sudo systemctl restart moonraker', or restart it from Mainsail or Fluidd"
+            return 1
+            ;;
+    esac
     wait_for_moonraker || warn "Moonraker did not come back up in time, but $1 itself completed"
     return 0
 }
