@@ -672,6 +672,14 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// way out, and nothing else would retire the fault.
     [[nodiscard]] static bool phase_fault_resolved(PhaseVerdict verdict, bool filament_detected);
 
+    /// True when a `filament_useup` edge means the box ran a spool dry while a
+    /// job is running and the toolhead still has filament. The firmware stays
+    /// silent then and the print carries on with what is left in the tube, so
+    /// this is the only notice the user gets before the toolhead runs dry. An
+    /// empty toolhead is excluded: the firmware's own runout fault speaks then.
+    [[nodiscard]] static bool box_runout_needs_notice(int prev_useup, int useup, bool job_running,
+                                                      bool toolhead_has_filament);
+
     /// Surface a verification failure to `AmsErrorBridge`, which polls this on
     /// the rising edge into `AmsAction::ERROR`.
     [[nodiscard]] std::optional<helix::ErrorEvent> current_error() const override;
