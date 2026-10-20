@@ -257,7 +257,7 @@ class UpdateQueue {
     }
 
     /**
-     * @brief RAII guard that silently discards queued callbacks
+     * @brief RAII guard that buffers queued callbacks until the last freeze ends
      *
      * Use around drain()+destroy sequences to prevent the WebSocket background
      * thread from queueing new callbacks between drain() and widget destruction.
