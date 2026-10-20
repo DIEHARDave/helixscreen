@@ -38,6 +38,7 @@
 #endif
 #include "../test_helpers/printer_state_test_access.h"
 #include "../test_helpers/scoped_cache_dir.h"
+#include "../test_helpers/scoped_mock_ams.h"
 #include "../test_helpers/scoped_portrait_layout.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
@@ -669,36 +670,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Print button sits outside the options scrol
 // PreflightResult already separated them: has_block() is the empty lane,
 // has_advisory() is the material mismatch. Only this call site did not ask.
 
-namespace {
-
-/// A started mock backend on AmsState, torn down on scope exit. AmsState is a
-/// singleton, so a test that installs a backend and walks away leaves it live for
-/// every test that runs after it. Mirrors MappingCardRenderFixture's wiring.
-struct ScopedAmsBackend {
-    helix::AmsBackendMock* backend = nullptr;
-
-    explicit ScopedAmsBackend(int slot_count) {
-        auto& ams = helix::AmsState::instance();
-        ams.init_subjects(false);
-        auto owned = std::make_unique<helix::AmsBackendMock>(slot_count);
-        backend = owned.get();
-        backend->set_operation_delay(0);
-        ams.set_backend(std::move(owned));
-        backend->start();
-    }
-
-    ~ScopedAmsBackend() {
-        helix::ui::UpdateQueue::instance().drain();
-        if (backend) {
-            backend->stop();
-        }
-        auto& ams = helix::AmsState::instance();
-        ams.clear_backends();
-        ams.deinit_subjects();
-    }
-};
-
-} // namespace
+using ScopedAmsBackend = helix::test::ScopedMockAms;
 
 TEST_CASE_METHOD(LVGLUITestFixture,
                  "filament_mismatch is lit by a material mismatch and by nothing else",
