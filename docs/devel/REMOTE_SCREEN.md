@@ -59,6 +59,22 @@ All relative to the mount (`/helixscreen/screen/` behind nginx, `/` on the LAN p
 3. **On the LAN** (no route file, or a screen pointed at another host's Moonraker): the server binds `0.0.0.0`. View is open; control needs a paired browser. The device shows a 6-digit code (`/remote_screen/pair_secret`); `POST pair` with it returns a 128-bit token as an `HttpOnly; SameSite=Strict` one-year cookie. Up to 8 browsers stay paired, least recently used evicted. 5 wrong codes per minute, then 429; 50 cumulative wrong codes rotate the code. "Forget Paired Browsers" clears all tokens and rotates the code.
 4. **Cross-site requests** (`check_touch_request`): `touch` and `pair` need `Content-Type: application/json` and `X-Helix-Touch: 1`, which together force a CORS preflight the server never answers, and an `Origin` (when sent) whose authority matches `Host`.
 
+## Why nginx, and no Moonraker-plugin route
+
+Measured on a K1C (the weakest host class) during a motion-only print, three 170 s windows:
+
+| Window | helix-screen CPU | Moonraker CPU | Klipper buffer_time min / avg | Timer too close |
+|---|---|---|---|---|
+| No viewer | 14% | 6% | 2.001 / 2.307 s | 0 |
+| Snapshot polling, 5 req/s | 18% | 6% | 2.007 / 2.347 s | 0 |
+| MJPEG stream open | 13% | 6% | 2.000 / 2.326 s | 0 |
+
+Serving the screen directly costs Moonraker nothing and leaves Klipper's margin unchanged;
+the stream ran at 0.94 fps against the 1 fps cap. A route through the `helix_print`
+plugin could only add a JPEG relay inside Moonraker's single-threaded loop, so it was not
+built. Where nginx has no `auth_request` (the K1 Helper Script and K2 builds both lack it)
+the server faces the LAN with pairing; the Pi's MainsailOS nginx has it.
+
 ## Where it runs
 
 `remote_screen_firmware_provides()` decides: a platform hook that exports `HELIX_REMOTE_SCREEN=firmware`, or sets up the U1's fb0 mirror (`HELIX_REMOTE_SCREEN_FB0`), means the firmware serves the screen and the rows stay hidden. Android never runs it. The K-Touch (ESP32) firmware compiles only the settings manager; everything else is in `app_srcs_excluded.txt`.
