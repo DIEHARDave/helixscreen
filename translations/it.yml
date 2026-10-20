@@ -263,6 +263,7 @@ translations:
   All time: 'Da sempre'
   Allow: 'Consenti'
   Allow Home Screen Editing: 'Consenti la modifica della schermata iniziale'
+  Allow Remote Control: 'Consenti controllo remoto'
   Allow cold load/unload: Consenti caricamento/scaricamento a freddo
   Allow display to sleep during active prints: Consenti sospensione display durante
     la stampa
@@ -1243,6 +1244,8 @@ translations:
   Ethernet: Ethernet
   Events appear here after sessions and prints: Gli eventi appaiono qui dopo sessioni
     e stampe
+  Every browser needs a new code to control this screen: 'Ogni browser avrà bisogno di un nuovo codice per controllare questo schermo'
+  Every browser that can control this screen will need the new pairing code.: 'Ogni browser che può controllare questo schermo avrà bisogno del nuovo codice di abbinamento.'
   Every extruder's temperature at once: Temperatura di ogni estrusore
   Everything else was saved. Change them in Spoolman.: Tutto il resto è stato salvato. Modificali in Spoolman.
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: 'Tutto il resto è stato salvato. Rinomina il materiale usando lettere, cifre, spazi e + - _ . ( ) /'
@@ -1560,6 +1563,8 @@ translations:
   Force/weight sensors: 'Sensori di forza/peso'
   Forget: Dimentica
   Forget Network?: Dimenticare la rete?
+  Forget Paired Browsers: 'Dimentica browser abbinati'
+  Forget Paired Browsers?: 'Dimenticare i browser abbinati?'
   Forget network '{}'? You will need the password to reconnect.: Dimenticare la rete '{}'? Servirà la password per riconnetterti.
   Form tip: 'Forma la punta'
   Form tip & retract: 'Forma la punta e retrai'
@@ -2003,6 +2008,7 @@ translations:
   Length of filament to purge: 'Lunghezza di filamento da spurgare'
   Length of the cooling tube section: 'Lunghezza della sezione del tubo di raffreddamento'
   'Length:': 'Lunghezza:'
+  Let a browser tap and drag on this screen: 'Consenti a un browser di toccare e trascinare su questo schermo'
   Let's take a quick tour so you can find things fast.: Facciamo un rapido tour così potrai trovare tutto velocemente.
   Level: Livello
   Leveling Gantry...: Livellamento gantry...
@@ -2583,6 +2589,7 @@ translations:
   Pair with: Associa con
   Paired: Accoppiato
   Paired successfully: Associazione riuscita
+  Pairing Code: 'Codice di abbinamento'
   Pairing did not complete — the scanner did not bond. Try turning it off and on, then tap Pair again.: Associazione
     non completata — lo scanner non si è agganciato. Prova a spegnerlo e riaccenderlo,
     poi tocca di nuovo Associa.
@@ -3379,6 +3386,7 @@ translations:
   Shadow Intensity: Intensità ombra
   Shake&Tune: 'Shake&Tune'
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: Scuote la testina lungo ciascuna diagonale e sovrappone le due risposte. Cinghie bilanciate hanno il picco insieme.
+  Share Screen: 'Condividi schermo'
   Share Usage Data: Condividi dati d'uso
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: Condividi
     statistiche di utilizzo anonime per aiutarci a migliorare HelixScreen. Nessun
@@ -3398,6 +3406,7 @@ translations:
   Show temp for: Mostra temperatura per
   Show text labels on icon-only home screen widgets: Mostra etichette di testo sui
     widget con sole icone nella schermata home
+  Show this screen as a webcam in Mainsail and Fluidd: 'Mostra questo schermo come webcam in Mainsail e Fluidd'
   Show up/down buttons on long lists: Mostra i pulsanti su/giù negli elenchi lunghi
   Show whatever curves you last had visible on the full graph.: Mostra le curve che
     erano visibili l'ultima volta sul grafico completo.

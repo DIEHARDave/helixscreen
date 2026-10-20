@@ -9,6 +9,7 @@
 #include "app_globals.h"
 #include "config.h"
 #include "helix_version.h"
+#include "host_identity.h"
 #include "http_executor.h"
 #include "hv/requests.h"
 #include "i_moonraker_api.h"
@@ -20,7 +21,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <ifaddrs.h>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -48,16 +48,6 @@ bool is_transfer_root(const std::string& root) {
 constexpr const char* kNotConnected = "Moonraker is not connected";
 constexpr const char* kPrinterHostRefused = "requests to the printer host are not allowed";
 
-/// `ip` in the form addresses are compared in: an IPv4-mapped IPv6 address as plain IPv4,
-/// with no IPv6 zone suffix.
-std::string canonical_ip(std::string ip) {
-    if (auto pct = ip.find('%'); pct != std::string::npos)
-        ip.resize(pct);
-    if (ip.rfind("::ffff:", 0) == 0 && ip.find('.') != std::string::npos)
-        ip.erase(0, 7);
-    return ip;
-}
-
 /// Loopback, or an unspecified address, which Linux connects to the local host.
 bool is_this_host_ip(const std::string& ip) {
     return ip.rfind("127.", 0) == 0 || ip.rfind("0.", 0) == 0 || ip == "::1" || ip == "::";
@@ -81,28 +71,6 @@ std::vector<std::string> resolve_host_ips(const std::string& host) {
             ips.push_back(canonical_ip(buf));
     }
     freeaddrinfo(result);
-    return ips;
-}
-
-/// Every address assigned to one of this machine's interfaces. Moonraker listens on all
-/// of them, so the printer's LAN address reaches it as surely as loopback does.
-std::vector<std::string> local_interface_ips() {
-    std::vector<std::string> ips;
-    ifaddrs* list = nullptr;
-    if (getifaddrs(&list) != 0)
-        return ips;
-    char buf[NI_MAXHOST];
-    for (ifaddrs* ifa = list; ifa; ifa = ifa->ifa_next) {
-        if (!ifa->ifa_addr)
-            continue;
-        int family = ifa->ifa_addr->sa_family;
-        if (family != AF_INET && family != AF_INET6)
-            continue;
-        socklen_t len = family == AF_INET ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
-        if (getnameinfo(ifa->ifa_addr, len, buf, sizeof(buf), nullptr, 0, NI_NUMERICHOST) == 0)
-            ips.push_back(canonical_ip(buf));
-    }
-    freeifaddrs(list);
     return ips;
 }
 

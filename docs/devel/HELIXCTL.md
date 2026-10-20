@@ -428,7 +428,7 @@ receive a pointer command never register it.
 
 **`press`, `sleep`, `release` assembles a long press too.** Every `ctl` invocation is its
 own process and connection, but the press stays latched between them: the synthetic
-pointer reports its latched state on every read (`src/remote/remote_pointer.cpp#read_cb`),
+pointer reports its latched state on every read (`src/application/remote_pointer.cpp#read_cb`),
 so LVGL keeps sampling a held press on its own timer while the shell sleeps - exactly as
 under a resting finger. Sleep past the configured long-press time with a margin (0.7s
 covers the default). `long_press` does the whole gesture in one request: it latches the

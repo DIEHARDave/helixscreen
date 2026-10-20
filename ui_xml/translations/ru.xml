@@ -283,6 +283,7 @@
   <translation tag="All time" ru="За всё время"/>
   <translation tag="Allow" ru="Разрешить"/>
   <translation tag="Allow Home Screen Editing" ru="Разрешить редактирование главного экрана"/>
+  <translation tag="Allow Remote Control" ru="Разрешить удалённое управление"/>
   <translation tag="Allow cold load/unload" ru="Разрешить загрузку/выгрузку без нагрева"/>
   <translation tag="Allow display to sleep during active prints" ru="Разрешить спящий режим дисплея во время печати"/>
   <translation tag="Allwinner" ru="Allwinner"/>
@@ -1169,6 +1170,8 @@
   <translation tag="Estimating..." ru="Оценка..."/>
   <translation tag="Ethernet" ru="Ethernet"/>
   <translation tag="Events appear here after sessions and prints" ru="События появятся здесь после сессий и печатей"/>
+  <translation tag="Every browser needs a new code to control this screen" ru="Каждому браузеру понадобится новый код для управления этим экраном"/>
+  <translation tag="Every browser that can control this screen will need the new pairing code." ru="Каждому браузеру, который может управлять этим экраном, понадобится новый код сопряжения."/>
   <translation tag="Every extruder&apos;s temperature at once" ru="Температура всех экструдеров"/>
   <translation tag="Every object is set to skip, so there is nothing to print" ru="Все объекты отмечены для пропуска, печатать нечего"/>
   <translation tag="Every tool&apos;s offsets are measured again and replace the current ones. Save afterwards to keep the result." ru="Смещения всех инструментов измеряются заново и заменяют текущие. После этого сохраните, чтобы оставить результат."/>
@@ -1465,6 +1468,8 @@
   <translation tag="Force/weight sensors" ru="Датчики силы/веса"/>
   <translation tag="Forget" ru="Забыть"/>
   <translation tag="Forget Network?" ru="Забыть сеть?"/>
+  <translation tag="Forget Paired Browsers" ru="Забыть сопряжённые браузеры"/>
+  <translation tag="Forget Paired Browsers?" ru="Забыть сопряжённые браузеры?"/>
   <translation tag="Forget network &apos;{}&apos;? You will need the password to reconnect." ru="Забыть сеть «{}»? Для повторного подключения потребуется пароль."/>
   <translation tag="Form tip" ru="Формирование кончика"/>
   <translation tag="Form tip &amp; retract" ru="Формирование кончика и ретракция"/>
@@ -1854,6 +1859,7 @@
   <translation tag="Length of filament to purge" ru="Длина продуваемого филамента"/>
   <translation tag="Length of the cooling tube section" ru="Длина участка трубки охлаждения"/>
   <translation tag="Length:" ru="Длина:"/>
+  <translation tag="Let a browser tap and drag on this screen" ru="Разрешить браузеру нажимать и перетаскивать на этом экране"/>
   <translation tag="Let&apos;s take a quick tour so you can find things fast." ru="Давайте устроим краткий тур, чтобы вы могли быстро находить всё нужное."/>
   <translation tag="Level" ru="Уровень"/>
   <translation tag="Leveling Gantry..." ru="Выравнивание портала..."/>
@@ -2399,6 +2405,7 @@
   <translation tag="Pair with" ru="Сопряжение с"/>
   <translation tag="Paired" ru="Сопряжено"/>
   <translation tag="Paired successfully" ru="Сопряжение выполнено"/>
+  <translation tag="Pairing Code" ru="Код сопряжения"/>
   <translation tag="Pairing did not complete — the scanner did not bond. Try turning it off and on, then tap Pair again." ru="Сопряжение не завершено — сканер не привязан. Попробуйте выключить и снова включить его, затем нажмите «Сопряжение» ещё раз."/>
   <translation tag="Pairing failed" ru="Ошибка сопряжения"/>
   <translation tag="Pairing..." ru="Сопряжение..."/>
@@ -3135,6 +3142,7 @@
   <translation tag="Shadow Intensity" ru="Интенсивность тени"/>
   <translation tag="Shake&amp;Tune" ru="Shake&amp;Tune"/>
   <translation tag="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together." ru="Раскачивает печатающую головку вдоль каждой диагонали и накладывает два отклика. У одинаково натянутых ремней пики совпадают."/>
+  <translation tag="Share Screen" ru="Поделиться экраном"/>
   <translation tag="Share Usage Data" ru="Делиться данными использования"/>
   <translation tag="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected." ru="Делитесь анонимной статистикой использования, чтобы помочь нам улучшить HelixScreen. Персональные данные никогда не собираются."/>
   <translation tag="Share this code in Discord or support:" ru="Поделитесь этим кодом в Discord или с поддержкой:"/>
@@ -3149,6 +3157,7 @@
   <translation tag="Show sliced colors" ru="Показать цвета из слайсера"/>
   <translation tag="Show temp for" ru="Показывать темп. для"/>
   <translation tag="Show text labels on icon-only home screen widgets" ru="Показывать текстовые подписи на виджетах главного экрана"/>
+  <translation tag="Show this screen as a webcam in Mainsail and Fluidd" ru="Показывать этот экран как веб-камеру в Mainsail и Fluidd"/>
   <translation tag="Show up/down buttons on long lists" ru="Показывать кнопки вверх/вниз в длинных списках"/>
   <translation tag="Show whatever curves you last had visible on the full graph." ru="Показывать те кривые, что были видны на полном графике в последний раз."/>
   <translation tag="Showing the 50 newest files. See more in the printer&apos;s web UI." ru="Показаны 50 последних файлов. Остальные - в веб-интерфейсе принтера."/>

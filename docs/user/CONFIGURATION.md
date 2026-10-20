@@ -34,6 +34,7 @@ Complete reference for HelixScreen configuration options.
 - [Filament Settings](#filament-settings)
 - [Filament Sensor Settings](#filament-sensor-settings)
 - [Security Settings](#security-settings)
+- [Screen Sharing Settings](#screen-sharing-settings)
 - [Label Printer Settings](#label-printer-settings)
 - [Printer Switcher](#printer-switcher)
 - [Telemetry Settings](#telemetry-settings)
@@ -1664,6 +1665,37 @@ Located in the `security` section. Controls the optional PIN lock screen:
 **Type:** boolean
 **Default:** `false`
 **Description:** When `true`, the screen automatically locks whenever the display sleeps and wakes, requiring your PIN to get back in. Has no effect unless `pin_hash` is set (with no PIN there is nothing to lock). Toggle via **Settings > System > Security**.
+
+---
+
+## Screen Sharing Settings
+
+Set in **Settings > Connection**; see [Screen Sharing and Remote Control](guide/screen-sharing.md). Hidden on printers whose firmware shares the screen itself.
+
+```json
+"remote_screen": {
+  "enabled": false,
+  "control": false,
+  "port": 7130
+}
+```
+
+### `remote_screen.enabled`
+**Type:** boolean
+**Default:** `false`
+**Description:** Share the screen as the **HelixScreen Screen** webcam in Mainsail and Fluidd.
+
+### `remote_screen.control`
+**Type:** boolean
+**Default:** `false`
+**Description:** Let a browser tap and drag on the screen. Only takes effect while `enabled` is on.
+
+### `remote_screen.port`
+**Type:** integer
+**Default:** `7130`
+**Description:** The port the screen is served on. Not shown in the UI. Change it only if something else on the printer already uses 7130. Where the installer set the screen up behind nginx, nginx expects 7130.
+
+`remote_screen.pair_secret` and `remote_screen.paired_tokens` hold the pairing code and the paired browsers on printers with nothing in front of Moonraker. Manage them from the screen (**Forget Paired Browsers**) rather than by hand.
 
 ---
 

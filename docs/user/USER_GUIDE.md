@@ -102,6 +102,9 @@ Filament switch and motion sensors with per-sensor role assignment (None, Runout
 ### [Security & Screen Lock](guide/security.md)
 Set, change, or remove a PIN screen lock, auto-lock tied to the display sleep timeout, the lock-screen keypad with emergency-stop access, and what a factory reset clears.
 
+### [Screen Sharing and Remote Control](guide/screen-sharing.md)
+See and use the printer's screen from any browser, or as a webcam in Mainsail and Fluidd: turning it on, pairing a browser with a code, which printers need one, the on-screen remote-control icon, and troubleshooting.
+
 ### [Camera](guide/camera.md)
 Webcam viewing via the home widget and standalone fullscreen viewer, rotation and flip configuration, stream status states, and performance throttling.
 

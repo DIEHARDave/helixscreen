@@ -249,6 +249,7 @@ static const IconMapping kIconMap[] = {
     {"radiator",           "\xF3\xB0\x90\xB8"},  // F0438 radiator
     {"redo",               "\xF3\xB0\x91\x8E"},  // F044E redo (clockwise arrow - tighten)
     {"refresh",            "\xF3\xB0\x91\x90"},  // F0450 refresh
+    {"remote_desktop",     "\xF3\xB0\xA2\xB9"},  // F08B9 remote-desktop (screen driven from a browser)
     {"restart",            "\xF3\xB0\x9C\x89"},  // F0709 restart
     {"resume",             "\xF3\xB0\x90\x8C"},  // F040C play-circle (resume)
     {"robot",              "\xF3\xB0\x9A\xA9"},  // F06A9 robot (auto-controlled)

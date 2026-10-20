@@ -127,11 +127,20 @@ void* missing_library_handle() {
 } // namespace
 
 // The build's table of what each trampolined function returns
-// (mk/implib.mk); absent in a build without trampolines.
+// (mk/implib.mk); absent in a build without trampolines. Only ELF resolves an
+// undefined weak data reference to null; Mach-O's linker rejects it, and a
+// macOS build never has trampolines, so there the table is simply empty.
+#if defined(__APPLE__)
+namespace {
+constexpr const helix::gpu_libs::ReturnKind* helix_gpu_lib_return_kinds = nullptr;
+constexpr size_t kReturnKindCount = 0;
+} // namespace
+#else
 // NAMESPACE_OK: generated C table, linked by its C name
 extern "C" const helix::gpu_libs::ReturnKind helix_gpu_lib_return_kinds[] __attribute__((weak));
 // NAMESPACE_OK: generated C table, linked by its C name
 extern "C" const size_t helix_gpu_lib_return_kind_count __attribute__((weak));
+#endif
 
 namespace helix::gpu_libs {
 
@@ -192,8 +201,12 @@ helix_gpu_lib_symbol(void* lib,
             return fn;
         }
     }
+#if defined(__APPLE__)
+    const size_t count = kReturnKindCount;
+#else
     const size_t count =
         &helix_gpu_lib_return_kind_count != nullptr ? helix_gpu_lib_return_kind_count : 0;
+#endif
     const auto failure = helix::gpu_libs::failure_for(name, helix_gpu_lib_return_kinds, count);
     spdlog::error("[GpuLibs] {} is unavailable; the call fails", name);
     return helix::gpu_libs::stand_in(failure);

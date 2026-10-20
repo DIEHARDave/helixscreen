@@ -800,6 +800,12 @@ uninstall() {
         uninstall_camera_k2 "$platform" || true
     fi
 
+    # Remote screen nginx route, route file and webcam entry. Before
+    # $INSTALL_DIR is removed: its marker lives in $INSTALL_DIR/config.
+    if type remove_remote_screen_route >/dev/null 2>&1; then
+        remove_remote_screen_route || true
+    fi
+
     # Re-enable services from state file (before removing install dir)
     reenable_disabled_services
 

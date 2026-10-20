@@ -79,12 +79,13 @@ HEADER
     # Include each module (only those needed for uninstall).
     # service.sh provides stop_service, called by uninstall.sh's clean_old_installation.
     # camera.sh provides uninstall_camera_k2, called by uninstall.sh (K2 ustreamer teardown).
+    # remote_screen.sh provides remove_remote_screen_route (uses camera.sh's nginx helpers).
     # host_profile.sh provides the mod-ownership guard behind uninstall.sh's
     # HELIX_INSTALL_DIRS sweeps and moonraker.sh's stanza writer; main() below
     # probes it before set_install_paths' install-dir gate calls it.
     # helix_print_conf.sh provides helix_print_section_files, which
     # moonraker.sh's plugin removal calls.
-    for module in common.sh host_profile.sh platform.sh permissions.sh requirements.sh forgex.sh competing_uis.sh desktop.sh service.sh helix_print_conf.sh moonraker.sh camera.sh uninstall.sh; do
+    for module in common.sh host_profile.sh platform.sh permissions.sh requirements.sh forgex.sh competing_uis.sh desktop.sh service.sh helix_print_conf.sh moonraker.sh camera.sh remote_screen.sh uninstall.sh; do
         module_path="$LIB_DIR/$module"
         if [ ! -f "$module_path" ]; then
             echo "ERROR: Module not found: $module_path" >&2

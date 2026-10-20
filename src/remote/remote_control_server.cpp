@@ -2219,28 +2219,23 @@ nlohmann::json RemoteControlServer::apply_pointer_state(int32_t x, int32_t y, bo
         if (!pointer.ensure_created()) {
             throw std::runtime_error("No display available for the synthetic pointer");
         }
-        pointer.set_state(x, y, pressed);
         baseline = pointer.read_count();
+        pointer.set_logical_state(x, y, pressed);
         return {{"x", x}, {"y", y}, {"pressed", pressed}};
     });
 
     // Indevs are sampled on a timer, so the state above is not visible to LVGL yet.
-    // Wait for two reads: the first delivers the new state, the second lets LVGL's
-    // press/release state machine act on it before the next command lands. Without
-    // this, a fast press-then-release sequence can be coalesced into a single sample
-    // and the press is never seen at all.
     auto& pointer = helix::remote::RemotePointer::instance();
-    const uint64_t target = baseline + 2;
-    for (int i = 0; i < 400; ++i) { // 400 * 5ms = 2s
-        if (pointer.read_count() >= target) {
-            result["what"] = what;
-            result["reads"] = pointer.read_count();
-            return result;
-        }
-        if (!running_.load()) {
-            throw std::runtime_error("remote server shutting down");
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    switch (pointer.wait_for_samples(baseline, std::chrono::seconds(2),
+                                     [this] { return running_.load(); })) {
+    case helix::remote::RemotePointer::WaitResult::Sampled:
+        result["what"] = what;
+        result["reads"] = pointer.read_count();
+        return result;
+    case helix::remote::RemotePointer::WaitResult::Stopped:
+        throw std::runtime_error("remote server shutting down");
+    case helix::remote::RemotePointer::WaitResult::TimedOut:
+        break;
     }
     throw std::runtime_error("Timed out waiting for the synthetic pointer to be sampled");
 }

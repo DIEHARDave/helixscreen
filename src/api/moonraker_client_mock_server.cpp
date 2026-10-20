@@ -7,6 +7,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdlib>
 #include <map>
@@ -379,8 +380,74 @@ void register_server_handlers(std::unordered_map<std::string, MethodHandler>& re
                                {"snapshot_url", "/webcam/?action=snapshot"},
                                {"enabled", true}});
         }
+        {
+            auto& posted = self->posted_webcams();
+            std::lock_guard<std::mutex> lock(posted.mutex);
+            for (const auto& item : posted.items) {
+                webcams.push_back(item);
+            }
+        }
         if (success_cb) {
             success_cb(json{{"jsonrpc", "2.0"}, {"result", {{"webcams", webcams}}}});
+        }
+        return true;
+    };
+
+    // server.webcams.post_item / delete_item - upsert and remove by name
+    auto webcam_name = [](const json& j) {
+        auto it = j.find("name");
+        return it != j.end() && it->is_string() ? it->get<std::string>() : std::string();
+    };
+    registry["server.webcams.post_item"] =
+        [webcam_name](MoonrakerClientMock* self, const json& params,
+                      std::function<void(const json&)> success_cb,
+                      std::function<void(const MoonrakerError&)> /*error_cb*/) -> bool {
+        json item = params;
+        const std::string name = webcam_name(params);
+        item["enabled"] = params.contains("enabled") ? params["enabled"] : json(true);
+        {
+            auto& posted = self->posted_webcams();
+            std::lock_guard<std::mutex> lock(posted.mutex);
+            auto& items = posted.items;
+            items.erase(std::remove_if(items.begin(), items.end(),
+                                       [&](const json& e) { return webcam_name(e) == name; }),
+                        items.end());
+            items.push_back(item);
+        }
+        if (success_cb) {
+            success_cb(json{{"jsonrpc", "2.0"}, {"result", {{"webcam", item}}}});
+        }
+        return true;
+    };
+    registry["server.webcams.delete_item"] =
+        [webcam_name](MoonrakerClientMock* self, const json& params,
+                      std::function<void(const json&)> success_cb,
+                      std::function<void(const MoonrakerError&)> error_cb) -> bool {
+        const std::string name = webcam_name(params);
+        bool removed = false;
+        {
+            auto& posted = self->posted_webcams();
+            std::lock_guard<std::mutex> lock(posted.mutex);
+            auto& items = posted.items;
+            const auto before = items.size();
+            items.erase(std::remove_if(items.begin(), items.end(),
+                                       [&](const json& e) { return webcam_name(e) == name; }),
+                        items.end());
+            removed = items.size() != before;
+        }
+        if (!removed) {
+            if (error_cb) {
+                MoonrakerError err;
+                err.type = MoonrakerErrorType::JSON_RPC_ERROR;
+                err.code = 404;
+                err.message = "Webcam not found";
+                err.method = "server.webcams.delete_item";
+                error_cb(err);
+            }
+            return true;
+        }
+        if (success_cb) {
+            success_cb(json{{"jsonrpc", "2.0"}, {"result", {{"webcam", params}}}});
         }
         return true;
     };

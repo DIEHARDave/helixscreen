@@ -118,6 +118,7 @@ All developer documentation lives here. When working on features, look up the re
 | `printers/FLASHFORGE_AD5X_SUPPORT.md` | FlashForge Adventurer 5X (MIPS, ZMOD) |
 | `printers/FLASHFORGE_CREATOR5_PRO_SUPPORT.md` | FlashForge Creator 5 line, Pro and heater-free (Ingenic X2000 MIPS, unified `mips` target): both firmwares, the model split on the chamber heater, the Z-Mod tool changer support and its `creator5_zmod` mock persona |
 | `printers/ELEGOO_CENTAURI_CARBON_YOCTO.md` | Elegoo Centauri Carbon: the `cc1` and `yocto` targets, and the local Yocto (OpenCentauri COSMOS) dev loop |
+| `REMOTE_SCREEN.md` | The built-in screen server (#1825): frame capture, the HTTP routes and stream, remote touch through the synthetic pointer, pairing and the nginx security model, the Moonraker webcam entry |
 | `LAN_CLIENT_AUTHORIZATION.md` | Firmware-brokered LAN pairing: firmwares that ask the printer's own screen to approve a slicer or phone app (Snapmaker Orca / Snapmaker App on a U1). Protocol, the no-capability-gate design, and the traps |
 | `architecture/17-esp32-firmware.md` | The native ESP32-S3 (BTT K-Touch) firmware's architecture: the curated `app_srcs.txt` subset, components, internal-SRAM memory model, tasks, boot order, vsync presenter, networking, storage, OTA, crash fallback. Read before touching `firmware/helixscreen-esp32/` |
 | `ESP32_PORT.md` | Hands-on K-Touch firmware guide: what a shared `src/` change must respect, build and flash recipe, `sdkconfig.local` options, serial console, debugging table, gates |

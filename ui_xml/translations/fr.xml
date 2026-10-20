@@ -250,6 +250,7 @@
   <translation tag="All time" fr="Depuis toujours"/>
   <translation tag="Allow" fr="Autoriser"/>
   <translation tag="Allow Home Screen Editing" fr="Autoriser la modification de l&apos;écran d&apos;accueil"/>
+  <translation tag="Allow Remote Control" fr="Autoriser le contrôle à distance"/>
   <translation tag="Allow cold load/unload" fr="Autoriser le chargement/déchargement à froid"/>
   <translation tag="Allow display to sleep during active prints" fr="Permettre la mise en veille pendant l&apos;impression"/>
   <translation tag="Allwinner" fr="Allwinner"/>
@@ -1127,6 +1128,8 @@
   <translation tag="Estimating..." fr="Estimation..."/>
   <translation tag="Ethernet" fr="Ethernet"/>
   <translation tag="Events appear here after sessions and prints" fr="Les événements apparaissent ici après les sessions et impressions"/>
+  <translation tag="Every browser needs a new code to control this screen" fr="Chaque navigateur aura besoin d&apos;un nouveau code pour contrôler cet écran"/>
+  <translation tag="Every browser that can control this screen will need the new pairing code." fr="Chaque navigateur qui peut contrôler cet écran aura besoin du nouveau code d&apos;appairage."/>
   <translation tag="Every extruder&apos;s temperature at once" fr="Température de chaque extrudeur"/>
   <translation tag="Every object is set to skip, so there is nothing to print" fr="Tous les objets sont à ignorer, il n&apos;y a rien à imprimer"/>
   <translation tag="Every tool&apos;s offsets are measured again and replace the current ones. Save afterwards to keep the result." fr="Les offsets de tous les outils sont mesurés à nouveau et remplacent les actuels. Enregistrez ensuite pour conserver le résultat."/>
@@ -1423,6 +1426,8 @@
   <translation tag="Force/weight sensors" fr="Capteurs de force/poids"/>
   <translation tag="Forget" fr="Oublier"/>
   <translation tag="Forget Network?" fr="Oublier le réseau ?"/>
+  <translation tag="Forget Paired Browsers" fr="Oublier les navigateurs appairés"/>
+  <translation tag="Forget Paired Browsers?" fr="Oublier les navigateurs appairés ?"/>
   <translation tag="Forget network &apos;{}&apos;? You will need the password to reconnect." fr="Oublier le réseau &apos;{}&apos; ? Vous aurez besoin du mot de passe pour vous reconnecter."/>
   <translation tag="Form tip" fr="Former la pointe"/>
   <translation tag="Form tip &amp; retract" fr="Former la pointe et rétracter"/>
@@ -1809,6 +1814,7 @@
   <translation tag="Length of filament to purge" fr="Longueur de filament à purger"/>
   <translation tag="Length of the cooling tube section" fr="Longueur de la section du tube de refroidissement"/>
   <translation tag="Length:" fr="Longueur :"/>
+  <translation tag="Let a browser tap and drag on this screen" fr="Permettre à un navigateur de toucher et faire glisser sur cet écran"/>
   <translation tag="Let&apos;s take a quick tour so you can find things fast." fr="Faisons une visite rapide pour que vous puissiez trouver vos marques rapidement."/>
   <translation tag="Level" fr="Niveau"/>
   <translation tag="Leveling Gantry..." fr="Nivellement du portique..."/>
@@ -2354,6 +2360,7 @@
   <translation tag="Pair with" fr="Appairer avec"/>
   <translation tag="Paired" fr="Appairé"/>
   <translation tag="Paired successfully" fr="Appairage réussi"/>
+  <translation tag="Pairing Code" fr="Code d&apos;appairage"/>
   <translation tag="Pairing did not complete — the scanner did not bond. Try turning it off and on, then tap Pair again." fr="L&apos;appairage n&apos;a pas abouti — le scanner ne s&apos;est pas associé. Essayez de l&apos;éteindre puis de le rallumer, puis appuyez à nouveau sur Appairer."/>
   <translation tag="Pairing failed" fr="Échec de l&apos;appairage"/>
   <translation tag="Pairing..." fr="Appairage..."/>
@@ -3081,6 +3088,7 @@
   <translation tag="Shadow Intensity" fr="Intensité de l&apos;ombre"/>
   <translation tag="Shake&amp;Tune" fr="Shake&amp;Tune"/>
   <translation tag="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together." fr="Fait vibrer la tête d&apos;outil le long de chaque diagonale et superpose les deux réponses. Des courroies équilibrées culminent ensemble."/>
+  <translation tag="Share Screen" fr="Partager l&apos;écran"/>
   <translation tag="Share Usage Data" fr="Partager les données d&apos;utilisation"/>
   <translation tag="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected." fr="Partagez des statistiques d&apos;utilisation anonymes pour nous aider à améliorer HelixScreen. Aucune donnée personnelle n&apos;est jamais collectée."/>
   <translation tag="Share this code in Discord or support:" fr="Partagez ce code sur Discord ou au support :"/>
@@ -3095,6 +3103,7 @@
   <translation tag="Show sliced colors" fr="Afficher les couleurs tranchées"/>
   <translation tag="Show temp for" fr="Afficher la température de"/>
   <translation tag="Show text labels on icon-only home screen widgets" fr="Afficher les libellés sur les widgets de l&apos;écran d&apos;accueil"/>
+  <translation tag="Show this screen as a webcam in Mainsail and Fluidd" fr="Afficher cet écran comme webcam dans Mainsail et Fluidd"/>
   <translation tag="Show up/down buttons on long lists" fr="Afficher les boutons haut/bas sur les longues listes"/>
   <translation tag="Show whatever curves you last had visible on the full graph." fr="Afficher les dernières courbes visibles sur le graphique complet."/>
   <translation tag="Showing the 50 newest files. See more in the printer&apos;s web UI." fr="Les 50 fichiers les plus récents sont affichés. Consultez les autres dans l&apos;interface web de l&apos;imprimante."/>
