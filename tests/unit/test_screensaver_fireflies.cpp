@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <random>
 #include <set>
 #include <string>
@@ -197,6 +198,20 @@ TEST_CASE("baits and flies keep to their top speeds", "[screensaver][fireflies_s
     Swarm s(14);
     const float half_w = 40.0f * static_cast<float>(W) / static_cast<float>(H);
     float fastest_fly = 0.0f;
+    // The furthest any bait or fly got past its limit over the whole run, and the
+    // step it happened on. One assertion per limit at the end keeps a million-sample
+    // sweep out of the --success report.
+    struct Worst {
+        float over = -std::numeric_limits<float>::infinity();
+        int step = -1;
+        void take(float v, int i) {
+            if (v > over) {
+                over = v;
+                step = i;
+            }
+        }
+    };
+    Worst bait_speed, bait_box, fly_speed;
     for (int i = 0; i < 6000; i++) {
         s.step(helix::ui::kFirefliesStepMs);
         const float mult = s.sim.mode() == helix::ui::FirefliesMode::HYPERSPEED ? 3.0f : 1.0f;
@@ -204,17 +219,22 @@ TEST_CASE("baits and flies keep to their top speeds", "[screensaver][fireflies_s
             if (!b.alive) {
                 continue;
             }
-            REQUIRE(length(b.vel) <= kFirefliesBaitSpeed * mult + 1e-3f);
-            REQUIRE(std::fabs(b.pos.x) <= half_w + 1.0f);
-            REQUIRE(std::fabs(b.pos.y) <= 40.0f + 1.0f);
-            REQUIRE(std::fabs(b.pos.z) <= 25.0f + 1.0f);
+            bait_speed.take(length(b.vel) - kFirefliesBaitSpeed * mult, i);
+            bait_box.take(
+                std::max({std::fabs(b.pos.x) - (half_w + 1.0f), std::fabs(b.pos.y) - (40.0f + 1.0f),
+                          std::fabs(b.pos.z) - (25.0f + 1.0f)}),
+                i);
         }
         for (const FirefliesSim::Fly& f : s.sim.flies()) {
             const float speed = length(f.vel);
-            REQUIRE(speed <= kFirefliesFlySpeed * f.pace * mult + 1e-3f);
+            fly_speed.take(speed - kFirefliesFlySpeed * f.pace * mult, i);
             fastest_fly = std::max(fastest_fly, speed);
         }
     }
+    CAPTURE(bait_speed.step, bait_box.step, fly_speed.step);
+    REQUIRE(bait_speed.over <= 1e-3f);
+    REQUIRE(bait_box.over <= 0.0f);
+    REQUIRE(fly_speed.over <= 1e-3f);
     // The flies reached their top speeds, so the cap is what held them.
     CHECK(fastest_fly > 0.7f * kFirefliesFlySpeed);
 }
