@@ -21,9 +21,6 @@
 [ -n "${_HELIX_CAMERA_SOURCED:-}" ] && return 0
 _HELIX_CAMERA_SOURCED=1
 
-# Moonraker base URL (host:port). Overridable for tests.
-: "${MOONRAKER_URL:=http://127.0.0.1:7125}"
-
 # init.d / rc.d directories. Resolved per-call (not at source time) so the BATS
 # suite can redirect them away from the host. Production callers leave the
 # HELIX_INITD_DIR / HELIX_RCD_DIR env vars unset.
@@ -457,7 +454,7 @@ detect_lan_ip() {
 # (K2 has no curl/wget). Caller is responsible for parsing.
 _moonraker_get_webcams_json() {
     _has_python || return 1
-    "$_PY_BIN" - "$MOONRAKER_URL" <<'PYEOF' 2>/dev/null
+    "$_PY_BIN" - "$(installer_moonraker_url)" <<'PYEOF' 2>/dev/null
 import json, sys, urllib.request
 base = sys.argv[1].rstrip('/')
 try:
@@ -475,7 +472,7 @@ PYEOF
 # Used to bail out without stomping a working camera setup.
 _moonraker_has_usable_mjpeg() {
     _has_python || return 1
-    "$_PY_BIN" - "$MOONRAKER_URL" <<'PYEOF' 2>/dev/null
+    "$_PY_BIN" - "$(installer_moonraker_url)" <<'PYEOF' 2>/dev/null
 import json, sys, urllib.request
 base = sys.argv[1].rstrip('/')
 try:
@@ -501,7 +498,7 @@ PYEOF
 # third-party camera should be left untouched.
 _moonraker_has_our_webcam() {
     _has_python || return 1
-    "$_PY_BIN" - "$MOONRAKER_URL" "$HELIX_WEBCAM_NAME" <<'PYEOF' 2>/dev/null
+    "$_PY_BIN" - "$(installer_moonraker_url)" "$HELIX_WEBCAM_NAME" <<'PYEOF' 2>/dev/null
 import json, sys, urllib.request
 base, name = sys.argv[1].rstrip('/'), sys.argv[2]
 try:
@@ -592,7 +589,7 @@ PYEOF
 _moonraker_migrate_webcams() {
     local stream_url="$1" snap_url="$2"
     _has_python || return 1
-    "$_PY_BIN" - "$MOONRAKER_URL" "$stream_url" "$snap_url" "$HELIX_WEBCAM_NAME" <<'PYEOF' 2>/dev/null
+    "$_PY_BIN" - "$(installer_moonraker_url)" "$stream_url" "$snap_url" "$HELIX_WEBCAM_NAME" <<'PYEOF' 2>/dev/null
 import json, sys, urllib.request, urllib.parse
 base, stream, snap, name = sys.argv[1].rstrip('/'), sys.argv[2], sys.argv[3], sys.argv[4]
 
@@ -792,7 +789,7 @@ install_camera_k2() {
     local cams_json=""
     cams_json="$(_moonraker_get_webcams_json)" || cams_json=""
     if [ -z "$cams_json" ]; then
-        log_warn "Moonraker unreachable at $MOONRAKER_URL — ustreamer is running, but"
+        log_warn "Moonraker unreachable at $(installer_moonraker_url) — ustreamer is running, but"
         log_warn "the webcam was not registered. It will work once Moonraker is up;"
         log_warn "re-run the installer or add the webcam manually if needed."
         return 0
@@ -878,7 +875,7 @@ uninstall_camera_k2() {
     if [ -f "$marker" ]; then
         if [ -f "$backup" ] && _has_python; then
             log_info "Restoring Moonraker webcam list from backup..."
-            "$_PY_BIN" - "$MOONRAKER_URL" "$backup" "$HELIX_WEBCAM_NAME" <<'PYEOF' 2>/dev/null || \
+            "$_PY_BIN" - "$(installer_moonraker_url)" "$backup" "$HELIX_WEBCAM_NAME" <<'PYEOF' 2>/dev/null || \
                 log_warn "Could not fully restore Moonraker webcams (Moonraker may be down)"
 import json, sys, urllib.request, urllib.parse
 base, backup_path, name = sys.argv[1].rstrip('/'), sys.argv[2], sys.argv[3]

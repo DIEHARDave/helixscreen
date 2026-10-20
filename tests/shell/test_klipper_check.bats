@@ -20,6 +20,15 @@ setup() {
     # Reset source guard
     unset _HELIX_REQUIREMENTS_SOURCED
     . "$WORKTREE_ROOT/scripts/lib/installer/requirements.sh"
+    # Where the reachability probe finds Moonraker's URL, and how it asks.
+    unset _HELIX_HOST_PROFILE_SOURCED _HELIX_PRINT_CONF_SOURCED _HELIX_MOONRAKER_SOURCED _HELIX_RELEASE_SOURCED
+    . "$WORKTREE_ROOT/scripts/lib/installer/host_profile.sh"
+    . "$WORKTREE_ROOT/scripts/lib/installer/helix_print_conf.sh"
+    . "$WORKTREE_ROOT/scripts/lib/installer/moonraker.sh"
+    . "$WORKTREE_ROOT/scripts/lib/installer/release.sh"
+    export KLIPPER_HOME="$BATS_TEST_TMPDIR/home" HELIX_PROC_ROOT="$BATS_TEST_TMPDIR/proc"
+    mkdir -p "$HELIX_PROC_ROOT"
+    unset MOONRAKER_URL
 }
 
 # Helper: write a ps mock that outputs the given file content
@@ -178,4 +187,19 @@ EOF
     run_klipper_check "ad5m" "$ps_file" 0
     [ "$status" -eq 0 ]
     contains "Continuing installation" "$output"
+}
+
+@test "check_klipper_ecosystem: probes Moonraker on the port moonraker.conf names" {
+    local ps_file="$BATS_TEST_TMPDIR/ps_output"
+    cat > "$ps_file" <<'EOF'
+  PID USER     COMMAND
+  123 root     klippy/klippy.py
+  456 root     moonraker/moonraker.py
+EOF
+    mkdir -p "$KLIPPER_HOME/printer_data/config"
+    printf '[server]\nport: 80\n' > "$KLIPPER_HOME/printer_data/config/moonraker.conf"
+
+    run_klipper_check "ad5m" "$ps_file" 1
+    [ "$status" -eq 0 ]
+    contains "not responding on http://127.0.0.1:80" "$output"
 }

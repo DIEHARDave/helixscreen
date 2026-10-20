@@ -47,9 +47,12 @@ setup() {
         "$INSTALL_DIR/config/helixscreen-ustreamer-k2.sh"
 
     # Reset source guards and source the module + the framework bits it needs.
-    unset _HELIX_COMMON_SOURCED _HELIX_HOST_PROFILE_SOURCED _HELIX_COMPETING_UIS_SOURCED _HELIX_CAMERA_SOURCED
+    unset _HELIX_COMMON_SOURCED _HELIX_HOST_PROFILE_SOURCED _HELIX_COMPETING_UIS_SOURCED _HELIX_CAMERA_SOURCED \
+        _HELIX_PRINT_CONF_SOURCED _HELIX_MOONRAKER_SOURCED
     . "$WORKTREE_ROOT/scripts/lib/installer/common.sh"
     . "$WORKTREE_ROOT/scripts/lib/installer/host_profile.sh"
+    . "$WORKTREE_ROOT/scripts/lib/installer/helix_print_conf.sh"  # installer_moonraker_url's
+    . "$WORKTREE_ROOT/scripts/lib/installer/moonraker.sh"         # installer_moonraker_url
     . "$WORKTREE_ROOT/scripts/lib/installer/competing_uis.sh"  # record_disabled_service
     . "$WORKTREE_ROOT/scripts/lib/installer/camera.sh"
 

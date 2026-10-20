@@ -902,6 +902,7 @@ MOONEOF
     local log="$BATS_TEST_TMPDIR/curl.log"
     mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
 printf '%s\\n' \"\$*\" >> '$log'; exit 0"
+    mock_command_script "sleep" 'exit 0'
     export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
     mkdir -p "$HELIX_INITD_DIR"
 
@@ -1745,4 +1746,60 @@ exit 0'
     run request_moonraker_restart
 
     [ "$status" -ne 0 ]
+}
+
+# =============================================================================
+# restart_moonraker: falling back to Moonraker's own restart, on its own port
+# =============================================================================
+
+# A Klipper home whose moonraker.conf serves on port $1, no Moonraker process
+# visible, and a curl that answers everything, logging to $BATS_TEST_TMPDIR/curl.log.
+stage_moonraker_on_port() {
+    export KLIPPER_HOME="$BATS_TEST_TMPDIR/home"
+    mkdir -p "$KLIPPER_HOME/printer_data/config" "$BATS_TEST_TMPDIR/proc"
+    printf '[server]\nhost: 0.0.0.0\nport: %s\n' "$1" > "$KLIPPER_HOME/printer_data/config/moonraker.conf"
+    export HELIX_PROC_ROOT="$BATS_TEST_TMPDIR/proc"
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$BATS_TEST_TMPDIR/curl.log'; exit 0"
+    mock_command_script "sleep" 'exit 0'
+}
+
+@test "installer_moonraker_url: loopback on the port moonraker.conf names" {
+    stage_moonraker_on_port 80
+    unset MOONRAKER_URL
+    [ "$(installer_moonraker_url)" = "http://127.0.0.1:80" ]
+    MOONRAKER_URL=http://10.0.0.9:7125
+    [ "$(installer_moonraker_url)" = "http://10.0.0.9:7125" ]
+}
+
+@test "restart_moonraker: a systemctl restart sudo refuses falls back to Moonraker's own restart" {
+    stage_moonraker_on_port 80
+    unset MOONRAKER_URL
+    mock_command_script "systemctl" 'case "$*" in *is-active*) exit 0 ;; *) exit 1 ;; esac'
+    mock_command_script "sudo" 'echo "sudo: a password is required" >&2; exit 1'
+    SUDO=sudo
+
+    run restart_moonraker
+
+    [ "$status" -eq 0 ]
+    grep -q -- '-X POST http://127.0.0.1:80/server/restart' "$BATS_TEST_TMPDIR/curl.log" ||
+        fail "no self-restart on port 80: $(cat "$BATS_TEST_TMPDIR/curl.log" 2>/dev/null)"
+    contains "Asked Moonraker to restart itself" "$output"
+}
+
+@test "restart_moonraker: an init script whose restart fails falls back to Moonraker's own restart" {
+    stage_moonraker_on_port 7130
+    unset MOONRAKER_URL
+    mock_command_script "systemctl" 'exit 1'
+    local initd="$BATS_TEST_TMPDIR/etc/init.d"
+    mkdir -p "$initd"
+    printf '#!/bin/sh\nexit 1\n' > "$initd/moonraker"
+    chmod +x "$initd/moonraker"
+    export HELIX_INITD_DIR="$initd"
+
+    run restart_moonraker
+
+    [ "$status" -eq 0 ]
+    grep -q -- '-X POST http://127.0.0.1:7130/server/restart' "$BATS_TEST_TMPDIR/curl.log" ||
+        fail "no self-restart on port 7130: $(cat "$BATS_TEST_TMPDIR/curl.log" 2>/dev/null)"
 }

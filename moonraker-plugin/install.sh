@@ -548,21 +548,11 @@ _has_real_curl() {
     [ "$_REAL_CURL" = "yes" ]
 }
 
-# Whether a GET of the URL succeeds: real curl, else wget. BusyBox systems
-# (Forge-X outside its chroot) carry wget but no curl, and a K1's /usr/bin/curl
-# is an impostor that rejects -s and -f.
-moonraker_answers() {
-    if _has_real_curl && curl -sf --max-time 2 "$1" > /dev/null 2>&1; then
-        return 0
-    fi
-    command -v wget > /dev/null 2>&1 && wget -q -T 2 -O /dev/null "$1" > /dev/null 2>&1
-}
-
 # Wait for Moonraker to become available after restart, at MOONRAKER_URL.
 wait_for_moonraker() {
     max_attempts=30
     attempt=0
-    moonraker_url="${MOONRAKER_URL:-http://127.0.0.1:7125}"
+    moonraker_url=$(moonraker_local_url "")
 
     info "Waiting for Moonraker to become available..."
 
@@ -600,16 +590,8 @@ restart_moonraker() {
         as_root service moonraker restart && return 0
         warn "Could not restart Moonraker via service"
     fi
-    if request_moonraker_restart; then
+    if moonraker_restart_over_http "$(moonraker_local_url "")"; then
         info "Asked Moonraker to restart itself"
-        # Moonraker answers for a moment after accepting the request. Waiting
-        # for it to go quiet keeps wait_for_moonraker from taking the instance
-        # about to stop for the one that came back.
-        quiet=0
-        while [ "$quiet" -lt 5 ] && moonraker_answers "${MOONRAKER_URL:-http://127.0.0.1:7125}/server/info"; do
-            sleep 1
-            quiet=$((quiet + 1))
-        done
         return 0
     fi
     return 1
@@ -632,23 +614,6 @@ finish_with_restart() {
     fi
     wait_for_moonraker || warn "Moonraker did not come back up in time, but $1 itself completed"
     return 0
-}
-
-# POST /server/restart: Moonraker re-launches itself in place, the one restart
-# that works where no service manager reaches it (Forge-X's chroot). Real curl
-# first, then wget, which BusyBox carries where curl is absent or an impostor;
-# -sf and wget's own status make an HTTP error (a 401) a failure.
-# Kept identical in scripts/lib/installer/moonraker.sh: this script runs
-# standalone (piped from GitHub, or from an install tree without scripts/lib)
-# and cannot source it; a bats test holds the two copies equal.
-# Returns 0 when Moonraker accepted the request.
-request_moonraker_restart() {
-    _restart_url="${MOONRAKER_URL:-http://127.0.0.1:7125}/server/restart"
-    if _has_real_curl && curl -sf --max-time 5 -X POST "$_restart_url" >/dev/null 2>&1; then
-        return 0
-    fi
-    command -v wget >/dev/null 2>&1 &&
-        wget -q -T 5 -O /dev/null --post-data='' "$_restart_url" >/dev/null 2>&1
 }
 
 # Strip phase-tracking instrumentation from PRINT_START via the bundled
@@ -918,6 +883,7 @@ auto_install() {
 
     # The install itself is done by now, so a restart that never happened is
     # reported, never a failure that would roll it back.
+    # shellcheck disable=SC2034  # read by moonraker_local_url (helix_print_conf.sh)
     MOONRAKER_URL=$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")
     if ! finish_with_restart "the plugin install"; then
         printf '\n'

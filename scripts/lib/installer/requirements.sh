@@ -428,25 +428,16 @@ Moonraker does not appear to be running."
         fi
     fi
 
-    # If Moonraker process is up, verify it responds on the expected port
+    # If Moonraker process is up, verify it responds where it serves
     if ps | grep -v grep | grep -q '[Mm]oonraker'; then
-        if command -v wget >/dev/null 2>&1; then
-            if ! wget -q -O /dev/null --timeout=5 "http://127.0.0.1:7125/server/info" 2>/dev/null; then
-                if [ -n "$warnings" ]; then
-                    warnings="$warnings
-Moonraker is running but not responding on http://127.0.0.1:7125."
-                else
-                    warnings="Moonraker is running but not responding on http://127.0.0.1:7125."
-                fi
-            fi
-        elif _has_real_curl; then
-            if ! curl -sf --connect-timeout 5 "http://127.0.0.1:7125/server/info" >/dev/null 2>&1; then
-                if [ -n "$warnings" ]; then
-                    warnings="$warnings
-Moonraker is running but not responding on http://127.0.0.1:7125."
-                else
-                    warnings="Moonraker is running but not responding on http://127.0.0.1:7125."
-                fi
+        local mr_url
+        mr_url=$(installer_moonraker_url)
+        if ! moonraker_answers "${mr_url}/server/info"; then
+            if [ -n "$warnings" ]; then
+                warnings="$warnings
+Moonraker is running but not responding on ${mr_url}."
+            else
+                warnings="Moonraker is running but not responding on ${mr_url}."
             fi
         fi
     fi

@@ -228,7 +228,7 @@ EOF
 # no curl; the K1's impostor curl prints no status and falls through too).
 _remote_screen_moonraker_status() {
     local url code=""
-    url="${MOONRAKER_URL:-http://127.0.0.1:7125}$2"
+    url="$(installer_moonraker_url)$2"
     if command -v curl >/dev/null 2>&1; then
         code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 -X "$1" "$url" 2>/dev/null)"
     fi

@@ -1,9 +1,11 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Where the [helix_print] section lives in a Moonraker config: shared by the
-# plugin's install.sh and the main installer's uninstall (bundled into it from
-# here), so both find the section in the same files.
+# Where the [helix_print] section lives in a Moonraker config, and how this
+# host reaches Moonraker over HTTP: shared by the plugin's install.sh and the
+# main installer (bundled into it from here), so both find the section in the
+# same files and talk to Moonraker the same way. The HTTP helpers call
+# _has_real_curl, which each script that sources this file defines.
 
 [ -n "${_HELIX_PRINT_CONF_SOURCED:-}" ] && return 0
 _HELIX_PRINT_CONF_SOURCED=1
@@ -69,7 +71,6 @@ helix_conf_files_matching() {
 # Print the port Moonraker serves HTTP on: [server] port in the first of
 # moonraker_conf_files @1 @2 that sets it, else 7125, Moonraker's default.
 # Firmware moves it (some serve Moonraker on port 80).
-# UNCALLED_OK: moonraker-plugin/install.sh calls it, through moonraker_local_url.
 moonraker_conf_port() {
     _mcp_port=$(moonraker_conf_files "$1" "${2:-}" | while IFS= read -r _mcp_file; do
         awk '/^\[/ { s = ($0 ~ /^\[server\][ \t\r]*$/) }
@@ -81,13 +82,50 @@ moonraker_conf_port() {
 
 # Print the URL Moonraker answers at from this host: MOONRAKER_URL when set,
 # else loopback on moonraker_conf_port @1 @2.
-# UNCALLED_OK: moonraker-plugin/install.sh calls it.
 moonraker_local_url() {
     if [ -n "${MOONRAKER_URL:-}" ]; then
         printf '%s' "$MOONRAKER_URL"
         return 0
     fi
     printf 'http://127.0.0.1:%s' "$(moonraker_conf_port "$1" "${2:-}")"
+}
+
+# Whether a GET of URL @1 succeeds: real curl, else wget. BusyBox systems
+# (Forge-X outside its chroot) carry wget but no curl, and a K1's /usr/bin/curl
+# is an impostor that rejects -s and -f.
+moonraker_answers() {
+    if _has_real_curl && curl -sf --max-time 2 "$1" > /dev/null 2>&1; then
+        return 0
+    fi
+    command -v wget > /dev/null 2>&1 && wget -q -T 2 -O /dev/null "$1" > /dev/null 2>&1
+}
+
+# POST /server/restart to the Moonraker at base URL @1 (default: MOONRAKER_URL,
+# else port 7125). Moonraker re-launches itself in place, the one restart that
+# works where no service manager reaches it (Forge-X's chroot) or where sudo
+# wants a password. Real curl first, then wget; -sf and wget's own status make
+# an HTTP error (a 401) a failure. Returns 0 when Moonraker accepted it.
+request_moonraker_restart() {
+    _rmr_url="${1:-$(moonraker_local_url "")}/server/restart"
+    if _has_real_curl && curl -sf --max-time 5 -X POST "$_rmr_url" >/dev/null 2>&1; then
+        return 0
+    fi
+    command -v wget >/dev/null 2>&1 &&
+        wget -q -T 5 -O /dev/null --post-data='' "$_rmr_url" >/dev/null 2>&1
+}
+
+# request_moonraker_restart @1, then up to 5s for the instance that accepted
+# it to stop answering: it answers for a moment after the request, and a wait
+# for Moonraker that starts then would take it for the one that came back.
+# Returns 0 when Moonraker accepted the request.
+moonraker_restart_over_http() {
+    request_moonraker_restart "$1" || return 1
+    _mro_quiet=0
+    while [ "$_mro_quiet" -lt 5 ] && moonraker_answers "$1/server/info"; do
+        sleep 1
+        _mro_quiet=$((_mro_quiet + 1))
+    done
+    return 0
 }
 
 # Section headers this plugin owns in a Moonraker config: its own section, and

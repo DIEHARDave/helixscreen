@@ -694,13 +694,15 @@ user_conf_of() {
     ! grep -q 'symlink_dir' "$(user_conf_of "$root")"
 }
 
-@test "install.sh and the main installer carry the same request_moonraker_restart" {
-    local fn='/^request_moonraker_restart() {$/,/^}$/p'
-    local a b
-    a=$(sed -n "$fn" "$SCRIPT")
-    b=$(sed -n "$fn" "$REPO_ROOT/scripts/lib/installer/moonraker.sh")
-    [ -n "$a" ] || fail "no request_moonraker_restart in $SCRIPT"
-    [ "$a" = "$b" ] || fail "the two copies differ"
+@test "the Moonraker HTTP helpers are defined once, in helix_print_conf.sh" {
+    local fn f
+    for fn in request_moonraker_restart moonraker_answers moonraker_restart_over_http moonraker_local_url; do
+        grep -q "^$fn() {$" "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh" || fail "helix_print_conf.sh lacks $fn"
+        for f in "$SCRIPT" "$REPO_ROOT"/scripts/lib/installer/*.sh; do
+            [ "$(readlink -f "$f")" != "$(readlink -f "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh")" ] || continue
+            if grep -q "^$fn() {" "$f"; then fail "$f defines its own $fn"; fi
+        done
+    done
 }
 
 @test "install.sh carries the main installer's _has_real_curl" {

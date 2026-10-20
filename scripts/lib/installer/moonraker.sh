@@ -849,6 +849,17 @@ remove_moonraker_plugin() {
     return 0
 }
 
+# The URL this host reaches Moonraker at (moonraker_local_url): the port comes
+# from the platform's own moonraker.conf, which on a mod host is the mod's file
+# holding [server], else from whatever find_moonraker_conf finds.
+installer_moonraker_url() {
+    local conf
+    conf="$(klipper_config_dir)"
+    conf="${conf:+${conf}/moonraker.conf}"
+    [ -n "$conf" ] && [ -f "$conf" ] || conf=$(find_moonraker_conf)
+    moonraker_local_url "$conf" "$(running_moonraker_root_dir)"
+}
+
 # Restart Moonraker to pick up configuration changes.
 #
 # The init script name varies by firmware, and knowing only systemd plus the K1's
@@ -866,50 +877,33 @@ restart_moonraker() {
 
     if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet moonraker 2>/dev/null; then
         log_info "Restarting Moonraker to apply configuration..."
-        run_logged $SUDO systemctl restart moonraker || true
-        return 0
+        run_logged $SUDO systemctl restart moonraker && return 0
+        log_warn "Could not restart Moonraker via systemctl"
+    else
+        # SysV/procd firmware. S56moonraker_service is Creality K1/Simple AF; a
+        # plain "moonraker" covers COSMOS (CC1) and the rest.
+        initd="${HELIX_INITD_DIR:-/etc/init.d}"
+        for script in "${initd}/S56moonraker_service" "${initd}/moonraker" \
+                      "/etc/init.d/S56moonraker_service" "/etc/init.d/moonraker"; do
+            if [ -x "$script" ] || [ -f "$script" ]; then
+                log_info "Restarting Moonraker to apply configuration..."
+                $SUDO "$script" restart 2>/dev/null && return 0
+                log_warn "Could not restart Moonraker with $script"
+                break
+            fi
+        done
     fi
 
-    # SysV/procd firmware. S56moonraker_service is Creality K1/Simple AF; a plain
-    # "moonraker" covers COSMOS (CC1) and the rest.
-    initd="${HELIX_INITD_DIR:-/etc/init.d}"
-    for script in "${initd}/S56moonraker_service" "${initd}/moonraker" \
-                  "/etc/init.d/S56moonraker_service" "/etc/init.d/moonraker"; do
-        if [ -x "$script" ] || [ -f "$script" ]; then
-            log_info "Restarting Moonraker to apply configuration..."
-            if ! $SUDO "$script" restart 2>/dev/null; then
-                log_warn "Could not restart Moonraker - you may need to restart it manually"
-            fi
-            return 0
-        fi
-    done
-
-    # No service manager this script can reach (Forge-X runs Moonraker in its
-    # chroot, outside any init script here): ask Moonraker to restart itself.
-    if request_moonraker_restart; then
+    # No service manager reached it (Forge-X runs Moonraker in its chroot,
+    # outside any init script here; sudo may want a password): ask Moonraker
+    # to restart itself.
+    if moonraker_restart_over_http "$(installer_moonraker_url)"; then
         log_info "Asked Moonraker to restart itself to apply configuration"
         return 0
     fi
 
     log_warn "Could not find a way to restart Moonraker - restart it manually for the configuration change to take effect."
     return 0
-}
-
-# POST /server/restart: Moonraker re-launches itself in place, the one restart
-# that works where no service manager reaches it (Forge-X's chroot). Real curl
-# first, then wget, which BusyBox carries where curl is absent or an impostor;
-# -sf and wget's own status make an HTTP error (a 401) a failure.
-# Kept identical in moonraker-plugin/install.sh, which runs standalone (piped
-# from GitHub, or from an install tree without scripts/lib) and cannot source
-# this file; a bats test holds the two copies equal.
-# Returns 0 when Moonraker accepted the request.
-request_moonraker_restart() {
-    _restart_url="${MOONRAKER_URL:-http://127.0.0.1:7125}/server/restart"
-    if _has_real_curl && curl -sf --max-time 5 -X POST "$_restart_url" >/dev/null 2>&1; then
-        return 0
-    fi
-    command -v wget >/dev/null 2>&1 &&
-        wget -q -T 5 -O /dev/null --post-data='' "$_restart_url" >/dev/null 2>&1
 }
 
 # What configure_moonraker_updates would add, for the plan. Read-only: the
