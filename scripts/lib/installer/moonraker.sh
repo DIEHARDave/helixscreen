@@ -762,10 +762,7 @@ _remove_helix_print_inline() {
         fs=$(file_sudo "$section_conf")
         $fs cp "$section_conf" "${section_conf}.bak.helixscreen-uninstall" 2>/dev/null || true
         log_info "Removing HelixPrint sections from $section_conf..."
-        local prog="$HELIX_PRINT_STRIP_AWK"
-        # The program is passed as an argument rather than interpolated into the
-        # -c string, so its $0 and $1 stay awk's and are never expanded by a shell.
-        if $fs sh -c 'awk "$1" "$2" > "$2.helixtmp" && mv "$2.helixtmp" "$2"' sh "$prog" "$section_conf"; then
+        if helix_rewrite_conf "$section_conf" "$HELIX_PRINT_STRIP_AWK" "$fs"; then
             log_success "Removed HelixPrint sections from $section_conf"
         else
             log_warn "Could not remove HelixPrint sections from $section_conf - edit it by hand, backup at ${section_conf}.bak.helixscreen-uninstall"

@@ -524,6 +524,29 @@ CONF
     cmp -s "$BATS_TEST_TMPDIR/conf.before" "$conf" || fail "moonraker.conf itself was edited"
 }
 
+@test "remove_moonraker_plugin edits an included conf through its symlink, keeping link and mode" {
+    local symlink conf inc real
+    setup_helix_print_symlink
+    conf="$BATS_TEST_TMPDIR/cfg/moonraker.conf"
+    inc="$BATS_TEST_TMPDIR/cfg/helix.conf"
+    real="$BATS_TEST_TMPDIR/config-repo/helix.conf"
+    mkdir -p "$(dirname "$conf")" "$(dirname "$real")"
+    printf '[server]\nhost: 0.0.0.0\n\n[include helix.conf]\n' > "$conf"
+    printf '[helix_print]\nenabled: True\n\n[octoprint_compat]\n' > "$real"
+    chmod 0640 "$real"
+    ln -s "$real" "$inc"
+    KLIPPER_HOME=""
+    KLIPPER_CONFIG_DIR=""
+    MOONRAKER_CONF_PATHS="$conf"
+
+    remove_moonraker_plugin 2>/dev/null
+
+    [ -L "$inc" ] || fail "the include's symlink was replaced by a regular file"
+    refute_grep '^\[helix_print\]' "$real"
+    grep -q '^\[octoprint_compat\]' "$real" || fail "the include's other sections were lost"
+    [ "$(stat -c %a "$real")" = 640 ] || fail "mode $(stat -c %a "$real")"
+}
+
 @test "remove_moonraker_plugin removes the updater entry a git-clone plugin install wrote" {
     local symlink conf
     setup_helix_print_symlink
