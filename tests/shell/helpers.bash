@@ -178,11 +178,14 @@ exec '$real_date' \"\$@\""
 # files under $1: up (it answers at all), auth (every request is answered
 # 401), print_state (print_stats.state, default standby), version (what
 # /server/helix/status reports; without it a 404), new_version (the version a
-# service restart loads), refuse (every POST is answered 403), system_info
+# service restart loads, and an in-place restart when none is loaded yet),
+# inert (a service restart is answered 200 and does nothing, as Moonraker
+# does when its service manager cannot act), refuse (every POST is answered
+# 403), system_info
 # (the body of /machine/system_info; without it one Moonraker running as the
 # "moonraker" service). An accepted
-# /server/restart makes the next request go unanswered, as Moonraker does
-# while it restarts. Every request is logged to $1/log as "METHOD URL".
+# restart makes the next request go unanswered, as Moonraker does while it
+# restarts. Every request is logged to $1/log as "METHOD URL".
 # Starts up and idle, with the fake clock (mock_fake_clock) running.
 mock_moonraker_http() {
     local d="$1"
@@ -223,8 +226,14 @@ elif [ "$method" = POST ]; then
     else
         out='{"result":"ok"}'
         case "$url" in
-            */machine/services/restart*) [ ! -e "$d/new_version" ] || cp "$d/new_version" "$d/version" ;;
-            */server/restart) : > "$d/bounce" ;;
+            */machine/services/restart*)
+                if [ ! -e "$d/inert" ]; then
+                    : > "$d/bounce"
+                    [ ! -e "$d/new_version" ] || cp "$d/new_version" "$d/version"
+                fi ;;
+            */server/restart)
+                : > "$d/bounce"
+                [ -e "$d/version" ] || [ ! -e "$d/new_version" ] || cp "$d/new_version" "$d/version" ;;
         esac
     fi
 else

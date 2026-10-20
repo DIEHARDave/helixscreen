@@ -525,9 +525,9 @@ PluginRestartOutcome restart_moonraker_for_plugin(const std::string& script_path
     }
 }
 
-bool plugin_restart_finished(PluginRestartOutcome outcome) {
+bool plugin_restart_finished(PluginRestartOutcome outcome, bool plugin_was_loaded) {
     return outcome == PluginRestartOutcome::Restarted ||
-           outcome == PluginRestartOutcome::NeedsManual;
+           (outcome == PluginRestartOutcome::NeedsManual && plugin_was_loaded);
 }
 
 std::string parse_plugin_version(std::string_view text) {

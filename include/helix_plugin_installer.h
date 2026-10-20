@@ -340,12 +340,14 @@ enum class PluginRestartOutcome {
  * @brief Whether a restart with @p outcome counts as done for the plugin it was for
  *
  * A restart that finished counts, and so does one Moonraker refused or that
- * left the old plugin running: asking again for the same versions would only
- * repeat the warning. The next app start repeats any other (a print hold, an
+ * left the old plugin running when @p plugin_was_loaded: asking again for the
+ * same versions would only repeat the warning. With no plugin loaded, one
+ * that did not load it is tried again, as the next start may find what kept
+ * it out repaired. The next app start repeats any other (a print hold, an
  * unreadable print state, a Moonraker that did not answer), which can clear
  * by itself.
  */
-bool plugin_restart_finished(PluginRestartOutcome outcome);
+bool plugin_restart_finished(PluginRestartOutcome outcome, bool plugin_was_loaded);
 
 /**
  * @brief Run `install.sh --restart-moonraker` at @p script_path and read its outcome

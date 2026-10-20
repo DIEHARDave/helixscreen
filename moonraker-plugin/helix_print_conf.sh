@@ -383,14 +383,35 @@ moonraker_answers() {
     moonraker_get "$1" "${2:-}" > /dev/null
 }
 
+# Print the HelixPrint plugin version in the /server/helix/status body on
+# stdin; nothing when it names none.
+plugin_version_in() {
+    awk 'match($0, /"version"[[:space:]]*:[[:space:]]*"[^"]*"/) {
+        s = substr($0, RSTART, RLENGTH); sub(/^"version"[[:space:]]*:[[:space:]]*"/, "", s)
+        sub(/"$/, "", s); print s; exit }'
+}
+
 # Print the HelixPrint plugin version the Moonraker at base URL @1 runs, from
 # /server/helix/status, waiting at most @2 seconds (default 5); nothing when
 # it runs none or does not say.
 moonraker_plugin_version() {
-    moonraker_get "$1/server/helix/status" "${2:-5}" |
-        awk 'match($0, /"version"[[:space:]]*:[[:space:]]*"[^"]*"/) {
-            s = substr($0, RSTART, RLENGTH); sub(/^"version"[[:space:]]*:[[:space:]]*"/, "", s)
-            sub(/"$/, "", s); print s; exit }'
+    moonraker_get "$1/server/helix/status" "${2:-5}" | plugin_version_in
+}
+
+# Print the moonraker_restart mode that has the Moonraker at base URL @1 run
+# plugin version @2: "load" when it runs no plugin, as an in-place restart
+# imports one it has not; "plugin" when it runs another version, which only
+# a new process reads; "none" when it runs @2 already, or any version with
+# @2 empty.
+plugin_restart_mode() {
+    _prm_running=$(moonraker_plugin_version "$1")
+    if [ -z "$_prm_running" ]; then
+        printf 'load'
+    elif [ -n "${2:-}" ] && [ "$_prm_running" != "$2" ]; then
+        printf 'plugin'
+    else
+        printf 'none'
+    fi
 }
 
 # Print the name of the service the Moonraker at base URL @1 runs under, the
@@ -478,27 +499,36 @@ HELIX_RESTART_DOWN=7
 #   config  the config (an install, an uninstall, an updater section):
 #           POST /server/restart, Moonraker's in-place restart, which reads
 #           the config again
+#   load    helix_print.py where Moonraker runs no plugin: POST
+#           /server/restart, which imports it, and the restart counts once
+#           /server/helix/status reports version @5 (with @5 empty, any)
 #   plugin  helix_print.py over a plugin Moonraker already loaded: an
 #           in-place restart keeps the module it imported, so POST
 #           /machine/services/restart has Moonraker restart its own service
 #           (moonraker_service_name; none when that is not certain) with its
 #           own rights, and the restart counts once /server/helix/status
-#           reports version @5. With @5 empty, once Moonraker answers again.
+#           reports version @5. With @5 empty, once Moonraker has gone
+#           quiet and reports one again.
+# plugin_restart_mode says which of load and plugin a plugin change needs.
 # @3 and @4 are called with each line to report, as information and as a
 # warning. A Moonraker that does not answer (a 401 answers) is left alone. A
-# print printing or paused holds the restart off (moonraker_job_state);
-# one that cannot be ruled out holds it off too. After the request, one wait
-# of HELIX_MOONRAKER_UP_SECS (60: a slow board answers 10 to 40 seconds
-# after a restart) for Moonraker to answer again. Returns a HELIX_RESTART_*
-# code: DONE; MANUAL when Moonraker refused the request or still runs the old
-# plugin; HELD for a print; UNCHECKED when the print state cannot be read;
-# DOWN when Moonraker does not answer, before the request or after it.
+# print printing or paused holds the restart off (moonraker_job_state); one
+# that cannot be ruled out holds it off too. After the request, one wait of
+# HELIX_MOONRAKER_UP_SECS (60: a slow board answers 10 to 40 seconds after a
+# restart) for Moonraker to come back. Returns a HELIX_RESTART_* code: DONE;
+# MANUAL when Moonraker refused the request, did not restart, did not load
+# the plugin or still runs the old one; HELD for a print; UNCHECKED when the
+# print state cannot be read; DOWN when Moonraker does not answer, before the
+# request or after it.
 #
 # Its worst case, with every request running to its limit and each limit
 # doubled for wget or python (moonraker_request): /server/info 4s, the print
-# state 10s, the request 10s, the 60s wait by the clock, one more probe and
-# sleep past its end 5s, and the closing /server/info 4s: 93 seconds. The
-# app stops it at kRestartTimeoutSeconds (src/ui/plugin_self_heal.cpp), 180.
+# state 10s, the service name 4s, the request 10s, the 60s wait by the
+# clock, one more probe and sleep past its end 5s, and the closing
+# /server/info 4s: 97 seconds. install.sh --restart-moonraker asks for the
+# running plugin version first (plugin_restart_mode, 10s): 107 seconds,
+# against the app's kRestartTimeoutSeconds of 180
+# (src/ui/plugin_self_heal.cpp).
 moonraker_restart() {
     _mrs_mode="$1"
     _mrs_url="$2"
@@ -508,6 +538,8 @@ moonraker_restart() {
     _mrs_secs="${HELIX_MOONRAKER_UP_SECS:-60}"
     if [ "$_mrs_mode" = plugin ]; then
         _mrs_redo="Restart Moonraker or reboot the printer to finish the plugin update; the plugin it runs keeps working until then"
+    elif [ "$_mrs_mode" = load ]; then
+        _mrs_redo="Restart Moonraker or reboot the printer to load the HelixPrint plugin"
     else
         _mrs_redo="Restart Moonraker from Mainsail or Fluidd, or reboot the printer, for the change to take effect"
     fi
@@ -549,11 +581,11 @@ moonraker_restart() {
         "$_mrs_warn" "$_mrs_redo"
         return "$HELIX_RESTART_MANUAL"
     fi
-    if [ "$_mrs_mode" = plugin ]; then
-        "$_mrs_info" "Asked Moonraker to restart its service to load the new plugin"
-    else
-        "$_mrs_info" "Asked Moonraker to restart itself"
-    fi
+    case "$_mrs_mode" in
+        plugin) "$_mrs_info" "Asked Moonraker to restart its service to load the new plugin" ;;
+        load) "$_mrs_info" "Asked Moonraker to restart itself to load the plugin" ;;
+        *) "$_mrs_info" "Asked Moonraker to restart itself" ;;
+    esac
 
     # Each wait ends on its time by the clock, and after as many one-second
     # sleeps as it has seconds whatever the clock says.
@@ -569,21 +601,40 @@ moonraker_restart() {
             _mrs_n=$((_mrs_n + 1))
         done
     fi
+    # A plugin restart counts once the plugin reports the version wanted. The
+    # instance that took the request reports the old one, or none, so it is
+    # never taken for the new; with no version wanted, Moonraker has to go
+    # quiet first. Going quiet also tells a service restart that happened
+    # from one Moonraker accepted and never carried out.
     _mrs_n=0
+    _mrs_quiet=""
     while :; do
-        if [ "$_mrs_mode" = plugin ] && [ -n "$_mrs_version" ]; then
-            [ "$(moonraker_plugin_version "$_mrs_url" 2)" != "$_mrs_version" ] || break
-        else
+        if [ "$_mrs_mode" = config ]; then
             moonraker_request GET "$_mrs_url/server/info" 2 || :
             [ -z "$HTTP_STATUS" ] || break
+        else
+            moonraker_request GET "$_mrs_url/server/helix/status" 2 || :
+            _mrs_now=$(printf '%s' "$HTTP_BODY" | plugin_version_in)
+            if [ -n "$_mrs_version" ]; then
+                [ "$_mrs_now" != "$_mrs_version" ] || break
+            elif [ -n "$_mrs_now" ] && { [ "$_mrs_mode" = load ] || [ -n "$_mrs_quiet" ]; }; then
+                break
+            fi
         fi
+        [ -n "$HTTP_STATUS" ] || _mrs_quiet=1
         if [ "$_mrs_n" -ge "$_mrs_secs" ] || [ "$(helix_now)" -ge "$_mrs_end" ]; then
             moonraker_request GET "$_mrs_url/server/info" 2 || :
             if [ -z "$HTTP_STATUS" ]; then
                 "$_mrs_warn" "Moonraker has not answered within ${_mrs_secs} seconds of its restart; check that it is running"
                 return "$HELIX_RESTART_DOWN"
             fi
-            "$_mrs_warn" "Moonraker still runs the old HelixPrint plugin after its service restart"
+            if [ "$_mrs_mode" = load ]; then
+                "$_mrs_warn" "Moonraker restarted but did not load the HelixPrint plugin${_mrs_version:+ $_mrs_version}; moonraker.log says why"
+            elif [ -z "$_mrs_quiet" ]; then
+                "$_mrs_warn" "Moonraker did not restart: its service restart is not available on this host"
+            else
+                "$_mrs_warn" "Moonraker still runs the old HelixPrint plugin after its service restart"
+            fi
             "$_mrs_warn" "$_mrs_redo"
             return "$HELIX_RESTART_MANUAL"
         fi

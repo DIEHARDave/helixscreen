@@ -559,6 +559,7 @@ FORGEX_PLUGIN=/opt/config/mod_data/helixscreen/moonraker-plugin
     setup_forgex_layout "$root"
     local chroot="$root/data/.mod/.forge-x"
     mock_moonraker_http "$BATS_TEST_TMPDIR/mr"
+    bundled_version > "$BATS_TEST_TMPDIR/mr/new_version"
 
     local bin="$BATS_TEST_TMPDIR/no-service-path"
     mkdir -p "$bin"
@@ -580,8 +581,15 @@ FORGEX_PLUGIN=/opt/config/mod_data/helixscreen/moonraker-plugin
     local root="$BATS_TEST_TMPDIR/fx"
     setup_forgex_layout "$root"
     local chroot="$root/data/.mod/.forge-x"
-    local log="$BATS_TEST_TMPDIR/wget.log"
-    mock_command_script "wget" "printf '%s\\n' \"\$*\" >> '$log'; exit 0"
+    local log="$BATS_TEST_TMPDIR/wget.log" posted="$BATS_TEST_TMPDIR/posted"
+    # The plugin is not loaded until Moonraker has been asked to restart.
+    mock_command_script "wget" "printf '%s\\n' \"\$*\" >> '$log'
+case \"\$*\" in *post-data*) : > '$posted' ;; esac
+case \"\$*\" in *helix/status*)
+    if [ -e '$posted' ]; then printf '{\"result\":{\"version\":\"$(bundled_version)\"}}'
+    else echo 'ERROR 404: Not Found.' >&2; exit 8; fi ;;
+esac
+exit 0"
     mock_command_script "systemctl" 'exit 1'
 
     local bin="$BATS_TEST_TMPDIR/wget-only-path"
@@ -651,8 +659,14 @@ user_conf_of() {
     mock_command_script "python3" "[ \"\$2\" = -c ] && exit 0
 cat > /dev/null
 printf '%s %s %s\\n' \"\$HELIX_HTTP_METHOD\" \"\$HELIX_HTTP_URL\" \"\$HELIX_HTTP_TIMEOUT\" >> '$log'
-printf '200\\n'
-case \"\$HELIX_HTTP_URL\" in *server/info*) printf '%s' '{\"result\":{\"components\":[]}}' ;; esac
+[ \"\$HELIX_HTTP_METHOD\" != POST ] || : > '$BATS_TEST_TMPDIR/posted'
+case \"\$HELIX_HTTP_URL\" in
+    *server/info*) printf '200\\n%s' '{\"result\":{\"components\":[]}}' ;;
+    *helix/status*)
+        if [ -e '$BATS_TEST_TMPDIR/posted' ]; then printf '200\\n%s' '{\"result\":{\"version\":\"$(bundled_version)\"}}'
+        else printf '404\\n'; fi ;;
+    *) printf '200\\n' ;;
+esac
 exit 0"
     mock_fake_clock
 
@@ -1314,7 +1328,7 @@ setup_forgex_bind_mounted_app() {
     [ "$status" -eq 0 ] || fail "install failed: $output"
     [ -L "$home/moonraker/moonraker/components/helix_print.py" ]
     contains "Moonraker refused to restart (403)" "$output"
-    contains "Restart Moonraker from Mainsail or Fluidd" "$output"
+    contains "Restart Moonraker or reboot the printer to load the HelixPrint plugin" "$output"
     if printf '%s' "$output" | grep -qi 'complete'; then fail "claimed completion: $output"; fi
 }
 
@@ -1344,8 +1358,8 @@ case \"\$*\" in *server/info*) c=\$((\$(cat '$n' 2>/dev/null || echo 0) + 1)); e
 esac
 printf '\\n200'"
 
-    run env HOME="$home" sh "$SCRIPT" --auto
-    [ "$status" -eq 0 ] || fail "install failed: $output"
+    run_moonraker_restart config
+    [ "$status" -eq 0 ] || fail "want 0, got $status: $output"
     contains "Asked Moonraker to restart itself" "$output"
     [ "$(cat "$n")" -eq 4 ] || fail "the wait read /server/info $(cat "$n") times, want 4 (before, old, down, new)"
     contains "Moonraker is ready" "$output"
@@ -1559,6 +1573,7 @@ run_perm_install() {
     mkdir -p "$initd"
     printf '#!/bin/sh\necho "init $*" >> "%s"\n' "$log" > "$initd/S56moonraker_service"
     chmod +x "$initd/S56moonraker_service"
+    bundled_version > "$BATS_TEST_TMPDIR/mr/new_version"
 
     run env HOME="$home" HELIX_INITD_DIR="$initd" sh "$SCRIPT" --auto
     [ "$status" -eq 0 ] || fail "install failed: $output"
@@ -1728,6 +1743,66 @@ bundled_version() {
     [ "$status" -eq 3 ] || fail "unchanged: want 3, got $status: $output"
     contains "still runs the old HelixPrint plugin" "$output"
     contains "Restart Moonraker or reboot the printer to finish the plugin update" "$output"
+}
+
+@test "--restart-moonraker loads a plugin Moonraker runs none of with an in-place restart, and says when it did not load" {
+    local home="$BATS_TEST_TMPDIR/home" mr="$BATS_TEST_TMPDIR/mr"
+    setup_plain_home "$home"
+    mock_moonraker_http "$mr"
+    bundled_version > "$mr/new_version"
+
+    run env HOME="$home" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 0 ] || fail "want 0, got $status: $output"
+    grep -qx 'POST http://127.0.0.1:7125/server/restart' "$mr/log" || fail "no in-place restart: $(cat "$mr/log")"
+    if grep -q 'services/restart' "$mr/log"; then fail "restarted the service for a plugin it never loaded"; fi
+
+    rm "$mr/version" "$mr/new_version"
+    : > "$mr/log"
+    run env HOME="$home" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 3 ] || fail "not loaded: want 3, got $status: $output"
+    contains "did not load the HelixPrint plugin" "$output"
+    if printf '%s' "$output" | grep -q 'old HelixPrint plugin'; then fail "blamed an old plugin that never ran: $output"; fi
+}
+
+@test "--restart-moonraker says Moonraker did not restart when its service restart is accepted and does nothing" {
+    local home="$BATS_TEST_TMPDIR/home" mr="$BATS_TEST_TMPDIR/mr"
+    setup_plain_home "$home"
+    mock_moonraker_http "$mr"
+    echo 0.0.1 > "$mr/version"
+    bundled_version > "$mr/new_version"
+    : > "$mr/inert"
+
+    run env HOME="$home" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 3 ] || fail "want 3, got $status: $output"
+    contains "Moonraker did not restart: its service restart is not available on this host" "$output"
+}
+
+@test "--restart-moonraker restarts nothing when Moonraker runs this tree's plugin already" {
+    local home="$BATS_TEST_TMPDIR/home" mr="$BATS_TEST_TMPDIR/mr"
+    setup_plain_home "$home"
+    mock_moonraker_http "$mr"
+    bundled_version > "$mr/version"
+
+    run env HOME="$home" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 0 ] || fail "want 0, got $status: $output"
+    if grep -q '^POST' "$mr/log"; then fail "restarted for the version it runs: $(cat "$mr/log")"; fi
+}
+
+@test "an auto install where Moonraker runs no plugin restarts it in place and waits for the plugin to load" {
+    local home="$BATS_TEST_TMPDIR/home" mr="$BATS_TEST_TMPDIR/mr"
+    setup_plain_home "$home"
+    mock_moonraker_http "$mr"
+
+    run env HOME="$home" sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    grep -qx 'POST http://127.0.0.1:7125/server/restart' "$mr/log" || fail "no in-place restart: $(cat "$mr/log")"
+    contains "did not load the HelixPrint plugin" "$output"
+    if printf '%s' "$output" | grep -qi 'complete'; then fail "claimed completion with no plugin loaded: $output"; fi
+
+    bundled_version > "$mr/new_version"
+    rm -f "$mr/version"
+    run env HOME="$home" sh "$SCRIPT" --auto
+    contains "Auto-install complete" "$output"
 }
 
 @test "--restart-moonraker restarts the service Moonraker names as its own, and none when that is unclear" {

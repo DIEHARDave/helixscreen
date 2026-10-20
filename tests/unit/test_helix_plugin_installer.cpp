@@ -496,13 +496,18 @@ TEST_CASE("plugin_restart_finished: a finished restart, or one needing a manual 
           "not repeated for the same versions",
           "[plugin_installer]") {
     using Outcome = helix::PluginRestartOutcome;
-    CHECK(helix::plugin_restart_finished(Outcome::Restarted));
-    CHECK(helix::plugin_restart_finished(Outcome::NeedsManual));
-    CHECK_FALSE(helix::plugin_restart_finished(Outcome::HeldForPrint));
-    CHECK_FALSE(helix::plugin_restart_finished(Outcome::JobUnknown));
-    CHECK_FALSE(helix::plugin_restart_finished(Outcome::NotAnswering));
-    CHECK_FALSE(helix::plugin_restart_finished(Outcome::TimedOut));
-    CHECK_FALSE(helix::plugin_restart_finished(Outcome::Failed));
+    CHECK(helix::plugin_restart_finished(Outcome::Restarted, true));
+    CHECK(helix::plugin_restart_finished(Outcome::Restarted, false));
+    CHECK(helix::plugin_restart_finished(Outcome::NeedsManual, true));
+    // With no plugin loaded, a restart that did not load one is tried again.
+    CHECK_FALSE(helix::plugin_restart_finished(Outcome::NeedsManual, false));
+    for (const bool loaded : {true, false}) {
+        CHECK_FALSE(helix::plugin_restart_finished(Outcome::HeldForPrint, loaded));
+        CHECK_FALSE(helix::plugin_restart_finished(Outcome::JobUnknown, loaded));
+        CHECK_FALSE(helix::plugin_restart_finished(Outcome::NotAnswering, loaded));
+        CHECK_FALSE(helix::plugin_restart_finished(Outcome::TimedOut, loaded));
+        CHECK_FALSE(helix::plugin_restart_finished(Outcome::Failed, loaded));
+    }
 }
 
 // ============================================================================

@@ -211,7 +211,7 @@ void PluginSelfHeal::remember(const PluginSelfHealFacts& facts, bool restart_fin
 }
 
 void PluginSelfHeal::on_restarted(PluginRestartOutcome outcome) {
-    if (plugin_restart_finished(outcome)) {
+    if (plugin_restart_finished(outcome, !restart_facts_.reported_version.empty())) {
         restart_facts_.memory = load_memory();
         remember(restart_facts_, true);
     }

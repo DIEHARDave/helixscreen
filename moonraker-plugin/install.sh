@@ -43,7 +43,8 @@ EXIT_RELINK_NOT_OURS=4
 # Exit codes for --restart-moonraker (HelixPluginInstaller reads them), those
 # of moonraker_restart in helix_print_conf.sh:
 #   0 - Moonraker restarted and runs this tree's plugin
-#   3 - Moonraker needs a manual restart: it refused, or runs the old plugin
+#   3 - Moonraker needs a manual restart: it refused, did not restart, did
+#       not load the plugin, or runs the old one
 #   4 - a print is printing or paused; nothing restarted
 #   6 - the print state could not be read; nothing restarted
 #   7 - Moonraker does not answer
@@ -508,11 +509,12 @@ bundled_plugin_version() {
 }
 
 # The restart an auto install (@1 install) or uninstall (@1 uninstall) ends
-# with, through moonraker_restart at MOONRAKER_URL: an install over a plugin
-# Moonraker runs at another version is a plugin change, anything else a config
-# change. --no-restart leaves it to the caller (the app restarts Moonraker over
-# its own API). Returns 0 when Moonraker restarted, 2 when it does not answer,
-# and 1 when it still needs a restart; moonraker_restart has said why.
+# with, through moonraker_restart at MOONRAKER_URL: an install needs the
+# plugin_restart_mode restart, and a config one when Moonraker runs this
+# tree's plugin already; an uninstall a config one. --no-restart leaves it to
+# the caller (the app restarts Moonraker over its own API). Returns 0 when
+# Moonraker restarted, 2 when it does not answer, and 1 when it still needs a
+# restart; moonraker_restart has said why.
 finish_with_restart() {
     if [ "$NO_RESTART" = "true" ]; then
         info "Leaving the Moonraker restart to the caller"
@@ -524,8 +526,8 @@ finish_with_restart() {
     bundled=""
     if [ "$1" = install ]; then
         bundled=$(bundled_plugin_version)
-        running=$(moonraker_plugin_version "$restart_url")
-        [ -z "$running" ] || [ "$running" = "$bundled" ] || restart_mode=plugin
+        restart_mode=$(plugin_restart_mode "$restart_url" "$bundled")
+        [ "$restart_mode" != none ] || restart_mode=config
     fi
     restarted=0
     moonraker_restart "$restart_mode" "$restart_url" info warn "$bundled" || restarted=$?
@@ -817,14 +819,21 @@ auto_install() {
 
 # Restart Moonraker so it runs the plugin code on disk (--restart-moonraker):
 # what the app runs after --relink re-pointed the link, or when the running
-# plugin reports another version than this tree's. moonraker_restart asks
-# Moonraker whether a print runs (HELIX_JOB_STATE stands in only when it
-# cannot be asked). Returns moonraker_restart's code.
+# plugin reports another version than this tree's. The restart is the one
+# plugin_restart_mode names, and none when Moonraker runs this tree's version
+# already. moonraker_restart asks Moonraker whether a print runs
+# (HELIX_JOB_STATE stands in only when it cannot be asked). Returns
+# moonraker_restart's code.
 restart_for_plugin() {
     config_dir=$(find_config_dir)
-    moonraker_restart plugin \
-        "$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")" \
-        info warn "$(bundled_plugin_version)"
+    restart_url=$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")
+    bundled=$(bundled_plugin_version)
+    restart_mode=$(plugin_restart_mode "$restart_url" "$bundled")
+    if [ "$restart_mode" = none ]; then
+        info "Moonraker runs HelixPrint plugin $bundled already; no restart needed"
+        return "$HELIX_RESTART_DONE"
+    fi
+    moonraker_restart "$restart_mode" "$restart_url" info warn "$bundled"
 }
 
 show_help() {
@@ -842,8 +851,8 @@ show_help() {
     printf '%s\n' "  --relink                Re-point an installed plugin's link at this copy;"
     printf '%s\n' "                          exit 0 already current, 3 re-pointed, 4 nothing of"
     printf '%s\n' "                          ours to repair, 1 failed. Never restarts Moonraker"
-    printf '%s\n' "  --restart-moonraker     Ask Moonraker to restart its service so it loads the"
-    printf '%s\n' "                          plugin on disk; exit 0 restarted, 3 needs a manual"
+    printf '%s\n' "  --restart-moonraker     Restart Moonraker over its API so it loads the plugin"
+    printf '%s\n' "                          on disk; exit 0 restarted, 3 needs a manual"
     printf '%s\n' "                          restart, 4 held off by a print, 6 print state unknown,"
     printf '%s\n' "                          7 Moonraker not answering"
     printf '%s\n' "  --help, -h              Show this help message"

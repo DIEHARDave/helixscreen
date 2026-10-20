@@ -716,6 +716,21 @@ TEST_CASE_METHOD(SelfHealFixture,
 }
 
 TEST_CASE_METHOD(SelfHealFixture,
+                 "a restart that did not load a plugin Moonraker never ran is tried again",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.0.1", 3);
+    set_restart_exit(3);
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", nullptr);
+
+    run_plugin_probe();
+    settle();
+    REQUIRE(restarts() == 1);
+
+    next_start_reports_absent();
+    CHECK(restarts() == 2);
+}
+
+TEST_CASE_METHOD(SelfHealFixture,
                  "the restart leaves the print state to install.sh, which asks Moonraker",
                  "[plugin_installer][print_select][self_heal]") {
     ship("1.0.1", 3);
