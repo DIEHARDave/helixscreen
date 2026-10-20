@@ -327,7 +327,10 @@ jobs:
     needs: [build-platforms, plan]
     if: ${{ !cancelled() && contains(format(' {0} ', needs.plan.outputs.platforms), ' x86 ') }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    # Two image-build attempts of up to 15 minutes each, then the runs.
+    timeout-minutes: 45
+    permissions:
+      contents: read
 
     steps:
     - name: Checkout repository
@@ -338,14 +341,21 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
 
+    # On a cache miss this pulls the base image and apt packages, so a network
+    # flake would fail the smoke and hold the release; one retry absorbs it.
     - name: Build x86 toolchain image
-      run: |
-        docker buildx build \
-          --cache-from type=gha,scope=toolchain-x86 \
-          --load \
-          -t helixscreen/toolchain-x86 \
-          -f docker/Dockerfile.x86 \
-          docker/
+      uses: nick-fields/retry@v4
+      with:
+        timeout_minutes: 15
+        max_attempts: 2
+        retry_wait_seconds: 30
+        command: |
+          docker buildx build \
+            --cache-from type=gha,scope=toolchain-x86 \
+            --load \
+            -t helixscreen/toolchain-x86 \
+            -f docker/Dockerfile.x86 \
+            docker/
 
     - name: Download x86 release
       uses: actions/download-artifact@v8
@@ -724,14 +734,15 @@ jobs:
     # with no Android assets and nothing went red.
     # No cycle: publish-android needs [build-android, release], and build-android
     # needs only validate-shell.
-    # gpu-libs-hidden-smoke is skipped when a dry run builds no x86.
+    # gpu-libs-hidden-smoke is skipped when a dry run builds no x86. A smoke that
+    # timed out ends 'cancelled', not 'failure', so the gate names what passes.
     needs: [build-platforms, build-android, build-esp32, gpu-libs-hidden-smoke, plan]
     if: >-
       ${{ !cancelled()
       && needs.plan.result == 'success'
       && needs.build-platforms.result == 'success'
       && needs.build-android.result == 'success'
-      && needs.gpu-libs-hidden-smoke.result != 'failure' }}
+      && contains(fromJSON('["success","skipped"]'), needs.gpu-libs-hidden-smoke.result) }}
     permissions:
       contents: write  # Required to create releases
     env:
