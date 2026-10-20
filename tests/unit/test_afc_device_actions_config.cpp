@@ -394,6 +394,8 @@ TEST_CASE("Execute hub toggle modifies config", "[ams][afc][device_actions][conf
 TEST_CASE("Execute macro var slider modifies config", "[ams][afc][device_actions][config]") {
     AmsBackendAfc backend(nullptr, nullptr);
     AmsBackendAfcConfigHelper::load_test_configs(backend);
+    // The tip-forming sliders are offered, and so run, only while tip forming is the method.
+    AmsBackendAfcConfigHelper::set_tip_method(backend, TipMethod::TIP_FORM);
 
     SECTION("change ramming_volume") {
         auto result = backend.execute_device_action("ramming_volume", std::any(45.0f));

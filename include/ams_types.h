@@ -2590,6 +2590,9 @@ struct DeviceAction {
     /// Running it moves the printer (toolhead, homing, a purge or wipe): the UI greys it
     /// while anything forbids motion and the backend refuses it during a print.
     bool moves_machine = false;
+    /// A moves_machine action that stays available while the print is paused, the way a
+    /// paused print recovers (filament ops' rule: AmsSubscriptionBackend::refuse_if_printing).
+    bool allowed_while_paused = false;
     std::string disable_reason; ///< Why disabled (if applicable)
     /// Id of a registered guided flow (ui_guided_device_flow.h) the UI starts instead of
     /// executing the action directly. Empty for an ordinary action.
@@ -2644,9 +2647,11 @@ struct DeviceAction {
         return a;
     }
 
-    /// This action, marked as one that moves the printer.
-    [[nodiscard]] DeviceAction with_machine_motion() && {
+    /// This action, marked as one that moves the printer. @p while_paused leaves it
+    /// available on a paused print, where a filament op is how the print recovers.
+    [[nodiscard]] DeviceAction with_machine_motion(bool while_paused = false) && {
         moves_machine = true;
+        allowed_while_paused = while_paused;
         return std::move(*this);
     }
 

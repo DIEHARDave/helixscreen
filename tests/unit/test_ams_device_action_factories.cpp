@@ -130,6 +130,10 @@ TEST_CASE("ACE and CFS device actions keep their shipped field values",
     CHECK(ace[0].section == "filament_control");
     CHECK(ace[0].description == "Feed filament from current slot");
     CHECK(ace[0].type == ActionType::BUTTON);
+    // Manual feed and retract push filament through the toolhead path.
+    CHECK(ace[0].moves_machine);
+    CHECK(ace[1].moves_machine);
+    CHECK_FALSE(ace[0].allowed_while_paused);
     CHECK(ace[2].id == "ace_feed_assist_toggle");
     CHECK(ace[2].type == ActionType::TOGGLE);
     CHECK_FALSE(ace[2].current_value.has_value());

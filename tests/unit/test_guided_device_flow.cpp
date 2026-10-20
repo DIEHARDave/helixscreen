@@ -403,3 +403,22 @@ TEST_CASE_METHOD(GuidedFlowFixture, "an enabled action's row and label read as e
     CHECK(lv_color_to_u32(lv_obj_get_style_text_color(label, LV_PART_MAIN)) !=
           lv_color_to_u32(text));
 }
+
+TEST_CASE_METHOD(GuidedFlowFixture,
+                 "a motion action allowed while paused greys only while printing",
+                 "[ams][device-section]") {
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    lv_obj_t* btn =
+        open_section_and_find({DeviceAction::button("load_extruder", "Load Extruder", "calibration")
+                                   .with_machine_motion(true)},
+                              "load_extruder");
+    CHECK_FALSE(lv_obj_has_state(btn, LV_STATE_DISABLED));
+    helix::test::set_wire_state(state(), PrintJobState::PRINTING);
+    settle();
+    CHECK(lv_obj_has_state(btn, LV_STATE_DISABLED));
+    helix::test::set_wire_state(state(), PrintJobState::PAUSED);
+    settle();
+    CHECK_FALSE(lv_obj_has_state(btn, LV_STATE_DISABLED));
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    settle();
+}

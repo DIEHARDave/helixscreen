@@ -5316,6 +5316,13 @@ TEST_CASE("Happy Hare extruder-only load and unload are refused mid-print",
     CHECK(helper.captured_gcodes.empty());
 }
 
+TEST_CASE("Happy Hare runs only the device actions it offers",
+          "[ams][happy_hare][device_actions]") {
+    AmsBackendHappyHareTestHelper helper;
+    CHECK(helper.execute_device_action("not_an_action").result == AmsResult::NOT_SUPPORTED);
+    CHECK(helper.captured_gcodes.empty());
+}
+
 TEST_CASE("Happy Hare machine-motion actions are refused while a print holds the printer",
           "[ams][happy_hare][device_actions]") {
     PrintLifecycleFixture fx;
@@ -5342,6 +5349,19 @@ TEST_CASE("Happy Hare machine-motion actions are refused while a print holds the
         CHECK(helper.execute_device_action("led_mode", std::any(std::string("off"))).success());
         helper.clear_captured_gcodes();
     }
+
+    // Extruder-only load/unload is how a paused print recovers, so pausing
+    // releases it; printing still refuses it.
+    const auto* load = find_action(actions, "load_extruder");
+    REQUIRE(load != nullptr);
+    CHECK(load->allowed_while_paused);
+    helix::test::set_wire_state(fx.state, helix::PrintJobState::PRINTING);
+    CHECK(helper.execute_device_action("load_extruder").result == AmsResult::WRONG_STATE);
+    CHECK(helper.captured_gcodes.empty());
+    helix::test::set_wire_state(fx.state, helix::PrintJobState::PAUSED);
+    REQUIRE(helper.execute_device_action("load_extruder").success());
+    CHECK(helper.has_gcode_containing("MMU_LOAD EXTRUDER_ONLY=1"));
+    helper.clear_captured_gcodes();
 
     helix::test::set_wire_state(fx.state, helix::PrintJobState::STANDBY);
     REQUIRE(helper.execute_device_action("calibrate_bowden").success());

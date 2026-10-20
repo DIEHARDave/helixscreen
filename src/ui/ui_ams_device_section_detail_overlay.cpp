@@ -24,6 +24,7 @@
 #include "ams_types.h"
 #include "display_numbering.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "print_lifecycle_state.h"
 #include "static_panel_registry.h"
 #include "ui/ui_widget_helpers.h"
 
@@ -352,10 +353,18 @@ void AmsDeviceSectionDetailOverlay::create_button(lv_obj_t* row,
     spdlog::debug("[{}] Creating button in row: {}", get_name(), action.label);
 
     const std::string label = device_action_label(action);
+    // A motion action a paused print may still run greys only while the printer
+    // is held some other way: printing, preparing, or spools on the bed.
+    const bool paused_ok = action.moves_machine && action.allowed_while_paused;
+    const std::string disabled_cond =
+        paused_ok ? fmt::format("machine_motion_blocked eq 1 and print_lifecycle ne {}",
+                                static_cast<int>(PrintState::Paused))
+                  : std::string("0 eq 1");
     const char* attrs[] = {"text",          label.c_str(),
                            "icon",          action.icon.c_str(),
                            "disabled",      action.enabled ? "false" : "true",
-                           "moves_machine", action.moves_machine ? "true" : "false",
+                           "moves_machine", action.moves_machine && !paused_ok ? "true" : "false",
+                           "disabled_cond", disabled_cond.c_str(),
                            nullptr};
     lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(row, "device_action_button", attrs));
     if (!btn) {

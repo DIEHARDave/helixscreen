@@ -2542,10 +2542,22 @@ TEST_CASE("AFC device action toolhead_calibration dispatches gcode", "[ams][afc]
     AmsBackendAfcTestHelper helper;
     helper.initialize_test_lanes_with_slots(4);
 
-    auto result = helper.execute_device_action("toolhead_calibration");
+    SECTION("refused while the backend does not offer it") {
+        // Offered or not, the id is handled; only the list says whether it may run.
+        auto result = helper.execute_device_action("toolhead_calibration");
+        CHECK(result.result == AmsResult::NOT_SUPPORTED);
+        CHECK_FALSE(helper.has_gcode("AFC_TOOLHEAD_CALIBRATION"));
+    }
 
-    REQUIRE(result.success());
-    REQUIRE(helper.has_gcode("AFC_TOOLHEAD_CALIBRATION"));
+    SECTION("sent once AFC lists the command") {
+        nlohmann::json reply = {
+            {"jsonrpc", "2.0"},
+            {"result", {{"AFC_TOOLHEAD_CALIBRATION", "Open the toolhead calibration menu"}}}};
+        REQUIRE(AfcTestAccess::apply_gcode_help_response(helper, reply));
+        auto result = helper.execute_device_action("toolhead_calibration");
+        REQUIRE(result.success());
+        REQUIRE(helper.has_gcode("AFC_TOOLHEAD_CALIBRATION"));
+    }
 }
 
 TEST_CASE("AFC device action change_blade dispatches gcode", "[ams][afc][device_actions][phase3]") {
