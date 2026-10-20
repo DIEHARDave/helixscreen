@@ -970,7 +970,10 @@ void NetworkSettingsOverlay::apply_wlan_toggle(bool enabled) {
 
     arm_wlan_toggle_backstop();
 
-    auto token = lifetime_.token();
+    // The object lifetime outlives closing the overlay, so the answer still
+    // unlocks the switch and persists the radio's real state when the user has
+    // left mid-change; only cleanup() drops it.
+    auto token = object_lifetime_.token();
     wifi_manager_->set_enabled_async(enabled, token, [this, enabled](bool success, bool actual) {
         // Runs on the UI thread — set_enabled_async() delivers through the
         // token, so `this` is already known-good here.
@@ -1001,7 +1004,10 @@ void NetworkSettingsOverlay::finish_wlan_toggle(bool requested, bool success, bo
     // whole branch exists to eliminate.
     lv_subject_set_int(&wifi_enabled_, outcome.enabled ? 1 : 0);
 
-    if (outcome.enabled) {
+    if (outcome.enabled && !is_visible()) {
+        // Closed while the radio came up: on_activate() scans on the next open.
+        lv_subject_set_int(&wifi_scanning_, 0);
+    } else if (outcome.enabled) {
         lv_subject_set_int(&wifi_scanning_, 1);
 
         std::weak_ptr<WiFiManager> weak_mgr = wifi_manager_;
