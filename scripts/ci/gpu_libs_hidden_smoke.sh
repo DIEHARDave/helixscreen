@@ -14,7 +14,10 @@
 # with them present and no DRM card, 1 (declined). Either way the app, started
 # headless under --test with no backend forced, then drm, then egl, must come up
 # on the framebuffer, call nothing in a missing library, and still be running
-# when the timeout stops it.
+# when the timeout stops it. A release build has no mock printer, so --test
+# connects to Moonraker: --moonraker points it at a port nothing listens on, so
+# it can never reach a real printer whatever a config names. CI also runs the
+# container with --network none.
 #
 # The fbdev backend gets a regular file at /dev/fb0 and scripts/ci/fake_fbdev.c,
 # LD_PRELOADed, answers its ioctls. /dev/dri/card0 is a regular file too, so
@@ -42,6 +45,7 @@ sonames=(libdrm.so.2 libgbm.so.1 libEGL.so.1 libGLESv2.so.2 libinput.so.10)
 # What --probe-egl exits with (include/probe_egl_cmd.h).
 readonly kProbeDeclined=1
 readonly kProbeNoDrm=3
+readonly kDeadMoonraker=ws://127.0.0.1:1
 
 log() { printf '[gpu-smoke %s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 fail() { printf '[gpu-smoke %s] FAIL: %s\n' "$(date +%H:%M:%S)" "$*" >&2; }
@@ -122,7 +126,8 @@ run_pass() {
         [ -z "$forced" ] || backend=("HELIX_DISPLAY_BACKEND=$forced")
         rc=0
         env "${backend[@]}" HELIX_CONFIG_DIR="$config_dir" \
-            timeout -s TERM -k 5 "$timeout_s" "$bin" --test -vv > "$log_file" 2>&1 || rc=$?
+            timeout -s TERM -k 5 "$timeout_s" "$bin" --test -vv \
+            --moonraker "$kDeadMoonraker" > "$log_file" 2>&1 || rc=$?
         if ! check_run "$libs" "$forced" "$rc" "$log_file"; then
             failed=1
             echo "---- last lines of $log_file ----" >&2
