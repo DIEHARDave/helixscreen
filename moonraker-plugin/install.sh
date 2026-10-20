@@ -476,8 +476,7 @@ Please remove it manually before installing."
     printf '%s\n' "     # symlink_dir: .helix_print"
     printf '%s\n' "     # cleanup_delay: 86400"
     printf '\n'
-    printf '%s\n' "  2. Restart Moonraker:"
-    printf '%s\n' "     sudo systemctl restart moonraker"
+    printf '%s\n' "  2. Restart Moonraker (from Mainsail/Fluidd, or reboot the printer)"
     printf '\n'
     printf '%s\n' "  3. Verify the plugin is loaded:"
     config_dir=$(find_config_dir)
@@ -519,7 +518,7 @@ uninstall() {
     printf '\n'
     printf '%s\n' "Don't forget to:"
     printf '%s\n' "  1. Remove [helix_print] section from moonraker.conf"
-    printf '%s\n' "  2. Restart Moonraker: sudo systemctl restart moonraker"
+    printf '%s\n' "  2. Restart Moonraker (from Mainsail/Fluidd, or reboot the printer)"
 
     return "$exit_status"
 }
