@@ -452,10 +452,11 @@ struct TeardownHooks {
     /// Step 7 — free already queued; tree hidden and off-tree but still alive.
     std::function<void()> after_delete;
     /// The object @p root lives in. It must outlive the step-1 drain: the
-    /// teardown keeps writing through @p root and runs the hooks after it.
-    /// A non-release build asserts that it did, and a release build logs and
-    /// stops the teardown; every owner today is a static or lazy_global panel,
-    /// freed only outside any drain.
+    /// teardown keeps writing through @p root and runs the hooks after it. An
+    /// owner freed by the drain is a UI contract breach, and the teardown stops
+    /// there. Every OverlayBase passes its own (destroy_overlay_ui()), which
+    /// covers the heap-owned ones such as PluginSettingsOverlay, held by
+    /// PluginHost.
     std::optional<helix::LifetimeToken> owner{};
 
     static TeardownHooks before(std::function<void()> fn) {
@@ -501,9 +502,9 @@ struct TeardownHooks {
  * destroyed; the next open re-creates it.
  *
  * The owner must outlive the step-1 drain: @p root and the hooks point into it.
- * Every owner is a static or lazy_global panel, freed only by
- * StaticPanelRegistry teardown, which never runs inside a drain; an owner that
- * passes TeardownHooks::owner is checked (see TeardownHooks::owner).
+ * An owner that passes TeardownHooks::owner is checked after the drain. The AMS
+ * panel teardowns pass none: their roots live in file statics and their hooks
+ * look the panel up again, so no drain can free what they write through.
  *
  * @param root Root widget to tear down; nulled on return
  * @param owner_name Logged and breadcrumbed owner name

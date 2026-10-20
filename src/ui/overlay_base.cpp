@@ -14,7 +14,6 @@
 
 #include <spdlog/spdlog.h>
 
-#include <cassert>
 #include <string>
 #include <utility>
 
@@ -156,12 +155,11 @@ bool helix::ui::teardown_overlay_ui(lv_obj_t*& root, const char* owner_name, Tea
     auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
     helix::ui::UpdateQueue::instance().drain();
     if (hooks.owner && hooks.owner->expired()) {
-        spdlog::error("[{}] Overlay owner freed by work its own teardown drained; root and "
-                      "hooks point into it, so the teardown stops",
-                      owner_name);
-#ifndef HELIX_RELEASE_BUILD
-        assert(false && "teardown_overlay_ui: the owner was freed by work its own drain ran");
-#endif
+        // root and the hooks point into the freed owner.
+        const std::string msg = std::string("[") + owner_name +
+                                "] overlay owner freed by work its own teardown drained; the "
+                                "teardown stops";
+        helix::ui::report_ui_contract_breach(msg.c_str());
         return false;
     }
     // The drained work can include a close callback that tore this overlay
