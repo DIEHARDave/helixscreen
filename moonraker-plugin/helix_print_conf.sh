@@ -573,9 +573,11 @@ moonraker_bring_back() {
 # helix_print among its components (an in-place restart keeps every module it
 # has imported), and then Moonraker is asked to restart its own service
 # (POST /machine/services/restart) before its in-place restart.
-# One restart at a time: an attempt that Moonraker accepted, or that is seen
-# under way (moonraker_restart_seen), is the last, so no second restart lands
-# on one in flight. Every attempt that may have stopped Moonraker ends in
+# One restart at a time: an in-place restart Moonraker accepted, or any
+# attempt seen under way (moonraker_restart_seen), is the last, so no second
+# restart lands on one in flight. Moonraker answers a service restart request
+# before it acts, so an accepted one is watched like a service command that
+# exited 0. Every attempt that may have stopped Moonraker ends in
 # moonraker_bring_back, after the old process exits, so Moonraker is never
 # left down while it can be started. Returns 0 when a service manager
 # restarted its process, 3 when Moonraker restarted itself, 4 when a print
@@ -622,10 +624,7 @@ $_rmv_order" ;;
                 ;;
             services)
                 _rmv_name="through Moonraker's own service restart"
-                if moonraker_post "$_rmv_url/machine/services/restart?service=moonraker" 5; then
-                    _rmv_kind=service
-                    break
-                fi
+                ! moonraker_post "$_rmv_url/machine/services/restart?service=moonraker" 5 || _rmv_ok=1
                 ;;
             *)
                 if [ "$_rmv_way" = systemd ]; then

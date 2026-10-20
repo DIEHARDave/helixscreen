@@ -1386,17 +1386,27 @@ exit 0"
     if grep -q 'server/restart' "$curl_log"; then fail "fell back to the in-place restart: $(cat "$curl_log")"; fi
 }
 
-@test "--restart-moonraker whose accepted service request leaves the same process restarts nothing more" {
+@test "--restart-moonraker whose accepted service request changes nothing restarts in place only after watching it" {
     local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log" curl_log="$BATS_TEST_TMPDIR/curl.log"
     setup_loaded_plugin_on_systemd "$home" "$log" "$curl_log"
     mock_command_script "systemctl" "printf '%s\\n' \"\$*\" >> '$log'
 case \"\$*\" in *' restart moonraker') exit 1;; esac
 exit 0"
+    # The clock when the in-place restart was asked for.
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$curl_log'
+case \"\$*\" in
+    *machine/services/restart*) cat '$BATS_TEST_TMPDIR/clock' > '$BATS_TEST_TMPDIR/asked_at' ;;
+    *server/restart*) cat '$BATS_TEST_TMPDIR/clock' > '$BATS_TEST_TMPDIR/inplace_at' ;;
+    *server/info*) printf '%s' '{\"result\":{\"components\":[\"helix_print\"]}}' ;;
+esac
+exit 0"
 
     run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --restart-moonraker
-    [ "$status" -eq 1 ] || fail "want 1 (nothing restarted), got $status: $output"
-    grep -q 'machine/services/restart?service=moonraker' "$curl_log" || fail "never asked for the service restart"
-    if grep -q 'server/restart' "$curl_log"; then fail "an in-place restart on top of the accepted one: $(cat "$curl_log")"; fi
+    [ "$status" -eq 3 ] || fail "want 3 (in place), got $status: $output"
+    [ -e "$BATS_TEST_TMPDIR/inplace_at" ] || fail "no in-place restart: $(cat "$curl_log")"
+    [ $(($(cat "$BATS_TEST_TMPDIR/inplace_at") - $(cat "$BATS_TEST_TMPDIR/asked_at"))) -ge 30 ] ||
+        fail "restarted in place without watching the accepted request"
 }
 
 @test "--restart-moonraker during a print restarts nothing and exits 4" {

@@ -948,7 +948,7 @@ MOONEOF
     [[ "$output" != *"manually"* ]]
 }
 
-@test "restart_moonraker: a restart that exits 0 and leaves the same Moonraker running falls back to its own service restart, and no further" {
+@test "restart_moonraker: a restart that exits 0 and leaves the same Moonraker running falls back to HTTP" {
     stage_init systemd
     stage_running_moonraker 300 5000
     local log="$BATS_TEST_TMPDIR/systemctl.log"
@@ -963,10 +963,10 @@ MOONEOF
 
     [ "$status" -eq 0 ]
     grep -qx 'restart moonraker' "$log" || fail "systemctl was not asked to restart: $(cat "$log" 2>/dev/null)"
-    grep -q 'machine/services/restart?service=moonraker' "$curl_log" ||
-        fail "no fallback to Moonraker's own service restart: $output"
-    if grep -q 'server/restart' "$curl_log"; then fail "an in-place restart on top of an accepted one: $(cat "$curl_log")"; fi
+    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$curl_log" ||
+        fail "no fallback to Moonraker's own restart: $output"
     [[ "$output" == *"kept running"* ]] || fail "the failed restart went unreported: $output"
+    [[ "$output" == *"Asked Moonraker to restart itself"* ]] || fail "$output"
 }
 
 @test "restart_moonraker: a Moonraker that comes back under its old pid with a new start time counts as restarted" {
