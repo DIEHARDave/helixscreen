@@ -46,9 +46,17 @@ setup_file() {
     grep -q 'NM_CMD' "$MAKE_DB_STRIP_CACHE"
 }
 
+# The body of the extract-symbols define, which the symbols target calls.
+extract_symbols_define() {
+    sed -n '/^define extract-symbols$/,/^endef$/p' Makefile
+}
+
+@test "symbols target extracts through the extract-symbols define" {
+    grep -A3 '^symbols:' Makefile | grep -q 'call extract-symbols,$(TARGET)'
+}
+
 @test "symbols target uses nm -nC" {
-    # The Makefile uses $(NM_CMD) -nC — check for the -nC flags
-    grep -A5 '^symbols:' Makefile | grep -q '\-nC'
+    extract_symbols_define | grep -q '$(NM_CMD) -nC'
 }
 
 @test "strip target uses strip command" {
@@ -56,5 +64,5 @@ setup_file() {
 }
 
 @test "symbol map output goes to TARGET.sym" {
-    grep -A2 '^symbols:' Makefile | grep -q '$(TARGET).sym'
+    extract_symbols_define | grep -q '> $(1).sym &&'
 }
