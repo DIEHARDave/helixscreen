@@ -14,7 +14,7 @@
     <lv_obj width="content"
             height="content" style_radius="#border_radius" style_bg_color="#card_bg" style_bg_opa="90%"
             style_pad_all="#space_xs" style_border_width="0" clickable="false" scrollable="false">
-      <icon src="cursor_move" size="sm" variant="primary" clickable="false"/>
+      <icon src="remote_desktop" size="sm" variant="primary" clickable="false"/>
     </lv_obj>
   </view>
 </component>

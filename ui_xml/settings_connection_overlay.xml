@@ -44,7 +44,7 @@
         <lv_obj name="container_remote_control" width="100%" style_pad_all="0" scrollable="false">
           <bind_flag_if_eq subject="remote_screen_available" flag="hidden" ref_value="0"/>
           <setting_toggle_row name="row_remote_control"
-                              label="Allow Remote Control" icon="cursor_move"
+                              label="Allow Remote Control" icon="remote_desktop"
                               description="Let a browser tap and drag on this screen"
                               subject="settings_remote_screen_control" callback="on_remote_control_changed"
                               disabled="settings_remote_screen_enabled" disabled_ref_value="0"/>

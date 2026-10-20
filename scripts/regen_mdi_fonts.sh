@@ -308,6 +308,7 @@ MDI_ICONS+=",0xF1B35"    # train-car-flatbed (print bed base)
 
 # Custom icons
 MDI_ICONS+=",0xF01BE"    # cursor-move (4-way movement cross)
+MDI_ICONS+=",0xF08B9"    # remote-desktop (remote-control indicator)
 MDI_ICONS+=",0xF004C"    # arrow-expand-all (expand_all/move)
 MDI_ICONS+=",0xF051F"    # timer-sand (hourglass)
 
