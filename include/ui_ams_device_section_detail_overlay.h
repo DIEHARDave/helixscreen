@@ -195,6 +195,13 @@ class AmsDeviceSectionDetailOverlay : public OverlayBase {
  */
 [[nodiscard]] std::string device_action_label(const helix::printer::DeviceAction& action);
 
+/**
+ * @brief The bind_state_if expression device_action_button greys a button with,
+ *        beyond moves_machine: for a motion action still allowed on a paused
+ *        print, "motion blocked and not paused"; otherwise one that is never true.
+ */
+[[nodiscard]] std::string device_action_disabled_cond(const helix::printer::DeviceAction& action);
+
 inline AmsDeviceSectionDetailOverlay& get_ams_device_section_detail_overlay() {
     return lazy_global<AmsDeviceSectionDetailOverlay>("AmsDeviceSectionDetailOverlay");
 }

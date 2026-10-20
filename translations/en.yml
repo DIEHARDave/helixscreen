@@ -4315,7 +4315,6 @@ translations:
   you have: you have
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · about {} min'
   '{} ({})': '{} ({})'
-  '{} - {}': '{} - {}'
   '{} Extruders': '{} Extruders'
   '{} Hardware Issues': '{} Hardware Issues'
   '{} Issues Detected': '{} Issues Detected'
@@ -4391,7 +4390,6 @@ translations:
   '{} — response timed out': '{} — response timed out'
   '{} → {}: no filament loaded.': '{} → {}: no filament loaded.'
   '{}% left': '{}% left'
-  '{}: {}': '{}: {}'
   '{}:{:02} elapsed': '{}:{:02} elapsed'
   'Basic': 'Basic'
   'Recycled': 'Recycled'

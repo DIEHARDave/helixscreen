@@ -3993,7 +3993,6 @@
   <translation tag="you have" en="you have"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" en="{:.0f}-{:.0f} Hz · about {} min"/>
   <translation tag="{} ({})" en="{} ({})"/>
-  <translation tag="{} - {}" en="{} - {}"/>
   <translation tag="{} Extruders" en="{} Extruders"/>
   <translation tag="{} Hardware Issues" en="{} Hardware Issues"/>
   <translation tag="{} Issues Detected" en="{} Issues Detected"/>
@@ -4068,6 +4067,5 @@
   <translation tag="{} — response timed out" en="{} — response timed out"/>
   <translation tag="{} → {}: no filament loaded." en="{} → {}: no filament loaded."/>
   <translation tag="{}% left" en="{}% left"/>
-  <translation tag="{}: {}" en="{}: {}"/>
   <translation tag="{}:{:02} elapsed" en="{}:{:02} elapsed"/>
 </translations>

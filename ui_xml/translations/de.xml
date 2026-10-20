@@ -3993,7 +3993,6 @@
   <translation tag="you have" de="Sie haben"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" de="{:.0f}-{:.0f} Hz · ca. {} Min."/>
   <translation tag="{} ({})" de="{} ({})"/>
-  <translation tag="{} - {}" de="{} - {}"/>
   <translation tag="{} Extruders" de="{} Extruder"/>
   <translation tag="{} Hardware Issues" de="{} Hardware-Probleme"/>
   <translation tag="{} Issues Detected" de="{} Probleme erkannt"/>
@@ -4068,6 +4067,5 @@
   <translation tag="{} — response timed out" de="{} – Antwort-Zeitüberschreitung"/>
   <translation tag="{} → {}: no filament loaded." de="{} → {}: kein Filament geladen."/>
   <translation tag="{}% left" de="{}% übrig"/>
-  <translation tag="{}: {}" de="{}: {}"/>
   <translation tag="{}:{:02} elapsed" de="{}:{:02} vergangen"/>
 </translations>

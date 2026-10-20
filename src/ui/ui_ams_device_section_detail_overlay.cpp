@@ -185,11 +185,21 @@ void AmsDeviceSectionDetailOverlay::refresh() {
 std::string device_action_label(const helix::printer::DeviceAction& action) {
     std::string label = lv_tr(action.label.c_str());
     if (action.tool_index >= 0) {
-        label = fmt::format(lv_tr("{} - {}"), label,
+        // Punctuation only, so the format stays untranslated: a translated format whose
+        // placeholders differ would throw, and the firmware builds without exceptions.
+        label = fmt::format("{} - {}", label,
                             active_tool_label(tool_label(action.tool_index), action.tool_index,
                                               ToolLabelForm::Full));
     }
     return label;
+}
+
+std::string device_action_disabled_cond(const helix::printer::DeviceAction& action) {
+    if (action.moves_machine && action.allowed_while_paused) {
+        return fmt::format("machine_motion_blocked eq 1 and print_lifecycle ne {}",
+                           static_cast<int>(PrintState::Paused));
+    }
+    return "0 eq 1";
 }
 
 namespace {
@@ -356,10 +366,7 @@ void AmsDeviceSectionDetailOverlay::create_button(lv_obj_t* row,
     // A motion action a paused print may still run greys only while the printer
     // is held some other way: printing, preparing, or spools on the bed.
     const bool paused_ok = action.moves_machine && action.allowed_while_paused;
-    const std::string disabled_cond =
-        paused_ok ? fmt::format("machine_motion_blocked eq 1 and print_lifecycle ne {}",
-                                static_cast<int>(PrintState::Paused))
-                  : std::string("0 eq 1");
+    const std::string disabled_cond = device_action_disabled_cond(action);
     const char* attrs[] = {"text",
                            label.c_str(),
                            "icon",
@@ -382,8 +389,7 @@ void AmsDeviceSectionDetailOverlay::create_button(lv_obj_t* row,
     }
     if (!action.enabled && !action.disable_reason.empty()) {
         // Said under the row, as a setting row says it in its description.
-        const std::string note =
-            fmt::format(lv_tr("{}: {}"), label, lv_tr(action.disable_reason.c_str()));
+        const std::string note = fmt::format("{}: {}", label, lv_tr(action.disable_reason.c_str()));
         const char* note_attrs[] = {"text", note.c_str(), nullptr};
         if (lv_obj_t* note_obj = static_cast<lv_obj_t*>(
                 lv_xml_create(lv_obj_get_parent(row), "device_action_note", note_attrs))) {

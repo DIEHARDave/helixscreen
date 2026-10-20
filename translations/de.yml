@@ -4429,7 +4429,6 @@ translations:
   you have: Sie haben
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · ca. {} Min.'
   '{} ({})': '{} ({})'
-  '{} - {}': "{} - {}"
   '{} Extruders': '{} Extruder'
   '{} Hardware Issues': '{} Hardware-Probleme'
   '{} Issues Detected': '{} Probleme erkannt'
@@ -4506,7 +4505,6 @@ translations:
   '{} — response timed out': '{} – Antwort-Zeitüberschreitung'
   '{} → {}: no filament loaded.': '{} → {}: kein Filament geladen.'
   '{}% left': '{}% übrig'
-  '{}: {}': '{}: {}'
   '{}:{:02} elapsed': '{}:{:02} vergangen'
   'Basic': 'Standard'
   'Recycled': 'Recycelt'

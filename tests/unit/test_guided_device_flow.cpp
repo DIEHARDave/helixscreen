@@ -23,6 +23,7 @@
 #include "ams_device_action_value.h"
 #include "ams_error.h"
 #include "ams_state.h"
+#include "helix-xml/src/xml/lv_xml_expr.h"
 #include "static_panel_registry.h"
 #include "theme_manager.h"
 
@@ -486,4 +487,36 @@ TEST_CASE_METHOD(GuidedFlowFixture, "a keypad value for an available action is s
     AmsDeviceSectionDetailOverlayTestAccess::keypad_value(42.0f);
     settle();
     CHECK(last_executed() == "len");
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture, "the device button disable expressions parse and evaluate",
+                 "[ams][device-section]") {
+    auto resolve = [](void*, const char* name) { return lv_xml_get_subject(nullptr, name); };
+    auto eval = [&](const std::string& src) {
+        lv_xml_expr_t* expr = lv_xml_expr_compile(src.c_str(), resolve, nullptr);
+        REQUIRE(expr != nullptr);
+        const int32_t v = lv_xml_expr_eval(expr);
+        lv_xml_expr_free(expr);
+        return v;
+    };
+
+    const std::string never =
+        helix::ui::device_action_disabled_cond(DeviceAction::button("b", "B", "s"));
+    CHECK(never == "0 eq 1");
+    const std::string paused_ok = helix::ui::device_action_disabled_cond(
+        DeviceAction::button("b", "B", "s").with_machine_motion(true));
+
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    settle();
+    CHECK(eval(never) == 0);
+    CHECK(eval(paused_ok) == 0);
+    helix::test::set_wire_state(state(), PrintJobState::PRINTING);
+    settle();
+    CHECK(eval(never) == 0);
+    CHECK(eval(paused_ok) != 0);
+    helix::test::set_wire_state(state(), PrintJobState::PAUSED);
+    settle();
+    CHECK(eval(paused_ok) == 0);
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    settle();
 }

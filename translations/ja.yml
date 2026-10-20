@@ -4165,7 +4165,6 @@ translations:
   you have: 現在は
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 約{}分'
   '{} ({})': '{}（{}）'
-  '{} - {}': "{} - {}"
   '{} Extruders': '{} エクストルーダー'
   '{} Hardware Issues': 'ハードウェアの問題 {} 件'
   '{} Issues Detected': '問題を {} 件検出'
@@ -4240,7 +4239,6 @@ translations:
   '{} — response timed out': '{} — 応答タイムアウト'
   '{} → {}: no filament loaded.': '{} → {}: フィラメントが装填されていません。'
   '{}% left': '残り {}%'
-  '{}: {}': '{}：{}'
   '{}:{:02} elapsed': 経過 {}:{:02}
   'Basic': '標準'
   'Recycled': 'リサイクル'

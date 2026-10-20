@@ -3993,7 +3993,6 @@
   <translation tag="you have" zh="您有"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" zh="{:.0f}-{:.0f} Hz · 约 {} 分钟"/>
   <translation tag="{} ({})" zh="{}（{}）"/>
-  <translation tag="{} - {}" zh="{} - {}"/>
   <translation tag="{} Extruders" zh="{} 个挤出机"/>
   <translation tag="{} Hardware Issues" zh="{} 个硬件问题"/>
   <translation tag="{} Issues Detected" zh="检测到 {} 个问题"/>
@@ -4068,6 +4067,5 @@
   <translation tag="{} — response timed out" zh="{} — 响应超时"/>
   <translation tag="{} → {}: no filament loaded." zh="{} → {}: 未加载耗材。"/>
   <translation tag="{}% left" zh="剩余 {}%"/>
-  <translation tag="{}: {}" zh="{}：{}"/>
   <translation tag="{}:{:02} elapsed" zh="已用时 {}:{:02}"/>
 </translations>

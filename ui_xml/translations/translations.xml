@@ -4056,7 +4056,6 @@
   <translation tag="you have" de="Sie haben" en="you have" es="tienes" fr="vous avez" it="hai" ja="現在は" pt="você tem" ru="у вас" zh="您有"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" de="{:.0f}-{:.0f} Hz · ca. {} Min." en="{:.0f}-{:.0f} Hz · about {} min" es="{:.0f}-{:.0f} Hz · unos {} min" fr="{:.0f}-{:.0f} Hz · environ {} min" it="{:.0f}-{:.0f} Hz · circa {} min" ja="{:.0f}-{:.0f} Hz · 約{}分" pt="{:.0f}-{:.0f} Hz · cerca de {} min" ru="{:.0f}-{:.0f} Гц · примерно {} мин" zh="{:.0f}-{:.0f} Hz · 约 {} 分钟"/>
   <translation tag="{} ({})" de="{} ({})" en="{} ({})" es="{} ({})" fr="{} ({})" it="{} ({})" ja="{}（{}）" pt="{} ({})" ru="{} ({})" zh="{}（{}）"/>
-  <translation tag="{} - {}" de="{} - {}" en="{} - {}" es="{} - {}" fr="{} - {}" it="{} - {}" ja="{} - {}" pt="{} - {}" ru="{} - {}" zh="{} - {}"/>
   <translation tag="{} Extruders" de="{} Extruder" en="{} Extruders" es="{} extrusores" fr="{} extrudeurs" it="{} estrusori" ja="{} エクストルーダー" pt="{} extrusoras" ru="Экструдеров: {}" zh="{} 个挤出机"/>
   <translation tag="{} Hardware Issues" de="{} Hardware-Probleme" en="{} Hardware Issues" es="{} problemas de hardware" fr="{} problèmes matériels" it="{} problemi hardware" ja="ハードウェアの問題 {} 件" pt="{} problemas de hardware" ru="Проблем с оборудованием: {}" zh="{} 个硬件问题"/>
   <translation tag="{} Issues Detected" de="{} Probleme erkannt" en="{} Issues Detected" es="{} problemas detectados" fr="{} problèmes détectés" it="{} problemi rilevati" ja="問題を {} 件検出" pt="{} problemas detectados" ru="Обнаружено проблем: {}" zh="检测到 {} 个问题"/>
@@ -4149,6 +4148,5 @@
   <translation tag="{} — response timed out" de="{} – Antwort-Zeitüberschreitung" en="{} — response timed out" es="{} — tiempo de espera agotado" fr="{} — réponse expirée" it="{} — tempo scaduto" ja="{} — 応答タイムアウト" pt="{} — tempo esgotado" ru="{} — время ожидания ответа истекло" zh="{} — 响应超时"/>
   <translation tag="{} → {}: no filament loaded." de="{} → {}: kein Filament geladen." en="{} → {}: no filament loaded." es="{} → {}: no hay filamento cargado." fr="{} → {} : aucun filament chargé." it="{} → {}: nessun filamento caricato." ja="{} → {}: フィラメントが装填されていません。" pt="{} → {}: nenhum filamento carregado." ru="{} → {}: филамент не загружен." zh="{} → {}: 未加载耗材。"/>
   <translation tag="{}% left" de="{}% übrig" en="{}% left" es="Queda {}%" fr="{} % restant" it="{}% rimanente" ja="残り {}%" pt="{}% restante" ru="Осталось {}%" zh="剩余 {}%"/>
-  <translation tag="{}: {}" de="{}: {}" en="{}: {}" es="{}: {}" fr="{} : {}" it="{}: {}" ja="{}：{}" pt="{}: {}" ru="{}: {}" zh="{}：{}"/>
   <translation tag="{}:{:02} elapsed" de="{}:{:02} vergangen" en="{}:{:02} elapsed" es="{}:{:02} transcurrido" fr="{}:{:02} écoulé" it="{}:{:02} trascorso" ja="経過 {}:{:02}" pt="{}:{:02} decorrido" ru="прошло {}:{:02}" zh="已用时 {}:{:02}"/>
 </translations>
