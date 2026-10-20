@@ -313,3 +313,99 @@ TEST_CASE_METHOD(LVGLUITestFixture, "clog meter, bar and widget teardown run no 
         check_runs_no_queued_callback("detach", [&] { h.reset(); });
     }
 }
+
+// The drains these widgets dropped rested on one property: a notification
+// already queued when the widget tears down does nothing once it runs.
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "home widget teardown turns an already-queued notification into a no-op",
+                 "[panel_widget][drain_reentrancy]") {
+    SECTION("thermistor carousel") {
+        auto& tsm = helix::sensors::TemperatureSensorManager::instance();
+        tsm.init_subjects();
+        tsm.discover({"temperature_sensor helix_drain_a", "temperature_sensor helix_drain_b"});
+        std::optional<PanelWidgetHarness<ThermistorWidget>> h;
+        h.emplace(test_screen(),
+                  HarnessConfig{
+                      {{"sensors", std::vector<std::string>{"temperature_sensor helix_drain_a",
+                                                            "temperature_sensor helix_drain_b"}},
+                       {"display_mode", "carousel"}}},
+                  "thermistor");
+        helix::ui::UpdateQueue::instance().drain();
+        lv_obj_t* label = ThermistorTestAccess::carousel_temp_label(h->widget(), 0);
+        REQUIRE(label != nullptr);
+        lv_subject_t* temp = tsm.get_temp_subject("temperature_sensor helix_drain_a");
+        REQUIRE(temp != nullptr);
+        // The channel is live: a notification reaches the label on the next drain.
+        const std::string initial = lv_label_get_text(label);
+        lv_subject_set_int(temp, lv_subject_get_int(temp) + 1234);
+        helix::ui::UpdateQueue::instance().drain();
+        const std::string before = lv_label_get_text(label);
+        REQUIRE(before != initial);
+
+        lv_subject_set_int(temp, lv_subject_get_int(temp) + 1234);
+        h->widget().detach_tile();
+        helix::ui::UpdateQueue::instance().drain();
+        CHECK(std::string(lv_label_get_text(label)) == before);
+    }
+
+    SECTION("fan_stack carousel") {
+        state().fan_state().init_fans({"fan"});
+        std::optional<PanelWidgetHarness<FanStackWidget>> h;
+        h.emplace(test_screen(), HarnessConfig{{{"display_mode", "carousel"}}}, "fan_stack",
+                  state());
+        helix::ui::UpdateQueue::instance().drain();
+        lv_obj_t* label = h->child("speed_label");
+        REQUIRE(label != nullptr);
+        lv_subject_t* speed = state().fan_state().get_fan_speed_subject("fan");
+        REQUIRE(speed != nullptr);
+        // The channel is live: a notification reaches the label on the next drain.
+        const std::string initial = lv_label_get_text(label);
+        lv_subject_set_int(speed, 77);
+        helix::ui::UpdateQueue::instance().drain();
+        const std::string before = lv_label_get_text(label);
+        REQUIRE(before != initial);
+
+        lv_subject_set_int(speed, 33);
+        h->widget().detach_tile();
+        helix::ui::UpdateQueue::instance().drain();
+        CHECK(std::string(lv_label_get_text(label)) == before);
+    }
+}
+
+// The observers skip only the bind attach already ran; a real change rebinds.
+TEST_CASE_METHOD(LVGLUITestFixture, "home widget carousels rebind on a later change",
+                 "[panel_widget][drain_reentrancy]") {
+    SECTION("thermistor: a sensor change") {
+        auto& tsm = helix::sensors::TemperatureSensorManager::instance();
+        tsm.init_subjects();
+        tsm.discover({"temperature_sensor helix_drain_a", "temperature_sensor helix_drain_b"});
+        PanelWidgetHarness<ThermistorWidget> h(
+            test_screen(),
+            HarnessConfig{
+                {{"sensors", std::vector<std::string>{"temperature_sensor helix_drain_a",
+                                                      "temperature_sensor helix_drain_b"}},
+                 {"display_mode", "carousel"}}},
+            "thermistor");
+        process_lvgl(30);
+        lv_obj_t* label = ThermistorTestAccess::carousel_temp_label(h.widget(), 0);
+        REQUIRE(label != nullptr);
+
+        tsm.discover({"temperature_sensor helix_drain_a", "temperature_sensor helix_drain_b",
+                      "temperature_sensor helix_drain_c"});
+        process_lvgl(30);
+        CHECK(ThermistorTestAccess::carousel_temp_label(h.widget(), 0) != label);
+    }
+
+    SECTION("fan_stack: a fans version bump") {
+        PanelWidgetHarness<FanStackWidget> h(
+            test_screen(), HarnessConfig{{{"display_mode", "carousel"}}}, "fan_stack", state());
+        process_lvgl(30);
+        lv_obj_t* label = h.child("speed_label");
+        REQUIRE(label != nullptr);
+
+        lv_subject_t* version = state().fan_state().get_fans_version_subject();
+        lv_subject_set_int(version, lv_subject_get_int(version) + 1);
+        process_lvgl(30);
+        CHECK(h.child("speed_label") != label);
+    }
+}
