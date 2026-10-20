@@ -151,15 +151,12 @@
           <!-- The firmware row names the Klipper fork the printer runs. -->
           <setting_info_row name="pm_row_klipper"
                             label="Klipper" icon="toy_brick_outline" bind_label="klipper_firmware_name"
-                            event_bubble="true">
-            <text_muted name="value" bind_text="klipper_version"/>
-          </setting_info_row>
-          <setting_info_row name="pm_row_moonraker" label="Moonraker" icon="toy_brick_outline" event_bubble="true">
-            <text_muted name="value" bind_text="moonraker_version"/>
-          </setting_info_row>
-          <setting_info_row name="pm_row_helix" label="HelixScreen" icon="info" event_bubble="true">
-            <text_muted name="value" bind_text="helix_version"/>
-          </setting_info_row>
+                            event_bubble="true" bind_value="klipper_version"/>
+          <setting_info_row name="pm_row_moonraker"
+                            label="Moonraker" icon="toy_brick_outline" event_bubble="true"
+                            bind_value="moonraker_version"/>
+          <setting_info_row name="pm_row_helix"
+                            label="HelixScreen" icon="info" event_bubble="true" bind_value="helix_version"/>
         </setting_group>
 
         <!-- ================================================================== -->

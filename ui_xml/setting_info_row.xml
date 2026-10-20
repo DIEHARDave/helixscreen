@@ -18,12 +18,13 @@
          static label. -->
     <prop name="bind_label" type="string" default=""/>
   </api>
-  <!-- The row wraps instead of squeezing, so the label never breaks mid-word. The label
-       keeps its content width and the built-in value grows into the rest, right-aligned.
-       A value an instance adds as a child (bound text) follows it: beside the label
-       while it fits, on its own right-aligned line when it does not. -->
+  <!-- The label keeps its content width, so it never breaks mid-word, and the value
+       takes the rest of the row: right-aligned, wrapping onto more lines when it is longer
+       than that (a version string breaks anywhere) rather than running off the card. Set
+       the value through value or bind_value: a value added as a child gets none of this
+       and must size itself. -->
   <view name="info_row"
-        extends="lv_obj" width="100%" height="content" flex_flow="row_wrap" style_flex_main_place="end"
+        extends="lv_obj" width="100%" height="content" flex_flow="row" style_flex_main_place="start"
         style_flex_cross_place="center" style_bg_opa="0" style_border_width="0" style_pad_left="#space_lg"
         style_pad_right="#space_lg" style_pad_top="#space_md" style_pad_bottom="#space_md" style_pad_gap="#space_sm"
         scrollable="false">
@@ -34,6 +35,6 @@
     <!-- Right side: Value (secondary color) -->
     <text_muted name="value"
                 text="$value" translation_tag="$value_tag" bind_text="$bind_value" flex_grow="1"
-                style_text_align="right"/>
+                style_text_align="right" long_mode="wrap"/>
   </view>
 </component>
