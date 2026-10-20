@@ -36,6 +36,7 @@
 #if HELIX_HAS_PLUGINS
 #include "../test_helpers/plugin_host_test_support.h"
 #endif
+#include "../test_helpers/print_select_detail_view_test_access.h"
 #include "../test_helpers/printer_state_test_access.h"
 #include "../test_helpers/scoped_cache_dir.h"
 #include "../test_helpers/scoped_mock_ams.h"
@@ -1318,21 +1319,6 @@ TEST_CASE_METHOD(LVGLUITestFixture, "More-below subject tracks the options scrol
 // ============================================================================
 // Pre-start object picks
 // ============================================================================
-
-class PrintSelectDetailViewTestAccess {
-  public:
-    static void begin_viewer_load(helix::ui::PrintSelectDetailView& view, const std::string& path) {
-        view.begin_viewer_load(path);
-    }
-    static lv_obj_t* gcode_viewer(const helix::ui::PrintSelectDetailView& view) {
-        return view.gcode_viewer_;
-    }
-    /// The metadata fetch's answer for the file whose current_file_key() is @p key.
-    static void apply_file_metadata(helix::ui::PrintSelectDetailView& view, const std::string& key,
-                                    const FileMetadata& metadata) {
-        view.apply_file_metadata(key, metadata);
-    }
-};
 
 TEST_CASE_METHOD(LVGLUITestFixture,
                  "prep time estimate line appears once the file's metadata is in",

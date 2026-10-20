@@ -40,6 +40,7 @@
 #include <cstring>
 #include <limits>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -1519,4 +1520,33 @@ TEST_CASE("amplitude labels are distinct and compact", "[frequency_response_char
           V{"400u", "300u", "200u", "100u", "0"});
     CHECK(fr_chart_amplitude_labels(0.0f, 100.0f, 4, true) == V{"100%", "75%", "50%", "25%", "0%"});
     CHECK(fr_chart_amplitude_labels(0.0f, 1.0f, 0, false).empty());
+}
+
+TEST_CASE("the chart fill follows the curve without per-triangle wedges",
+          "[frequency_response_chart][fill]") {
+    constexpr int32_t kBottom = 220;
+
+    // The tint starts at full strength right under the curve wherever the
+    // curve is, low tails and small bumps included.
+    for (const auto& [a, b] : {std::pair{30, 60}, std::pair{180, 200}, std::pair{210, 205}}) {
+        INFO("tops " << a << ", " << b);
+        CHECK(fr_chart_fill_segment_opa(a, b, kBottom).first == kFrFillTopOpa);
+    }
+    CHECK(fr_chart_fill_segment_opa(kBottom, kBottom, kBottom).first == 0);
+
+    // Each triangle's vertical gradient runs from its own top row's opacity
+    // down to 0 at the bottom. The segment's two triangles must give every row
+    // they share the same opacity, or a diagonal wedge shows between them.
+    auto shade = [&](lv_opa_t top_opa, int32_t tri_top, int32_t row) {
+        return static_cast<double>(top_opa) * static_cast<double>(kBottom - row) /
+               static_cast<double>(kBottom - tri_top);
+    };
+    for (const auto& [a, b] : {std::pair{25, 55}, std::pair{150, 40}, std::pair{180, 182}}) {
+        const FrFillSegmentOpa opa = fr_chart_fill_segment_opa(a, b, kBottom);
+        const int32_t first_top = std::min(a, b);
+        for (const int32_t row : {std::max(a, b), 200, 215}) {
+            INFO("tops " << a << ", " << b << " row " << row);
+            CHECK(std::abs(shade(opa.first, first_top, row) - shade(opa.second, b, row)) <= 1.0);
+        }
+    }
 }

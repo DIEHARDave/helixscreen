@@ -58,7 +58,8 @@ void PrinterPluginStatusState::deinit_subjects() {
 }
 
 void PrinterPluginStatusState::set_installed(bool installed) {
-    lv_subject_set_int(&helix_plugin_installed_, installed ? 1 : 0);
+    lv_subject_set_int(&helix_plugin_installed_,
+                       installed ? kHelixPluginInstalled : kHelixPluginAbsent);
     spdlog::info("[PrinterPluginStatusState] HelixPrint plugin installed: {}", installed);
 }
 

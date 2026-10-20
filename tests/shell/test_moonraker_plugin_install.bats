@@ -766,3 +766,510 @@ exit 0'
 
     ! grep -q 'symlink_dir' "$(user_conf_of "$root")"
 }
+
+# A Pi-style HOME with a Moonraker checkout and a moonraker.conf that has no
+# [helix_print] yet, the restart path shimmed as in setup_instrumented_home.
+setup_plain_home() {
+    local home="$1"
+    mkdir -p "$home/moonraker/moonraker/components" "$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n' > "$home/printer_data/config/moonraker.conf"
+    for cmd in sudo service; do
+        mock_command_script "$cmd" 'exit 0'
+    done
+    mock_real_curl 0
+    mock_command_script "wget" 'exit 8'
+}
+
+# Every [helix_print] header under config dir $1, across all its files but
+# the backups an edit leaves.
+count_helix_sections() {
+    find "$1" -type f ! -name '*.bak.*' -exec grep -h '^\[helix_print\]' {} + | wc -l | tr -d ' '
+}
+
+@test "auto install leaves a [helix_print] in an included file as the only one" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    mkdir -p "$c/conf.d"
+    printf '[server]\nhost: 0.0.0.0\n\n[include conf.d/*.conf]\n' > "$c/moonraker.conf"
+    printf '[helix_print]\nenabled: True\n' > "$c/conf.d/helix.conf"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    [ "$(count_helix_sections "$c")" -eq 1 ] || fail "duplicate [helix_print]: $(cat "$c"/moonraker.conf "$c"/conf.d/*)"
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" || fail "moonraker.conf was edited"
+    [ -L "$home/moonraker/moonraker/components/helix_print.py" ]
+}
+
+@test "auto uninstall removes a [helix_print] that lives in an included file" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[include helix.conf]\n' > "$c/moonraker.conf"
+    printf '[helix_print]\nenabled: True\n\n[octoprint_compat]\n' > "$c/helix.conf"
+    ln -s "$REPO_ROOT/moonraker-plugin/helix_print.py" "$home/moonraker/moonraker/components/helix_print.py"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    [ "$(count_helix_sections "$c")" -eq 0 ] || fail "[helix_print] survived: $(cat "$c/helix.conf")"
+    grep -q '^\[octoprint_compat\]' "$c/helix.conf" || fail "the include's other sections were lost"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+}
+
+@test "auto install refuses a components dir it cannot write, and writes nothing" {
+    [ "$(id -u)" -ne 0 ] || skip "running as root ignores the read-only mode"
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    cp -R "$c" "$BATS_TEST_TMPDIR/config.before"
+    chmod 0555 "$home/moonraker/moonraker/components"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    chmod 0755 "$home/moonraker/moonraker/components"
+
+    [ "$status" -eq 1 ]
+    contains "Cannot write to components directory" "$output"
+    [ ! -e "$home/moonraker/moonraker/components/helix_print.py" ]
+    diff -r "$BATS_TEST_TMPDIR/config.before" "$c" || fail "the config dir changed"
+}
+
+@test "auto install refuses a moonraker.conf it cannot write, and writes nothing" {
+    [ "$(id -u)" -ne 0 ] || skip "running as root ignores the read-only mode"
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    chmod 0444 "$c/moonraker.conf"
+    cp -R "$c" "$BATS_TEST_TMPDIR/config.before"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    chmod 0644 "$c/moonraker.conf"
+
+    [ "$status" -eq 1 ]
+    contains "Cannot write to $c/moonraker.conf" "$output"
+    [ ! -e "$home/moonraker/moonraker/components/helix_print.py" ] \
+        && [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+    diff -r "$BATS_TEST_TMPDIR/config.before" "$c" || fail "the config dir changed"
+}
+
+# Pins behaviour that already holds: the section starts on a line of its own.
+@test "auto install after a moonraker.conf with no trailing newline keeps its last line" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0' > "$c/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    grep -qx 'host: 0.0.0.0' "$c/moonraker.conf" || fail "last line damaged: $(cat "$c/moonraker.conf")"
+    grep -qx '\[helix_print\]' "$c/moonraker.conf" || fail "no section line: $(cat "$c/moonraker.conf")"
+}
+
+# A cat that fails part-way through writing a config file: the first bytes of
+# a staged copy reach its stdout, then it errors. Any other cat runs normally.
+mock_cat_failing_midway() {
+    local real
+    real=$(command -v cat)
+    mock_command_script "cat" "case \"\$1\" in *.tmp|*.helixtmp*) head -c 12 \"\$1\"; exit 1;; esac
+exec $real \"\$@\""
+}
+
+# An awk that fails part-way through the section removal's rewrite; any other
+# awk runs normally.
+mock_awk_failing_midway() {
+    local real
+    real=$(command -v awk)
+    mock_command_script "awk" "case \"\$*\" in *'skip = 1'*|*'done = 1'*) printf '[server]\\n'; exit 1;; esac
+exec $real \"\$@\""
+}
+
+# An awk whose write to a file stops short and still exits 0, as BusyBox awk
+# does on a full disk, for the section removal's rewrite. Output into a pipe
+# comes through whole; any other awk runs normally.
+mock_awk_cut_short_exiting_0() {
+    local real
+    real=$(command -v awk)
+    mock_command_script "awk" "case \"\$*\" in *'skip = 1'*)
+    if [ -f /dev/stdout ]; then $real \"\$@\" | head -c 30; exit 0; fi ;; esac
+exec $real \"\$@\""
+}
+
+@test "a section removal cut short by a full disk leaves moonraker.conf whole, though awk exits 0" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_instrumented_home "$home"
+    local c="$home/printer_data/config"
+    write_original_printer_cfg "$c/printer.cfg"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+    mock_awk_cut_short_exiting_0
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+
+    [ "$status" -eq 2 ] || fail "want needs-attention (2), got $status: $output"
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" ||
+        fail "moonraker.conf replaced: $(cat "$c/moonraker.conf")"
+    [ -z "$(find "$c" -name 'moonraker.conf.*tmp*')" ] || fail "staging file left: $(ls "$c")"
+}
+
+@test "a section removal whose write fails part-way leaves moonraker.conf whole" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_instrumented_home "$home"
+    local c="$home/printer_data/config"
+    write_original_printer_cfg "$c/printer.cfg"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+    mock_cat_failing_midway
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+
+    # Removed or left in place, but never cut short.
+    grep -qx 'host: 0.0.0.0' "$c/moonraker.conf" && grep -qx '\[octoprint_compat\]' "$c/moonraker.conf" \
+        || fail "moonraker.conf damaged: $(cat "$c/moonraker.conf")"
+}
+
+@test "a section removal whose rewrite fails reports it and leaves no staging file" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_instrumented_home "$home"
+    local c="$home/printer_data/config"
+    write_original_printer_cfg "$c/printer.cfg"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+    mock_awk_failing_midway
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+
+    [ "$status" -eq 2 ] || fail "want needs-attention (2), got $status: $output"
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" || fail "moonraker.conf damaged"
+    [ -z "$(find "$c" -name 'moonraker.conf.*tmp*')" ] || fail "staging file left: $(ls "$c")"
+}
+
+@test "a symlink_dir insert whose write fails part-way leaves the user conf whole" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    add_running_klipper "$root" hides
+    local conf
+    conf=$(user_conf_of "$root")
+    printf '\n[helix_print]\n' >> "$conf"
+    cp "$conf" "$BATS_TEST_TMPDIR/conf.before"
+    mock_cat_failing_midway
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$root/data/.mod/.forge-x$FORGEX_PLUGIN/install.sh" --no-restart --auto
+
+    # Set or left unset, but never cut short.
+    grep -qx '  0.0.0.0/0' "$conf" && grep -qx '\[helix_print\]' "$conf" \
+        || fail "user conf damaged: $(cat "$conf")"
+}
+
+@test "a section rewrite through a symlinked config keeps the link" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_instrumented_home "$home"
+    local c="$home/printer_data/config"
+    write_original_printer_cfg "$c/printer.cfg"
+    mkdir -p "$home/real"
+    mv "$c/moonraker.conf" "$home/real/moonraker.conf"
+    ln -s "$home/real/moonraker.conf" "$c/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    [ -L "$c/moonraker.conf" ] || fail "the symlink was replaced by a file"
+    refute_grep '^\[helix_print\]' "$home/real/moonraker.conf"
+    grep -q '^\[octoprint_compat\]' "$home/real/moonraker.conf"
+}
+
+@test "install and uninstall cycles restore moonraker.conf byte for byte" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[authorization]\ntrusted_clients:\n    127.0.0.1\n' \
+        > "$c/moonraker.conf"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+
+    local cycle
+    for cycle in 1 2; do
+        run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+        [ "$status" -eq 0 ] || fail "install $cycle failed: $output"
+        run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+        [ "$status" -eq 0 ] || fail "uninstall $cycle failed: $output"
+    done
+
+    cmp "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" \
+        || fail "moonraker.conf drifted: $(diff "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf")"
+}
+
+@test "an install and uninstall cycle restores Forge-X's user conf byte for byte" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local conf
+    conf=$(user_conf_of "$root")
+    cp "$conf" "$BATS_TEST_TMPDIR/conf.before"
+
+    forgex_install "$root"
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$root/data/.mod/.forge-x$FORGEX_PLUGIN/install.sh" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    cmp "$BATS_TEST_TMPDIR/conf.before" "$conf" \
+        || fail "user conf drifted: $(diff "$BATS_TEST_TMPDIR/conf.before" "$conf")"
+}
+
+# Pins behaviour that already holds: removing a section between two others
+# keeps the blank line that separates them.
+@test "removing a [helix_print] between two sections keeps them apart" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[helix_print]\nenabled: True\n\n[octoprint_compat]\n' \
+        > "$c/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    [ "$(cat "$c/moonraker.conf")" = "$(printf '[server]\nhost: 0.0.0.0\n\n[octoprint_compat]')" ] \
+        || fail "unexpected result: $(cat "$c/moonraker.conf")"
+}
+
+@test "an install with no trailing newline uninstalls to the same lines" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0' > "$c/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    # The last line comes back terminated; nothing else changes.
+    [ "$(cat "$c/moonraker.conf")" = "$(printf '[server]\nhost: 0.0.0.0')" ] \
+        || fail "unexpected result: $(cat "$c/moonraker.conf")"
+}
+
+@test "install and uninstall keep only the newest of their own backups, and nobody else's" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf 'mine\n' > "$c/moonraker.conf.bak.20200101_000000"
+    printf 'old\n' > "$c/moonraker.conf.bak.helix.20200101_000001"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    grep -qx mine "$c/moonraker.conf.bak.20200101_000000" || fail "deleted a backup it did not make"
+    local backups
+    backups=$(find "$c" -name 'moonraker.conf.bak.helix.*' | wc -l | tr -d ' ')
+    [ "$backups" -eq 1 ] || fail "want 1 backup of ours, have: $(ls "$c")"
+    [ ! -e "$c/moonraker.conf.bak.helix.20200101_000001" ]
+    # The survivor is the uninstall's: the file with the section in it.
+    grep -q '^\[helix_print\]' "$c"/moonraker.conf.bak.helix.* || fail "kept the wrong backup"
+}
+
+@test "installing over a section set to enabled: False turns the plugin on" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[helix_print]\nenabled: False\ncleanup_delay: 3600\n\n[octoprint_compat]\n' \
+        > "$c/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    [ "$(count_helix_sections "$c")" -eq 1 ] || fail "duplicate [helix_print]: $(cat "$c/moonraker.conf")"
+    grep -qx 'enabled: True' "$c/moonraker.conf" || fail "not enabled: $(cat "$c/moonraker.conf")"
+    ! grep -qi '^enabled[[:space:]]*[:=][[:space:]]*false' "$c/moonraker.conf" || fail "still disabled"
+    grep -qx 'cleanup_delay: 3600' "$c/moonraker.conf" || fail "the section's other options were lost"
+    grep -q '^\[octoprint_compat\]' "$c/moonraker.conf" || fail "the next section was lost"
+    [ -L "$home/moonraker/moonraker/components/helix_print.py" ]
+}
+
+@test "installing turns on a disabled section in an included file, whatever the false spelling" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[include helix.conf]\n' > "$c/moonraker.conf"
+    printf '[helix_print]\n  Enabled = no\n' > "$c/helix.conf"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    grep -qx 'enabled: True' "$c/helix.conf" || fail "not enabled: $(cat "$c/helix.conf")"
+    [ "$(count_helix_sections "$c")" -eq 1 ]
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" || fail "moonraker.conf was edited"
+}
+
+@test "installing over an enabled section leaves the config untouched" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[helix_print]\nenabled: True\n# enabled: False\n' > "$c/moonraker.conf"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" || fail "edited: $(cat "$c/moonraker.conf")"
+    [ -z "$(find "$c" -name 'moonraker.conf.bak.*')" ] || fail "backed up a file it did not change"
+}
+
+@test "auto uninstall removes the updater entry a git-clone install wrote, and its marker" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+    printf '\n#~# --- HelixPrint Plugin ---\n[helix_print]\n# enabled: True\n\n[update_manager helix_print]\ntype: git_repo\npath: %s/helix_print\nmanaged_services: moonraker\n' \
+        "$home" >> "$c/moonraker.conf"
+    ln -s "$REPO_ROOT/moonraker-plugin/helix_print.py" "$home/moonraker/moonraker/components/helix_print.py"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" ||
+        fail "moonraker.conf differs: $(diff "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf")"
+}
+
+@test "auto install drops an updater entry for a git checkout of the plugin" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[update_manager helix_print]\ntype: git_repo\npath: ~/helix_print\n\n[octoprint_compat]\n' \
+        > "$c/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    ! grep -q '^\[update_manager helix_print\]' "$c/moonraker.conf" || fail "kept: $(cat "$c/moonraker.conf")"
+    grep -q '^\[octoprint_compat\]' "$c/moonraker.conf" || fail "lost the next section"
+    [ "$(count_helix_sections "$c")" -eq 1 ]
+}
+
+# A plugin installed from an INSTALL_DIR that has since moved: the link names
+# the old tree, the [helix_print] section is in place.
+setup_moved_install() {
+    local home="$1"
+    setup_plain_home "$home"
+    printf '\n[helix_print]\n' >> "$home/printer_data/config/moonraker.conf"
+    ln -s "$home/old-helixscreen/moonraker-plugin/helix_print.py" \
+        "$home/moonraker/moonraker/components/helix_print.py"
+}
+
+@test "relink re-points a link left by a moved install at this tree" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_moved_install "$home"
+    local c="$home/printer_data/config"
+    cp -R "$c" "$BATS_TEST_TMPDIR/config.before"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --relink
+    [ "$status" -eq 3 ] || fail "want 3 (relinked), got $status: $output"
+
+    [ "$(readlink "$home/moonraker/moonraker/components/helix_print.py")" = "$(dirname "$SCRIPT")/helix_print.py" ] ||
+        fail "link: $(readlink "$home/moonraker/moonraker/components/helix_print.py")"
+    diff -r "$BATS_TEST_TMPDIR/config.before" "$c" || fail "relink edited the config"
+}
+
+@test "relink leaves a link that already names this tree alone" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_moved_install "$home"
+    ln -sf "$(dirname "$SCRIPT")/helix_print.py" "$home/moonraker/moonraker/components/helix_print.py"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --relink
+    [ "$status" -eq 0 ] || fail "want 0 (current), got $status: $output"
+}
+
+@test "relink installs nothing where the plugin was never linked" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    printf '\n[helix_print]\n' >> "$home/printer_data/config/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --relink
+    [ "$status" -eq 4 ] || fail "want 4 (not ours), got $status: $output"
+    [ ! -e "$home/moonraker/moonraker/components/helix_print.py" ] &&
+        [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ] || fail "created a link"
+}
+
+@test "relink leaves a link with no [helix_print] section alone" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    ln -s "$home/old-helixscreen/moonraker-plugin/helix_print.py" \
+        "$home/moonraker/moonraker/components/helix_print.py"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --relink
+    [ "$status" -eq 4 ] || fail "want 4 (not ours), got $status: $output"
+    [ "$(readlink "$home/moonraker/moonraker/components/helix_print.py")" = "$home/old-helixscreen/moonraker-plugin/helix_print.py" ]
+}
+
+@test "relink leaves a regular helix_print.py file alone" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    printf '\n[helix_print]\n' >> "$home/printer_data/config/moonraker.conf"
+    printf '# copied by hand\n' > "$home/moonraker/moonraker/components/helix_print.py"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --relink
+    [ "$status" -eq 4 ] || fail "want 4 (not ours), got $status: $output"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+    grep -q 'copied by hand' "$home/moonraker/moonraker/components/helix_print.py"
+}
+
+@test "relink from outside a Forge-X chroot links the plugin as Moonraker sees it" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    forgex_install "$root"
+    local chroot="$root/data/.mod/.forge-x"
+    local link="$chroot/root/moonraker-env/moonraker/components/helix_print.py"
+    [ "$(readlink "$link")" = "$FORGEX_PLUGIN/helix_print.py" ] || fail "setup: link $(readlink "$link")"
+    ln -sf /opt/config/mod_data/old-helixscreen/moonraker-plugin/helix_print.py "$link"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --no-restart --relink
+    [ "$status" -eq 3 ] || fail "want 3 (relinked), got $status: $output"
+    [ "$(readlink "$link")" = "$FORGEX_PLUGIN/helix_print.py" ] || fail "link: $(readlink "$link")"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --no-restart --relink
+    [ "$status" -eq 0 ] || fail "want 0 (current) on the second run, got $status: $output"
+}
+
+# The app on the host side of Forge-X's bind mount: its tree and the chroot's
+# view of it are two paths to the same files. A hard link stands in for the
+# bind mount, so the two paths resolve apart and name one inode.
+setup_forgex_bind_mounted_app() {
+    local root="$1"
+    local chroot="$root/data/.mod/.forge-x"
+    local host="$root/opt/config/mod_data/helixscreen/moonraker-plugin"
+    mkdir -p "$(dirname "$host")" "$chroot$host"
+    cp -R "$REPO_ROOT/moonraker-plugin" "$host"
+    ln "$host/helix_print.py" "$chroot$host/helix_print.py"
+    printf '%s' "$host"
+}
+
+@test "relink from the host side of a Forge-X bind mount finds its own link current" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local host
+    host=$(setup_forgex_bind_mounted_app "$root")
+    local link="$root/data/.mod/.forge-x/root/moonraker-env/moonraker/components/helix_print.py"
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" sh "$host/install.sh" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    [ "$(readlink "$link")" = "$host/helix_print.py" ] || fail "setup: link $(readlink "$link")"
+
+    local run_no
+    for run_no in 1 2; do
+        run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" sh "$host/install.sh" --no-restart --relink
+        [ "$status" -eq 0 ] || fail "relink run $run_no: want 0 (current), got $status: $output"
+    done
+}
+
+@test "an include cycle through .. is walked once" {
+    local c="$BATS_TEST_TMPDIR/cfg"
+    mkdir -p "$c/conf.d"
+    printf '[server]\n\n[include conf.d/*.conf]\n' > "$c/moonraker.conf"
+    printf '[helix_print]\n\n[include ../moonraker.conf]\n' > "$c/conf.d/a.conf"
+
+    run timeout 10 sh -c '. "$1"; moonraker_conf_files "$2"' sh \
+        "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh" "$c/moonraker.conf"
+    [ "$status" -eq 0 ] || fail "walk did not end (status $status)"
+    [ "$(printf '%s\n' "$output" | wc -l)" -eq 2 ] || fail "files: $(printf '%s\n' "$output" | head -n 4)"
+}

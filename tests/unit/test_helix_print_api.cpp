@@ -12,6 +12,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <optional>
 #include <thread>
 
 #include "../catch_amalgamated.hpp"
@@ -154,6 +155,53 @@ class FallbackScriptedClient : public helix::MoonrakerClient {
     std::string print_start_filename;
 };
 } // namespace
+
+namespace {
+/// Answers server.helix.status with @p result, as a plugin of some vintage does.
+class PluginStatusScriptedClient : public helix::MoonrakerClient {
+  public:
+    explicit PluginStatusScriptedClient(json result) : result_(std::move(result)) {}
+
+    helix::RequestId send_jsonrpc(
+        const std::string& method, const json& /*params*/,
+        std::function<void(const json&)> success_cb,
+        std::function<void(const MoonrakerError&)> /*error_cb*/, uint32_t /*timeout_ms*/ = 0,
+        bool /*silent*/ = false,
+        std::optional<helix::rpc_error_policy::CallerIntent> /*intent*/ = std::nullopt) override {
+        if (method == "server.helix.status" && success_cb) {
+            success_cb(json{{"jsonrpc", "2.0"}, {"result", result_}});
+        }
+        return 1;
+    }
+
+  private:
+    json result_;
+};
+} // namespace
+
+TEST_CASE("a plugin status that names no version reports none", "[print][api][plugin_installer]") {
+    PrinterState state;
+    state.init_subjects(false);
+    auto check = [&state](json result) {
+        PluginStatusScriptedClient client(std::move(result));
+        MoonrakerAPI api(client, state);
+        std::optional<helix::HelixPluginInfo> info;
+        api.job().check_helix_plugin([&info](const helix::HelixPluginInfo& i) { info = i; },
+                                     [](const MoonrakerError&) {});
+        helix::ui::UpdateQueue::instance().drain();
+        REQUIRE(info.has_value());
+        return *info;
+    };
+
+    const auto unversioned = check(json{{"enabled", true}});
+    CHECK(unversioned.present);
+    CHECK(unversioned.available);
+    CHECK(unversioned.version.empty());
+
+    const auto versioned = check(json{{"enabled", false}, {"version", "1.2.0"}});
+    CHECK(versioned.version == "1.2.0");
+    CHECK_FALSE(versioned.available);
+}
 
 TEST_CASE("HelixPrint API - falls back to printer.print.start when plugin print_modified fails",
           "[print][api]") {

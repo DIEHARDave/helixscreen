@@ -590,6 +590,7 @@ translations:
   Cancelling turns the chamber target off so the wait ends, then stops the print.: 'L''annulation coupe la consigne de la chambre pour mettre fin à l''attente, puis arrête l''impression.'
   'Cannot add to queue: internal error': 'Impossible d''ajouter à la file : erreur interne'
   Cannot be changed from here on a multi-unit MMU: Non modifiable ici sur un MMU multi-unités
+  Cannot change the HelixPrint plugin while printing: "Impossible de modifier le plugin HelixPrint pendant l'impression"
   'Cannot control timelapse: printer not connected': 'Impossible de contrôler le timelapse
     : imprimante non connectée'
   'Cannot delete file: printer not connected': 'Impossible de supprimer le fichier
@@ -1705,6 +1706,7 @@ translations:
   'Heating: %d / %d°C': 'Chauffage : %d / %d°C'
   Heightmap and flatness of the active bed mesh: 'Carte des hauteurs et planéité du maillage du plateau actif'
   HelixPrint Plugin: 'Plugin HelixPrint'
+  HelixPrint plugin updated. Moonraker is restarting...: 'Plugin HelixPrint mis à jour. Moonraker redémarre...'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen a planté
   HelixScreen Macros: 'Macros HelixScreen'

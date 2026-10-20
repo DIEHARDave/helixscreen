@@ -19,6 +19,27 @@
 // assert which files the panel currently holds without driving widget-level
 // scroll state. Same pattern as BedMeshPanelTestAccess.
 struct PrintSelectPanelTestAccess {
+    /// The installer the install prompt runs, for pointing it at a stub install.sh.
+    static helix::HelixPluginInstaller& plugin_installer(PrintSelectPanel& panel) {
+        return panel.plugin_installer_;
+    }
+
+    /// Whether the install prompt is waiting for the screen, with its recheck timer armed.
+    static bool plugin_prompt_waiting_for_screen(const PrintSelectPanel& panel) {
+        return panel.plugin_prompt_wait_ == helix::PluginTurnStep::WaitForScreen &&
+               static_cast<bool>(panel.plugin_prompt_timer_);
+    }
+
+    /// What the recheck timer runs on each tick.
+    static void recheck_plugin_prompt(PrintSelectPanel& panel) {
+        panel.maybe_prompt_plugin_install();
+    }
+
+    /// The startup check of the installed plugin.
+    static helix::PluginSelfHeal& plugin_self_heal(PrintSelectPanel& panel) {
+        return panel.plugin_self_heal_;
+    }
+
     static bool list_contains(const PrintSelectPanel& panel, const std::string& filename) {
         for (const auto& file : panel.file_list_) {
             if (!file.is_dir && file.filename == filename) {

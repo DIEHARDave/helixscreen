@@ -12,6 +12,12 @@
 #   scripts/test-host-run.sh sweep                       # make unit-sweep, sharded
 #   scripts/test-host-run.sh asan-app help-qr --repeat 50  # the APP under ASAN
 #   scripts/test-host-run.sh tsan-app help-qr --repeat 50  # the APP under TSan
+#   scripts/test-host-run.sh plugin-host --layouts plain   # HelixPrint plugin matrix
+#
+# plugin-host runs scripts/plugin-host-matrix.sh on the test host itself, not
+# in the test container: it builds and starts a container per Moonraker
+# vintage and printer layout, so it needs the host's docker. Its results come
+# back to build/plugin-host/<timestamp>/. It is a mirror run only (no --commit).
 #
 # The app modes are here for the same reason asan is: the run is long and
 # non-interactive, and the container's image (SDL, no ld.so.preload) is the
@@ -695,7 +701,11 @@ case "$WHAT" in
         CMD="make $WHAT $_vars"' $HELIX_JFLAG'
         EXPECTED_REPEAT="${_repeat:-25}"
         GB_PER_JOB=1.5 ;;
-    *)      echo "✗ unknown job '$WHAT' (mutate | asan | tsan | test | sweep | asan-app | tsan-app)" >&2; exit 2 ;;
+    plugin-host)
+        [ "$MODE" = mirror ] || { echo "✗ plugin-host runs the working tree; it takes no --commit" >&2; exit 2; }
+        CMD="bash scripts/plugin-host-matrix.sh"
+        [ $# -eq 0 ] || CMD="$CMD $(printf '%q ' "$@")" ;;
+    *)      echo "✗ unknown job '$WHAT' (mutate | asan | tsan | test | sweep | asan-app | tsan-app | plugin-host)" >&2; exit 2 ;;
 esac
 
 LOG="${TMPDIR:-/tmp}/test-host-$WHAT-$LABEL.log"
@@ -716,6 +726,25 @@ if [ "$MODE" = mirror ]; then
     echo "→ synced $(tr -cd '\0' < "$LIST" | wc -c) files to $HOST:$TREES_HOST/$TREE in $(( $(date +%s) - _t0 ))s"
 elif [ "$WHAT" = mutate ]; then
     seed_mutate_checkout || exit 1
+fi
+
+# The plugin matrix drives the host's docker from the mirror on the host, and
+# writes its results outside the mirror, which the container owns.
+if [ "$WHAT" = plugin-host ]; then
+    PH_OUT="${HELIX_TEST_PLUGIN_HOST_OUT:-/tmp}/helix-plugin-host-$TREE"
+    rc=0
+    # shellcheck disable=SC2087  # the paths and the command resolve here
+    ssh "${SSH_OPTS[@]}" "$HOST" bash -se <<REMOTE | tee "$LOG" || rc=$?
+set -uo pipefail
+echo "→ $PROVENANCE"
+rm -rf "$PH_OUT"
+cd "$TREES_HOST/$TREE"
+DOCKER="sudo -n docker" $CMD --out "$PH_OUT"
+REMOTE
+    _local_out="build/plugin-host/$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$_local_out"
+    rsync -a -e "ssh ${SSH_OPTS[*]}" "$HOST:$PH_OUT/" "$_local_out/" && echo "→ results in $_local_out"
+    exit "$rc"
 fi
 
 # The heredoc runs on the test host. docker needs sudo -n there (the ssh user

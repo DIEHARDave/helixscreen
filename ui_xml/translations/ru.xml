@@ -578,6 +578,7 @@
   <translation tag="Cancelling turns the chamber target off so the wait ends, then stops the print." ru="Отмена выключит целевую температуру камеры, чтобы ожидание закончилось, затем остановит печать."/>
   <translation tag="Cannot add to queue: internal error" ru="Не удалось добавить в очередь: внутренняя ошибка"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" ru="Нельзя изменить здесь на MMU с несколькими блоками"/>
+  <translation tag="Cannot change the HelixPrint plugin while printing" ru="Нельзя изменить плагин HelixPrint во время печати"/>
   <translation tag="Cannot control timelapse: printer not connected" ru="Невозможно управлять таймлапсом: принтер не подключён"/>
   <translation tag="Cannot delete file: printer not connected" ru="Невозможно удалить файл: принтер не подключён"/>
   <translation tag="Cannot modify G-code: no temp directory available" ru="Невозможно изменить G-code: временная директория недоступна"/>
@@ -1587,6 +1588,7 @@
   <translation tag="Heating: %d / %d°C" ru="Нагрев: %d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" ru="Карта высот и ровность активной сетки стола"/>
   <translation tag="HelixPrint Plugin" ru="Плагин HelixPrint"/>
+  <translation tag="HelixPrint plugin updated. Moonraker is restarting..." ru="Плагин HelixPrint обновлён. Moonraker перезапускается..."/>
   <translation tag="HelixScreen" ru="HelixScreen"/>
   <translation tag="HelixScreen Crashed" ru="HelixScreen аварийно завершился"/>
   <translation tag="HelixScreen Macros" ru="Макросы HelixScreen"/>

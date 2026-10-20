@@ -124,20 +124,16 @@ class AdvancedPanel : public PanelBase {
 
     /// job_holds_machine subject as a bool: PRINTING, PAUSED, or a
     /// host-side Preparing block — everything a Klipper restart would kill.
-    bool macro_job_holds_machine() const;
+    bool job_holds_machine_now() const;
 
     /// The confirmed half of the uninstall row: runs the uninstaller and
     /// reports the outcome. Blocks this thread while the script runs.
     void run_helix_plugin_uninstall();
 
-    /// The install modal's completion: a successful script run restarts
-    /// Moonraker, and the reconnect's plugin check then reports what loaded.
-    void on_helix_plugin_install_finished(bool success);
-
-    /// Restart Moonraker so a plugin install or uninstall takes effect. The
-    /// script runs under the service's NoNewPrivileges and cannot sudo, so
-    /// Moonraker is asked to restart itself.
-    void restart_moonraker_for_plugin();
+    /// Restart Moonraker so a plugin install or uninstall takes effect; the
+    /// reconnect's plugin check then reports what loaded. Returns whether a
+    /// restart was requested.
+    bool restart_moonraker_for_plugin();
 
     /// The confirmed half of both macro rows: stages the files, then either
     /// restarts Klipper right away (no active print) or marks the restart

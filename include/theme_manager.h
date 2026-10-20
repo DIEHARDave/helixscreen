@@ -791,6 +791,10 @@ double contrast_ratio(lv_color_t a, lv_color_t b);
 /// WCAG 1.4.11 non-text contrast for a component boundary.
 inline constexpr double kFieldOutlineContrastThreshold = 3.0;
 
+/// Contrast a chart's data curve must reach on its plot: WCAG 1.4.11 non-text
+/// contrast for a graphical object.
+inline constexpr double kChartCurveContrastThreshold = 3.0;
+
 /// Outline colour for unfilled input fields. Starts from the palette's
 /// text_subtle and shifts it the least amount needed to clear 3:1 against the
 /// screen, overlay, card and elevated (dialog) surfaces, since a field has no

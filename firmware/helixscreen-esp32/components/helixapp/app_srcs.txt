@@ -596,6 +596,7 @@ src/ui/ui_plr_prompt.cpp
 src/ui/ui_pin_entry_modal.cpp
 src/ui/ui_pin_utils.cpp
 src/ui/ui_plugin_install_modal.cpp
+src/ui/plugin_self_heal.cpp
 src/ui/ui_position_utils.cpp
 src/ui/ui_pre_print_options_renderer.cpp
 src/ui/ui_print_exclude_object_manager.cpp
