@@ -314,8 +314,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "clog meter, bar and widget teardown run no 
     }
 }
 
-// The drains these widgets dropped rested on one property: a notification
-// already queued when the widget tears down does nothing once it runs.
+// These widgets tear down without draining because a notification already
+// queued when one detaches does nothing once it runs.
 TEST_CASE_METHOD(LVGLUITestFixture,
                  "home widget teardown turns an already-queued notification into a no-op",
                  "[panel_widget][drain_reentrancy]") {
