@@ -16,6 +16,7 @@
 
 #include "../../include/config.h"
 #include "../../include/helix_plugin_installer.h"
+#include "../../include/helix_version.h"
 #include "../test_helpers/helix_plugin_installer_test_access.h"
 #include "../test_helpers/plugin_script_sandbox.h"
 
@@ -118,26 +119,31 @@ TEST_CASE("HelixPluginInstaller", "[plugin_installer]") {
         REQUIRE(installer.is_local_moonraker() == false);
     }
 
-    SECTION("get_remote_install_command returns valid curl command") {
+    SECTION("get_remote_install_command pins the command to this app's release") {
         helix::HelixPluginInstaller installer;
+        const std::string ref = plugin_release_ref(helix_version());
 
-        std::string cmd = installer.get_remote_install_command();
-
-        // Should start with curl
-        REQUIRE(cmd.find("curl") == 0);
-
-        // Should use -sSL flags (silent, show errors, follow redirects)
-        REQUIRE(cmd.find("-sSL") != std::string::npos);
-
-        // Should pipe to bash
-        REQUIRE(cmd.find("| bash") != std::string::npos);
-
-        // Should reference the remote-install.sh script
-        REQUIRE(cmd.find("remote-install.sh") != std::string::npos);
-
-        // Should be from GitHub raw
-        REQUIRE(cmd.find("raw.githubusercontent.com") != std::string::npos);
+        CHECK(installer.get_remote_install_command() == plugin_remote_install_command(ref));
     }
+}
+
+TEST_CASE("plugin_release_ref names the release tag of an app version", "[plugin_installer]") {
+    CHECK(plugin_release_ref("1.2.0") == "v1.2.0");
+    CHECK(plugin_release_ref("1.1.0-beta.10") == "v1.1.0-beta.10");
+    CHECK(plugin_release_ref("1.1.0-beta+abc1234") == "v1.1.0-beta");
+    // A build that is no release reads its plugin from main.
+    CHECK(plugin_release_ref("dev") == "main");
+    CHECK(plugin_release_ref("") == "main");
+}
+
+TEST_CASE("the remote install command runs one release's wrapper with sh, pinned to it",
+          "[plugin_installer]") {
+    const std::string cmd = plugin_remote_install_command("v1.1.0-beta.10");
+
+    CHECK(cmd == "curl -fsSL https://raw.githubusercontent.com/prestonbrown/helixscreen/"
+                 "v1.1.0-beta.10/moonraker-plugin/remote-install.sh | sh -s -- v1.1.0-beta.10");
+    CHECK(cmd.find("bash") == std::string::npos);
+    CHECK(cmd.find("/main/") == std::string::npos);
 }
 
 // ============================================================================

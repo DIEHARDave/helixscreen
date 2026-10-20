@@ -52,33 +52,72 @@ MCF_INCLUDES
     return 0
 }
 
-# Print each file in moonraker_conf_files @1 @2 that holds a [helix_print]
-# section, one per line; nothing when none does.
-helix_print_section_files() {
-    moonraker_conf_files "$1" "${2:-}" | while IFS= read -r _hps_file; do
-        if grep -q '^\[helix_print\]' "$_hps_file" 2>/dev/null; then
-            printf '%s\n' "$_hps_file"
+# Print each file in moonraker_conf_files @1 @2 holding a line that matches
+# extended regex @3, one per line; nothing when none does.
+helix_conf_files_matching() {
+    moonraker_conf_files "$1" "${2:-}" | while IFS= read -r _hcm_file; do
+        if grep -Eq "$3" "$_hcm_file" 2>/dev/null; then
+            printf '%s\n' "$_hcm_file"
         fi
     done
     return 0
 }
 
-# awk program printing a config file without its [helix_print] section(s).
-# A section that runs to the end of the file also takes the one blank line
-# before it, which is what the install writes ahead of the section it appends,
-# so an install and uninstall leave the file as it was. A section between two
-# others keeps that line: it separates the neighbours.
-# shellcheck disable=SC2016,SC2034  # awk's own $ fields; read by the scripts that source this file
-HELIX_PRINT_STRIP_AWK='
+# Section headers this plugin owns in a Moonraker config: its own section, and
+# the [update_manager helix_print] a git-clone install of the plugin wrote.
+# shellcheck disable=SC2034  # read by the scripts that source this file
+HELIX_PRINT_SECTION_RE='^\[helix_print\]'
+HELIX_PRINT_UPDATER_RE='^\[update_manager helix_print\]'
+HELIX_PRINT_OWNED_RE='^\[(helix_print|update_manager helix_print)\]'
+
+# Print each file in moonraker_conf_files @1 @2 that holds a [helix_print]
+# section, one per line; nothing when none does.
+# UNCALLED_OK: moonraker-plugin/install.sh calls it; the main installer only
+# removes sections, through helix_print_owned_files.
+helix_print_section_files() {
+    helix_conf_files_matching "$1" "${2:-}" "$HELIX_PRINT_SECTION_RE"
+}
+
+# Print each file in moonraker_conf_files @1 @2 that holds any section this
+# plugin owns, one per line: what an uninstall has to clean.
+helix_print_owned_files() {
+    helix_conf_files_matching "$1" "${2:-}" "$HELIX_PRINT_OWNED_RE"
+}
+
+# Print an awk program that prints a config file without the sections whose
+# header matches extended regex @1 (anchored, bracketed: ^\[(a|b)\]). A run of
+# such sections goes as one, along with the "#~# --- HelixPrint Plugin ---"
+# line a git-clone install wrote above it. A run that reaches the end of the
+# file also takes the one blank line before it, which is what an install writes
+# ahead of the section it appends, so an install and uninstall leave the file as
+# it was. A run between two other sections keeps that line: it separates them.
+helix_strip_awk() {
+    # shellcheck disable=SC2016  # awk's own $ fields
+    printf '%s' '
     { line[NR] = $0 }
     END {
         skip = 0
         for (i = 1; i <= NR; i++) {
-            if (line[i] ~ /^\[helix_print\]/) { skip = 1; start = i }
+            if (line[i] ~ /'"$1"'/) {
+                if (!skip) {
+                    start = i
+                    if (i > 1 && line[i - 1] == "#~# --- HelixPrint Plugin ---") { drop[i - 1] = 1; start = i - 1 }
+                }
+                skip = 1
+            }
             else if (line[i] ~ /^\[/) { skip = 0 }
-            drop[i] = skip
+            if (skip) { drop[i] = 1 }
         }
         if (skip && start > 1 && line[start - 1] ~ /^[ \t\r]*$/) { drop[start - 1] = 1 }
         for (i = 1; i <= NR; i++) { if (!drop[i]) print line[i] }
     }
 '
+}
+
+# Programs for helix_strip_awk: every section the plugin owns (uninstall), and
+# only the git-clone install's updater entry (an install, whose link makes that
+# entry follow a checkout Moonraker no longer loads).
+# shellcheck disable=SC2034  # read by the scripts that source this file
+HELIX_PRINT_STRIP_AWK=$(helix_strip_awk "$HELIX_PRINT_OWNED_RE")
+# shellcheck disable=SC2034
+HELIX_PRINT_UPDATER_STRIP_AWK=$(helix_strip_awk "$HELIX_PRINT_UPDATER_RE")

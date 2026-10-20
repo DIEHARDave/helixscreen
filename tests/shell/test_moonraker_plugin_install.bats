@@ -1086,3 +1086,34 @@ exec $real \"\$@\""
     cmp -s "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" || fail "edited: $(cat "$c/moonraker.conf")"
     [ -z "$(find "$c" -name 'moonraker.conf.bak.*')" ] || fail "backed up a file it did not change"
 }
+
+@test "auto uninstall removes the updater entry a git-clone install wrote, and its marker" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+    printf '\n#~# --- HelixPrint Plugin ---\n[helix_print]\n# enabled: True\n\n[update_manager helix_print]\ntype: git_repo\npath: %s/helix_print\nmanaged_services: moonraker\n' \
+        "$home" >> "$c/moonraker.conf"
+    ln -s "$REPO_ROOT/moonraker-plugin/helix_print.py" "$home/moonraker/moonraker/components/helix_print.py"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" ||
+        fail "moonraker.conf differs: $(diff "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf")"
+}
+
+@test "auto install drops an updater entry for a git checkout of the plugin" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[update_manager helix_print]\ntype: git_repo\npath: ~/helix_print\n\n[octoprint_compat]\n' \
+        > "$c/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    ! grep -q '^\[update_manager helix_print\]' "$c/moonraker.conf" || fail "kept: $(cat "$c/moonraker.conf")"
+    grep -q '^\[octoprint_compat\]' "$c/moonraker.conf" || fail "lost the next section"
+    [ "$(count_helix_sections "$c")" -eq 1 ]
+}

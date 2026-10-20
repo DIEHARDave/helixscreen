@@ -10,8 +10,8 @@
 #   ./install.sh --auto       # Full auto-install (updates config, restarts Moonraker)
 #   ./install.sh --uninstall  # Remove the plugin
 #
-# Remote install (from GitHub):
-#   curl -sSL https://raw.githubusercontent.com/prestonbrown/helixscreen/main/moonraker-plugin/remote-install.sh | sh
+# On a Moonraker host HelixScreen does not run on, remote-install.sh fetches
+# a release's plugin files and runs this script from them.
 
 set -e
 
@@ -49,7 +49,7 @@ error() {
     exit 1
 }
 
-# helix_print_section_files: which config files hold [helix_print].
+# helix_print_section_files and friends: which config files hold our sections.
 [ -f "$SCRIPT_DIR/helix_print_conf.sh" ] || error "Missing $SCRIPT_DIR/helix_print_conf.sh"
 # shellcheck source=moonraker-plugin/helix_print_conf.sh
 . "$SCRIPT_DIR/helix_print_conf.sh"
@@ -341,19 +341,20 @@ backup_config() {
     printf '%s' "$_bk_new"
 }
 
-# Remove the [helix_print] section from one config file, with a backup.
-# Returns 1 when the file had the section and could not be edited.
+# Remove the sections whose header matches extended regex @2 from config file
+# @1 with awk program @3 (helix_strip_awk), with a backup. Returns 1 when the
+# file had such a section and could not be edited.
 remove_helix_section() {
     file="$1"
-    [ -f "$file" ] && grep -q '^\[helix_print\]' "$file" || return 0
+    [ -f "$file" ] && grep -Eq "$2" "$file" || return 0
     if ! backup_file=$(backup_config "$file"); then
-        warn "Could not back up $(basename "$file") - leaving the [helix_print] section in place"
+        warn "Could not back up $(basename "$file") - leaving its HelixPrint sections in place"
         return 1
     fi
     info "Created backup: $backup_file"
-    info "Removing [helix_print] section from $(basename "$file")"
-    if ! rewrite_with_awk "$file" "$HELIX_PRINT_STRIP_AWK"; then
-        warn "Could not remove [helix_print] from $(basename "$file") - see $backup_file"
+    info "Removing HelixPrint sections from $(basename "$file")"
+    if ! rewrite_with_awk "$file" "$3"; then
+        warn "Could not remove HelixPrint sections from $(basename "$file") - see $backup_file"
         return 1
     fi
     return 0
@@ -611,15 +612,16 @@ auto_uninstall() {
         strip_phase_tracking_instrumentation "$config_dir" || exit_status=$EXIT_UNINSTALL_NEEDS_ATTENTION
     fi
 
-    # Remove the config section from every file Moonraker reads it from:
+    # Remove the plugin's sections from every file Moonraker reads them from:
     # moonraker.conf and anything it includes, such as the user file a
     # mod-owned moonraker.conf includes. The plugin itself is already gone at
     # this point, so a failure backing up or editing a config here is "needs
     # attention", not a failed uninstall, and must not trip set -e and skip
     # the rest of this function.
     if [ -n "$config_dir" ] && [ -f "$config_dir/moonraker.conf" ]; then
-        for file in $(helix_print_section_files "$config_dir/moonraker.conf" "$(running_moonraker_root)"); do
-            remove_helix_section "$file" || exit_status=$EXIT_UNINSTALL_NEEDS_ATTENTION
+        for file in $(helix_print_owned_files "$config_dir/moonraker.conf" "$(running_moonraker_root)"); do
+            remove_helix_section "$file" "$HELIX_PRINT_OWNED_RE" "$HELIX_PRINT_STRIP_AWK" ||
+                exit_status=$EXIT_UNINSTALL_NEEDS_ATTENTION
         done
     fi
 
@@ -734,6 +736,13 @@ auto_install() {
         if klipper_hides_dot_dirs; then
             ensure_visible_symlink_dir "$section_holder"
         fi
+
+        # An updater entry for a git checkout of the plugin follows a tree
+        # Moonraker no longer loads once the link points here.
+        for file in $(helix_conf_files_matching "$config_dir/moonraker.conf" "$(running_moonraker_root)" "$HELIX_PRINT_UPDATER_RE"); do
+            remove_helix_section "$file" "$HELIX_PRINT_UPDATER_RE" "$HELIX_PRINT_UPDATER_STRIP_AWK" ||
+                error "Could not remove [update_manager helix_print] from $file"
+        done
     else
         warn "Could not find moonraker.conf - manual config required"
     fi

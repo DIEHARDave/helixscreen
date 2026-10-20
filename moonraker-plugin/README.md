@@ -4,18 +4,21 @@ A Moonraker component that handles modified G-code files while preserving origin
 
 ## Quick Install (Recommended)
 
-**One-liner install** - run this on your printer:
+On a printer that runs HelixScreen, install the plugin from the app: **Advanced > Install
+HelixPrint Plugin**. It installs the plugin of the app's own release.
+
+When HelixScreen runs on another machine, the same screen shows a command to run over SSH on
+the printer, pinned to the app's release:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/prestonbrown/helixscreen/main/moonraker-plugin/remote-install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/prestonbrown/helixscreen/v1.2.0/moonraker-plugin/remote-install.sh | sh -s -- v1.2.0
 ```
 
-This automatically:
-- Clones the plugin to `~/helix_print`
-- Creates the Moonraker symlink
-- Adds `[helix_print]` config section
-- Adds `[update_manager helix_print]` for auto-updates
-- Restarts Moonraker
+It downloads that release's plugin files to `~/helix_print` and runs their `install.sh --auto`:
+the Moonraker symlink, the `[helix_print]` section and a Moonraker restart. It needs `sh` and
+one of curl, wget or python3, and no git. Add `--uninstall` after the release to remove the
+plugin, its config sections and `~/helix_print`. After the app updates, run the command it
+shows again to match the plugin to it.
 
 ## Problem
 

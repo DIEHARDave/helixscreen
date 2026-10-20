@@ -13,7 +13,7 @@
 #
 # Options:
 #   --vintages "A B"   Moonraker refs (default: v0.8.0 v0.9.3 master)
-#   --layouts "A B"    cell.sh layouts (default: plain legacy k1 forgex modconf incsec)
+#   --layouts "A B"    cell.sh layouts (default: plain legacy k1 forgex modconf incsec remote)
 #   --out DIR          results (default: build/plugin-host/<timestamp>)
 #   --no-strict        run install.sh unconfined even where its service confines it
 #   --keep             leave each cell's container running for a look inside
@@ -24,7 +24,8 @@
 #   up         Moonraker answers /server/info; its warnings and failed
 #              components are the baseline
 #   install    the plugin copied into INSTALL_DIR, install.sh --no-restart
-#              --auto as the app user exits 0
+#              --auto as the app user exits 0 (remote: the REMOTE-mode
+#              command, against a release served inside the container)
 #   loaded     after POST /server/restart: helix_print in components,
 #              /server/helix/status answers, no failed component, no warning
 #              the baseline lacked
@@ -46,7 +47,7 @@ HARNESS="$REPO/tests/plugin-host"
 read -r -a DOCKER <<< "${DOCKER:-docker}"
 
 VINTAGES="v0.8.0 v0.9.3 master"
-ALL_LAYOUTS="plain legacy k1 forgex modconf incsec"
+ALL_LAYOUTS="plain legacy k1 forgex modconf incsec remote"
 LAYOUTS=$ALL_LAYOUTS
 OUT=""
 STRICT=1

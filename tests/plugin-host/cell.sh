@@ -27,6 +27,10 @@
 #   modconf           plain, with a mod-owned symlinked moonraker.conf that
 #                     includes user.moonraker.conf
 #   incsec            plain, with [helix_print] already in an included file
+#   remote            plain, but the app runs elsewhere: install and uninstall
+#                     are the REMOTE-mode command, remote-install.sh piped
+#                     into sh by pi over curl, fetching the plugin from a
+#                     release tree served on 127.0.0.1 (no network, no git)
 #
 # Moonraker v0.8 resolves a relative [include] against the directory of the
 # symlink's target, later versions against the link's own directory; the mod
@@ -41,6 +45,11 @@ set -eu
 STATE=/run/cell.env
 PLUGIN_SRC=/plugin-src
 PRE=/var/tmp/cell-pre
+# The release the remote layout serves, laid out as raw.githubusercontent.com
+# serves a tag, and where the remote command finds it.
+RELEASE_ROOT=/var/tmp/release
+RELEASE_REF=v0.0.0-harness
+RELEASE_URL=http://127.0.0.1:8000
 MR_SRC=/opt/moonraker-src
 FX=/data/.mod/.forge-x
 
@@ -62,7 +71,7 @@ layout() { # <layout>
     CONFIG_DIR=/home/pi/printer_data/config
     COMPONENTS_DIR=/home/pi/moonraker/moonraker/components
     case "$1" in
-        plain|legacy|modconf|incsec)
+        plain|legacy|modconf|incsec|remote)
             cp -a "$MR_SRC" /home/pi/moonraker
             chown -R pi:pi /home/pi/moonraker
             data_dirs /home/pi/printer_data pi
@@ -143,6 +152,21 @@ load() {
     . "$STATE"
 }
 
+# Run the REMOTE-mode command as pi over a login-like shell, the way a user
+# pastes it: curl piped into sh, on a PATH whose git fails loudly.
+remote_command() { # [--uninstall]
+    load
+    mkdir -p /var/tmp/cell-bin
+    printf '#!/bin/sh\necho "git called: $*" >&2\nexit 127\n' > /var/tmp/cell-bin/git
+    chmod 0755 /var/tmp/cell-bin/git
+    cd /home/pi
+    # shellcheck disable=SC2016  # expands in the user's shell
+    setpriv --reuid=pi --regid=pi --init-groups env HOME=/home/pi \
+        PATH=/var/tmp/cell-bin:/usr/local/bin:/usr/bin:/bin HELIX_PLUGIN_BASE_URL="$RELEASE_URL" \
+        sh -c 'url=$1 ref=$2; shift 2; curl -fsSL "$url/$ref/moonraker-plugin/remote-install.sh" | sh -s -- "$ref" "$@"' \
+        sh "$RELEASE_URL" "$RELEASE_REF" "$@"
+}
+
 # Run install.sh with <args> as the app, confined as its service confines it.
 as_app() { # <args...>
     load
@@ -164,9 +188,20 @@ as_app() { # <args...>
 case "${1:-}" in
     start)
         layout "${2:?layout}"
+        if [ "$2" = remote ]; then
+            mkdir -p "$RELEASE_ROOT"
+            python3 -m http.server 8000 --bind 127.0.0.1 --directory "$RELEASE_ROOT" \
+                > /var/log/release-server.out 2>&1 &
+        fi
         supervise ;;
     stage)
         load
+        if [ "$LAYOUT" = remote ]; then
+            rm -rf "${RELEASE_ROOT:?}/$RELEASE_REF"
+            mkdir -p "$RELEASE_ROOT/$RELEASE_REF"
+            cp -R "$PLUGIN_SRC" "$RELEASE_ROOT/$RELEASE_REF/moonraker-plugin"
+            rm -rf "$RELEASE_ROOT/$RELEASE_REF/moonraker-plugin/tests"
+        fi
         rm -rf "$INSTALL_DIR/moonraker-plugin" "$PRE"
         cp -R "$PLUGIN_SRC" "$INSTALL_DIR/moonraker-plugin"
         chown -R "$APP_USER:$APP_USER" "$INSTALL_DIR/moonraker-plugin"
@@ -176,8 +211,17 @@ case "${1:-}" in
         # user placed before the install included, so incsec expects it gone.
         if [ "$LAYOUT" = incsec ]; then : > "$PRE/helix.conf"; fi ;;
     install)
+        load
+        if [ "$LAYOUT" = remote ]; then remote_command; exit; fi
         as_app --no-restart --auto ;;
     uninstall)
+        load
+        if [ "$LAYOUT" = remote ]; then
+            remote_command --uninstall
+            # Everything the command added goes: its plugin directory too.
+            if [ -e /home/pi/helix_print ]; then echo "left behind: /home/pi/helix_print" >&2; exit 1; fi
+            exit 0
+        fi
         as_app --no-restart --uninstall-auto ;;
     sections)
         load

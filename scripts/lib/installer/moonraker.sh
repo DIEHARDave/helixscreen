@@ -750,8 +750,10 @@ _remove_helix_print_inline() {
     local conf section_conf
     conf=$(find_moonraker_conf)
     [ -n "$conf" ] || return 0
-    # Every file Moonraker reads the section from: the conf and its includes.
-    for section_conf in $(helix_print_section_files "$conf"); do
+    # Every file Moonraker reads the plugin's sections from: the conf and its
+    # includes. That covers the [update_manager helix_print] a git-clone
+    # install of the plugin wrote.
+    for section_conf in $(helix_print_owned_files "$conf"); do
         if host_path_is_mod_owned "$section_conf"; then
             log_warn "[helix_print] is in $section_conf, which the firmware mod owns - leaving it in place"
             continue
@@ -759,14 +761,14 @@ _remove_helix_print_inline() {
         local fs
         fs=$(file_sudo "$section_conf")
         $fs cp "$section_conf" "${section_conf}.bak.helixscreen-uninstall" 2>/dev/null || true
-        log_info "Removing [helix_print] section from $section_conf..."
+        log_info "Removing HelixPrint sections from $section_conf..."
         local prog="$HELIX_PRINT_STRIP_AWK"
         # The program is passed as an argument rather than interpolated into the
         # -c string, so its $0 and $1 stay awk's and are never expanded by a shell.
         if $fs sh -c 'awk "$1" "$2" > "$2.helixtmp" && mv "$2.helixtmp" "$2"' sh "$prog" "$section_conf"; then
-            log_success "Removed [helix_print] section from $section_conf"
+            log_success "Removed HelixPrint sections from $section_conf"
         else
-            log_warn "Could not remove [helix_print] from $section_conf - edit it by hand, backup at ${section_conf}.bak.helixscreen-uninstall"
+            log_warn "Could not remove HelixPrint sections from $section_conf - edit it by hand, backup at ${section_conf}.bak.helixscreen-uninstall"
         fi
     done
 }
@@ -796,7 +798,7 @@ remove_moonraker_plugin() {
     conf=$(find_moonraker_conf)
 
     local has_section=false
-    if [ -n "$conf" ] && [ -n "$(helix_print_section_files "$conf")" ]; then
+    if [ -n "$conf" ] && [ -n "$(helix_print_owned_files "$conf")" ]; then
         has_section=true
     fi
 

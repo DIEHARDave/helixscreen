@@ -18,6 +18,7 @@
 #include <atomic>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 // Forward declaration
@@ -149,12 +150,10 @@ class HelixPluginInstaller {
     void uninstall_local(UninstallCallback callback);
 
     /**
-     * @brief Get the curl command for remote installation
+     * @brief The command a user runs on a remote Moonraker host to install the plugin
      *
-     * Returns the one-liner curl command that users can copy and run
-     * via SSH on their printer.
-     *
-     * @return Curl command string
+     * plugin_remote_install_command() for this app's own release, so the
+     * plugin installed matches the app talking to it.
      */
     [[nodiscard]] std::string get_remote_install_command() const;
 
@@ -227,12 +226,24 @@ class HelixPluginInstaller {
 
     // Config key for "don't ask again" preference
     static constexpr const char* kPrefInstallDeclined = "/plugin_install_declined";
-
-    // Remote install URL
-    static constexpr const char* kRemoteInstallUrl =
-        "https://raw.githubusercontent.com/prestonbrown/helixscreen/main/moonraker-plugin/"
-        "remote-install.sh";
 };
+
+/**
+ * @brief The git ref holding the plugin of app version @p version
+ *
+ * A release version names its tag (1.2.0-beta.3 is v1.2.0-beta.3; build
+ * metadata after '+' is dropped). Anything else, such as a "dev" build, is main.
+ */
+std::string plugin_release_ref(std::string_view version);
+
+/**
+ * @brief The shell one-liner that installs the plugin of git ref @p ref
+ *
+ * Fetches that ref's moonraker-plugin/remote-install.sh and runs it with sh,
+ * pinned to the same ref, so the plugin files and the installer that places
+ * them both come from it.
+ */
+std::string plugin_remote_install_command(std::string_view ref);
 
 /**
  * @brief What the boot-time install prompt does when it is checked

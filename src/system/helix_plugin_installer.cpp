@@ -5,6 +5,7 @@
 
 #include "config.h"
 #include "helix_fs.h"
+#include "helix_version.h"
 #include "host_identity.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
@@ -417,8 +418,22 @@ void HelixPluginInstaller::uninstall_local(UninstallCallback callback) {
     }
 }
 
+std::string plugin_release_ref(std::string_view version) {
+    if (version.empty() || version.front() < '0' || version.front() > '9') {
+        return "main";
+    }
+    return "v" + std::string(version.substr(0, version.find('+')));
+}
+
+std::string plugin_remote_install_command(std::string_view ref) {
+    // -f: an HTTP error pipes nothing into sh rather than an error page.
+    const std::string r(ref);
+    return "curl -fsSL https://raw.githubusercontent.com/prestonbrown/helixscreen/" + r +
+           "/moonraker-plugin/remote-install.sh | sh -s -- " + r;
+}
+
 std::string HelixPluginInstaller::get_remote_install_command() const {
-    return std::string("curl -sSL ") + kRemoteInstallUrl + " | bash";
+    return plugin_remote_install_command(plugin_release_ref(helix_version()));
 }
 
 std::string HelixPluginInstaller::get_install_script_path() const {

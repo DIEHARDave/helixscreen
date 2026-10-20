@@ -524,6 +524,41 @@ CONF
     cmp -s "$BATS_TEST_TMPDIR/conf.before" "$conf" || fail "moonraker.conf itself was edited"
 }
 
+@test "remove_moonraker_plugin removes the updater entry a git-clone plugin install wrote" {
+    local symlink conf
+    setup_helix_print_symlink
+    symlink="$HELIX_PRINT_SYMLINK"
+    conf="$BATS_TEST_TMPDIR/cfg/moonraker.conf"
+    mkdir -p "$(dirname "$conf")"
+    printf '[server]\nhost: 0.0.0.0\n' > "$conf"
+    cp "$conf" "$BATS_TEST_TMPDIR/conf.before"
+    printf '\n#~# --- HelixPrint Plugin ---\n[helix_print]\n# enabled: True\n\n[update_manager helix_print]\ntype: git_repo\npath: ~/helix_print\nmanaged_services: moonraker\n' >> "$conf"
+    KLIPPER_HOME=""
+    KLIPPER_CONFIG_DIR=""
+    MOONRAKER_CONF_PATHS="$conf"
+
+    remove_moonraker_plugin 2>/dev/null
+
+    refute test -L "$symlink"
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$conf" ||
+        fail "moonraker.conf differs: $(diff "$BATS_TEST_TMPDIR/conf.before" "$conf")"
+}
+
+@test "remove_moonraker_plugin cleans an updater entry left with no [helix_print] beside it" {
+    local conf
+    conf="$BATS_TEST_TMPDIR/cfg/moonraker.conf"
+    mkdir -p "$(dirname "$conf")"
+    printf '[server]\nhost: 0.0.0.0\n\n[update_manager helix_print]\ntype: git_repo\npath: ~/helix_print\n' > "$conf"
+    KLIPPER_HOME=""
+    KLIPPER_CONFIG_DIR=""
+    MOONRAKER_CONF_PATHS="$conf"
+
+    remove_moonraker_plugin 2>/dev/null
+
+    refute_grep '^\[update_manager helix_print\]' "$conf"
+    grep -qx 'host: 0.0.0.0' "$conf" || fail "the rest of the file was lost: $(cat "$conf")"
+}
+
 @test "the main installer and the plugin installer share one [helix_print] detection" {
     local shared="$WORKTREE_ROOT/scripts/lib/installer/helix_print_conf.sh"
     [ "$(readlink -f "$shared")" = "$(readlink -f "$WORKTREE_ROOT/moonraker-plugin/helix_print_conf.sh")" ] \
