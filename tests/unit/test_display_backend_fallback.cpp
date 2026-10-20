@@ -20,6 +20,8 @@
  */
 
 #include "../test_helpers/config_dir_guard.h"
+#include "../test_helpers/log_capture.h"
+#include "../test_helpers/scoped_env.h"
 #include "display_backend.h"
 #include "text_io.h"
 
@@ -411,6 +413,31 @@ TEST_CASE("The watchdog's splash decision: DRM owns the panel only when it is av
     // fbdev and SDL never present through DRM.
     CHECK_FALSE(drm_will_own_panel(ForcedDisplayBackend::Fbdev, true));
     CHECK_FALSE(drm_will_own_panel(ForcedDisplayBackend::Sdl, true));
+}
+
+TEST_CASE("create_auto takes HELIX_DISPLAY_BACKEND=egl as the EGL rung, not an unknown value",
+          "[display][fallback]") {
+    // This build has no EGL presentation path, so the forced rung is declined
+    // by name and auto-detection takes over, which must not read as a typo.
+    helix::ScopedEnv backend("HELIX_DISPLAY_BACKEND", "egl");
+    helix::LogCapture log;
+    auto chosen = DisplayBackend::create_auto();
+
+    CHECK(log.count_containing("EGL presentation forced but not compiled in") == 1);
+    CHECK(log.count_containing("Unknown HELIX_DISPLAY_BACKEND value") == 0);
+#ifdef HELIX_DISPLAY_SDL
+    REQUIRE(chosen != nullptr);
+    CHECK(chosen->type() == DisplayBackendType::SDL);
+#endif
+}
+
+TEST_CASE("create_auto reports a value it does not know", "[display][fallback]") {
+    helix::ScopedEnv backend("HELIX_DISPLAY_BACKEND", "gpu");
+    helix::LogCapture log;
+    auto chosen = DisplayBackend::create_auto();
+
+    CHECK(log.count_containing("Unknown HELIX_DISPLAY_BACKEND value: gpu") == 1);
+    CHECK(log.count_containing("EGL presentation forced") == 0);
 }
 
 TEST_CASE("Backend fallback: all backends exhausted returns failure",
