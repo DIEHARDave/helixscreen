@@ -151,17 +151,26 @@ is_plugin_dir() {
     [ -f "$1/helix_print.py" ] || [ -f "$1/moonraker-plugin/helix_print.py" ]
 }
 
+# What place_plugin moved aside. It stays until the install has taken, since
+# the plugin link still names a file in it.
+PLUGIN_OLD="$PLUGIN_DIR.old.$$"
+
 # Put the files staged in @1 in PLUGIN_DIR, in place of what was there.
 place_plugin() {
-    _pp_old="$PLUGIN_DIR.old.$$"
     if [ -e "$PLUGIN_DIR" ]; then
-        mv "$PLUGIN_DIR" "$_pp_old" || error "Could not move $PLUGIN_DIR aside"
+        mv "$PLUGIN_DIR" "$PLUGIN_OLD" || error "Could not move $PLUGIN_DIR aside"
     fi
     if ! mv "$1" "$PLUGIN_DIR"; then
-        [ ! -e "$_pp_old" ] || mv "$_pp_old" "$PLUGIN_DIR"
+        [ ! -e "$PLUGIN_OLD" ] || mv "$PLUGIN_OLD" "$PLUGIN_DIR"
         error "Could not create $PLUGIN_DIR"
     fi
-    rm -rf "$_pp_old"
+}
+
+# Undo place_plugin after a failed install: the new files go back to the
+# stage @1, which the exit trap removes, and what was there returns.
+restore_plugin() {
+    [ -e "$PLUGIN_OLD" ] || return 0
+    mv "$PLUGIN_DIR" "$1" && mv "$PLUGIN_OLD" "$PLUGIN_DIR"
 }
 
 main() {
@@ -204,7 +213,17 @@ main() {
     fi
 
     place_plugin "$stage"
-    sh "$PLUGIN_DIR/install.sh" --auto < /dev/null
+    status=0
+    sh "$PLUGIN_DIR/install.sh" --auto < /dev/null || status=$?
+    if [ "$status" -ne 0 ]; then
+        if restore_plugin "$stage"; then
+            printf '[ERROR] %s\n' "Install failed - the previous $PLUGIN_DIR is back in place" >&2
+        else
+            printf '[ERROR] %s\n' "Install failed, and the previous plugin could not be put back from $PLUGIN_OLD" >&2
+        fi
+        exit "$status"
+    fi
+    rm -rf "$PLUGIN_OLD"
 }
 
 # Called last, so a download cut short runs nothing.

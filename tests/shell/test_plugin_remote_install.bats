@@ -267,6 +267,23 @@ EOF
     [ "$(grep -c '^\[helix_print\]' "$c")" -eq 1 ] || fail "sections: $(cat "$c")"
 }
 
+@test "an install.sh that fails over a git-clone install puts the clone back" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_home "$home"
+    setup_git_clone_install "$home"
+    local link="$home/moonraker/moonraker/components/helix_print.py"
+    publish_release v1.2.4
+    printf '#!/bin/sh\necho "install refused" >&2\nexit 1\n' > "$RELEASE_ROOT/v1.2.4/moonraker-plugin/install.sh"
+
+    run_wrapper "$home" v1.2.4
+    [ "$status" -ne 0 ] || fail "a failed install.sh reported success"
+
+    [ -e "$link" ] || fail "the plugin link dangles: $(readlink "$link")"
+    [ -d "$home/helix_print/.git" ] || fail "the clone was not put back: $(ls -A "$home/helix_print")"
+    [ -z "$(find "$home" -maxdepth 1 -name '.helix_print.stage.*' -o -maxdepth 1 -name 'helix_print.old.*')" ] ||
+        fail "left: $(ls -A "$home")"
+}
+
 @test "uninstalling a git-clone install leaves moonraker.conf as it was before it" {
     local home="$BATS_TEST_TMPDIR/home"
     setup_home "$home"
