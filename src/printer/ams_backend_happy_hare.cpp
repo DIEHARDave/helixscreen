@@ -3980,7 +3980,9 @@ std::vector<helix::printer::DeviceAction> AmsBackendHappyHare::get_device_action
 
     // Overlay effective values onto actions
     for (auto& a : actions) {
-        if (!config_loaded && config_backed(a)) {
+        // Clog detection's value is the encoder mode the mmu status reports,
+        // which needs no config; only its write waits.
+        if (!config_loaded && config_backed(a) && a.id != "clog_detection") {
             continue;
         }
         // --- Speed sliders ---

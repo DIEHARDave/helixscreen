@@ -3857,6 +3857,28 @@ TEST_CASE("parse_mmu_state extracts flowguard encoder_mode", "[ams][happy_hare][
     }
 }
 
+TEST_CASE("clog detection shows the encoder's reported mode while it waits for the config",
+          "[ams][happy_hare][device_actions]") {
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.initialize_test_gates(4);
+    // config_defaults_.loaded stays false: the configfile has not arrived.
+
+    nlohmann::json mmu_data;
+    mmu_data["flowguard"] = {{"encoder_mode", 2}};
+    helper.test_parse_mmu_state(mmu_data);
+
+    const auto actions = helper.get_device_actions();
+    const auto it = std::find_if(actions.begin(), actions.end(),
+                                 [](const auto& a) { return a.id == "clog_detection"; });
+    REQUIRE(it != actions.end());
+    CHECK_FALSE(it->enabled);
+    CHECK(it->disable_reason == "Loading configuration...");
+    const auto* shown = std::any_cast<std::string>(&it->current_value);
+    REQUIRE(shown != nullptr);
+    CHECK(*shown == "Auto");
+}
+
 TEST_CASE("parse_mmu_state extracts LED exit_effect", "[ams][happy_hare][device_actions]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
