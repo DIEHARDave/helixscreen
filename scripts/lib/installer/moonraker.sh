@@ -23,7 +23,8 @@ _HELIX_MOONRAKER_SOURCED=1
 #   procd starts Moonraker with -c /usr/share/moonraker/moonraker.conf, which
 #   find_moonraker_conf reads from the running process. The static entry, last
 #   so no other layout's vendor copy can shadow its own conf, covers a K2 whose
-#   Moonraker is stopped.
+#   Moonraker is stopped. The path is Creality's vendor package, K2-only in
+#   practice: K1 keeps its conf under /usr/data, listed above it.
 MOONRAKER_CONF_PATHS="
 /home/pi/printer_data/config/moonraker.conf
 /home/biqu/printer_data/config/moonraker.conf

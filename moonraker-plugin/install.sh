@@ -114,19 +114,6 @@ components_under() {
     return 1
 }
 
-# Print the running Moonraker's /proc directory (running_moonraker_process).
-running_moonraker_proc() {
-    proc=$(running_moonraker_process | sed -n 1p)
-    [ -n "$proc" ] || return 1
-    printf '%s' "$proc"
-}
-
-# Print the running Moonraker's argv, one argument per line.
-running_moonraker_args() {
-    proc=$(running_moonraker_proc) || return 1
-    tr '\000' '\n' < "$proc/cmdline" 2>/dev/null
-}
-
 # Translate a path on this side into the same file as the running Moonraker
 # names it: strip its chroot prefix when the path lies inside the chroot. A
 # path outside it is only visible to Moonraker through a bind mount at the
@@ -259,7 +246,10 @@ find_moonraker_components() {
 }
 
 # Find the directory holding moonraker.conf: the user's home first, then the
-# conf the running Moonraker loads, then the known vendor layouts.
+# conf the running Moonraker loads, then the known vendor layouts. A directory,
+# not a file, because helix_conf_file and its callers name <dir>/moonraker.conf;
+# a running conf under another basename fails the check below and the next
+# candidate is tried.
 find_config_dir() {
     conf=$(running_moonraker_conf)
     for loc in \

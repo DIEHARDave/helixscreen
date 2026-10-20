@@ -103,6 +103,79 @@ setup_k2_layout() {
     [ "$(find_moonraker_conf)" = "$static" ]
 }
 
+@test "running Moonraker: joined -cPATH and abbreviated --config PATH name the conf" {
+    local conf="$BATS_TEST_TMPDIR/etc/mr.conf"
+    mkdir -p "$(dirname "$conf")"
+    : > "$conf"
+    MOONRAKER_CONF_PATHS="/nonexistent/moonraker.conf"
+
+    fake_running_moonraker 10 "-c$conf"
+    [ "$(find_moonraker_conf)" = "$conf" ] || fail "-cPATH: '$(find_moonraker_conf)'"
+
+    fake_running_moonraker 10 --config "$conf"
+    [ "$(find_moonraker_conf)" = "$conf" ] || fail "--config PATH: '$(find_moonraker_conf)'"
+}
+
+@test "running Moonraker: a -c naming no file falls back to its -d" {
+    local data="$BATS_TEST_TMPDIR/srv/printer_data"
+    mkdir -p "$data/config"
+    : > "$data/config/moonraker.conf"
+    MOONRAKER_CONF_PATHS="/nonexistent/moonraker.conf"
+    fake_running_moonraker 10 -c "$BATS_TEST_TMPDIR/missing/moonraker.conf" -d "$data"
+
+    [ "$(find_moonraker_conf)" = "$data/config/moonraker.conf" ]
+}
+
+@test "running Moonraker: a relative -c is skipped, not read from our cwd" {
+    mkdir -p "$BATS_TEST_TMPDIR/cwd/rel"
+    : > "$BATS_TEST_TMPDIR/cwd/rel/moonraker.conf"
+    MOONRAKER_CONF_PATHS="/nonexistent/moonraker.conf"
+    fake_running_moonraker 10 -c rel/moonraker.conf
+
+    result=$(cd "$BATS_TEST_TMPDIR/cwd" && find_moonraker_conf)
+    [ -z "$result" ] || fail "got '$result'"
+}
+
+@test "running Moonraker: a -c inside its chroot is read through the chroot" {
+    local chroot="$BATS_TEST_TMPDIR/data/.mod/.forge-x"
+    mkdir -p "$chroot/etc/moonraker"
+    : > "$chroot/etc/moonraker/moonraker.conf"
+    MOONRAKER_CONF_PATHS="/nonexistent/moonraker.conf"
+    fake_running_moonraker 10 -c /etc/moonraker/moonraker.conf
+    ln -s "$chroot" "$HELIX_PROC_ROOT/10/root"
+
+    [ "$(find_moonraker_conf)" = "$chroot/etc/moonraker/moonraker.conf" ]
+}
+
+@test "running Moonraker: a mod-owned running conf is never returned" {
+    local mod="$BATS_TEST_TMPDIR/modhost/config/mod"
+    mkdir -p "$mod"
+    : > "$mod/moonraker.conf"
+    HOST_MOD_ROOT="$mod"
+    HOST_MOONRAKER_USER_CONF=""
+    MOONRAKER_CONF_PATHS="/nonexistent/moonraker.conf"
+    fake_running_moonraker 10 -c "$mod/moonraker.conf"
+
+    result=$(find_moonraker_conf)
+    [ -z "$result" ] || fail "got '$result'"
+}
+
+@test "running Moonraker: two instances leave the decision to the static lookup" {
+    local one="$BATS_TEST_TMPDIR/home/pi/printer_1_data" two="$BATS_TEST_TMPDIR/home/pi/printer_2_data"
+    mkdir -p "$one/config" "$two/config"
+    : > "$one/config/moonraker.conf"
+    : > "$two/config/moonraker.conf"
+    local static="$BATS_TEST_TMPDIR/static/moonraker.conf"
+    mkdir -p "$(dirname "$static")"
+    : > "$static"
+    MOONRAKER_CONF_PATHS="$static"
+    fake_running_moonraker 1000 -d "$one"
+    fake_running_moonraker 999 -d "$two"
+
+    [ "$(find_moonraker_conf)" = "$static" ] || fail "got '$(find_moonraker_conf)'"
+    [ -z "$(running_moonraker_conf)" ]
+}
+
 @test "running Moonraker: the platform's own config dir still wins over its -c" {
     local home="$BATS_TEST_TMPDIR/home/pi"
     mkdir -p "$home/printer_data/config"
