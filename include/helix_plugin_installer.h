@@ -349,7 +349,10 @@ struct PluginSelfHealMemory {
     /// The plugin file a re-pointed link was restarted for; empty when none.
     std::string relinked_for;
 
-    bool operator==(const PluginSelfHealMemory&) const = default;
+    bool operator==(const PluginSelfHealMemory& o) const {
+        return restarted_for_bundled == o.restarted_for_bundled &&
+               restarted_for_reported == o.restarted_for_reported && relinked_for == o.relinked_for;
+    }
 };
 
 /**

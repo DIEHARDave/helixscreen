@@ -49,6 +49,22 @@ struct WaitResult {
     std::string output;
 };
 
+/**
+ * @brief Log install.sh's output line by line.
+ *
+ * The script's own messages are the only record of why it failed, so a
+ * failure logs them at warn; a success keeps them at debug.
+ */
+static void log_script_output(const std::string& output, bool succeeded) {
+    for (const auto& line : script_output_lines(output)) {
+        if (succeeded) {
+            spdlog::debug("[PluginInstaller] install.sh: {}", line);
+        } else {
+            spdlog::warn("[PluginInstaller] install.sh: {}", line);
+        }
+    }
+}
+
 #if !defined(ESP_PLATFORM)
 // install.sh prints a handful of lines; anything past this is noise.
 constexpr size_t kMaxScriptOutputBytes = 16 * 1024;
@@ -71,22 +87,6 @@ static void drain_output(int fd, std::string& out) {
             continue;
         }
         return;
-    }
-}
-
-/**
- * @brief Log install.sh's output line by line.
- *
- * The script's own messages are the only record of why it failed, so a
- * failure logs them at warn; a success keeps them at debug.
- */
-static void log_script_output(const std::string& output, bool succeeded) {
-    for (const auto& line : script_output_lines(output)) {
-        if (succeeded) {
-            spdlog::debug("[PluginInstaller] install.sh: {}", line);
-        } else {
-            spdlog::warn("[PluginInstaller] install.sh: {}", line);
-        }
     }
 }
 
