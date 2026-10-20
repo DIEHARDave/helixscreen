@@ -409,7 +409,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     [[nodiscard]] std::string build_preprint_gcode(const std::set<int>& tools_used,
                                                    const std::map<int, int>& remap) const override;
 
-    /// The next print to begin within kStartFromHereWindow is this screen's.
+    /// A start from this screen during a print in progress (a restart whose
+    /// cancel and start reach this backend as one unbroken print) begins a
+    /// new print's state.
     void note_print_start_from_here() override;
 
     /// print_task_config.py's reset_print_info() returns extruder_map_table to
@@ -668,13 +670,6 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         ResumeReadyCallback on_ready;
     };
 
-    /// What judge_task_config_locked() found for the running print.
-    enum class TaskConfigNotice {
-        None,         ///< nothing to say
-        OtherClient,  ///< another client started it without the task setup
-        ToolsUnknown, ///< this screen started it without knowing the file's tools
-    };
-
     struct FrameEffects {
         bool changed = false;
         /// The active-tool port-present flag changed (#991): published to
@@ -707,11 +702,11 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         std::vector<std::pair<int, PendingRecordWrite>> record_flushes;
         /// The head a refeed waits on reached a settled state this frame.
         bool refeed_settled = false;
-        /// The running print's task names no used head: its file is checked
-        /// for a tool past the first, and the user told once.
-        TaskConfigNotice task_config_unset = TaskConfigNotice::None;
-        std::string task_config_unset_file;
-        uint32_t task_config_print = 0;
+        /// The print's first printing frame: its file's heads are checked for
+        /// one the firmware will not load.
+        bool check_used_heads = false;
+        std::string check_used_heads_file;
+        uint32_t check_used_heads_print = 0;
     };
 
     void dispatch_effects(const FrameEffects& fx);
@@ -985,20 +980,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// confirmed load, the print ending, and a disconnect. Under mutex_.
     std::array<bool, kNumTools> load_unconfirmed_{};
 
-    /// The current print has been judged for a task configured with no used
-    /// heads: once per print, reset when the print ends. Under mutex_.
-    bool task_config_judged_ = false;
-
-    /// How long a start from this screen waits for its print to begin before
-    /// the mark lapses; print_stats reads printing as soon as the file opens.
-    static constexpr std::chrono::seconds kStartFromHereWindow{120};
-
-    /// When this screen last began a start; unset when none is waiting.
-    /// Under mutex_.
-    std::optional<std::chrono::steady_clock::time_point> start_from_here_at_;
-
-    /// The running print was started from this screen. Under mutex_.
-    bool print_started_here_ = false;
+    /// The current print's used heads have been checked: once per print,
+    /// reset when the print ends. Under mutex_.
+    bool used_heads_checked_ = false;
 
     /// How long a refeed's OK waits for the head's next settled frame.
     static constexpr std::chrono::milliseconds kRefeedFrameWait{3000};
@@ -1024,9 +1008,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// main thread only.
     std::unique_ptr<FileStartFactsLoader> file_facts_;
 
-    /// Answers whether @p filename uses a tool past the first; tests replace
-    /// the file read with it. Main thread only.
-    std::function<void(const std::string& filename, std::function<void(bool)> on_answer)>
+    /// Answers the tools @p filename uses (empty when unreadable); tests
+    /// replace the file read with it. Main thread only.
+    std::function<void(const std::string& filename, std::function<void(std::set<int>)> on_tools)>
         file_tools_probe_;
 
     /// machine_state_manager.main_state from this backend's own status frames;
@@ -1204,22 +1188,19 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// unconfirmed loads and the task judgement. Caller holds mutex_.
     void apply_print_state_locked(const std::string& state);
 
-    /// Once per print: a print running with every extruders_used flag false
-    /// was started without the task setup, so the firmware neither feeds,
-    /// primes nor switch-checks a head before its first use, and unloads
-    /// nothing at the end. Answers whose doing that was, so its file can be
-    /// checked and the user told in words true of it. Caller holds mutex_.
-    [[nodiscard]] TaskConfigNotice judge_task_config_locked();
+    /// True once per print, on its first printing frame: the moment its
+    /// used heads are checked. Caller holds mutex_.
+    [[nodiscard]] bool used_heads_check_due_locked();
 
-    /// Whether a file uses a tool past the first, by its scanned tools, else
-    /// its per-tool weights, else its palette size. A file nothing answers
-    /// for counts as using one: the warning costs less than the pause.
-    [[nodiscard]] static bool file_uses_later_tool(const FileStartFacts& facts);
+    /// The heads @p tools print from: the task's map when the firmware holds a
+    /// configured task, else the default routing. Caller holds mutex_.
+    [[nodiscard]] std::set<int> heads_for_tools_locked(const std::set<int>& tools) const;
 
-    /// Check the file of print @p print for a tool past the first and warn
-    /// the user when it has one and that print is still running.
-    void warn_if_unset_task_uses_later_tool(const std::string& filename, uint32_t print,
-                                            TaskConfigNotice notice);
+    /// Read @p filename's tools and warn, once per head, about each head the
+    /// print uses that its feeder reports not loaded and the firmware will not
+    /// load itself (not in extruders_used), while print @p print still runs.
+    /// Silent when the tools cannot be read.
+    void warn_unloaded_used_heads(const std::string& filename, uint32_t print);
 
     /// On a channel whose firmware states no identity at all, drop the brand
     /// and product line the lane only remembers. Caller holds mutex_.

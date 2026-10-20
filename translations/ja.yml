@@ -1064,8 +1064,6 @@ translations:
   ETA {}: '終了予定 {}'
   EXTRAS: その他
   Each fan can only be selected once: 各ファンは一度のみ選択できます
-  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
-  : 'プリンターがロードもプライミングも行わないため、2番目以降のツールヘッドは初めて使われるときに印刷を一時停止します。印刷終了時にフィラメントは排出されません。'
   Edit: 編集
   Edit Filament: フィラメントを編集
   Edit Slot: スロットを編集
@@ -1617,7 +1615,6 @@ translations:
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen がクラッシュしました
   HelixScreen Macros: 'HelixScreenマクロ'
-  HelixScreen couldn't read which toolheads this file uses, so the printer wasn't told.: 'HelixScreenはこのファイルが使うツールヘッドを読み取れなかったため、プリンターに伝えていません。'
   HelixScreen is detecting your display orientation: HelixScreenがディスプレイの向きを検出しています
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     はマルチスプール/カラー印刷操作のためにフィラメントチェンジャーと連携します。
@@ -3719,7 +3716,6 @@ translations:
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: この印刷には約
     %.0fg 必要ですが、スプールの残量は約 %.0fg です。それでも開始しますか？
   This print never reports layer {}.: 'この印刷はレイヤー {} を報告しません。'
-  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: 'この印刷はHelixScreen以外から開始されたため、プリンターはどのツールヘッドを使うかを知りません。'
   This printer cannot calibrate tool offsets automatically: このプリンターはツールオフセットを自動でキャリブレートできません
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: このプリンターのゲートは Spoolman から設定されます。HelixScreen 側のコピーはクリアしました。Spoolman でスプールを削除してください。
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: このプリンターのゲートは Spoolman から設定されます。色・素材・スプールの変更は Spoolman で行ってください。
@@ -4302,6 +4298,7 @@ translations:
   '{} left': '残り {}'
   '{} lines in helixscreen.env were ignored': 'helixscreen.env の{}行が無視されました'
   '{} kept crashing the panel; switched back to {}': '{} で画面のクラッシュが繰り返されたため、{} に戻しました'
+  "{} isn't loaded. The print will pause when it needs it.": '{}はロードされていません。必要になった時点で印刷が一時停止します。'
   '{} kept crashing the panel; pick a printer to connect': '{} で画面のクラッシュが繰り返されました。接続するプリンターを選んでください'
   '{} looser than {}': "{}は{}より緩い"
   '{} m': '{} m'

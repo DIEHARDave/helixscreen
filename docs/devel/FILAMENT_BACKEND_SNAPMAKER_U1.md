@@ -483,23 +483,21 @@ running, since the first print state a connection reads is no change of print, a
 subscription's first frame marks any head whose feeder still reports a failure
 (`src/printer/ams_backend_snapmaker.cpp#mark_load_unconfirmed_locked`).
 
-**A print started without the task setup.** A slicer upload-and-print or a Fluidd start
-arrives as a plain `SDCARD_PRINT_FILE`, so `extruders_used` stays all false: the firmware's
-per-head runout feed (`sm_print_auto_feed`) and the end-of-print unload
-(`SM_PRINT_END_AUTO_UNLOAD_FILAMENT`) both skip every head. `SET_PRINT_USED_EXTRUDERS` and
-`SET_PRINT_TASK_PARAMETERS` are refused while `print_stats.state` is printing or paused
-(`id=531, code=16`), so the backend cannot repair it mid-print. With `extruders_used` all
-false the firmware also skips `SM_PRINT_PREEXTRUDE_FILAMENT` and the switch check, so every
-toolhead after the first pauses the print on its first use. The backend judges each print
-once, on the first frame that names it printing or paused; when its task names no used
-head it reads the file's tools (`FileStartFactsLoader`: scanned tools, else per-tool
-weights, else palette size, else assumed) and, when one past T0 is used and the print is
-still the same one, raises one sticky warning saying so. Every start from this screen
-calls `note_print_start_from_here()` before its pre-print step (the start controller and
-the restart-from-beginning path), and the print that begins within two minutes counts as
-this screen's: it never gets the "started outside HelixScreen" line, and one whose file's
-tools went unread gets "HelixScreen couldn't read which toolheads this file uses" instead
-(`src/printer/ams_backend_snapmaker.cpp#judge_task_config_locked`).
+**A print started without the task setup.** Orca's upload-and-print (Moonraker's
+`/server/files/upload` with `print=true`) and a Fluidd start reach the firmware as a plain
+`SDCARD_PRINT_FILE` with no parameters, so `extruders_used` stays all false: the firmware's
+prestart feed (`sm_print_auto_feed`), pre-extrude (`SM_PRINT_PREEXTRUDE_FILAMENT`), switch
+check and end-of-print unload (`SM_PRINT_END_AUTO_UNLOAD_FILAMENT`) all skip every head.
+`SET_PRINT_USED_EXTRUDERS` is refused while printing or paused (`id=531, code=16`), so it
+cannot be repaired mid-print. The stock screen says nothing about it, and with its heads
+loaded such a print runs fine. What fails is a head the print uses that is not loaded: the
+print pauses when it first needs it. So on a print's first printing frame the backend reads
+the file's tools (`FileStartFactsLoader`, footer at most) and, for each head they route to
+whose feeder reports it not loaded (`feeder_reports_loaded()` false, no load under way) and
+that the task does not name in `extruders_used` (the firmware loads those itself), raises
+one warning naming the head ("Toolhead 3 (T2) isn't loaded. The print will pause when it
+needs it."). Once per print; silent when every used head is loaded or the tools cannot be
+read (`src/printer/ams_backend_snapmaker.cpp#warn_unloaded_used_heads`).
 
 Related capability flags: `recovers_filament_on_resume() = true` (Resume re-feeds, so
 the runout dialog presents Resume as primary) and
