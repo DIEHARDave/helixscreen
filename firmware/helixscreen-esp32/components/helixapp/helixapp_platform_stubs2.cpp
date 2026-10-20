@@ -104,9 +104,12 @@ bool platform_host_power_supported() {
 
 // --- app_globals slice seam (Linux app-lifecycle hub) ------------------------
 // get_printer_state is already stubbed in audit_stubs.cpp.
+// ESP32 has no first-run wizard, so the flag stays false and setting it is a no-op.
 bool is_wizard_active() {
     return false;
 }
+void set_wizard_active(bool) {}
+void set_wizard_cancel_callback(std::function<void()>) {}
 // Real process-global storage for the Moonraker API/client pointers: app_boot
 // wires them via set_moonraker_api/client, and consumers read them back here
 // (the audit slice returned nullptr because nothing set them). set_moonraker_
