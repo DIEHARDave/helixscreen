@@ -593,9 +593,13 @@ TEST_CASE_METHOD(ControlLaneFixture,
     wm->forget("Net", [&](bool ok, const std::string&) { forgot = ok; });
 
     WiFiManagerTestAccess::fire_init_failed(*wm, /*silent=*/true, "init failed");
+    // The stalled call never returns until release() below, so a UI thread that waited
+    // on it would hang, not overrun: the bound only has to be far above scheduling noise
+    // on a loaded runner.
+    constexpr auto kNeverWaited = std::chrono::milliseconds(1000);
     const auto started = std::chrono::steady_clock::now();
     helix::ui::UpdateQueue::instance().drain();
-    CHECK(std::chrono::steady_clock::now() - started < std::chrono::milliseconds(100));
+    CHECK(std::chrono::steady_clock::now() - started < kNeverWaited);
 
     // The swap keeps retrying while the call is stuck; no retry may wait on it.
     auto worst = std::chrono::steady_clock::duration::zero();
@@ -605,7 +609,7 @@ TEST_CASE_METHOD(ControlLaneFixture,
         lv_timer_handler();
         worst = std::max(worst, std::chrono::steady_clock::now() - t0);
     }
-    CHECK(worst < std::chrono::milliseconds(100));
+    CHECK(worst < kNeverWaited);
     REQUIRE(dynamic_cast<WifiBackendWpaSupplicant*>(WiFiManagerTestAccess::backend(*wm)) ==
             nullptr);
 
