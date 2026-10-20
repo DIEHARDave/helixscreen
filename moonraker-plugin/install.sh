@@ -743,10 +743,6 @@ auto_install() {
         error "Moonraker cannot see $PLUGIN_FILE from its root ($(running_moonraker_root))"
     fi
 
-    # Use ln -sf for atomic replacement (removes existing symlink first)
-    ln -sf "$link_to" "$target"
-    info "Created symlink: $target -> $link_to"
-
     # Auto-configure moonraker.conf if possible
     if [ -n "$section_file" ]; then
         # A section in any file Moonraker reads counts, so the install never
@@ -792,6 +788,13 @@ auto_install() {
     else
         warn "Could not find moonraker.conf - manual config required"
     fi
+
+    # The link goes last: an install that stops on a config write before it
+    # leaves the previous link naming the tree it named, which a caller that
+    # put that tree back (remote-install.sh) relies on. ln -sf replaces an
+    # existing symlink atomically.
+    ln -sf "$link_to" "$target"
+    info "Created symlink: $target -> $link_to"
 
     # Restart Moonraker
     restart_moonraker

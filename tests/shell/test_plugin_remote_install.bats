@@ -306,6 +306,26 @@ EOF
         fail "left: $(ls -A "$home")"
 }
 
+@test "an install that fails on a config write after its checks leaves the clone's link resolving" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_home "$home"
+    setup_git_clone_install "$home"
+    local link="$home/moonraker/moonraker/components/helix_print.py"
+    local before
+    before=$(readlink "$link")
+    # The updater entry's removal cannot write the config.
+    local real
+    real=$(command -v awk)
+    stub awk "case \"\$*\" in *'skip = 1'*) [ -f /dev/stdout ] && exit 1 ;; esac
+exec $real \"\$@\""
+
+    run_wrapper "$home" v1.2.3
+    [ "$status" -ne 0 ] || fail "a failed install reported success"
+
+    [ "$(readlink "$link")" = "$before" ] || fail "link re-pointed to $(readlink "$link")"
+    [ -e "$link" ] || fail "the plugin link dangles: $(readlink "$link")"
+}
+
 @test "uninstalling a git-clone install leaves moonraker.conf as it was before it" {
     local home="$BATS_TEST_TMPDIR/home"
     setup_home "$home"
