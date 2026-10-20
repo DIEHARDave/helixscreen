@@ -174,34 +174,56 @@ TEST_CASE("store: resolution change reallocates the shadow", "[remote_screen][se
     CHECK(store.note_request() == ScreenFrameStore::Need::FullRedraw);
 }
 
-TEST_CASE("store: wait_for_generation_after returns true when on_frame lands from another thread, "
-          "false at timeout",
+TEST_CASE("store: the full-repaint wait ends when a refresh after the invalidate lands",
           "[remote_screen][server_sink]") {
     ScreenFrameStore store;
     store.note_request();
-    const uint64_t gen = store.generation();
-    CHECK_FALSE(store.wait_for_generation_after(gen, 20ms));
+    const uint64_t gen = store.full_generation();
+    CHECK_FALSE(store.wait_for_full_refresh_after(gen, 20ms));
 
     SolidFrame frame(8, 8, 3);
     std::thread flusher([&] {
         std::this_thread::sleep_for(20ms);
+        store.note_full_invalidate();
         store.on_frame(frame.f);
     });
     const auto start = std::chrono::steady_clock::now();
-    CHECK(store.wait_for_generation_after(gen, 2000ms));
+    CHECK(store.wait_for_full_refresh_after(gen, 2000ms));
     CHECK(std::chrono::steady_clock::now() - start < 1500ms);
     flusher.join();
 }
 
+TEST_CASE("store: a refresh that was not asked for does not answer the full-repaint wait",
+          "[remote_screen][server_sink]") {
+    // The repaint the viewer asked for is queued to the UI thread; a refresh already
+    // under way (a navigation, a ticking clock) can finish first and covers only part
+    // of the screen.
+    ScreenFrameStore store;
+    store.note_request();
+    const uint64_t gen = store.full_generation();
+    SolidFrame frame(8, 8, 3);
+    store.on_frame(frame.f);
+    CHECK(store.generation() > 0);
+    CHECK(store.full_generation() == gen);
+    CHECK_FALSE(store.wait_for_full_refresh_after(gen, 1ms));
+
+    store.note_full_invalidate();
+    store.on_frame(frame.f);
+    CHECK(store.full_generation() == gen + 1);
+    // Counted once: the next refresh is ordinary again.
+    store.on_frame(frame.f);
+    CHECK(store.full_generation() == gen + 1);
+}
+
 TEST_CASE("store: abort_waits wakes a waiter early", "[remote_screen][server_sink]") {
     ScreenFrameStore store;
-    const uint64_t gen = store.generation();
+    const uint64_t gen = store.full_generation();
     std::thread aborter([&] {
         std::this_thread::sleep_for(20ms);
         store.abort_waits();
     });
     const auto start = std::chrono::steady_clock::now();
-    CHECK_FALSE(store.wait_for_generation_after(gen, 5000ms));
+    CHECK_FALSE(store.wait_for_full_refresh_after(gen, 5000ms));
     CHECK(std::chrono::steady_clock::now() - start < 2000ms);
     aborter.join();
 }
@@ -232,7 +254,9 @@ TEST_CASE("store: a refresh in stripes advances the generation only on its last 
           "[remote_screen][server_sink]") {
     ScreenFrameStore store;
     store.note_request();
+    store.note_full_invalidate();
     const uint64_t gen = store.generation();
+    const uint64_t full = store.full_generation();
     std::vector<uint8_t> stripe(16 * 4 * 4, 0x40);
     for (int i = 0; i < 4; ++i) {
         RemoteScreenFrame f;
@@ -253,9 +277,9 @@ TEST_CASE("store: a refresh in stripes advances the generation only on its last 
         if (i < 3) {
             // A viewer waiting for the repaint must not be answered with one stripe of it.
             CHECK(store.generation() == gen);
-            CHECK_FALSE(store.wait_for_generation_after(gen, 1ms));
+            CHECK_FALSE(store.wait_for_full_refresh_after(full, 1ms));
         }
     }
     CHECK(store.generation() == gen + 1);
-    CHECK(store.wait_for_generation_after(gen, 1ms));
+    CHECK(store.wait_for_full_refresh_after(full, 1ms));
 }

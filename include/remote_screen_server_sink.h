@@ -76,8 +76,15 @@ class ScreenFrameStore {
     /// while nothing has been captured, and once after a resize.
     Need note_request();
 
-    /// Wait until the generation passes @p gen. False on timeout or abort_waits().
-    bool wait_for_generation_after(uint64_t gen, std::chrono::milliseconds timeout);
+    /// The display has just been invalidated whole, on the UI thread. The next refresh
+    /// to complete covers every pixel and advances full_generation().
+    void note_full_invalidate();
+    /// Completed refreshes that followed a note_full_invalidate(). A refresh already
+    /// under way when the repaint was asked for does not count: it covers only part
+    /// of the screen.
+    uint64_t full_generation() const;
+    /// Wait until full_generation() passes @p full_gen. False on timeout or abort_waits().
+    bool wait_for_full_refresh_after(uint64_t full_gen, std::chrono::milliseconds timeout);
     /// Wake every waiter now; they return false.
     void abort_waits();
 
@@ -118,6 +125,8 @@ class ScreenFrameStore {
     bool has_frame_ = false;
     bool full_redraw_needed_ = true;
     uint64_t generation_ = 0;
+    bool awaiting_full_ = false;
+    uint64_t full_generation_ = 0;
 
     std::vector<uint8_t> rgb_;
     std::shared_ptr<const std::vector<uint8_t>> cached_jpeg_;

@@ -160,12 +160,14 @@ void RemoteScreenService::apply_server() {
     }
 
     ScreenServerHooks hooks;
-    hooks.request_full_redraw = [] {
-        ui::queue_update("remote_screen::full_redraw", [] {
+    hooks.request_full_redraw = [store = store_] {
+        ui::queue_update("remote_screen::full_redraw", [store] {
             if (lv_obj_t* screen = lv_screen_active()) {
                 lv_obj_invalidate(screen);
             }
             lv_obj_invalidate(lv_layer_top());
+            // On the UI thread, between refreshes: the next one to finish is whole.
+            store->note_full_invalidate();
         });
     };
     hooks.is_printing = [this] { return printing_.load(); };

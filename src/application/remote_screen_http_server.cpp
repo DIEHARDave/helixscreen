@@ -73,12 +73,12 @@ bool ScreenHttpServer::start(const ScreenServerConfig& cfg) {
     auto impl = std::make_unique<Impl>();
 
     impl->router.GET("/snapshot.jpg", [this, cap](HttpRequest*, HttpResponse* resp) {
-        const uint64_t gen = store_->generation();
+        const uint64_t full = store_->full_generation();
         if (store_->note_request() == ScreenFrameStore::Need::FullRedraw) {
             if (hooks_.request_full_redraw) {
                 hooks_.request_full_redraw();
             }
-            store_->wait_for_generation_after(gen, std::chrono::milliseconds(kFirstFrameWaitMs));
+            store_->wait_for_full_refresh_after(full, std::chrono::milliseconds(kFirstFrameWaitMs));
         }
         const bool printing = hooks_.is_printing && hooks_.is_printing();
         const auto snap = store_->snapshot(printing, cap);

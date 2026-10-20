@@ -92,6 +92,10 @@ void ScreenFrameStore::on_frame(const RemoteScreenFrame& f) {
         }
         has_frame_ = true;
         ++generation_;
+        if (awaiting_full_) {
+            awaiting_full_ = false;
+            ++full_generation_;
+        }
     }
     cv_.notify_all();
 }
@@ -106,11 +110,23 @@ ScreenFrameStore::Need ScreenFrameStore::note_request() {
     return Need::Ready;
 }
 
-bool ScreenFrameStore::wait_for_generation_after(uint64_t gen, std::chrono::milliseconds timeout) {
+void ScreenFrameStore::note_full_invalidate() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    awaiting_full_ = true;
+}
+
+uint64_t ScreenFrameStore::full_generation() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return full_generation_;
+}
+
+bool ScreenFrameStore::wait_for_full_refresh_after(uint64_t full_gen,
+                                                   std::chrono::milliseconds timeout) {
     std::unique_lock<std::mutex> lock(mutex_);
     const uint64_t epoch = abort_epoch_;
-    cv_.wait_for(lock, timeout, [&] { return generation_ > gen || abort_epoch_ != epoch; });
-    return generation_ > gen && abort_epoch_ == epoch;
+    cv_.wait_for(lock, timeout,
+                 [&] { return full_generation_ > full_gen || abort_epoch_ != epoch; });
+    return full_generation_ > full_gen && abort_epoch_ == epoch;
 }
 
 void ScreenFrameStore::abort_waits() {

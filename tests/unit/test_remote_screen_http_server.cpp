@@ -105,6 +105,7 @@ TEST_CASE("http: first snapshot calls request_full_redraw once", "[remote_screen
         while (fx.redraws.load() == 0) {
             std::this_thread::sleep_for(2ms);
         }
+        fx.store->note_full_invalidate();
         fx.capture();
     });
     auto first = raw_http(fx.server->port(), "GET", "/snapshot.jpg");
