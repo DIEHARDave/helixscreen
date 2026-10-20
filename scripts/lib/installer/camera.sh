@@ -772,7 +772,7 @@ install_camera_k2() {
     local cams_json=""
     cams_json="$(_moonraker_get_webcams_json)" || cams_json=""
     if [ -z "$cams_json" ]; then
-        log_warn "Moonraker unreachable at $(installer_moonraker_url) — ustreamer is running, but"
+        log_warn "Moonraker unreachable at $(installer_moonraker_url) - ustreamer is running, but"
         log_warn "the webcam was not registered. It will work once Moonraker is up;"
         log_warn "re-run the installer or add the webcam manually if needed."
         return 0
