@@ -45,7 +45,7 @@ endif
 # Add platform-specific libraries for display backend
 ifneq ($(UNAME_S),Darwin)
     # Linux: may need DRM/input libraries
-    ifeq ($(DISPLAY_BACKEND),drm)
+    ifeq ($(DISPLAY_BACKEND)-$(DLOPEN_GPU_LIBS),drm-)
         WATCHDOG_LDFLAGS += -ldrm -linput
         ifneq ($(filter yes,$(ENABLE_OPENGLES) $(ENABLE_GLES_3D)),)
             WATCHDOG_LDFLAGS += -lEGL -lGLESv2 -lgbm -ldl
@@ -105,6 +105,12 @@ WATCHDOG_EXTRA_OBJS := $(BUILD_DIR)/watchdog/config.o \
                        $(BUILD_DIR)/watchdog/board_identity.o \
                        $(BUILD_DIR)/watchdog/platform_table.o \
                        $(BUILD_DIR)/watchdog/helix_lvgl_anomaly_stub.o
+
+# Display and GPU libraries load at runtime in a DLOPEN_GPU_LIBS build (mk/implib.mk).
+ifeq ($(DLOPEN_GPU_LIBS),yes)
+    WATCHDOG_EXTRA_OBJS += $(IMPLIB_OBJS)
+    WATCHDOG_LDFLAGS += -ldl
+endif
 
 # Compile config for watchdog (with HELIX_WATCHDOG to guard get_runtime_config dependency)
 $(BUILD_DIR)/watchdog/config.o: src/system/config.cpp $(LIBHV_LIB) $(LIBHV_JSON_HEADER) $(ABI_STAMP) | $(BUILD_DIR)/watchdog

@@ -277,6 +277,39 @@ TEST_CASE("release_asset_keys gives a Creator 5 no legacy asset",
     CHECK(release_asset_keys("pi", Board::Generic) == Keys{"pi"});
 }
 
+TEST_CASE("The Android app has no release asset and is never refused for lacking one",
+          "[update_checker][platform][android]") {
+    using helix::board::Board;
+    using helix::platform::release_asset_keys;
+
+    CHECK_FALSE(helix::platform::installs_from_release_asset("android"));
+    CHECK(helix::platform::installs_from_release_asset("pi"));
+    CHECK(release_asset_keys("android", Board::Generic).empty());
+    REQUIRE(helix::platform::find("android") != nullptr);
+    CHECK(helix::platform::display_name("android") == "Android");
+
+    // The stable manifest lists Linux zips only; an APK install reads its version.
+    const std::string manifest = R"({"version": "1.0.6", "tag": "v1.0.6", "assets": {
+        "pi": {"url": "https://r/pi.zip", "sha256": "pp"}}})";
+    UpdateChecker::ReleaseInfo info;
+    std::string error;
+    REQUIRE(helix::parse_release_manifest(manifest, info, error,
+                                          release_asset_keys("android", Board::Generic)));
+    CHECK(info.version == "1.0.6");
+    CHECK(info.download_url.empty());
+
+    const auto android_keys = release_asset_keys("android", Board::Generic);
+    CHECK(helix::release_has_build_for(info, android_keys));
+    CHECK(helix::decide_check_outcome("1.0.5", info, android_keys).status ==
+          UpdateChecker::Status::UpdateAvailable);
+    CHECK(helix::decide_check_outcome("1.0.6", info, android_keys).status ==
+          UpdateChecker::Status::UpToDate);
+    // A Linux build reading the same release without its asset is still refused.
+    CHECK_FALSE(helix::release_has_build_for(info, {"pi32"}));
+    CHECK(helix::decide_check_outcome("1.0.5", info, {"pi32"}).status ==
+          UpdateChecker::Status::Error);
+}
+
 TEST_CASE("A release with no asset for this board is refused, never given another board's build",
           "[update_checker][platform][json]") {
     using helix::FlashForgeMachine;
@@ -1938,9 +1971,9 @@ TEST_CASE("current_key returns a known platform", "[update_checker][platform]") 
     // here — AND a matching #elif in current_key — silently bricks
     // in-app updates for that platform (falls through to "pi", so the device
     // downloads the Pi tarball and ends up with missing shared libs).
-    std::vector<std::string> known_platforms = {"pi",   "pi32", "x86",   "x86-desktop",
-                                                "ad5m", "k1",   "k2",    "ad5x",
-                                                "mips", "cc1",  "esp32", "snapmaker-u1"};
+    std::vector<std::string> known_platforms = {
+        "pi",   "pi32", "x86", "x86-desktop", "ad5m",         "k1",     "k2",
+        "ad5x", "mips", "cc1", "esp32",       "snapmaker-u1", "android"};
     bool found = false;
     for (const auto& p : known_platforms) {
         if (platform == p) {
@@ -1988,9 +2021,9 @@ TEST_CASE("display_name returns non-empty string for all known platforms",
           "[update_checker][platform]") {
     // Mirror the known_platforms list from "current_key returns a known platform".
     // Every key that helix::platform::current_key() can return MUST have a display name.
-    std::vector<std::string> known_platforms = {"pi",   "pi32", "x86",   "x86-desktop",
-                                                "ad5m", "k1",   "k2",    "ad5x",
-                                                "mips", "cc1",  "esp32", "snapmaker-u1"};
+    std::vector<std::string> known_platforms = {
+        "pi",   "pi32", "x86", "x86-desktop", "ad5m",         "k1",     "k2",
+        "ad5x", "mips", "cc1", "esp32",       "snapmaker-u1", "android"};
 
     for (const auto& key : known_platforms) {
         INFO("platform key: " << key);

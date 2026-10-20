@@ -3603,6 +3603,62 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
 }
 
 // ============================================================================
+// Creality Nebula Pad host
+// ============================================================================
+
+namespace {
+bool names_flashforge(const std::string& type_name) {
+    return type_name.rfind("FlashForge", 0) == 0;
+}
+} // namespace
+
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: Nebula Pad retrofit lands on the Ender family, never an AD5X",
+                 "[printer][detector][nebula][cpu_arch_match][creality]") {
+    // A MIPS Ingenic host is shared by FlashForge and the Creality Nebula Pad;
+    // the pad's own evidence must outvote the bare-cartesian field without
+    // naming which Ender it drives, since it ships on several.
+    const PrinterHardwareData hardware = printer_capture("creality_ender3_pro_nebula_pad");
+    auto result = PrinterDetector::detect(hardware);
+    CAPTURE(result.type_name, result.confidence, result.uncapped_confidence,
+            result.runner_up_type_name, result.runner_up_confidence, result.margin(),
+            result.tied_count, result.contenders);
+
+    REQUIRE(result.detected());
+    REQUIRE_FALSE(names_flashforge(result.type_name));
+    REQUIRE_FALSE(names_flashforge(result.runner_up_type_name));
+    REQUIRE(result.type_name.rfind("Creality Ender", 0) == 0);
+    REQUIRE(result.runner_up_type_name.rfind("Creality Ender", 0) == 0);
+    REQUIRE_FALSE(PrinterDetector::meets_autosave_threshold(result));
+}
+
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: a CoreXY Pi named nebula keeps Creality out of contention",
+                 "[printer][detector][nebula][hostname_match]") {
+    PrinterHardwareData hardware{
+        .heaters = {"extruder", "heater_bed"},
+        .sensors = {"temperature_sensor chamber"},
+        .fans = {"fan", "heater_fan hotend_fan"},
+        .leds = {},
+        .hostname = "nebula",
+        .printer_objects = {"z_tilt", "bed_mesh"},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1", "stepper_z2"},
+        .kinematics = "corexy",
+        .mcu = "stm32f446xx",
+        .cpu_arch = "aarch64",
+        .build_volume = {.x_min = 0, .x_max = 255, .y_min = 0, .y_max = 255, .z_max = 260}};
+    auto result = PrinterDetector::detect(hardware);
+    CAPTURE(result.type_name, result.confidence, result.runner_up_type_name,
+            result.runner_up_confidence, result.margin());
+
+    // The hostname alone is family-level evidence: a CoreXY machine with its own
+    // fingerprint must not even have a Creality entry as its nearest rival.
+    REQUIRE(result.detected());
+    REQUIRE(result.type_name.find("Creality") == std::string::npos);
+    REQUIRE(result.runner_up_type_name.find("Creality") == std::string::npos);
+}
+
+// ============================================================================
 // ForgeX vs Stock Detection Tests
 // ============================================================================
 
@@ -4488,7 +4544,7 @@ TEST_CASE("PrinterDetector: wrong-typed entry fields read as absent", "[printer]
                         "calibration": "none", "thermal_rates": [1],
                         "print_start_default_phases": { "HOMING": "slow" },
                         "console_filters": "noise", "console_filter_patterns": [3],
-                        "aliases": 9
+                        "aliases": 9, "belt_tensioner": 3
                     }
                 ]
             })";
@@ -4505,6 +4561,8 @@ TEST_CASE("PrinterDetector: wrong-typed entry fields read as absent", "[printer]
         REQUIRE(PrinterDetector::get_toolhead_style(name).empty());
         REQUIRE(PrinterDetector::get_preset_for_name(name).empty());
         REQUIRE_FALSE(PrinterDetector::is_enclosed(name));
+        REQUIRE(PrinterDetector::get_belt_tensioner(name) ==
+                helix::calibration::BeltTensionerKind::UNKNOWN);
         REQUIRE(PrinterDetector::get_bed_mesh_calibrate_gcode(name).empty());
         REQUIRE_FALSE(PrinterDetector::get_bed_mesh_self_prepares(name));
         REQUIRE(PrinterDetector::get_thermal_rates(name).empty());
@@ -4512,6 +4570,62 @@ TEST_CASE("PrinterDetector: wrong-typed entry fields read as absent", "[printer]
         REQUIRE(PrinterDetector::get_console_filter_patterns(name).empty());
         REQUIRE(PrinterDetector::canonical_type_name("Old Name") == "Old Name");
         REQUIRE(PrinterDetector::get_name_for_preset("5").empty());
+    }
+}
+
+TEST_CASE("PrinterDetector: belt_tensioner maps the database string to a kind",
+          "[printer][belt_tension]") {
+    using helix::calibration::BeltTensionerKind;
+
+    SECTION("Voron 2.4 and Trident are screw-tensioned") {
+        REQUIRE(PrinterDetector::get_belt_tensioner("Voron 2.4") == BeltTensionerKind::SCREW);
+        REQUIRE(PrinterDetector::get_belt_tensioner("Voron Trident") == BeltTensionerKind::SCREW);
+    }
+
+    SECTION("a printer with no belt_tensioner entry is UNKNOWN") {
+        REQUIRE(PrinterDetector::get_belt_tensioner("Creality K1C") == BeltTensionerKind::UNKNOWN);
+    }
+
+    SECTION("an unknown printer name is UNKNOWN") {
+        REQUIRE(PrinterDetector::get_belt_tensioner("Not A Real Printer") ==
+                BeltTensionerKind::UNKNOWN);
+    }
+
+    SECTION("screw, spring, empty and unrecognised strings") {
+        namespace fs = std::filesystem;
+        auto temp_root =
+            fs::temp_directory_path() / ("test_printer_detector_belt_" + std::to_string(getpid()));
+        struct RestoreDatabase {
+            fs::path root;
+            ~RestoreDatabase() {
+                PrinterDetector::reload();
+                fs::remove_all(root);
+            }
+        } restore{temp_root};
+        helix::ScopedEnv data_g("HELIX_DATA_DIR", nullptr);
+        helix::ScopedEnv config_g("HELIX_CONFIG_DIR", nullptr);
+        CwdGuard cwd_g;
+
+        fs::remove_all(temp_root);
+        fs::create_directories(temp_root / "assets" / "config");
+        fs::create_directories(temp_root / "config_dir");
+        std::ofstream(temp_root / "assets" / "config" / "printer_database.json") << R"({
+                "printers": [
+                    { "id": "a", "name": "Screw Printer", "belt_tensioner": "screw" },
+                    { "id": "b", "name": "Spring Printer", "belt_tensioner": "spring" },
+                    { "id": "c", "name": "Empty Printer", "belt_tensioner": "" },
+                    { "id": "d", "name": "Odd Printer", "belt_tensioner": "cam" }
+                ]
+            })";
+        setenv("HELIX_DATA_DIR", temp_root.c_str(), 1);
+        setenv("HELIX_CONFIG_DIR", (temp_root / "config_dir").c_str(), 1);
+        REQUIRE(chdir(temp_root.c_str()) == 0);
+        PrinterDetector::reload();
+
+        REQUIRE(PrinterDetector::get_belt_tensioner("Screw Printer") == BeltTensionerKind::SCREW);
+        REQUIRE(PrinterDetector::get_belt_tensioner("Spring Printer") == BeltTensionerKind::SPRING);
+        REQUIRE(PrinterDetector::get_belt_tensioner("Empty Printer") == BeltTensionerKind::UNKNOWN);
+        REQUIRE(PrinterDetector::get_belt_tensioner("Odd Printer") == BeltTensionerKind::UNKNOWN);
     }
 }
 

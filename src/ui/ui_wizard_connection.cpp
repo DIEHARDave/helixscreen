@@ -412,10 +412,13 @@ void WizardConnectionStep::on_connection_failure(const helix::LifetimeToken& /*t
     spdlog::debug("[Wizard Connection] Connection failure, testing_state={}", testing_state);
 
     if (testing_state == 1) {
-        spdlog::error("[Wizard Connection] Connection failed");
+        IMoonrakerClient* client = get_moonraker_client();
+        const ConnectFailureKind kind =
+            client ? client->last_connect_failure() : ConnectFailureKind::Unknown;
+        spdlog::error("[Wizard Connection] Connection failed (kind={})", static_cast<int>(kind));
 
         set_status("icon_close_circle", StatusVariant::Danger,
-                   lv_tr("Connection failed. Check IP/port and try again."));
+                   lv_tr(connect_failure_hint(kind, helix::is_android_platform())));
         lv_subject_set_int(&connection_testing_, 0);
         connection_validated_ = false;
         lv_subject_set_int(&connection_test_passed, 0);

@@ -93,11 +93,11 @@ lib_sh() {
 }
 
 @test "helix_pid takes the first helix-screen process from ps, and pidof when ps has no -o" {
-    mock_command_script ps 'printf "  PID COMMAND\n  10 helix-watchdog\n  42 helix-screen-eg\n  50 helix-screen\n"'
+    mock_command_script ps 'printf "  PID COMMAND\n  10 helix-watchdog\n  42 helix-screen\n  50 helix-screen-fbdev\n"'
     run lib_sh 'helix_pid'
     [ "$output" = "42" ]
     mock_command_script ps 'echo "ps: invalid option -- e" >&2; exit 1'
-    mock_command_script pidof '[ "$*" = "helix-screen helix-screen-egl" ] && echo "77 76"'
+    mock_command_script pidof '[ "$*" = "helix-screen" ] && echo "77 76"'
     run lib_sh 'helix_pid'
     [ "$output" = "77" ]
 }

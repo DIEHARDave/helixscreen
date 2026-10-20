@@ -11,11 +11,16 @@
 #if HELIX_HAS_CAMERA
 #include "ui_update_queue.h"
 
+#include "../lvgl_test_fixture.h"
 #include "../test_helpers/camera_stream_test_access.h"
+#include "../test_helpers/camera_widget_test_access.h"
 #include "camera_stream.h"
+#include "helix-xml/src/xml/lv_xml.h"
+#include "static_subject_registry.h"
 
 #include <atomic>
 #include <chrono>
+#include <cstring>
 #include <thread>
 #endif
 
@@ -434,6 +439,48 @@ TEST_CASE_METHOD(HelixTestFixture, "CameraStream: snapshot fallback keeps is_run
     CHECK_FALSE(stream.is_running());
 
     helix::ui::UpdateQueue::instance().drain();
+}
+
+// ============================================================================
+// Status subject across a printer switch
+// ============================================================================
+
+namespace {
+const char* camera_status_text() {
+    lv_subject_t* s = lv_xml_get_subject(nullptr, "camera_status_text");
+    REQUIRE(s != nullptr);
+    return lv_subject_get_string(s);
+}
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "CameraWidget: status subject re-inits to No Camera after a printer switch",
+                 "[camera][panel_widget]") {
+    init_widget_registrations();
+    const auto* def = find_widget_def("camera");
+    REQUIRE(def != nullptr);
+    REQUIRE(def->init_subjects != nullptr);
+    StaticSubjectRegistry& registry = StaticSubjectRegistry::instance();
+    registry.deinit_one("CameraWidgetSubjects", StaticSubjectRegistry::Scope::PrinterSwitch);
+    def->init_subjects();
+
+    CameraWidget widget;
+    SECTION("after a frame cleared the status") {
+        CameraWidgetTestAccess::set_status_text(widget, "");
+    }
+    SECTION("after a stream status") {
+        CameraWidgetTestAccess::set_status_text(widget, "Stream error");
+    }
+    SECTION("after a status shown from a key") {
+        CameraWidgetTestAccess::set_status_key(widget, "Connecting Camera...");
+    }
+    REQUIRE(std::strcmp(camera_status_text(), lv_tr("No Camera")) != 0);
+
+    REQUIRE(
+        registry.deinit_one("CameraWidgetSubjects", StaticSubjectRegistry::Scope::PrinterSwitch));
+    def->init_subjects();
+
+    CHECK(std::string(camera_status_text()) == lv_tr("No Camera"));
 }
 
 #else // !HELIX_HAS_CAMERA

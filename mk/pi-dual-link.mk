@@ -265,17 +265,8 @@ $(FBDEV_TARGET): $(APP_C_OBJS) $(FBDEV_APP_OBJS) $(FBDEV_GLES_VARIANT_OBJS) $(FB
 
 symbols-both: $(TARGET) $(FBDEV_TARGET)
 ifeq ($(STRIP_BINARY),yes)
-	@echo "Extracting symbols for DRM binary..."
-	$(NM_CMD) -nC $(TARGET) > $(TARGET).sym
-	@echo "Symbol map: $(TARGET).sym"
-	$(OBJCOPY_CMD) --only-keep-debug $(TARGET) $(TARGET).debug
-	@echo "Debug info: $(TARGET).debug"
-	@echo "Extracting symbols for fbdev binary..."
-	@mkdir -p $(FBDEV_BUILD_DIR)/bin
-	$(NM_CMD) -nC $(FBDEV_TARGET) > $(FBDEV_TARGET).sym
-	@echo "Symbol map: $(FBDEV_TARGET).sym"
-	$(OBJCOPY_CMD) --only-keep-debug $(FBDEV_TARGET) $(FBDEV_TARGET).debug
-	@echo "Debug info: $(FBDEV_TARGET).debug"
+	$(call extract-symbols,$(TARGET))
+	$(call extract-symbols,$(FBDEV_TARGET))
 else
 	@echo "STRIP_BINARY not set — skipping symbol extraction"
 endif

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "belt_tension_types.h"
 #include "pre_print_option.h"
 
 #include <map>
@@ -619,6 +620,12 @@ class PrinterDetector {
     /// The database's `"enclosed": true` flag for @p printer_name
     /// (prestonbrown/helixscreen#1730); false when absent or unknown.
     static bool is_enclosed(const std::string& printer_name);
+
+    /// How @p printer_name tensions its belts, from the database's `"belt_tensioner"` string
+    /// (`"screw"` or `"spring"`). UNKNOWN when the field is absent, empty, not a string, or
+    /// any other value, and for an unknown printer.
+    static helix::calibration::BeltTensionerKind
+    get_belt_tensioner(const std::string& printer_name);
 
     /// The database's `"klipper_hides_dot_dirs": true` flag for @p printer_name:
     /// its Klipper skips dot-directories when it resolves a file to print, so a

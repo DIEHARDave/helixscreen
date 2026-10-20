@@ -24,10 +24,23 @@
  * - Downsampling preserves frequency range endpoints
  */
 
+#include "ui_fonts.h"
+
 #include "../../include/platform_capabilities.h"
+#include "../../include/theme_manager.h"
 #include "../../include/ui_frequency_response_chart.h"
+#include "../test_fixtures.h"
 #include "../ui_test_utils.h"
 #include "lvgl/lvgl.h"
+#include "lvgl/src/core/lv_obj_draw_private.h"
+#include "lvgl/src/misc/lv_text_private.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <limits>
+#include <string>
+#include <vector>
 
 #include "../catch_amalgamated.hpp"
 
@@ -1098,4 +1111,412 @@ TEST_CASE_METHOD(FrequencyResponseChartTestFixture, "Edge cases",
     }
 
     ui_frequency_response_chart_destroy(chart);
+}
+
+// ============================================================================
+// Axis label boxes follow the label font
+// ============================================================================
+
+namespace {
+
+int32_t sample_width(const lv_font_t* font, const char* text) {
+    lv_text_attributes_t attributes = {};
+    attributes.max_width = LV_COORD_MAX;
+    return lv_text_get_width(text, static_cast<uint32_t>(std::strlen(text)), font, &attributes);
+}
+
+} // namespace
+
+TEST_CASE("axis label boxes fit the label font", "[frequency_response_chart][axis]") {
+    SECTION("a large font widens the gutter past its widest label") {
+        const lv_font_t* big = &source_code_pro_24;
+        REQUIRE(sample_width(big, "100%") > 36);
+        CHECK(ui_frequency_response_chart_y_gutter_width(big) >= sample_width(big, "100%"));
+        CHECK(ui_frequency_response_chart_y_gutter_width(big) >= sample_width(big, "999k"));
+        REQUIRE(sample_width(big, "100 Hz") > 64);
+        CHECK(2 * ui_frequency_response_chart_x_label_half_width(big) >=
+              sample_width(big, "100 Hz"));
+    }
+    SECTION("a small font keeps the sizes the smaller tiers were laid out against") {
+        const lv_font_t* small = &source_code_pro_8;
+        CHECK(ui_frequency_response_chart_y_gutter_width(small) == 36);
+        CHECK(ui_frequency_response_chart_x_label_half_width(small) == 32);
+    }
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "a configured chart pads its gutter for the theme's label font",
+                 "[frequency_response_chart][axis]") {
+    ui_frequency_response_chart_t* chart = ui_frequency_response_chart_create(test_screen());
+    REQUIRE(chart != nullptr);
+    ui_frequency_response_chart_configure_for_platform(chart, PlatformTier::STANDARD);
+    ui_frequency_response_chart_set_y_labels_visible(chart, true);
+
+    lv_obj_t* root = ui_frequency_response_chart_get_obj(chart);
+    REQUIRE(root != nullptr);
+    REQUIRE(lv_obj_get_child_count(root) > 0);
+    lv_obj_t* plot = lv_obj_get_child(root, 0);
+    REQUIRE(lv_obj_check_type(plot, &lv_chart_class));
+
+    const int32_t gutter =
+        ui_frequency_response_chart_y_gutter_width(theme_manager_get_font("font_small"));
+    // The theme's font_small at this display is wider than the 36 px floor,
+    // so a fixed gutter would read narrower than this.
+    REQUIRE(gutter > 36);
+    const int32_t want = gutter + theme_manager_get_spacing("space_xs");
+    CHECK(lv_obj_get_style_pad_left(plot, LV_PART_MAIN) == want);
+
+    SECTION("a resize re-measures the gutter") {
+        lv_obj_set_style_pad_left(plot, 0, LV_PART_MAIN);
+        lv_obj_set_size(root, 300, 200);
+        lv_obj_update_layout(root);
+        CHECK(lv_obj_get_style_pad_left(plot, LV_PART_MAIN) == want);
+    }
+
+    ui_frequency_response_chart_destroy(chart);
+}
+
+namespace {
+
+/// Renders @p chart and returns the text of every label it drew.
+std::vector<std::string> drawn_label_texts(ui_frequency_response_chart_t* chart) {
+    lv_obj_t* plot = lv_obj_get_child(ui_frequency_response_chart_get_obj(chart), 0);
+    REQUIRE(plot != nullptr);
+    std::vector<std::string> texts;
+    const auto capture = [](lv_event_t* e) {
+        auto* out = static_cast<std::vector<std::string>*>(lv_event_get_user_data(e));
+        const auto* dsc = lv_draw_task_get_label_dsc(lv_event_get_draw_task(e));
+        if (dsc != nullptr && dsc->text != nullptr) {
+            out->emplace_back(dsc->text);
+        }
+    };
+    lv_obj_add_flag(plot, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+    lv_obj_add_event_cb(plot, capture, LV_EVENT_DRAW_TASK_ADDED, &texts);
+    if (lv_draw_buf_t* snap = lv_snapshot_take(plot, LV_COLOR_FORMAT_ARGB8888)) {
+        lv_draw_buf_destroy(snap);
+    }
+    lv_obj_remove_event_cb_with_user_data(plot, capture, &texts);
+    lv_obj_remove_flag(plot, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+    return texts;
+}
+
+bool drew(const std::vector<std::string>& texts, const char* text) {
+    return std::find(texts.begin(), texts.end(), text) != texts.end();
+}
+
+} // namespace
+
+TEST_CASE_METHOD(XMLTestFixture, "amplitude labels follow each chart's own range",
+                 "[frequency_response_chart][axis]") {
+    ui_frequency_response_chart_t* a = ui_frequency_response_chart_create(test_screen());
+    ui_frequency_response_chart_t* b = ui_frequency_response_chart_create(test_screen());
+    REQUIRE(a != nullptr);
+    REQUIRE(b != nullptr);
+    for (auto* chart : {a, b}) {
+        ui_frequency_response_chart_configure_for_platform(chart, PlatformTier::STANDARD);
+        ui_frequency_response_chart_set_y_labels_visible(chart, true);
+        lv_obj_set_size(ui_frequency_response_chart_get_obj(chart), 400, 240);
+    }
+    lv_obj_update_layout(test_screen());
+
+    ui_frequency_response_chart_set_amplitude_range(a, 0.0f, 400.0f);
+    ui_frequency_response_chart_set_amplitude_range(b, 0.0f, 8000.0f);
+    auto texts = drawn_label_texts(a);
+    CHECK(drew(texts, "400"));
+    CHECK(drew(texts, "200"));
+    texts = drawn_label_texts(b);
+    CHECK(drew(texts, "8k"));
+    CHECK_FALSE(drew(texts, "400"));
+    // Drawing b leaves a's labels as they were.
+    texts = drawn_label_texts(a);
+    CHECK(drew(texts, "400"));
+    CHECK_FALSE(drew(texts, "8k"));
+
+    ui_frequency_response_chart_set_amplitude_range(a, 0.0f, 100.0f);
+    texts = drawn_label_texts(a);
+    CHECK(drew(texts, "100"));
+    CHECK_FALSE(drew(texts, "400"));
+
+    // A sub-unit axis draws the SI labels fr_chart_amplitude_labels() picks.
+    ui_frequency_response_chart_set_amplitude_range(a, 0.0f, 0.022f);
+    texts = drawn_label_texts(a);
+    for (const auto& label : fr_chart_amplitude_labels(0.0f, 0.022f, 4, false)) {
+        INFO(label);
+        CHECK(drew(texts, label.c_str()));
+    }
+    ui_frequency_response_chart_set_amplitude_range(a, 0.0f, 100.0f);
+
+    ui_frequency_response_chart_set_y_labels_percent(a, true);
+    texts = drawn_label_texts(a);
+    CHECK(drew(texts, "100%"));
+    CHECK(drew(texts, "50%"));
+
+    ui_frequency_response_chart_destroy(b);
+    ui_frequency_response_chart_destroy(a);
+}
+
+TEST_CASE("frequency labels stay inside the chart's box", "[frequency_response_chart][axis]") {
+    // A 300 px chart from x=100 to x=400 and a 32 px half box.
+    CHECK(ui_frequency_response_chart_x_label_center(250, 32, 100, 400) == 250);
+    CHECK(ui_frequency_response_chart_x_label_center(392, 32, 100, 400) == 368);
+    CHECK(ui_frequency_response_chart_x_label_center(110, 32, 100, 400) == 132);
+    // Narrower than one box: nowhere to move it, so it stays on the tick.
+    CHECK(ui_frequency_response_chart_x_label_center(120, 32, 100, 140) == 120);
+}
+
+// ============================================================================
+// NaN gaps (prestonbrown/helixscreen#1812)
+// ============================================================================
+
+namespace {
+
+constexpr float kGap = std::numeric_limits<float>::quiet_NaN();
+
+std::vector<std::pair<size_t, size_t>> runs_of(std::vector<float> amps) {
+    std::vector<std::pair<size_t, size_t>> out;
+    for (const FrChartRun& r : fr_chart_finite_runs(amps.data(), amps.size())) {
+        out.emplace_back(r.begin, r.end);
+    }
+    return out;
+}
+
+lv_obj_t* inner_lv_chart(ui_frequency_response_chart_t* chart) {
+    lv_obj_t* root = ui_frequency_response_chart_get_obj(chart);
+    for (uint32_t i = 0; i < lv_obj_get_child_count(root); ++i) {
+        lv_obj_t* child = lv_obj_get_child(root, static_cast<int32_t>(i));
+        if (lv_obj_check_type(child, &lv_chart_class)) {
+            return child;
+        }
+    }
+    return nullptr;
+}
+
+} // namespace
+
+TEST_CASE("fr_chart_finite_runs splits a series at its gaps", "[frequency_response_chart][gaps]") {
+    using Runs = std::vector<std::pair<size_t, size_t>>;
+    const float inf = std::numeric_limits<float>::infinity();
+    CHECK(runs_of({1, 2, kGap, 3, 4, 5, kGap}) == Runs{{0, 2}, {3, 6}});
+    CHECK(runs_of({kGap, 1, kGap, 2}).empty());
+    CHECK(runs_of({1, 2, 3}) == Runs{{0, 3}});
+    CHECK(fr_chart_finite_runs(nullptr, 0).empty());
+    CHECK(runs_of({1, inf, 2, 3}) == Runs{{2, 4}});
+    CHECK(runs_of({1}).empty());
+    CHECK(runs_of({kGap, kGap}).empty());
+}
+
+TEST_CASE_METHOD(FrequencyResponseChartTestFixture, "a NaN amplitude is no point on the chart",
+                 "[frequency_response_chart][gaps]") {
+    auto* chart = ui_frequency_response_chart_create(screen);
+    REQUIRE(chart != nullptr);
+    ui_frequency_response_chart_configure_for_platform(chart, PlatformTier::STANDARD);
+    ui_frequency_response_chart_set_amplitude_range(chart, 0.0f, 100.0f);
+    const int id = ui_frequency_response_chart_add_series(chart, "live", lv_color_hex(0xB0B0B0));
+    REQUIRE(id >= 0);
+
+    const float freqs[] = {10, 20, 30, 40};
+    const float amps[] = {10, kGap, 30, 40};
+    ui_frequency_response_chart_set_data(chart, id, freqs, amps, 4);
+
+    lv_obj_t* lv_chart = inner_lv_chart(chart);
+    REQUIRE(lv_chart != nullptr);
+    lv_chart_series_t* ser = lv_chart_get_series_next(lv_chart, nullptr);
+    REQUIRE(ser != nullptr);
+    const int32_t* y = lv_chart_get_series_y_array(lv_chart, ser);
+    REQUIRE(lv_chart_get_point_count(lv_chart) == 4);
+    const uint32_t start = lv_chart_get_x_start_point(lv_chart, ser);
+    std::vector<int32_t> values;
+    for (uint32_t i = 0; i < 4; ++i) {
+        values.push_back(y[(start + i) % 4]);
+    }
+    CHECK(values == std::vector<int32_t>{100, LV_CHART_POINT_NONE, 300, 400});
+
+    const auto stored = ui_frequency_response_chart_get_series_amplitudes(chart, id);
+    REQUIRE(stored.size() == 4);
+    CHECK(std::isnan(stored[1]));
+
+    ui_frequency_response_chart_destroy(chart);
+}
+
+TEST_CASE_METHOD(FrequencyResponseChartTestFixture, "BASIC downsampling carries gaps through",
+                 "[frequency_response_chart][gaps]") {
+    auto* chart = ui_frequency_response_chart_create(screen);
+    REQUIRE(chart != nullptr);
+    ui_frequency_response_chart_configure_for_platform(chart, PlatformTier::BASIC);
+    const int id = ui_frequency_response_chart_add_series(chart, "live", lv_color_hex(0xB0B0B0));
+
+    std::vector<float> freqs(131);
+    std::vector<float> amps(131);
+    for (size_t i = 0; i < 131; ++i) {
+        freqs[i] = 5.0f + static_cast<float>(i);
+        amps[i] = i < 10 ? kGap : static_cast<float>(i);
+    }
+    ui_frequency_response_chart_set_data(chart, id, freqs.data(), amps.data(), amps.size());
+    const auto stored = ui_frequency_response_chart_get_series_amplitudes(chart, id);
+    REQUIRE(stored.size() == 50);
+    CHECK(std::isnan(stored[0]));
+    // Picks land at src index i * 130 / 49: index 4 picks source 10.
+    for (size_t i = 4; i < stored.size(); ++i) {
+        INFO(i);
+        CHECK(std::isfinite(stored[i]));
+    }
+    ui_frequency_response_chart_destroy(chart);
+}
+
+// LVGLTestFixture's display flushes; this file's own fixture makes displays
+// with no flush callback, so only that one display is refreshed.
+TEST_CASE_METHOD(LVGLTestFixture, "styled, muted and marked series render gaps",
+                 "[frequency_response_chart][gaps]") {
+    lv_obj_t* screen = test_screen();
+    auto* chart = ui_frequency_response_chart_create(screen);
+    REQUIRE(chart != nullptr);
+    lv_obj_set_size(ui_frequency_response_chart_get_obj(chart), 600, 300);
+    ui_frequency_response_chart_configure_for_platform(chart, PlatformTier::STANDARD);
+    ui_frequency_response_chart_set_amplitude_range(chart, 0.0f, 100.0f);
+
+    std::vector<float> freqs(40);
+    std::vector<float> amps(40);
+    std::vector<float> none(40, kGap);
+    for (size_t i = 0; i < 40; ++i) {
+        freqs[i] = static_cast<float>(i);
+        amps[i] = (i % 7 == 3) ? kGap : static_cast<float>(i);
+    }
+    const int styled =
+        ui_frequency_response_chart_add_series(chart, "styled", lv_color_hex(0xFF0000));
+    ui_frequency_response_chart_set_series_style(chart, styled, FrChartSeriesStyle{3, true, true});
+    ui_frequency_response_chart_set_data(chart, styled, freqs.data(), amps.data(), amps.size());
+    const FrChartMarker markers[] = {{3.0f, 1}, {10.0f, 0}};
+    ui_frequency_response_chart_set_markers(chart, styled, markers, 2);
+    ui_frequency_response_chart_mark_peak(chart, styled, 3.0f, 50.0f);
+
+    const int muted =
+        ui_frequency_response_chart_add_series(chart, "muted", lv_color_hex(0x00FF00));
+    ui_frequency_response_chart_set_series_muted(chart, muted, true);
+    ui_frequency_response_chart_set_data(chart, muted, freqs.data(), amps.data(), amps.size());
+
+    const int empty =
+        ui_frequency_response_chart_add_series(chart, "empty", lv_color_hex(0x0000FF));
+    ui_frequency_response_chart_set_series_style(chart, empty, FrChartSeriesStyle{3, true, true});
+    ui_frequency_response_chart_set_data(chart, empty, freqs.data(), none.data(), none.size());
+
+    lv_obj_invalidate(screen);
+    lv_refr_now(lv_obj_get_display(screen));
+    CHECK(ui_frequency_response_chart_get_series_amplitudes(chart, styled).size() == 40);
+    ui_frequency_response_chart_destroy(chart);
+}
+
+namespace {
+
+/// Renders @p plot and counts the pixels in rows [y1, y2] (screen coordinates)
+/// whose @p channel (0 = red, 1 = green) leads the other two by a clear margin.
+int tinted_pixels(lv_obj_t* plot, int channel, int32_t y1, int32_t y2) {
+    lv_draw_buf_t* snap = lv_snapshot_take(plot, LV_COLOR_FORMAT_ARGB8888);
+    REQUIRE(snap != nullptr);
+    lv_area_t coords;
+    lv_obj_get_coords(plot, &coords);
+    const int32_t origin_y = coords.y1 - lv_obj_get_ext_draw_size(plot);
+    int count = 0;
+    for (int32_t y = std::max(y1, origin_y);
+         y <= y2 && y - origin_y < static_cast<int32_t>(snap->header.h); ++y) {
+        const uint8_t* row = snap->data + static_cast<size_t>(y - origin_y) * snap->header.stride;
+        for (uint32_t x = 0; x < snap->header.w; ++x) {
+            // ARGB8888 is stored B, G, R, A.
+            const int b = row[x * 4 + 0];
+            const int g = row[x * 4 + 1];
+            const int r = row[x * 4 + 2];
+            const int lead = channel == 0 ? r - std::max(g, b) : g - std::max(r, b);
+            if (lead > 40) {
+                ++count;
+            }
+        }
+    }
+    lv_draw_buf_destroy(snap);
+    return count;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture, "nothing a series draws reaches toward a gap",
+                 "[frequency_response_chart][gaps]") {
+    lv_obj_t* screen = test_screen();
+    auto* chart = ui_frequency_response_chart_create(screen);
+    REQUIRE(chart != nullptr);
+    lv_obj_set_size(ui_frequency_response_chart_get_obj(chart), 600, 300);
+    ui_frequency_response_chart_configure_for_platform(chart, PlatformTier::STANDARD);
+    ui_frequency_response_chart_set_amplitude_range(chart, 0.0f, 100.0f);
+    lv_obj_update_layout(screen);
+
+    // Every finite value sits in the bottom 40% of the axis; index 3 is a gap,
+    // and the peak and the numbered marker both land on it.
+    std::vector<float> freqs(40);
+    std::vector<float> amps(40);
+    for (size_t i = 0; i < 40; ++i) {
+        freqs[i] = static_cast<float>(i);
+        amps[i] = (i % 7 == 3) ? kGap : static_cast<float>(i);
+    }
+    const int styled =
+        ui_frequency_response_chart_add_series(chart, "styled", lv_color_hex(0xFF0000));
+    ui_frequency_response_chart_set_series_style(chart, styled, FrChartSeriesStyle{3, true, true});
+    ui_frequency_response_chart_set_data(chart, styled, freqs.data(), amps.data(), amps.size());
+    const FrChartMarker markers[] = {{3.0f, 1}, {10.0f, 2}};
+    ui_frequency_response_chart_set_markers(chart, styled, markers, 2);
+    ui_frequency_response_chart_mark_peak(chart, styled, 3.0f, 50.0f);
+
+    const int muted =
+        ui_frequency_response_chart_add_series(chart, "muted", lv_color_hex(0x00FF00));
+    ui_frequency_response_chart_set_series_muted(chart, muted, true);
+    ui_frequency_response_chart_set_data(chart, muted, freqs.data(), amps.data(), amps.size());
+
+    lv_obj_t* plot = inner_lv_chart(chart);
+    REQUIRE(plot != nullptr);
+    lv_area_t content;
+    lv_obj_get_content_coords(plot, &content);
+    REQUIRE(lv_area_get_height(&content) > 100);
+    // The tallest finite value is 39% of the axis, so the top 30% holds no
+    // curve, fill or dot; a gap drawn as a point would land at the top.
+    const int32_t ceiling = content.y1 + lv_area_get_height(&content) * 3 / 10;
+
+    // Both series do draw, below the ceiling.
+    REQUIRE(tinted_pixels(plot, 0, ceiling, content.y2) > 0);
+    REQUIRE(tinted_pixels(plot, 1, ceiling, content.y2) > 0);
+    CHECK(tinted_pixels(plot, 0, content.y1, ceiling) == 0);
+    CHECK(tinted_pixels(plot, 1, content.y1, ceiling) == 0);
+
+    ui_frequency_response_chart_destroy(chart);
+}
+
+TEST_CASE("the gutter holds every amplitude label the axis prints",
+          "[frequency_response_chart][axis]") {
+    // A proportional face, where a label's width depends on its letters.
+    const lv_font_t* font = &noto_sans_28;
+    const int32_t gutter = ui_frequency_response_chart_y_gutter_width(font);
+    // Spans of 22 per decade: their quarter steps need a decimal ("16.5m").
+    for (const float top : {0.000022f, 0.00022f, 0.0022f, 0.022f, 0.22f, 2.2f, 22.0f, 220.0f,
+                            2200.0f, 22000.0f, 220000.0f, 2.2e6f, 22e6f, 2.2e9f, 22e9f}) {
+        for (const bool percent : {false, true}) {
+            if (percent && top > 100.0f) {
+                continue;
+            }
+            for (const auto& label : fr_chart_amplitude_labels(0.0f, top, 4, percent)) {
+                INFO(label << " on a 0.." << top << " axis");
+                CHECK(gutter >= sample_width(font, label.c_str()));
+            }
+        }
+    }
+}
+
+TEST_CASE("amplitude labels are distinct and compact", "[frequency_response_chart][axis]") {
+    using V = std::vector<std::string>;
+    CHECK(fr_chart_amplitude_labels(0.0f, 0.022f, 4, false) ==
+          V{"22m", "16.5m", "11m", "5.5m", "0"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 0.003f, 4, false) ==
+          V{"3m", "2.25m", "1.5m", "0.75m", "0"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 33000.0f, 4, false) ==
+          V{"33k", "24.8k", "16.5k", "8.2k", "0"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 400.0f, 4, false) == V{"400", "300", "200", "100", "0"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 2e9f, 4, false) ==
+          V{"2e9", "1.5e9", "1e9", "0.5e9", "0"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 0.0004f, 4, false) ==
+          V{"400u", "300u", "200u", "100u", "0"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 100.0f, 4, true) == V{"100%", "75%", "50%", "25%", "0%"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 1.0f, 0, false).empty());
 }

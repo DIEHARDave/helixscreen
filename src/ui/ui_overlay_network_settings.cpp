@@ -162,6 +162,7 @@ void NetworkSettingsOverlay::init_subjects() {
     UI_MANAGED_SUBJECT_INT(wifi_scanning_, 0, "wifi_scanning", subjects_);
     UI_MANAGED_SUBJECT_INT(wifi_can_forget_, 0, "wifi_can_forget", subjects_);
     UI_MANAGED_SUBJECT_INT(wifi_can_toggle_radio_, 0, "wifi_can_toggle_radio", subjects_);
+    UI_MANAGED_SUBJECT_INT(wifi_toggle_locked_, 0, "wifi_toggle_locked", subjects_);
     UI_MANAGED_SUBJECT_INT(wifi_can_set_country_, 0, "wifi_can_set_country", subjects_);
     UI_MANAGED_SUBJECT_INT(wifi_country_index_, 0, "wifi_country_index", subjects_);
     UI_MANAGED_SUBJECT_INT(wifi_unresponsive_, 0, "wifi_unresponsive", subjects_);
@@ -273,14 +274,14 @@ lv_obj_t* NetworkSettingsOverlay::create(lv_obj_t* parent_screen) {
     if (!wifi_manager_) {
         wifi_manager_ = get_wifi_manager(); // Uses global singleton (already has self-reference)
         spdlog::debug("[NetworkSettingsOverlay] WiFiManager obtained from global singleton");
+    }
 
-        // Check WiFi hardware availability and update subject
-        bool hw_available = wifi_manager_->has_hardware();
-        lv_subject_set_int(&wifi_hardware_available_, hw_available ? 1 : 0);
-        if (!hw_available) {
-            spdlog::info(
-                "[NetworkSettingsOverlay] WiFi hardware not available - controls disabled");
-        }
+    // Check WiFi hardware availability and update subject
+    const bool hw_available = wifi_manager_ && wifi_manager_->has_hardware();
+    lv_subject_set_int(&wifi_hardware_available_, hw_available ? 1 : 0);
+    lv_subject_set_int(&wifi_toggle_locked_, hw_available ? 0 : 1);
+    if (!hw_available) {
+        spdlog::info("[NetworkSettingsOverlay] WiFi hardware not available - controls disabled");
     }
 
     // Initialize Ethernet manager
@@ -397,7 +398,12 @@ void NetworkSettingsOverlay::cleanup() {
     OverlayBase::cleanup();
     ++status_generation_;
 
+    // The lifetime token drops the radio's answer from here on, so nothing else
+    // would unlock the switch for the next instance of this overlay.
     cancel_wlan_toggle_backstop();
+    if (subjects_initialized_) {
+        set_wlan_toggle_in_flight(false);
+    }
 
     if (wifi_manager_) {
         wifi_manager_->stop_scan();
@@ -947,6 +953,7 @@ void NetworkSettingsOverlay::apply_wlan_toggle(bool enabled) {
     // in by finish_wlan_toggle().
     wlan_toggle_requested_ = enabled;
     lv_subject_set_int(&wifi_enabled_, enabled ? 1 : 0);
+    set_wlan_toggle_in_flight(true);
 
     if (enabled) {
         // Spinner runs from the tap until the radio is actually up and the
@@ -962,7 +969,10 @@ void NetworkSettingsOverlay::apply_wlan_toggle(bool enabled) {
 
     arm_wlan_toggle_backstop();
 
-    auto token = lifetime_.token();
+    // The object lifetime outlives closing the overlay, so the answer still
+    // unlocks the switch and persists the radio's real state when the user has
+    // left mid-change; only cleanup() drops it.
+    auto token = object_lifetime_.token();
     wifi_manager_->set_enabled_async(enabled, token, [this, enabled](bool success, bool actual) {
         // Runs on the UI thread — set_enabled_async() delivers through the
         // token, so `this` is already known-good here.
@@ -972,6 +982,7 @@ void NetworkSettingsOverlay::apply_wlan_toggle(bool enabled) {
 }
 
 void NetworkSettingsOverlay::finish_wlan_toggle(bool requested, bool success, bool actual) {
+    set_wlan_toggle_in_flight(false);
     auto outcome = helix::wifi::reconcile_radio_toggle(requested, success, actual);
 
     if (outcome.reverted) {
@@ -992,7 +1003,10 @@ void NetworkSettingsOverlay::finish_wlan_toggle(bool requested, bool success, bo
     // whole branch exists to eliminate.
     lv_subject_set_int(&wifi_enabled_, outcome.enabled ? 1 : 0);
 
-    if (outcome.enabled) {
+    if (outcome.enabled && !is_visible()) {
+        // Closed while the radio came up: on_activate() scans on the next open.
+        lv_subject_set_int(&wifi_scanning_, 0);
+    } else if (outcome.enabled) {
         lv_subject_set_int(&wifi_scanning_, 1);
 
         std::weak_ptr<WiFiManager> weak_mgr = wifi_manager_;
@@ -1034,6 +1048,11 @@ void NetworkSettingsOverlay::finish_wlan_toggle(bool requested, bool success, bo
 
     // Update combined network status
     update_any_network_connected();
+}
+
+void NetworkSettingsOverlay::set_wlan_toggle_in_flight(bool in_flight) {
+    const bool hw_available = lv_subject_get_int(&wifi_hardware_available_) != 0;
+    lv_subject_set_int(&wifi_toggle_locked_, (!hw_available || in_flight) ? 1 : 0);
 }
 
 void NetworkSettingsOverlay::arm_wlan_toggle_backstop() {

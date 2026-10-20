@@ -54,6 +54,17 @@ Orientation is also composable with the breakpoint rather than separate from it:
 is guarded because a 1024x600 landscape panel and a 480x640 portrait one land on the same
 breakpoint while only the portrait one is actually short of room.
 
+`ui_is_ultrawide` is the same kind of subject for the `ultrawide` class (wider than 2.5:1,
+the test `is_ultrawide_aspect()` in `src/layout_manager.cpp` owns). It shares
+`ui_is_portrait`'s sources: `theme_manager_init` seeds both from `detect_layout_type()`, and
+`theme_manager_refresh_orientation()` republishes both from `LayoutManager::type()` once a
+`--layout` override is known, and on every resize. A tier cannot stand in for it: 1920x440
+reads `ui_breakpoint` small and 1920x480 medium, the same tiers as ordinary screens.
+`ui_xml/panel_belt_tension.xml#panel_belt_tension` branches on it in place (chart left,
+sidebar right) instead of shipping a `ui_xml/ultrawide/` copy.
+
+C++ that needs the layout class asks `app_layout_type(width, height)` (`include/layout_manager.h`): `LayoutManager::type()` once it is initialized, so a `--layout` override is respected, and the physical `detect_layout_type()` before that. `app_layout_is_portrait()` is built on it. Code that sizes things from raw dimensions before `LayoutManager` exists (`src/ui/overlay_geometry.cpp#nav_width_suffix`) calls `is_ultrawide_aspect(width, height)` rather than restating the threshold.
+
 So "which panels adapt to portrait" is not answered by listing the override directory.
 Beyond the two files there, the app shell, the navigation bar, Motion, Bed Mesh, the
 temperature graph overlay, the Advanced panel's E-stop bar and the bed mesh cards all adapt

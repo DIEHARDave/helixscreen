@@ -84,9 +84,10 @@ ifeq ($(PLATFORM_TARGET),pi)
     # Without it SIGABRT reports get garbage frames. Matches ad5x/cc1/k1/k2/snapmaker-u1.
     TARGET_CFLAGS := -march=armv8-a -fno-omit-frame-pointer -funwind-tables -I/usr/aarch64-linux-gnu/include -I/usr/include/libdrm -Wno-error=conversion -Wno-error=sign-conversion -DHELIX_RELEASE_BUILD -DHELIX_BINARY_VARIANT=\"drm\"
     DISPLAY_BACKEND := drm
-    # This binary presents through DRM dumb buffers. The GPU presentation path
-    # is a separate binary built by ENABLE_EGL_RUNG below, so that flipping this
-    # would rebuild the wrong one.
+    # The base build presents through DRM dumb buffers. ENABLE_EGL_RUNG below
+    # adds the GPU presentation path to the same binary as a second compile of
+    # the few files that read the EGL config; flipping this would make both
+    # compiles EGL.
     ENABLE_OPENGLES := no
     ENABLE_SDL := no
     ENABLE_GLES_3D := yes
@@ -99,7 +100,7 @@ ifeq ($(PLATFORM_TARGET),pi)
     # Strip binary for size - embedded targets don't need debug symbols
     STRIP_BINARY := yes
     FONT_TIERS := all
-    # Also link helix-screen-egl, which the launcher probes for and prefers.
+    # Also link the EGL presentation path, which the launcher probes for and prefers.
     ENABLE_EGL_RUNG := yes
 
 else ifeq ($(PLATFORM_TARGET),pi-fbdev)
@@ -179,7 +180,7 @@ else ifeq ($(PLATFORM_TARGET),pi32)
     BUILD_SUBDIR := pi32
     STRIP_BINARY := yes
     FONT_TIERS := all
-    # Also link helix-screen-egl, which the launcher probes for and prefers.
+    # Also link the EGL presentation path, which the launcher probes for and prefers.
     ENABLE_EGL_RUNG := yes
 
 else ifeq ($(PLATFORM_TARGET),pi32-fbdev)
@@ -712,7 +713,7 @@ else ifeq ($(PLATFORM_TARGET),x86-desktop)
     # Built in the same Bullseye container as x86. SDL2 comes from lib/sdl2 and
     # links statically; it dlopens the system's X11/Wayland/PulseAudio/ALSA
     # libraries at runtime, so the binary needs no SDL package installed. The
-    # 3D G-code renderer resolves GLES2 the same way (gles2_sdl_loader.h): with
+    # 3D G-code renderer resolves GLES2 the same way (gles2_loader.h): with
     # no GLES on the machine it fails init and the viewer draws in 2D.
     CROSS_COMPILE :=
     TARGET_ARCH := x86_64
@@ -793,6 +794,26 @@ endif
 # libstdc++ makes the inlined code and the library one build.
 ifneq ($(filter pi32 pi32-fbdev pi32-both,$(PLATFORM_TARGET)),)
     TARGET_LDFLAGS += -static-libstdc++ -static-libgcc
+endif
+
+# The Pi and x86 targets drop unreferenced code and data at link time, as every
+# embedded target above does: each function and object gets its own section and
+# the linker keeps only what is reachable from the entry point, .init_array and
+# the dynamic exports. That is safe because nothing resolves an app symbol by
+# name at runtime: the binaries export none (no -rdynamic), the Bluetooth plugin
+# imports only from its own libraries, and Lua bindings and XML callbacks are
+# registered as function pointers.
+ifneq ($(filter pi pi-fbdev pi-both pi32 pi32-fbdev pi32-both x86 x86-fbdev x86-both x86-desktop,$(PLATFORM_TARGET)),)
+    TARGET_CFLAGS += -ffunction-sections -fdata-sections
+    TARGET_LDFLAGS += -Wl,--gc-sections
+endif
+
+# The Pi and x86 DRM builds load libdrm, libinput, libEGL, libGLESv2 and libgbm
+# at runtime instead of linking them (mk/implib.mk), so the one binary starts on
+# a system without them and falls back to fbdev. include/gpu_libs.h is the
+# runtime gate every call into them goes through.
+ifneq ($(filter pi pi-both pi32 pi32-both x86 x86-both,$(PLATFORM_TARGET)),)
+    DLOPEN_GPU_LIBS := yes
 endif
 
 # =============================================================================
@@ -1010,6 +1031,10 @@ ifeq ($(DISPLAY_BACKEND),drm)
     CXXFLAGS += -DHELIX_DISPLAY_DRM -DHELIX_DISPLAY_FBDEV
     SUBMODULE_CFLAGS += -DHELIX_DISPLAY_DRM -DHELIX_DISPLAY_FBDEV
     SUBMODULE_CXXFLAGS += -DHELIX_DISPLAY_DRM -DHELIX_DISPLAY_FBDEV
+    ifeq ($(DLOPEN_GPU_LIBS),yes)
+        CFLAGS += -DHELIX_DLOPEN_GPU_LIBS
+        CXXFLAGS += -DHELIX_DLOPEN_GPU_LIBS
+    endif
     # GPU-accelerated rendering via EGL/OpenGL ES (Pi targets)
     ifeq ($(ENABLE_OPENGLES),yes)
         CFLAGS += -DHELIX_ENABLE_OPENGLES
@@ -1723,6 +1748,13 @@ DEPLOY_NO_TRACKER := --exclude='*.mod'
 DEPLOY_TAR_NO_TRACKER := --exclude='*.mod'
 DEPLOY_ASSET_DIRS := ui_xml assets config moonraker-plugin
 
+# Binaries helix-screen now carries itself: the EGL rung and the fbdev rung.
+# An older deploy's copies would otherwise sit in bin/ as dead weight.
+# $(1) = SSH target, $(2) = install dir.
+define deploy-remove-retired-binaries
+	@ssh $(1) "rm -f $(2)/bin/helix-screen-egl $(2)/bin/helix-screen-fbdev"
+endef
+
 # Common deploy recipe (called with: $(call deploy-common,SSH_TARGET,DEPLOY_DIR,BIN_DIR))
 # Usage: $(call deploy-common,$(PI_SSH_TARGET),$(PI_DEPLOY_DIR),build/pi/bin)
 # Turn on the runtime switches that match what the binary being deployed
@@ -1821,11 +1853,7 @@ define deploy-common
 	@# Sync binaries and launcher to bin/
 	rsync -avzz --progress $(3)/helix-screen $(3)/helix-splash $(1):$(2)/bin/
 	@if [ -f $(3)/helix-watchdog ]; then rsync -avzz $(3)/helix-watchdog $(1):$(2)/bin/; fi
-	@# The EGL rung, on targets that build one. helix-launcher.sh probes for it
-	@# and prefers it; without this the device keeps whatever it had, and a stale
-	@# one would be probed and run in place of the binary just deployed.
-	@if [ -f $(3)/helix-screen-egl ]; then rsync -avzz $(3)/helix-screen-egl $(1):$(2)/bin/; \
-	else ssh $(1) "rm -f $(2)/bin/helix-screen-egl"; fi
+	$(call deploy-remove-retired-binaries,$(1),$(2))
 	@# Sync Bluetooth plugin if built (runtime-loaded via dlopen, same dir as binary)
 	@if [ -f $(3)/libhelix-bluetooth.so ]; then \
 		echo "$(DIM)Deploying Bluetooth plugin...$(RESET)"; \
@@ -2861,7 +2889,8 @@ define release-clean-assets
 	@# source PNGs once every printer has a render at the size being kept.
 	@# gen-splash-3d-<platform> already narrows what gets BUILT, but the copy above
 	@# takes whatever build/ happens to hold, so this is the step that bounds the
-	@# payload. A platform whose panel is unknown until runtime keeps everything.
+	@# payload. A platform whose panel is unbounded keeps every size class and the
+	@# source PNGs; one whose manifest names candidate boards ships their union.
 	$(if $(2),@$(PLATFORM_MANIFEST) prune-assets $(2) $(1))
 endef
 
@@ -3015,10 +3044,6 @@ REL_LABEL.snapmaker-u1 := Snapmaker U1
 REL_LABEL.x86 := x86
 REL_LABEL.x86-desktop := x86 Linux desktop
 
-# Platforms that also ship a framebuffer-only build/<plat>-fbdev binary, which
-# becomes bin/helix-screen-fbdev.
-REL_FBDEV := pi pi32 x86
-
 # config/settings.json seeded from assets/config/presets/<name>.json. Platforms
 # without an entry ship the template only and the installer writes the first-run
 # settings. The AD5M preset has wizard_completed false, so first boot runs
@@ -3069,14 +3094,11 @@ endef
 define release-package
 	@echo "$(CYAN)$(BOLD)Packaging $(REL_LABEL.$(1)) release v$(VERSION)...$(RESET)"
 	$(call release-assert-features,build/$(1)/bin)
-	$(if $(filter $(1),$(REL_FBDEV)),$(call release-assert-features,build/$(1)-fbdev/bin))
 	@mkdir -p $(RELEASE_DIR)/helixscreen/bin
 	@cp build/$(1)/bin/helix-screen $(RELEASE_DIR)/helixscreen/bin/
 	@if [ -f build/$(1)/bin/helix-splash ]; then cp build/$(1)/bin/helix-splash $(RELEASE_DIR)/helixscreen/bin/; fi
 	@if [ -f build/$(1)/bin/helix-watchdog ]; then cp build/$(1)/bin/helix-watchdog $(RELEASE_DIR)/helixscreen/bin/; fi
 	@if [ -f build/$(1)/bin/libhelix-bluetooth.so ]; then cp build/$(1)/bin/libhelix-bluetooth.so $(RELEASE_DIR)/helixscreen/bin/; fi
-	@if [ -f build/$(1)/bin/helix-screen-egl ]; then cp build/$(1)/bin/helix-screen-egl $(RELEASE_DIR)/helixscreen/bin/; fi
-	$(if $(filter $(1),$(REL_FBDEV)),@if [ -f build/$(1)-fbdev/bin/helix-screen ]; then cp build/$(1)-fbdev/bin/helix-screen $(RELEASE_DIR)/helixscreen/bin/helix-screen-fbdev; fi)
 	$(release-bin-extra-$(1))
 	@cp scripts/helix-launcher.sh $(RELEASE_DIR)/helixscreen/bin/
 	$(call release-copy-xml-config,$(RELEASE_DIR)/helixscreen)
@@ -3131,11 +3153,11 @@ define release-package
 endef
 
 # Package Pi release
-release-pi: $(INSTALLER_BUNDLES) | build/pi/bin/helix-screen build/pi/bin/helix-splash build/pi-fbdev/bin/helix-screen build/pi/bin/helix-screen-egl
+release-pi: $(INSTALLER_BUNDLES) | build/pi/bin/helix-screen build/pi/bin/helix-splash
 	$(call release-package,pi)
 
 # Package Pi 32-bit release (same structure as 64-bit Pi)
-release-pi32: $(INSTALLER_BUNDLES) | build/pi32/bin/helix-screen build/pi32/bin/helix-splash build/pi32-fbdev/bin/helix-screen build/pi32/bin/helix-screen-egl
+release-pi32: $(INSTALLER_BUNDLES) | build/pi32/bin/helix-screen build/pi32/bin/helix-splash
 	$(call release-package,pi32)
 
 # Package AD5M release
@@ -3172,7 +3194,7 @@ release-snapmaker-u1: $(INSTALLER_BUNDLES) | build/snapmaker-u1/bin/helix-screen
 	$(call release-package,snapmaker-u1)
 
 # Package x86_64 Debian release (same structure as Pi)
-release-x86: $(INSTALLER_BUNDLES) | build/x86/bin/helix-screen build/x86/bin/helix-splash build/x86-fbdev/bin/helix-screen
+release-x86: $(INSTALLER_BUNDLES) | build/x86/bin/helix-screen build/x86/bin/helix-splash
 	$(call release-package,x86)
 
 # Package the x86_64 Linux desktop release: one SDL binary that opens a window,

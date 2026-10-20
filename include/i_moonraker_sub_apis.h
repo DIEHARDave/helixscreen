@@ -39,6 +39,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -319,8 +320,9 @@ class IAdvancedAPI {
         std::function<void(int phase, int total_phases, const std::string& description)>;
     /// (percent 0-100, current sweep frequency Hz). Fires off the LVGL thread.
     using BeltSweepProgressCallback = std::function<void(int percent, float freq_hz)>;
-    /// Fires off the LVGL thread with the parsed curve.
-    using BeltCurveCallback = std::function<void(const helix::calibration::BeltCurve& curve)>;
+    /// Fires off the LVGL thread with the parsed curves.
+    using BeltResponseCallback =
+        std::function<void(const helix::calibration::BeltResponse& response)>;
     /// Stops listening and suppresses every later callback. Idempotent.
     using BeltRunCancel = std::function<void()>;
     using BeltHardwareCallback =
@@ -443,13 +445,14 @@ class IAdvancedAPI {
     virtual void detect_belt_hardware(BeltHardwareCallback on_complete, ErrorCallback on_error) = 0;
 
     /// TEST_RESONANCES AXIS=<axis_param> OUTPUT=resonances NAME=<output_name> SWEEPING_PERIOD=0.
-    /// Completes on Klipper's "Resonances data written to" line; there is no
+    /// A window adds FREQ_START/FREQ_END (floored/ceiled to whole Hz) and scales
+    /// progress against it. Completes on Klipper's "Resonances data written to" line; there is no
     /// overall deadline (the caller owns stall detection and cancels).
-    [[nodiscard]] virtual BeltRunCancel test_belt_resonance(const std::string& axis_param,
-                                                            const std::string& output_name,
-                                                            BeltSweepProgressCallback on_progress,
-                                                            BeltCurveCallback on_complete,
-                                                            ErrorCallback on_error) = 0;
+    [[nodiscard]] virtual BeltRunCancel test_belt_resonance(
+        const std::string& axis_param, const std::string& output_name,
+        BeltSweepProgressCallback on_progress, BeltResponseCallback on_complete,
+        ErrorCallback on_error,
+        std::optional<helix::calibration::BeltSweepWindow> window = std::nullopt) = 0;
 };
 
 /**

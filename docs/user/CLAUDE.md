@@ -29,7 +29,7 @@ These docs are **end-user facing**. They must be written for people who are NOT 
 | `guide/install-linux-desktop.md` | x86_64 Linux desktop package: the app in a window, per-user install with `--desktop`, connecting to a remote printer, window size, updating, uninstall, running from the tarball |
 | `guide/install-esp32.md` | BigTreeTech K-Touch (ESP32-S3) alpha firmware: browser flasher, esptool install, first-boot hotspot setup, updating, recovery, other ESP32-S3 panels |
 | `guide/home-panel.md` | Home dashboard, printer manager, custom images |
-| `guide/printing.md` | File selection, printing, pausing at a layer (beta), tune overlay, Z-offset |
+| `guide/printing.md` | File selection, printing, pausing at a layer, tune overlay, Z-offset |
 | `guide/print-monitoring.md` | Pre-print filament checks (empty-slot block, unassigned-tool Color Mismatch, bypass exemption), camera-based failure detection (Snapmaker U1 dialog, Creality K2 AI toggle) |
 | `guide/temperature.md` | Nozzle/bed temperature panels, presets, reassigning preset filament types, graphs, drying filament on the bed, chamber heater diagnostics card |
 | `guide/chamber-heater.md` | Add-on chamber heater setup (BIGTREETECH Panda Breath): network step, stock vs DragonBreath firmware, the Klipper module and config each needs, the Snapmaker U1 menu shortcut, troubleshooting |
@@ -39,7 +39,7 @@ These docs are **end-user facing**. They must be written for people who are NOT 
 | `guide/bluetooth-setup.md` | Enabling Bluetooth on Raspberry Pi and BTT Pi, UART conflicts, USB dongle setup |
 | `guide/barcode-scanner.md` | USB + Bluetooth barcode scanner setup, keymaps, BT-HID bonded-only workaround |
 | `guide/label-printing.md` | Label printer setup, supported printers (Brother/Phomemo/Niimbot/MakeID), Bluetooth pairing, troubleshooting |
-| `guide/calibration.md` | Bed mesh, screws tilt, input shaper, PID |
+| `guide/calibration.md` | Bed mesh, screws tilt, input shaper and its live chart, probe, Z-offset, tool offsets, belt tension check and tuning, pressure advance, PID/MPC |
 | `guide/touch-calibration.md` | Touch screen calibration, forcing recalibration, config reference |
 | `guide/settings.md` | Settings hub: the three groups (Screen, Printer, HelixScreen) and their thirteen pages |
 | `guide/settings/display.md` | Screen rotation, UI scale, brightness, screen dim, display sleep, screensaver, sleep while printing |

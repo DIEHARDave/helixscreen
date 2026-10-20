@@ -1594,13 +1594,11 @@ void KeyboardManager::reset() {
     spdlog::debug("[KeyboardManager] Resetting state for soft restart");
 
     // Delete keyboard widget (child of m_screen, survives app_layout teardown).
-    // reset() runs from tear_down_printer_state(), which one caller
-    // (cancel_add_printer_wizard) wraps in queue_update — so a synchronous
-    // lv_obj_del here would be one of multiple sync deletes in a single
-    // UpdateQueue batch (with overlay_ + m_app_layout), the #776/[L081] event-list
-    // corruption pattern. Cancel anims first, then defer the delete out of the
-    // batch. safe_delete_deferred() nulls keyboard_ synchronously so init() can
-    // rebuild immediately, and reparents + async-deletes on the next drain.
+    // reset() runs from tear_down_printer_state(), whose callers may be inside an
+    // input event or a queued callback, where several synchronous deletes are the
+    // #776/[L081] event-list corruption pattern. Cancel anims first, then defer the
+    // delete. safe_delete_deferred() nulls keyboard_ synchronously so init() can
+    // rebuild immediately, and reparents + async-deletes it later.
     if (keyboard_) {
         lv_anim_delete(keyboard_, nullptr); // Cancel pending slide animations
         helix::ui::safe_delete_deferred(keyboard_);

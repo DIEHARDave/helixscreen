@@ -140,8 +140,9 @@ class ControlsCalibGridFixture : public LVGLUITestFixture {
     }
 
     /// Bed Mesh and Z Calibration are always shown; each flag adds one tile.
+    /// Beta features stay off: no tile depends on them.
     void show(int qgl, int z_tilt, int pa, int screws, int tool_offsets) {
-        set("show_beta_features", tool_offsets);
+        set("show_beta_features", 0);
         set("printer_has_tool_offset_cal", tool_offsets);
         set("hide_manual_z_calibration", 0);
         set("printer_has_qgl", qgl);
@@ -253,4 +254,36 @@ TEST_CASE_METHOD(ControlsCalibGridFixture,
         CHECK(s.fills_height);
         CHECK(s.rows * s.max_columns >= 6);
     }
+}
+
+TEST_CASE_METHOD(ControlsCalibGridFixture,
+                 "Controls Z Calibration steps aside for a full tool offset routine with beta off",
+                 "[controls][calib-grid][tool_offsets]") {
+    build();
+    show(0, 0, 0, 0, 1);
+    auto tile_hidden = [this](const char* name) {
+        lv_obj_t* obj = lv_obj_find_by_name(panel_obj, name);
+        REQUIRE(obj != nullptr);
+        for (; obj && obj != grid(); obj = lv_obj_get_parent(obj)) {
+            if (lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    settle();
+    CHECK_FALSE(tile_hidden("btn_tool_offsets"));
+    CHECK_FALSE(tile_hidden("btn_z_calibration"));
+
+    set("hide_manual_z_calibration", 1);
+    settle();
+    CHECK(tile_hidden("btn_z_calibration"));
+    CHECK_FALSE(tile_hidden("btn_tool_offsets"));
+
+    set("printer_has_tool_offset_cal", 0);
+    settle();
+    CHECK_FALSE(tile_hidden("btn_z_calibration"));
+    CHECK(tile_hidden("btn_tool_offsets"));
+    set("hide_manual_z_calibration", 0);
 }

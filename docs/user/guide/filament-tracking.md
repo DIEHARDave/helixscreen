@@ -103,7 +103,7 @@ HelixScreen creates the vendor, filament, and spool records together in Spoolman
 
 ### Pressure advance per filament
 
-> Added in 1.1. A [beta feature](beta-features.md): with beta features off, nothing is saved and nothing is applied.
+> Added in 1.1.
 
 When you finish a [pressure advance test tower](calibration.md#pressure-advance-tuning-test-tower), **Save to Spool** stores the value on that spool's **filament** in Spoolman, in an extra field named `pressure_advance` (HelixScreen creates the field the first time). Every spool of that filament shares it.
 

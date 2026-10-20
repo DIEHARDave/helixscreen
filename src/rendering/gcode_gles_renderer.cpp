@@ -24,20 +24,17 @@
 #if LV_USE_SDL
 #include <SDL.h>
 #else
+#include "gpu_libs.h"
+
 #include <EGL/egl.h>
 #include <fcntl.h>
 #include <gbm.h>
 #include <unistd.h>
 #endif
 
-// GLES2: resolved at runtime on SDL (no libGLESv2 link), linked on EGL
-#if LV_USE_SDL
-#include "gles2_sdl_loader.h"
+// GLES2 is resolved at runtime on every backend, never linked
+#include "gles2_loader.h"
 using namespace helix::gles2;
-#else
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-#endif
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -563,6 +560,14 @@ bool GCodeGLESRenderer::init_gl() {
     // 1. The display backend's own EGLDisplay, when one is current
     // 2. GBM/DRM (Pi, embedded — surfaceless FBO rendering)
     // 3. Default EGL display (desktop Linux with X11/Wayland — PBuffer)
+    using helix::gpu_libs::Lib;
+    if (!helix::gpu_libs::available_all({Lib::Egl, Lib::Gles2}) ||
+        !helix::gles2::load(helix::gpu_libs::gles2_proc)) {
+        spdlog::info("[GCode GLES] No EGL/GLES2 libraries — GPU rendering unavailable");
+        gl_init_failed_ = true;
+        return false;
+    }
+    const bool have_gbm = helix::gpu_libs::available_all({Lib::Gbm, Lib::Drm});
     bool egl_ok = false;
 
     // An EGL screen already has the GPU driver loaded and a display up. Opening a
@@ -576,7 +581,7 @@ bool GCodeGLESRenderer::init_gl() {
     // Then try card nodes (needed on Pi where render nodes may not exist)
     static const char* kDrmDevices[] = {"/dev/dri/renderD128", "/dev/dri/renderD129",
                                         "/dev/dri/card1", "/dev/dri/card0", nullptr};
-    for (int i = 0; kDrmDevices[i] && !egl_ok; ++i) {
+    for (int i = 0; have_gbm && kDrmDevices[i] && !egl_ok; ++i) {
         int fd = open(kDrmDevices[i], O_RDWR | O_CLOEXEC);
         if (fd < 0)
             continue;

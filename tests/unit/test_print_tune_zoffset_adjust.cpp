@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Wiring tests for PrintTuneOverlay's z-offset baby-step: which base it adjusts
-// from, and which SET_GCODE_OFFSET form it puts on the wire.
+// from, and which SET_GCODE_OFFSET form it puts on the wire. The pressure
+// advance row's case shares the overlay fixture.
 //
 // The helper choosing between relative and absolute is unit-tested in
 // test_z_offset_utils.cpp. These tests pin the WIRING: that the overlay seeds its
@@ -20,6 +21,7 @@
 #include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
+#include "config.h"
 #include "moonraker_api.h"
 #include "moonraker_client_mock.h"
 #include "printer_discovery.h"
@@ -361,4 +363,38 @@ TEST_CASE_METHOD(PrintTuneZOffsetFixture,
     helix::ui::UpdateQueue::instance().drain();
 
     CHECK(std::string(lv_subject_get_string(display)) == "0.250 mm");
+}
+
+TEST_CASE_METHOD(PrintTuneZOffsetFixture,
+                 "PrintTune: the pressure advance row shows and sends with beta features off",
+                 "[ui_integration][pa_tune]") {
+    struct BetaOff {
+        lv_subject_t* subject = lv_xml_get_subject(nullptr, "show_beta_features");
+        bool prev_config = helix::Config::get_instance()->is_beta_features_enabled();
+        int prev_subject = subject ? lv_subject_get_int(subject) : 0;
+        BetaOff() {
+            helix::Config::get_instance()->set<bool>("/beta_features", false);
+            if (subject) {
+                lv_subject_set_int(subject, 0);
+            }
+        }
+        ~BetaOff() {
+            helix::Config::get_instance()->set<bool>("/beta_features", prev_config);
+            if (subject) {
+                lv_subject_set_int(subject, prev_subject);
+            }
+        }
+    } beta_off;
+    REQUIRE(beta_off.subject != nullptr);
+
+    state().update_from_status(json{{"extruder", json{{"pressure_advance", 0.04}}}});
+    helix::ui::UpdateQueue::instance().drain();
+    auto& overlay = show_overlay();
+    lv_obj_t* row = lv_obj_find_by_name(overlay.get_panel(), "tune_pa_row");
+    REQUIRE(row != nullptr);
+    CHECK_FALSE(lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN));
+
+    overlay.handle_pa_adjust(1);
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(last_gcode() == "SET_PRESSURE_ADVANCE EXTRUDER=extruder ADVANCE=0.0410");
 }

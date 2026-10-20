@@ -70,7 +70,7 @@ This is the setup to choose when:
 
 - Your printer has no built-in screen, like a Voron, RatRig, or any Klipper printer whose host has no panel of its own
 - The printer lives somewhere you don't: another room, a garage, a workshop
-- You run more than one printer and want a single screen for all of them: with [multi-printer support](guide/beta-features.md) (beta) enabled, the printer manager switches between every printer you've added
+- You run more than one printer and want a single screen for all of them: the printer manager switches between every printer you've added
 - Your printer's stock panel can't be replaced (some QIDI models)
 
 Common screen devices:

@@ -91,7 +91,6 @@ class AdvancedPowerGroupFixture : public XMLTestFixture {
         ui_status_pill_register_widget();
         REQUIRE(register_component("setting_group_header"));
         REQUIRE(register_component("setting_action_row"));
-        REQUIRE(register_component("beta_feature"));
         REQUIRE(register_component("advanced_panel"));
 
         panel_ = create_component("advanced_panel");

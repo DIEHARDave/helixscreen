@@ -34,7 +34,9 @@
 #include <dirent.h>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <map>
+#include <optional>
 #include <random>
 #include <sstream>
 #include <unistd.h>
@@ -364,6 +366,12 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
         }
     }
 
+    // HELIX_MOCK_BELT_TUNE_SCRIPT=<A|B>:<hz|flat>,... — that path's peak for
+    // each sweep after its first.
+    if (const char* script_env = std::getenv("HELIX_MOCK_BELT_TUNE_SCRIPT")) {
+        apply_belt_tune_script(script_env);
+    }
+
     // HELIX_MOCK_BELT_RANGE=<min>-<max> — the [resonance_tester] sweep range
     // the mock reports and sweeps, so a real capture fed through
     // HELIX_MOCK_BELT_CSV_A/_B is analysed over the band it was measured in.
@@ -686,7 +694,7 @@ double mock_heater_duty(double temperature, double target) {
 
 void MoonrakerClientMock::append_aux_heater_status(json& status_obj, double dt) {
     constexpr double kAmbient = 25.0;
-    constexpr double RATE_C_PER_S = 1.0;
+    constexpr double kRateCPerS = 1.0;
     // The parsed hardware, not the persona's heater list: HELIX_MOCK_OBJECTS
     // heaters reach only the former.
     const std::vector<std::string> heaters = discovery_.hardware().heaters();
@@ -697,7 +705,7 @@ void MoonrakerClientMock::append_aux_heater_status(json& status_obj, double dt) 
             continue;
         auto& [temp, target] = aux_heaters_.try_emplace(name, kAmbient, 0.0).first->second;
         const double goal = target > 0.0 ? target : kAmbient;
-        const double step = RATE_C_PER_S * dt;
+        const double step = kRateCPerS * dt;
         temp = temp < goal ? std::min(goal, temp + step) : std::max(goal, temp - step);
         status_obj[name] = {
             {"temperature", temp}, {"target", target}, {"power", mock_heater_duty(temp, target)}};
@@ -6413,7 +6421,7 @@ void write_mock_shaper_csv(const std::string& path, char axis) {
  *
  * Bins at Klipper's raw-PSD resolution (3200 Hz / 4096 samples), with a
  * Lorentzian at the path's simulated peak over a noise floor plus the
- * ~42 Hz peak every belt rig shows.
+ * ~42 Hz peak every belt rig shows. A NaN peak writes the noise floor alone.
  */
 void write_mock_belt_csv(const std::string& path, char path_letter, float peak_hz, double max_freq,
                          BeltMockFailure mode) {
@@ -6436,6 +6444,7 @@ void write_mock_belt_csv(const std::string& path, char path_letter, float peak_h
     std::mt19937 rng(7 + static_cast<unsigned>(path_letter));
     std::uniform_real_distribution<float> noise_dist(0.9f, 1.1f);
 
+    const bool flat = std::isnan(peak_hz);
     constexpr float kPeakHeight = 3e4f;
     constexpr float kSecondaryHeight = 0.22f * kPeakHeight;
     constexpr double kBinStep = 3200.0 / 4096.0;
@@ -6445,9 +6454,9 @@ void write_mock_belt_csv(const std::string& path, char path_letter, float peak_h
     constexpr float kMainHalfWidthSq = 100.0f;
     for (double freq = 5.0; freq <= max_freq + 1e-9; freq += kBinStep) {
         const float df = static_cast<float>(freq) - peak_hz;
-        const float main = kPeakHeight / (1.0f + (df * df) / kMainHalfWidthSq);
         const float ds = static_cast<float>(freq) - 42.0f;
-        const float secondary = kSecondaryHeight / (1.0f + (ds * ds) / 20.25f);
+        const float main = flat ? 0.0f : kPeakHeight / (1.0f + (df * df) / kMainHalfWidthSq);
+        const float secondary = flat ? 0.0f : kSecondaryHeight / (1.0f + (ds * ds) / 20.25f);
         const float psd_xyz = 150.0f * noise_dist(rng) + main + secondary;
 
         if (mode == BeltMockFailure::MULTICHIP) {
@@ -6480,6 +6489,20 @@ void MoonrakerClientMock::remove_shaper_csvs() {
     std::remove(shaper_csv_path('y').c_str());
 }
 
+json MoonrakerClientMock::resonance_tester_settings() const {
+    json rt = {{"min_freq", resonance_min_freq_},
+               {"max_freq", resonance_max_freq_},
+               {"accel_per_hz", 75.0},
+               {"hz_per_sec", resonance_hz_per_sec_},
+               {"accel_chip", "adxl345"}};
+    if (resonance_probe_points_) {
+        // The belt settling laps run at this height.
+        const auto axis_max = helix::mock::descriptor(printer_type_).axis_max;
+        rt["probe_points"] = json::array({json::array({axis_max.x / 2.0, axis_max.y / 2.0, 20.0})});
+    }
+    return rt;
+}
+
 float MoonrakerClientMock::belt_peak_hz(char path) const {
     return belt_peaks_hz_[(path == 'A' || path == 'a') ? 0 : 1];
 }
@@ -6487,6 +6510,39 @@ float MoonrakerClientMock::belt_peak_hz(char path) const {
 void MoonrakerClientMock::set_belt_peaks_hz(float a_hz, float b_hz) {
     belt_peaks_hz_[0] = a_hz;
     belt_peaks_hz_[1] = b_hz;
+}
+
+void MoonrakerClientMock::set_belt_tune_script(char path_letter, std::vector<float> peaks_hz) {
+    const int idx = (path_letter == 'A' || path_letter == 'a') ? 0 : 1;
+    belt_script_[idx] = std::move(peaks_hz);
+    belt_script_pos_[idx] = 0;
+}
+
+void MoonrakerClientMock::apply_belt_tune_script(const std::string& spec) {
+    const auto colon = spec.find(':');
+    const char letter =
+        colon == 1 ? static_cast<char>(std::toupper(static_cast<unsigned char>(spec[0]))) : '\0';
+    if (letter != 'A' && letter != 'B') {
+        spdlog::warn("[MoonrakerClientMock] Belt tune script '{}' needs an A: or B: prefix", spec);
+        return;
+    }
+    std::vector<float> peaks;
+    size_t start = colon + 1;
+    while (start <= spec.size()) {
+        const size_t end = std::min(spec.find(',', start), spec.size());
+        const std::string item = spec.substr(start, end - start);
+        if (item == "flat") {
+            peaks.push_back(std::numeric_limits<float>::quiet_NaN());
+        } else if (auto v = text_io::parse_leading<float>(item); v && *v > 0.0f) {
+            peaks.push_back(*v);
+        } else {
+            spdlog::warn("[MoonrakerClientMock] Skipping belt tune script item '{}'", item);
+        }
+        start = end + 1;
+    }
+    set_belt_tune_script(letter, std::move(peaks));
+    spdlog::info("[MoonrakerClientMock] Belt path {} tune script: {} sweeps after the first",
+                 letter, belt_script_[letter == 'A' ? 0 : 1].size());
 }
 
 std::string MoonrakerClientMock::belt_csv_path(const std::string& axis_name,
@@ -6525,6 +6581,25 @@ json MoonrakerClientMock::build_input_shaper_config() const {
         {"shaper_type_y", shaper_type_y_}, {"shaper_freq_y", freq_y},
         {"damping_ratio_x", "0.1"},        {"damping_ratio_y", "0.1"},
     };
+}
+
+uint32_t MoonrakerClientMock::sweep_line_interval_ms() const {
+    if (belt_line_interval_ms_ != 0) {
+        return belt_line_interval_ms_;
+    }
+    return static_cast<uint32_t>(std::max(1, sim_speed().shorten_wait_ms(static_cast<int>(
+                                                 1000.0 / std::max(1.0, resonance_hz_per_sec_)))));
+}
+
+helix::calibration::MockSweepResponse MoonrakerClientMock::active_sweep_response() const {
+    std::lock_guard<std::mutex> lock(sweep_response_mutex_);
+    return sweep_response_;
+}
+
+std::unique_ptr<helix::calibration::IAccelBatchSource>
+MoonrakerClientMock::make_accel_batch_source(const helix::calibration::SweepPlan& plan) const {
+    return std::make_unique<helix::calibration::MockAccelBatchSource>(plan, active_sweep_response(),
+                                                                      get_simulation_speedup());
 }
 
 void MoonrakerClientMock::play_console_lines(std::vector<std::string> lines, uint32_t interval_ms,
@@ -6581,16 +6656,36 @@ void MoonrakerClientMock::dispatch_shaper_calibrate_response(char axis) {
     std::vector<std::string> lines;
     char buf[256];
 
+    {
+        // Matches write_mock_shaper_csv(): the axis's own column peaks at
+        // 0.0205 with the other two at 15% and 8% of its power.
+        std::lock_guard<std::mutex> lock(sweep_response_mutex_);
+        const bool x = axis_lower == 'x';
+        sweep_response_ =
+            helix::calibration::MockSweepResponse{x ? 53.8f : 48.2f, 8.0f, 0.248f,
+                                                  x ? std::array<float, 3>{1.0f, 0.387f, 0.283f}
+                                                    : std::array<float, 3>{0.387f, 1.0f, 0.283f}};
+    }
+
     // Phase 1: frequency sweep across the configured [resonance_tester] range,
-    // ending exactly on max_freq the way a real sweep does.
+    // ending exactly on max_freq the way a real sweep does. Realtime plays a
+    // line per whole Hz at the belt sweep's cadence; otherwise 20 lines.
+    std::vector<std::string> sweep_lines;
     constexpr int kSweepSteps = 20;
     const double min_freq = resonance_min_freq_;
     const double max_freq = resonance_max_freq_;
-    for (int i = 0; i < kSweepSteps; ++i) {
-        const double freq =
-            min_freq + (max_freq - min_freq) * i / static_cast<double>(kSweepSteps - 1);
-        snprintf(buf, sizeof(buf), "Testing frequency %.0f Hz", freq);
-        lines.emplace_back(buf);
+    if (shaper_sweep_realtime_) {
+        for (double freq = std::ceil(min_freq); freq <= max_freq + 1e-9; freq += 1.0) {
+            snprintf(buf, sizeof(buf), "Testing frequency %.0f Hz", freq);
+            sweep_lines.emplace_back(buf);
+        }
+    } else {
+        for (int i = 0; i < kSweepSteps; ++i) {
+            const double freq =
+                min_freq + (max_freq - min_freq) * i / static_cast<double>(kSweepSteps - 1);
+            snprintf(buf, sizeof(buf), "Testing frequency %.0f Hz", freq);
+            lines.emplace_back(buf);
+        }
     }
 
     // Phase 2: analysis heartbeats, the sweep-finished marker, then one fit +
@@ -6640,7 +6735,7 @@ void MoonrakerClientMock::dispatch_shaper_calibrate_response(char axis) {
              shaper_csv_path(axis_lower).c_str());
     const std::string csv_line(buf);
 
-    play_console_lines(std::move(lines), 100, [this, axis_lower, csv_line] {
+    auto finish = [this, axis_lower, csv_line] {
         // Write actual CSV file so frequency response chart has data.
         // When shaper_csv_writable_ is false, simulate Klipper's /tmp
         // output being unreadable (e.g. PrivateTmp) by removing any
@@ -6654,7 +6749,15 @@ void MoonrakerClientMock::dispatch_shaper_calibrate_response(char axis) {
         dispatch_gcode_response(csv_line);
         spdlog::info("[MoonrakerClientMock] Dispatched SHAPER_CALIBRATE response for axis {}",
                      static_cast<char>(std::toupper(static_cast<unsigned char>(axis_lower))));
-    });
+    };
+    if (sweep_lines.empty()) {
+        play_console_lines(std::move(lines), 100, std::move(finish));
+    } else {
+        play_console_lines(std::move(sweep_lines), sweep_line_interval_ms(),
+                           [this, rest = std::move(lines), finish = std::move(finish)]() mutable {
+                               play_console_lines(std::move(rest), 100, std::move(finish));
+                           });
+    }
 
     spdlog::info("[MoonrakerClientMock] Started SHAPER_CALIBRATE timer for axis {} ({:.0f}-{:.0f} "
                  "Hz sweep)",
@@ -6688,12 +6791,40 @@ void MoonrakerClientMock::dispatch_test_resonances_response(const std::string& g
         name = gcode.substr(start, end == std::string::npos ? end : end - start);
     }
 
-    // Each re-measurement after the first walks this path's peak toward the
-    // other's by at most 4 Hz: tightening a belt moves its resonance, and the
-    // clamp keeps the walk from ever overshooting past equal.
-    if (belt_measure_count_[idx] > 0) {
+    // FREQ_START=/FREQ_END= narrow the swept band; the CSV still covers the
+    // configured range, as Klipper's does.
+    auto window_value = [&gcode](const char* key) -> std::optional<double> {
+        const std::string tag = std::string(key) + "=";
+        const auto pos = gcode.find(tag);
+        return pos == std::string::npos
+                   ? std::nullopt
+                   : text_io::parse_leading<double>(gcode.substr(pos + tag.size()));
+    };
+    const auto win_lo = window_value("FREQ_START");
+    const auto win_hi = window_value("FREQ_END");
+    const bool windowed = win_lo && win_hi && *win_hi > *win_lo;
+
+    float sweep_peak_hz = belt_peaks_hz_[idx];
+    const bool scripted = !belt_script_[0].empty() || !belt_script_[1].empty();
+    if (belt_measure_count_[idx] > 0 && scripted) {
+        // Every sweep after a path's first, full or windowed, plays its next
+        // scripted peak, the last one holding. A script on either path turns
+        // the re-measure walk off for both.
+        auto& script = belt_script_[idx];
+        if (!script.empty()) {
+            sweep_peak_hz = script[std::min(belt_script_pos_[idx], script.size() - 1)];
+            ++belt_script_pos_[idx];
+            if (!std::isnan(sweep_peak_hz)) {
+                belt_peaks_hz_[idx] = sweep_peak_hz;
+            }
+        }
+    } else if (belt_measure_count_[idx] > 0 && !windowed) {
+        // Each full re-measurement after the first walks this path's peak
+        // toward the other's by at most 4 Hz: tightening a belt moves its
+        // resonance, and the clamp keeps the walk from overshooting past equal.
         const float step = std::clamp(belt_peaks_hz_[1 - idx] - belt_peaks_hz_[idx], -4.0f, 4.0f);
         belt_peaks_hz_[idx] += step;
+        sweep_peak_hz = belt_peaks_hz_[idx];
     }
     ++belt_measure_count_[idx];
 
@@ -6705,8 +6836,9 @@ void MoonrakerClientMock::dispatch_test_resonances_response(const std::string& g
     // Whole-Hz console lines across the configured [resonance_tester] range.
     std::vector<std::string> lines;
     char buf[256];
-    for (double freq = std::ceil(resonance_min_freq_); freq <= resonance_max_freq_ + 1e-9;
-         freq += 1.0) {
+    const double sweep_lo = windowed ? *win_lo : resonance_min_freq_;
+    const double sweep_hi = windowed ? *win_hi : resonance_max_freq_;
+    for (double freq = std::ceil(sweep_lo); freq <= sweep_hi + 1e-9; freq += 1.0) {
         snprintf(buf, sizeof(buf), "Testing frequency %.0f Hz", freq);
         lines.emplace_back(buf);
     }
@@ -6728,15 +6860,18 @@ void MoonrakerClientMock::dispatch_test_resonances_response(const std::string& g
         final_line = buf;
     }
 
-    const uint32_t interval = belt_line_interval_ms_ != 0
-                                  ? belt_line_interval_ms_
-                                  : static_cast<uint32_t>(std::max(
-                                        1, sim_speed().shorten_wait_ms(static_cast<int>(
-                                               1000.0 / std::max(1.0, resonance_hz_per_sec_)))));
+    {
+        // The CSV's peak is 3e4 with a 10 Hz half width and 0.45 / 0.45 / 0.10
+        // power shares; a one-second step of amplitude A reads about A^2 / 3.
+        std::lock_guard<std::mutex> lock(sweep_response_mutex_);
+        sweep_response_ = helix::calibration::MockSweepResponse{
+            sweep_peak_hz, 10.0f, 300.0f, {0.671f, 0.671f, 0.316f}};
+    }
+    const uint32_t interval = sweep_line_interval_ms();
 
     play_console_lines(
         std::move(lines), interval,
-        [this, final_line, csv_path, path_letter, peak_hz = belt_peaks_hz_[idx],
+        [this, final_line, csv_path, path_letter, peak_hz = sweep_peak_hz,
          max_freq = resonance_max_freq_, write, mode = belt_failure_] {
             if (!final_line.empty()) {
                 if (write) {
@@ -6766,7 +6901,7 @@ void MoonrakerClientMock::dispatch_test_resonances_response(const std::string& g
 
     spdlog::info("[MoonrakerClientMock] Started TEST_RESONANCES timer for belt path {} "
                  "({:.0f}-{:.0f} Hz sweep, name '{}')",
-                 path_letter, resonance_min_freq_, resonance_max_freq_, name);
+                 path_letter, sweep_lo, sweep_hi, name);
 }
 
 void MoonrakerClientMock::dispatch_measure_axes_noise_response() {
