@@ -337,23 +337,6 @@ _locate_k2cam_webcam_conf() {
     echo ""
 }
 
-# Restart Moonraker so a moonraker.conf change takes effect. Finds the init
-# script via _initd_dir (or /etc/init.d/moonraker) and `restart`s it (guarded,
-# errors ignored). If no init script is found, warn that a manual restart is
-# needed.
-_restart_moonraker() {
-    local initd script
-    initd="$(_initd_dir)"
-    for script in "${initd}/moonraker" "/etc/init.d/moonraker"; do
-        if [ -x "$script" ] || [ -f "$script" ]; then
-            $SUDO "$script" restart 2>/dev/null || true
-            return 0
-        fi
-    done
-    log_warn "Could not find a Moonraker init script — restart Moonraker manually for the camera change to take effect."
-    return 0
-}
-
 # Reversibly comment out the K2-Camera-main [webcam Default] iframe section in
 # whichever moonraker.conf contains it, record the affected path for reversal,
 # and restart Moonraker. Comments the block from the "[webcam Default]" header
@@ -400,7 +383,7 @@ _disable_k2cam_webcam() {
     fi
 
     log_info "Commented the K2-Camera-main [webcam Default] entry in $conf (reversible)."
-    _restart_moonraker
+    restart_moonraker
 }
 
 # Detect the K2's primary LAN IPv4 address (busybox-compatible).
@@ -945,7 +928,7 @@ PYEOF
             fi
             rm -f "$tmp"
         done < "$k2cam_marker"
-        [ "$restored" = true ] && _restart_moonraker
+        [ "$restored" = true ] && restart_moonraker
         remove_state_file "$k2cam_marker"
     fi
 
