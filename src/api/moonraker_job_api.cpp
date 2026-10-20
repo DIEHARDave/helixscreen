@@ -100,18 +100,17 @@ void MoonrakerJobAPI::check_helix_plugin(PluginInfoCallback on_result, ErrorCall
             helix::HelixPluginInfo info;
             info.present = true;
             info.available = true;
-            std::string version = "unknown";
             if (response.contains("result")) {
                 const auto& r = response["result"];
                 info.available = helix::json_util::safe_bool(r, "enabled", true);
-                version = helix::json_util::safe_string(r, "version",
-                                                        "1.0.0"); // Old plugins lack version
+                // Empty when the plugin does not say: an unknown version is no
+                // mismatch to restart Moonraker for.
+                info.version = helix::json_util::safe_string(r, "version", "");
                 info.symlink_dir = helix::json_util::safe_string(r, "symlink_dir", "");
             }
-            info.version = version;
-            spdlog::info("[Moonraker API] helix_print plugin v{} detected (enabled={}, links in "
+            spdlog::info("[Moonraker API] helix_print plugin '{}' detected (enabled={}, links in "
                          "'{}')",
-                         version, info.available, info.symlink_dir);
+                         info.version, info.available, info.symlink_dir);
             on_result(info);
         },
         [on_result, on_error](const MoonrakerError& err) {
