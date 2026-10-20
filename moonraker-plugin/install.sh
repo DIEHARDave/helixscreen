@@ -478,7 +478,6 @@ moonraker_answers() {
 
 # Wait for Moonraker to become available after restart
 wait_for_moonraker() {
-    [ "$NO_RESTART" = "true" ] && return 0
     max_attempts=30
     attempt=0
     moonraker_url="${MOONRAKER_URL:-http://localhost:7125}"
@@ -498,24 +497,51 @@ wait_for_moonraker() {
     return 1
 }
 
-# Restart Moonraker service
+# Run a command as root: directly when we are root, else through sudo.
+as_root() {
+    if [ "$(id -u 2>/dev/null)" = 0 ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+# Restart Moonraker: through its service manager, else by asking Moonraker
+# to restart itself, which needs no root and works where sudo wants a
+# password. Returns 1 when neither restarted it.
 restart_moonraker() {
-    # A caller under systemd's NoNewPrivileges (the HelixScreen service) cannot
-    # sudo, so it passes --no-restart and asks Moonraker to restart itself.
+    info "Restarting Moonraker..."
+    if command -v systemctl > /dev/null 2>&1 && systemctl list-units --type=service 2>/dev/null | grep -q moonraker; then
+        as_root systemctl restart moonraker && return 0
+        warn "Could not restart Moonraker via systemctl"
+    elif command -v service > /dev/null 2>&1; then
+        as_root service moonraker restart && return 0
+        warn "Could not restart Moonraker via service"
+    fi
+    if request_moonraker_restart; then
+        info "Asked Moonraker to restart itself"
+        return 0
+    fi
+    return 1
+}
+
+# The restart an auto install or uninstall ends with, then the wait for
+# Moonraker to answer again. A caller under systemd's NoNewPrivileges (the
+# HelixScreen service) cannot sudo, so it passes --no-restart and restarts
+# Moonraker itself. Returns 1 when Moonraker still needs a restart, which the
+# caller reports instead of completion; a slow comeback is only a warning.
+finish_with_restart() {
     if [ "$NO_RESTART" = "true" ]; then
         info "Leaving the Moonraker restart to the caller"
         return 0
     fi
-    info "Restarting Moonraker..."
-    if command -v systemctl > /dev/null 2>&1 && systemctl list-units --type=service 2>/dev/null | grep -q moonraker; then
-        sudo systemctl restart moonraker || warn "Failed to restart Moonraker via systemctl"
-    elif command -v service > /dev/null 2>&1; then
-        sudo service moonraker restart || warn "Failed to restart Moonraker via service"
-    elif request_moonraker_restart; then
-        info "Asked Moonraker to restart itself"
-    else
-        warn "No way to restart Moonraker found - please restart Moonraker manually"
+    if ! restart_moonraker; then
+        warn "Could not restart Moonraker, so the change has not taken effect"
+        warn "Moonraker needs a restart: run 'sudo systemctl restart moonraker', or restart it from Mainsail or Fluidd"
+        return 1
     fi
+    wait_for_moonraker || warn "Moonraker did not come back up in time, but $1 itself completed"
+    return 0
 }
 
 # POST /server/restart: Moonraker re-launches itself in place, the one restart
@@ -619,14 +645,14 @@ auto_uninstall() {
         done
     fi
 
-    # Restart Moonraker
-    restart_moonraker
-
-    # Wait for Moonraker to come back up. A slow or unreachable restart here
-    # must not turn a completed uninstall into a reported failure: the
-    # plugin is already gone, and this timeout is about restart timing, not
-    # the uninstall's own outcome.
-    wait_for_moonraker || warn "Moonraker did not come back up in time, but the plugin removal itself completed"
+    # The plugin is already gone, so a restart that never happened is
+    # reported, not turned into a failed uninstall.
+    if ! finish_with_restart "the plugin removal"; then
+        printf '\n'
+        warn "Plugin removed, but Moonraker keeps loading it until it restarts"
+        [ "$exit_status" -eq "$EXIT_UNINSTALL_OK" ] || warn "PRINT_START needs a look too - see the warnings above"
+        return "$exit_status"
+    fi
 
     printf '\n'
     if [ "$exit_status" -eq "$EXIT_UNINSTALL_OK" ]; then
@@ -796,12 +822,13 @@ auto_install() {
     ln -sf "$link_to" "$target"
     info "Created symlink: $target -> $link_to"
 
-    # Restart Moonraker
-    restart_moonraker
-
-    # Wait for Moonraker to come back up. The install itself is done by now, so
-    # a slow restart is a warning, never a failure that would roll it back.
-    wait_for_moonraker || warn "Moonraker did not come back up in time, but the plugin install itself completed"
+    # The install itself is done by now, so a restart that never happened is
+    # reported, never a failure that would roll it back.
+    if ! finish_with_restart "the plugin install"; then
+        printf '\n'
+        warn "Plugin installed, but it does not load until Moonraker restarts"
+        return 0
+    fi
 
     printf '\n'
     info "Auto-install complete!"

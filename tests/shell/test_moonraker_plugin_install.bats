@@ -1273,3 +1273,63 @@ setup_forgex_bind_mounted_app() {
     [ "$status" -eq 0 ] || fail "walk did not end (status $status)"
     [ "$(printf '%s\n' "$output" | wc -l)" -eq 2 ] || fail "files: $(printf '%s\n' "$output" | head -n 4)"
 }
+
+# A systemd host where the moonraker unit is listed but sudo refuses, as for
+# a user whose sudo wants a password. $1 logs every curl call.
+mock_systemd_without_sudo() {
+    mock_command_script "systemctl" 'case "$1" in list-units) echo "moonraker.service loaded active running";; esac; exit 0'
+    mock_command_script "sudo" 'echo "sudo: a password is required" >&2; exit 1'
+    mock_real_curl 0 "$1"
+}
+
+@test "an auto install whose sudo restart fails asks Moonraker to restart itself" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log"
+    setup_plain_home "$home"
+    mock_systemd_without_sudo "$log"
+
+    run env HOME="$home" sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$log" || fail "no self-restart request: $(cat "$log" 2>/dev/null)"
+    contains "Asked Moonraker to restart itself" "$output"
+    contains "Auto-install complete" "$output"
+}
+
+@test "an auto uninstall whose sudo restart fails asks Moonraker to restart itself" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log"
+    setup_instrumented_home "$home"
+    mock_systemd_without_sudo "$log"
+
+    run env HOME="$home" sh "$SCRIPT" --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$log" || fail "no self-restart request: $(cat "$log" 2>/dev/null)"
+    contains "Auto-uninstall complete" "$output"
+}
+
+@test "an auto install no restart reaches says Moonraker needs one, never complete" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log"
+    setup_plain_home "$home"
+    mock_systemd_without_sudo "$log"
+    mock_real_curl 22 "$log"
+    mock_command_script "sleep" 'exit 0'
+
+    run env HOME="$home" sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    [ -L "$home/moonraker/moonraker/components/helix_print.py" ]
+    contains "Moonraker needs a restart" "$output"
+    if printf '%s' "$output" | grep -qi 'complete'; then fail "claimed completion: $output"; fi
+    if grep -q '/server/info' "$log"; then fail "waited on a Moonraker nothing restarted"; fi
+}
+
+@test "an auto uninstall no restart reaches says Moonraker needs one, never complete" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log"
+    setup_instrumented_home "$home"
+    mock_systemd_without_sudo "$log"
+    mock_real_curl 22 "$log"
+    mock_command_script "sleep" 'exit 0'
+
+    run env HOME="$home" sh "$SCRIPT" --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+    [ ! -e "$home/moonraker/moonraker/components/helix_print.py" ]
+    contains "Moonraker needs a restart" "$output"
+    if printf '%s' "$output" | grep -qi 'complete'; then fail "claimed completion: $output"; fi
+}

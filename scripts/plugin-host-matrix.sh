@@ -14,7 +14,7 @@
 # Options:
 #   --vintages "A B"   Moonraker refs (default: v0.8.0 v0.9.3 master)
 #   --layouts "A B"    cell.sh layouts (default: plain legacy k1 forgex modconf incsec remote
-#                      relocate)
+#                      relocate cli)
 #   --out DIR          results (default: build/plugin-host/<timestamp>)
 #   --no-strict        run install.sh unconfined even where its service confines it
 #   --keep             leave each cell's container running for a look inside
@@ -41,6 +41,10 @@
 #   pristine   every config file byte-identical to the pre-install copy,
 #              *.bak* backups aside (they are listed in the cell's results)
 #
+# A layout that restarts Moonraker itself (cli) also needs install.sh to say
+# it asked Moonraker to restart and that it completed, and the harness makes
+# no restart of its own: loaded and unloaded wait on the one install.sh made.
+#
 # DOCKER names the docker client (default docker; the test host passes
 # "sudo -n docker"). Exits 0 when every cell passes, 1 when any fails, 2 on a
 # usage or build error.
@@ -52,7 +56,8 @@ HARNESS="$REPO/tests/plugin-host"
 read -r -a DOCKER <<< "${DOCKER:-docker}"
 
 VINTAGES="v0.8.0 v0.9.3 master"
-ALL_LAYOUTS="plain legacy k1 forgex modconf incsec remote relocate"
+ALL_LAYOUTS="plain legacy k1 forgex modconf incsec remote relocate cli"
+SELF_RESTART_LAYOUTS="cli"
 LAYOUTS=$ALL_LAYOUTS
 OUT=""
 STRICT=1
@@ -146,6 +151,15 @@ restart() {
     wait_up "$RESTART_SECS"
 }
 
+LAYOUT=""     # the cell's layout
+is_one_of() { case " $2 " in *" $1 "*) return 0 ;; esac; return 1; }
+
+# The restart after an install or uninstall step: the harness's own, unless
+# install.sh made one, when it only waits for Moonraker to answer.
+settle() {
+    if is_one_of "$LAYOUT" "$SELF_RESTART_LAYOUTS"; then wait_up "$RESTART_SECS"; else restart; fi
+}
+
 # Wait until server/info's components (or failed components) <want: has|lacks> helix_print.
 wait_component() { # <has|lacks> <seconds>
     local end=$(( $(date +%s) + $2 )) j
@@ -212,6 +226,7 @@ check_unloaded() { # <baseline json>
 run_cell() { # <vintage> <layout>
     local v=$1 l=$2 name rc
     name="$v-$l"
+    LAYOUT=$l
     CDIR="$OUT/$name"
     STEP_LOG="$CDIR/steps.txt"
     mkdir -p "$CDIR"
@@ -238,21 +253,44 @@ run_cell() { # <vintage> <layout>
     return "$rc"
 }
 
-cell_steps() {
-    local base rc n
-    if ! wait_up "$UP_SECS"; then record up FAIL "no /server/info within ${UP_SECS}s"; return 1; fi
+# Wait for Moonraker, record the up step, and print its server/info: the
+# baseline later steps compare against.
+cell_up() {
+    local base
+    if ! wait_up "$UP_SECS"; then record up FAIL "no /server/info within ${UP_SECS}s" >&2; return 1; fi
     base=$(info)
     printf '%s\n' "$base" | jq . > "$CDIR/server_info_baseline.json"
-    record up PASS "moonraker $(printf '%s' "$base" | jq -r '.result.moonraker_version'), baseline failed [$(printf '%s' "$base" | jq -r '.result.failed_components // [] | join(" ")')], $(printf '%s' "$base" | jq -r '.result.warnings // [] | length') warning(s)"
+    record up PASS "moonraker $(printf '%s' "$base" | jq -r '.result.moonraker_version'), baseline failed [$(printf '%s' "$base" | jq -r '.result.failed_components // [] | join(" ")')], $(printf '%s' "$base" | jq -r '.result.warnings // [] | length') warning(s)" >&2
+    printf '%s' "$base"
+}
+
+check_pristine() {
+    x sh /harness/cell.sh backups > "$CDIR/backups.txt" 2>&1
+    if ! x sh /harness/cell.sh confdiff > "$CDIR/confdiff.txt" 2>&1; then
+        record pristine FAIL "config differs from the pre-install copy: $(grep -v '^diff ' "$CDIR/confdiff.txt" | tr '\n' ' ' | cut -c1-160)"
+        return 1
+    fi
+    record pristine PASS "$(grep -c '' "$CDIR/backups.txt") backup(s) left"
+}
+
+first_complaint() { grep -m1 -E 'ERROR|WARN' "$1" | sed 's/\x1b\[[0-9;]*m//g'; }
+
+cell_steps() {
+    local base rc n
+    base=$(cell_up) || return 1
 
     x sh /harness/cell.sh stage
     x sh /harness/cell.sh install > "$CDIR/install.out" 2>&1
     rc=$?
-    if [ "$rc" -ne 0 ]; then record install FAIL "exit $rc: $(grep -m1 -E 'ERROR|WARN' "$CDIR/install.out" | sed 's/\x1b\[[0-9;]*m//g')"; return 1; fi
+    if [ "$rc" -ne 0 ]; then record install FAIL "exit $rc: $(first_complaint "$CDIR/install.out")"; return 1; fi
+    if is_one_of "$LAYOUT" "$SELF_RESTART_LAYOUTS" && ! { grep -q 'Asked Moonraker to restart itself' "$CDIR/install.out" &&
+        grep -q 'Auto-install complete' "$CDIR/install.out"; }; then
+        record install FAIL "no self-restart or no completion: $(first_complaint "$CDIR/install.out")"; return 1
+    fi
     record install PASS "$(x sh /harness/cell.sh link)"
 
     local ok=0
-    if restart; then check_loaded "$base" || ok=1
+    if settle; then check_loaded "$base" || ok=1
     else record loaded FAIL "Moonraker did not come back after the restart"; ok=1
     fi
 
@@ -267,20 +305,18 @@ cell_steps() {
 
     x sh /harness/cell.sh uninstall > "$CDIR/uninstall.out" 2>&1
     rc=$?
-    if [ "$rc" -ne 0 ]; then record uninstall FAIL "exit $rc: $(grep -m1 -E 'ERROR|WARN' "$CDIR/uninstall.out" | sed 's/\x1b\[[0-9;]*m//g')"; ok=1
+    if [ "$rc" -ne 0 ]; then record uninstall FAIL "exit $rc: $(first_complaint "$CDIR/uninstall.out")"; ok=1
+    elif is_one_of "$LAYOUT" "$SELF_RESTART_LAYOUTS" && ! { grep -q 'Asked Moonraker to restart itself' "$CDIR/uninstall.out" &&
+        grep -q 'Auto-uninstall complete' "$CDIR/uninstall.out"; }; then
+        record uninstall FAIL "no self-restart or no completion: $(first_complaint "$CDIR/uninstall.out")"; ok=1
     else record uninstall PASS ""
     fi
 
-    if restart; then check_unloaded "$base" || ok=1
+    if settle; then check_unloaded "$base" || ok=1
     else record unloaded FAIL "Moonraker did not come back after the restart"; ok=1
     fi
 
-    x sh /harness/cell.sh backups > "$CDIR/backups.txt" 2>&1
-    if ! x sh /harness/cell.sh confdiff > "$CDIR/confdiff.txt" 2>&1; then
-        record pristine FAIL "config differs from the pre-install copy: $(grep -v '^diff ' "$CDIR/confdiff.txt" | tr '\n' ' ' | cut -c1-160)"
-        return 1
-    fi
-    record pristine PASS "$(grep -c '' "$CDIR/backups.txt") backup(s) left"
+    check_pristine || ok=1
     return "$ok"
 }
 
