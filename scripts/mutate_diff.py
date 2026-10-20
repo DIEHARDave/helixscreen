@@ -391,6 +391,15 @@ def rotate_log(path):
             pass          # an unwritable directory costs the archive, not the run
 
 
+def select_only(hunks, only_args):
+    """The hunks whose file path contains any --only pattern.
+
+    Each --only value may itself list several patterns separated by commas.
+    """
+    patterns = [p.strip() for arg in only_args for p in arg.split(',') if p.strip()]
+    return [h for h in hunks if any(p in h['file'] for p in patterns)]
+
+
 def changed_files(root, base):
     """[(path, is_gitlink)] for the whole diff.
 
@@ -2575,8 +2584,9 @@ def main():
     ap.add_argument('--limit', type=int, default=None, help='stop after N hunks')
     # A mutant costs a compile plus a whole-program link, so a 52-hunk range is
     # hours. Scoping to the files worth confirming is how this stays usable.
-    ap.add_argument('--only', default=None,
-                    help='restrict to changed files whose path contains this')
+    ap.add_argument('--only', action='append', default=None,
+                    help='restrict to changed files whose path contains this; repeat it '
+                         'or separate with commas to keep a file matching any of them')
     ap.add_argument('--shell-tests', default='tests/shell',
                     help='bats path run for a shell/tooling mutant; a single .bats file scopes it')
     ap.add_argument('--python-tests', default='tests/python',
@@ -2683,7 +2693,7 @@ def main():
     # not examine the whole change, so what they set aside is counted too.
     deferred = 0
     if args.only:
-        keep = [h for h in mutable if args.only in h['file']]
+        keep = select_only(mutable, args.only)
         deferred += len(mutable) - len(keep)
         mutable = keep
     if args.limit and len(mutable) > args.limit:

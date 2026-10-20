@@ -312,6 +312,19 @@ def _two_hunk_fixture(tmp_path, makefile):
     return work, base
 
 
+@pytest.mark.parametrize("only", [["--only", "feature,third"],
+                                  ["--only", "feature", "--only", "third"]])
+def test_only_keeps_a_file_matching_any_pattern(tmp_path, only):
+    work, base = _two_hunk_fixture(tmp_path, FAST_MAKEFILE)
+    (work / "src" / "third.cpp").write_text("int h() { return 3; }\n")
+    _git(work, "add", "-N", "src/third.cpp")
+    r = _mutate(work, "--base", base, *only, "--list-only")
+    assert r.returncode == 0, r.stdout
+    assert "src/feature.cpp:1" in r.stdout
+    assert "src/third.cpp:1" in r.stdout
+    assert "src/other.cpp:1" not in r.stdout
+
+
 def test_max_minutes_stops_the_run_and_names_what_it_never_reached(tmp_path):
     work, base = _two_hunk_fixture(tmp_path, SLOW_MUTANT_MAKEFILE.replace("{secs}", "60"))
     before = {p: (work / p).read_bytes() for p in ("src/feature.cpp", "src/other.cpp")}
