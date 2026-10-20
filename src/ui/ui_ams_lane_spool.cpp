@@ -92,7 +92,7 @@ static void draw_dashed_circle_cb(lv_event_t* e) {
     }
 }
 
-static bool resolve_3d_spool_style() {
+bool helix::ui::ams_spool_style_3d() {
     helix::Config* cfg = helix::Config::get_instance();
     return cfg->get<std::string>("/ams/spool_style", "3d") == "3d";
 }
@@ -108,7 +108,7 @@ static SpoolVisual create_spool_visual(lv_obj_t* container, int32_t spool_size) 
     if (!container)
         return sv;
     sv.container = container;
-    sv.use_3d = resolve_3d_spool_style();
+    sv.use_3d = helix::ui::ams_spool_style_3d();
 
     // Spool size is a dedicated responsive token (see ams_panel.xml consts).
     if (spool_size <= 0) {
@@ -832,7 +832,7 @@ void ams_lane_spool_set_size(lv_obj_t* spool, int32_t spool_size) {
     auto* data = get_lane_spool_data(spool);
     if (!data || spool_size <= 0)
         return;
-    const bool style_3d = resolve_3d_spool_style();
+    const bool style_3d = helix::ui::ams_spool_style_3d();
     if (spool_size == data->sv.spool_size && style_3d == data->sv.use_3d)
         return; // already rendered at this size and style
 

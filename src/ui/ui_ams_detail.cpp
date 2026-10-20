@@ -3,6 +3,7 @@
 
 #include "ui_ams_detail.h"
 
+#include "ui_ams_lane_spool.h"
 #include "ui_ams_slot.h"
 #include "ui_bypass_spool_widget.h"
 #include "ui_effects.h"
@@ -348,6 +349,76 @@ bool unit_has_physical_tray() {
     return !backend || backend->has_physical_tray();
 }
 
+/// The lid the unit's climate data calls for: any reading gets glass. Asked
+/// in flat style too, where per-lane readings show without the box.
+tray::LidMode unit_lid_mode(int unit_index) {
+    auto* backend = helix::AmsState::instance().get_backend(0);
+    helix::AmsUnit unit;
+    bool dryer = false;
+    if (backend) {
+        const helix::AmsSystemInfo info = backend->get_system_info();
+        const int u = unit_index >= 0 ? unit_index : 0;
+        if (u < static_cast<int>(info.units.size()))
+            unit = info.units[u];
+        dryer = backend->get_dryer_info(u).supported;
+    }
+    return tray::lid_mode(unit, unit_has_physical_tray(), dryer);
+}
+
+/// Under per-lane lids each lane's humidity sits above its label.
+void show_lane_humidity(lv_obj_t* const slot_widgets[], int n, tray::LidMode lid) {
+    for (int i = 0; i < n; ++i) {
+        if (slot_widgets[i])
+            ui_ams_slot_set_lane_humidity_visible(slot_widgets[i], lid == tray::LidMode::PerLane);
+    }
+}
+
+// Flat spools are drawn without the box, as on a unit with no housing.
+bool draws_tray() {
+    return unit_has_physical_tray() && helix::ui::ams_spool_style_3d();
+}
+
+/// With no box to stand against, the environment pill stands just past the
+/// last lane's spool and badge, as tall as the spools and level with them.
+void place_env_pill_beside_spools(lv_obj_t* pill, lv_obj_t* container,
+                                  lv_obj_t* const slot_widgets[], int n) {
+    if (!pill || lv_obj_has_flag(pill, LV_OBJ_FLAG_HIDDEN))
+        return;
+    clear_translate(pill);
+    int32_t top = INT32_MAX, bottom = INT32_MIN, lanes_right = INT32_MIN;
+    for (int i = 0; i < n; ++i) {
+        lv_obj_t* spool =
+            slot_widgets[i] ? lv_obj_find_by_name(slot_widgets[i], "spool_graphic") : nullptr;
+        if (!spool)
+            continue;
+        lv_area_t a;
+        lv_obj_get_coords(spool, &a);
+        top = std::min(top, a.y1);
+        bottom = std::max(bottom, a.y2);
+        lanes_right = std::max(lanes_right, a.x2);
+        if (lv_obj_t* badge = ui_ams_slot_get_status_badge(slot_widgets[i])) {
+            lv_obj_get_coords(badge, &a);
+            lanes_right = std::max(lanes_right, a.x2);
+        }
+    }
+    if (top > bottom) {
+        lv_obj_remove_local_style_prop(pill, LV_STYLE_HEIGHT, LV_PART_MAIN);
+        return;
+    }
+    // The badge layer clips at the container's edge.
+    lv_area_t c;
+    lv_obj_get_coords(container, &c);
+    lanes_right = std::min(lanes_right, c.x2);
+    // DECLARATIVE_OK: measured layout; the pill is as tall as the spools beside it
+    lv_obj_set_height(pill, bottom - top + 1);
+    lv_obj_update_layout(pill);
+    lv_area_t a;
+    lv_obj_get_coords(pill, &a);
+    const int32_t left = lanes_right + 1 + theme_manager_get_spacing("space_xs");
+    lv_obj_set_style_translate_x(pill, std::min<int32_t>(0, left - a.x1), LV_PART_MAIN);
+    lv_obj_set_style_translate_y(pill, top - a.y1, LV_PART_MAIN);
+}
+
 } // namespace
 
 AmsDetailWidgets ams_detail_find_widgets(lv_obj_t* root) {
@@ -547,7 +618,7 @@ void helix::ui::ams_detail_sync_lane_entry(lv_obj_t* canvas, lv_obj_t* slot_grid
         lv_obj_get_coords(s_tray.container, &c);
         lv_obj_get_coords(slot_grid, &g);
         offset = c.y1 + (int32_t)std::lround(s_tray.box.fb) - g.y1;
-    } else if (slot_grid && !unit_has_physical_tray()) {
+    } else if (slot_grid && !draws_tray()) {
         // With no housing the lanes leave from under the spools' flanges.
         lv_obj_update_layout(slot_grid);
         lv_area_t g;
@@ -587,6 +658,12 @@ AmsSlotLayout helix::ui::ams_detail_slot_layout(int32_t available_width, int slo
     const float spool = (float)theme_manager_get_spacing("ams_slot_spool_size");
     if (spool <= 0)
         return calculate_ams_slot_layout(available_width, slot_count);
+    // Flat spools keep the unit's compact row with no box to clear: a ring,
+    // its badge slack and a gap apart.
+    if (!draws_tray())
+        return calculate_ams_slot_layout(available_width, slot_count,
+                                         (int32_t)spool + helix::ui::kAmsLaneSpoolBadgeMarginPx +
+                                             theme_manager_get_spacing("space_xs"));
     // The box reaches past the outer slots: its first lid starts S/4 - 1 left of
     // the row (for any pitch), and its right side face ends S/4 right of it.
     // Spools stand at the tray's pitch rather than spreading across the width,
@@ -619,11 +696,16 @@ void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[],
     s_tray.valid = false;
     lv_obj_t* container = lv_obj_get_parent(w.slot_grid);
 
-    if (!unit_has_physical_tray()) {
+    if (!draws_tray()) {
         lv_obj_add_flag(w.slot_tray, LV_OBJ_FLAG_HIDDEN);
+        if (!container || !slot_widgets || slot_count <= 0)
+            return;
+        const int n = std::min(slot_count, kAmsDetailMaxSlots);
+        show_lane_humidity(slot_widgets, n, unit_lid_mode(unit_index));
+        lv_obj_update_layout(container);
+        place_env_pill_beside_spools(w.env_indicator, container, slot_widgets, n);
         return;
     }
-    auto* backend = helix::AmsState::instance().get_backend(0);
     lv_obj_remove_flag(w.slot_tray, LV_OBJ_FLAG_HIDDEN);
 
     // Attach draw callbacks once per object instance. This function runs on every
@@ -641,24 +723,8 @@ void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[],
         return;
     const int n = std::min(slot_count, kAmsDetailMaxSlots);
 
-    // Any climate data gets glass.
-    helix::AmsUnit unit;
-    bool dryer = false;
-    if (backend) {
-        const helix::AmsSystemInfo info = backend->get_system_info();
-        const int u = unit_index >= 0 ? unit_index : 0;
-        if (u < static_cast<int>(info.units.size()))
-            unit = info.units[u];
-        dryer = backend->get_dryer_info(u).supported;
-    }
-    const tray::LidMode lid = tray::lid_mode(unit, true, dryer);
-    const bool per_lane = lid == tray::LidMode::PerLane;
-
-    // Under per-lane lids each lane's humidity sits above its label.
-    for (int i = 0; i < n; ++i) {
-        if (slot_widgets[i])
-            ui_ams_slot_set_lane_humidity_visible(slot_widgets[i], per_lane);
-    }
+    const tray::LidMode lid = unit_lid_mode(unit_index);
+    show_lane_humidity(slot_widgets, n, lid);
     lv_obj_update_layout(container);
     lv_area_t c;
     lv_obj_get_coords(container, &c);
