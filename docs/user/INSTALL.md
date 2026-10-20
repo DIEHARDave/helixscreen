@@ -27,28 +27,21 @@ This guide walks you through installing HelixScreen on your 3D printer's touchsc
 
 ### Easy installer (desktop app)
 
-If you would rather not use a terminal, the HelixScreen easy installer does the install for you from a Windows, macOS or Linux computer. [Download it](https://helixscreen.org/installer/), switch your printer on, and open the app. It looks for printers on your network, shows the ones it knows how to set up, and walks you through the rest, including the steps that need a hand at the printer (turning on root access, plugging in a USB stick).
+If you would rather not use a terminal, the HelixScreen easy installer works from a Windows, macOS or Linux computer. [Download it](https://helixscreen.org/installer/), switch your printer on, and open the app. It looks for printers on your network, shows the ones it knows how to handle, and walks you through the rest. It identifies the printer from what it reports about itself and refuses anything it isn't sure about instead of guessing; nothing is changed on a printer it stops on. It signs in over SSH (with a password or your SSH key), and it never installs an older version over a newer one.
 
-What it does for you:
-
-- Identifies the printer from what it reports about itself, and refuses anything it isn't sure about instead of guessing. Nothing is changed on a printer it stops on
-- Signs in over SSH (it asks for a password or uses your SSH key), checks the printer, and installs the right HelixScreen build
-- Updates a printer that already runs HelixScreen, without ever installing an older version over a newer one
-- Flashes a BigTreeTech K-Touch over USB
-
-Printers it covers today:
+**Covered today:** updating HelixScreen on printers that already run Klipper or a firmware mod.
 
 | Printer | Guide |
 |---------|-------|
-| Raspberry Pi, BTT CB1/CB2 and other Klipper hosts | [Klipper host install](guide/install-generic.md) |
-| Creality K1 / K1C / K1 Max | [K1 series install](guide/install-k1.md) |
-| Creality K2 / K2 Plus / K2 Pro | [K2 series install](guide/install-k2.md) |
-| Flashforge Adventurer 5M / 5M Pro | [Adventurer 5M install](guide/install-ad5m.md) |
-| FlashForge Adventurer 5X | [Adventurer 5X install](guide/install-ad5x.md) |
-| QIDI Q2 / Max 4 / Plus 5 | [QIDI install](guide/install-qidi.md) |
-| BigTreeTech K-Touch | [K-Touch install](guide/install-esp32.md#with-the-easy-installer) |
+| Raspberry Pi, BTT CB1/CB2 and other Klipper hosts | [Klipper host](guide/install-generic.md) |
+| Creality K1 / K1C / K1 Max already on Simple AF or rooted | [K1 series](guide/install-k1.md) |
+| Creality K2 / K2 Plus / K2 Pro | [K2 series](guide/install-k2.md) |
+| QIDI Q2 / Max 4 / Plus 5 | [QIDI](guide/install-qidi.md) |
+| Flashforge Adventurer 5M / 5M Pro on Forge-X | [Adventurer 5M](guide/install-ad5m.md) |
 
-The list grows as recipes are tested. A printer it recognizes but can't set up yet sends you to [Printers the easy installer doesn't handle](guide/easy-installer-unsupported.md), which says what works today. The app is not code-signed yet, so macOS and Windows warn the first time you open it; the [download page](https://helixscreen.org/installer/) shows the two clicks that get past that.
+**Coming:** first installs on printers that need a firmware mod first. The Creality K1 on stock firmware gets Simple AF from the installer. The Adventurer 5M and 5X get Forge-X or ZMOD written to a USB stick, which works only on certain stock firmware versions: Forge-X on 2.6.5 to 5.1.x (3.1.5 first needs FlashForge's Factory image), ZMOD on 1.1.7 to 1.2.3 except 1.1.8, 3.0.3, 3.0.9 and 3.1.0, after a factory reset, and it takes up to 40 minutes. The Adventurer 5X (ZMOD) and the BigTreeTech [K-Touch](https://helixscreen.org/1.1/guide/install-esp32/#with-the-easy-installer) are also on the way. Until then, use the guides in [the table below](#which-printer-are-you-installing-on).
+
+A printer the app recognizes but can't handle sends you to [Printers the easy installer doesn't handle](guide/easy-installer-unsupported.md). Builds without a code-signing certificate make macOS and Windows warn the first time you open the app; the [download page](https://helixscreen.org/installer/) shows how to get past that.
 
 ### From the command line
 

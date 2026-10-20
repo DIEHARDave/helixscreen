@@ -1,8 +1,10 @@
 # Installing HelixScreen on the Creality K1 Series
 
+> **Status:** the easy installer currently handles a K1 that already runs Simple AF or is rooted with Moonraker, and updates. The stock-firmware path described under "Stock Creality software" is coming; until it ships, use the [K1C guide](creality-k1c-setup.md).
+
 How to get HelixScreen onto a Creality K1, K1C or K1 Max, either with the [HelixScreen easy installer](https://helixscreen.org/installer/) or by hand. HelixScreen replaces the printer's screen program and keeps Creality Print and Creality Cloud reaching the printer.
 
-> **The easy installer does the whole job for you.** You turn on root access from the printer's screen and it does the rest. The by-hand steps are in the [Creality K1C Setup Guide](creality-k1c-setup.md); this page covers what the installer does and what it needs.
+> **Once the stock path ships, you turn on root access from the printer's screen and the installer does the rest.** The by-hand steps are in the [Creality K1C Setup Guide](creality-k1c-setup.md); this page covers what the installer does and what it needs.
 
 ## What the Installer Needs
 
@@ -22,7 +24,7 @@ The installer looks at the printer first and picks the path.
 2. You turn on root access: **Settings > Root account information**, read the notice, wait for the countdown, press OK, then press Next in the installer.
 3. The installer signs in as `root` with the factory password `creality_2023`, and checks the model and the firmware version.
 4. It checks the printer for leftovers of an earlier mod: a `helper-script` folder, Creality's own Fluidd or Mainsail script, or files in `/opt`. Simple AF installs only on a printer fresh from a factory reset, so if anything is found the installer stops and asks you to reset the printer from its Settings and run it again.
-5. It installs [Simple AF](https://github.com/pellcorp/creality), the community firmware that gives the printer Klipper and Moonraker, by cloning it to `/usr/data/pellcorp` and running its K1 installer. This is the long step: the installer allows it up to 30 minutes, then waits for Moonraker to come up. Do not switch the printer off during either.
+5. It installs [Simple AF](https://github.com/pellcorp/creality), the community firmware that gives the printer Klipper and Moonraker, by cloning it to `/usr/data/pellcorp` and running its K1 installer. This is the long step: the installer gives up only if it hears nothing from the printer for 30 minutes, then waits for Moonraker to come up. Do not switch the printer off during either.
 6. It installs HelixScreen into `/usr/data/helixscreen` and waits for the service to start. The setup wizard then runs on the printer's screen.
 
 Two things to know before you start:

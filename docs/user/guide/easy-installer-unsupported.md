@@ -10,9 +10,7 @@ Install by hand. The U1 needs SSH access, either from the **Root access** option
 
 ## QIDI with a TJC screen
 
-This covers the X-Smart 3, X-Plus 3, X-Max 3, Q1 Pro and Plus 4. Their screen is a serial TJC display with its own firmware, which HelixScreen can't drive, so HelixScreen can't replace it.
-
-You can still use HelixScreen as a **remote screen**: install it on a separate device with a touchscreen, such as a Raspberry Pi, and point it at the printer's Moonraker address. See [Remote screen setup](../INSTALL.md#remote-screen-setup-run-on-a-separate-device). The Q2, Max 4 and Plus 5 do run HelixScreen on-device; see [Installing on QIDI printers](install-qidi.md).
+This covers the X-Smart 3, X-Plus 3, X-Max 3, Q1 Pro and Plus 4: their serial TJC display can't be driven by HelixScreen (see [Supported Printers](supported-printers.md#qidi-plus-4--q2--plus-5--max-4)). Use HelixScreen as a **remote screen** on a separate touchscreen device pointed at the printer's Moonraker: [Remote screen setup](../INSTALL.md#remote-screen-setup-run-on-a-separate-device). The Q2, Max 4 and Plus 5 run it on-device; see [QIDI](install-qidi.md).
 
 ## Sovol
 

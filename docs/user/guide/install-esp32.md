@@ -8,7 +8,7 @@ The BigTreeTech K-Touch is a small standalone touchscreen built around an ESP32-
 
 ## With the Easy Installer
 
-The [HelixScreen easy installer](https://helixscreen.org/installer/) is a desktop app (Windows, macOS, Linux) that flashes the K-Touch over USB, with no Python, esptool or browser needed. It installs the newest 1.1 beta build.
+The [HelixScreen easy installer](https://helixscreen.org/installer/) is a desktop app (Windows, macOS, Linux) that flashes the K-Touch over USB, with no Python, esptool or browser needed. It installs the newest beta build.
 
 1. Plug the K-Touch into your computer with a USB-C data cable and switch it on.
 2. Open the installer. The K-Touch shows up in the printer list (a K-Touch plugged in by USB is listed alongside network printers). Pick it.

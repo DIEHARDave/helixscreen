@@ -1,5 +1,7 @@
 # Installing HelixScreen on a Klipper Host (Raspberry Pi and Similar)
 
+> **Status:** updating a Klipper host that already runs HelixScreen is the tested path today. A first install uses the same steps and is still being tested.
+
 How the [HelixScreen easy installer](https://helixscreen.org/installer/) installs HelixScreen on the computer that runs Klipper: a Raspberry Pi, a BTT CB1 or CB2, an Orange Pi, a Radxa board, and the like. This is the path for Voron, RatRig and other printers whose Klipper host is a separate board with its own touchscreen. The command-line steps are in the [Installation guide](../INSTALL.md#generic-linux-install-raspberry-pi-btt-x86).
 
 ## What the Installer Needs
@@ -30,7 +32,7 @@ The password and passphrase are used for this install only and are never saved t
 
 Installing needs root. If you sign in as `root`, or the account has passwordless sudo, nothing more is asked. Otherwise:
 
-- Signed in with a **password**: the installer gives that password to sudo.
+- Signed in with a **password**: the installer gives that password to sudo without asking again. If sudo rejects it (the account's sudo password differs from its login password), the install stops; sign in with an SSH key instead and the installer asks for the sudo password separately.
 - Signed in with an **SSH key**: the installer has no password to give, so it asks for the account's password on a screen titled "Your printer needs your password". It checks the password with sudo before anything is uploaded and asks again if sudo refuses it, three tries in all.
 
 If sudo can't be used at all, the installer tells you to sign in as root or give the account sudo rights. See the [Installation guide](../INSTALL.md#generic-linux-install-raspberry-pi-btt-x86) for the command-line route.

@@ -75,7 +75,7 @@ Runs on the K1's built-in screen. K1C and K1 Max are the most thoroughly tested 
 - **Chamber heater control** on the K1 Max
 - **Optional CFS support** — with Creality's official CFS upgrade kit and firmware (v2.3.5.33+), HelixScreen detects and drives the K1-series filament system (see [Creality Filament System](filament.md#creality-filament-system-cfs))
 
-**Requirements:** Community firmware that includes Moonraker (stock K1 firmware has none) — Guilouz, Simple AF, or Guppy Mod — plus root access. See [Installation → Creality K1 Series](creality-k1c-setup.md).
+**Requirements:** Community firmware that includes Moonraker (stock K1 firmware has none) — Guilouz, Simple AF, or Guppy Mod — plus root access. See [Installation → Creality K1 Series](creality-k1c-setup.md); the [K1 series page](install-k1.md) covers the easy installer.
 
 **Status:** Supported.
 
@@ -125,7 +125,7 @@ The 4-series QIDI printers integrate the **QIDI Box** filament changer. The Q2, 
 
 **Status:** Supported.
 
-> **Good to know:** HelixScreen owns no QIDI hardware — the Q2 is community-validated. The QIDI Box write path (load/unload) is still being field-validated, and Max 4 box control differs from the Q2 and is a work in progress. Installing on the printer replaces QIDI's stock screen app, which QIDI Studio box sync, QIDI cloud and QIDI Box filament edits depend on; uninstalling HelixScreen brings them back.
+> **Good to know:** HelixScreen owns no QIDI hardware — the Q2 is community-validated. The QIDI Box write path (load/unload) is still being field-validated, and Max 4 box control differs from the Q2 and is a work in progress. Installing on the printer replaces QIDI's stock screen app, which QIDI Studio box sync, QIDI cloud and QIDI Box filament edits depend on; uninstalling HelixScreen brings them back. Install steps: [QIDI](install-qidi.md).
 
 ---
 
