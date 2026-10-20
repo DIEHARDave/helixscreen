@@ -93,9 +93,9 @@ bool RemotePointer::set_logical_state(int32_t x, int32_t y, bool pressed) {
     return true;
 }
 
-RemotePointer::WaitResult RemotePointer::wait_for_samples(
-    uint64_t baseline, std::chrono::milliseconds timeout,
-    const std::function<bool()>& keep_going) const {
+RemotePointer::WaitResult
+RemotePointer::wait_for_samples(uint64_t baseline, std::chrono::milliseconds timeout,
+                                const std::function<bool()>& keep_going) const {
     constexpr auto kPoll = std::chrono::milliseconds(5);
     const auto deadline = std::chrono::steady_clock::now() + timeout;
     const uint64_t target = baseline + 2;
