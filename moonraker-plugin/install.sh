@@ -40,6 +40,14 @@ EXIT_RELINK_CURRENT=0
 EXIT_RELINK_DONE=3
 EXIT_RELINK_NOT_OURS=4
 
+# Exit codes for --restart-moonraker (HelixPluginInstaller reads them), those
+# of restart_moonraker_via in helix_print_conf.sh:
+#   0 - the service manager restarted Moonraker's process
+#   3 - Moonraker restarted itself in place
+#   4 - a print is printing or paused; nothing restarted
+#   5 - Moonraker is down and could not be started
+#   1 - nothing restarted Moonraker
+
 # Colors for output (works with printf)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -850,6 +858,30 @@ auto_install() {
     info "Auto-install complete!"
 }
 
+# Run a command without asking for a password: systemctl gets
+# --no-ask-password, so a caller with no rights fails at once instead of
+# waiting on a polkit agent.
+run_unprompted() {
+    if [ "$1" = systemctl ]; then
+        shift
+        systemctl --no-ask-password "$@"
+    else
+        "$@"
+    fi
+}
+
+# Restart Moonraker so it runs the plugin code on disk (--restart-moonraker):
+# what the app runs after --relink re-pointed the link, or when the running
+# plugin reports another version than this tree's. A loaded helix_print.py is
+# replaced only by a new process, which restart_moonraker_via tries first.
+# No sudo: the app runs under NoNewPrivileges, so service commands run as the
+# caller. Returns restart_moonraker_via's code.
+restart_for_plugin() {
+    config_dir=$(find_config_dir)
+    restart_moonraker_via run_unprompted \
+        "$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")" warn
+}
+
 show_help() {
     printf '%s\n' "Usage: $0 [OPTIONS] [MOONRAKER_PATH]"
     printf '\n'
@@ -865,6 +897,9 @@ show_help() {
     printf '%s\n' "  --relink                Re-point an installed plugin's link at this copy;"
     printf '%s\n' "                          exit 0 already current, 3 re-pointed, 4 nothing of"
     printf '%s\n' "                          ours to repair, 1 failed. Never restarts Moonraker"
+    printf '%s\n' "  --restart-moonraker     Restart Moonraker's process so it loads the plugin on"
+    printf '%s\n' "                          disk; exit 0 restarted, 3 restarted in place, 4 held"
+    printf '%s\n' "                          off by a print, 5 left down, 1 not restarted"
     printf '%s\n' "  --help, -h              Show this help message"
     printf '\n'
     printf '%s\n' "Exit codes for --uninstall and --uninstall-auto:"
@@ -908,6 +943,11 @@ while [ $# -gt 0 ]; do
         --relink)
             status=0
             relink || status=$?
+            exit "$status"
+            ;;
+        --restart-moonraker)
+            status=0
+            restart_for_plugin || status=$?
             exit "$status"
             ;;
         --help|-h)

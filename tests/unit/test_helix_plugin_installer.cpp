@@ -440,6 +440,39 @@ TEST_CASE("HelixPluginInstaller install_local_sync runs the script it finds",
     }
 }
 
+TEST_CASE("restart_moonraker_for_plugin reads install.sh --restart-moonraker's exit",
+          "[plugin_installer]") {
+    using Outcome = helix::PluginRestartOutcome;
+    SandboxedInstaller sandbox;
+    const std::string script = sandbox.script_path();
+
+    SECTION("the script is asked to restart, with no --no-restart") {
+        sandbox.write_script("exit 0");
+        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::Restarted);
+        CHECK(sandbox.script_args() == "--restart-moonraker ");
+    }
+    SECTION("an in-place restart is a restart") {
+        sandbox.write_script("exit 3");
+        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::Restarted);
+    }
+    SECTION("a print holds it off") {
+        sandbox.write_script("exit 4");
+        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::HeldForPrint);
+    }
+    SECTION("Moonraker left down") {
+        sandbox.write_script("exit 5");
+        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::LeftDown);
+    }
+    SECTION("nothing restarted it") {
+        sandbox.write_script("exit 1");
+        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::Failed);
+    }
+    SECTION("no script") {
+        CHECK(helix::restart_moonraker_for_plugin("", 10) == Outcome::Failed);
+        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::Failed);
+    }
+}
+
 // ============================================================================
 // Test: uninstall_local() Error Paths
 // ============================================================================

@@ -22,7 +22,10 @@ struct PluginSelfHealTestAccess; // test-only friend (tests/test_helpers/)
  * moved or was replaced, and Moonraker restarts when it re-pointed the link or
  * the running plugin reports a version other than the one bundled here. A
  * restart waits for any job to let go and then for its completion flow
- * (decide_plugin_turn(), as the install prompt does). A version pair or a
+ * (decide_plugin_turn(), as the install prompt does), and goes through
+ * install.sh --restart-moonraker: Moonraker's own server.restart keeps the
+ * plugin module it already imported, so only a new process loads the new
+ * code. One the script holds off for a print waits for the job again. A version pair or a
  * re-pointed link a restart already failed to fix is remembered in the config
  * (PluginSelfHealMemory) and only warned about on later starts. A plugin set
  * to `enabled: False` is left to the install prompt. A remote Moonraker is
@@ -31,13 +34,11 @@ struct PluginSelfHealTestAccess; // test-only friend (tests/test_helpers/)
  */
 class PluginSelfHeal {
   public:
-    /// Asks Moonraker to restart; returns whether a restart was requested.
-    using MoonrakerRestarter = std::function<bool()>;
     /// What is on screen now, for decide_plugin_turn().
     using ScreenProbe = std::function<PluginScreenState()>;
 
     PluginSelfHeal(PrinterState& printer_state, HelixPluginInstaller& installer,
-                   MoonrakerRestarter restarter, ScreenProbe screen);
+                   ScreenProbe screen);
 
     /// Discovery has reported the plugin (installed or not): run the check,
     /// the first time in this process.
@@ -58,10 +59,10 @@ class PluginSelfHeal {
     /// A pending restart looks again: on a lifecycle change or a timer tick.
     void recheck_restart();
     void restart_moonraker();
+    void on_restarted(PluginRestartOutcome outcome);
 
     PrinterState& printer_state_;
     HelixPluginInstaller& installer_;
-    MoonrakerRestarter restarter_;
     ScreenProbe screen_;
     /// Stop when no restart is pending, else the wait it is in.
     PluginTurnStep restart_wait_ = PluginTurnStep::Stop;

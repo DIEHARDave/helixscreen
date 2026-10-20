@@ -20,6 +20,11 @@ struct PluginSelfHealTestAccess {
                static_cast<bool>(heal.restart_timer_);
     }
 
+    /// A pending restart waits for the job to let go.
+    static bool restart_waiting_for_job(const PluginSelfHeal& heal) {
+        return heal.restart_wait_ == PluginTurnStep::WaitForJob;
+    }
+
     /// What the recheck timer runs on each tick.
     static void recheck_restart(PluginSelfHeal& heal) {
         heal.recheck_restart();

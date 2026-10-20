@@ -1288,6 +1288,52 @@ setup_forgex_bind_mounted_app() {
     done
 }
 
+# A systemd host whose Moonraker runs as pid 700 and has helix_print loaded.
+# systemctl logs its argv to $2, and its restart replaces the process; sudo
+# fails, as it does under the app's NoNewPrivileges. curl logs to $3.
+setup_loaded_plugin_on_systemd() {
+    local home="$1" log="$2" curl_log="$3"
+    setup_plain_home "$home"
+    stage_systemd_init
+    mkdir -p "$home/proc/700"
+    printf '%s\0' python3 "$home/moonraker/moonraker/moonraker.py" > "$home/proc/700/cmdline"
+    mock_command_script "systemctl" "printf '%s\\n' \"\$*\" >> '$log'
+case \"\$*\" in *' restart moonraker') mv '$home/proc/700' '$home/proc/701';; esac
+exit 0"
+    mock_command_script "sudo" 'echo "sudo: The no new privileges flag is set" >&2; exit 1'
+    mock_command_script "sleep" 'exit 0'
+    mock_curl_helix_print_loaded "$curl_log"
+}
+
+@test "--restart-moonraker restarts a Moonraker with helix_print loaded through systemd, not over HTTP" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log" curl_log="$BATS_TEST_TMPDIR/curl.log"
+    setup_loaded_plugin_on_systemd "$home" "$log" "$curl_log"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 0 ] || fail "want 0 (service restart), got $status: $output"
+    grep -q 'restart moonraker$' "$log" || fail "no systemctl restart: $(cat "$log" 2>/dev/null)"
+    [ -d "$home/proc/701" ] || fail "the Moonraker process was not replaced: $output"
+    if grep -q 'server/restart' "$curl_log"; then fail "asked Moonraker to restart in place: $(cat "$curl_log")"; fi
+}
+
+@test "--restart-moonraker during a print restarts nothing and exits 4" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log" curl_log="$BATS_TEST_TMPDIR/curl.log"
+    setup_loaded_plugin_on_systemd "$home" "$log" "$curl_log"
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$curl_log'
+case \"\$*\" in
+    *server/info*) printf '%s' '{\"result\":{\"components\":[\"helix_print\"]}}' ;;
+    *objects/query*print_stats*) printf '%s' '{\"result\": {\"status\": {\"print_stats\": {\"state\": \"printing\"}}}}' ;;
+esac
+exit 0"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$SCRIPT" --restart-moonraker
+    [ "$status" -eq 4 ] || fail "want 4 (held for the print), got $status: $output"
+    if grep -q restart "$log" 2>/dev/null; then fail "restarted mid-print: $(cat "$log")"; fi
+    if grep -q 'server/restart' "$curl_log"; then fail "asked Moonraker to restart mid-print"; fi
+    [ -d "$home/proc/700" ] || fail "the Moonraker process was replaced mid-print"
+}
+
 @test "an include cycle through .. is walked once" {
     local c="$BATS_TEST_TMPDIR/cfg"
     mkdir -p "$c/conf.d"

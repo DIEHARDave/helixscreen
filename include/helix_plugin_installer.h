@@ -324,6 +324,27 @@ enum class PluginLinkCheck {
 PluginLinkCheck relink_plugin(const std::string& script_path, int timeout_seconds);
 
 /**
+ * @brief What `install.sh --restart-moonraker` did
+ */
+enum class PluginRestartOutcome {
+    Restarted,    ///< Moonraker runs again, as a new process or restarted in place
+    HeldForPrint, ///< a print is printing or paused, so nothing restarted
+    LeftDown,     ///< Moonraker is down and could not be started
+    Failed,       ///< nothing restarted Moonraker, or the script failed, timed out or could not run
+};
+
+/**
+ * @brief Run `install.sh --restart-moonraker` at @p script_path and read its outcome
+ *
+ * Restarts Moonraker's process, so a helix_print.py it already loaded is read
+ * again; its in-place restart (server.restart) keeps the module it imported.
+ * Blocks while Moonraker restarts, up to @p timeout_seconds. Touches no
+ * installer state, so any thread may call it. An empty path is Failed.
+ */
+PluginRestartOutcome restart_moonraker_for_plugin(const std::string& script_path,
+                                                  int timeout_seconds);
+
+/**
  * @brief The version in a helix_print.py's `PLUGIN_VERSION = "x"` line, or empty
  */
 std::string parse_plugin_version(std::string_view helix_print_py);

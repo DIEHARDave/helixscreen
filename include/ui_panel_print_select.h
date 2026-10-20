@@ -1023,10 +1023,8 @@ class PrintSelectPanel : public PanelBase {
     helix::HelixPluginInstaller plugin_installer_;
     PluginInstallModal plugin_install_modal_;
     /// The startup repair of an installed plugin; after plugin_installer_, which it uses.
-    helix::PluginSelfHeal plugin_self_heal_{
-        printer_state_, plugin_installer_,
-        [this]() { return helix::ui::request_moonraker_restart_for_plugin(api_); },
-        []() { return plugin_screen_state(); }};
+    helix::PluginSelfHeal plugin_self_heal_{printer_state_, plugin_installer_,
+                                            []() { return plugin_screen_state(); }};
 
     /// What on screen a plugin action waits behind (helix::decide_plugin_turn()).
     static helix::PluginScreenState plugin_screen_state();

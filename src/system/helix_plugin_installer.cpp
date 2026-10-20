@@ -165,11 +165,13 @@ static WaitResult wait_for_child_with_timeout(pid_t pid, int timeout_seconds,
  * not a command string, so nothing inside script_path is interpreted.
  * Running it through /bin/sh also works when the file has no exec bit:
  * Moonraker's type:web self-update extracts the release zip with Python's
- * zipfile, which does not restore unix modes. --no-restart: NoNewPrivileges
- * keeps the script from sudo; the caller restarts Moonraker over its API.
+ * zipfile, which does not restore unix modes. --no-restart, unless
+ * @p no_restart is false: NoNewPrivileges keeps the script from sudo; the
+ * caller restarts Moonraker over its API.
  */
 static WaitResult run_install_script(const std::string& script_path, const char* mode_flag,
-                                     int timeout_seconds, const char* operation_name) {
+                                     int timeout_seconds, const char* operation_name,
+                                     bool no_restart = true) {
     WaitResult result;
 #if defined(ESP_PLATFORM)
     // No shell and no processes to spawn: the firmware cannot run install.sh.
@@ -177,6 +179,7 @@ static WaitResult run_install_script(const std::string& script_path, const char*
     (void)mode_flag;
     (void)timeout_seconds;
     (void)operation_name;
+    (void)no_restart;
     result.error = result.spawn_failed = true;
     result.error_message = "not supported on this device";
     return result;
@@ -206,7 +209,11 @@ static WaitResult run_install_script(const std::string& script_path, const char*
         dup2(fds[1], STDERR_FILENO);
         close(fds[0]);
         close(fds[1]);
-        execl("/bin/sh", "sh", script_path.c_str(), "--no-restart", mode_flag, nullptr);
+        if (no_restart) {
+            execl("/bin/sh", "sh", script_path.c_str(), "--no-restart", mode_flag, nullptr);
+        } else {
+            execl("/bin/sh", "sh", script_path.c_str(), mode_flag, nullptr);
+        }
         _exit(127);
     }
 
@@ -450,6 +457,47 @@ PluginLinkCheck relink_plugin(const std::string& script_path, int timeout_second
     default:
         log_script_output(result.output, false);
         return PluginLinkCheck::Failed;
+    }
+}
+
+namespace {
+// install.sh --restart-moonraker exit codes (moonraker-plugin/install.sh).
+constexpr int kRestartExitService = 0;
+constexpr int kRestartExitInPlace = 3;
+constexpr int kRestartExitHeldForPrint = 4;
+constexpr int kRestartExitLeftDown = 5;
+} // namespace
+
+PluginRestartOutcome restart_moonraker_for_plugin(const std::string& script_path,
+                                                  int timeout_seconds) {
+    if (script_path.empty()) {
+        return PluginRestartOutcome::Failed;
+    }
+    const WaitResult result = run_install_script(script_path, "--restart-moonraker",
+                                                 timeout_seconds, "Moonraker restart", false);
+    if (result.spawn_failed || result.timed_out || result.error) {
+        log_script_output(result.output, false);
+        return PluginRestartOutcome::Failed;
+    }
+    switch (result.exit_code) {
+    case kRestartExitService:
+        log_script_output(result.output, true);
+        return PluginRestartOutcome::Restarted;
+    case kRestartExitInPlace:
+        // A plugin Moonraker had loaded keeps its old code through this one.
+        log_script_output(result.output, false);
+        spdlog::info("[PluginInstaller] Moonraker restarted itself in place; no service "
+                     "manager restart reached it");
+        return PluginRestartOutcome::Restarted;
+    case kRestartExitHeldForPrint:
+        log_script_output(result.output, true);
+        return PluginRestartOutcome::HeldForPrint;
+    case kRestartExitLeftDown:
+        log_script_output(result.output, false);
+        return PluginRestartOutcome::LeftDown;
+    default:
+        log_script_output(result.output, false);
+        return PluginRestartOutcome::Failed;
     }
 }
 
