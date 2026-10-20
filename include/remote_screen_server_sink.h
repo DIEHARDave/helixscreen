@@ -66,7 +66,8 @@ class ScreenFrameStore {
     bool wants_frames() const;
 
     /// Copy one dirty rect in, (re)allocating the shadow at the frame's display size
-    /// and pixel format, and advance the generation.
+    /// and pixel format. The generation advances on the refresh's last rect, so a
+    /// waiter never sees a screen painted only partway.
     void on_frame(const RemoteScreenFrame& f);
 
     enum class Need { Ready, FullRedraw };
@@ -124,6 +125,11 @@ class ScreenFrameStore {
     int cached_w_ = 0;
     int cached_h_ = 0;
     std::chrono::steady_clock::time_point last_encode_{};
+
+    /// One-shot diagnostics: the first frames' geometry, and the first rejected rect.
+    static constexpr int kDiagFrames = 12;
+    int diag_frames_ = 0;
+    bool reject_warned_ = false;
 
     /// Serializes encodes, which read rgb_ outside mutex_.
     std::mutex encode_mutex_;

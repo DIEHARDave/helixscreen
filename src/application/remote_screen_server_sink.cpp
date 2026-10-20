@@ -68,7 +68,26 @@ void ScreenFrameStore::on_frame(const RemoteScreenFrame& f) {
         const BlitResult r = blit_remote_frame(f, BlitTarget{shadow_.data(), shadow_.size(),
                                                              static_cast<uint32_t>(shadow_w_ * bpp),
                                                              shadow_w_, shadow_h_, bpp * 8});
+        if (diag_frames_ < kDiagFrames) {
+            ++diag_frames_;
+            spdlog::debug("[RemoteScreen] frame #{} rect=({},{})-({},{}) origin=({},{}) disp={}x{} "
+                          "stride={} len={} bpp={} -> status {}",
+                          diag_frames_, f.x1, f.y1, f.x2, f.y2, f.px_map_x, f.px_map_y, f.disp_w,
+                          f.disp_h, f.src_stride, static_cast<unsigned long>(f.px_map_len), bpp,
+                          static_cast<int>(r.status));
+        }
         if (r.status != BlitStatus::Copied) {
+            if (!reject_warned_) {
+                reject_warned_ = true;
+                spdlog::warn("[RemoteScreen] dropping a frame rect=({},{})-({},{}) origin=({},{}) "
+                             "disp={}x{} stride={} len={}: blit status {}",
+                             f.x1, f.y1, f.x2, f.y2, f.px_map_x, f.px_map_y, f.disp_w, f.disp_h,
+                             f.src_stride, static_cast<unsigned long>(f.px_map_len),
+                             static_cast<int>(r.status));
+            }
+            return;
+        }
+        if (!f.last_in_refresh) {
             return;
         }
         has_frame_ = true;

@@ -227,3 +227,35 @@ TEST_CASE("server sink forwards gating and frames to its store", "[remote_screen
     sink.stop();
     CHECK(store->allocated_bytes() == 0);
 }
+
+TEST_CASE("store: a refresh in stripes advances the generation only on its last stripe",
+          "[remote_screen][server_sink]") {
+    ScreenFrameStore store;
+    store.note_request();
+    const uint64_t gen = store.generation();
+    std::vector<uint8_t> stripe(16 * 4 * 4, 0x40);
+    for (int i = 0; i < 4; ++i) {
+        RemoteScreenFrame f;
+        f.px_map = stripe.data();
+        f.px_map_len = stripe.size();
+        f.x1 = 0;
+        f.y1 = i * 4;
+        f.x2 = 15;
+        f.y2 = i * 4 + 3;
+        f.px_map_x = 0;
+        f.px_map_y = i * 4;
+        f.disp_w = 16;
+        f.disp_h = 16;
+        f.src_stride = 64;
+        f.src_format = RemoteScreenPixelFormat::BGRA8888;
+        f.last_in_refresh = (i == 3);
+        store.on_frame(f);
+        if (i < 3) {
+            // A viewer waiting for the repaint must not be answered with one stripe of it.
+            CHECK(store.generation() == gen);
+            CHECK_FALSE(store.wait_for_generation_after(gen, 1ms));
+        }
+    }
+    CHECK(store.generation() == gen + 1);
+    CHECK(store.wait_for_generation_after(gen, 1ms));
+}
