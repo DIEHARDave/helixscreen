@@ -149,7 +149,7 @@ _remote_screen_filter() {
 # the app (route file) and for uninstall (marker). Every skip returns 0: the
 # app falls back to LAN mode, so a missing route never fails an install.
 install_remote_screen_route() {
-    local marker bin conf confs edited rc routed
+    local marker bin conf confs edited rc routed status
     marker="$(_remote_screen_marker_file)"
     if [ -f "$marker" ]; then
         log_info "Remote screen: nginx route already installed"
@@ -168,6 +168,19 @@ install_remote_screen_route() {
         log_info "Remote screen: nginx lacks auth_request; the screen server will use the LAN"
         return 0
     fi
+
+    # auth_request turns anything but 2xx/401/403 into a 500, and the route
+    # file moves the app off the LAN: without a Moonraker that answers
+    # /access/user (it has no [authorization] section, or is unreachable) the
+    # route would leave no way in at all.
+    status="$(_remote_screen_moonraker_status GET /access/user)"
+    case "$status" in
+        200|401) ;;
+        *)
+            log_info "Remote screen: Moonraker /access/user answered ${status}; the screen server will use the LAN"
+            return 0
+            ;;
+    esac
 
     confs="$(_remote_screen_conf_files)"
     edited=""
@@ -210,20 +223,38 @@ EOF
     return 0
 }
 
-# Best-effort DELETE of the app's webcam entry, in case the app never ran to
-# remove it. curl where it is real, else python3 (the K2 has no curl).
-_remote_screen_delete_webcam() {
-    local url
-    url="${MOONRAKER_URL:-http://127.0.0.1:7125}/server/webcams/item?${REMOTE_SCREEN_WEBCAM_QUERY}"
-    if command -v curl >/dev/null 2>&1 &&
-        curl -sf --max-time 5 -X DELETE "$url" >/dev/null 2>&1; then
-        return 0
+# Send $1 (an HTTP method) to Moonraker path $2 and print the response status,
+# or 000 when nothing answered. curl where it is real, else python3 (the K2 has
+# no curl; the K1's impostor curl prints no status and falls through too).
+_remote_screen_moonraker_status() {
+    local url code=""
+    url="${MOONRAKER_URL:-http://127.0.0.1:7125}$2"
+    if command -v curl >/dev/null 2>&1; then
+        code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 -X "$1" "$url" 2>/dev/null)"
     fi
-    _has_python || return 0
-    "$_PY_BIN" - "$url" <<'PYEOF' >/dev/null 2>&1 || true
-import sys, urllib.request
-urllib.request.urlopen(urllib.request.Request(sys.argv[1], method='DELETE'), timeout=5)
+    case "$code" in
+        [1-5][0-9][0-9]) echo "$code"; return 0 ;;
+    esac
+    if _has_python; then
+        code="$("$_PY_BIN" - "$1" "$url" <<'PYEOF' 2>/dev/null
+import sys, urllib.request, urllib.error
+try:
+    with urllib.request.urlopen(urllib.request.Request(sys.argv[2], method=sys.argv[1]), timeout=5) as r:
+        print(r.status)
+except urllib.error.HTTPError as e:
+    print(e.code)
+except Exception:
+    print('000')
 PYEOF
+)"
+    fi
+    echo "${code:-000}"
+}
+
+# Best-effort DELETE of the app's webcam entry, in case the app never ran to
+# remove it.
+_remote_screen_delete_webcam() {
+    _remote_screen_moonraker_status DELETE "/server/webcams/item?${REMOTE_SCREEN_WEBCAM_QUERY}" >/dev/null
     return 0
 }
 

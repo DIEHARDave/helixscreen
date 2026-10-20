@@ -38,9 +38,15 @@ setup() {
     . "$WORKTREE_ROOT/scripts/lib/installer/camera.sh"
     . "$WORKTREE_ROOT/scripts/lib/installer/remote_screen.sh"
 
-    # Moonraker REST goes to a recording stub, never the network.
+    # Moonraker REST goes to a recording stub, never the network. A request
+    # asking for the status code (-w) gets MOONRAKER_STATUS back.
     export CURL_LOG="$BATS_TEST_TMPDIR/curl.log"
-    curl() { echo "$*" >> "$CURL_LOG"; return 0; }
+    export MOONRAKER_STATUS=200
+    curl() {
+        echo "$*" >> "$CURL_LOG"
+        case " $* " in *" -w "*) printf '%s' "$MOONRAKER_STATUS" ;; esac
+        return 0
+    }
     export -f curl
 }
 
@@ -280,6 +286,32 @@ EOF
     [ "$status" -eq 0 ]
     grep -q "proxy_pass http://localhost:7125/access/user;" "$HELIX_NGINX_CONF"
     [ -f "$ROUTE_MARKER" ]
+}
+
+@test "moonraker without /access/user is left untouched" {
+    write_two_server_conf
+    cp "$HELIX_NGINX_CONF" "$BATS_TEST_TMPDIR/orig"
+    stub_nginx auth ok
+    export MOONRAKER_STATUS=404
+
+    run install_remote_screen_route
+    [ "$status" -eq 0 ]
+    cmp "$HELIX_NGINX_CONF" "$BATS_TEST_TMPDIR/orig"
+    [ ! -e "$ROUTE_FILE" ]
+    [ ! -e "$ROUTE_MARKER" ]
+    contains "404" "$output"
+    grep -q "http://127.0.0.1:1/access/user" "$CURL_LOG"
+}
+
+@test "moonraker answering /access/user with 401 gets the route" {
+    write_two_server_conf
+    stub_nginx auth ok
+    export MOONRAKER_STATUS=401
+
+    run install_remote_screen_route
+    [ "$status" -eq 0 ]
+    grep -q "location /helixscreen/screen/ {" "$HELIX_NGINX_CONF"
+    [ "$(cat "$ROUTE_FILE")" = "/helixscreen/screen/" ]
 }
 
 @test "uninstall strips only tagged lines" {
