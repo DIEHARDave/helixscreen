@@ -496,8 +496,10 @@ the file's tools (`FileStartFactsLoader`, footer at most) and, for each head the
 whose feeder reports it not loaded (`feeder_reports_loaded()` false, no load under way) and
 that the task does not name in `extruders_used` (the firmware loads those itself), raises
 one warning naming the head ("Toolhead 3 (T2) isn't loaded. The print will pause when it
-needs it."). Once per print; silent when every used head is loaded or the tools cannot be
-read (`src/printer/ams_backend_snapmaker.cpp#warn_unloaded_used_heads`).
+needs it."). Once per print per connection, on the
+first frame naming the print's state or file; after a restart that never left the print it
+waits for the frame naming the new file, so it reads the file that starts (a restart of the
+same file is not checked again); silent when every used head is loaded or the tools cannot be read (`src/printer/ams_backend_snapmaker.cpp#warn_unloaded_used_heads`).
 
 Related capability flags: `recovers_filament_on_resume() = true` (Resume re-feeds, so
 the runout dialog presents Resume as primary) and

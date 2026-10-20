@@ -1418,6 +1418,7 @@ void AmsBackendSnapmaker::apply_print_state_locked(const std::string& state) {
     if ((had_state && was_in_progress != in_progress) || (!had_state && !in_progress)) {
         load_unconfirmed_.fill(false);
         used_heads_checked_ = false;
+        awaiting_restart_file_ = false;
         ++print_generation_;
     }
 }
@@ -1427,14 +1428,22 @@ void AmsBackendSnapmaker::note_print_start_from_here() {
     if (print_in_progress_locked()) {
         load_unconfirmed_.fill(false);
         used_heads_checked_ = false;
+        awaiting_restart_file_ = true;
         ++print_generation_;
     }
 }
 
-bool AmsBackendSnapmaker::used_heads_check_due_locked() {
-    if (used_heads_checked_ || !print_state_ || *print_state_ != "printing") {
+bool AmsBackendSnapmaker::used_heads_check_due_locked(bool frame_names_state,
+                                                      bool frame_names_file) {
+    // A frame naming the print's state or file arms the check. After a
+    // restart that never left the print, frames of the cancelled print can
+    // still read printing, so only the new file's name arms it.
+    const bool names_this_print =
+        awaiting_restart_file_ ? frame_names_file : (frame_names_state || frame_names_file);
+    if (used_heads_checked_ || !names_this_print || !print_state_ || *print_state_ != "printing") {
         return false;
     }
+    awaiting_restart_file_ = false;
     used_heads_checked_ = true;
     return true;
 }
@@ -2925,14 +2934,18 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
       // with sync_from_backend() which acquires mutex_ via get_system_info()
         std::lock_guard<std::mutex> lock(mutex_);
 
+        bool frame_names_state = false;
+        bool frame_names_file = false;
         if (const nlohmann::json* ps = helix::json_util::find_member(status, "print_stats")) {
             if (const nlohmann::json* file = helix::json_util::find_member(*ps, "filename");
                 file && file->is_string()) {
                 print_filename_ = file->get<std::string>();
+                frame_names_file = true;
             }
             if (const nlohmann::json* state = helix::json_util::find_member(*ps, "state");
                 state && state->is_string()) {
                 apply_print_state_locked(state->get<std::string>());
+                frame_names_state = true;
             }
         }
         if (const auto main_state = snapmaker::screws_tilt::main_state_from_status(status)) {
@@ -2955,7 +2968,7 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
         apply_working_slot_locked(fx);
 
         apply_print_task_config_locked(delta, fx);
-        fx.check_used_heads = used_heads_check_due_locked();
+        fx.check_used_heads = used_heads_check_due_locked(frame_names_state, frame_names_file);
         fx.check_used_heads_file = print_filename_;
         fx.check_used_heads_print = print_generation_;
 

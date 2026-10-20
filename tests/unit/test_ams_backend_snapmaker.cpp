@@ -6653,6 +6653,47 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker says nothing when every used head 
     CHECK(warnings.seen.empty());
 }
 
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker checks a restart against the file it starts",
+                 "[ams][snapmaker][unloaded_head_notice]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    Warnings warnings;
+    FilamentRecordHarness h("unloaded_head_restart_file");
+    FileToolsProbe probe(h.backend, {2});
+    slicer_print_ready(h);
+    h.frame(json{{"print_stats", {{"state", "printing"}, {"filename", "a.gcode"}}}});
+    REQUIRE(probe.asked == std::vector<std::string>{"a.gcode"});
+
+    // A restart into another file: the cancel and the new start never leave
+    // the print, and a frame of the old one still reads printing.
+    h.print("paused");
+    h.backend.note_print_start_from_here();
+    h.print("printing");
+    CHECK(probe.asked.size() == 1);
+    h.frame(json{{"print_stats", {{"filename", "b.gcode"}}}});
+    REQUIRE(probe.asked.size() == 2);
+    CHECK(probe.asked[1] == "b.gcode");
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker routes a used tool through the task's map",
+                 "[ams][snapmaker][unloaded_head_notice]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    Warnings warnings;
+    FilamentRecordHarness h("unloaded_head_task_map");
+    FileToolsProbe probe(h.backend, {0});
+    slicer_print_ready(h);
+    // The task maps T0 to head 2, unloaded and not among the heads it names.
+    // Under the default routing T0 would be head 0, loaded, and silent.
+    json task = {{"print_task_config",
+                  {{"extruders_used", {false, true, false, false}},
+                   {"extruder_map_table", {2, 1, 2, 3, 0, 0, 0, 0}}}}};
+    h.frame(task);
+    h.print("printing");
+    REQUIRE(warnings.seen.size() == 1);
+    CHECK(warnings.seen[0].find("Toolhead 3 (T2)") == 0);
+}
+
 TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker drops a file answer that lands after its print ended",
                  "[ams][snapmaker][unloaded_head_notice]") {
     lv_init_safe();
@@ -6689,6 +6730,7 @@ TEST_CASE_METHOD(SnapmakerFixture,
     h.backend.note_print_start_from_here();
     h.frame(feeder(1, "wait_insert")); // no failure now, and no load either
     h.print("printing");
+    h.frame(json{{"print_stats", {{"filename", "restarted.gcode"}}}});
     CHECK(warnings.seen.size() == 2); // the new print is checked
 
     SnapmakerTestAccess::set_current_slot(h.backend, 1);

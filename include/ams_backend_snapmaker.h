@@ -984,6 +984,11 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// reset when the print ends. Under mutex_.
     bool used_heads_checked_ = false;
 
+    /// A restart began while a print was in progress: its check waits for a
+    /// frame naming the new file. A restart of the same file names none and
+    /// goes unchecked. Under mutex_.
+    bool awaiting_restart_file_ = false;
+
     /// How long a refeed's OK waits for the head's next settled frame.
     static constexpr std::chrono::milliseconds kRefeedFrameWait{3000};
 
@@ -1188,9 +1193,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// unconfirmed loads and the task judgement. Caller holds mutex_.
     void apply_print_state_locked(const std::string& state);
 
-    /// True once per print, on its first printing frame: the moment its
-    /// used heads are checked. Caller holds mutex_.
-    [[nodiscard]] bool used_heads_check_due_locked();
+    /// True once per print, on its first printing frame that names its state
+    /// or file (only its file after a restart that never left the print): the
+    /// moment its used heads are checked. Caller holds mutex_.
+    [[nodiscard]] bool used_heads_check_due_locked(bool frame_names_state, bool frame_names_file);
 
     /// The heads @p tools print from: the task's map when the firmware holds a
     /// configured task, else the default routing. Caller holds mutex_.
