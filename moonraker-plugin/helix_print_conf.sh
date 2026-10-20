@@ -66,6 +66,30 @@ helix_conf_files_matching() {
     return 0
 }
 
+# Print the port Moonraker serves HTTP on: [server] port in the first of
+# moonraker_conf_files @1 @2 that sets it, else 7125, Moonraker's default.
+# Firmware moves it (some serve Moonraker on port 80).
+# UNCALLED_OK: moonraker-plugin/install.sh calls it, through moonraker_local_url.
+moonraker_conf_port() {
+    _mcp_port=$(moonraker_conf_files "$1" "${2:-}" | while IFS= read -r _mcp_file; do
+        awk '/^\[/ { s = ($0 ~ /^\[server\][ \t\r]*$/) }
+            s && /^port[ \t]*[:=]/ { sub(/^port[ \t]*[:=][ \t]*/, ""); if (match($0, /^[0-9]+/)) print substr($0, 1, RLENGTH); exit }' \
+            "$_mcp_file" 2>/dev/null
+    done | awk 'NR == 1')
+    printf '%s' "${_mcp_port:-7125}"
+}
+
+# Print the URL Moonraker answers at from this host: MOONRAKER_URL when set,
+# else loopback on moonraker_conf_port @1 @2.
+# UNCALLED_OK: moonraker-plugin/install.sh calls it.
+moonraker_local_url() {
+    if [ -n "${MOONRAKER_URL:-}" ]; then
+        printf '%s' "$MOONRAKER_URL"
+        return 0
+    fi
+    printf 'http://127.0.0.1:%s' "$(moonraker_conf_port "$1" "${2:-}")"
+}
+
 # Section headers this plugin owns in a Moonraker config: its own section, and
 # the [update_manager helix_print] a git-clone install of the plugin wrote.
 # shellcheck disable=SC2034  # read by the scripts that source this file

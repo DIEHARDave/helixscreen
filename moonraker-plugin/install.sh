@@ -412,7 +412,8 @@ Please remove it manually before installing."
     printf '%s\n' "     sudo systemctl restart moonraker"
     printf '\n'
     printf '%s\n' "  3. Verify the plugin is loaded:"
-    printf '%s\n' "     curl http://localhost:7125/server/helix/status"
+    config_dir=$(find_config_dir)
+    printf '%s\n' "     curl $(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")/server/helix/status"
     printf '\n'
 }
 
@@ -484,11 +485,11 @@ moonraker_answers() {
     command -v wget > /dev/null 2>&1 && wget -q -T 2 -O /dev/null "$1" > /dev/null 2>&1
 }
 
-# Wait for Moonraker to become available after restart
+# Wait for Moonraker to become available after restart, at MOONRAKER_URL.
 wait_for_moonraker() {
     max_attempts=30
     attempt=0
-    moonraker_url="${MOONRAKER_URL:-http://localhost:7125}"
+    moonraker_url="${MOONRAKER_URL:-http://127.0.0.1:7125}"
 
     info "Waiting for Moonraker to become available..."
 
@@ -515,8 +516,8 @@ as_root() {
 }
 
 # Restart Moonraker: through its service manager, else by asking Moonraker
-# to restart itself, which needs no root and works where sudo wants a
-# password. Returns 1 when neither restarted it.
+# (at MOONRAKER_URL) to restart itself, which needs no root and works where
+# sudo wants a password. Returns 1 when neither restarted it.
 restart_moonraker() {
     info "Restarting Moonraker..."
     if command -v systemctl > /dev/null 2>&1 && systemctl list-units --type=service 2>/dev/null | grep -q moonraker; then
@@ -655,6 +656,7 @@ auto_uninstall() {
 
     # The plugin is already gone, so a restart that never happened is
     # reported, not turned into a failed uninstall.
+    MOONRAKER_URL=$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")
     if ! finish_with_restart "the plugin removal"; then
         printf '\n'
         warn "Plugin removed, but Moonraker keeps loading it until it restarts"
@@ -833,6 +835,7 @@ auto_install() {
 
     # The install itself is done by now, so a restart that never happened is
     # reported, never a failure that would roll it back.
+    MOONRAKER_URL=$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")
     if ! finish_with_restart "the plugin install"; then
         printf '\n'
         warn "Plugin installed, but it does not load until Moonraker restarts"
@@ -870,8 +873,8 @@ show_help() {
     printf '%s\n' "  MOONRAKER_PATH     Path to Moonraker installation (auto-detected if not provided)"
     printf '\n'
     printf '%s\n' "Environment Variables:"
-    printf '%s\n' "  MOONRAKER_URL      URL for Moonraker API health check after restart"
-    printf '%s\n' "                     Default: http://localhost:7125"
+    printf '%s\n' "  MOONRAKER_URL      URL for Moonraker's restart request and health check"
+    printf '%s\n' "                     Default: http://127.0.0.1:<[server] port in moonraker.conf, else 7125>"
     printf '%s\n' "                     Example: MOONRAKER_URL=http://192.168.1.100:7125 ./install.sh --auto"
     printf '\n'
     printf '%s\n' "Examples:"

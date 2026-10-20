@@ -600,7 +600,7 @@ FORGEX_PLUGIN=/opt/config/mod_data/helixscreen/moonraker-plugin
     [ "$status" -eq 0 ] || fail "install failed: $output"
     grep -q -- "--post-data= http://127.0.0.1:7125/server/restart" "$log" \
         || fail "no self-restart request: $(cat "$log")"
-    grep -q "http://localhost:7125/server/info" "$log" || fail "never waited for Moonraker"
+    grep -q "http://127.0.0.1:7125/server/info" "$log" || fail "never waited for Moonraker"
     contains "Moonraker is ready" "$output"
 }
 
@@ -1349,4 +1349,49 @@ mock_systemd_without_sudo() {
     contains "Cannot write to components directory" "$output"
     [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
     diff -r "$BATS_TEST_TMPDIR/config.before" "$c" || fail "the config dir changed"
+}
+
+@test "moonraker_conf_port reads [server] port from moonraker.conf or a file it includes" {
+    local c="$BATS_TEST_TMPDIR/cfg" conf_sh="$REPO_ROOT/moonraker-plugin/helix_print_conf.sh"
+    mkdir -p "$c"
+    printf '[server]\nhost: 0.0.0.0\nport: 80\r\n\n[webcam]\nport: 8080\n' > "$c/moonraker.conf"
+    run sh -c '. "$1"; moonraker_conf_port "$2"' sh "$conf_sh" "$c/moonraker.conf"
+    [ "$output" = 80 ] || fail "got '$output'"
+
+    printf '[webcam]\nport: 8080\n\n[include server.conf]\n' > "$c/moonraker.conf"
+    printf '[server]\nport = 7130\n' > "$c/server.conf"
+    run sh -c '. "$1"; moonraker_conf_port "$2"' sh "$conf_sh" "$c/moonraker.conf"
+    [ "$output" = 7130 ] || fail "got '$output'"
+
+    printf '[server]\nhost: 0.0.0.0\n\n[webcam]\nport: 8080\n' > "$c/moonraker.conf"
+    run sh -c '. "$1"; moonraker_conf_port "$2"' sh "$conf_sh" "$c/moonraker.conf"
+    [ "$output" = 7125 ] || fail "got '$output'"
+
+    run sh -c '. "$1"; moonraker_conf_port "$2"' sh "$conf_sh" "$c/missing.conf"
+    [ "$output" = 7125 ] || fail "got '$output'"
+}
+
+@test "an auto install restarts and waits on the port moonraker.conf names" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log"
+    setup_plain_home "$home"
+    printf '[server]\nhost: 0.0.0.0\nport: 80\n' > "$home/printer_data/config/moonraker.conf"
+    mock_systemd_without_sudo "$log"
+
+    run env HOME="$home" sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    grep -q -- '-X POST http://127.0.0.1:80/server/restart' "$log" || fail "restart not on port 80: $(cat "$log")"
+    grep -q 'http://127.0.0.1:80/server/info' "$log" || fail "wait not on port 80: $(cat "$log")"
+    if grep -q ':7125' "$log"; then fail "reached for 7125: $(cat "$log")"; fi
+}
+
+@test "an auto uninstall restarts on the port moonraker.conf names" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log"
+    setup_instrumented_home "$home"
+    printf '[server]\nport: 80\n\n[helix_print]\n' > "$home/printer_data/config/moonraker.conf"
+    mock_systemd_without_sudo "$log"
+
+    run env HOME="$home" sh "$SCRIPT" --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+    grep -q -- '-X POST http://127.0.0.1:80/server/restart' "$log" || fail "restart not on port 80: $(cat "$log")"
+    if grep -q ':7125' "$log"; then fail "reached for 7125: $(cat "$log")"; fi
 }
