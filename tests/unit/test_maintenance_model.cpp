@@ -22,11 +22,13 @@
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
 #include "config.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "panel_widget_manager.h"
 #include "printer_state.h"
 #include "settings_manager.h"
 #include "src/ui/panel_widgets/maintenance_model.h"
 #include "static_subject_registry.h"
+#include "system_settings_manager.h"
 
 #include <filesystem>
 #include <fstream>
@@ -449,3 +451,24 @@ TEST_CASE_METHOD(MaintenanceModelFixture,
     std::filesystem::remove_all(dir);
 }
 #endif
+
+TEST_CASE_METHOD(MaintenanceModelFixture,
+                 "maintenance model: names re-translate after the settings subjects are rebuilt",
+                 "[maintenance][model][i18n]") {
+    auto& settings = SystemSettingsManager::instance();
+    settings.deinit_subjects();
+    settings.init_subjects();
+    // The widget layer initializes the model again each time it builds its subjects.
+    maintenance_model::init_subjects();
+
+    settings.set_language("ru");
+    drain();
+    const std::string want = lv_tr("Nozzle");
+    REQUIRE(want != "Nozzle");
+    const std::string name = "maintenance_m" + std::to_string(kNozzle) + "_name";
+    CHECK(subject_text(name.c_str()) == want);
+
+    settings.set_language("en");
+    drain();
+    CHECK(subject_text(name.c_str()) == "Nozzle");
+}
