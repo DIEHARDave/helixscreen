@@ -19,6 +19,8 @@
 #include "ui_ams_lane_bar.h"
 #include "ui_ams_lane_spool.h"
 #include "ui_ams_slot.h"
+#include "ui_clog_bar.h"
+#include "ui_clog_meter.h"
 #include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
@@ -27,12 +29,15 @@
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/thermistor_test_access.h"
 #include "ams_state.h"
+#include "clog_detection_config_modal.h"
+#include "clog_meter_model.h"
 #include "config.h"
 #include "grid_edit_mode.h"
 #include "grid_layout.h"
 #include "panel_widget.h"
 #include "panel_widget_config.h"
 #include "panel_widget_manager.h"
+#include "src/ui/panel_widgets/clog_detection_widget.h"
 #include "src/ui/panel_widgets/fan_stack_widget.h"
 #include "src/ui/panel_widgets/fan_widget.h"
 #include "src/ui/panel_widgets/thermistor_widget.h"
@@ -278,6 +283,33 @@ TEST_CASE_METHOD(LVGLUITestFixture, "home widget carousel bind and detach run no
     SECTION("fan") {
         std::optional<PanelWidgetHarness<FanWidget>> h;
         h.emplace(test_screen(), "fan");
+        check_runs_no_queued_callback("detach", [&] { h.reset(); });
+    }
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "clog meter, bar and widget teardown run no queued callback",
+                 "[ams][clog][drain_reentrancy]") {
+    AmsState::instance().init_subjects(true);
+
+    SECTION("model") {
+        std::optional<ui::ClogMeterModel> model;
+        model.emplace([](const ui::ClogMeterSample&) {});
+        check_runs_no_queued_callback("model destroyed", [&] { model.reset(); });
+    }
+
+    SECTION("bar") {
+        auto bar = std::make_unique<ui::UiClogBar>(test_screen());
+        check_runs_no_queued_callback("bar destroyed", [&] { bar.reset(); });
+    }
+
+    SECTION("meter") {
+        auto meter = std::make_unique<ui::UiClogMeter>(test_screen());
+        check_runs_no_queued_callback("meter destroyed", [&] { meter.reset(); });
+    }
+
+    SECTION("clog_detection widget") {
+        std::optional<PanelWidgetHarness<ClogDetectionWidget>> h;
+        h.emplace(test_screen());
         check_runs_no_queued_callback("detach", [&] { h.reset(); });
     }
 }

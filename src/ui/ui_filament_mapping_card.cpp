@@ -4,7 +4,6 @@
 
 #include "ui_fonts.h"
 #include "ui_swatch.h"
-#include "ui_update_queue.h"
 #include "ui_utils.h"
 
 #include "ams_state.h"
@@ -258,21 +257,11 @@ void FilamentMappingCard::rebuild_compact_view() {
         return;
     }
 
-    // [L081] freeze+drain handles UpdateQueue concurrency, but LVGL's own
-    // event-dispatch loop (modal on_mappings_updated → here) is the other
-    // batch we have to escape. safe_clean_children async-deletes via LVGL.
-    auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-    helix::ui::UpdateQueue::instance().drain();
-
-    // drain() runs whatever was already queued, and NavigationManager::go_back()
-    // is fully deferred — so a pop queued before we got here executes right on
-    // that line. Popping the print-detail overlay reaches on_ui_destroyed(),
-    // which nulls rows_container_ underneath us. The check above is stale from
-    // this point on; every use below must come after a fresh read (#1221).
-    if (!rows_container_) {
-        spdlog::debug("[FilamentMapping] Container destroyed during drain — skipping rebuild");
-        return;
-    }
+    // Nothing queued reaches the chips, and this can run inside LVGL's own
+    // event dispatch (modal on_mappings_updated -> here), so the clear below
+    // goes through safe_clean_children, which deletes outside it. Running
+    // queued work here would let a pending go_back destroy the card's widgets
+    // under this call (#1221).
 
     // A card that is not going to be shown holds no chips. update() has always
     // worked this way - it returns before this call on every hidden path - but

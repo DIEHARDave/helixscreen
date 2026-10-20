@@ -37,6 +37,9 @@ struct MappingCardRenderFixture : LVGLUITestFixture {
     ///        fixture can pass 1 to force the single-slot case the
     ///        multi-tool-vs-single-extruder visibility rule branches on.
     explicit MappingCardRenderFixture(int slot_count = 4) : ams(slot_count), mock(ams.backend) {
+        // The started backend publishes its slots through the update queue, and
+        // the card reads them from AmsState without running queued work itself.
+        helix::ui::UpdateQueue::instance().drain();
         card_widget = lv_obj_create(test_screen());
         rows = lv_obj_create(card_widget);
         warning = lv_obj_create(card_widget);
