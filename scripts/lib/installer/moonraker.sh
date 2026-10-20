@@ -101,20 +101,6 @@ find_moonraker_update_manager_dir() {
     echo ""
 }
 
-# Print the running Moonraker's /proc/<pid> directory and, on the next line,
-# the moonraker.py its argv names. Nothing when no Moonraker is running.
-# HELIX_PROC_ROOT is the tests' seam.
-running_moonraker_process() {
-    local proc="${HELIX_PROC_ROOT:-/proc}" f script
-    for f in "$proc"/[0-9]*/cmdline; do
-        [ -r "$f" ] || continue
-        script=$(tr '\000' '\n' < "$f" 2>/dev/null | awk '/moonraker\.py$/ { print; exit }')
-        case "$script" in /*) ;; *) continue ;; esac
-        printf '%s\n%s\n' "$(dirname "$f")" "$script"
-        return 0
-    done
-}
-
 # Print where the running Moonraker's "/" is from here: empty when it shares
 # ours or none is running, the chroot's directory when it runs in one. Every
 # path in its argv and every absolute [include] it reads is relative to that.
@@ -132,10 +118,11 @@ running_moonraker_root_dir() {
 running_moonraker_package_dir() {
     local script
     script=$(running_moonraker_process | sed -n 2p)
-    if [ -z "$script" ]; then
-        echo ""
-        return 0
-    fi
+    # A relative script path names nothing from here.
+    case "$script" in
+        /*) ;;
+        *) echo ""; return 0 ;;
+    esac
     echo "$(running_moonraker_root_dir)$(dirname "$script")"
 }
 

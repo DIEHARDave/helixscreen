@@ -1466,6 +1466,25 @@ run_perm_install() {
     diff -r "$BATS_TEST_TMPDIR/config.before" "$c" || fail "the config dir changed"
 }
 
+@test "the refusal names the Moonraker python process's user, past a process that only mentions moonraker.py" {
+    [ "$(id -u)" -ne 0 ] || skip "root reads everything"
+    local home="$BATS_TEST_TMPDIR/home" name
+    setup_moonraker_as "$home" 65534 "65534 28"
+    chmod 0700 "$PERM_TMP/app"
+    # Listed first: a root shell whose argv names moonraker.py, as an init
+    # script or an editor would.
+    mkdir -p "$home/proc/100"
+    printf '%s\0' /bin/sh /etc/init.d/S61moonraker start "$home/moonraker/moonraker/moonraker.py" \
+        > "$home/proc/100/cmdline"
+    printf 'Name:\tsh\nUid:\t0\t0\t0\t0\nGid:\t0\t0\t0\t0\nGroups:\t0\n' > "$home/proc/100/status"
+    name=$(awk -F: '$3 == 65534 { print $1; exit }' /etc/passwd)
+
+    run_perm_install "$home" --no-restart --auto
+    [ "$status" -eq 1 ] || fail "want 1, got $status: $output"
+    contains "Moonraker runs as ${name:-uid 65534}, which cannot read" "$output"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+}
+
 @test "auto install refuses a plugin file the Moonraker user cannot read" {
     [ "$(id -u)" -ne 0 ] || skip "root reads everything"
     local home="$BATS_TEST_TMPDIR/home"

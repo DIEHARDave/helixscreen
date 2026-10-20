@@ -90,6 +90,26 @@ moonraker_local_url() {
     printf 'http://127.0.0.1:%s' "$(moonraker_conf_port "$1" "${2:-}")"
 }
 
+# Print the running Moonraker's /proc/<pid> directory under proc root @1
+# (default HELIX_PROC_ROOT, else /proc) and, on the next line, the moonraker.py
+# its argv names. Moonraker is a python interpreter (argv[0] python, python3,
+# python3.11, ...) running moonraker.py; an init script, editor or log viewer
+# whose argv names the file comes and goes beside it and is not Moonraker.
+# Returns 1, printing nothing, when no Moonraker runs.
+running_moonraker_process() {
+    _rmp_root="${1:-${HELIX_PROC_ROOT:-/proc}}"
+    for _rmp_f in "$_rmp_root"/[0-9]*/cmdline; do
+        [ -r "$_rmp_f" ] || continue
+        _rmp_script=$(tr '\000' '\n' < "$_rmp_f" 2>/dev/null | awk '
+            NR == 1 { n = split($0, part, "/"); if (part[n] !~ /^python[0-9.]*$/) exit; next }
+            /(^|\/)moonraker\.py$/ { print; exit }')
+        [ -n "$_rmp_script" ] || continue
+        printf '%s\n%s\n' "$(dirname "$_rmp_f")" "$_rmp_script"
+        return 0
+    done
+    return 1
+}
+
 # Whether a GET of URL @1 succeeds: real curl, else wget. BusyBox systems
 # (Forge-X outside its chroot) carry wget but no curl, and a K1's /usr/bin/curl
 # is an impostor that rejects -s and -f.

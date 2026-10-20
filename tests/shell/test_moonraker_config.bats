@@ -1849,6 +1849,17 @@ stage_private_install() {
     [ "$(mode_of "$INSTALL_DIR/config/settings.json")" = 600 ] || fail "touched settings.json"
 }
 
+@test "open_plugin_to_moonraker: reads the Moonraker python process, past one that only mentions moonraker.py" {
+    stage_private_install 4242
+    mkdir -p "$HELIX_PROC_ROOT/100"
+    printf '%s\0' /usr/bin/vi /home/lava/moonraker/moonraker/moonraker.py > "$HELIX_PROC_ROOT/100/cmdline"
+    printf 'Name:\tvi\nUid:\t0\t0\t0\t0\n' > "$HELIX_PROC_ROOT/100/status"
+
+    run open_plugin_to_moonraker
+    [ "$status" -eq 0 ]
+    [ "$(mode_of "$INSTALL_DIR")" = 755 ] || fail "took the editor (root) for Moonraker"
+}
+
 @test "open_plugin_to_moonraker: leaves the tree alone when Moonraker owns it, runs as root, is not running, or the root is a mod payload" {
     local uid
     for uid in "$(id -u)" 0 none payload; do

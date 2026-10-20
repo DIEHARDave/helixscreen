@@ -117,19 +117,11 @@ components_under() {
     return 1
 }
 
-# Print the running Moonraker's /proc directory.
+# Print the running Moonraker's /proc directory (running_moonraker_process).
 running_moonraker_proc() {
-    for f in "$PROC_ROOT"/[0-9]*/cmdline; do
-        [ -r "$f" ] || continue
-        args=$(tr '\000' '\n' < "$f" 2>/dev/null) || continue
-        case "$args" in
-            *moonraker.py*)
-                printf '%s' "$(dirname "$f")"
-                return 0
-                ;;
-        esac
-    done
-    return 1
+    proc=$(running_moonraker_process "$PROC_ROOT" | sed -n 1p)
+    [ -n "$proc" ] || return 1
+    printf '%s' "$proc"
 }
 
 # Print the running Moonraker's argv, one argument per line.
@@ -196,13 +188,14 @@ ids_may() {
         END { exit !ok }'
 }
 
-# Print the first path that keeps the running Moonraker from loading the
-# plugin at @1 (its path from here): a directory above it Moonraker cannot
-# search, or a .py beside it Moonraker cannot read. Python imports the
-# plugin's siblings from that directory too. Prints nothing when every one is
-# readable, or when no Moonraker runs here to ask about.
+# Print the first path that keeps a Moonraker with ids @1 (running_moonraker_ids)
+# from loading the plugin at @2 (its path from here): a directory above it
+# Moonraker cannot search, or a .py beside it Moonraker cannot read. Python
+# imports the plugin's siblings from that directory too. Prints nothing when
+# every one is readable, or when @1 is empty (no Moonraker runs here).
 moonraker_cannot_read() {
-    ids=$(running_moonraker_ids)
+    ids="$1"
+    shift
     [ -n "$ids" ] || return 0
     real=$(readlink -f "$1" 2>/dev/null) || real="$1"
     dir=$(dirname "$real")
@@ -231,7 +224,8 @@ moonraker_cannot_read() {
 # Stop through error() when the running Moonraker cannot load the plugin
 # from @1, naming its user and what blocks it.
 require_moonraker_can_read() {
-    blocked=$(moonraker_cannot_read "$1")
+    ids=$(running_moonraker_ids)
+    blocked=$(moonraker_cannot_read "$ids" "$1")
     [ -n "$blocked" ] || return 0
     uid=${ids%% *}
     user=$(awk -F: -v u="$uid" '$3 == u { print $1; exit }' /etc/passwd 2>/dev/null)
