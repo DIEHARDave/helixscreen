@@ -427,3 +427,32 @@ TEST_CASE("snapmaker auto-replenish is the Endless Spool switch", "[ams][snapmak
         CHECK(backend.captured[0] == "SET_PRINT_PREFERENCES AUTO_REPLENISH_FILAMENT=1");
     }
 }
+
+TEST_CASE("the retired auto-replenish action id is refused and sends nothing",
+          "[ams][snapmaker][actions][endless_spool]") {
+    HelixTestFixture fixture;
+    CapturingU1 backend;
+    SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", false}}));
+    CHECK(backend.build_preference_gcode("snapmaker_auto_replenish", std::any(true)).empty());
+    CHECK_FALSE(
+        backend.execute_device_action("snapmaker_auto_replenish", std::any(true)).success());
+    CHECK(backend.captured.empty());
+}
+
+TEST_CASE("an auto-replenish change announces a state change and a repeat does not",
+          "[ams][snapmaker][actions][endless_spool]") {
+    HelixTestFixture fixture;
+    AmsBackendSnapmaker backend(nullptr, nullptr);
+    SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", false}}));
+    int changes = 0;
+    backend.set_event_callback([&](const std::string& ev, const std::string&) {
+        if (ev == AmsBackend::EVENT_STATE_CHANGED) {
+            ++changes;
+        }
+    });
+
+    SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", true}}));
+    CHECK(changes == 1);
+    SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", true}}));
+    CHECK(changes == 1);
+}

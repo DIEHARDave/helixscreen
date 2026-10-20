@@ -247,6 +247,20 @@ TEST_CASE_METHOD(LVGLUITestFixture, "fill_file_context leaves no mapping on a pr
     CHECK(helix::unresolved_tools_in(ctx).empty());
 }
 
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "fill_file_context takes the file's tools from its weights when none were scanned",
+                 "[print_start_inputs][reprint]") {
+    FileStartFacts facts;
+    facts.filename = "weights_only.gcode";
+    facts.metadata = FileMetadata{};
+    facts.metadata->filament_weights = {1.5, 0.0, 2.25};
+    facts.metadata->filament_colors = {"#FF0000", "#00FF00", "#0000FF"};
+
+    helix::PrintStartContext ctx;
+    helix::fill_file_context(ctx, facts);
+    CHECK(ctx.tools_used == std::set<int>{0, 2});
+}
+
 // ============================================================================
 // FileStartFactsLoader
 // ============================================================================
