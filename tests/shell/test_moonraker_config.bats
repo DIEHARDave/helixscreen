@@ -431,6 +431,19 @@ setup_k2_moonraker() {
     grep -q '^\[server\]' "$K2_CONF"
 }
 
+@test "configure_moonraker_updates: stock K2 Moonraker finds the loaded conf, then the gate warns" {
+    setup_k2_moonraker
+    # The K2's stock Moonraker: zip_deploy.py with no asset_name, no net_deploy.py.
+    fake_moonraker_src "zip_deploy.py" "class ZipDeploy(AppDeploy): pass" package >/dev/null
+
+    configure_moonraker_updates "k2" >"$BATS_TEST_TMPDIR/gate.log" 2>&1
+
+    grep -qF "Using moonraker.conf at: $K2_CONF" "$BATS_TEST_TMPDIR/gate.log"
+    refute_grep 'Could not find moonraker.conf' "$BATS_TEST_TMPDIR/gate.log"
+    grep -q 'predates release_info.json asset_name support' "$BATS_TEST_TMPDIR/gate.log"
+    refute_grep '^\[update_manager helixscreen\]' "$K2_CONF"
+}
+
 @test "configure_moonraker_updates: stock K2 Moonraker unloads a stanza from the conf it loads" {
     setup_k2_moonraker
     create_moonraker_conf_with_helix "$K2_CONF"
