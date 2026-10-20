@@ -1661,7 +1661,7 @@ bundled_version() {
     HELIX_JOB_STATE=idle run_moonraker_restart config
     grep -qx 'POST http://127.0.0.1:7125/server/restart' "$BATS_TEST_TMPDIR/mr/log" ||
         fail "an idle printer was not restarted: $(cat "$BATS_TEST_TMPDIR/mr/log")"
-    if grep -q 'print_stats' "$BATS_TEST_TMPDIR/mr/log"; then fail "asked for a print state it was given"; fi
+    grep -q 'print_stats' "$BATS_TEST_TMPDIR/mr/log" || fail "took the caller's word without asking"
     # Moonraker refuses the restart without a login too.
     [ "$status" -eq 3 ] || fail "want 3, got $status: $output"
     contains "Moonraker refused to restart (401)" "$output"
@@ -1681,6 +1681,16 @@ bundled_version() {
     HELIX_JOB_STATE=active run_moonraker_restart config
     [ "$status" -eq 4 ] || fail "active: want 4, got $status: $output"
     if grep -q '^POST' "$BATS_TEST_TMPDIR/mr/log"; then fail "restarted while the app holds a job"; fi
+}
+
+@test "moonraker_restart: a print Moonraker reports holds it even when the caller says the printer is idle" {
+    mock_moonraker_http "$BATS_TEST_TMPDIR/mr"
+    printf printing > "$BATS_TEST_TMPDIR/mr/print_state"
+
+    HELIX_JOB_STATE=idle run_moonraker_restart config
+
+    [ "$status" -eq 4 ] || fail "want 4, got $status: $output"
+    if grep -q '^POST' "$BATS_TEST_TMPDIR/mr/log"; then fail "restarted mid-print on the caller's word"; fi
 }
 
 @test "--restart-moonraker restarts Moonraker's service and exits 0 once the new plugin reports in, running no service manager" {

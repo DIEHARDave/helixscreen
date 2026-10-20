@@ -173,12 +173,13 @@ static WaitResult wait_for_child_with_timeout(pid_t pid, int timeout_seconds,
  * Running it through /bin/sh also works when the file has no exec bit:
  * Moonraker's type:web self-update extracts the release zip with Python's
  * zipfile, which does not restore unix modes. --no-restart, unless
- * @p no_restart is false: the caller restarts Moonraker over its API. A
- * non-empty @p job_state reaches the script as HELIX_JOB_STATE.
+ * @p no_restart is false: the caller restarts Moonraker over its API. An
+ * inherited HELIX_JOB_STATE is left out of the script's environment: the
+ * script asks Moonraker for the print state itself.
  */
 static WaitResult run_install_script(const std::string& script_path, const char* mode_flag,
                                      int timeout_seconds, const char* operation_name,
-                                     bool no_restart = true, const std::string& job_state = "") {
+                                     bool no_restart = true) {
     WaitResult result;
 #if defined(ESP_PLATFORM)
     // No shell and no processes to spawn: the firmware cannot run install.sh.
@@ -187,7 +188,6 @@ static WaitResult run_install_script(const std::string& script_path, const char*
     (void)timeout_seconds;
     (void)operation_name;
     (void)no_restart;
-    (void)job_state;
     result.error = result.spawn_failed = true;
     result.error_message = "not supported on this device";
     return result;
@@ -204,16 +204,11 @@ static WaitResult run_install_script(const std::string& script_path, const char*
 
     // Built before the fork: the child of a threaded process may not allocate.
     constexpr std::string_view kJobStateVar = "HELIX_JOB_STATE=";
-    const std::string job_state_entry = std::string(kJobStateVar) + job_state;
     std::vector<char*> envp;
     for (char** e = environ; e != nullptr && *e != nullptr; ++e) {
-        if (job_state.empty() ||
-            std::string_view(*e).substr(0, kJobStateVar.size()) != kJobStateVar) {
+        if (std::string_view(*e).substr(0, kJobStateVar.size()) != kJobStateVar) {
             envp.push_back(*e);
         }
-    }
-    if (!job_state.empty()) {
-        envp.push_back(const_cast<char*>(job_state_entry.c_str()));
     }
     envp.push_back(nullptr);
     std::array<const char*, 5> argv = {"sh", script_path.c_str(), mode_flag, nullptr, nullptr};
@@ -494,13 +489,12 @@ constexpr int kRestartExitNotAnswering = 7;
 } // namespace
 
 PluginRestartOutcome restart_moonraker_for_plugin(const std::string& script_path,
-                                                  int timeout_seconds, bool job_holds) {
+                                                  int timeout_seconds) {
     if (script_path.empty()) {
         return PluginRestartOutcome::Failed;
     }
-    const WaitResult result =
-        run_install_script(script_path, "--restart-moonraker", timeout_seconds, "Moonraker restart",
-                           false, job_holds ? "active" : "idle");
+    const WaitResult result = run_install_script(script_path, "--restart-moonraker",
+                                                 timeout_seconds, "Moonraker restart", false);
     if (result.timed_out) {
         log_script_output(result.output, false);
         return PluginRestartOutcome::TimedOut;

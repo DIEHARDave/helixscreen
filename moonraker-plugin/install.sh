@@ -817,9 +817,9 @@ auto_install() {
 
 # Restart Moonraker so it runs the plugin code on disk (--restart-moonraker):
 # what the app runs after --relink re-pointed the link, or when the running
-# plugin reports another version than this tree's. HELIX_JOB_STATE, when the
-# app sets it, says whether a job holds the printer. Returns moonraker_restart's
-# code.
+# plugin reports another version than this tree's. moonraker_restart asks
+# Moonraker whether a print runs (HELIX_JOB_STATE stands in only when it
+# cannot be asked). Returns moonraker_restart's code.
 restart_for_plugin() {
     config_dir=$(find_config_dir)
     moonraker_restart plugin \

@@ -715,17 +715,19 @@ TEST_CASE_METHOD(SelfHealFixture,
     CHECK(restarts() == 1);
 }
 
-TEST_CASE_METHOD(SelfHealFixture, "the restart tells install.sh the job state the app sees",
+TEST_CASE_METHOD(SelfHealFixture,
+                 "the restart leaves the print state to install.sh, which asks Moonraker",
                  "[plugin_installer][print_select][self_heal]") {
     ship("1.0.1", 3);
     ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", nullptr);
+    ScopedEnv inherited("HELIX_JOB_STATE", "idle");
     scripts.write_script("printf '%s %s\\n' \"$*\" \"${HELIX_JOB_STATE:-unset}\" >> '" +
                          calls_path() + "'\n[ \"$2\" = --relink ] && exit 3\nexit 0");
 
     run_plugin_probe();
     settle();
 
-    CHECK(calls() == "--no-restart --relink unset\n--restart-moonraker idle\n");
+    CHECK(calls() == "--no-restart --relink unset\n--restart-moonraker unset\n");
 }
 
 TEST_CASE_METHOD(SelfHealFixture,

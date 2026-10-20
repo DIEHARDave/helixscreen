@@ -178,12 +178,14 @@ void PluginSelfHeal::recheck_restart() {
 
 void PluginSelfHeal::restart_moonraker() {
     const std::string script = installer_.get_install_script_path();
-    const bool job_holds = job_holds_machine(printer_state_.print_state().get_print_lifecycle());
     // The script blocks while Moonraker restarts, so it runs off this thread.
+    // It may start long after this call, behind other work on the lane, so
+    // it reads the print state from Moonraker itself right before the
+    // restart rather than taking the one seen here.
     auto tok = lifetime_.token();
-    http::HttpExecutor::slow().submit([this, tok, script, job_holds]() {
+    http::HttpExecutor::slow().submit([this, tok, script]() {
         const PluginRestartOutcome outcome =
-            restart_moonraker_for_plugin(script, kRestartTimeoutSeconds, job_holds);
+            restart_moonraker_for_plugin(script, kRestartTimeoutSeconds);
         tok.defer("PluginSelfHeal::restarted", [this, outcome]() { on_restarted(outcome); });
     });
 }

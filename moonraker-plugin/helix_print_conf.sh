@@ -377,28 +377,32 @@ helix_now() {
 }
 
 # Print what the Moonraker at base URL @1 reports of a print: "active" for one
-# printing or paused, "idle" for none, "unknown" when it cannot be asked: a
-# 401, or no answer in time. HELIX_JOB_STATE set to idle or active is taken
-# as given (the app knows its printer's job). @2, the body of /server/info,
-# naming a Klipper that is not ready means no print runs.
+# printing or paused, "idle" for none, "unknown" when it cannot be asked.
+# print_stats is asked every time, right before a restart. HELIX_JOB_STATE
+# (idle or active, from the app) stands in for it only when that query gets
+# a 401 or no answer; an "active" one holds the restart either way. @2, the
+# body of /server/info, naming a Klipper that is not ready means no print
+# runs.
 moonraker_job_state() {
-    case "${HELIX_JOB_STATE:-}" in
-        idle | active)
-            printf '%s' "$HELIX_JOB_STATE"
-            return 0
-            ;;
-    esac
+    if [ "${HELIX_JOB_STATE:-}" = active ]; then
+        printf 'active'
+        return 0
+    fi
     if printf '%s' "${2:-}" | grep -q '"klippy_state"' &&
         ! printf '%s' "${2:-}" | grep -Eq '"klippy_state"[[:space:]]*:[[:space:]]*"ready"'; then
         printf 'idle'
         return 0
     fi
-    if ! _mjs_body=$(moonraker_get "$1/printer/objects/query?print_stats=state" 5); then
-        printf 'unknown'
-    elif printf '%s' "$_mjs_body" | grep -Eq '"state"[[:space:]]*:[[:space:]]*"(printing|paused)"'; then
-        printf 'active'
-    else
+    if moonraker_request GET "$1/printer/objects/query?print_stats=state" 5; then
+        if printf '%s' "$HTTP_BODY" | grep -Eq '"state"[[:space:]]*:[[:space:]]*"(printing|paused)"'; then
+            printf 'active'
+        else
+            printf 'idle'
+        fi
+    elif [ "${HELIX_JOB_STATE:-}" = idle ] && { [ -z "$HTTP_STATUS" ] || [ "$HTTP_STATUS" = 401 ]; }; then
         printf 'idle'
+    else
+        printf 'unknown'
     fi
 }
 
