@@ -44,6 +44,9 @@
 #                     has to restart Moonraker by asking it over HTTP
 #   rofs              k1, but the components directory is a read-only mount;
 #                     the install must refuse and change nothing
+#   private           Moonraker runs as pi, the app as root under umask 077
+#                     from a mode 700 /userdata/helixscreen, which pi cannot
+#                     search; the install must refuse and change nothing
 #
 # Moonraker v0.8 resolves a relative [include] against the directory of the
 # symlink's target, later versions against the link's own directory; the mod
@@ -80,11 +83,11 @@ data_dirs() { # <data dir> <owner>
 }
 
 layout() { # <layout>
-    APP_USER=pi APP_HOME=/home/pi INSTALL_DIR=/home/pi/helixscreen STRICT=1
+    APP_USER=pi APP_HOME=/home/pi INSTALL_DIR=/home/pi/helixscreen STRICT=1 UMASK=022
     CONFIG_DIR=/home/pi/printer_data/config
     COMPONENTS_DIR=/home/pi/moonraker/moonraker/components
     case "$1" in
-        plain|legacy|modconf|incsec|remote|relocate|cli)
+        plain|legacy|modconf|incsec|remote|relocate|cli|private)
             cp -a "$MR_SRC" /home/pi/moonraker
             chown -R pi:pi /home/pi/moonraker
             data_dirs /home/pi/printer_data pi
@@ -101,6 +104,8 @@ layout() { # <layout>
                     printf '#!/bin/sh\ncase "$1" in list-units) echo "moonraker.service loaded active running" ;; *) echo "Access denied" >&2; exit 1 ;; esac\n' \
                         > /var/tmp/cell-cli-bin/systemctl
                     chmod 0755 /var/tmp/cell-cli-bin/sudo /var/tmp/cell-cli-bin/systemctl ;;
+                private)
+                    APP_USER=root APP_HOME=/root INSTALL_DIR=/userdata/helixscreen STRICT=0 UMASK=077 ;;
                 modconf)
                     mkdir -p "$CONFIG_DIR/mod"
                     { base_conf no; printf '\n[include user.moonraker.conf]\n'; } > "$CONFIG_DIR/mod/moonraker.conf"
@@ -151,11 +156,13 @@ layout() { # <layout>
     INSTALL_PARENT=$(dirname "$INSTALL_DIR")
     mkdir -p "$INSTALL_DIR"
     chown "$APP_USER:$APP_USER" "$INSTALL_DIR"
+    # What mkdir makes under the app's umask.
+    chmod "$(printf '%o' $((0777 & ~0$UMASK)))" "$INSTALL_DIR"
     [ "${CELL_STRICT:-1}" = 1 ] || STRICT=0
     {
         printf 'LAYOUT=%s\nAPP_USER=%s\nAPP_HOME=%s\nINSTALL_DIR=%s\nINSTALL_PARENT=%s\n' \
             "$1" "$APP_USER" "$APP_HOME" "$INSTALL_DIR" "$INSTALL_PARENT"
-        printf 'CONFIG_DIR=%s\nCOMPONENTS_DIR=%s\nSTRICT=%s\n' "$CONFIG_DIR" "$COMPONENTS_DIR" "$STRICT"
+        printf 'CONFIG_DIR=%s\nCOMPONENTS_DIR=%s\nSTRICT=%s\nUMASK=%s\n' "$CONFIG_DIR" "$COMPONENTS_DIR" "$STRICT" "$UMASK"
         printf 'MR_CMD="%s"\n' "$MR_CMD"
     } > "$STATE"
 }
@@ -242,12 +249,14 @@ relink_stays_current() {
     done
 }
 
-# Run install.sh with <args> as the app, confined as its service confines it.
-# APP_PLUGIN_DIR names another copy of the plugin to run it from.
+# Run install.sh with <args> as the app, confined as its service confines it,
+# under the app's umask. APP_PLUGIN_DIR names another copy of the plugin to
+# run it from.
 as_app() { # <args...>
     load
     path=/usr/local/bin:/usr/bin:/bin
     if [ "$LAYOUT" = cli ]; then path=/var/tmp/cell-cli-bin:$path; fi
+    umask "$UMASK"
     set -- env HOME="$APP_HOME" PATH="$path" \
         sh "${APP_PLUGIN_DIR:-$INSTALL_DIR/moonraker-plugin}/install.sh" "$@"
     if [ "$STRICT" = 1 ]; then
@@ -282,7 +291,8 @@ case "${1:-}" in
             rm -rf "$RELEASE_ROOT/$RELEASE_REF/moonraker-plugin/tests"
         fi
         rm -rf "$INSTALL_DIR/moonraker-plugin" "$PRE"
-        cp -R "$PLUGIN_SRC" "$INSTALL_DIR/moonraker-plugin"
+        # Copied as the app's own installer copies it, under its umask.
+        ( umask "$UMASK"; cp -R "$PLUGIN_SRC" "$INSTALL_DIR/moonraker-plugin" )
         chown -R "$APP_USER:$APP_USER" "$INSTALL_DIR/moonraker-plugin"
         mkdir -p "$PRE"
         cp -a "$CONFIG_DIR/." "$PRE/"

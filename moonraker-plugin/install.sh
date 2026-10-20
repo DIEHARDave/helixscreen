@@ -166,6 +166,79 @@ running_moonraker_arg() {
     running_moonraker_args | awk -v a="$1" -v b="$2" 'p == a || p == b { print; exit } { p = $0 }'
 }
 
+# Print the running Moonraker's effective uid, then its groups (primary
+# first), space-separated. Empty when no Moonraker runs here.
+running_moonraker_ids() {
+    proc=$(running_moonraker_proc) || return 0
+    awk '/^Uid:/ { u = $3 } /^Gid:/ { g = $3 }
+        /^Groups:/ { for (i = 2; i <= NF; i++) gs = gs " " $i }
+        END { if (u != "") print u " " g gs }' "$proc/status" 2>/dev/null || true
+}
+
+# Whether a process with ids @1 (uid, then groups) holds permission @2 (r
+# or x) on @3, by its mode bits: the owner's, else a group's, else other's.
+# uid 0 holds both.
+ids_may() {
+    # shellcheck disable=SC2012  # BusyBox find has no -printf; ls -n is the portable numeric owner and mode
+    ls -ldn "$3" 2>/dev/null | awk -v ids="$1" -v want="$2" '
+        NR == 1 {
+            n = split(ids, id, " ")
+            if (id[1] == 0) { ok = 1; exit }
+            if ($3 == id[1]) bits = substr($1, 2, 3)
+            else {
+                bits = substr($1, 8, 3)
+                for (i = 2; i <= n; i++) if (id[i] == $4) { bits = substr($1, 5, 3); break }
+            }
+            c = substr(bits, want == "r" ? 1 : 3, 1)
+            ok = (want == "r") ? (c == "r") : (c == "x" || c == "s" || c == "t")
+            exit
+        }
+        END { exit !ok }'
+}
+
+# Print the first path that keeps the running Moonraker from loading the
+# plugin at @1 (its path from here): a directory above it Moonraker cannot
+# search, or a .py beside it Moonraker cannot read. Python imports the
+# plugin's siblings from that directory too. Prints nothing when every one is
+# readable, or when no Moonraker runs here to ask about.
+moonraker_cannot_read() {
+    ids=$(running_moonraker_ids)
+    [ -n "$ids" ] || return 0
+    real=$(readlink -f "$1" 2>/dev/null) || real="$1"
+    dir=$(dirname "$real")
+    mroot=$(running_moonraker_root)
+    walk=""
+    rest="${dir#/}"
+    while [ -n "$rest" ]; do
+        walk="$walk/${rest%%/*}"
+        case "$rest" in */*) rest="${rest#*/}" ;; *) rest="" ;; esac
+        # Moonraker in a chroot searches only the directories inside it.
+        case "$walk/" in "$mroot"/*) ;; *) continue ;; esac
+        if ! ids_may "$ids" x "$walk"; then
+            printf '%s' "$walk"
+            return 0
+        fi
+    done
+    for py in "$real" "$dir"/*.py; do
+        [ -f "$py" ] || continue
+        if ! ids_may "$ids" r "$py"; then
+            printf '%s' "$py"
+            return 0
+        fi
+    done
+}
+
+# Stop through error() when the running Moonraker cannot load the plugin
+# from @1, naming its user and what blocks it.
+require_moonraker_can_read() {
+    blocked=$(moonraker_cannot_read "$1")
+    [ -n "$blocked" ] || return 0
+    uid=${ids%% *}
+    user=$(awk -F: -v u="$uid" '$3 == u { print $1; exit }' /etc/passwd 2>/dev/null)
+    error "Moonraker runs as ${user:-uid $uid}, which cannot read $blocked, so it cannot load the plugin.
+Give that user read access to the plugin files and search access to each directory above them, or install HelixScreen where it can reach them. Nothing was changed."
+}
+
 # Whether a link can be made in directory @1: a probe link is made there and
 # removed. test -w alone passes for root on a read-only filesystem.
 can_link_in() {
@@ -721,6 +794,7 @@ relink() {
     link_to=$(path_for_moonraker "$PLUGIN_FILE")
     [ -f "$mroot$link_to" ] || error "Moonraker cannot see $PLUGIN_FILE from its root ($mroot)"
     can_link_in "$components_dir" || error "Cannot write to components directory: $components_dir"
+    require_moonraker_can_read "$PLUGIN_FILE"
     ln -sf "$link_to" "$target" || error "Could not re-point $target"
     info "Re-pointed $target -> $link_to (was $current)"
     return "$EXIT_RELINK_DONE"
@@ -752,8 +826,8 @@ auto_install() {
     info "Config: ${config_dir:-not found}"
     printf '\n'
 
-    # Pre-flight checks, all before the first write: the link can be made
-    # and the config can be edited.
+    # Pre-flight checks, all before the first write: the link can be made,
+    # the config can be edited, and Moonraker can read what the link names.
     if ! can_link_in "$components_dir"; then
         error "Cannot write to components directory: $components_dir"
     fi
@@ -779,6 +853,7 @@ auto_install() {
     if [ ! -f "$(running_moonraker_root)$link_to" ]; then
         error "Moonraker cannot see $PLUGIN_FILE from its root ($(running_moonraker_root))"
     fi
+    require_moonraker_can_read "$PLUGIN_FILE"
 
     # Auto-configure moonraker.conf if possible
     if [ -n "$section_file" ]; then

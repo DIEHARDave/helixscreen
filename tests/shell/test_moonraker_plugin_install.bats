@@ -1395,3 +1395,101 @@ mock_systemd_without_sudo() {
     grep -q -- '-X POST http://127.0.0.1:80/server/restart' "$log" || fail "restart not on port 80: $(cat "$log")"
     if grep -q ':7125' "$log"; then fail "reached for 7125: $(cat "$log")"; fi
 }
+
+# A Pi-style home whose Moonraker runs with uid $2 and groups $3 (its
+# primary first), and a copy of the plugin under $PERM_TMP/app, which the
+# test gives its modes. PERM_TMP sits directly in /tmp: every directory above
+# the plugin is then searchable by anyone, which bats' own 0700 temp
+# directories are not.
+setup_moonraker_as() {
+    local home="$1" uid="$2" groups="$3"
+    setup_plain_home "$home"
+    mkdir -p "$home/proc/700"
+    printf '%s\0' python3 "$home/moonraker/moonraker/moonraker.py" -d "$home/printer_data" \
+        > "$home/proc/700/cmdline"
+    printf 'Name:\tpython3\nUid:\t%s\t%s\t%s\t%s\nGid:\t%s\t%s\t%s\t%s\nGroups:\t%s\n' \
+        "$uid" "$uid" "$uid" "$uid" "${groups%% *}" "${groups%% *}" "${groups%% *}" "${groups%% *}" \
+        "$groups" > "$home/proc/700/status"
+    [ -n "${PERM_TMP:-}" ] || PERM_TMP=$(mktemp -d /tmp/helix-plugin-perm.XXXXXX)
+    chmod 0755 "$PERM_TMP"
+    rm -rf "$PERM_TMP/app"
+    mkdir -p "$PERM_TMP/app"
+    cp -R "$REPO_ROOT/moonraker-plugin" "$PERM_TMP/app/"
+    chmod 0755 "$PERM_TMP/app" "$PERM_TMP/app/moonraker-plugin"
+    chmod 0644 "$PERM_TMP/app/moonraker-plugin"/*.py
+}
+
+teardown() {
+    [ -z "${PERM_TMP:-}" ] || rm -rf "$PERM_TMP"
+}
+
+# Run the copy of install.sh under $PERM_TMP with HOME $1 and the rest as arguments.
+run_perm_install() {
+    local home="$1"
+    shift
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$PERM_TMP/app/moonraker-plugin/install.sh" "$@"
+}
+
+@test "auto install refuses a plugin the Moonraker user cannot read, and writes nothing" {
+    [ "$(id -u)" -ne 0 ] || skip "root reads everything"
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_moonraker_as "$home" 4242 4242
+    chmod 0700 "$PERM_TMP/app"
+    local c="$home/printer_data/config"
+    cp -R "$c" "$BATS_TEST_TMPDIR/config.before"
+
+    run_perm_install "$home" --no-restart --auto
+    [ "$status" -eq 1 ] || fail "want 1, got $status: $output"
+    contains "cannot read" "$output"
+    contains "$PERM_TMP/app" "$output"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+    diff -r "$BATS_TEST_TMPDIR/config.before" "$c" || fail "the config dir changed"
+}
+
+@test "auto install refuses a plugin file the Moonraker user cannot read" {
+    [ "$(id -u)" -ne 0 ] || skip "root reads everything"
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_moonraker_as "$home" 4242 4242
+    chmod 0600 "$PERM_TMP/app/moonraker-plugin/helix_3mf.py"
+
+    run_perm_install "$home" --no-restart --auto
+    [ "$status" -eq 1 ] || fail "want 1, got $status: $output"
+    contains "helix_3mf.py" "$output"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+}
+
+@test "auto install accepts a plugin the Moonraker user reads as owner, group or other" {
+    [ "$(id -u)" -ne 0 ] || skip "root reads everything"
+    local home="$BATS_TEST_TMPDIR/home" me grp
+    me=$(id -u)
+    grp=$(id -g)
+
+    setup_moonraker_as "$home" 4242 4242
+    run_perm_install "$home" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "other: $output"
+
+    rm -rf "$home"
+    setup_moonraker_as "$home" "$me" "$grp"
+    chmod 0700 "$PERM_TMP/app"
+    run_perm_install "$home" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "owner: $output"
+
+    rm -rf "$home"
+    setup_moonraker_as "$home" 4242 "4243 $grp"
+    chmod 0750 "$PERM_TMP/app"
+    run_perm_install "$home" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "group: $output"
+}
+
+@test "relink refuses to point the link at a plugin the Moonraker user cannot read" {
+    [ "$(id -u)" -ne 0 ] || skip "root reads everything"
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_moonraker_as "$home" 4242 4242
+    printf '\n[helix_print]\n' >> "$home/printer_data/config/moonraker.conf"
+    ln -s "$home/old/moonraker-plugin/helix_print.py" "$home/moonraker/moonraker/components/helix_print.py"
+    chmod 0700 "$PERM_TMP/app"
+
+    run_perm_install "$home" --no-restart --relink
+    [ "$status" -eq 1 ] || fail "want 1, got $status: $output"
+    [ "$(readlink "$home/moonraker/moonraker/components/helix_print.py")" = "$home/old/moonraker-plugin/helix_print.py" ]
+}
