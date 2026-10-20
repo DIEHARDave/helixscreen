@@ -2,6 +2,7 @@
 #include "serial_snapshot.h"
 
 #include "app_boot.h"
+#include "console_command.h"
 #include "driver/uart.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -39,19 +40,25 @@ static void reader_task(void* arg) {
         const int c = byte;
         if (c == '\r' || c == '\n') {
             line[len] = '\0';
-            int x = 0;
-            int y = 0;
-            int seq = 0;
-            if (strcmp(line, "snap") == 0) {
+            const console_cmd cmd = console_parse_line(line);
+            switch (cmd.kind) {
+            case CONSOLE_CMD_SNAP:
                 atomic_store(&s_requested, true);
-            } else if (strcmp(line, "notes") == 0) {
+                break;
+            case CONSOLE_CMD_NOTES:
                 atomic_store(&s_notes_requested, true);
-            } else if (strcmp(line, "stack") == 0) {
+                break;
+            case CONSOLE_CMD_STACK:
                 atomic_store(&s_stack_requested, true);
-            } else if (sscanf(line, "snapline %d", &seq) == 1) {
-                atomic_store(&s_resend_line, seq);
-            } else if (sscanf(line, "tap %d %d", &x, &y) == 2) {
-                touch_input_inject_tap(x, y);
+                break;
+            case CONSOLE_CMD_SNAPLINE:
+                atomic_store(&s_resend_line, cmd.a);
+                break;
+            case CONSOLE_CMD_TAP:
+                touch_input_inject_tap(cmd.a, cmd.b);
+                break;
+            case CONSOLE_CMD_NONE:
+                break;
             }
             len = 0;
         } else if (len < sizeof(line) - 1) {
