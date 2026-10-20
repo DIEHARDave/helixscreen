@@ -1334,6 +1334,24 @@ mock_systemd_without_sudo() {
     if printf '%s' "$output" | grep -qi 'complete'; then fail "claimed completion: $output"; fi
 }
 
+@test "after asking Moonraker to restart, the wait skips the instance that is still stopping" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log" n="$BATS_TEST_TMPDIR/info.count"
+    setup_plain_home "$home"
+    mock_systemd_without_sudo "$log"
+    mock_command_script "sleep" 'exit 0'
+    # /server/info answers twice more from the stopping instance, fails once
+    # while it is down, then answers from the new one.
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$log'
+case \"\$*\" in *server/info*) c=\$((\$(cat '$n' 2>/dev/null || echo 0) + 1)); echo \"\$c\" > '$n'; [ \"\$c\" -ne 3 ];; esac"
+
+    run env HOME="$home" sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    contains "Asked Moonraker to restart itself" "$output"
+    [ "$(cat "$n")" -eq 4 ] || fail "the wait read /server/info $(cat "$n") times, want 4 (old, old, down, new)"
+    contains "Moonraker is ready" "$output"
+}
+
 @test "auto install refuses a components dir that takes no link though test -w passes, and writes nothing" {
     local home="$BATS_TEST_TMPDIR/home"
     setup_plain_home "$home"

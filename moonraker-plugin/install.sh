@@ -602,6 +602,14 @@ restart_moonraker() {
     fi
     if request_moonraker_restart; then
         info "Asked Moonraker to restart itself"
+        # Moonraker answers for a moment after accepting the request. Waiting
+        # for it to go quiet keeps wait_for_moonraker from taking the instance
+        # about to stop for the one that came back.
+        quiet=0
+        while [ "$quiet" -lt 5 ] && moonraker_answers "${MOONRAKER_URL:-http://127.0.0.1:7125}/server/info"; do
+            sleep 1
+            quiet=$((quiet + 1))
+        done
         return 0
     fi
     return 1
