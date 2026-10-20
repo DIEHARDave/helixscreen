@@ -4648,3 +4648,59 @@ TEST_CASE_METHOD(EditHomeFixture,
     REQUIRE(page_count() == 1);
     CHECK(widget_on(0, "temperature") != nullptr);
 }
+
+// A page whose widget list only flips hardware gates takes a partial path with
+// a drain of its own. A rebuild run by that drain owns the pages afterwards.
+TEST_CASE_METHOD(EditHomeFixture,
+                 "a carousel rebuilt by work a gate-flip population drains ends up populated",
+                 "[home][drain_reentrancy]") {
+    build_home();
+    // The page records being built with its first widget gated, so the unforced
+    // population below sees a gate flip and nothing else.
+    auto ids = HomePanelTestAccess::built_ids(panel(), 0);
+    REQUIRE_FALSE(ids.empty());
+    ids[0] += helix::kGatedIdSuffix;
+    HomePanelTestAccess::set_built_ids(panel(), 0, ids);
+
+    bool ran = false;
+    helix::ui::UpdateQueue::instance().queue("test::rebuild_mid_gate_flip", [this, &ran]() {
+        ran = true;
+        HomePanelTestAccess::rebuild_carousel(panel(), 0);
+    });
+
+    HomePanelTestAccess::populate_unforced(panel());
+    REQUIRE(ran);
+    settle();
+
+    REQUIRE(page_count() == 2);
+    for (int i = 0; i < page_count(); ++i) {
+        INFO("page " << i);
+        REQUIRE(lv_obj_is_valid(page(i)));
+        CHECK(helix::ui::is_on_active_screen(page(i)));
+    }
+    CHECK(widget_on(0, "temperature") != nullptr);
+    CHECK(widget_on(1, "fan") != nullptr);
+}
+
+// A panel rebuild re-runs finalize_setup(), whose carousel build has no
+// teardown before it. Run by a page population's drain, it must still leave
+// the outer population stale, so the build's own pages get filled.
+TEST_CASE_METHOD(
+    EditHomeFixture,
+    "a carousel build without a teardown run by a page population drain ends up populated",
+    "[home][drain_reentrancy]") {
+    build_home();
+    bool ran = false;
+    helix::ui::UpdateQueue::instance().queue("test::build_mid_populate", [this, &ran]() {
+        ran = true;
+        HomePanelTestAccess::build_carousel(panel());
+    });
+
+    HomePanelTestAccess::populate(panel());
+    REQUIRE(ran);
+    settle();
+
+    REQUIRE(page_count() == 2);
+    CHECK(widget_on(0, "temperature") != nullptr);
+    CHECK(widget_on(1, "fan") != nullptr);
+}
