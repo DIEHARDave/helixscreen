@@ -1844,10 +1844,24 @@ define deploy-common
 		echo "$(DIM)Generating 3D splash images...$(RESET)"; \
 		$(MAKE) gen-splash-3d; \
 	fi
-	@# Stop running processes and prepare directory
-	@# Stop update watcher first (prevents PathChanged restart during file sync),
-	@# then stop the main service and kill any stragglers
-	ssh $(1) "sudo systemctl stop helixscreen-update.path 2>/dev/null; sudo systemctl stop helixscreen 2>/dev/null; systemctl --user stop helix-screen 2>/dev/null; killall helix-watchdog helix-screen helix-screen-egl helix-splash 2>/dev/null; sleep 0.5; killall -9 helix-watchdog helix-screen helix-screen-egl helix-splash 2>/dev/null; while pidof helix-screen helix-screen-egl helix-splash helix-watchdog >/dev/null 2>&1; do sleep 0.2; done; true"
+	@# Stop every running instance before anything is synced. A systemd unit
+	@# that cannot be stopped (non-root ssh user, sudo wants a password) ends
+	@# the deploy here: killing a Restart=always unit's process only makes
+	@# systemd respawn it from a half-synced bin/.
+	@ssh $(1) 'sh -s' < scripts/deploy-stop-app-remote.sh; rc=$$?; \
+	if [ $$rc -eq 3 ]; then \
+		echo "$(RED)Refusing to deploy: the helixscreen systemd service on $(1) is running and could not be stopped.$(RESET)"; \
+		echo "$(RED)Syncing now would let systemd restart it from a half-copied install.$(RESET)"; \
+		echo "Fix one of:"; \
+		echo "  - allow passwordless sudo for systemctl for the ssh user on the device, e.g."; \
+		echo "      echo '<user> ALL=(root) NOPASSWD: /usr/bin/systemctl' | sudo tee /etc/sudoers.d/helixscreen-deploy"; \
+		echo "  - or stop it with a TTY so sudo can prompt, then rerun the deploy:"; \
+		echo "      ssh -t $(1) 'sudo systemctl stop helixscreen-update.path helixscreen && sudo systemctl stop helixscreen-update.path'"; \
+		exit 1; \
+	elif [ $$rc -ne 0 ]; then \
+		echo "$(RED)Could not stop HelixScreen on $(1) (ssh exit $$rc) - not syncing$(RESET)"; \
+		exit 1; \
+	fi
 	ssh $(1) "mkdir -p $(2)/bin"
 	ssh $(1) "rm -f $(2)/*.xml 2>/dev/null || true"
 	@# Sync binaries and launcher to bin/
