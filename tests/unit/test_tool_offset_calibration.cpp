@@ -90,11 +90,8 @@ TEST_CASE("tool offset calibration: a U1 calibrates through its own guided flow"
     const PrinterDiscovery u1 = snapmaker_u1();
     CHECK(cal::supported(u1));
     CHECK(cal::guided_flow(u1) == helix::snapmaker::nozzle_offset::kGuidedFlowId);
-    CHECK_FALSE(cal::is_beta(u1));
     CHECK(cal::calibrate_all_gcode(u1).empty());
 
-    // The macro path is unchanged and stays a beta feature.
+    // A macro-calibrating tool changer names no flow: the macro panel runs it.
     CHECK(cal::guided_flow(calibrating_toolchanger()).empty());
-    CHECK(cal::is_beta(calibrating_toolchanger()));
-    CHECK_FALSE(cal::is_beta(printer_with({})));
 }

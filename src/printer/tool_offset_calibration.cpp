@@ -33,10 +33,6 @@ std::string guided_flow(const PrinterDiscovery& hw) {
     return {};
 }
 
-bool is_beta(const PrinterDiscovery& hw) {
-    return has_macro_procedure(hw) && guided_flow(hw).empty();
-}
-
 std::string calibrate_all_gcode(const PrinterDiscovery& hw) {
     if (!has_macro_procedure(hw)) {
         return {};

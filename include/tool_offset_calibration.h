@@ -50,10 +50,6 @@ bool supported(const PrinterDiscovery& hw);
 /// printer's tool offsets, or an empty string when the macro panel does.
 std::string guided_flow(const PrinterDiscovery& hw);
 
-/// Whether the calibration this printer offers is still behind the beta switch:
-/// the macro path is, a printer's own shipped flow is not.
-bool is_beta(const PrinterDiscovery& hw);
-
 /// Gcode that calibrates every tool, or an empty string when the printer has
 /// no such procedure. Blocking on the printer: Moonraker's printer.gcode.script
 /// answers when the macro finishes, so the rpc's completion IS the run's.

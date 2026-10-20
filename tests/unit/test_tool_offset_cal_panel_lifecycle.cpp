@@ -409,7 +409,6 @@ TEST_CASE_METHOD(ToolCalPanelFixture,
     CHECK(starts == 1);
     auto& caps = get_printer_state().capabilities_state();
     CHECK(lv_subject_get_int(caps.subject(helix::Capability::HasToolOffsetCal)) == 1);
-    CHECK(lv_subject_get_int(caps.subject(helix::Capability::ToolOffsetCalIsBeta)) == 0);
 
     helix::ui::unregister_guided_device_flow(helix::snapmaker::nozzle_offset::kGuidedFlowId);
     get_printer_state().set_hardware(helix::PrinterDiscovery{});
