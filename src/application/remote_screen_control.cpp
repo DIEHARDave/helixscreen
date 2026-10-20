@@ -62,7 +62,7 @@ std::string origin_authority(const std::string& origin) {
 
 TouchGate check_touch_request(bool control_allowed, bool lan_mode, const std::string& content_type,
                               const std::string& x_helix_touch, const std::string& origin,
-                              const std::string& host, bool cookie_paired) {
+                              const std::string& host, bool paired) {
     if (!control_allowed) {
         return TouchGate::ControlOff;
     }
@@ -75,7 +75,7 @@ TouchGate check_touch_request(bool control_allowed, bool lan_mode, const std::st
     if (!origin.empty() && origin_authority(origin) != host) {
         return TouchGate::OriginMismatch;
     }
-    if (lan_mode && !cookie_paired) {
+    if (lan_mode && !paired) {
         return TouchGate::NotPaired;
     }
     return TouchGate::Allowed;

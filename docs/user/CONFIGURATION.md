@@ -1695,7 +1695,7 @@ Set in **Settings > Connection** (see [Screen Sharing](guide/settings/connection
 **Default:** `7130`
 **Description:** The port the screen is served on. Not shown in the UI. Change it only if something else on the printer already uses 7130. Where the installer set the screen up behind nginx, nginx expects 7130.
 
-`remote_screen.pair_code` and `remote_screen.paired` hold the pairing code and the paired browsers on printers with nothing in front of Moonraker. Manage them from the screen (**Forget Paired Browsers**) rather than by hand.
+`remote_screen.pair_secret` and `remote_screen.paired_tokens` hold the pairing code and the paired browsers on printers with nothing in front of Moonraker. Manage them from the screen (**Forget Paired Browsers**) rather than by hand.
 
 ---
 

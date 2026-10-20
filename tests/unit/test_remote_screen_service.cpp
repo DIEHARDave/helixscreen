@@ -16,6 +16,7 @@
 #include "remote_screen_server_sink.h"
 #include "remote_screen_service.h"
 #include "remote_screen_settings_manager.h"
+#include "system/debug_bundle_collector.h"
 
 #include <atomic>
 #include <chrono>
@@ -28,6 +29,7 @@
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
+#include "hv/json.hpp"
 
 using namespace helix;
 
@@ -182,7 +184,7 @@ namespace {
 /// The service with sharing and control on, facing the LAN, a browser paired, and
 /// the store holding a frame the size of the test display.
 struct TouchFixture : RemoteScreenFixture {
-    std::string cookie;
+    std::string token;
     std::vector<uint8_t> px;
 
     TouchFixture() {
@@ -212,9 +214,8 @@ struct TouchFixture : RemoteScreenFixture {
         auto r = helix::test::raw_http(svc.port(), "POST", "/pair", json_headers(),
                                        "{\"code\":\"" + code + "\"}");
         REQUIRE(r.status == 200);
-        const auto at = r.headers.find("helix_screen=");
-        REQUIRE(at != std::string::npos);
-        cookie = "helix_screen=" + r.headers.substr(at + 13, 32);
+        token = nlohmann::json::parse(r.body, nullptr, false).value("token", "");
+        REQUIRE(token.size() == 32);
     }
 
     static std::vector<std::pair<std::string, std::string>> json_headers() {
@@ -225,7 +226,7 @@ struct TouchFixture : RemoteScreenFixture {
     /// the queued update runs, then the indevs are read until the request returns.
     int touch(const char* type, int x, int y) {
         auto headers = json_headers();
-        headers.push_back({"Cookie", cookie});
+        headers.push_back({"X-Helix-Pair", token});
         const std::string body = std::string("{\"type\":\"") + type +
                                  "\",\"x\":" + std::to_string(x) + ",\"y\":" + std::to_string(y) +
                                  "}";
@@ -311,4 +312,21 @@ TEST_CASE_METHOD(TouchFixture, "the remote-control indicator follows accepted to
     svc.housekeeping_tick(std::chrono::steady_clock::now() +
                           std::chrono::milliseconds(kRemoteControlActiveMs + 100));
     CHECK(lv_subject_get_int(active) == 0);
+}
+
+TEST_CASE_METHOD(RemoteScreenFixture, "pairing secrets never reach a debug bundle",
+                 "[remote_screen][settings]") {
+    // A shared bundle that carried a browser token would let anyone on that LAN drive
+    // the screen, so whatever keys the manager writes must be ones the sanitizer redacts.
+    auto& m = RemoteScreenSettingsManager::instance();
+    m.set_pair_code("123456");
+    m.set_paired_tokens({"0123456789abcdef0123456789abcdef"});
+    const auto& data = ConfigTestAccess::data(*Config::get_instance());
+    REQUIRE(data.contains("remote_screen"));
+    const std::string bundled =
+        helix::DebugBundleCollector::sanitize_json(data["remote_screen"]).dump();
+    CHECK(bundled.find("123456") == std::string::npos);
+    CHECK(bundled.find("0123456789abcdef0123456789abcdef") == std::string::npos);
+    CHECK(m.get_pair_code() == "123456");
+    CHECK(m.get_paired_tokens() == std::vector<std::string>{"0123456789abcdef0123456789abcdef"});
 }

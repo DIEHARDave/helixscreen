@@ -25,8 +25,8 @@ constexpr int64_t kPairWindowMs = 60000;
 constexpr int kPairFailuresBeforeRotate = 50;
 /// Browsers remembered at once; the least recently used is forgotten first.
 constexpr size_t kMaxPairedBrowsers = 8;
-/// Cookie a paired browser presents.
-constexpr const char* kPairCookieName = "helix_screen";
+/// Header a paired browser presents its token in.
+constexpr const char* kPairHeaderName = "X-Helix-Pair";
 
 /// One pointer event from the control page, in served-image pixels, which are the
 /// display's logical coordinates.
@@ -47,7 +47,7 @@ enum class TouchGate {
     BadContentType, ///< 403: only application/json, which a cross-site form cannot send
     MissingHeader,  ///< 403: X-Helix-Touch: 1, which forces a CORS preflight we never answer
     OriginMismatch, ///< 403
-    NotPaired,      ///< 401: facing the LAN without a paired browser cookie
+    NotPaired,      ///< 401: facing the LAN without a paired browser's token
 };
 
 /// Whether a touch POST may drive the screen. Pure. @p origin may be empty (a
@@ -56,14 +56,14 @@ enum class TouchGate {
 /// already authenticated the request.
 TouchGate check_touch_request(bool control_allowed, bool lan_mode, const std::string& content_type,
                               const std::string& x_helix_touch, const std::string& origin,
-                              const std::string& host, bool cookie_paired);
+                              const std::string& host, bool paired);
 
 /**
  * @brief Pairing for a screen server that faces the LAN.
  *
  * The device shows a 6-digit code; a browser that sends it gets a random token
- * it keeps in a cookie. Thread-safe. Persistence goes through @p persist, so the
- * store itself touches no config.
+ * it keeps in its own storage and sends with every request. Thread-safe. Persistence goes through
+ * @p persist, so the store itself touches no config.
  */
 class PairingStore {
   public:

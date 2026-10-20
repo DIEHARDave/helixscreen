@@ -93,12 +93,12 @@ void RemoteScreenSettingsManager::set_available(bool available) {
 }
 
 std::string RemoteScreenSettingsManager::get_pair_code() const {
-    return Config::get_instance()->get<std::string>("/remote_screen/pair_code", "");
+    return Config::get_instance()->get<std::string>("/remote_screen/pair_secret", "");
 }
 
 void RemoteScreenSettingsManager::set_pair_code(const std::string& code) {
     Config* config = Config::get_instance();
-    config->set<std::string>("/remote_screen/pair_code", code);
+    config->set<std::string>("/remote_screen/pair_secret", code);
     config->save();
     if (subjects_initialized_) {
         lv_subject_copy_string(&pair_code_subject_, code.c_str());
@@ -106,12 +106,12 @@ void RemoteScreenSettingsManager::set_pair_code(const std::string& code) {
 }
 
 std::vector<std::string> RemoteScreenSettingsManager::get_paired_tokens() const {
-    return Config::get_instance()->get_string_array("/remote_screen/paired");
+    return Config::get_instance()->get_string_array("/remote_screen/paired_tokens");
 }
 
 void RemoteScreenSettingsManager::set_paired_tokens(const std::vector<std::string>& tokens) {
     Config* config = Config::get_instance();
-    config->set<nlohmann::json>("/remote_screen/paired", nlohmann::json(tokens));
+    config->set<nlohmann::json>("/remote_screen/paired_tokens", nlohmann::json(tokens));
     config->save();
 }
 

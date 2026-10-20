@@ -235,7 +235,7 @@ struct ControlFixture {
     }
 
     helix::test::RawHttpReply touch(const std::string& body, bool header = true,
-                                    const std::string& origin = "", const std::string& cookie = "",
+                                    const std::string& origin = "", const std::string& token = "",
                                     const std::string& type = "application/json") {
         std::vector<std::pair<std::string, std::string>> h = {{"Content-Type", type}};
         if (header) {
@@ -244,8 +244,8 @@ struct ControlFixture {
         if (!origin.empty()) {
             h.push_back({"Origin", origin});
         }
-        if (!cookie.empty()) {
-            h.push_back({"Cookie", cookie});
+        if (!token.empty()) {
+            h.push_back({"X-Helix-Pair", token});
         }
         return raw_http(server->port(), "POST", "/touch", h, body);
     }
@@ -301,8 +301,10 @@ TEST_CASE("http: touch is refused unless every gate passes", "[remote_screen][ht
     }
 }
 
-TEST_CASE("http: pair sets an HttpOnly SameSite=Strict cookie that then allows touch",
+TEST_CASE("http: pair returns a token that, sent as X-Helix-Pair, allows touch",
           "[remote_screen][http][control]") {
+    // A header, not a cookie: Mainsail opened by host name frames the screen from the
+    // printer's IP, a different site, and a cross-site frame gets no cookies over HTTP.
     ControlFixture fx(true, true);
     const std::vector<std::pair<std::string, std::string>> h = {
         {"Content-Type", "application/json"}, {"X-Helix-Touch", "1"}};
@@ -316,19 +318,21 @@ TEST_CASE("http: pair sets an HttpOnly SameSite=Strict cookie that then allows t
 
     auto ok = raw_http(fx.server->port(), "POST", "/pair", h, R"({"code":"123456"})");
     REQUIRE(ok.status == 200);
-    REQUIRE(ok.has_header("set-cookie: helix_screen="));
-    CHECK(ok.has_header("httponly"));
-    CHECK(ok.has_header("samesite=strict"));
-
-    const auto start = ok.headers.find("set-cookie: helix_screen=") + 25;
-    const std::string token = ok.headers.substr(start, 32);
+    CHECK_FALSE(ok.has_header("set-cookie"));
+    CHECK(ok.has_header("cache-control: no-store"));
+    auto body = nlohmann::json::parse(ok.body, nullptr, false);
+    REQUIRE(body.is_object());
+    const std::string token = body.value("token", "");
+    REQUIRE(token.size() == 32);
     REQUIRE(fx.pairing->is_paired(token));
-    CHECK(fx.touch(kDown, true, "", std::string("helix_screen=") + token).status == 204);
+
+    CHECK(fx.touch(kDown, true, "", "not-a-token").status == 401);
+    CHECK(fx.touch(kDown, true, "", token).status == 204);
     CHECK(fx.touch_count() == 1);
 
     auto paired_info = nlohmann::json::parse(
-        raw_http(fx.server->port(), "GET", "/info", {{"Cookie", "helix_screen=" + token}}).body,
-        nullptr, false);
+        raw_http(fx.server->port(), "GET", "/info", {{"X-Helix-Pair", token}}).body, nullptr,
+        false);
     CHECK(paired_info["paired"] == true);
 }
 

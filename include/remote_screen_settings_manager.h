@@ -50,12 +50,12 @@ class RemoteScreenSettingsManager {
     /// `/remote_screen/port`; not shown in the UI. 0 asks for an ephemeral port.
     int get_port() const;
 
-    /// `/remote_screen/pair_code`: the 6 digits a browser enters to pair; "" until
+    /// `/remote_screen/pair_secret`: the 6 digits a browser enters to pair; "" until
     /// control is first used facing the LAN.
     std::string get_pair_code() const;
     /// Persist and publish to the settings row. Main thread.
     void set_pair_code(const std::string& code);
-    /// `/remote_screen/paired`: tokens of the paired browsers.
+    /// `/remote_screen/paired_tokens`: tokens of the paired browsers.
     std::vector<std::string> get_paired_tokens() const;
     void set_paired_tokens(const std::vector<std::string>& tokens);
 

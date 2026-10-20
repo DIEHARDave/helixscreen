@@ -164,10 +164,11 @@ bool ScreenHttpServer::start(const ScreenServerConfig& cfg) {
         std::string token;
         switch (hooks_.pairing->try_pair(code->get<std::string>(), token)) {
         case PairingStore::PairResult::Paired:
-            resp->headers["Set-Cookie"] = std::string(kPairCookieName) + "=" + token +
-                                          "; Max-Age=31536000; Path=/; HttpOnly; SameSite=Strict";
+            // The page keeps the token and sends it as kPairHeaderName: a cookie set
+            // here never reaches a frame embedded by Mainsail on another host name.
+            resp->headers["Cache-Control"] = "no-store";
             resp->content_type = APPLICATION_JSON;
-            resp->body = "{\"paired\":true}";
+            resp->body = json_util::safe_dump(nlohmann::json{{"paired", true}, {"token", token}});
             return static_cast<int>(HTTP_STATUS_OK);
         case PairingStore::PairResult::RateLimited:
             resp->headers["Retry-After"] = std::to_string(hooks_.pairing->retry_after_seconds());
@@ -280,7 +281,7 @@ bool ScreenHttpServer::request_paired(HttpRequest* req) const {
     if (!cfg_.lan_mode) {
         return true;
     }
-    return hooks_.pairing && hooks_.pairing->is_paired(req->GetCookie(kPairCookieName).value);
+    return hooks_.pairing && hooks_.pairing->is_paired(req->GetHeader(kPairHeaderName));
 }
 
 int ScreenHttpServer::port() const {

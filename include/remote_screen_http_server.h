@@ -49,7 +49,7 @@ struct ScreenServerHooks {
  *   GET /stream.mjpg   multipart MJPEG at the same rate cap, one part per new frame
  *   GET /              the control page
  *   POST /touch        {"type":"down|move|up","x","y"} in image pixels (control on)
- *   POST /pair         {"code":"123456"}, answered with the pairing cookie (LAN mode)
+ *   POST /pair         {"code":"123456"}, answered with the browser's token (LAN mode)
  *
  * One libhv worker thread. A request may block for up to kFirstFrameWaitMs while
  * a full repaint lands; stop() wakes it.
@@ -73,7 +73,7 @@ class ScreenHttpServer {
 
   private:
     /// Behind nginx every request that reached us is authenticated; on the LAN, only
-    /// one carrying a paired browser's cookie.
+    /// one carrying a paired browser's token in kPairHeaderName.
     bool request_paired(::HttpRequest* req) const;
 
     struct Impl;

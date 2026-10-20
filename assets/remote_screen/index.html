@@ -52,6 +52,18 @@
   var kInfoMs = 5000;
   var timer = null;
   var info = { w: 0, h: 0, control: false, paired: false };
+  // The pairing token lives in this page's storage and goes out as a header: Mainsail
+  // opened by host name frames this page from the printer's IP, another site, and a
+  // cross-site frame is sent no cookies.
+  var kTokenKey = "helix_screen_token";
+  function loadToken() { try { return localStorage.getItem(kTokenKey) || ""; } catch (e) { return ""; } }
+  function saveToken(t) { try { localStorage.setItem(kTokenKey, t); } catch (e) {} }
+  var token = loadToken();
+  function authHeaders(h) {
+    h = h || {};
+    if (token) h["X-Helix-Pair"] = token;
+    return h;
+  }
 
   function show(el, on) { el.style.display = on ? (el === pair ? "flex" : "block") : "none"; }
 
@@ -86,7 +98,7 @@
 
   // --- what the server allows ----------------------------------------------
   function refreshInfo() {
-    fetch("info", { cache: "no-store", credentials: "same-origin" })
+    fetch("info", { cache: "no-store", headers: authHeaders() })
       .then(function (r) { return r.json(); })
       .then(function (j) {
         info = j;
@@ -104,8 +116,12 @@
     var code = document.getElementById("pair-code").value.trim();
     post("pair", { code: code }).then(function (r) {
       if (r.ok) {
-        pairError.textContent = "";
-        refreshInfo();
+        return r.json().then(function (j) {
+          token = j.token || "";
+          saveToken(token);
+          pairError.textContent = "";
+          refreshInfo();
+        });
       } else if (r.status === 429) {
         pairError.textContent = "Too many tries. Wait a minute and try again.";
       } else {
@@ -117,8 +133,7 @@
   function post(path, body) {
     return fetch(path, {
       method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json", "X-Helix-Touch": "1" },
+      headers: authHeaders({ "Content-Type": "application/json", "X-Helix-Touch": "1" }),
       body: JSON.stringify(body)
     });
   }
