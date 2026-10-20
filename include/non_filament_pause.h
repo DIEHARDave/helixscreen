@@ -15,9 +15,11 @@ namespace helix::non_filament_pause {
 /// an explainer. Main thread only.
 using Explainer = std::function<bool()>;
 
+// The slots are never destroyed: an owner that dies during static destruction
+// (a process-lifetime panel) still removes itself here at exit.
 inline Explainer& explainer_slot() {
-    static Explainer explainer;
-    return explainer;
+    static auto* explainer = new Explainer();
+    return *explainer;
 }
 
 /// Install (or, with an empty function, remove) the explainer.
@@ -38,8 +40,8 @@ inline bool explained() {
 using Listener = std::function<void()>;
 
 inline std::vector<std::pair<const void*, Listener>>& listener_slots() {
-    static std::vector<std::pair<const void*, Listener>> listeners;
-    return listeners;
+    static auto* listeners = new std::vector<std::pair<const void*, Listener>>();
+    return *listeners;
 }
 
 inline void add_listener(const void* owner, Listener listener) {
