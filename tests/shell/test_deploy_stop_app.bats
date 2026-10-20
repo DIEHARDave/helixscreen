@@ -8,8 +8,9 @@
 # stopped must end the deploy before the sync, and nothing may be killed.
 #
 # systemctl, sudo, id, killall, pidof and sleep are stubs. The systemctl stub
-# keeps each unit's ActiveState in a file and logs every call; stopping
-# helixscreen re-arms helixscreen-update.path, as the unit's ExecStopPost does.
+# keeps each unit's ActiveState in a file (user units under user@) and logs
+# every call; stopping helixscreen re-arms helixscreen-update.path, as the
+# unit's ExecStopPost does. pidof reports PIDOF_PIDS for PIDOF_TICKS calls.
 
 setup() {
     load helpers
@@ -23,14 +24,20 @@ setup() {
     export STATE_DIR CALLS
 
     # Defaults: a non-root ssh user, sudo that needs a password, no polkit rule.
-    export FAKE_UID=1000 SUDO_OK=0 POLKIT_OK=0
+    export FAKE_UID=1000 SUDO_OK=0 POLKIT_OK=0 USER_STOP_OK=1
 
     mock_command_script "systemctl" '
         echo "systemctl $*" >> "$CALLS"
         case "$1" in
             show) [ -f "$STATE_DIR/$4" ] && s=$(cat "$STATE_DIR/$4") || s=inactive
                   echo "ActiveState=$s"; exit 0 ;;
-            --user) exit 0 ;;
+            --user)
+                if [ "$2" = show ]; then
+                    [ -f "$STATE_DIR/user@$5" ] && s=$(cat "$STATE_DIR/user@$5") || s=inactive
+                    echo "ActiveState=$s"; exit 0
+                fi
+                [ "$2" = stop ] && [ "$USER_STOP_OK" = 1 ] && echo inactive > "$STATE_DIR/user@$3"
+                exit 0 ;;
             --no-ask-password) [ "$POLKIT_OK" = 1 ] || exit 1; shift ;;
         esac
         if [ "$1" = stop ]; then
@@ -51,7 +58,13 @@ setup() {
         case "$1" in -u) echo "$FAKE_UID" ;; -un) echo pi ;; *) echo "uid=$FAKE_UID" ;; esac
     '
     mock_command_script "killall" 'echo "killall $*" >> "$CALLS"; exit 0'
-    mock_command_script "pidof" 'exit 1'
+    export PIDOF_PIDS="" PIDOF_TICKS=0
+    mock_command_script "pidof" '
+        n=$(cat "$STATE_DIR/pidof.n" 2>/dev/null || echo 0)
+        echo $((n + 1)) > "$STATE_DIR/pidof.n"
+        [ -n "$PIDOF_PIDS" ] && [ "$n" -lt "$PIDOF_TICKS" ] || exit 1
+        echo "$PIDOF_PIDS"
+    '
     mock_command_script "sleep" 'exit 0'
 }
 
@@ -141,6 +154,48 @@ unit_state() { cat "$STATE_DIR/$1" 2>/dev/null || echo inactive; }
     [ "$status" -eq 0 ]
     grep -q "^killall helix-watchdog helix-screen" "$CALLS"
     ! grep -q "^sudo\|^systemctl" "$CALLS"
+}
+
+@test "a user unit that stops is confirmed inactive and the deploy goes on" {
+    echo active > "$STATE_DIR/user@helix-screen"
+
+    run sh "$STOPPER"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$STATE_DIR/user@helix-screen")" = inactive ]
+    grep -q "^killall" "$CALLS"
+}
+
+@test "a user unit that will not stop: exit 3, the unit is named, nothing is killed" {
+    USER_STOP_OK=0
+    echo active > "$STATE_DIR/user@helix-screen"
+
+    run sh "$STOPPER"
+
+    [ "$status" -eq 3 ]
+    contains "user unit helix-screen is still running" "$output"
+    ! grep -q "^killall" "$CALLS"
+}
+
+@test "a process that outlives the kill: exit 4 after a bounded wait, naming pid and owner" {
+    # This shell stands in for the stuck instance, so /proc has a real owner.
+    PIDOF_PIDS=$$ PIDOF_TICKS=1000
+
+    run sh "$STOPPER"
+
+    [ "$status" -eq 4 ]
+    contains "pid $$ " "$output"
+    contains "(owner $(stat -c %U /proc/$$))" "$output"
+    [ "$(cat "$STATE_DIR/pidof.n")" -lt 100 ]
+}
+
+@test "a process that exits during the wait: exit 0" {
+    PIDOF_PIDS=4242 PIDOF_TICKS=5
+
+    run sh "$STOPPER"
+
+    [ "$status" -eq 0 ]
+    lacks "still running" "$output"
 }
 
 # --- the make recipe around it ----------------------------------------------
