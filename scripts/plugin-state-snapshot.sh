@@ -81,16 +81,25 @@ install_sh_discovery() {
         sed 's/^running_moonraker_root() {$/install_sh_moonraker_root() {/'
 }
 
+# The [include] walk install.sh sources, so the snapshot lists the files the
+# installer edits.
+conf_sh() {
+    _conf_sh="$(dirname "$INSTALL_SH")/helix_print_conf.sh"
+    [ -r "$_conf_sh" ] || die "cannot read $_conf_sh"
+    cat "$_conf_sh"
+}
+
 # The functions the collector calls; a refactor of install.sh that drops one
 # fails the snapshot instead of recording a wrong path.
 REQUIRED_FUNCS="components_under running_moonraker_proc running_moonraker_args
 install_sh_moonraker_root running_moonraker_arg find_moonraker_components
-find_config_dir helix_conf_file"
+find_config_dir helix_conf_file moonraker_conf_files"
 
 emit_remote() {
     printf '%s\n' "SNAP_ROOT=$(shquote "$ROOT")"
     printf '%s\n' "SNAP_CHROOT=$(shquote "$CHROOT")"
     printf '%s\n' "SNAP_REQUIRED=$(shquote "$(printf '%s' "$REQUIRED_FUNCS" | tr '\n' ' ')")"
+    conf_sh
     install_sh_discovery
     cat <<'COLLECTOR'
 
@@ -146,44 +155,6 @@ app_proc() {
         case "$a0" in */helix-screen|helix-screen) dirname "$f"; return 0 ;; esac
     done
     return 1
-}
-
-# Files named by [include X] lines in <file>, X relative to the directory the
-# file is named from, as Moonraker resolves it; an absolute X is under
-# Moonraker's root. Globs expand.
-conf_includes() { # <file>
-    d=$(dirname "$1")
-    sed -n 's/\r$//; s/^\[include[[:space:]]\{1,\}\(.*[^[:space:]]\)[[:space:]]*\][[:space:]]*$/\1/p' "$1" 2>/dev/null |
-        while IFS= read -r pat; do
-            case "$pat" in
-                /*) pat="$(running_moonraker_root)$pat" ;;
-                *) pat="$d/$pat" ;;
-            esac
-            for inc in $pat; do
-                [ -f "$inc" ] && printf '%s\n' "$inc"
-            done
-        done
-}
-
-# Every file reachable through [include] from <file>, <file> first.
-conf_tree() { # <file>
-    todo="$1"; seen=""; n=0
-    while [ -n "$todo" ] && [ "$n" -lt 64 ]; do
-        cur=$(printf '%s\n' "$todo" | awk 'NR == 1')
-        todo=$(printf '%s\n' "$todo" | awk 'NR > 1')
-        case "
-$seen
-" in *"
-$cur
-"*) continue ;; esac
-        seen="${seen:+$seen
-}$cur"
-        n=$((n + 1))
-        printf '%s\n' "$cur"
-        more=$(conf_includes "$cur")
-        [ -z "$more" ] || todo="${todo:+$todo
-}$more"
-    done
 }
 
 # --- what install.sh would find -------------------------------------------
@@ -252,7 +223,7 @@ else init=sysv
 fi
 
 tree=""
-[ -z "$conf" ] || tree=$(conf_tree "$conf")
+[ -z "$conf" ] || tree=$(moonraker_conf_files "$conf" "$(running_moonraker_root)")
 
 section paths.txt
 kv moonraker_pid "$mpid"

@@ -227,6 +227,7 @@ path_of() { # <snapshot dir> <key>
 
 @test "an install.sh missing a discovery function fails the snapshot" {
     sed '/^helix_conf_file() {$/,/^}$/d' "$REPO_ROOT/moonraker-plugin/install.sh" > "$BATS_TEST_TMPDIR/install.sh"
+    cp "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh" "$BATS_TEST_TMPDIR/"
     setup_pi "$BATS_TEST_TMPDIR/pi"
     HELIX_PLUGIN_INSTALL_SH="$BATS_TEST_TMPDIR/install.sh" snap "$BATS_TEST_TMPDIR/pi" p0
     [ "$status" -ne 0 ]
@@ -262,6 +263,23 @@ path_of() { # <snapshot dir> <key>
     grep -q '^.helix_temp: ' "$d/gcodes_ls.txt"
     grep -qx '/home/pi/printer_data/config/moonraker.conf.bak.20260101_000000' "$d/backups.txt"
     grep -q ' /home/pi/printer_data/config/moonraker.conf$' "$d/checksums.txt"
+}
+
+@test "the snapshot walks includes with the installer's own walker, so a cycle lists each file once" {
+    run "$SNAP" --emit-remote
+    [ "$status" -eq 0 ]
+    local body
+    body=$(sed -n '/^moonraker_conf_files() {$/,/^}$/p' "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh")
+    [ -n "$body" ] || fail "no moonraker_conf_files in helix_print_conf.sh"
+    contains "$body" "$output"
+
+    local r="$BATS_TEST_TMPDIR/pi"
+    setup_pi "$r"
+    printf '[include ../moonraker.conf]\n' >> "$r/home/pi/printer_data/config/extra/nested.cfg"
+    snap "$r" p0
+    [ "$status" -eq 0 ] || fail "$output"
+    [ "$(grep -c '^include=' "$(snap_dir p0)/paths.txt")" -eq 2 ] ||
+        fail "includes: $(grep '^include=' "$(snap_dir p0)/paths.txt" | head -n 4)"
 }
 
 @test "a dangling plugin link is reported as not resolving" {
