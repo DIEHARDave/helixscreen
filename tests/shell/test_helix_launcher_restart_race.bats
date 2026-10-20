@@ -28,6 +28,11 @@ setup() {
     mock_command_script "systemctl" 'exit 0'
     mock_command_script "setterm" 'exit 0'
 
+    # No DRM card, so no helix-screen --probe-egl lands in the screens log,
+    # whatever /dev/dri this host has.
+    export HELIX_DRI_DIR="$BATS_TEST_TMPDIR/dri"
+    mkdir -p "$HELIX_DRI_DIR"
+
     MI="$BATS_TEST_TMPDIR/helixscreen"
     mkdir -p "$MI/bin" "$MI/config"
     cp "$LAUNCHER" "$MI/bin/helix-launcher.sh"

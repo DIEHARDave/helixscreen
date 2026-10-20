@@ -16,7 +16,7 @@ sudo_() {
 
 # `helix-screen ctl` against the device's control socket, printing its reply.
 ctl_out() {
-    "$INSTALL/bin/helix-screen-egl" ctl -s "$CTL_SOCK" "$@" < /dev/null 2> /dev/null
+    "$INSTALL/bin/helix-screen" ctl -s "$CTL_SOCK" "$@" < /dev/null 2> /dev/null
 }
 
 ctl() {
@@ -27,11 +27,11 @@ ctl_answers() {
     ctl_out ping | grep -q pong
 }
 
-# PID of the running app (helix-screen or helix-screen-egl), or an empty line. BusyBox ps
+# PID of the running app, or an empty line. BusyBox ps
 # without -o support falls through to pidof.
 helix_pid() {
     _pid=$(ps -eo pid,comm 2> /dev/null | awk '$2 ~ /^helix-screen/ {print $1; exit}')
-    [ -n "$_pid" ] || _pid=$(pidof helix-screen helix-screen-egl 2> /dev/null | awk '{print $1}')
+    [ -n "$_pid" ] || _pid=$(pidof helix-screen 2> /dev/null | awk '{print $1}')
     echo "$_pid"
 }
 

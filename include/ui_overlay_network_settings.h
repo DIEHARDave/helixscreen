@@ -186,6 +186,7 @@ class NetworkSettingsOverlay : public OverlayBase {
     lv_subject_t wifi_only_24ghz_{};       // 1 if hardware only supports 2.4GHz
     lv_subject_t wifi_can_forget_{};       // 1 if the backend can forget a saved network
     lv_subject_t wifi_can_toggle_radio_{}; // 1 if the backend can move the radio
+    lv_subject_t wifi_toggle_locked_{};    // 1 while the switch must not take a tap
     lv_subject_t wifi_can_set_country_{};  // 1 if the backend can set the regulatory country
     lv_subject_t wifi_country_index_{};    // country dropdown selection (0 = not set)
     lv_subject_t wifi_unresponsive_{};     // 1 while WiFi control stops answering (rows show
@@ -284,6 +285,10 @@ class NetworkSettingsOverlay : public OverlayBase {
     void cancel_wlan_toggle_backstop();
     lv_timer_t* wlan_toggle_backstop_ = nullptr;
     bool wlan_toggle_requested_ = false;
+    // While a radio change is in flight the switch shows the requested state and
+    // stays locked until the radio answers, so a second tap cannot queue the
+    // opposite change behind the first.
+    void set_wlan_toggle_in_flight(bool in_flight);
     void handle_wlan_toggle_off_confirm();
     void handle_wlan_toggle_off_cancel();
     void handle_refresh_clicked();
