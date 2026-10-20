@@ -220,8 +220,14 @@ main() {
     status=0
     sh "$PLUGIN_DIR/install.sh" --auto < /dev/null || status=$?
     if [ "$status" -ne 0 ]; then
+        had_previous=false
+        [ -e "$PLUGIN_OLD" ] && had_previous=true
         if restore_plugin "$stage"; then
-            printf '[ERROR] %s\n' "Install failed - the previous $PLUGIN_DIR is back in place" >&2
+            if [ "$had_previous" = true ]; then
+                printf '[ERROR] %s\n' "Install failed - the previous $PLUGIN_DIR is back in place" >&2
+            else
+                printf '[ERROR] %s\n' "Install failed" >&2
+            fi
         else
             printf '[ERROR] %s\n' "Install failed, and the previous plugin could not be put back from $PLUGIN_OLD" >&2
         fi

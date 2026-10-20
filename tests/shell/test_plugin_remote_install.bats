@@ -326,6 +326,59 @@ exec $real \"\$@\""
     [ -e "$link" ] || fail "the plugin link dangles: $(readlink "$link")"
 }
 
+# Moonraker's /server/info never answers; every other URL goes to the fetcher
+# stubs. sleep is a no-op so install.sh's 30-attempt wait costs no real time.
+silence_moonraker() {
+    local name
+    for name in curl wget; do
+        mv "$BATS_TEST_TMPDIR/bin/$name" "$BATS_TEST_TMPDIR/bin/$name.real"
+        stub "$name" "case \"\$*\" in *moonraker.test*) exit 7 ;; esac
+exec \"$BATS_TEST_TMPDIR/bin/$name.real\" \"\$@\""
+    done
+    stub sleep 'exit 0'
+}
+
+@test "a Moonraker that never answers after the restart warns and keeps the finished install" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_home "$home"
+    setup_git_clone_install "$home"
+    local link="$home/moonraker/moonraker/components/helix_print.py"
+    silence_moonraker
+
+    run env HOME="$home" HELIX_PLUGIN_BASE_URL="$BASE_URL" MOONRAKER_URL=http://moonraker.test:7125 \
+        sh "$WRAPPER" v1.2.3
+    [ "$status" -eq 0 ] || fail "a slow restart failed the install: $output"
+
+    contains "Moonraker did not come back up in time" "$output"
+    [ "$(readlink "$link")" = "$home/helix_print/helix_print.py" ] || fail "link: $(readlink "$link")"
+    [ -e "$link" ] || fail "the plugin link dangles"
+    [ ! -e "$home/helix_print/.git" ] || fail "the old clone was restored over the new install"
+}
+
+@test "a failed fresh install does not claim a previous plugin is back in place" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_home "$home"
+    publish_release v1.2.4
+    printf '#!/bin/sh\nexit 1\n' > "$RELEASE_ROOT/v1.2.4/moonraker-plugin/install.sh"
+
+    run_wrapper "$home" v1.2.4
+    [ "$status" -ne 0 ]
+    contains "Install failed" "$output"
+    ! contains "is back in place" "$output" || fail "claimed a restore: $output"
+}
+
+@test "a failed install over a previous plugin says the previous one is back in place" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_home "$home"
+    setup_git_clone_install "$home"
+    publish_release v1.2.4
+    printf '#!/bin/sh\nexit 1\n' > "$RELEASE_ROOT/v1.2.4/moonraker-plugin/install.sh"
+
+    run_wrapper "$home" v1.2.4
+    [ "$status" -ne 0 ]
+    contains "the previous $home/helix_print is back in place" "$output"
+}
+
 @test "uninstalling a git-clone install leaves moonraker.conf as it was before it" {
     local home="$BATS_TEST_TMPDIR/home"
     setup_home "$home"

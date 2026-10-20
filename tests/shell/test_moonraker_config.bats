@@ -959,6 +959,22 @@ exec $real \"\$@\""
     [ -z "$(find "$(dirname "$conf")" -name 'moonraker.conf.helixtmp*')" ] || fail "staging file left"
 }
 
+@test "migrate_to_web_type: a failed removal adds no second helixscreen section" {
+    local conf real
+    conf=$(setup_moonraker_home)
+    create_moonraker_conf_with_helix "$conf"
+    MOONRAKER_CONF_PATHS="$conf"
+    real=$(command -v awk)
+    mock_command_script "awk" "case \"\$*\" in *'update_manager helixscreen'*)
+    if [ -f /dev/stdout ]; then $real \"\$@\" | head -c 30; exit 0; fi ;; esac
+exec $real \"\$@\""
+
+    run migrate_to_web_type "$conf"
+
+    [ "$status" -eq 1 ]
+    [ "$(grep -c '^\[update_manager helixscreen\]' "$conf")" -eq 1 ] || fail "sections: $(cat "$conf")"
+}
+
 @test "remove_update_manager_section: only helixscreen removed, others preserved" {
     local conf
     conf=$(setup_moonraker_home)

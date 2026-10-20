@@ -799,8 +799,9 @@ auto_install() {
     # Restart Moonraker
     restart_moonraker
 
-    # Wait for Moonraker to come back up
-    wait_for_moonraker
+    # Wait for Moonraker to come back up. The install itself is done by now, so
+    # a slow restart is a warning, never a failure that would roll it back.
+    wait_for_moonraker || warn "Moonraker did not come back up in time, but the plugin install itself completed"
 
     printf '\n'
     info "Auto-install complete!"

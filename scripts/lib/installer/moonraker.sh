@@ -323,8 +323,12 @@ migrate_to_web_type() {
 
     log_info "Migrating update_manager to type: web..."
 
-    # Remove old section
-    remove_update_manager_section "$conf" 2>/dev/null || true
+    # Remove old section. Adding the web section after a failed removal would
+    # leave two [update_manager helixscreen] sections, which Moonraker rejects.
+    if ! remove_update_manager_section "$conf" 2>/dev/null; then
+        log_warn "Could not remove the old update_manager section; leaving it as it is"
+        return 1
+    fi
 
     # Add new web section
     add_update_manager_section "$conf"
@@ -1061,7 +1065,7 @@ configure_moonraker_updates() {
     # Migrate old git_repo or zip config to type: web
     # (type: zip shows perpetual UP-TO-DATE in Mainsail — see mainsail-crew/mainsail#2444)
     if has_old_git_repo_section "$conf" || has_old_zip_section "$conf"; then
-        migrate_to_web_type "$conf"
+        migrate_to_web_type "$conf" || true
         # Where the OS has no package manager, silence the provider warnings.
         disable_system_updates_on_buildroot "$conf"
         ensure_moonraker_asvc "$conf"
