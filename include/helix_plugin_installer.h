@@ -413,15 +413,17 @@ bool plugin_versions_differ(const PluginSelfHealFacts& facts);
 PluginSelfHealStep decide_plugin_self_heal(const PluginSelfHealFacts& facts);
 
 /**
- * @brief What the startup check keeps for the next start after taking @p step
+ * @brief What the startup check keeps for the next start
  *
- * A restart records the version pair it is for when the versions differ, and
- * the plugin file when it is for a re-pointed link. Versions that agree clear
- * the pair, and a link found current clears the file: a later mismatch or
- * relink is a new problem.
+ * A restart that finished (@p restart_finished) records the version pair it
+ * was for when the versions differ, and the plugin file when it was for a
+ * re-pointed link. One held off, failed or cut short by the app stopping
+ * records nothing, so the next start gets its attempt. Versions that agree
+ * clear the pair, and a link found current clears the file: a later mismatch
+ * or relink is a new problem.
  */
 PluginSelfHealMemory remember_plugin_self_heal(const PluginSelfHealFacts& facts,
-                                               PluginSelfHealStep step);
+                                               bool restart_finished);
 
 /**
  * @brief Split install.sh output into log lines: color escapes removed,

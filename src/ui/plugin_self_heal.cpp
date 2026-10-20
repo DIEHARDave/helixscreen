@@ -88,19 +88,11 @@ void PluginSelfHeal::act(bool local, PluginLinkCheck link) {
     facts.bundled_version = installer_.bundled_plugin_version();
     facts.plugin_file = installer_.bundled_plugin_file();
     facts.job_holds = job_holds_machine(printer_state_.print_state().get_print_lifecycle());
-    Config* config = Config::get_instance();
-    facts.memory.restarted_for_bundled = config->get<std::string>(kPrefRestartedForBundled, "");
-    facts.memory.restarted_for_reported = config->get<std::string>(kPrefRestartedForReported, "");
-    facts.memory.relinked_for = config->get<std::string>(kPrefRelinkedFor, "");
+    facts.memory = load_memory();
 
     const PluginSelfHealStep step = decide_plugin_self_heal(facts);
-    const PluginSelfHealMemory memory = remember_plugin_self_heal(facts, step);
-    if (!(memory == facts.memory)) {
-        config->set<std::string>(kPrefRestartedForBundled, memory.restarted_for_bundled);
-        config->set<std::string>(kPrefRestartedForReported, memory.restarted_for_reported);
-        config->set<std::string>(kPrefRelinkedFor, memory.relinked_for);
-        config->save();
-    }
+    restart_facts_ = facts;
+    remember(facts, false);
 
     switch (step) {
     case PluginSelfHealStep::GiveUp:
@@ -194,10 +186,32 @@ void PluginSelfHeal::restart_moonraker() {
     });
 }
 
+PluginSelfHealMemory PluginSelfHeal::load_memory() {
+    Config* config = Config::get_instance();
+    PluginSelfHealMemory memory;
+    memory.restarted_for_bundled = config->get<std::string>(kPrefRestartedForBundled, "");
+    memory.restarted_for_reported = config->get<std::string>(kPrefRestartedForReported, "");
+    memory.relinked_for = config->get<std::string>(kPrefRelinkedFor, "");
+    return memory;
+}
+
+void PluginSelfHeal::remember(const PluginSelfHealFacts& facts, bool restart_finished) {
+    Config* config = Config::get_instance();
+    const PluginSelfHealMemory memory = remember_plugin_self_heal(facts, restart_finished);
+    if (!(memory == facts.memory)) {
+        config->set<std::string>(kPrefRestartedForBundled, memory.restarted_for_bundled);
+        config->set<std::string>(kPrefRestartedForReported, memory.restarted_for_reported);
+        config->set<std::string>(kPrefRelinkedFor, memory.relinked_for);
+        config->save();
+    }
+}
+
 void PluginSelfHeal::on_restarted(PluginRestartOutcome outcome) {
     switch (outcome) {
     case PluginRestartOutcome::Restarted:
         spdlog::info("[PluginSelfHeal] Moonraker restarted for the HelixPrint plugin");
+        restart_facts_.memory = load_memory();
+        remember(restart_facts_, true);
         ToastManager::instance().show(
             ToastSeverity::INFO, lv_tr("HelixPrint plugin updated. Moonraker is restarting..."),
             kRestartToastMs);

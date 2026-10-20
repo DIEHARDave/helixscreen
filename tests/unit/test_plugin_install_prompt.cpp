@@ -713,6 +713,55 @@ TEST_CASE_METHOD(SelfHealFixture,
 }
 
 TEST_CASE_METHOD(SelfHealFixture,
+                 "a restart that did not finish gets its one attempt at the next start",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.2.0", 0);
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", "1"); // the mock reports 1.0.1
+    auto next_start = [this]() {
+        PluginSelfHealTestAccess::set_ran_this_start(false);
+        set_plugin_installed(false);
+        run_plugin_probe();
+        settle();
+    };
+
+    set_restart_exit(1); // nothing restarted Moonraker
+    run_plugin_probe();
+    settle();
+    REQUIRE(restarts() == 1);
+
+    set_restart_exit(4); // held off for a print
+    next_start();
+    REQUIRE(restarts() == 2);
+
+    set_restart_exit(0);
+    next_start();
+    REQUIRE(restarts() == 3);
+
+    // That one finished and the versions still differ: no more attempts.
+    next_start();
+    CHECK(restarts() == 3);
+}
+
+TEST_CASE_METHOD(SelfHealFixture,
+                 "a restart still waiting for a job when the app stops is tried at the next start",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.0.1", 3);
+    test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
+    drain();
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", nullptr);
+
+    run_plugin_probe();
+    settle();
+    REQUIRE(restarts() == 0);
+
+    // The app stops before the job ends; the next start finds no job.
+    test::set_wire_state(get_printer_state(), PrintJobState::STANDBY);
+    drain();
+    next_start_reports_absent();
+    CHECK(restarts() == 1);
+}
+
+TEST_CASE_METHOD(SelfHealFixture,
                  "a version pair a restart did not fix is not restarted for at the next start",
                  "[plugin_installer][print_select][self_heal]") {
     ship("1.2.0", 0);

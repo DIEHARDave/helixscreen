@@ -26,7 +26,7 @@ struct PluginSelfHealTestAccess; // test-only friend (tests/test_helpers/)
  * install.sh --restart-moonraker: Moonraker's own server.restart keeps the
  * plugin module it already imported, so only a new process loads the new
  * code. One the script holds off for a print waits for the job again. A version pair or a
- * re-pointed link a restart already failed to fix is remembered in the config
+ * re-pointed link a finished restart did not fix is remembered in the config
  * (PluginSelfHealMemory) and only warned about on later starts. A plugin set
  * to `enabled: False` is left to the install prompt. A remote Moonraker is
  * only reported in the log. decide_plugin_self_heal() holds the rule; this
@@ -60,12 +60,18 @@ class PluginSelfHeal {
     void recheck_restart();
     void restart_moonraker();
     void on_restarted(PluginRestartOutcome outcome);
+    /// PluginSelfHealMemory as the config holds it now.
+    static PluginSelfHealMemory load_memory();
+    /// Store what @p facts.memory becomes (remember_plugin_self_heal()).
+    static void remember(const PluginSelfHealFacts& facts, bool restart_finished);
 
     PrinterState& printer_state_;
     HelixPluginInstaller& installer_;
     ScreenProbe screen_;
     /// Stop when no restart is pending, else the wait it is in.
     PluginTurnStep restart_wait_ = PluginTurnStep::Stop;
+    /// What the pending or running restart is for; remembered once it finishes.
+    PluginSelfHealFacts restart_facts_;
     ui::LvglTimerGuard restart_timer_;
     bool checking_ = false;
     AsyncLifetimeGuard lifetime_;

@@ -244,38 +244,41 @@ TEST_CASE("remember_plugin_self_heal: what the startup check keeps for the next 
     f.reported_version = "1.1.0";
     f.plugin_file = "/opt/helixscreen/moonraker-plugin/helix_print.py";
 
-    SECTION("a restart for a mismatch keeps the pair it is for") {
+    SECTION("a finished restart for a mismatch keeps the pair it was for") {
         f.link = PluginLinkCheck::Current;
-        const auto m = remember_plugin_self_heal(f, PluginSelfHealStep::RestartNow);
+        const auto m = remember_plugin_self_heal(f, true);
         CHECK(m.restarted_for_bundled == "1.2.0");
         CHECK(m.restarted_for_reported == "1.1.0");
         CHECK(m.relinked_for.empty());
     }
-    SECTION("a restart for a re-pointed link keeps the file, even when it waits for a job") {
+    SECTION("a finished restart for a re-pointed link keeps the file") {
         f.link = PluginLinkCheck::Relinked;
         f.reported_version = "";
-        const auto m = remember_plugin_self_heal(f, PluginSelfHealStep::WaitForJob);
+        const auto m = remember_plugin_self_heal(f, true);
         CHECK(m.relinked_for == f.plugin_file);
         CHECK(m.restarted_for_bundled.empty());
+    }
+    SECTION("a restart that has not finished keeps nothing it was for") {
+        f.link = PluginLinkCheck::Relinked;
+        CHECK(remember_plugin_self_heal(f, false) == PluginSelfHealMemory{});
     }
     SECTION("a link found current forgets the file; agreeing versions forget the pair") {
         f.link = PluginLinkCheck::Current;
         f.reported_version = "1.2.0";
         f.memory = {"1.2.0", "1.1.0", f.plugin_file};
-        const auto m = remember_plugin_self_heal(f, PluginSelfHealStep::Nothing);
+        const auto m = remember_plugin_self_heal(f, false);
         CHECK(m == PluginSelfHealMemory{});
     }
     SECTION("giving up keeps what the restart was for") {
         f.link = PluginLinkCheck::Relinked;
         f.memory.relinked_for = f.plugin_file;
-        const auto m = remember_plugin_self_heal(f, PluginSelfHealStep::GiveUp);
+        const auto m = remember_plugin_self_heal(f, false);
         CHECK(m.relinked_for == f.plugin_file);
     }
     SECTION("a failed check forgets nothing about the link") {
         f.link = PluginLinkCheck::Failed;
         f.memory.relinked_for = f.plugin_file;
-        CHECK(remember_plugin_self_heal(f, PluginSelfHealStep::Nothing).relinked_for ==
-              f.plugin_file);
+        CHECK(remember_plugin_self_heal(f, false).relinked_for == f.plugin_file);
     }
 }
 

@@ -546,10 +546,10 @@ PluginSelfHealStep decide_plugin_self_heal(const PluginSelfHealFacts& facts) {
 }
 
 PluginSelfHealMemory remember_plugin_self_heal(const PluginSelfHealFacts& facts,
-                                               PluginSelfHealStep step) {
+                                               bool restart_finished) {
     PluginSelfHealMemory memory = facts.memory;
     const bool version_differs = plugin_versions_differ(facts);
-    if (step == PluginSelfHealStep::RestartNow || step == PluginSelfHealStep::WaitForJob) {
+    if (restart_finished) {
         if (version_differs) {
             memory.restarted_for_bundled = facts.bundled_version;
             memory.restarted_for_reported = facts.reported_version;
