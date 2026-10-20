@@ -274,15 +274,14 @@ lv_obj_t* NetworkSettingsOverlay::create(lv_obj_t* parent_screen) {
     if (!wifi_manager_) {
         wifi_manager_ = get_wifi_manager(); // Uses global singleton (already has self-reference)
         spdlog::debug("[NetworkSettingsOverlay] WiFiManager obtained from global singleton");
+    }
 
-        // Check WiFi hardware availability and update subject
-        bool hw_available = wifi_manager_->has_hardware();
-        lv_subject_set_int(&wifi_hardware_available_, hw_available ? 1 : 0);
-        lv_subject_set_int(&wifi_toggle_locked_, hw_available ? 0 : 1);
-        if (!hw_available) {
-            spdlog::info(
-                "[NetworkSettingsOverlay] WiFi hardware not available - controls disabled");
-        }
+    // Check WiFi hardware availability and update subject
+    const bool hw_available = wifi_manager_ && wifi_manager_->has_hardware();
+    lv_subject_set_int(&wifi_hardware_available_, hw_available ? 1 : 0);
+    lv_subject_set_int(&wifi_toggle_locked_, hw_available ? 0 : 1);
+    if (!hw_available) {
+        spdlog::info("[NetworkSettingsOverlay] WiFi hardware not available - controls disabled");
     }
 
     // Initialize Ethernet manager

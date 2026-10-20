@@ -69,6 +69,10 @@ class NetworkSettingsOverlayTestAccess {
     static lv_subject_t& wifi_hardware_available(NetworkSettingsOverlay& o) {
         return o.wifi_hardware_available_;
     }
+    /// The wifi_toggle_locked subject (0/1) the switch's disabled state binds to.
+    static lv_subject_t& wifi_toggle_locked(NetworkSettingsOverlay& o) {
+        return o.wifi_toggle_locked_;
+    }
     /// The wifi_enabled subject (0/1) the switch's checked state binds to.
     static lv_subject_t& wifi_enabled(NetworkSettingsOverlay& o) {
         return o.wifi_enabled_;

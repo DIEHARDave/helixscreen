@@ -280,3 +280,44 @@ TEST_CASE_METHOD(WlanToggleFixture, "The backstop unlocks a switch whose radio n
     overlay.cleanup();
     helix::ui::UpdateQueue::instance().drain();
 }
+
+TEST_CASE_METHOD(WlanToggleFixture, "Without WiFi hardware the switch opens locked",
+                 "[network_settings][wlan_toggle]") {
+    get_runtime_config()->test_mode = true;
+    get_runtime_config()->use_real_wifi = false;
+    NetworkSettingsOverlay overlay;
+    Access::wifi_manager(overlay) = std::make_shared<helix::WiFiManager>(nullptr, /*silent=*/true);
+    overlay.init_subjects();
+    overlay.register_callbacks();
+    lv_obj_t* root = overlay.create(test_screen());
+    REQUIRE(root != nullptr);
+    lv_obj_t* sw = lv_obj_find_by_name(root, "wlan_toggle");
+    REQUIRE(sw != nullptr);
+
+    CHECK(lv_subject_get_int(&Access::wifi_hardware_available(overlay)) == 0);
+    CHECK(locked(sw));
+
+    overlay.cleanup();
+    helix::ui::UpdateQueue::instance().drain();
+}
+
+TEST_CASE_METHOD(WlanToggleFixture, "Cleanup unlocks a switch whose radio change is in flight",
+                 "[network_settings][wlan_toggle]") {
+    NetworkSettingsOverlay overlay;
+    lv_obj_t* root = open_overlay(overlay);
+    lv_obj_t* sw = lv_obj_find_by_name(root, "wlan_toggle");
+    REQUIRE(sw != nullptr);
+
+    backend->arm(/*fail=*/false);
+    tap(overlay, sw);
+    REQUIRE(drain_until([this] { return backend->entered(); }));
+    REQUIRE(lv_subject_get_int(&Access::wifi_toggle_locked(overlay)) == 1);
+
+    // cleanup() drops the radio's answer, so it is the only thing that can
+    // leave the switch usable for whatever opens these subjects next.
+    overlay.cleanup();
+    CHECK(lv_subject_get_int(&Access::wifi_toggle_locked(overlay)) == 0);
+
+    backend->release();
+    helix::ui::UpdateQueue::instance().drain();
+}
