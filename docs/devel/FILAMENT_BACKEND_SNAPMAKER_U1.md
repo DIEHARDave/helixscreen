@@ -475,8 +475,10 @@ no frame, so the refeed judges it on the snapshot it already holds; a hand-loade
 Resume refeeds anything. The marks live in the app: after the app restarts (not a websocket
 drop), a mark from an `AUTO_FEEDING` error or an OK with no `load_finish` is gone, and only
 a feeder still reporting a `*_fail` state or an error fault marks the head again. A restart
-from the beginning reads the file's tools from Moonraker's metadata and the tools cache only,
-never downloading the file, and a printer switch during that read drops the restart It survives a reconnect to a print still
+from the beginning reads the file's tools from Moonraker's metadata, the tools cache and at
+most the footer's one range read (`FileRead::Footer`), never downloading the file: Orca's U1
+profile leaves `filament_weights` out of the metadata but writes `; filament used [g] = ...`
+per filament in the footer. A printer switch during that read drops the restart It survives a reconnect to a print still
 running, since the first print state a connection reads is no change of print, and the
 subscription's first frame marks any head whose feeder still reports a failure
 (`src/printer/ams_backend_snapmaker.cpp#mark_load_unconfirmed_locked`).

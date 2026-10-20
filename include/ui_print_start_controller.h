@@ -166,10 +166,10 @@ class PrintStartController {
     /// The tools @p filename uses, read through FileStartFactsLoader and
     /// file_tools_used(); empty when the file answers nothing. Answers once, on
     /// the main thread; a later read supersedes an unanswered one.
-    /// @p read_file false answers from the metadata and the tools cache
-    /// alone, for a caller that cannot wait on a file download.
+    /// @p read bounds the file read: a caller that cannot wait on a download
+    /// passes FileRead::Footer.
     void read_file_tools(const std::string& filename, std::function<void(std::set<int>)> on_tools,
-                         bool read_file = true);
+                         helix::FileRead read = helix::FileRead::Whole);
 
     void initiate_reprint(const std::string& filename, const std::string& path,
                           const std::set<int>& tools_used, std::function<void()> on_started,

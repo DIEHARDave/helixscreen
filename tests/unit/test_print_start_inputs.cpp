@@ -336,12 +336,61 @@ TEST_CASE_METHOD(LoaderFixture, "a metadata-only load reads nothing of the file"
             ++downloads;
             done(false, {});
         },
-        nullptr, /*read_file=*/false);
+        nullptr, helix::FileRead::MetadataOnly);
     drain();
 
     REQUIRE(answer.has_value());
     CHECK(answer->tools_used.empty());
     CHECK(downloads == 0);
+}
+
+namespace {
+/// The footer of an Orca job for the Snapmaker U1 ("BMCU 370C_ASA_18.4g_54m6s.gcode",
+/// read off a printer), whose Moonraker metadata carries no per-tool weights.
+constexpr const char* kOrcaU1Footer = "G28\n"
+                                      "T0\n"
+                                      "T1\n"
+                                      "; CONFIG_BLOCK_END\n"
+                                      "\n"
+                                      "; filament used [mm] = 7140.18, 245.42, 0.00, 0.00\n"
+                                      "; filament used [cm3] = 17.17, 0.59, 0.00, 0.00\n"
+                                      "; filament used [g] = 17.86, 0.63, 0.00, 0.00\n"
+                                      "; filament cost = 0.36, 0.01, 0.00, 0.00\n"
+                                      "; total filament used [g] = 18.49\n"
+                                      "; total filament cost = 0.37\n"
+                                      "; total filament change = 14\n"
+                                      "; total layers count = 91\n";
+} // namespace
+
+TEST_CASE_METHOD(LoaderFixture, "a footer-bounded load reads the footer and never downloads",
+                 "[print_start_inputs][loader]") {
+    FileStartFactsLoader loader(api.get());
+    int downloads = 0;
+    auto download = [&downloads](std::function<void(bool, const std::string&)> done) {
+        ++downloads;
+        done(false, {});
+    };
+    std::optional<FileStartFacts> answer;
+    auto record = [&answer](FileStartFacts facts) { answer = std::move(facts); };
+
+    SECTION("an Orca U1 footer names its tools from the per-filament grams") {
+        helix::PlantedGcode file("loader_orca_u1.gcode", "", kOrcaU1Footer);
+        client.fail_next("server.files.metadata"); // only the footer can answer
+        loader.load(file.name(), record, download, nullptr, helix::FileRead::Footer);
+        drain();
+        REQUIRE(answer.has_value());
+        CHECK(answer->tools_used == std::set<int>{0, 1});
+        CHECK(downloads == 0);
+    }
+    SECTION("a footer that does not answer ends the read") {
+        helix::PlantedGcode file("loader_no_usage.gcode", "", "G28\nT0\nT1\nG1 X10\n");
+        client.fail_next("server.files.metadata");
+        loader.load(file.name(), record, download, nullptr, helix::FileRead::Footer);
+        drain();
+        REQUIRE(answer.has_value());
+        CHECK(answer->tools_used.empty());
+        CHECK(downloads == 0);
+    }
 }
 
 TEST_CASE_METHOD(LoaderFixture, "a later load supersedes an unanswered one",

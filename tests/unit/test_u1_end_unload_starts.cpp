@@ -19,6 +19,7 @@
 #include "app_globals.h"
 #include "config.h"
 #include "moonraker_api.h"
+#include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "printer_state.h"
 #include "settings_manager.h"
@@ -119,6 +120,30 @@ TEST_CASE_METHOD(U1StartFx, "a U1 restart from the beginning names the file's he
     CHECK(sent.find("CANCEL_PRINT_BASE\nSET_PRINT_USED_EXTRUDERS EXTRUDERS=0,2") !=
           std::string::npos);
     CHECK(sent.find("SET_PRINT_EXTRUDER_MAP") == std::string::npos);
+}
+
+TEST_CASE_METHOD(U1StartFx, "a U1 restart of an Orca job names its heads from the footer",
+                 "[end_unload][preprint][reprint]") {
+    // The API mock serves the planted file's bytes to the footer's range read.
+    MoonrakerAPIMock api{client, ps};
+    test::RegisteredBackend<AmsBackendSnapmaker> backend(nullptr, nullptr);
+    report_heads(*backend);
+    // Orca's U1 profile leaves per-tool weights out of Moonraker's metadata;
+    // its footer carries them ("BMCU 370C_ASA_18.4g_54m6s.gcode", off a U1).
+    helix::PlantedGcode file("restart_orca_u1.gcode", "",
+                             "G28\nT0\nT1\n; CONFIG_BLOCK_END\n\n"
+                             "; filament used [mm] = 7140.18, 245.42, 0.00, 0.00\n"
+                             "; filament used [cm3] = 17.17, 0.59, 0.00, 0.00\n"
+                             "; filament used [g] = 17.86, 0.63, 0.00, 0.00\n"
+                             "; total filament used [g] = 18.49\n");
+    client.fail_next("server.files.metadata");
+
+    helix::ui::restart_print_from_beginning(&api, file.name(), "[test]", nullptr);
+    for (int i = 0; i < 8; ++i) {
+        helix::ui::UpdateQueue::instance().drain();
+    }
+    CHECK(all_scripts().find("CANCEL_PRINT_BASE\nSET_PRINT_USED_EXTRUDERS EXTRUDERS=0,1") !=
+          std::string::npos);
 }
 
 TEST_CASE_METHOD(U1StartFx, "a U1 restart drops when the printer connection changed meanwhile",

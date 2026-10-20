@@ -141,10 +141,12 @@ void restart_print_from_beginning(IMoonrakerAPI* api, const std::string& filenam
     AmsBackend* backend = AmsState::instance().get_backend();
     if (backend && backend->requires_preprint_send() &&
         backend->print_routing_resets_to_identity()) {
-        // Metadata and the tools cache only: a download of the whole file would
-        // hold the cancel back for as long as the transfer takes.
+        // The footer at most: a download of the whole file would hold the
+        // cancel back for as long as the transfer takes. Slicers that write no
+        // per-tool weights into Moonraker's metadata (Orca's U1 profile) still
+        // write them in the footer.
         print_start_controller_for(get_printer_state(), api)
-            .read_file_tools(filename, send, /*read_file=*/false);
+            .read_file_tools(filename, send, FileRead::Footer);
         return;
     }
     send({});
