@@ -147,3 +147,32 @@ EOF
     [ "$status" -ne 0 ]
     contains "no GPU library found" "$output"
 }
+
+# The release job's `if`, evaluated for every result the smoke can end with. A
+# timed-out smoke ends 'cancelled', and that must hold the release as a
+# failure does. An unknown term in the expression is a NameError, so a rewrite
+# fails here instead of passing unexamined.
+@test "release publishes only after the smoke succeeded or was skipped" {
+    run python3 - .github/workflows/release.yml <<'PY'
+import json, re, sys, yaml
+with open(sys.argv[1]) as fh:
+    expr = yaml.safe_load(fh)["jobs"]["release"]["if"]
+py = re.fullmatch(r"\s*\$\{\{(.*)\}\}\s*", expr, re.S).group(1)
+py = re.sub(r"contains\(fromJSON\('([^']*)'\),\s*([^)]*)\)", r"(\2 in json.loads('\1'))", py)
+py = re.sub(r"needs\.([\w-]+)\.result", lambda m: f"R[{m.group(1)!r}]", py)
+py = (py.replace("!cancelled()", "True").replace("!=", " NE ")
+        .replace("&&", " and ").replace("||", " or ").replace("!", " not ")
+        .replace(" NE ", " != "))
+want = {"success": True, "skipped": True, "failure": False, "cancelled": False}
+bad = []
+for smoke, publish in want.items():
+    R = {"plan": "success", "build-platforms": "success",
+         "build-android": "success", "gpu-libs-hidden-smoke": smoke}
+    got = eval(py, {"json": json}, {"R": R})
+    if got != publish:
+        bad.append(f"smoke {smoke}: release runs={got}, want {publish}")
+print("\n".join(bad))
+sys.exit(1 if bad else 0)
+PY
+    [ "$status" -eq 0 ] || fail "$output"
+}

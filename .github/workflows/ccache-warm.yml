@@ -210,7 +210,10 @@ jobs:
     needs: [warm]
     if: ${{ !cancelled() && github.repository == 'prestonbrown/helixscreen' }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    # Two image-build attempts of up to 15 minutes each, then the runs.
+    timeout-minutes: 45
+    permissions:
+      contents: read
 
     steps:
     - name: Checkout repository
@@ -221,14 +224,21 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
 
+    # On a cache miss this pulls the base image and apt packages, so a network
+    # flake would fail the smoke and red the nightly; one retry absorbs it.
     - name: Build x86 toolchain image
-      run: |
-        docker buildx build \
-          --cache-from type=gha,scope=toolchain-x86 \
-          --load \
-          -t helixscreen/toolchain-x86 \
-          -f docker/Dockerfile.x86 \
-          docker/
+      uses: nick-fields/retry@v4
+      with:
+        timeout_minutes: 15
+        max_attempts: 2
+        retry_wait_seconds: 30
+        command: |
+          docker buildx build \
+            --cache-from type=gha,scope=toolchain-x86 \
+            --load \
+            -t helixscreen/toolchain-x86 \
+            -f docker/Dockerfile.x86 \
+            docker/
 
     - name: Download x86 helix-screen
       uses: actions/download-artifact@v8
