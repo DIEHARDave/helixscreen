@@ -668,7 +668,7 @@ user_conf_of() {
     mkdir -p "$BATS_TEST_TMPDIR/run"
     # urllib's import probe passes; a request logs its method and URL and
     # answers, with the body /server/info would carry.
-    mock_command_script "python3" "[ \"\$1\" = -c ] && exit 0
+    mock_command_script "python3" "[ \"\$2\" = -c ] && exit 0
 cat > /dev/null
 printf '%s %s %s\\n' \"\$HELIX_HTTP_METHOD\" \"\$HELIX_HTTP_URL\" \"\$HELIX_HTTP_TIMEOUT\" >> '$log'
 case \"\$HELIX_HTTP_URL\" in *server/info*) printf '%s' '{\"result\":{\"components\":[]}}' ;; esac
@@ -692,6 +692,17 @@ exit 0"
     grep -q '^GET http://127.0.0.1:7125/server/info ' "$log" || fail "never asked Moonraker: $(cat "$log" 2>/dev/null)"
     contains "Moonraker is ready" "$output"
     if printf '%s' "$output" | grep -q 'did not respond'; then fail "waited out a Moonraker that answers: $output"; fi
+}
+
+@test "python_http and its probe never import a module from the current directory" {
+    command -v python3 >/dev/null 2>&1 || skip "no python3"
+    local d="$BATS_TEST_TMPDIR/cwd" marker="$BATS_TEST_TMPDIR/shadowed"
+    mkdir -p "$d"
+    printf "open('%s', 'w').close()\n" "$marker" > "$d/urllib.py"
+
+    run sh -c 'cd "$2" && . "$1" && python_http GET http://127.0.0.1:9/ 1' sh \
+        "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh" "$d"
+    [ ! -e "$marker" ] || fail "imported the urllib.py in the current directory"
 }
 
 @test "a Klipper that skips dot-directories gets a visible symlink_dir" {

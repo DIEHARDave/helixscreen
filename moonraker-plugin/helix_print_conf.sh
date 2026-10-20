@@ -241,7 +241,9 @@ _has_real_curl() {
 
 # The python an HTTP request falls back on when this host has neither real
 # curl nor wget (Creality K2 firmware ships neither): python3, else python,
-# whichever imports urllib.request. Cached like _REAL_CURL.
+# whichever imports urllib.request in isolated mode (-I, Python 3.4 on), which
+# leaves the current directory and PYTHON* variables out of its imports.
+# Cached like _REAL_CURL.
 _HTTP_PY=""
 _HTTP_PY_PROBED=""
 _has_http_python() {
@@ -249,7 +251,7 @@ _has_http_python() {
         _HTTP_PY_PROBED=1
         for _hhp_cand in python3 python; do
             if command -v "$_hhp_cand" >/dev/null 2>&1 &&
-                "$_hhp_cand" -c 'import urllib.request' >/dev/null 2>&1; then
+                "$_hhp_cand" -I -c 'import urllib.request' >/dev/null 2>&1; then
                 _HTTP_PY="$_hhp_cand"
                 break
             fi
@@ -263,7 +265,7 @@ _has_http_python() {
 # error is a failure, as curl -f makes it.
 python_http() {
     _has_http_python || return 1
-    HELIX_HTTP_METHOD="$1" HELIX_HTTP_URL="$2" HELIX_HTTP_TIMEOUT="$3" "$_HTTP_PY" - <<'PYEOF'
+    HELIX_HTTP_METHOD="$1" HELIX_HTTP_URL="$2" HELIX_HTTP_TIMEOUT="$3" "$_HTTP_PY" -I - <<'PYEOF'
 import os, sys, urllib.request
 method = os.environ["HELIX_HTTP_METHOD"]
 try:
