@@ -18,6 +18,9 @@ setup() {
     # host_profile.sh: the mod-ownership guard add_update_manager_section calls
     . "$WORKTREE_ROOT/scripts/lib/installer/host_profile.sh"
     . "$WORKTREE_ROOT/scripts/lib/installer/platform.sh"
+    # helix_print_conf.sh: helix_rewrite_conf, which every conf edit goes through
+    unset _HELIX_PRINT_CONF_SOURCED
+    . "$WORKTREE_ROOT/scripts/lib/installer/helix_print_conf.sh"
     . "$WORKTREE_ROOT/scripts/lib/installer/moonraker.sh"
     # release.sh: _has_real_curl, which request_moonraker_restart calls
     . "$WORKTREE_ROOT/scripts/lib/installer/release.sh"
@@ -935,6 +938,25 @@ printf '%s\\n' \"\$*\" >> '$log'; exit 0"
     # Other sections still present
     grep -q '^\[server\]' "$conf"
     grep -q '^\[update_manager mainsail\]' "$conf"
+}
+
+@test "remove_update_manager_section: an awk cut short by a full disk leaves moonraker.conf whole" {
+    local conf real
+    conf=$(setup_moonraker_home)
+    create_moonraker_conf_with_helix "$conf"
+    MOONRAKER_CONF_PATHS="$conf"
+    cp "$conf" "$BATS_TEST_TMPDIR/conf.before"
+    # BusyBox awk exits 0 when its write to a full disk fails; output into a
+    # pipe comes through whole.
+    real=$(command -v awk)
+    mock_command_script "awk" "case \"\$*\" in *'update_manager helixscreen'*)
+    if [ -f /dev/stdout ]; then $real \"\$@\" | head -c 30; exit 0; fi ;; esac
+exec $real \"\$@\""
+
+    remove_update_manager_section 2>/dev/null || true
+
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$conf" || fail "moonraker.conf replaced: $(cat "$conf")"
+    [ -z "$(find "$(dirname "$conf")" -name 'moonraker.conf.helixtmp*')" ] || fail "staging file left"
 }
 
 @test "remove_update_manager_section: only helixscreen removed, others preserved" {

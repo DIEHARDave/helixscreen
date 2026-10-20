@@ -79,6 +79,8 @@ setup() {
     # shellcheck disable=SC1090
     . "$WORKTREE_ROOT/scripts/lib/installer/service.sh"
     # shellcheck disable=SC1090
+    . "$WORKTREE_ROOT/scripts/lib/installer/helix_print_conf.sh"
+    # shellcheck disable=SC1090
     . "$WORKTREE_ROOT/scripts/lib/installer/moonraker.sh"
     # shellcheck disable=SC1090
     . "$WORKTREE_ROOT/scripts/lib/installer/uninstall.sh"

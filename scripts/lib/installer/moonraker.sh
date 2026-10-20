@@ -1030,8 +1030,7 @@ configure_moonraker_updates() {
         local removed_stale=0
         if has_update_manager_section "$conf"; then
             log_warn "Removing the existing [update_manager helixscreen] section."
-            remove_update_manager_section
-            removed_stale=1
+            remove_update_manager_section && removed_stale=1
         fi
 
         # These two are orthogonal to the updater and must not regress just
@@ -1103,6 +1102,7 @@ configure_moonraker_updates() {
 
 # Remove update_manager section from moonraker.conf
 # Called during uninstallation
+# Returns: 1 when the file needed the edit and could not take it (left whole)
 remove_update_manager_section() {
     local conf
     conf=$(find_moonraker_conf)
@@ -1158,9 +1158,10 @@ remove_update_manager_section() {
         }
         END { for (j = 1; j <= n; j++) print buf[j] }
     '
-    # The program is passed as an argument rather than interpolated into the
-    # -c string, so its $0 and $1 stay awk's and are never expanded by a shell.
-    $fs sh -c 'awk "$1" "$2" > "$2.helixtmp" && mv "$2.helixtmp" "$2"' sh "$prog" "$conf"
+    if ! helix_rewrite_conf "$conf" "$prog" "$fs"; then
+        log_warn "Could not remove the update_manager section from $conf - edit it by hand, backup at ${conf}.bak.helixscreen-uninstall"
+        return 1
+    fi
 
     log_success "Removed update_manager section from $conf"
 }
