@@ -16,6 +16,7 @@ what each script is for; the script's own header carries the reasoning behind it
 | `check-deps.sh` | Validates build dependencies. `--minimal` for cross-compile environments |
 | `device-env-set.sh` | Idempotently set one `KEY=VALUE` in a deployed device's `helixscreen.env` over ssh. Deploys exclude that file, so this is the only thing that writes it; `sync-device-features` (`mk/cross.mk`) calls it per `bin/.build-features` |
 | `device-env-set-remote.sh` | The on-device half, piped to `sh -s` (POSIX sh: the K1/AD5M/CC1/K2 are BusyBox ash). Its own file so `tests/shell/test_device_env_set.bats` can run it without a printer |
+| `deploy-stop-app-remote.sh` | The on-device stop step of `deploy-common` (`mk/cross.mk`), piped to `sh -s` before any sync. Stops the systemd units through `systemctl` (root) or `sudo -n`/polkit (anyone else) and exits 3 without killing anything when one stays running, since killing a `Restart=always` unit's process respawns it from a half-synced `bin/`; then kills unit-less instances by name. Tests: `tests/shell/test_deploy_stop_app.bats` |
 
 ### Release & Packaging
 | Script | Purpose |
