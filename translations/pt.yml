@@ -4499,6 +4499,7 @@ translations:
   '{} — response timed out': '{} — tempo esgotado'
   '{} → {}: no filament loaded.': '{} → {}: nenhum filamento carregado.'
   '{}% left': '{}% restante'
+  '{}: {}': '{}: {}'
   '{}:{:02} elapsed': '{}:{:02} decorrido'
   'Basic': 'Básico'
   'Recycled': 'Reciclado'

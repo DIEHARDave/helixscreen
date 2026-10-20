@@ -360,11 +360,16 @@ void AmsDeviceSectionDetailOverlay::create_button(lv_obj_t* row,
         paused_ok ? fmt::format("machine_motion_blocked eq 1 and print_lifecycle ne {}",
                                 static_cast<int>(PrintState::Paused))
                   : std::string("0 eq 1");
-    const char* attrs[] = {"text",          label.c_str(),
-                           "icon",          action.icon.c_str(),
-                           "disabled",      action.enabled ? "false" : "true",
-                           "moves_machine", action.moves_machine && !paused_ok ? "true" : "false",
-                           "disabled_cond", disabled_cond.c_str(),
+    const char* attrs[] = {"text",
+                           label.c_str(),
+                           "icon",
+                           action.icon.c_str(),
+                           "disabled_subject",
+                           action.enabled ? "" : kActionDisabledSubject,
+                           "moves_machine",
+                           action.moves_machine && !paused_ok ? "true" : "false",
+                           "disabled_cond",
+                           disabled_cond.c_str(),
                            nullptr};
     lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(row, "device_action_button", attrs));
     if (!btn) {
@@ -376,8 +381,14 @@ void AmsDeviceSectionDetailOverlay::create_button(lv_obj_t* row,
         lv_obj_set_name(btn_label, fmt::format("{}_label", action.id).c_str());
     }
     if (!action.enabled && !action.disable_reason.empty()) {
-        spdlog::debug("[{}] Action '{}' disabled: {}", get_name(), action.id,
-                      action.disable_reason);
+        // Said under the row, as a setting row says it in its description.
+        const std::string note =
+            fmt::format(lv_tr("{}: {}"), label, lv_tr(action.disable_reason.c_str()));
+        const char* note_attrs[] = {"text", note.c_str(), nullptr};
+        if (lv_obj_t* note_obj = static_cast<lv_obj_t*>(
+                lv_xml_create(lv_obj_get_parent(row), "device_action_note", note_attrs))) {
+            lv_obj_set_name(note_obj, fmt::format("{}_reason", action.id).c_str());
+        }
     }
 }
 
@@ -478,7 +489,10 @@ void AmsDeviceSectionDetailOverlay::on_action_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[AmsDeviceSectionDetailOverlay] on_action_clicked");
 
     auto& overlay = get_ams_device_section_detail_overlay();
-    if (const auto* action = overlay.action_for_event(e)) {
+    if (const auto* action = overlay.action_for_event(e); action && !action->enabled) {
+        spdlog::warn("[AmsDeviceSectionDetailOverlay] Ignoring unavailable action '{}'",
+                     action->id);
+    } else if (action) {
         spdlog::debug("[AmsDeviceSectionDetailOverlay] Action clicked: {}", action->id);
         // An action that names a guided flow starts it. The flow owns whatever
         // confirmation the action needs, so a flow that is not registered must
@@ -510,7 +524,14 @@ void AmsDeviceSectionDetailOverlay::on_toggle_changed(lv_event_t* e) {
 
     auto* sw = static_cast<lv_obj_t*>(lv_event_get_target(e));
     auto& overlay = get_ams_device_section_detail_overlay();
-    if (const auto* action = overlay.action_for_event(e)) {
+    if (const auto* action = overlay.action_for_event(e); action && !action->enabled) {
+        // An unavailable toggle never reaches the backend; put the switch back.
+        if (lv_obj_has_state(sw, LV_STATE_CHECKED)) {
+            lv_obj_remove_state(sw, LV_STATE_CHECKED);
+        } else {
+            lv_obj_add_state(sw, LV_STATE_CHECKED);
+        }
+    } else if (action) {
         const bool new_value = lv_obj_has_state(sw, LV_STATE_CHECKED);
         spdlog::debug("[AmsDeviceSectionDetailOverlay] Toggle changed: {} = {}", action->id,
                       new_value);

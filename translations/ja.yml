@@ -4239,6 +4239,7 @@ translations:
   '{} — response timed out': '{} — 応答タイムアウト'
   '{} → {}: no filament loaded.': '{} → {}: フィラメントが装填されていません。'
   '{}% left': '残り {}%'
+  '{}: {}': '{}：{}'
   '{}:{:02} elapsed': 経過 {}:{:02}
   'Basic': '標準'
   'Recycled': 'リサイクル'

@@ -4148,5 +4148,6 @@
   <translation tag="{} — response timed out" de="{} – Antwort-Zeitüberschreitung" en="{} — response timed out" es="{} — tiempo de espera agotado" fr="{} — réponse expirée" it="{} — tempo scaduto" ja="{} — 応答タイムアウト" pt="{} — tempo esgotado" ru="{} — время ожидания ответа истекло" zh="{} — 响应超时"/>
   <translation tag="{} → {}: no filament loaded." de="{} → {}: kein Filament geladen." en="{} → {}: no filament loaded." es="{} → {}: no hay filamento cargado." fr="{} → {} : aucun filament chargé." it="{} → {}: nessun filamento caricato." ja="{} → {}: フィラメントが装填されていません。" pt="{} → {}: nenhum filamento carregado." ru="{} → {}: филамент не загружен." zh="{} → {}: 未加载耗材。"/>
   <translation tag="{}% left" de="{}% übrig" en="{}% left" es="Queda {}%" fr="{} % restant" it="{}% rimanente" ja="残り {}%" pt="{}% restante" ru="Осталось {}%" zh="剩余 {}%"/>
+  <translation tag="{}: {}" de="{}: {}" en="{}: {}" es="{}: {}" fr="{} : {}" it="{}: {}" ja="{}：{}" pt="{}: {}" ru="{}: {}" zh="{}：{}"/>
   <translation tag="{}:{:02} elapsed" de="{}:{:02} vergangen" en="{}:{:02} elapsed" es="{}:{:02} transcurrido" fr="{}:{:02} écoulé" it="{}:{:02} trascorso" ja="経過 {}:{:02}" pt="{}:{:02} decorrido" ru="прошло {}:{:02}" zh="已用时 {}:{:02}"/>
 </translations>

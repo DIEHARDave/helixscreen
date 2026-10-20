@@ -4229,6 +4229,7 @@ translations:
   '{} — response timed out': '{} — 响应超时'
   '{} → {}: no filament loaded.': '{} → {}: 未加载耗材。'
   '{}% left': '剩余 {}%'
+  '{}: {}': '{}：{}'
   '{}:{:02} elapsed': 已用时 {}:{:02}
   'Basic': '标准'
   'Recycled': '再生'

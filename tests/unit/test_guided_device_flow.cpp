@@ -422,3 +422,25 @@ TEST_CASE_METHOD(GuidedFlowFixture,
     helix::test::set_wire_state(state(), PrintJobState::STANDBY);
     settle();
 }
+
+TEST_CASE_METHOD(GuidedFlowFixture,
+                 "an unavailable machine-motion button stays disabled, says why, and does nothing",
+                 "[ams][device-section]") {
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
+    DeviceAction cal = DeviceAction::button("calibrate_encoder", "Calibrate Encoder", "calibration")
+                           .with_machine_motion();
+    cal.enabled = false;
+    cal.disable_reason = "No unit has an encoder";
+    lv_obj_t* btn = open_section_and_find({cal}, "calibrate_encoder");
+    settle();
+    // machine_motion_blocked is 0 here; moves_machine's binding must not clear it.
+    CHECK(lv_obj_has_state(btn, LV_STATE_DISABLED));
+
+    lv_obj_t* note = lv_obj_find_by_name(get_ams_device_section_detail_overlay().get_root(),
+                                         "calibrate_encoder_reason");
+    REQUIRE(note != nullptr);
+    CHECK(text_of(note, "note") == "Calibrate Encoder: No unit has an encoder");
+
+    click(btn);
+    CHECK(last_executed().empty());
+}

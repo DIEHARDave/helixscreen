@@ -4067,5 +4067,6 @@
   <translation tag="{} — response timed out" pt="{} — tempo esgotado"/>
   <translation tag="{} → {}: no filament loaded." pt="{} → {}: nenhum filamento carregado."/>
   <translation tag="{}% left" pt="{}% restante"/>
+  <translation tag="{}: {}" pt="{}: {}"/>
   <translation tag="{}:{:02} elapsed" pt="{}:{:02} decorrido"/>
 </translations>

@@ -4067,5 +4067,6 @@
   <translation tag="{} — response timed out" en="{} — response timed out"/>
   <translation tag="{} → {}: no filament loaded." en="{} → {}: no filament loaded."/>
   <translation tag="{}% left" en="{}% left"/>
+  <translation tag="{}: {}" en="{}: {}"/>
   <translation tag="{}:{:02} elapsed" en="{}:{:02} elapsed"/>
 </translations>
