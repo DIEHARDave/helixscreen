@@ -304,7 +304,7 @@ TEST_CASE("humidity_drop: nothing paints outside the drop, at any size, level or
                         const float d = signed_distance(s, x + 0.5f, y + 0.5f);
                         const bool outside = d > 1.0f && c.at(x, y).a != 0;
                         // Fill keeps clear of the outline's outer edge.
-                        const bool on_outline = is_fill(c.at(x, y)) && d >= 0.0f;
+                        const bool on_outline = is_fill(c.at(x, y)) && !(d < 0.0f);
                         if ((outside || on_outline) && first_x < 0) {
                             first_x = x;
                             first_y = y;

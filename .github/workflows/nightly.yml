@@ -285,7 +285,7 @@ jobs:
         cat /proc/sys/kernel/core_pattern
 
     # Budget: build.yml's identical 8-shard pass ends its slowest shard at 7-8
-    # minutes on this runner (459s on 2026-10-20), so each shard gets 840s and
+    # minutes on this runner (459s measured), so each shard gets 840s and
     # the step 15 minutes around them.
     - name: Run fast tests in parallel shards
       timeout-minutes: 15
@@ -886,8 +886,8 @@ jobs:
       run: chmod +x build/bin/helix-tests
 
     # Budget: one process runs the whole suite on one core, which the 8-shard
-    # pass spreads over four; summed per-test durations passed 2300s on
-    # 2026-10-20, so the inner cap is 2700s and the step 50 minutes. A hung
+    # pass spreads over four; its summed per-test durations passed 2300s, so
+    # the inner cap is 2700s and the step 50 minutes. A hung
     # suite (prestonbrown/helixscreen#1524) still ends at the cap; raising it
     # further buys a slower red, not a pass.
     - name: Run suite unsharded
@@ -966,8 +966,7 @@ jobs:
       env:
         # Below the step timeout, so the run that gets stopped is the one that
         # can name the case it stopped in. Budget: an unsharded run plus the
-        # cost of writing every assertion as XML, 2400s and still short of the
-        # end on 2026-10-20.
+        # cost of writing every assertion as XML, measured past 2400s.
         SUITE_REPORT_MAX_SECS: 3600
       run: |
         # The filter comes from the makefile so this job cannot hold a
