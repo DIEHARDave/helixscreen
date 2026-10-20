@@ -1080,6 +1080,7 @@ apply_install() {
 
     extract_release "$platform"
     fix_install_ownership
+    open_plugin_to_moonraker
     step_done "$(display_path "$INSTALL_DIR")"
 
     step "Setting up service" "Set up service"

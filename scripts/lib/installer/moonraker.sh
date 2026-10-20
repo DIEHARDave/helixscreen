@@ -860,6 +860,33 @@ installer_moonraker_url() {
     moonraker_local_url "$conf" "$(running_moonraker_root_dir)"
 }
 
+# Moonraker loads the HelixPrint plugin from INSTALL_DIR/moonraker-plugin, so a
+# Moonraker running as a user other than INSTALL_DIR's owner needs search on
+# INSTALL_DIR and read on the plugin tree, which an install under umask 077
+# leaves it neither of. Adds exactly that (0755 directories, files gain read
+# for all, executables keep their x): INSTALL_DIR and the plugin tree only,
+# never a directory above INSTALL_DIR, which the installer did not make, nor
+# anything else inside it. A root Moonraker reads everything; with none running
+# there is no user to open the tree to; a mod payload root is the mod's.
+open_plugin_to_moonraker() {
+    local plugin="${INSTALL_DIR}/moonraker-plugin" pdir uid owner s
+    [ "${HELIX_MOD_PAYLOAD:-}" = "1" ] && return 0
+    [ -d "$plugin" ] || return 0
+    pdir=$(running_moonraker_process | sed -n 1p)
+    [ -n "$pdir" ] || return 0
+    uid=$(awk '/^Uid:/ { print $3; exit }' "$pdir/status" 2>/dev/null)
+    case "$uid" in '' | 0) return 0 ;; esac
+    # shellcheck disable=SC2012  # BusyBox find has no -printf; ls -n is the portable numeric owner
+    owner=$(ls -ldn "$INSTALL_DIR" 2>/dev/null | awk '{ print $3 }')
+    [ "$uid" != "$owner" ] || return 0
+    log_info "Moonraker runs as uid ${uid}: making the HelixPrint plugin readable to it"
+    s=$(file_sudo "$INSTALL_DIR")
+    if ! { $s chmod go+rx "$INSTALL_DIR" && $s chmod -R go+rX "$plugin"; }; then
+        log_warn "Could not open ${plugin} to Moonraker; installing the plugin will refuse until it can read it"
+    fi
+    return 0
+}
+
 # Restart Moonraker to pick up configuration changes.
 #
 # The init script name varies by firmware, and knowing only systemd plus the K1's

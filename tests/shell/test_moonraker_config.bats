@@ -1803,3 +1803,71 @@ printf '%s\\n' \"\$*\" >> '$BATS_TEST_TMPDIR/curl.log'; exit 0"
     grep -q -- '-X POST http://127.0.0.1:7130/server/restart' "$BATS_TEST_TMPDIR/curl.log" ||
         fail "no self-restart on port 7130: $(cat "$BATS_TEST_TMPDIR/curl.log" 2>/dev/null)"
 }
+
+# =============================================================================
+# open_plugin_to_moonraker
+# =============================================================================
+
+mode_of() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
+
+# INSTALL_DIR under a 0700 parent the installer did not make, everything in it
+# as umask 077 leaves it, and a Moonraker running with uid $1.
+stage_private_install() {
+    local uid="$1"
+    export INSTALL_DIR="$BATS_TEST_TMPDIR/userdata/helixscreen"
+    local plugin="$INSTALL_DIR/moonraker-plugin"
+    mkdir -p "$plugin/tests" "$INSTALL_DIR/config"
+    : > "$plugin/helix_print.py"
+    : > "$plugin/tests/test_x.py"
+    printf '#!/bin/sh\n' > "$plugin/install.sh"
+    : > "$INSTALL_DIR/config/settings.json"
+    chmod 0600 "$plugin/helix_print.py" "$plugin/tests/test_x.py" "$INSTALL_DIR/config/settings.json"
+    chmod 0700 "$plugin/install.sh" "$plugin/tests" "$plugin" "$INSTALL_DIR/config" "$INSTALL_DIR" \
+        "$BATS_TEST_TMPDIR/userdata"
+    export HELIX_PROC_ROOT="$BATS_TEST_TMPDIR/proc"
+    mkdir -p "$HELIX_PROC_ROOT/700"
+    printf '%s\0' python3 /home/lava/moonraker/moonraker/moonraker.py > "$HELIX_PROC_ROOT/700/cmdline"
+    printf 'Name:\tpython3\nUid:\t%s\t%s\t%s\t%s\n' "$uid" "$uid" "$uid" "$uid" > "$HELIX_PROC_ROOT/700/status"
+}
+
+@test "open_plugin_to_moonraker: opens INSTALL_DIR and the plugin to a Moonraker running as another user" {
+    stage_private_install 4242
+
+    run open_plugin_to_moonraker
+    [ "$status" -eq 0 ]
+
+    local plugin="$INSTALL_DIR/moonraker-plugin"
+    [ "$(mode_of "$INSTALL_DIR")" = 755 ] || fail "INSTALL_DIR $(mode_of "$INSTALL_DIR")"
+    [ "$(mode_of "$plugin")" = 755 ] || fail "plugin dir $(mode_of "$plugin")"
+    [ "$(mode_of "$plugin/tests")" = 755 ] || fail "plugin subdir $(mode_of "$plugin/tests")"
+    [ "$(mode_of "$plugin/helix_print.py")" = 644 ] || fail "helix_print.py $(mode_of "$plugin/helix_print.py")"
+    [ "$(mode_of "$plugin/tests/test_x.py")" = 644 ] || fail "test_x.py $(mode_of "$plugin/tests/test_x.py")"
+    [ "$(mode_of "$plugin/install.sh")" = 755 ] || fail "install.sh $(mode_of "$plugin/install.sh")"
+    # Nothing outside the plugin and nothing above INSTALL_DIR.
+    [ "$(mode_of "$BATS_TEST_TMPDIR/userdata")" = 700 ] || fail "touched the parent"
+    [ "$(mode_of "$INSTALL_DIR/config")" = 700 ] || fail "touched config/"
+    [ "$(mode_of "$INSTALL_DIR/config/settings.json")" = 600 ] || fail "touched settings.json"
+}
+
+@test "open_plugin_to_moonraker: leaves the tree alone when Moonraker owns it, runs as root, is not running, or the root is a mod payload" {
+    local uid
+    for uid in "$(id -u)" 0 none payload; do
+        rm -rf "$BATS_TEST_TMPDIR/userdata" "$BATS_TEST_TMPDIR/proc"
+        stage_private_install "${uid%%[!0-9]*}"
+        [ "$uid" != none ] || rm -rf "$HELIX_PROC_ROOT/700"
+        if [ "$uid" = payload ]; then
+            printf 'Name:\tpython3\nUid:\t4242\t4242\t4242\t4242\n' > "$HELIX_PROC_ROOT/700/status"
+            export HELIX_MOD_PAYLOAD=1
+        fi
+        run open_plugin_to_moonraker
+        unset HELIX_MOD_PAYLOAD
+        [ "$status" -eq 0 ]
+        [ "$(mode_of "$INSTALL_DIR")" = 700 ] || fail "$uid: INSTALL_DIR opened"
+        [ "$(mode_of "$INSTALL_DIR/moonraker-plugin/helix_print.py")" = 600 ] || fail "$uid: plugin opened"
+    done
+}
+
+@test "the install path opens the plugin to Moonraker right after it sets the tree's owner" {
+    run grep -A1 '^    fix_install_ownership$' "$WORKTREE_ROOT/scripts/lib/installer/main.sh"
+    contains "open_plugin_to_moonraker" "$output"
+}
