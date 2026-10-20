@@ -71,22 +71,22 @@ shquote() {
 # --- the printer-side script --------------------------------------------------
 
 # install.sh's discovery block: the vendor path lists and every function from
-# components_under to helix_conf_file. Its running_moonraker_root is renamed so
-# the wrapper below can add the --chroot override and the --root prefix to it.
+# components_under to helix_conf_file.
 install_sh_discovery() {
     [ -r "$INSTALL_SH" ] || die "cannot read $INSTALL_SH"
     awk '/^MOONRAKER_SRC_PATHS="/ { on = 1 }
          /^running_klipper_sdcard_source\(\) *\{/ { exit }
-         on' "$INSTALL_SH" |
-        sed 's/^running_moonraker_root() {$/install_sh_moonraker_root() {/'
+         on' "$INSTALL_SH"
 }
 
-# The [include] walk install.sh sources, so the snapshot lists the files the
-# installer edits.
+# The helpers install.sh sources (the [include] walk, the running Moonraker),
+# so the snapshot lists the files the installer edits. Their
+# running_moonraker_root is renamed so the wrapper below can add the --chroot
+# override and the --root prefix to it.
 conf_sh() {
     _conf_sh="$(dirname "$INSTALL_SH")/helix_print_conf.sh"
     [ -r "$_conf_sh" ] || die "cannot read $_conf_sh"
-    cat "$_conf_sh"
+    sed 's/^running_moonraker_root() {$/install_sh_moonraker_root() {/' "$_conf_sh"
 }
 
 # The functions the collector calls; a refactor of install.sh that drops one
@@ -107,7 +107,7 @@ for f in $SNAP_REQUIRED; do
     command -v "$f" >/dev/null 2>&1 || { echo "@@ERROR install.sh discovery lacks $f"; exit 3; }
 done
 
-PROC_ROOT="$SNAP_ROOT/proc"
+HELIX_PROC_ROOT="$SNAP_ROOT/proc"
 
 # The running Moonraker's "/" as a path from here: install.sh's answer, else
 # the --chroot the caller named, under the --root prefix.
@@ -149,7 +149,7 @@ proc_start() { # <proc dir>
 
 # The HelixScreen process: argv[0] named helix-screen.
 app_proc() {
-    for f in "$PROC_ROOT"/[0-9]*/cmdline; do
+    for f in "$HELIX_PROC_ROOT"/[0-9]*/cmdline; do
         [ -r "$f" ] || continue
         a0=$(tr '\000' '\n' < "$f" 2>/dev/null | awk 'NR == 1 { print; exit }')
         case "$a0" in */helix-screen|helix-screen) dirname "$f"; return 0 ;; esac

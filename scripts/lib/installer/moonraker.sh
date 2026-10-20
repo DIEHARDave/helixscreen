@@ -101,42 +101,17 @@ find_moonraker_update_manager_dir() {
     echo ""
 }
 
-# Print the running Moonraker's /proc/<pid> directory and, on the next line,
-# the moonraker.py its argv names. Nothing when no Moonraker is running.
-# HELIX_PROC_ROOT is the tests' seam.
-running_moonraker_process() {
-    local proc="${HELIX_PROC_ROOT:-/proc}" f script
-    for f in "$proc"/[0-9]*/cmdline; do
-        [ -r "$f" ] || continue
-        script=$(tr '\000' '\n' < "$f" 2>/dev/null | awk '/moonraker\.py$/ { print; exit }')
-        case "$script" in /*) ;; *) continue ;; esac
-        printf '%s\n%s\n' "$(dirname "$f")" "$script"
-        return 0
-    done
-}
-
-# Print where the running Moonraker's "/" is from here: empty when it shares
-# ours or none is running, the chroot's directory when it runs in one. Every
-# path in its argv and every absolute [include] it reads is relative to that.
-running_moonraker_root_dir() {
-    local pdir root
-    pdir=$(running_moonraker_process | sed -n 1p)
-    [ -n "$pdir" ] || return 0
-    root=$(readlink "$pdir/root" 2>/dev/null) || root=""
-    [ "$root" = "/" ] && root=""
-    echo "${root%/}"
-}
-
 # Print the running Moonraker's python package directory (the one holding
 # moonraker.py) as a path from here. Empty when no Moonraker is running.
 running_moonraker_package_dir() {
     local script
     script=$(running_moonraker_process | sed -n 2p)
-    if [ -z "$script" ]; then
-        echo ""
-        return 0
-    fi
-    echo "$(running_moonraker_root_dir)$(dirname "$script")"
+    # A relative script path names nothing from here.
+    case "$script" in
+        /*) ;;
+        *) echo ""; return 0 ;;
+    esac
+    echo "$(running_moonraker_root)$(dirname "$script")"
 }
 
 # Probe whether the installed Moonraker honours release_info.json's asset_name.
@@ -777,7 +752,7 @@ _remove_helix_print_inline() {
     # Every file Moonraker reads the plugin's sections from: the conf and its
     # includes. That covers the [update_manager helix_print] a git-clone
     # install of the plugin wrote.
-    for section_conf in $(helix_print_owned_files "$conf" "$(running_moonraker_root_dir)"); do
+    for section_conf in $(helix_print_owned_files "$conf" "$(running_moonraker_root)"); do
         if host_path_is_mod_owned "$section_conf"; then
             log_warn "[helix_print] is in $section_conf, which the firmware mod owns - leaving it in place"
             continue
@@ -819,7 +794,7 @@ remove_moonraker_plugin() {
     conf=$(find_moonraker_conf)
 
     local has_section=false
-    if [ -n "$conf" ] && [ -n "$(helix_print_owned_files "$conf" "$(running_moonraker_root_dir)")" ]; then
+    if [ -n "$conf" ] && [ -n "$(helix_print_owned_files "$conf" "$(running_moonraker_root)")" ]; then
         has_section=true
     fi
 
@@ -849,67 +824,66 @@ remove_moonraker_plugin() {
     return 0
 }
 
-# Restart Moonraker to pick up configuration changes.
-#
-# The init script name varies by firmware, and knowing only systemd plus the K1's
-# S56moonraker_service meant this fell off the end silently on everything else.
-# On a CC1 that made the moonraker.conf edit take effect at the user's next
-# reboot instead of at install time, which reads as "an update spontaneously
-# changed my printer" (verified: the CC1 has no systemctl, no
-# S56moonraker_service, and its script is /etc/init.d/moonraker).
-#
-# HELIX_INITD_DIR is the same seam camera.sh uses, so the BATS suite can point
-# this at a temp dir rather than needing a writable /etc/init.d.
-# Always returns 0 — a failed restart must never abort an install.
-restart_moonraker() {
-    local initd script
+# The URL this host reaches Moonraker at (moonraker_local_url): the port comes
+# from the platform's own moonraker.conf, which on a mod host is the mod's file
+# holding [server], else from whatever find_moonraker_conf finds.
+installer_moonraker_url() {
+    local conf
+    conf="$(klipper_config_dir)"
+    conf="${conf:+${conf}/moonraker.conf}"
+    [ -n "$conf" ] && [ -f "$conf" ] || conf=$(find_moonraker_conf)
+    moonraker_local_url "$conf" "$(running_moonraker_root)"
+}
 
-    if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet moonraker 2>/dev/null; then
-        log_info "Restarting Moonraker to apply configuration..."
-        run_logged $SUDO systemctl restart moonraker || true
-        return 0
+# Moonraker loads the HelixPrint plugin from INSTALL_DIR/moonraker-plugin, so a
+# Moonraker running as a user other than INSTALL_DIR's owner needs search on
+# INSTALL_DIR and read on the plugin tree, which an install under umask 077
+# leaves it neither of. Adds exactly that: search, never list, on INSTALL_DIR,
+# and on the plugin tree 0755 directories with files readable by all
+# (executables keep their x). INSTALL_DIR/config, when it is a directory of its
+# own, is closed to other users, since the search bit lets anyone reach a path
+# inside INSTALL_DIR they can name and config/ holds the API key and pairing
+# secrets. Nothing above INSTALL_DIR, which the installer did not make, and
+# nothing else inside it changes. A root Moonraker reads everything; with none
+# running there is no user to open the tree to; a mod payload root is the mod's.
+open_plugin_to_moonraker() {
+    local plugin="${INSTALL_DIR}/moonraker-plugin" uid owner s
+    [ "${HELIX_MOD_PAYLOAD:-}" = "1" ] && return 0
+    [ -d "$plugin" ] || return 0
+    uid=$(running_moonraker_ids)
+    uid="${uid%% *}"
+    case "$uid" in '' | 0) return 0 ;; esac
+    # shellcheck disable=SC2012  # BusyBox find has no -printf; ls -n is the portable numeric owner
+    owner=$(ls -ldn "$INSTALL_DIR" 2>/dev/null | awk '{ print $3 }')
+    [ "$uid" != "$owner" ] || return 0
+    log_info "Moonraker runs as uid ${uid}: making the HelixPrint plugin readable to it"
+    s=$(file_sudo "$INSTALL_DIR")
+    if [ -d "$INSTALL_DIR/config" ] && [ ! -L "$INSTALL_DIR/config" ]; then
+        $s chmod go-rwx "$INSTALL_DIR/config" ||
+            log_warn "Could not close ${INSTALL_DIR}/config to other users"
     fi
-
-    # SysV/procd firmware. S56moonraker_service is Creality K1/Simple AF; a plain
-    # "moonraker" covers COSMOS (CC1) and the rest.
-    initd="${HELIX_INITD_DIR:-/etc/init.d}"
-    for script in "${initd}/S56moonraker_service" "${initd}/moonraker" \
-                  "/etc/init.d/S56moonraker_service" "/etc/init.d/moonraker"; do
-        if [ -x "$script" ] || [ -f "$script" ]; then
-            log_info "Restarting Moonraker to apply configuration..."
-            if ! $SUDO "$script" restart 2>/dev/null; then
-                log_warn "Could not restart Moonraker - you may need to restart it manually"
-            fi
-            return 0
-        fi
-    done
-
-    # No service manager this script can reach (Forge-X runs Moonraker in its
-    # chroot, outside any init script here): ask Moonraker to restart itself.
-    if request_moonraker_restart; then
-        log_info "Asked Moonraker to restart itself to apply configuration"
-        return 0
+    if ! { $s chmod go+x "$INSTALL_DIR" && $s chmod -R go+rX "$plugin"; }; then
+        log_warn "Could not open ${plugin} to Moonraker; installing the plugin will refuse until it can read it"
     fi
-
-    log_warn "Could not find a way to restart Moonraker - restart it manually for the configuration change to take effect."
     return 0
 }
 
-# POST /server/restart: Moonraker re-launches itself in place, the one restart
-# that works where no service manager reaches it (Forge-X's chroot). Real curl
-# first, then wget, which BusyBox carries where curl is absent or an impostor;
-# -sf and wget's own status make an HTTP error (a 401) a failure.
-# Kept identical in moonraker-plugin/install.sh, which runs standalone (piped
-# from GitHub, or from an install tree without scripts/lib) and cannot source
-# this file; a bats test holds the two copies equal.
-# Returns 0 when Moonraker accepted the request.
-request_moonraker_restart() {
-    _restart_url="${MOONRAKER_URL:-http://127.0.0.1:7125}/server/restart"
-    if _has_real_curl && curl -sf --max-time 5 -X POST "$_restart_url" >/dev/null 2>&1; then
-        return 0
-    fi
-    command -v wget >/dev/null 2>&1 &&
-        wget -q -T 5 -O /dev/null --post-data='' "$_restart_url" >/dev/null 2>&1
+# Restart Moonraker to pick up configuration changes, through
+# restart_moonraker_via under $SUDO: its service manager, else Moonraker's own
+# restart over HTTP, which an active print holds off. HELIX_INITD_DIR points
+# the init-script lookup elsewhere (camera.sh shares it). Always returns 0: a
+# failed restart must never abort an install.
+restart_moonraker() {
+    local restarted=0
+    log_info "Restarting Moonraker to apply configuration..."
+    restart_moonraker_via "run_logged $SUDO" "$(installer_moonraker_url)" log_warn || restarted=$?
+    case "$restarted" in
+        0) ;;
+        3) log_info "Asked Moonraker to restart itself to apply configuration" ;;
+        4) log_warn "A print is running, so Moonraker was not restarted: restart it after the print for the configuration change to take effect." ;;
+        *) log_warn "Could not find a way to restart Moonraker - restart it manually for the configuration change to take effect." ;;
+    esac
+    return 0
 }
 
 # What configure_moonraker_updates would add, for the plan. Read-only: the

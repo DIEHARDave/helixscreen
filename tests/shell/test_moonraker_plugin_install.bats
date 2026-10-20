@@ -600,7 +600,7 @@ FORGEX_PLUGIN=/opt/config/mod_data/helixscreen/moonraker-plugin
     [ "$status" -eq 0 ] || fail "install failed: $output"
     grep -q -- "--post-data= http://127.0.0.1:7125/server/restart" "$log" \
         || fail "no self-restart request: $(cat "$log")"
-    grep -q "http://localhost:7125/server/info" "$log" || fail "never waited for Moonraker"
+    grep -q "http://127.0.0.1:7125/server/info" "$log" || fail "never waited for Moonraker"
     contains "Moonraker is ready" "$output"
 }
 
@@ -694,22 +694,27 @@ user_conf_of() {
     ! grep -q 'symlink_dir' "$(user_conf_of "$root")"
 }
 
-@test "install.sh and the main installer carry the same request_moonraker_restart" {
-    local fn='/^request_moonraker_restart() {$/,/^}$/p'
-    local a b
-    a=$(sed -n "$fn" "$SCRIPT")
-    b=$(sed -n "$fn" "$REPO_ROOT/scripts/lib/installer/moonraker.sh")
-    [ -n "$a" ] || fail "no request_moonraker_restart in $SCRIPT"
-    [ "$a" = "$b" ] || fail "the two copies differ"
+@test "the shared Moonraker helpers are defined once, in helix_print_conf.sh" {
+    local fn f
+    for fn in request_moonraker_restart moonraker_answers moonraker_restart_over_http moonraker_local_url \
+        moonraker_get moonraker_job_active moonraker_service restart_moonraker_via \
+        running_moonraker_root running_moonraker_ids; do
+        grep -q "^$fn() {$" "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh" || fail "helix_print_conf.sh lacks $fn"
+        for f in "$SCRIPT" "$REPO_ROOT"/scripts/lib/installer/*.sh; do
+            [ "$(readlink -f "$f")" != "$(readlink -f "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh")" ] || continue
+            if grep -q "^$fn() {" "$f"; then fail "$f defines its own $fn"; fi
+        done
+    done
 }
 
-@test "install.sh carries the main installer's _has_real_curl" {
+@test "_has_real_curl: helix_print_conf.sh's is the main installer's, and install.sh has none of its own" {
     local fn='/^_has_real_curl() {$/,/^}$/p'
     local a b
-    a=$(sed -n "$fn" "$SCRIPT")
+    a=$(sed -n "$fn" "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh")
     b=$(sed -n "$fn" "$REPO_ROOT/scripts/lib/installer/release.sh")
-    [ -n "$a" ] || fail "no _has_real_curl in $SCRIPT"
-    [ "$a" = "$b" ] || fail "the two copies differ"
+    [ -n "$a" ] || fail "no _has_real_curl in helix_print_conf.sh"
+    [ "$a" = "$b" ] || fail "helix_print_conf.sh and release.sh differ"
+    if grep -q '^_has_real_curl() {' "$SCRIPT"; then fail "install.sh defines its own"; fi
 }
 
 @test "a curl that answers with an HTTP error does not count as Moonraker being up" {
@@ -722,7 +727,8 @@ for a in "$@"; do case "$a" in -f|-sf) exit 22;; esac; done
 exit 0'
     mock_command_script "wget" 'exit 8'
     mock_command_script "sleep" 'exit 0'
-    mock_command_script "systemctl" 'exit 1'
+    # The service manager's restart works, so the wait is what is judged.
+    mock_command_script "systemctl" 'exit 0'
 
     run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
         sh "$chroot$FORGEX_PLUGIN/install.sh" --auto
@@ -1272,4 +1278,333 @@ setup_forgex_bind_mounted_app() {
         "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh" "$c/moonraker.conf"
     [ "$status" -eq 0 ] || fail "walk did not end (status $status)"
     [ "$(printf '%s\n' "$output" | wc -l)" -eq 2 ] || fail "files: $(printf '%s\n' "$output" | head -n 4)"
+}
+
+# A systemd host where the moonraker unit is listed but sudo refuses, as for
+# a user whose sudo wants a password. $1 logs every curl call.
+mock_systemd_without_sudo() {
+    mock_command_script "systemctl" 'case "$1" in list-units) echo "moonraker.service loaded active running";; esac; exit 0'
+    mock_command_script "sudo" 'echo "sudo: a password is required" >&2; exit 1'
+    mock_real_curl 0 "$1"
+}
+
+@test "an auto install whose sudo restart fails asks Moonraker to restart itself" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log"
+    setup_plain_home "$home"
+    mock_systemd_without_sudo "$log"
+
+    run env HOME="$home" sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$log" || fail "no self-restart request: $(cat "$log" 2>/dev/null)"
+    contains "Asked Moonraker to restart itself" "$output"
+    contains "Auto-install complete" "$output"
+}
+
+@test "an auto uninstall whose sudo restart fails asks Moonraker to restart itself" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log"
+    setup_instrumented_home "$home"
+    mock_systemd_without_sudo "$log"
+
+    run env HOME="$home" sh "$SCRIPT" --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$log" || fail "no self-restart request: $(cat "$log" 2>/dev/null)"
+    contains "Auto-uninstall complete" "$output"
+}
+
+@test "an auto install no restart reaches says Moonraker needs one, never complete" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log"
+    setup_plain_home "$home"
+    mock_systemd_without_sudo "$log"
+    mock_real_curl 22 "$log"
+    mock_command_script "sleep" 'exit 0'
+
+    run env HOME="$home" sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    [ -L "$home/moonraker/moonraker/components/helix_print.py" ]
+    contains "Moonraker needs a restart" "$output"
+    if printf '%s' "$output" | grep -qi 'complete'; then fail "claimed completion: $output"; fi
+    if grep -q '/server/info' "$log"; then fail "waited on a Moonraker nothing restarted"; fi
+}
+
+@test "an auto uninstall no restart reaches says Moonraker needs one, never complete" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log"
+    setup_instrumented_home "$home"
+    mock_systemd_without_sudo "$log"
+    mock_real_curl 22 "$log"
+    mock_command_script "sleep" 'exit 0'
+
+    run env HOME="$home" sh "$SCRIPT" --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+    [ ! -e "$home/moonraker/moonraker/components/helix_print.py" ]
+    contains "Moonraker needs a restart" "$output"
+    if printf '%s' "$output" | grep -qi 'complete'; then fail "claimed completion: $output"; fi
+}
+
+@test "after asking Moonraker to restart, the wait skips the instance that is still stopping" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log" n="$BATS_TEST_TMPDIR/info.count"
+    setup_plain_home "$home"
+    mock_systemd_without_sudo "$log"
+    mock_command_script "sleep" 'exit 0'
+    # /server/info answers twice more from the stopping instance, fails once
+    # while it is down, then answers from the new one.
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$log'
+case \"\$*\" in *server/info*) c=\$((\$(cat '$n' 2>/dev/null || echo 0) + 1)); echo \"\$c\" > '$n'; [ \"\$c\" -ne 3 ];; esac"
+
+    run env HOME="$home" sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    contains "Asked Moonraker to restart itself" "$output"
+    [ "$(cat "$n")" -eq 4 ] || fail "the wait read /server/info $(cat "$n") times, want 4 (old, old, down, new)"
+    contains "Moonraker is ready" "$output"
+}
+
+@test "auto install refuses a components dir that takes no link though test -w passes, and writes nothing" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    cp -R "$c" "$BATS_TEST_TMPDIR/config.before"
+    local real_ln
+    real_ln=$(command -v ln)
+    # The components dir stays mode 755, as a read-only mount looks to root.
+    mock_command_script "ln" "for a; do case \"\$a\" in */components/*) echo \"ln: \$a: Read-only file system\" >&2; exit 1;; esac; done; exec '$real_ln' \"\$@\""
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 1 ]
+    contains "Cannot write to components directory" "$output"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+    diff -r "$BATS_TEST_TMPDIR/config.before" "$c" || fail "the config dir changed"
+}
+
+@test "moonraker_conf_port reads [server] port from moonraker.conf or a file it includes" {
+    local c="$BATS_TEST_TMPDIR/cfg" conf_sh="$REPO_ROOT/moonraker-plugin/helix_print_conf.sh"
+    mkdir -p "$c"
+    printf '[server]\nhost: 0.0.0.0\nport: 80\r\n\n[webcam]\nport: 8080\n' > "$c/moonraker.conf"
+    run sh -c '. "$1"; moonraker_conf_port "$2"' sh "$conf_sh" "$c/moonraker.conf"
+    [ "$output" = 80 ] || fail "got '$output'"
+
+    printf '[webcam]\nport: 8080\n\n[include server.conf]\n' > "$c/moonraker.conf"
+    printf '[server]\nport = 7130\n' > "$c/server.conf"
+    run sh -c '. "$1"; moonraker_conf_port "$2"' sh "$conf_sh" "$c/moonraker.conf"
+    [ "$output" = 7130 ] || fail "got '$output'"
+
+    printf '[server]\nhost: 0.0.0.0\n\n[webcam]\nport: 8080\n' > "$c/moonraker.conf"
+    run sh -c '. "$1"; moonraker_conf_port "$2"' sh "$conf_sh" "$c/moonraker.conf"
+    [ "$output" = 7125 ] || fail "got '$output'"
+
+    run sh -c '. "$1"; moonraker_conf_port "$2"' sh "$conf_sh" "$c/missing.conf"
+    [ "$output" = 7125 ] || fail "got '$output'"
+}
+
+@test "an auto install restarts and waits on the port moonraker.conf names" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log"
+    setup_plain_home "$home"
+    printf '[server]\nhost: 0.0.0.0\nport: 80\n' > "$home/printer_data/config/moonraker.conf"
+    mock_systemd_without_sudo "$log"
+
+    run env HOME="$home" sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    grep -q -- '-X POST http://127.0.0.1:80/server/restart' "$log" || fail "restart not on port 80: $(cat "$log")"
+    grep -q 'http://127.0.0.1:80/server/info' "$log" || fail "wait not on port 80: $(cat "$log")"
+    if grep -q ':7125' "$log"; then fail "reached for 7125: $(cat "$log")"; fi
+}
+
+@test "an auto uninstall restarts on the port moonraker.conf names" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log"
+    setup_instrumented_home "$home"
+    printf '[server]\nport: 80\n\n[helix_print]\n' > "$home/printer_data/config/moonraker.conf"
+    mock_systemd_without_sudo "$log"
+
+    run env HOME="$home" sh "$SCRIPT" --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+    grep -q -- '-X POST http://127.0.0.1:80/server/restart' "$log" || fail "restart not on port 80: $(cat "$log")"
+    if grep -q ':7125' "$log"; then fail "reached for 7125: $(cat "$log")"; fi
+}
+
+# A Pi-style home whose Moonraker runs with uid $2 and groups $3 (its
+# primary first), and a copy of the plugin under $PERM_TMP/app, which the
+# test gives its modes. PERM_TMP sits directly in /tmp: every directory above
+# the plugin is then searchable by anyone, which bats' own 0700 temp
+# directories are not.
+setup_moonraker_as() {
+    local home="$1" uid="$2" groups="$3"
+    setup_plain_home "$home"
+    mkdir -p "$home/proc/700"
+    printf '%s\0' python3 "$home/moonraker/moonraker/moonraker.py" -d "$home/printer_data" \
+        > "$home/proc/700/cmdline"
+    printf 'Name:\tpython3\nUid:\t%s\t%s\t%s\t%s\nGid:\t%s\t%s\t%s\t%s\nGroups:\t%s\n' \
+        "$uid" "$uid" "$uid" "$uid" "${groups%% *}" "${groups%% *}" "${groups%% *}" "${groups%% *}" \
+        "$groups" > "$home/proc/700/status"
+    [ -n "${PERM_TMP:-}" ] || PERM_TMP=$(mktemp -d /tmp/helix-plugin-perm.XXXXXX)
+    chmod 0755 "$PERM_TMP"
+    rm -rf "$PERM_TMP/app"
+    mkdir -p "$PERM_TMP/app"
+    cp -R "$REPO_ROOT/moonraker-plugin" "$PERM_TMP/app/"
+    chmod 0755 "$PERM_TMP/app" "$PERM_TMP/app/moonraker-plugin"
+    chmod 0644 "$PERM_TMP/app/moonraker-plugin"/*.py
+}
+
+teardown() {
+    [ -z "${PERM_TMP:-}" ] || rm -rf "$PERM_TMP"
+}
+
+# Run the copy of install.sh under $PERM_TMP with HOME $1 and the rest as arguments.
+run_perm_install() {
+    local home="$1"
+    shift
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" sh "$PERM_TMP/app/moonraker-plugin/install.sh" "$@"
+}
+
+@test "auto install refuses a plugin the Moonraker user cannot read, and writes nothing" {
+    [ "$(id -u)" -ne 0 ] || skip "root reads everything"
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_moonraker_as "$home" 4242 4242
+    chmod 0700 "$PERM_TMP/app"
+    local c="$home/printer_data/config"
+    cp -R "$c" "$BATS_TEST_TMPDIR/config.before"
+
+    run_perm_install "$home" --no-restart --auto
+    [ "$status" -eq 1 ] || fail "want 1, got $status: $output"
+    contains "cannot read" "$output"
+    contains "$PERM_TMP/app" "$output"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+    diff -r "$BATS_TEST_TMPDIR/config.before" "$c" || fail "the config dir changed"
+}
+
+@test "the refusal names the Moonraker python process's user, past a process that only mentions moonraker.py" {
+    [ "$(id -u)" -ne 0 ] || skip "root reads everything"
+    local home="$BATS_TEST_TMPDIR/home" name
+    setup_moonraker_as "$home" 65534 "65534 28"
+    chmod 0700 "$PERM_TMP/app"
+    # Listed first: a root shell whose argv names moonraker.py, as an init
+    # script or an editor would.
+    mkdir -p "$home/proc/100"
+    printf '%s\0' /bin/sh /etc/init.d/S61moonraker start "$home/moonraker/moonraker/moonraker.py" \
+        > "$home/proc/100/cmdline"
+    printf 'Name:\tsh\nUid:\t0\t0\t0\t0\nGid:\t0\t0\t0\t0\nGroups:\t0\n' > "$home/proc/100/status"
+    name=$(awk -F: '$3 == 65534 { print $1; exit }' /etc/passwd)
+
+    run_perm_install "$home" --no-restart --auto
+    [ "$status" -eq 1 ] || fail "want 1, got $status: $output"
+    contains "Moonraker runs as ${name:-uid 65534}, which cannot read" "$output"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+}
+
+@test "auto install refuses a plugin file the Moonraker user cannot read" {
+    [ "$(id -u)" -ne 0 ] || skip "root reads everything"
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_moonraker_as "$home" 4242 4242
+    chmod 0600 "$PERM_TMP/app/moonraker-plugin/helix_3mf.py"
+
+    run_perm_install "$home" --no-restart --auto
+    [ "$status" -eq 1 ] || fail "want 1, got $status: $output"
+    contains "helix_3mf.py" "$output"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ]
+}
+
+@test "auto install accepts a plugin the Moonraker user reads as owner, group or other" {
+    [ "$(id -u)" -ne 0 ] || skip "root reads everything"
+    local home="$BATS_TEST_TMPDIR/home" me grp
+    me=$(id -u)
+    grp=$(id -g)
+
+    setup_moonraker_as "$home" 4242 4242
+    run_perm_install "$home" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "other: $output"
+
+    rm -rf "$home"
+    setup_moonraker_as "$home" "$me" "$grp"
+    chmod 0700 "$PERM_TMP/app"
+    run_perm_install "$home" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "owner: $output"
+
+    rm -rf "$home"
+    setup_moonraker_as "$home" 4242 "4243 $grp"
+    chmod 0750 "$PERM_TMP/app"
+    run_perm_install "$home" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "group: $output"
+}
+
+@test "relink refuses to point the link at a plugin the Moonraker user cannot read" {
+    [ "$(id -u)" -ne 0 ] || skip "root reads everything"
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_moonraker_as "$home" 4242 4242
+    printf '\n[helix_print]\n' >> "$home/printer_data/config/moonraker.conf"
+    ln -s "$home/old/moonraker-plugin/helix_print.py" "$home/moonraker/moonraker/components/helix_print.py"
+    chmod 0700 "$PERM_TMP/app"
+
+    run_perm_install "$home" --no-restart --relink
+    [ "$status" -eq 1 ] || fail "want 1, got $status: $output"
+    [ "$(readlink "$home/moonraker/moonraker/components/helix_print.py")" = "$home/old/moonraker-plugin/helix_print.py" ]
+}
+
+@test "an auto install during a print leaves Moonraker running and says it needs a restart after the print" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log" state
+    for state in printing paused; do
+        rm -rf "$home" "$log"
+        setup_plain_home "$home"
+        mock_systemd_without_sudo "$log"
+        mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$log'
+case \"\$*\" in *objects/query*print_stats*) printf '{\"result\": {\"status\": {\"print_stats\": {\"state\": \"$state\"}}}}' ;; esac
+exit 0"
+
+        run env HOME="$home" sh "$SCRIPT" --auto
+        [ "$status" -eq 0 ] || fail "$state: install failed: $output"
+        [ -L "$home/moonraker/moonraker/components/helix_print.py" ] || fail "$state: no link"
+        if grep -q 'server/restart' "$log"; then fail "$state: restarted Moonraker mid-print"; fi
+        contains "needs a restart after the print" "$output"
+        if printf '%s' "$output" | grep -qi 'complete'; then fail "$state: claimed completion: $output"; fi
+    done
+}
+
+@test "a systemd host whose only active unit is another moonraker-* service restarts through Moonraker's init script" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/sudo.log"
+    setup_plain_home "$home"
+    mock_command_script "systemctl" 'case "$*" in
+    *list-units*) echo "moonraker-obico.service loaded active running" ;;
+    *is-active*) exit 3 ;;
+esac
+exit 0'
+    mock_command_script "sudo" "printf '%s\\n' \"\$*\" >> '$log'; exec \"\$@\""
+    local initd="$BATS_TEST_TMPDIR/etc/init.d"
+    mkdir -p "$initd"
+    printf '#!/bin/sh\n[ "$1" = restart ] && touch "%s"\n' "$BATS_TEST_TMPDIR/init.restarted" > "$initd/moonraker"
+    chmod +x "$initd/moonraker"
+
+    run env HOME="$home" HELIX_INITD_DIR="$initd" sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    [ -e "$BATS_TEST_TMPDIR/init.restarted" ] || fail "the init script was not run: $(cat "$log" 2>/dev/null)"
+    if grep -q 'systemctl restart' "$log" 2>/dev/null; then fail "restarted a unit that is not moonraker's"; fi
+    contains "Auto-install complete" "$output"
+}
+
+@test "moonraker_restart_over_http with no URL asks and waits at moonraker_local_url" {
+    local log="$BATS_TEST_TMPDIR/curl.log"
+    mock_real_curl 0 "$log"
+    mock_command_script "sleep" 'exit 0'
+
+    run sh -c 'set -eu; unset MOONRAKER_URL; . "$1"; moonraker_restart_over_http' sh \
+        "$REPO_ROOT/moonraker-plugin/helix_print_conf.sh"
+    [ "$status" -eq 0 ] || fail "status $status: $output"
+    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$log" || fail "no request: $(cat "$log")"
+    grep -q ' http://127.0.0.1:7125/server/info$' "$log" || fail "the wait did not poll Moonraker: $(cat "$log")"
+}
+
+@test "interactive install refuses a components dir that takes no link, and a plugin Moonraker cannot read" {
+    [ "$(id -u)" -ne 0 ] || skip "root reads everything"
+    local home="$BATS_TEST_TMPDIR/home" real_ln
+    setup_moonraker_as "$home" 4242 4242
+    chmod 0700 "$PERM_TMP/app"
+
+    run_perm_install "$home"
+    [ "$status" -eq 1 ] || fail "unreadable: want 1, got $status: $output"
+    contains "cannot read" "$output"
+    [ ! -L "$home/moonraker/moonraker/components/helix_print.py" ] || fail "linked a plugin Moonraker cannot read"
+
+    chmod 0755 "$PERM_TMP/app"
+    real_ln=$(command -v ln)
+    mock_command_script "ln" "for a; do case \"\$a\" in */components/*) echo \"ln: \$a: Read-only file system\" >&2; exit 1;; esac; done; exec '$real_ln' \"\$@\""
+    run_perm_install "$home"
+    [ "$status" -eq 1 ] || fail "read-only: want 1, got $status: $output"
+    contains "Cannot write to components directory" "$output"
 }

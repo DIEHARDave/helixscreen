@@ -1,9 +1,10 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Where the [helix_print] section lives in a Moonraker config: shared by the
-# plugin's install.sh and the main installer's uninstall (bundled into it from
-# here), so both find the section in the same files.
+# Where the [helix_print] section lives in a Moonraker config, and how this
+# host reaches Moonraker over HTTP: shared by the plugin's install.sh and the
+# main installer (bundled into it from here), so both find the section in the
+# same files and talk to Moonraker the same way.
 
 [ -n "${_HELIX_PRINT_CONF_SOURCED:-}" ] && return 0
 _HELIX_PRINT_CONF_SOURCED=1
@@ -64,6 +65,197 @@ helix_conf_files_matching() {
         fi
     done
     return 0
+}
+
+# Print the port Moonraker serves HTTP on: [server] port in the first of
+# moonraker_conf_files @1 @2 that sets it, else 7125, Moonraker's default.
+# Firmware moves it (some serve Moonraker on port 80).
+moonraker_conf_port() {
+    _mcp_port=$(moonraker_conf_files "$1" "${2:-}" | while IFS= read -r _mcp_file; do
+        awk '/^\[/ { s = ($0 ~ /^\[server\][ \t\r]*$/) }
+            s && /^port[ \t]*[:=]/ { sub(/^port[ \t]*[:=][ \t]*/, ""); if (match($0, /^[0-9]+/)) print substr($0, 1, RLENGTH); exit }' \
+            "$_mcp_file" 2>/dev/null
+    done | awk 'NR == 1')
+    printf '%s' "${_mcp_port:-7125}"
+}
+
+# Print the URL Moonraker answers at from this host: MOONRAKER_URL when set,
+# else loopback on moonraker_conf_port @1 @2.
+moonraker_local_url() {
+    if [ -n "${MOONRAKER_URL:-}" ]; then
+        printf '%s' "$MOONRAKER_URL"
+        return 0
+    fi
+    printf 'http://127.0.0.1:%s' "$(moonraker_conf_port "$1" "${2:-}")"
+}
+
+# Print the running Moonraker's /proc/<pid> directory under HELIX_PROC_ROOT
+# (tests point it at a fixture tree), else /proc, and, on the next line, the
+# moonraker.py its argv names. Moonraker is a python interpreter (argv[0] python, python3,
+# python3.11, ...) running moonraker.py; an init script, editor or log viewer
+# whose argv names the file comes and goes beside it and is not Moonraker.
+# Returns 1, printing nothing, when no Moonraker runs.
+running_moonraker_process() {
+    _rmp_root="${HELIX_PROC_ROOT:-/proc}"
+    for _rmp_f in "$_rmp_root"/[0-9]*/cmdline; do
+        [ -r "$_rmp_f" ] || continue
+        _rmp_script=$(tr '\000' '\n' < "$_rmp_f" 2>/dev/null | awk '
+            NR == 1 { n = split($0, part, "/"); if (part[n] !~ /^python[0-9.]*$/) exit; next }
+            /(^|\/)moonraker\.py$/ { print; exit }')
+        [ -n "$_rmp_script" ] || continue
+        printf '%s\n%s\n' "$(dirname "$_rmp_f")" "$_rmp_script"
+        return 0
+    done
+    return 1
+}
+
+# Print where the running Moonraker's "/" is from here: empty when it shares
+# ours or none runs, the chroot's directory when it runs in one (Forge-X runs
+# Moonraker in /data/.mod/.forge-x). Every path in its argv and every absolute
+# [include] it reads is relative to that.
+running_moonraker_root() {
+    _rmd_proc=$(running_moonraker_process) || return 0
+    _rmd_proc="${_rmd_proc%%
+*}"
+    _rmd_root=$(readlink "$_rmd_proc/root" 2>/dev/null) || return 0
+    [ "$_rmd_root" = "/" ] && return 0
+    printf '%s' "${_rmd_root%/}"
+}
+
+# Print the running Moonraker's effective uid, then its groups (primary
+# first), space-separated. Empty when no Moonraker runs here.
+running_moonraker_ids() {
+    _rmi_proc=$(running_moonraker_process) || return 0
+    _rmi_proc="${_rmi_proc%%
+*}"
+    awk '/^Uid:/ { u = $3 } /^Gid:/ { g = $3 }
+        /^Groups:/ { for (i = 2; i <= NF; i++) gs = gs " " $i }
+        END { if (u != "") print u " " g gs }' "$_rmi_proc/status" 2>/dev/null || true
+}
+
+# The same probe as _has_real_curl in scripts/lib/installer/release.sh and
+# moonraker-plugin/remote-install.sh, which run where this file is not sourced.
+# Detect whether `curl` is curl proper, with the flags we pass it. Creality K1
+# firmware ships libhv's example client as /usr/bin/curl: it answers to the name,
+# prints "curl version 1.0.0" and rejects -s, -S, -L, -o and -f. Real curl's first
+# --version output starts "curl <digit>...". Shell builtins only, so it holds on
+# a PATH with no head or grep. Cache the result so we only probe once.
+_REAL_CURL=""
+_has_real_curl() {
+    if [ -z "$_REAL_CURL" ]; then
+        _REAL_CURL=no
+        if command -v curl >/dev/null 2>&1; then
+            case "$(curl --version 2>/dev/null)" in
+                "curl "[0-9]*) _REAL_CURL=yes ;;
+            esac
+        fi
+    fi
+    [ "$_REAL_CURL" = "yes" ]
+}
+
+# Print the body of a GET of URL @1, waiting at most @2 seconds (default 2):
+# real curl, else wget. BusyBox systems (Forge-X outside its chroot) carry
+# wget but no curl, and a K1's /usr/bin/curl is an impostor that rejects -s
+# and -f. -f and wget's own status make an HTTP error a failure.
+moonraker_get() {
+    _mg_wait="${2:-2}"
+    if _has_real_curl && curl -sf --max-time "$_mg_wait" "$1" 2>/dev/null; then
+        return 0
+    fi
+    command -v wget > /dev/null 2>&1 && wget -q -T "$_mg_wait" -O - "$1" 2>/dev/null
+}
+
+# Whether a GET of URL @1 succeeds within @2 seconds (default 2).
+moonraker_answers() {
+    moonraker_get "$1" "${2:-}" > /dev/null
+}
+
+# Whether the Moonraker at base URL @1 reports a print that is printing or
+# paused. False when it cannot be asked: then no job is known to be at risk.
+moonraker_job_active() {
+    moonraker_get "$1/printer/objects/query?print_stats=state" 5 |
+        grep -Eq '"state"[[:space:]]*:[[:space:]]*"(printing|paused)"'
+}
+
+# POST /server/restart to the Moonraker at base URL @1 (default: MOONRAKER_URL,
+# else port 7125). Moonraker re-launches itself in place, the one restart that
+# works where no service manager reaches it (Forge-X's chroot) or where sudo
+# wants a password. Real curl first, then wget; -sf and wget's own status make
+# an HTTP error (a 401) a failure. Returns 0 when Moonraker accepted it.
+request_moonraker_restart() {
+    _rmr_url="${1:-$(moonraker_local_url "")}/server/restart"
+    if _has_real_curl && curl -sf --max-time 5 -X POST "$_rmr_url" >/dev/null 2>&1; then
+        return 0
+    fi
+    command -v wget >/dev/null 2>&1 &&
+        wget -q -T 5 -O /dev/null --post-data='' "$_rmr_url" >/dev/null 2>&1
+}
+
+# request_moonraker_restart at base URL @1 (default as there), then up to 5s
+# for the instance that accepted it to stop answering: it answers for a moment
+# after the request, and a wait for Moonraker that starts then would take it
+# for the one that came back. Returns 0 when Moonraker accepted the request.
+moonraker_restart_over_http() {
+    _mro_url="${1:-$(moonraker_local_url "")}"
+    request_moonraker_restart "$_mro_url" || return 1
+    _mro_quiet=0
+    while [ "$_mro_quiet" -lt 5 ] && moonraker_answers "$_mro_url/server/info"; do
+        sleep 1
+        _mro_quiet=$((_mro_quiet + 1))
+    done
+    return 0
+}
+
+# Print how this host's service manager restarts Moonraker: "systemd" when the
+# moonraker unit is active, else the first init script for it under
+# HELIX_INITD_DIR, then /etc/init.d (S56moonraker_service on Creality K1 and
+# Simple AF, a plain moonraker on COSMOS and the rest). Prints nothing when no
+# service manager runs it, as for Moonraker in Forge-X's chroot.
+moonraker_service() {
+    if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet moonraker 2>/dev/null; then
+        printf 'systemd'
+        return 0
+    fi
+    for _ms_script in "${HELIX_INITD_DIR:-/etc/init.d}/S56moonraker_service" \
+                      "${HELIX_INITD_DIR:-/etc/init.d}/moonraker" \
+                      /etc/init.d/S56moonraker_service /etc/init.d/moonraker; do
+        if [ -x "$_ms_script" ] || [ -f "$_ms_script" ]; then
+            printf '%s' "$_ms_script"
+            return 0
+        fi
+    done
+    return 0
+}
+
+# Restart Moonraker through moonraker_service, the command run under prefix
+# @1 (a word list: a root wrapper, or empty), else by asking the Moonraker at
+# base URL @2 (default as for request_moonraker_restart) to restart itself,
+# which needs no root. Command @3, when set, is called with a line saying why
+# a service-manager restart failed. The request over HTTP is never made while
+# a print is printing or paused: a Moonraker restart drops Klipper's API
+# clients mid-job. Returns 0 when the service manager restarted it, 3 when
+# Moonraker accepted the request, 4 when an active print holds the restart
+# off, and 1 when nothing restarted it.
+restart_moonraker_via() {
+    _rmv_pre="$1"
+    _rmv_url="${2:-$(moonraker_local_url "")}"
+    _rmv_service=$(moonraker_service)
+    case "$_rmv_service" in
+        '') ;;
+        systemd)
+            # shellcheck disable=SC2086  # the prefix is a word list
+            $_rmv_pre systemctl restart moonraker && return 0
+            [ -z "${3:-}" ] || "$3" "Could not restart Moonraker via systemctl"
+            ;;
+        *)
+            # shellcheck disable=SC2086
+            $_rmv_pre "$_rmv_service" restart && return 0
+            [ -z "${3:-}" ] || "$3" "Could not restart Moonraker with $_rmv_service"
+            ;;
+    esac
+    moonraker_job_active "$_rmv_url" && return 4
+    moonraker_restart_over_http "$_rmv_url" && return 3
+    return 1
 }
 
 # Section headers this plugin owns in a Moonraker config: its own section, and

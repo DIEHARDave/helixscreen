@@ -99,9 +99,6 @@ MOONRAKER_CONFIG_DIRS="
 /etc/klipper/config
 "
 
-# Where running processes are listed; tests point it at a fixture tree.
-PROC_ROOT="${HELIX_PROC_ROOT:-/proc}"
-
 # Print Moonraker's components directory under a source root. Three layouts:
 #   <root>/moonraker/components            git checkout (~/moonraker)
 #   <root>/components                      the package directory itself
@@ -117,35 +114,17 @@ components_under() {
     return 1
 }
 
-# Print the running Moonraker's /proc directory.
+# Print the running Moonraker's /proc directory (running_moonraker_process).
 running_moonraker_proc() {
-    for f in "$PROC_ROOT"/[0-9]*/cmdline; do
-        [ -r "$f" ] || continue
-        args=$(tr '\000' '\n' < "$f" 2>/dev/null) || continue
-        case "$args" in
-            *moonraker.py*)
-                printf '%s' "$(dirname "$f")"
-                return 0
-                ;;
-        esac
-    done
-    return 1
+    proc=$(running_moonraker_process | sed -n 1p)
+    [ -n "$proc" ] || return 1
+    printf '%s' "$proc"
 }
 
 # Print the running Moonraker's argv, one argument per line.
 running_moonraker_args() {
     proc=$(running_moonraker_proc) || return 1
     tr '\000' '\n' < "$proc/cmdline" 2>/dev/null
-}
-
-# Print where the running Moonraker's "/" is from here: empty when it shares
-# ours, the chroot directory when it runs in one (Forge-X runs Moonraker in
-# /data/.mod/.forge-x). Every path in its argv is relative to that root.
-running_moonraker_root() {
-    proc=$(running_moonraker_proc) || return 0
-    root=$(readlink "$proc/root" 2>/dev/null) || return 0
-    [ "$root" = "/" ] && return 0
-    printf '%s' "${root%/}"
 }
 
 # Translate a path on this side into the same file as the running Moonraker
@@ -164,6 +143,94 @@ path_for_moonraker() {
 # Moonraker's argv.
 running_moonraker_arg() {
     running_moonraker_args | awk -v a="$1" -v b="$2" 'p == a || p == b { print; exit } { p = $0 }'
+}
+
+# Whether a process with ids @1 (uid, then groups) holds permission @2 (r
+# or x) on @3, by its mode bits: the owner's, else a group's, else other's.
+# uid 0 holds both.
+ids_may() {
+    # shellcheck disable=SC2012  # BusyBox find has no -printf; ls -n is the portable numeric owner and mode
+    ls -ldn "$3" 2>/dev/null | awk -v ids="$1" -v want="$2" '
+        NR == 1 {
+            n = split(ids, id, " ")
+            if (id[1] == 0) { ok = 1; exit }
+            if ($3 == id[1]) bits = substr($1, 2, 3)
+            else {
+                bits = substr($1, 8, 3)
+                for (i = 2; i <= n; i++) if (id[i] == $4) { bits = substr($1, 5, 3); break }
+            }
+            c = substr(bits, want == "r" ? 1 : 3, 1)
+            ok = (want == "r") ? (c == "r") : (c == "x" || c == "s" || c == "t")
+            exit
+        }
+        END { exit !ok }'
+}
+
+# Print the first path that keeps a Moonraker with ids @1 (running_moonraker_ids)
+# from loading the plugin at @2 (its path from here): a directory above it
+# Moonraker cannot search, or a .py beside it Moonraker cannot read. Python
+# imports the plugin's siblings from that directory too. Prints nothing when
+# every one is readable, or when @1 is empty (no Moonraker runs here).
+moonraker_cannot_read() {
+    ids="$1"
+    shift
+    [ -n "$ids" ] || return 0
+    real=$(readlink -f "$1" 2>/dev/null) || real="$1"
+    dir=$(dirname "$real")
+    mroot=$(running_moonraker_root)
+    walk=""
+    rest="${dir#/}"
+    while [ -n "$rest" ]; do
+        walk="$walk/${rest%%/*}"
+        case "$rest" in */*) rest="${rest#*/}" ;; *) rest="" ;; esac
+        # Moonraker in a chroot searches only the directories inside it.
+        case "$walk/" in "$mroot"/*) ;; *) continue ;; esac
+        if ! ids_may "$ids" x "$walk"; then
+            printf '%s' "$walk"
+            return 0
+        fi
+    done
+    for py in "$real" "$dir"/*.py; do
+        [ -f "$py" ] || continue
+        if ! ids_may "$ids" r "$py"; then
+            printf '%s' "$py"
+            return 0
+        fi
+    done
+}
+
+# Stop through error() when the running Moonraker cannot load the plugin
+# from @1, naming its user and what blocks it.
+require_moonraker_can_read() {
+    ids=$(running_moonraker_ids)
+    blocked=$(moonraker_cannot_read "$ids" "$1")
+    [ -n "$blocked" ] || return 0
+    uid=${ids%% *}
+    user=$(awk -F: -v u="$uid" '$3 == u { print $1; exit }' /etc/passwd 2>/dev/null)
+    error "Moonraker runs as ${user:-uid $uid}, which cannot read $blocked, so it cannot load the plugin.
+Give that user read access to the plugin files and search access to each directory above them, or install HelixScreen where it can reach them. Nothing was changed."
+}
+
+# Whether a link can be made in directory @1: a probe link is made there and
+# removed. test -w alone passes for root on a read-only filesystem.
+can_link_in() {
+    probe="$1/.helix_print.probe.$$"
+    ln -s "$PLUGIN_FILE" "$probe" 2>/dev/null || return 1
+    rm -f "$probe"
+}
+
+# The pre-flights every link to the plugin takes before it is made in
+# components directory @1: a link can be made there, Moonraker sees the plugin
+# from its root, and it can read what the link names. Sets link_to to the
+# plugin's path as Moonraker names it, which differs from ours when Moonraker
+# runs in a chroot. Stops through error() when one fails.
+check_plugin_link() {
+    can_link_in "$1" || error "Cannot write to components directory: $1"
+    link_to=$(path_for_moonraker "$PLUGIN_FILE")
+    if [ ! -f "$(running_moonraker_root)$link_to" ]; then
+        error "Moonraker cannot see $PLUGIN_FILE from its root ($(running_moonraker_root))"
+    fi
+    require_moonraker_can_read "$PLUGIN_FILE"
 }
 
 # Find Moonraker's components directory. An explicit path wins, then the
@@ -246,7 +313,7 @@ helix_conf_file() {
 # Print the running Klipper's extras/virtual_sdcard.py, the code that decides
 # which files SDCARD_PRINT_FILE can open. Empty when no Klipper runs here.
 running_klipper_sdcard_source() {
-    for f in "$PROC_ROOT"/[0-9]*/cmdline; do
+    for f in "${HELIX_PROC_ROOT:-/proc}"/[0-9]*/cmdline; do
         [ -r "$f" ] || continue
         klippy=$(tr '\000' '\n' < "$f" 2>/dev/null | awk '/klippy\/klippy\.py$/ { print; exit }')
         [ -n "$klippy" ] || continue
@@ -383,9 +450,10 @@ Please provide the path: ./install.sh /path/to/moonraker"
 Please remove it manually before installing."
     fi
 
+    check_plugin_link "$components_dir"
     # Use ln -sf for atomic replacement (removes existing symlink first)
-    ln -sf "$PLUGIN_FILE" "$target"
-    info "Created symlink: $target -> $PLUGIN_FILE"
+    ln -sf "$link_to" "$target"
+    info "Created symlink: $target -> $link_to"
     printf '\n'
 
     # Remind about configuration
@@ -404,7 +472,8 @@ Please remove it manually before installing."
     printf '%s\n' "     sudo systemctl restart moonraker"
     printf '\n'
     printf '%s\n' "  3. Verify the plugin is loaded:"
-    printf '%s\n' "     curl http://localhost:7125/server/helix/status"
+    config_dir=$(find_config_dir)
+    printf '%s\n' "     curl $(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")/server/helix/status"
     printf '\n'
 }
 
@@ -447,41 +516,11 @@ uninstall() {
     return "$exit_status"
 }
 
-# The same probe as _has_real_curl in scripts/lib/installer/release.sh.
-# Detect whether `curl` is curl proper, with the flags we pass it. Creality K1
-# firmware ships libhv's example client as /usr/bin/curl: it answers to the name,
-# prints "curl version 1.0.0" and rejects -s, -S, -L, -o and -f. Real curl's first
-# --version output starts "curl <digit>...". Shell builtins only, so it holds on
-# a PATH with no head or grep. Cache the result so we only probe once.
-_REAL_CURL=""
-_has_real_curl() {
-    if [ -z "$_REAL_CURL" ]; then
-        _REAL_CURL=no
-        if command -v curl >/dev/null 2>&1; then
-            case "$(curl --version 2>/dev/null)" in
-                "curl "[0-9]*) _REAL_CURL=yes ;;
-            esac
-        fi
-    fi
-    [ "$_REAL_CURL" = "yes" ]
-}
-
-# Whether a GET of the URL succeeds: real curl, else wget. BusyBox systems
-# (Forge-X outside its chroot) carry wget but no curl, and a K1's /usr/bin/curl
-# is an impostor that rejects -s and -f.
-moonraker_answers() {
-    if _has_real_curl && curl -sf --max-time 2 "$1" > /dev/null 2>&1; then
-        return 0
-    fi
-    command -v wget > /dev/null 2>&1 && wget -q -T 2 -O /dev/null "$1" > /dev/null 2>&1
-}
-
-# Wait for Moonraker to become available after restart
+# Wait for Moonraker to become available after restart, at MOONRAKER_URL.
 wait_for_moonraker() {
-    [ "$NO_RESTART" = "true" ] && return 0
     max_attempts=30
     attempt=0
-    moonraker_url="${MOONRAKER_URL:-http://localhost:7125}"
+    moonraker_url=$(moonraker_local_url "")
 
     info "Waiting for Moonraker to become available..."
 
@@ -498,41 +537,45 @@ wait_for_moonraker() {
     return 1
 }
 
-# Restart Moonraker service
-restart_moonraker() {
-    # A caller under systemd's NoNewPrivileges (the HelixScreen service) cannot
-    # sudo, so it passes --no-restart and asks Moonraker to restart itself.
+# Run a command as root: directly when we are root, else through sudo.
+as_root() {
+    if [ "$(id -u 2>/dev/null)" = 0 ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+# The restart an auto install or uninstall ends with (restart_moonraker_via),
+# then the wait for Moonraker to answer again. A caller under systemd's
+# NoNewPrivileges (the HelixScreen service) cannot sudo, so it passes
+# --no-restart and restarts Moonraker itself. Returns 1 when Moonraker still
+# needs a restart, a print having held it off included, which the caller
+# reports instead of completion; a slow comeback is only a warning.
+finish_with_restart() {
     if [ "$NO_RESTART" = "true" ]; then
         info "Leaving the Moonraker restart to the caller"
         return 0
     fi
     info "Restarting Moonraker..."
-    if command -v systemctl > /dev/null 2>&1 && systemctl list-units --type=service 2>/dev/null | grep -q moonraker; then
-        sudo systemctl restart moonraker || warn "Failed to restart Moonraker via systemctl"
-    elif command -v service > /dev/null 2>&1; then
-        sudo service moonraker restart || warn "Failed to restart Moonraker via service"
-    elif request_moonraker_restart; then
-        info "Asked Moonraker to restart itself"
-    else
-        warn "No way to restart Moonraker found - please restart Moonraker manually"
-    fi
-}
-
-# POST /server/restart: Moonraker re-launches itself in place, the one restart
-# that works where no service manager reaches it (Forge-X's chroot). Real curl
-# first, then wget, which BusyBox carries where curl is absent or an impostor;
-# -sf and wget's own status make an HTTP error (a 401) a failure.
-# Kept identical in scripts/lib/installer/moonraker.sh: this script runs
-# standalone (piped from GitHub, or from an install tree without scripts/lib)
-# and cannot source it; a bats test holds the two copies equal.
-# Returns 0 when Moonraker accepted the request.
-request_moonraker_restart() {
-    _restart_url="${MOONRAKER_URL:-http://127.0.0.1:7125}/server/restart"
-    if _has_real_curl && curl -sf --max-time 5 -X POST "$_restart_url" >/dev/null 2>&1; then
-        return 0
-    fi
-    command -v wget >/dev/null 2>&1 &&
-        wget -q -T 5 -O /dev/null --post-data='' "$_restart_url" >/dev/null 2>&1
+    restarted=0
+    restart_moonraker_via as_root "$(moonraker_local_url "")" warn || restarted=$?
+    case "$restarted" in
+        0) ;;
+        3) info "Asked Moonraker to restart itself" ;;
+        4)
+            warn "A print is running, so Moonraker was not restarted and the change has not taken effect"
+            warn "Moonraker needs a restart after the print: restart it from Mainsail or Fluidd"
+            return 1
+            ;;
+        *)
+            warn "Could not restart Moonraker, so the change has not taken effect"
+            warn "Moonraker needs a restart: run 'sudo systemctl restart moonraker', or restart it from Mainsail or Fluidd"
+            return 1
+            ;;
+    esac
+    wait_for_moonraker || warn "Moonraker did not come back up in time, but $1 itself completed"
+    return 0
 }
 
 # Strip phase-tracking instrumentation from PRINT_START via the bundled
@@ -619,14 +662,15 @@ auto_uninstall() {
         done
     fi
 
-    # Restart Moonraker
-    restart_moonraker
-
-    # Wait for Moonraker to come back up. A slow or unreachable restart here
-    # must not turn a completed uninstall into a reported failure: the
-    # plugin is already gone, and this timeout is about restart timing, not
-    # the uninstall's own outcome.
-    wait_for_moonraker || warn "Moonraker did not come back up in time, but the plugin removal itself completed"
+    # The plugin is already gone, so a restart that never happened is
+    # reported, not turned into a failed uninstall.
+    MOONRAKER_URL=$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")
+    if ! finish_with_restart "the plugin removal"; then
+        printf '\n'
+        warn "Plugin removed, but Moonraker keeps loading it until it restarts"
+        [ "$exit_status" -eq "$EXIT_UNINSTALL_OK" ] || warn "PRINT_START needs a look too - see the warnings above"
+        return "$exit_status"
+    fi
 
     printf '\n'
     if [ "$exit_status" -eq "$EXIT_UNINSTALL_OK" ]; then
@@ -682,9 +726,7 @@ relink() {
         return "$EXIT_RELINK_CURRENT"
     fi
 
-    link_to=$(path_for_moonraker "$PLUGIN_FILE")
-    [ -f "$mroot$link_to" ] || error "Moonraker cannot see $PLUGIN_FILE from its root ($mroot)"
-    [ -w "$components_dir" ] || error "Cannot write to components directory: $components_dir"
+    check_plugin_link "$components_dir"
     ln -sf "$link_to" "$target" || error "Could not re-point $target"
     info "Re-pointed $target -> $link_to (was $current)"
     return "$EXIT_RELINK_DONE"
@@ -716,10 +758,9 @@ auto_install() {
     info "Config: ${config_dir:-not found}"
     printf '\n'
 
-    # Pre-flight permission checks
-    if [ ! -w "$components_dir" ]; then
-        error "Cannot write to components directory: $components_dir"
-    fi
+    # Pre-flight checks, all before the first write: the link can be made,
+    # the config can be edited, and Moonraker can read what the link names.
+    check_plugin_link "$components_dir"
 
     section_file=""
     if [ -n "$config_dir" ] && [ -f "$config_dir/moonraker.conf" ]; then
@@ -734,13 +775,6 @@ auto_install() {
 
     if [ -f "$target" ] && [ ! -L "$target" ]; then
         error "A file (not symlink) exists at $target"
-    fi
-
-    # The link is read by Moonraker, so it names the plugin as Moonraker
-    # sees it, which differs from here when Moonraker runs in a chroot.
-    link_to=$(path_for_moonraker "$PLUGIN_FILE")
-    if [ ! -f "$(running_moonraker_root)$link_to" ]; then
-        error "Moonraker cannot see $PLUGIN_FILE from its root ($(running_moonraker_root))"
     fi
 
     # Auto-configure moonraker.conf if possible
@@ -796,12 +830,15 @@ auto_install() {
     ln -sf "$link_to" "$target"
     info "Created symlink: $target -> $link_to"
 
-    # Restart Moonraker
-    restart_moonraker
-
-    # Wait for Moonraker to come back up. The install itself is done by now, so
-    # a slow restart is a warning, never a failure that would roll it back.
-    wait_for_moonraker || warn "Moonraker did not come back up in time, but the plugin install itself completed"
+    # The install itself is done by now, so a restart that never happened is
+    # reported, never a failure that would roll it back.
+    # shellcheck disable=SC2034  # read by moonraker_local_url (helix_print_conf.sh)
+    MOONRAKER_URL=$(moonraker_local_url "$config_dir/moonraker.conf" "$(running_moonraker_root)")
+    if ! finish_with_restart "the plugin install"; then
+        printf '\n'
+        warn "Plugin installed, but it does not load until Moonraker restarts"
+        return 0
+    fi
 
     printf '\n'
     info "Auto-install complete!"
@@ -834,8 +871,8 @@ show_help() {
     printf '%s\n' "  MOONRAKER_PATH     Path to Moonraker installation (auto-detected if not provided)"
     printf '\n'
     printf '%s\n' "Environment Variables:"
-    printf '%s\n' "  MOONRAKER_URL      URL for Moonraker API health check after restart"
-    printf '%s\n' "                     Default: http://localhost:7125"
+    printf '%s\n' "  MOONRAKER_URL      URL for Moonraker's restart request and health check"
+    printf '%s\n' "                     Default: http://127.0.0.1:<[server] port in moonraker.conf, else 7125>"
     printf '%s\n' "                     Example: MOONRAKER_URL=http://192.168.1.100:7125 ./install.sh --auto"
     printf '\n'
     printf '%s\n' "Examples:"

@@ -33,8 +33,12 @@ setup() {
     export SUDO
     export MOONRAKER_URL="http://127.0.0.1:1"
 
-    unset _HELIX_COMMON_SOURCED _HELIX_CAMERA_SOURCED _HELIX_REMOTE_SCREEN_SOURCED
+    unset _HELIX_COMMON_SOURCED _HELIX_CAMERA_SOURCED _HELIX_REMOTE_SCREEN_SOURCED \
+        _HELIX_HOST_PROFILE_SOURCED _HELIX_PRINT_CONF_SOURCED _HELIX_MOONRAKER_SOURCED
     . "$WORKTREE_ROOT/scripts/lib/installer/common.sh"
+    . "$WORKTREE_ROOT/scripts/lib/installer/host_profile.sh"
+    . "$WORKTREE_ROOT/scripts/lib/installer/helix_print_conf.sh"  # installer_moonraker_url's
+    . "$WORKTREE_ROOT/scripts/lib/installer/moonraker.sh"         # installer_moonraker_url
     . "$WORKTREE_ROOT/scripts/lib/installer/camera.sh"
     . "$WORKTREE_ROOT/scripts/lib/installer/remote_screen.sh"
 

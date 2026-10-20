@@ -38,6 +38,15 @@
 #                     install directory, which then moves to INSTALL_DIR; the
 #                     install step passes when the app's startup relink
 #                     (install.sh --relink) re-points the dangling link there
+#   cli               plain, but install and uninstall are a user's own
+#                     install.sh --auto at a shell, without --no-restart, on
+#                     a systemd host where sudo wants a password: install.sh
+#                     has to restart Moonraker by asking it over HTTP
+#   rofs              k1, but the components directory is a read-only mount;
+#                     the install must refuse and change nothing
+#   private           Moonraker runs as pi, the app as root under umask 077
+#                     from a mode 700 /userdata/helixscreen, which pi cannot
+#                     search; the install must refuse and change nothing
 #
 # Moonraker v0.8 resolves a relative [include] against the directory of the
 # symlink's target, later versions against the link's own directory; the mod
@@ -74,11 +83,11 @@ data_dirs() { # <data dir> <owner>
 }
 
 layout() { # <layout>
-    APP_USER=pi APP_HOME=/home/pi INSTALL_DIR=/home/pi/helixscreen STRICT=1
+    APP_USER=pi APP_HOME=/home/pi INSTALL_DIR=/home/pi/helixscreen STRICT=1 UMASK=022
     CONFIG_DIR=/home/pi/printer_data/config
     COMPONENTS_DIR=/home/pi/moonraker/moonraker/components
     case "$1" in
-        plain|legacy|modconf|incsec|remote|relocate)
+        plain|legacy|modconf|incsec|remote|relocate|cli|private)
             cp -a "$MR_SRC" /home/pi/moonraker
             chown -R pi:pi /home/pi/moonraker
             data_dirs /home/pi/printer_data pi
@@ -86,6 +95,17 @@ layout() { # <layout>
             case "$1" in
                 legacy)
                     INSTALL_DIR=/opt/helixscreen ;;
+                cli)
+                    STRICT=0
+                    # A systemd host whose sudo wants a password nobody types.
+                    mkdir -p /var/tmp/cell-cli-bin
+                    printf '#!/bin/sh\necho "sudo: a password is required" >&2\nexit 1\n' > /var/tmp/cell-cli-bin/sudo
+                    # shellcheck disable=SC2016  # the stub's own $1
+                    printf '#!/bin/sh\ncase "$1" in list-units) echo "moonraker.service loaded active running" ;; *) echo "Access denied" >&2; exit 1 ;; esac\n' \
+                        > /var/tmp/cell-cli-bin/systemctl
+                    chmod 0755 /var/tmp/cell-cli-bin/sudo /var/tmp/cell-cli-bin/systemctl ;;
+                private)
+                    APP_USER=root APP_HOME=/root INSTALL_DIR=/userdata/helixscreen STRICT=0 UMASK=077 ;;
                 modconf)
                     mkdir -p "$CONFIG_DIR/mod"
                     { base_conf no; printf '\n[include user.moonraker.conf]\n'; } > "$CONFIG_DIR/mod/moonraker.conf"
@@ -98,7 +118,7 @@ layout() { # <layout>
             esac
             [ -e "$CONFIG_DIR/moonraker.conf" ] || base_conf yes > "$CONFIG_DIR/moonraker.conf"
             chown -R pi:pi "$CONFIG_DIR" ;;
-        k1)
+        k1|rofs)
             APP_USER=root APP_HOME=/root INSTALL_DIR=/usr/data/helixscreen STRICT=0
             CONFIG_DIR=/usr/data/printer_data/config
             COMPONENTS_DIR=/usr/data/moonraker/moonraker/moonraker/components
@@ -106,7 +126,11 @@ layout() { # <layout>
             cp -a "$MR_SRC" /usr/data/moonraker/moonraker
             data_dirs /usr/data/printer_data root
             base_conf yes > "$CONFIG_DIR/moonraker.conf"
-            MR_CMD="python3 /usr/data/moonraker/moonraker/moonraker/moonraker.py -d /usr/data/printer_data" ;;
+            MR_CMD="python3 /usr/data/moonraker/moonraker/moonraker/moonraker.py -d /usr/data/printer_data"
+            if [ "$1" = rofs ]; then
+                mount --bind "$COMPONENTS_DIR" "$COMPONENTS_DIR"
+                mount -o remount,ro,bind "$COMPONENTS_DIR"
+            fi ;;
         forgex)
             APP_USER=root APP_HOME=/root INSTALL_DIR=/opt/config/mod_data/helixscreen STRICT=0
             CONFIG_DIR=$FX/root/printer_data/config
@@ -132,11 +156,13 @@ layout() { # <layout>
     INSTALL_PARENT=$(dirname "$INSTALL_DIR")
     mkdir -p "$INSTALL_DIR"
     chown "$APP_USER:$APP_USER" "$INSTALL_DIR"
+    # What mkdir makes under the app's umask.
+    chmod "$(printf '%o' $((0777 & ~0$UMASK)))" "$INSTALL_DIR"
     [ "${CELL_STRICT:-1}" = 1 ] || STRICT=0
     {
         printf 'LAYOUT=%s\nAPP_USER=%s\nAPP_HOME=%s\nINSTALL_DIR=%s\nINSTALL_PARENT=%s\n' \
             "$1" "$APP_USER" "$APP_HOME" "$INSTALL_DIR" "$INSTALL_PARENT"
-        printf 'CONFIG_DIR=%s\nCOMPONENTS_DIR=%s\nSTRICT=%s\n' "$CONFIG_DIR" "$COMPONENTS_DIR" "$STRICT"
+        printf 'CONFIG_DIR=%s\nCOMPONENTS_DIR=%s\nSTRICT=%s\nUMASK=%s\n' "$CONFIG_DIR" "$COMPONENTS_DIR" "$STRICT" "$UMASK"
         printf 'MR_CMD="%s"\n' "$MR_CMD"
     } > "$STATE"
 }
@@ -223,11 +249,15 @@ relink_stays_current() {
     done
 }
 
-# Run install.sh with <args> as the app, confined as its service confines it.
-# APP_PLUGIN_DIR names another copy of the plugin to run it from.
+# Run install.sh with <args> as the app, confined as its service confines it,
+# under the app's umask. APP_PLUGIN_DIR names another copy of the plugin to
+# run it from.
 as_app() { # <args...>
     load
-    set -- env HOME="$APP_HOME" PATH=/usr/local/bin:/usr/bin:/bin \
+    path=/usr/local/bin:/usr/bin:/bin
+    if [ "$LAYOUT" = cli ]; then path=/var/tmp/cell-cli-bin:$path; fi
+    umask "$UMASK"
+    set -- env HOME="$APP_HOME" PATH="$path" \
         sh "${APP_PLUGIN_DIR:-$INSTALL_DIR/moonraker-plugin}/install.sh" "$@"
     if [ "$STRICT" = 1 ]; then
         # The bwrap runs as the app user, so the writes it allows are the
@@ -261,7 +291,8 @@ case "${1:-}" in
             rm -rf "$RELEASE_ROOT/$RELEASE_REF/moonraker-plugin/tests"
         fi
         rm -rf "$INSTALL_DIR/moonraker-plugin" "$PRE"
-        cp -R "$PLUGIN_SRC" "$INSTALL_DIR/moonraker-plugin"
+        # Copied as the app's own installer copies it, under its umask.
+        ( umask "$UMASK"; cp -R "$PLUGIN_SRC" "$INSTALL_DIR/moonraker-plugin" )
         chown -R "$APP_USER:$APP_USER" "$INSTALL_DIR/moonraker-plugin"
         mkdir -p "$PRE"
         cp -a "$CONFIG_DIR/." "$PRE/"
@@ -280,7 +311,7 @@ case "${1:-}" in
             relink_stays_current
             exit
         fi
-        as_app --no-restart --auto ;;
+        if [ "$LAYOUT" = cli ]; then as_app --auto; else as_app --no-restart --auto; fi ;;
     uninstall)
         load
         if [ "$LAYOUT" = remote ]; then
@@ -289,7 +320,7 @@ case "${1:-}" in
             if [ -e /home/pi/helix_print ]; then echo "left behind: /home/pi/helix_print" >&2; exit 1; fi
             exit 0
         fi
-        as_app --no-restart --uninstall-auto ;;
+        if [ "$LAYOUT" = cli ]; then as_app --uninstall-auto; else as_app --no-restart --uninstall-auto; fi ;;
     sections)
         load
         # Each file once, however many links lead to it.

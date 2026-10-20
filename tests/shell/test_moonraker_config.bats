@@ -902,6 +902,7 @@ MOONEOF
     local log="$BATS_TEST_TMPDIR/curl.log"
     mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
 printf '%s\\n' \"\$*\" >> '$log'; exit 0"
+    mock_command_script "sleep" 'exit 0'
     export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
     mkdir -p "$HELIX_INITD_DIR"
 
@@ -1745,4 +1746,210 @@ exit 0'
     run request_moonraker_restart
 
     [ "$status" -ne 0 ]
+}
+
+# =============================================================================
+# restart_moonraker: falling back to Moonraker's own restart, on its own port
+# =============================================================================
+
+# A Klipper home whose moonraker.conf serves on port $1, no Moonraker process
+# visible, and a curl that answers everything, logging to $BATS_TEST_TMPDIR/curl.log.
+stage_moonraker_on_port() {
+    export KLIPPER_HOME="$BATS_TEST_TMPDIR/home"
+    mkdir -p "$KLIPPER_HOME/printer_data/config" "$BATS_TEST_TMPDIR/proc"
+    printf '[server]\nhost: 0.0.0.0\nport: %s\n' "$1" > "$KLIPPER_HOME/printer_data/config/moonraker.conf"
+    export HELIX_PROC_ROOT="$BATS_TEST_TMPDIR/proc"
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$BATS_TEST_TMPDIR/curl.log'; exit 0"
+    mock_command_script "sleep" 'exit 0'
+}
+
+@test "installer_moonraker_url: loopback on the port moonraker.conf names" {
+    stage_moonraker_on_port 80
+    unset MOONRAKER_URL
+    [ "$(installer_moonraker_url)" = "http://127.0.0.1:80" ]
+    MOONRAKER_URL=http://10.0.0.9:7125
+    [ "$(installer_moonraker_url)" = "http://10.0.0.9:7125" ]
+}
+
+@test "restart_moonraker: a systemctl restart sudo refuses falls back to Moonraker's own restart" {
+    stage_moonraker_on_port 80
+    unset MOONRAKER_URL
+    mock_command_script "systemctl" 'case "$*" in *is-active*) exit 0 ;; *) exit 1 ;; esac'
+    mock_command_script "sudo" 'echo "sudo: a password is required" >&2; exit 1'
+    SUDO=sudo
+
+    run restart_moonraker
+
+    [ "$status" -eq 0 ]
+    grep -q -- '-X POST http://127.0.0.1:80/server/restart' "$BATS_TEST_TMPDIR/curl.log" ||
+        fail "no self-restart on port 80: $(cat "$BATS_TEST_TMPDIR/curl.log" 2>/dev/null)"
+    contains "Asked Moonraker to restart itself" "$output"
+}
+
+@test "restart_moonraker: an init script whose restart fails falls back to Moonraker's own restart" {
+    stage_moonraker_on_port 7130
+    unset MOONRAKER_URL
+    mock_command_script "systemctl" 'exit 1'
+    local initd="$BATS_TEST_TMPDIR/etc/init.d"
+    mkdir -p "$initd"
+    printf '#!/bin/sh\nexit 1\n' > "$initd/moonraker"
+    chmod +x "$initd/moonraker"
+    export HELIX_INITD_DIR="$initd"
+
+    run restart_moonraker
+
+    [ "$status" -eq 0 ]
+    grep -q -- '-X POST http://127.0.0.1:7130/server/restart' "$BATS_TEST_TMPDIR/curl.log" ||
+        fail "no self-restart on port 7130: $(cat "$BATS_TEST_TMPDIR/curl.log" 2>/dev/null)"
+}
+
+# =============================================================================
+# open_plugin_to_moonraker
+# =============================================================================
+
+mode_of() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
+
+# INSTALL_DIR under a 0700 parent the installer did not make, everything in it
+# as umask 077 leaves it, and a Moonraker running with uid $1.
+stage_private_install() {
+    local uid="$1"
+    export INSTALL_DIR="$BATS_TEST_TMPDIR/userdata/helixscreen"
+    local plugin="$INSTALL_DIR/moonraker-plugin"
+    mkdir -p "$plugin/tests" "$INSTALL_DIR/config"
+    : > "$plugin/helix_print.py"
+    : > "$plugin/tests/test_x.py"
+    printf '#!/bin/sh\n' > "$plugin/install.sh"
+    : > "$INSTALL_DIR/config/settings.json"
+    chmod 0600 "$plugin/helix_print.py" "$plugin/tests/test_x.py" "$INSTALL_DIR/config/settings.json"
+    chmod 0700 "$plugin/install.sh" "$plugin/tests" "$plugin" "$INSTALL_DIR/config" "$INSTALL_DIR" \
+        "$BATS_TEST_TMPDIR/userdata"
+    export HELIX_PROC_ROOT="$BATS_TEST_TMPDIR/proc"
+    mkdir -p "$HELIX_PROC_ROOT/700"
+    printf '%s\0' python3 /home/lava/moonraker/moonraker/moonraker.py > "$HELIX_PROC_ROOT/700/cmdline"
+    printf 'Name:\tpython3\nUid:\t%s\t%s\t%s\t%s\n' "$uid" "$uid" "$uid" "$uid" > "$HELIX_PROC_ROOT/700/status"
+}
+
+@test "open_plugin_to_moonraker: opens INSTALL_DIR and the plugin to a Moonraker running as another user" {
+    stage_private_install 4242
+
+    run open_plugin_to_moonraker
+    [ "$status" -eq 0 ]
+
+    local plugin="$INSTALL_DIR/moonraker-plugin"
+    [ "$(mode_of "$INSTALL_DIR")" = 711 ] || fail "INSTALL_DIR $(mode_of "$INSTALL_DIR")"
+    [ "$(mode_of "$plugin")" = 755 ] || fail "plugin dir $(mode_of "$plugin")"
+    [ "$(mode_of "$plugin/tests")" = 755 ] || fail "plugin subdir $(mode_of "$plugin/tests")"
+    [ "$(mode_of "$plugin/helix_print.py")" = 644 ] || fail "helix_print.py $(mode_of "$plugin/helix_print.py")"
+    [ "$(mode_of "$plugin/tests/test_x.py")" = 644 ] || fail "test_x.py $(mode_of "$plugin/tests/test_x.py")"
+    [ "$(mode_of "$plugin/install.sh")" = 755 ] || fail "install.sh $(mode_of "$plugin/install.sh")"
+    # Nothing outside the plugin and nothing above INSTALL_DIR.
+    [ "$(mode_of "$BATS_TEST_TMPDIR/userdata")" = 700 ] || fail "touched the parent"
+    [ "$(mode_of "$INSTALL_DIR/config")" = 700 ] || fail "touched config/"
+    [ "$(mode_of "$INSTALL_DIR/config/settings.json")" = 600 ] || fail "touched settings.json"
+}
+
+@test "open_plugin_to_moonraker: reads the Moonraker python process, past one that only mentions moonraker.py" {
+    stage_private_install 4242
+    mkdir -p "$HELIX_PROC_ROOT/100"
+    printf '%s\0' /usr/bin/vi /home/lava/moonraker/moonraker/moonraker.py > "$HELIX_PROC_ROOT/100/cmdline"
+    printf 'Name:\tvi\nUid:\t0\t0\t0\t0\n' > "$HELIX_PROC_ROOT/100/status"
+
+    run open_plugin_to_moonraker
+    [ "$status" -eq 0 ]
+    [ "$(mode_of "$INSTALL_DIR")" = 711 ] || fail "took the editor (root) for Moonraker"
+}
+
+@test "open_plugin_to_moonraker: leaves the tree alone when Moonraker owns it, runs as root, is not running, or the root is a mod payload" {
+    local uid
+    for uid in "$(id -u)" 0 none payload; do
+        rm -rf "$BATS_TEST_TMPDIR/userdata" "$BATS_TEST_TMPDIR/proc"
+        stage_private_install "${uid%%[!0-9]*}"
+        [ "$uid" != none ] || rm -rf "$HELIX_PROC_ROOT/700"
+        if [ "$uid" = payload ]; then
+            printf 'Name:\tpython3\nUid:\t4242\t4242\t4242\t4242\n' > "$HELIX_PROC_ROOT/700/status"
+            export HELIX_MOD_PAYLOAD=1
+        fi
+        run open_plugin_to_moonraker
+        unset HELIX_MOD_PAYLOAD
+        [ "$status" -eq 0 ]
+        [ "$(mode_of "$INSTALL_DIR")" = 700 ] || fail "$uid: INSTALL_DIR opened"
+        [ "$(mode_of "$INSTALL_DIR/moonraker-plugin/helix_print.py")" = 600 ] || fail "$uid: plugin opened"
+    done
+}
+
+@test "the install path opens the plugin to Moonraker right after it sets the tree's owner" {
+    run grep -A1 '^    fix_install_ownership$' "$WORKTREE_ROOT/scripts/lib/installer/main.sh"
+    contains "open_plugin_to_moonraker" "$output"
+}
+
+@test "open_plugin_to_moonraker: INSTALL_DIR gets search only, and a world-readable settings.json stays out of other users' reach" {
+    stage_private_install 4242
+    # The archive's config/ (0755) and a settings.json the app wrote under umask 022.
+    chmod 0755 "$INSTALL_DIR/config"
+    chmod 0644 "$INSTALL_DIR/config/settings.json"
+
+    run open_plugin_to_moonraker
+    [ "$status" -eq 0 ]
+
+    [ "$(mode_of "$INSTALL_DIR")" = 711 ] || fail "INSTALL_DIR $(mode_of "$INSTALL_DIR"): other users can list it"
+    [ "$(mode_of "$INSTALL_DIR/config")" = 700 ] ||
+        fail "config/ $(mode_of "$INSTALL_DIR/config"): other users reach settings.json by name"
+    [ "$(mode_of "$INSTALL_DIR/moonraker-plugin/helix_print.py")" = 644 ] || fail "the plugin was not opened"
+}
+
+@test "open_plugin_to_moonraker: a config/ that links into printer_data is left alone" {
+    stage_private_install 4242
+    mkdir -p "$BATS_TEST_TMPDIR/printer_data/config/helixscreen"
+    chmod 0755 "$BATS_TEST_TMPDIR/printer_data/config/helixscreen"
+    rm -rf "$INSTALL_DIR/config"
+    ln -s "$BATS_TEST_TMPDIR/printer_data/config/helixscreen" "$INSTALL_DIR/config"
+
+    run open_plugin_to_moonraker
+    [ "$status" -eq 0 ]
+    [ "$(mode_of "$BATS_TEST_TMPDIR/printer_data/config/helixscreen")" = 755 ] || fail "chmodded printer_data through the link"
+}
+
+# A curl reporting print_stats.state $1 and logging every request to
+# $BATS_TEST_TMPDIR/curl.log.
+mock_curl_print_state() {
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$BATS_TEST_TMPDIR/curl.log'
+case \"\$*\" in *objects/query*print_stats*) printf '{\"result\": {\"eventtime\": 1.0, \"status\": {\"print_stats\": {\"state\": \"%s\"}}}}' '$1' ;; esac
+exit 0"
+}
+
+@test "restart_moonraker: with a print printing or paused, Moonraker is not asked to restart itself" {
+    local state
+    for state in printing paused; do
+        rm -f "$BATS_TEST_TMPDIR/curl.log"
+        stage_moonraker_on_port 7125
+        unset MOONRAKER_URL
+        mock_command_script "systemctl" 'exit 1'
+        export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
+        mkdir -p "$HELIX_INITD_DIR"
+        mock_curl_print_state "$state"
+
+        run restart_moonraker
+
+        [ "$status" -eq 0 ] || fail "$state: aborted the install"
+        grep -q 'print_stats' "$BATS_TEST_TMPDIR/curl.log" || fail "$state: never asked for the print state"
+        if grep -q 'server/restart' "$BATS_TEST_TMPDIR/curl.log"; then fail "$state: restarted Moonraker mid-print"; fi
+        contains "restart it after the print" "$output"
+    done
+}
+
+@test "restart_moonraker: with the printer idle, Moonraker is asked to restart itself" {
+    stage_moonraker_on_port 7125
+    unset MOONRAKER_URL
+    mock_command_script "systemctl" 'exit 1'
+    export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
+    mkdir -p "$HELIX_INITD_DIR"
+    mock_curl_print_state standby
+
+    run restart_moonraker
+
+    [ "$status" -eq 0 ]
+    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$BATS_TEST_TMPDIR/curl.log" ||
+        fail "no self-restart: $(cat "$BATS_TEST_TMPDIR/curl.log")"
 }

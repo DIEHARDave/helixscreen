@@ -84,7 +84,8 @@ HEADER
     # HELIX_INSTALL_DIRS sweeps and moonraker.sh's stanza writer; main() below
     # probes it before set_install_paths' install-dir gate calls it.
     # helix_print_conf.sh provides helix_print_section_files, which
-    # moonraker.sh's plugin removal calls.
+    # moonraker.sh's plugin removal calls, and the Moonraker HTTP helpers
+    # behind restart_moonraker, which camera.sh's teardown calls.
     for module in common.sh host_profile.sh platform.sh permissions.sh requirements.sh forgex.sh competing_uis.sh desktop.sh service.sh helix_print_conf.sh moonraker.sh camera.sh remote_screen.sh uninstall.sh; do
         module_path="$LIB_DIR/$module"
         if [ ! -f "$module_path" ]; then
