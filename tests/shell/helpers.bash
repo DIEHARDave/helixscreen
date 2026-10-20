@@ -176,8 +176,7 @@ exec '$real_date' \"\$@\""
 
 # A curl proper that stands in for Moonraker's HTTP API, its state held in
 # files under $1: up (it answers at all), auth (every request is answered
-# 401), print_state (print_stats.state, default standby), klippy_state
-# (what /server/info reports, default ready), version (what
+# 401), print_state (print_stats.state, default standby), version (what
 # /server/helix/status reports; without it a 404), new_version (the version a
 # service restart loads, and an in-place restart when none is loaded yet),
 # inert (a service restart is answered 200 and does nothing, as Moonraker
@@ -247,7 +246,7 @@ else
             fi ;;
         *print_stats*)
             out="{\"result\":{\"status\":{\"print_stats\":{\"state\":\"$(cat "$d/print_state" 2>/dev/null || echo standby)\"}}}}" ;;
-        */server/info) out="{\"result\":{\"klippy_state\":\"$(cat "$d/klippy_state" 2>/dev/null || echo ready)\",\"components\":[\"file_manager\"]}}" ;;
+        */server/info) out='{"result":{"klippy_state":"ready","components":["file_manager"]}}' ;;
         */machine/system_info)
             out=$(cat "$d/system_info" 2>/dev/null ||
                 echo '{"result":{"system_info":{"provider":"systemd_dbus","available_services":["klipper","moonraker"],"instance_ids":{"moonraker":"moonraker","klipper":"klipper"}}}}') ;;

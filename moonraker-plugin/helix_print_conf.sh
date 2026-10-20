@@ -443,15 +443,15 @@ helix_now() {
 # print_stats is asked every time, right before a restart. HELIX_JOB_STATE
 # (idle or active, from the app) stands in for it only when that query gets
 # a 401 or no answer; an "active" one holds the restart either way. @2, the
-# body of /server/info, naming a Klipper shut down or in error means no
-# print runs; one starting up or disconnected may still be printing, so
-# print_stats is asked.
+# body of /server/info, naming a Klipper that is not ready means no print
+# runs.
 moonraker_job_state() {
     if [ "${HELIX_JOB_STATE:-}" = active ]; then
         printf 'active'
         return 0
     fi
-    if printf '%s' "${2:-}" | grep -Eq '"klippy_state"[[:space:]]*:[[:space:]]*"(shutdown|error)"'; then
+    if printf '%s' "${2:-}" | grep -q '"klippy_state"' &&
+        ! printf '%s' "${2:-}" | grep -Eq '"klippy_state"[[:space:]]*:[[:space:]]*"ready"'; then
         printf 'idle'
         return 0
     fi
