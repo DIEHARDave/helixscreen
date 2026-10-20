@@ -327,33 +327,34 @@ PluginLinkCheck relink_plugin(const std::string& script_path, int timeout_second
  * @brief What `install.sh --restart-moonraker` did
  */
 enum class PluginRestartOutcome {
-    Restarted,        ///< Moonraker runs again as a new process
-    RestartedInPlace, ///< Moonraker restarted itself in place, keeping the plugin it had loaded
-    HeldForPrint,     ///< a print is printing or paused, or could not be ruled out
-    LeftDown,         ///< Moonraker is down and could not be started
-    TimedOut, ///< the script outlived its timeout and was stopped; Moonraker's state is unknown
-    Failed,   ///< nothing restarted Moonraker, or the script failed or could not run
+    Restarted,    ///< Moonraker restarted and runs the plugin this app ships
+    NeedsManual,  ///< Moonraker refused the restart, or still runs the old plugin
+    HeldForPrint, ///< a print is printing or paused
+    JobUnknown,   ///< the print state could not be read, so nothing restarted
+    NotAnswering, ///< Moonraker does not answer, before the restart or after it
+    TimedOut,     ///< the script outlived its timeout and was stopped
+    Failed,       ///< the script failed or could not run
 };
 
 /**
  * @brief Whether a restart with @p outcome counts as done for the plugin it was for
  *
- * The next app start repeats only a restart that did not count. One that timed
- * out counts: it may still have restarted Moonraker, and repeating it could
- * restart Moonraker a second time.
+ * Only a restart that finished counts; the next app start repeats any other.
  */
 bool plugin_restart_finished(PluginRestartOutcome outcome);
 
 /**
  * @brief Run `install.sh --restart-moonraker` at @p script_path and read its outcome
  *
- * Restarts Moonraker's process, so a helix_print.py it already loaded is read
- * again; its in-place restart (server.restart) keeps the module it imported.
- * Blocks while Moonraker restarts, up to @p timeout_seconds. Touches no
- * installer state, so any thread may call it. An empty path is Failed.
+ * The script asks Moonraker over HTTP to restart its own service, so a
+ * helix_print.py it already loaded is read again, and checks the version the
+ * plugin then reports. @p job_holds reaches it as HELIX_JOB_STATE (active or
+ * idle), which it takes over its own print check. Blocks while Moonraker
+ * restarts, up to @p timeout_seconds. Touches no installer state, so any
+ * thread may call it. An empty path is Failed.
  */
 PluginRestartOutcome restart_moonraker_for_plugin(const std::string& script_path,
-                                                  int timeout_seconds);
+                                                  int timeout_seconds, bool job_holds);
 
 /**
  * @brief The version in a helix_print.py's `PLUGIN_VERSION = "x"` line, or empty

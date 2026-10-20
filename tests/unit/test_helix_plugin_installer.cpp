@@ -19,6 +19,7 @@
 #include "../../include/helix_version.h"
 #include "../test_helpers/helix_plugin_installer_test_access.h"
 #include "../test_helpers/plugin_script_sandbox.h"
+#include "../test_helpers/scoped_env.h"
 
 #include <chrono>
 #include <filesystem>
@@ -451,44 +452,57 @@ TEST_CASE("restart_moonraker_for_plugin reads install.sh --restart-moonraker's e
 
     SECTION("the script is asked to restart, with no --no-restart") {
         sandbox.write_script("exit 0");
-        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::Restarted);
+        CHECK(helix::restart_moonraker_for_plugin(script, 10, false) == Outcome::Restarted);
         CHECK(sandbox.script_args() == "--restart-moonraker ");
     }
-    SECTION("an in-place restart is told apart: it keeps the plugin Moonraker loaded") {
+    SECTION("Moonraker refused, or still runs the old plugin") {
         sandbox.write_script("exit 3");
-        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::RestartedInPlace);
+        CHECK(helix::restart_moonraker_for_plugin(script, 10, false) == Outcome::NeedsManual);
     }
     SECTION("a print holds it off") {
         sandbox.write_script("exit 4");
-        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::HeldForPrint);
+        CHECK(helix::restart_moonraker_for_plugin(script, 10, false) == Outcome::HeldForPrint);
     }
-    SECTION("Moonraker left down") {
-        sandbox.write_script("exit 5");
-        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::LeftDown);
+    SECTION("the print state could not be read") {
+        sandbox.write_script("exit 6");
+        CHECK(helix::restart_moonraker_for_plugin(script, 10, false) == Outcome::JobUnknown);
     }
-    SECTION("nothing restarted it") {
+    SECTION("Moonraker does not answer") {
+        sandbox.write_script("exit 7");
+        CHECK(helix::restart_moonraker_for_plugin(script, 10, false) == Outcome::NotAnswering);
+    }
+    SECTION("any other exit is a failure") {
         sandbox.write_script("exit 1");
-        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::Failed);
+        CHECK(helix::restart_moonraker_for_plugin(script, 10, false) == Outcome::Failed);
+        sandbox.write_script("exit 5");
+        CHECK(helix::restart_moonraker_for_plugin(script, 10, false) == Outcome::Failed);
     }
     SECTION("no script") {
-        CHECK(helix::restart_moonraker_for_plugin("", 10) == Outcome::Failed);
-        CHECK(helix::restart_moonraker_for_plugin(script, 10) == Outcome::Failed);
+        CHECK(helix::restart_moonraker_for_plugin("", 10, false) == Outcome::Failed);
+        CHECK(helix::restart_moonraker_for_plugin(script, 10, false) == Outcome::Failed);
     }
-    SECTION("a script that outlives the timeout timed out, which is not a failure") {
+    SECTION("a script that outlives the timeout timed out") {
         sandbox.write_script("exec sleep 30");
-        CHECK(helix::restart_moonraker_for_plugin(script, 1) == Outcome::TimedOut);
+        CHECK(helix::restart_moonraker_for_plugin(script, 1, false) == Outcome::TimedOut);
+    }
+    SECTION("the app's job state reaches the script as HELIX_JOB_STATE, over an inherited one") {
+        helix::ScopedEnv inherited("HELIX_JOB_STATE", "stale");
+        sandbox.write_script("[ \"$HELIX_JOB_STATE\" = idle ] && exit 0\n"
+                             "[ \"$HELIX_JOB_STATE\" = active ] && exit 4\nexit 9");
+        CHECK(helix::restart_moonraker_for_plugin(script, 10, false) == Outcome::Restarted);
+        CHECK(helix::restart_moonraker_for_plugin(script, 10, true) == Outcome::HeldForPrint);
     }
 }
 
-TEST_CASE("plugin_restart_finished: which restart outcomes the next start does not repeat",
+TEST_CASE("plugin_restart_finished: only a finished restart is not repeated at the next start",
           "[plugin_installer]") {
     using Outcome = helix::PluginRestartOutcome;
     CHECK(helix::plugin_restart_finished(Outcome::Restarted));
-    CHECK(helix::plugin_restart_finished(Outcome::RestartedInPlace));
-    // It may still be restarting Moonraker: repeating it would restart Moonraker twice.
-    CHECK(helix::plugin_restart_finished(Outcome::TimedOut));
+    CHECK_FALSE(helix::plugin_restart_finished(Outcome::NeedsManual));
     CHECK_FALSE(helix::plugin_restart_finished(Outcome::HeldForPrint));
-    CHECK_FALSE(helix::plugin_restart_finished(Outcome::LeftDown));
+    CHECK_FALSE(helix::plugin_restart_finished(Outcome::JobUnknown));
+    CHECK_FALSE(helix::plugin_restart_finished(Outcome::NotAnswering));
+    CHECK_FALSE(helix::plugin_restart_finished(Outcome::TimedOut));
     CHECK_FALSE(helix::plugin_restart_finished(Outcome::Failed));
 }
 

@@ -24,9 +24,16 @@
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
+#include <vector>
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
+#endif
+
+#if !defined(ESP_PLATFORM)
+extern "C" {
+extern char** environ; // the libc environment, which install.sh inherits
+}
 #endif
 
 namespace hfs = helix::fs;
@@ -166,12 +173,12 @@ static WaitResult wait_for_child_with_timeout(pid_t pid, int timeout_seconds,
  * Running it through /bin/sh also works when the file has no exec bit:
  * Moonraker's type:web self-update extracts the release zip with Python's
  * zipfile, which does not restore unix modes. --no-restart, unless
- * @p no_restart is false: NoNewPrivileges keeps the script from sudo; the
- * caller restarts Moonraker over its API.
+ * @p no_restart is false: the caller restarts Moonraker over its API. A
+ * non-empty @p job_state reaches the script as HELIX_JOB_STATE.
  */
 static WaitResult run_install_script(const std::string& script_path, const char* mode_flag,
                                      int timeout_seconds, const char* operation_name,
-                                     bool no_restart = true) {
+                                     bool no_restart = true, const std::string& job_state = "") {
     WaitResult result;
 #if defined(ESP_PLATFORM)
     // No shell and no processes to spawn: the firmware cannot run install.sh.
@@ -180,6 +187,7 @@ static WaitResult run_install_script(const std::string& script_path, const char*
     (void)timeout_seconds;
     (void)operation_name;
     (void)no_restart;
+    (void)job_state;
     result.error = result.spawn_failed = true;
     result.error_message = "not supported on this device";
     return result;
@@ -193,6 +201,25 @@ static WaitResult run_install_script(const std::string& script_path, const char*
     }
     fcntl(fds[0], F_SETFD, FD_CLOEXEC);
     fcntl(fds[0], F_SETFL, fcntl(fds[0], F_GETFL) | O_NONBLOCK);
+
+    // Built before the fork: the child of a threaded process may not allocate.
+    constexpr std::string_view kJobStateVar = "HELIX_JOB_STATE=";
+    const std::string job_state_entry = std::string(kJobStateVar) + job_state;
+    std::vector<char*> envp;
+    for (char** e = environ; e != nullptr && *e != nullptr; ++e) {
+        if (job_state.empty() ||
+            std::string_view(*e).substr(0, kJobStateVar.size()) != kJobStateVar) {
+            envp.push_back(*e);
+        }
+    }
+    if (!job_state.empty()) {
+        envp.push_back(const_cast<char*>(job_state_entry.c_str()));
+    }
+    envp.push_back(nullptr);
+    std::array<const char*, 5> argv = {"sh", script_path.c_str(), mode_flag, nullptr, nullptr};
+    if (no_restart) {
+        argv = {"sh", script_path.c_str(), "--no-restart", mode_flag, nullptr};
+    }
 
     pid_t pid = fork();
     if (pid < 0) {
@@ -209,11 +236,7 @@ static WaitResult run_install_script(const std::string& script_path, const char*
         dup2(fds[1], STDERR_FILENO);
         close(fds[0]);
         close(fds[1]);
-        if (no_restart) {
-            execl("/bin/sh", "sh", script_path.c_str(), "--no-restart", mode_flag, nullptr);
-        } else {
-            execl("/bin/sh", "sh", script_path.c_str(), mode_flag, nullptr);
-        }
+        execve("/bin/sh", const_cast<char* const*>(argv.data()), envp.data());
         _exit(127);
     }
 
@@ -461,20 +484,23 @@ PluginLinkCheck relink_plugin(const std::string& script_path, int timeout_second
 }
 
 namespace {
-// install.sh --restart-moonraker exit codes (moonraker-plugin/install.sh).
-constexpr int kRestartExitService = 0;
-constexpr int kRestartExitInPlace = 3;
+// install.sh --restart-moonraker exit codes (moonraker_restart in
+// moonraker-plugin/helix_print_conf.sh).
+constexpr int kRestartExitDone = 0;
+constexpr int kRestartExitManual = 3;
 constexpr int kRestartExitHeldForPrint = 4;
-constexpr int kRestartExitLeftDown = 5;
+constexpr int kRestartExitJobUnknown = 6;
+constexpr int kRestartExitNotAnswering = 7;
 } // namespace
 
 PluginRestartOutcome restart_moonraker_for_plugin(const std::string& script_path,
-                                                  int timeout_seconds) {
+                                                  int timeout_seconds, bool job_holds) {
     if (script_path.empty()) {
         return PluginRestartOutcome::Failed;
     }
-    const WaitResult result = run_install_script(script_path, "--restart-moonraker",
-                                                 timeout_seconds, "Moonraker restart", false);
+    const WaitResult result =
+        run_install_script(script_path, "--restart-moonraker", timeout_seconds, "Moonraker restart",
+                           false, job_holds ? "active" : "idle");
     if (result.timed_out) {
         log_script_output(result.output, false);
         return PluginRestartOutcome::TimedOut;
@@ -484,21 +510,21 @@ PluginRestartOutcome restart_moonraker_for_plugin(const std::string& script_path
         return PluginRestartOutcome::Failed;
     }
     switch (result.exit_code) {
-    case kRestartExitService:
+    case kRestartExitDone:
         log_script_output(result.output, true);
         return PluginRestartOutcome::Restarted;
-    case kRestartExitInPlace:
-        // A plugin Moonraker had loaded keeps its old code through this one.
+    case kRestartExitManual:
         log_script_output(result.output, false);
-        spdlog::info("[PluginInstaller] Moonraker restarted itself in place; no service "
-                     "manager restart reached it");
-        return PluginRestartOutcome::RestartedInPlace;
+        return PluginRestartOutcome::NeedsManual;
     case kRestartExitHeldForPrint:
         log_script_output(result.output, true);
         return PluginRestartOutcome::HeldForPrint;
-    case kRestartExitLeftDown:
+    case kRestartExitJobUnknown:
         log_script_output(result.output, false);
-        return PluginRestartOutcome::LeftDown;
+        return PluginRestartOutcome::JobUnknown;
+    case kRestartExitNotAnswering:
+        log_script_output(result.output, false);
+        return PluginRestartOutcome::NotAnswering;
     default:
         log_script_output(result.output, false);
         return PluginRestartOutcome::Failed;
@@ -506,17 +532,7 @@ PluginRestartOutcome restart_moonraker_for_plugin(const std::string& script_path
 }
 
 bool plugin_restart_finished(PluginRestartOutcome outcome) {
-    switch (outcome) {
-    case PluginRestartOutcome::Restarted:
-    case PluginRestartOutcome::RestartedInPlace:
-    case PluginRestartOutcome::TimedOut:
-        return true;
-    case PluginRestartOutcome::HeldForPrint:
-    case PluginRestartOutcome::LeftDown:
-    case PluginRestartOutcome::Failed:
-        return false;
-    }
-    return false;
+    return outcome == PluginRestartOutcome::Restarted;
 }
 
 std::string parse_plugin_version(std::string_view text) {

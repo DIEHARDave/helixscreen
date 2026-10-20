@@ -19,11 +19,10 @@ namespace helix {
 namespace {
 // install.sh --relink walks /proc and greps the config; it never waits on Moonraker.
 constexpr int kRelinkTimeoutSeconds = 30;
-// install.sh --restart-moonraker waits at most about 700s at its defaults (the
-// timing notes above restart_moonraker_via in helix_print_conf.sh), plus the
-// run time of the service commands it issues, which their service manager
-// bounds.
-constexpr int kRestartTimeoutSeconds = 1200;
+// install.sh --restart-moonraker spends at most about 80s at its defaults
+// (moonraker_restart in helix_print_conf.sh): a 60s wait for Moonraker to come
+// back plus the HTTP probes around it, each capped at 5s or less.
+constexpr int kRestartTimeoutSeconds = 180;
 constexpr uint32_t kRestartToastMs = 4000;
 // How often a restart waiting for the screen looks again.
 constexpr uint32_t kRestartRecheckMs = 1000;
@@ -179,11 +178,12 @@ void PluginSelfHeal::recheck_restart() {
 
 void PluginSelfHeal::restart_moonraker() {
     const std::string script = installer_.get_install_script_path();
+    const bool job_holds = job_holds_machine(printer_state_.print_state().get_print_lifecycle());
     // The script blocks while Moonraker restarts, so it runs off this thread.
     auto tok = lifetime_.token();
-    http::HttpExecutor::slow().submit([this, tok, script]() {
+    http::HttpExecutor::slow().submit([this, tok, script, job_holds]() {
         const PluginRestartOutcome outcome =
-            restart_moonraker_for_plugin(script, kRestartTimeoutSeconds);
+            restart_moonraker_for_plugin(script, kRestartTimeoutSeconds, job_holds);
         tok.defer("PluginSelfHeal::restarted", [this, outcome]() { on_restarted(outcome); });
     });
 }
@@ -220,17 +220,10 @@ void PluginSelfHeal::on_restarted(PluginRestartOutcome outcome) {
             ToastSeverity::INFO, lv_tr("HelixPrint plugin updated. Moonraker is restarting..."),
             kRestartToastMs);
         return;
-    case PluginRestartOutcome::RestartedInPlace:
-        spdlog::warn("[PluginSelfHeal] Moonraker restarted itself in place, which keeps the "
-                     "HelixPrint plugin it had loaded; restart the moonraker service to load {}",
-                     restart_facts_.plugin_file);
-        ToastManager::instance().show(ToastSeverity::WARNING,
-                                      lv_tr("Restart Moonraker to finish the plugin change"));
-        return;
     case PluginRestartOutcome::TimedOut:
         spdlog::error("[PluginSelfHeal] The Moonraker restart for the HelixPrint plugin ran past "
                       "{}s and was stopped; Moonraker may still be restarting. The next start "
-                      "does not repeat it",
+                      "tries again",
                       kRestartTimeoutSeconds);
         return;
     case PluginRestartOutcome::HeldForPrint:
@@ -238,14 +231,18 @@ void PluginSelfHeal::on_restarted(PluginRestartOutcome outcome) {
                      "HelixPrint plugin once the job ends");
         restart_wait_ = PluginTurnStep::WaitForJob;
         return;
-    case PluginRestartOutcome::LeftDown:
-        spdlog::error("[PluginSelfHeal] Moonraker stopped during its restart for the HelixPrint "
-                      "plugin and could not be started again; start the moonraker service");
-        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Failed to restart Moonraker."));
+    case PluginRestartOutcome::NotAnswering:
+        spdlog::error("[PluginSelfHeal] Moonraker does not answer, so it was not restarted for the "
+                      "HelixPrint plugin; start the moonraker service to load {}",
+                      restart_facts_.plugin_file);
+        ToastManager::instance().show(ToastSeverity::WARNING,
+                                      lv_tr("Restart Moonraker to finish the plugin change"));
         return;
+    case PluginRestartOutcome::NeedsManual:
+    case PluginRestartOutcome::JobUnknown:
     case PluginRestartOutcome::Failed:
-        spdlog::warn("[PluginSelfHeal] Could not restart Moonraker for the HelixPrint plugin; "
-                     "it runs the old plugin code until Moonraker restarts");
+        spdlog::warn("[PluginSelfHeal] Moonraker was not restarted for the HelixPrint plugin; it "
+                     "runs the old plugin code until Moonraker restarts");
         ToastManager::instance().show(ToastSeverity::WARNING,
                                       lv_tr("Restart Moonraker to finish the plugin change"));
         return;

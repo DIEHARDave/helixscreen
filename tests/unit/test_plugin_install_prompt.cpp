@@ -689,10 +689,13 @@ TEST_CASE_METHOD(SelfHealFixture,
 }
 
 TEST_CASE_METHOD(SelfHealFixture,
-                 "a restart that leaves Moonraker down is reported once as an error",
+                 "each --restart-moonraker outcome but a print gets one warning and no wait",
                  "[plugin_installer][print_select][self_heal]") {
+    // 3: refused or old code; 6: print state unknown; 7: Moonraker not answering.
+    const int code = GENERATE(3, 6, 7);
+    CAPTURE(code);
     ship("1.0.1", 3);
-    set_restart_exit(5);
+    set_restart_exit(code);
     ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", nullptr);
     std::vector<ToastSeverity> toasts;
     helix::ui::set_test_toast_hook(
@@ -702,7 +705,7 @@ TEST_CASE_METHOD(SelfHealFixture,
     settle();
 
     CHECK(restarts() == 1);
-    CHECK(toasts == std::vector<ToastSeverity>{ToastSeverity::ERROR});
+    CHECK(toasts == std::vector<ToastSeverity>{ToastSeverity::WARNING});
     auto& heal = PrintSelectPanelTestAccess::plugin_self_heal(*panel_);
     CHECK_FALSE(PluginSelfHealTestAccess::restart_waiting_for_job(heal));
     test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
@@ -710,6 +713,19 @@ TEST_CASE_METHOD(SelfHealFixture,
     test::set_wire_state(get_printer_state(), PrintJobState::COMPLETE);
     drain();
     CHECK(restarts() == 1);
+}
+
+TEST_CASE_METHOD(SelfHealFixture, "the restart tells install.sh the job state the app sees",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.0.1", 3);
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", nullptr);
+    scripts.write_script("printf '%s %s\\n' \"$*\" \"${HELIX_JOB_STATE:-unset}\" >> '" +
+                         calls_path() + "'\n[ \"$2\" = --relink ] && exit 3\nexit 0");
+
+    run_plugin_probe();
+    settle();
+
+    CHECK(calls() == "--no-restart --relink unset\n--restart-moonraker idle\n");
 }
 
 TEST_CASE_METHOD(SelfHealFixture,
