@@ -39,9 +39,9 @@
 #                     install step passes when the app's startup relink
 #                     (install.sh --relink) re-points the dangling link there
 #   cli               plain, but install and uninstall are a user's own
-#                     install.sh --auto at a shell, without --no-restart, on
-#                     a systemd host where sudo wants a password: install.sh
-#                     has to restart Moonraker by asking it over HTTP
+#                     install.sh --auto at a shell, without --no-restart:
+#                     install.sh restarts Moonraker over its HTTP API alone,
+#                     and a sudo, systemctl or service it runs fails the step
 #   rofs              k1, but the components directory is a read-only mount;
 #                     the install must refuse and change nothing
 #   private           Moonraker runs as pi, the app as root under umask 077
@@ -68,6 +68,8 @@ RELEASE_REF=v0.0.0-harness
 RELEASE_URL=http://127.0.0.1:8000
 MR_SRC=/opt/moonraker-src
 FX=/data/.mod/.forge-x
+# Where the cli layout's service manager stubs record each call.
+SERVICE_CALLS=/var/tmp/cell-service-calls
 
 base_conf() { # <with authorization: yes|no>
     printf '[server]\nhost: 0.0.0.0\nport: 7125\nklippy_uds_address: /tmp/klippy_uds\n\n'
@@ -97,13 +99,13 @@ layout() { # <layout>
                     INSTALL_DIR=/opt/helixscreen ;;
                 cli)
                     STRICT=0
-                    # A systemd host whose sudo wants a password nobody types.
+                    # Service managers that record every call and refuse it.
                     mkdir -p /var/tmp/cell-cli-bin
-                    printf '#!/bin/sh\necho "sudo: a password is required" >&2\nexit 1\n' > /var/tmp/cell-cli-bin/sudo
-                    # shellcheck disable=SC2016  # the stub's own $1
-                    printf '#!/bin/sh\ncase "$1" in list-units) echo "moonraker.service loaded active running" ;; *) echo "Access denied" >&2; exit 1 ;; esac\n' \
-                        > /var/tmp/cell-cli-bin/systemctl
-                    chmod 0755 /var/tmp/cell-cli-bin/sudo /var/tmp/cell-cli-bin/systemctl ;;
+                    for tool in sudo systemctl service; do
+                        # shellcheck disable=SC2016  # the stub's own $0 and $*
+                        printf '#!/bin/sh\necho "$0 $*" >> %s\nexit 1\n' "$SERVICE_CALLS" > "/var/tmp/cell-cli-bin/$tool"
+                        chmod 0755 "/var/tmp/cell-cli-bin/$tool"
+                    done ;;
                 private)
                     APP_USER=root APP_HOME=/root INSTALL_DIR=/userdata/helixscreen STRICT=0 UMASK=077 ;;
                 modconf)
@@ -249,6 +251,19 @@ relink_stays_current() {
     done
 }
 
+# Run install.sh with <args> as a user at a shell (the cli layout): it must
+# reach Moonraker over HTTP alone, so a call to a service manager fails it.
+cli_run() { # <args...>
+    rm -f "$SERVICE_CALLS"
+    status=0
+    ( as_app "$@" ) || status=$?
+    if [ -s "$SERVICE_CALLS" ]; then
+        echo "install.sh ran a service manager: $(tr '\n' ' ' < "$SERVICE_CALLS")" >&2
+        return 1
+    fi
+    return "$status"
+}
+
 # Run install.sh with <args> as the app, confined as its service confines it,
 # under the app's umask. APP_PLUGIN_DIR names another copy of the plugin to
 # run it from.
@@ -311,7 +326,7 @@ case "${1:-}" in
             relink_stays_current
             exit
         fi
-        if [ "$LAYOUT" = cli ]; then as_app --auto; else as_app --no-restart --auto; fi ;;
+        if [ "$LAYOUT" = cli ]; then cli_run --auto; else as_app --no-restart --auto; fi ;;
     uninstall)
         load
         if [ "$LAYOUT" = remote ]; then
@@ -320,7 +335,7 @@ case "${1:-}" in
             if [ -e /home/pi/helix_print ]; then echo "left behind: /home/pi/helix_print" >&2; exit 1; fi
             exit 0
         fi
-        if [ "$LAYOUT" = cli ]; then as_app --uninstall-auto; else as_app --no-restart --uninstall-auto; fi ;;
+        if [ "$LAYOUT" = cli ]; then cli_run --uninstall-auto; else as_app --no-restart --uninstall-auto; fi ;;
     sections)
         load
         # Each file once, however many links lead to it.
