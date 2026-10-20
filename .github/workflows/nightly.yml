@@ -284,6 +284,9 @@ jobs:
         echo '/tmp/cores/core.%e.%p.%t' | sudo tee /proc/sys/kernel/core_pattern
         cat /proc/sys/kernel/core_pattern
 
+    # Budget: build.yml's identical 8-shard pass ends its slowest shard at 7-8
+    # minutes on this runner (459s measured), so each shard gets 840s and
+    # the step 15 minutes around them.
     - name: Run fast tests in parallel shards
       timeout-minutes: 15
       run: |
@@ -295,7 +298,7 @@ jobs:
           # pipefail is required: without it the subshell reports sed's status, not
           # the test binary's, and a failing shard silently exits 0. timeout's 124
           # still propagates — pipefail yields the rightmost non-zero status.
-          (set -o pipefail; timeout 300 ./build/bin/helix-tests "~[.] ~[slow]" --shard-count $NPROCS --shard-index $i --durations yes 2>&1 | sed "s/^/[shard $i] /") &
+          (set -o pipefail; timeout 840 ./build/bin/helix-tests "~[.] ~[slow]" --shard-count $NPROCS --shard-index $i --durations yes 2>&1 | sed "s/^/[shard $i] /") &
           pids="$pids $!"
         done
         failed=0
@@ -853,7 +856,7 @@ jobs:
     name: Unsharded Suite + UpdateQueue Leak Ratchet
     needs: build
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 65
 
     steps:
     - name: Checkout repository
@@ -882,11 +885,13 @@ jobs:
     - name: Fix permissions
       run: chmod +x build/bin/helix-tests
 
-    # A healthy unsharded pass is 5-8 minutes, so this cap is headroom, not a
-    # budget. It is spent, not exceeded, when the suite hangs
-    # (prestonbrown/helixscreen#1524); raising it buys a slower red, not a pass.
+    # Budget: one process runs the whole suite on one core, which the 8-shard
+    # pass spreads over four; its summed per-test durations passed 2300s, so
+    # the inner cap is 2700s and the step 50 minutes. A hung
+    # suite (prestonbrown/helixscreen#1524) still ends at the cap; raising it
+    # further buys a slower red, not a pass.
     - name: Run suite unsharded
-      timeout-minutes: 30
+      timeout-minutes: 50
       run: |
         # 2>&1 is REQUIRED: the isolation listener reports leaks via fprintf(stderr)
         # while Catch2's summary goes to stdout. The gate rejects a log missing
@@ -896,7 +901,7 @@ jobs:
         # `timeout` and leaves a log the ratchet can reject, rather than by the
         # runner, which takes the log with it.
         set -o pipefail
-        timeout 1500 ./build/bin/helix-tests "~[.] ~[slow]" 2>&1 | tee unsharded.log
+        timeout 2700 ./build/bin/helix-tests "~[.] ~[slow]" 2>&1 | tee unsharded.log
 
     - name: UpdateQueue leak ratchet
       # Runs even if the suite failed: a crash mid-run is exactly when the leak
@@ -926,7 +931,7 @@ jobs:
     name: Shared Suite Report
     needs: build
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 80
 
     steps:
     - name: Checkout repository
@@ -957,11 +962,12 @@ jobs:
     # unparseable. The `|| true` is deliberate: a red suite is test-all's job to
     # report, and these gates still have something to say about the report.
     - name: Produce the suite report
-      timeout-minutes: 45
+      timeout-minutes: 65
       env:
         # Below the step timeout, so the run that gets stopped is the one that
-        # can name the case it stopped in.
-        SUITE_REPORT_MAX_SECS: 2400
+        # can name the case it stopped in. Budget: an unsharded run plus the
+        # cost of writing every assertion as XML, measured past 2400s.
+        SUITE_REPORT_MAX_SECS: 3600
       run: |
         # The filter comes from the makefile so this job cannot hold a
         # different one from `make test-vacuous`, and the script exits non-zero

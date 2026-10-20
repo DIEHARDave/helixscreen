@@ -44,6 +44,9 @@ class ExcludeMapWidget : public PanelWidget {
     /// without two objects there is no map to open.
     void open_full_map();
 
+  protected:
+    void on_hooked_root_deleted() override;
+
   private:
     struct Live;
     Live read_live() const;

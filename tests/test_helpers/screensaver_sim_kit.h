@@ -132,6 +132,19 @@ inline bool contains(const DirtyRect& outer, const DirtyRect& inner) {
            outer.y2 >= inner.y2;
 }
 
+/// Bytes at which `a` and `b` differ, a length difference counting each missing byte.
+/// Compare buffers through this rather than with `==`: Catch2 prints both operands of
+/// a decomposed comparison in full, so a frame-sized `==` writes megabytes into the
+/// --success report per assertion.
+inline size_t bytes_differing(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b) {
+    const size_t common = std::min(a.size(), b.size());
+    size_t n = std::max(a.size(), b.size()) - common;
+    for (size_t i = 0; i < common; i++) {
+        n += a[i] != b[i] ? 1 : 0;
+    }
+    return n;
+}
+
 /// What changed between a snapshot and a frame, against the boxes a step reported.
 struct FrameDiff {
     size_t changed = 0;    ///< pixels whose bytes differ
