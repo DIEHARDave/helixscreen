@@ -17,7 +17,7 @@
  *     the first tile row fully visible whenever the width/3 floor did not
  *     clamp the card.
  *
- * The option set is the real Snapmaker U1 database entry (four options, two
+ * The option set is the real Snapmaker U1 database entry (three options, two
  * tile rows), injected into the global PrinterState the view reads.
  */
 
@@ -164,7 +164,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     PrinterStateTestAccess::set_option_set(
         ps, PrinterDetector::get_pre_print_option_set("Snapmaker U1"));
     PrinterStateTestAccess::refresh_option_visibility(ps);
-    // Setup reached the branch: four options make has_any_preprint_options 1,
+    // Setup reached the branch: three options make has_any_preprint_options 1,
     // so the options card (and its tiles) exist to measure.
     REQUIRE(lv_subject_get_int(lv_xml_get_subject(nullptr, "has_any_preprint_options")) == 1);
 
@@ -195,7 +195,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         REQUIRE(container != nullptr);
         const uint32_t tile_count = lv_obj_get_child_count(container);
         INFO("tile_count " << tile_count);
-        REQUIRE(tile_count == 4);
+        REQUIRE(tile_count == 3);
 
         // Delete and Print are pinned outside the scroll area: fully on
         // screen at every canvas, whatever the options column holds.
