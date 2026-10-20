@@ -170,6 +170,24 @@ teardown() {
     [ "$output" = "true" ]
 }
 
+@test "an ESP32 zip of another version is not listed" {
+    printf 'PK\003\004dummyzip' > "$TEST_DIR/helixscreen-esp32-ktouch-v0.9.4.zip"
+    bash "$SCRIPT" --version "0.9.5" --tag "v0.9.5" --notes "Test" \
+        --dir "$TEST_DIR" --base-url "https://releases.helixscreen.org/dev" \
+        --output "$TEST_DIR/manifest.json"
+    run jq -e '.assets | has("esp32-ktouch")' "$TEST_DIR/manifest.json"
+    [ "$status" -ne 0 ]
+}
+
+@test "a directory holding only an ESP32 zip is still an error" {
+    rm -f "$TEST_DIR"/*.tar.gz "$TEST_DIR"/*.zip
+    printf 'PK\003\004dummyzip' > "$TEST_DIR/helixscreen-esp32-ktouch-v0.9.5.zip"
+    run bash "$SCRIPT" --version "0.9.5" --tag "v0.9.5" --notes "Test" \
+        --dir "$TEST_DIR" --base-url "https://releases.helixscreen.org/dev" \
+        --output "$TEST_DIR/manifest.json"
+    [ "$status" -ne 0 ]
+}
+
 @test "--no-include-zip suppresses zip_url even when a .zip is present" {
     printf 'PK\003\004dummyzip' > "$TEST_DIR/helixscreen-pi.zip"
     bash "$SCRIPT" \

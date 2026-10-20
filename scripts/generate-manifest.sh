@@ -272,13 +272,17 @@ for f in "$DIR"/helixscreen-esp32-*-v*.zip; do
     [[ -f "$f" ]] || continue
     base=$(basename "$f")
     [[ "$base" =~ ^helixscreen-(esp32-.+)-v([0-9][0-9A-Za-z.+-]*)\.zip$ ]] || continue
+    # A zip left over from another release must not be listed under this one.
+    if [[ "${BASH_REMATCH[2]}" != "${VERSION#v}" ]]; then
+        echo "Skipping $base: not version $VERSION" >&2
+        continue
+    fi
     ASSETS_JSON=$(echo "$ASSETS_JSON" | jq \
         --arg key "${BASH_REMATCH[1]}" \
         --arg url "${BASE_URL}/${base}" \
         --arg sha256 "$($SHA256_CMD "$f" | awk '{print $1}')" \
         --argjson size "$(wc -c < "$f" | tr -d ' ')" \
         '.[$key] = {url: $url, sha256: $sha256, size: $size}')
-    FOUND_ANY=true
 done
 
 if [[ "$FOUND_ANY" == "false" ]]; then
