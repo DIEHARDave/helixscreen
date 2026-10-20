@@ -5,6 +5,7 @@
 
 #include "ui_toast_manager.h"
 
+#include "config.h"
 #include "http_executor.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "print_lifecycle_state.h"
@@ -19,13 +20,19 @@ namespace {
 // install.sh --relink walks /proc and greps the config; it never waits on Moonraker.
 constexpr int kRelinkTimeoutSeconds = 30;
 constexpr uint32_t kRestartToastMs = 4000;
+// How often a restart waiting for the screen looks again.
+constexpr uint32_t kRestartRecheckMs = 1000;
+// The (bundled, reported) plugin version pair a restart was last requested for.
+constexpr const char* kPrefRestartedForBundled = "/plugin_self_heal/restarted_for_bundled";
+constexpr const char* kPrefRestartedForReported = "/plugin_self_heal/restarted_for_reported";
 } // namespace
 
 bool PluginSelfHeal::ran_this_start_ = false;
 
 PluginSelfHeal::PluginSelfHeal(PrinterState& printer_state, HelixPluginInstaller& installer,
-                               MoonrakerRestarter restarter)
-    : printer_state_(printer_state), installer_(installer), restarter_(std::move(restarter)) {}
+                               MoonrakerRestarter restarter, ScreenProbe screen)
+    : printer_state_(printer_state), installer_(installer), restarter_(std::move(restarter)),
+      screen_(std::move(screen)) {}
 
 void PluginSelfHeal::on_plugin_reported() {
     if (ran_this_start_ || printer_state_.plugin_status_state().helix_plugin_state() < 0) {
@@ -70,8 +77,34 @@ void PluginSelfHeal::act(bool local, PluginLinkCheck link) {
     facts.reported_version = printer_state_.plugin_status_state().version();
     facts.bundled_version = installer_.bundled_plugin_version();
     facts.job_holds = job_holds_machine(printer_state_.print_state().get_print_lifecycle());
+    Config* config = Config::get_instance();
+    facts.restarted_for_bundled = config->get<std::string>(kPrefRestartedForBundled, "");
+    facts.restarted_for_reported = config->get<std::string>(kPrefRestartedForReported, "");
 
-    switch (decide_plugin_self_heal(facts)) {
+    const PluginSelfHealStep step = decide_plugin_self_heal(facts);
+    const bool version_differs = !facts.reported_version.empty() &&
+                                 !facts.bundled_version.empty() &&
+                                 facts.reported_version != facts.bundled_version;
+    if (step == PluginSelfHealStep::RestartNow || step == PluginSelfHealStep::WaitForJob) {
+        if (version_differs) {
+            config->set<std::string>(kPrefRestartedForBundled, facts.bundled_version);
+            config->set<std::string>(kPrefRestartedForReported, facts.reported_version);
+            config->save();
+        }
+    } else if (!version_differs && !facts.restarted_for_bundled.empty()) {
+        // The versions agree now: a later mismatch is a new problem.
+        config->set<std::string>(kPrefRestartedForBundled, "");
+        config->set<std::string>(kPrefRestartedForReported, "");
+        config->save();
+    }
+
+    switch (step) {
+    case PluginSelfHealStep::GiveUp:
+        spdlog::warn("[PluginSelfHeal] Moonraker still runs HelixPrint plugin {} after a restart "
+                     "for this app's {}; not restarting again until either version changes. "
+                     "Check which helix_print.py Moonraker loads",
+                     facts.reported_version, facts.bundled_version);
+        return;
     case PluginSelfHealStep::Nothing:
         if (link == PluginLinkCheck::Failed) {
             spdlog::info("[PluginSelfHeal] Could not check the plugin link; the next start "
@@ -88,7 +121,7 @@ void PluginSelfHeal::act(bool local, PluginLinkCheck link) {
                      "running {}, bundled {}); waiting for the job to end",
                      link == PluginLinkCheck::Relinked ? "re-pointed" : "current",
                      facts.reported_version, facts.bundled_version);
-        restart_waiting_for_job_ = true;
+        restart_wait_ = PluginTurnStep::WaitForJob;
         return;
     case PluginSelfHealStep::RestartNow:
         spdlog::info("[PluginSelfHeal] Restarting Moonraker to load the HelixPrint plugin this "
@@ -101,13 +134,42 @@ void PluginSelfHeal::act(bool local, PluginLinkCheck link) {
 }
 
 void PluginSelfHeal::on_job_state_changed() {
-    if (!restart_waiting_for_job_ ||
-        job_holds_machine(printer_state_.print_state().get_print_lifecycle())) {
+    if (restart_wait_ == PluginTurnStep::WaitForJob) {
+        recheck_restart();
+    }
+}
+
+void PluginSelfHeal::recheck_restart() {
+    if (restart_wait_ == PluginTurnStep::Stop) {
         return;
     }
-    restart_waiting_for_job_ = false;
-    spdlog::info("[PluginSelfHeal] The job let go; restarting Moonraker for the HelixPrint plugin");
-    restart_moonraker();
+    const PluginTurnStep step = decide_plugin_turn(
+        true, job_holds_machine(printer_state_.print_state().get_print_lifecycle()),
+        restart_wait_ == PluginTurnStep::WaitForJob, screen_ ? screen_() : PluginScreenState{});
+    switch (step) {
+    case PluginTurnStep::Stop:
+    case PluginTurnStep::WaitForJob:
+        restart_wait_ = step;
+        restart_timer_.reset();
+        return;
+    case PluginTurnStep::WaitForScreen:
+        restart_wait_ = step;
+        if (!restart_timer_) {
+            restart_timer_.reset(lv_timer_create(
+                [](lv_timer_t* timer) {
+                    static_cast<PluginSelfHeal*>(lv_timer_get_user_data(timer))->recheck_restart();
+                },
+                kRestartRecheckMs, this));
+        }
+        return;
+    case PluginTurnStep::Go:
+        restart_wait_ = PluginTurnStep::Stop;
+        restart_timer_.reset();
+        spdlog::info("[PluginSelfHeal] The job and its completion flow are done; restarting "
+                     "Moonraker for the HelixPrint plugin");
+        restart_moonraker();
+        return;
+    }
 }
 
 void PluginSelfHeal::restart_moonraker() {

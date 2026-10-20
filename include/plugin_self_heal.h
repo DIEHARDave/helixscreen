@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ui_timer_guard.h"
+
 #include "async_lifetime_guard.h"
 #include "helix_plugin_installer.h"
 
@@ -19,17 +21,21 @@ struct PluginSelfHealTestAccess; // test-only friend (tests/test_helpers/)
  * install.sh --relink re-points a link left naming an install directory that
  * moved or was replaced, and Moonraker restarts when it re-pointed the link or
  * the running plugin reports a version other than the one bundled here. A
- * restart waits for any job to let go. A remote Moonraker is only reported in
- * the log. decide_plugin_self_heal() holds the rule; this class gathers its
- * facts and acts. Main thread only.
+ * restart waits for any job to let go and then for its completion flow
+ * (decide_plugin_turn(), as the install prompt does). A version pair a restart
+ * already failed to fix is remembered in the config and only warned about on
+ * later starts. A remote Moonraker is only reported in the log. decide_plugin_self_heal() holds the
+ * rule; this class gathers its facts and acts. Main thread only.
  */
 class PluginSelfHeal {
   public:
     /// Asks Moonraker to restart; returns whether a restart was requested.
     using MoonrakerRestarter = std::function<bool()>;
+    /// What is on screen now, for decide_plugin_turn().
+    using ScreenProbe = std::function<PluginScreenState()>;
 
     PluginSelfHeal(PrinterState& printer_state, HelixPluginInstaller& installer,
-                   MoonrakerRestarter restarter);
+                   MoonrakerRestarter restarter, ScreenProbe screen);
 
     /// Discovery has reported the plugin (installed or not): run the check,
     /// the first time in this process.
@@ -47,12 +53,17 @@ class PluginSelfHeal {
     friend struct PluginSelfHealTestAccess;
 
     void act(bool local, PluginLinkCheck link);
+    /// A pending restart looks again: on a lifecycle change or a timer tick.
+    void recheck_restart();
     void restart_moonraker();
 
     PrinterState& printer_state_;
     HelixPluginInstaller& installer_;
     MoonrakerRestarter restarter_;
-    bool restart_waiting_for_job_ = false;
+    ScreenProbe screen_;
+    /// Stop when no restart is pending, else the wait it is in.
+    PluginTurnStep restart_wait_ = PluginTurnStep::Stop;
+    ui::LvglTimerGuard restart_timer_;
     bool checking_ = false;
     AsyncLifetimeGuard lifetime_;
 

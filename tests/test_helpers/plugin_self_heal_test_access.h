@@ -13,6 +13,17 @@ struct PluginSelfHealTestAccess {
     static void set_ran_this_start(bool ran) {
         PluginSelfHeal::ran_this_start_ = ran;
     }
+
+    /// A pending restart waits for the screen, with its recheck timer armed.
+    static bool restart_waiting_for_screen(const PluginSelfHeal& heal) {
+        return heal.restart_wait_ == PluginTurnStep::WaitForScreen &&
+               static_cast<bool>(heal.restart_timer_);
+    }
+
+    /// What the recheck timer runs on each tick.
+    static void recheck_restart(PluginSelfHeal& heal) {
+        heal.recheck_restart();
+    }
 };
 
 } // namespace helix

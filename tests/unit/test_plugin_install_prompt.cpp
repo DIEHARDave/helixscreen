@@ -534,11 +534,80 @@ TEST_CASE_METHOD(SelfHealFixture, "a plugin restart waits for the job to let go"
 
     test::set_wire_state(get_printer_state(), PrintJobState::COMPLETE);
     drain();
+    // The print's own completion flow gets the screen first.
+    CHECK(moonraker_restarts() == restarts_before);
+    auto& heal = PrintSelectPanelTestAccess::plugin_self_heal(*panel_);
+    REQUIRE(PluginSelfHealTestAccess::restart_waiting_for_screen(heal));
+
+    PluginSelfHealTestAccess::recheck_restart(heal);
+    drain();
     CHECK(moonraker_restarts() == restarts_before + 1);
 
     test::set_wire_state(get_printer_state(), PrintJobState::STANDBY);
     drain();
+    PluginSelfHealTestAccess::recheck_restart(heal);
     CHECK(moonraker_restarts() == restarts_before + 1);
+}
+
+TEST_CASE_METHOD(SelfHealFixture,
+                 "a deferred plugin restart waits until the completion modal is closed",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.0.1", 3);
+    const int restarts_before = moonraker_restarts();
+    test::set_wire_state(get_printer_state(), PrintJobState::PRINTING);
+    drain();
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", nullptr);
+    run_plugin_probe();
+    settle();
+    test::set_wire_state(get_printer_state(), PrintJobState::COMPLETE);
+    drain();
+    // Stands in for the print-completion modal the lifecycle change puts up.
+    lv_obj_t* completion = helix::ui::modal_alert("Print Complete", "benchy.gcode");
+    drain();
+    REQUIRE(completion != nullptr);
+    auto& heal = PrintSelectPanelTestAccess::plugin_self_heal(*panel_);
+
+    PluginSelfHealTestAccess::recheck_restart(heal);
+    drain();
+    CHECK(moonraker_restarts() == restarts_before);
+    CHECK(PluginSelfHealTestAccess::restart_waiting_for_screen(heal));
+
+    Modal::hide(completion);
+    drain();
+    REQUIRE(ModalStack::instance().empty());
+    PluginSelfHealTestAccess::recheck_restart(heal);
+    drain();
+    CHECK(moonraker_restarts() == restarts_before + 1);
+    CHECK_FALSE(PluginSelfHealTestAccess::restart_waiting_for_screen(heal));
+}
+
+TEST_CASE_METHOD(SelfHealFixture,
+                 "a version pair a restart did not fix is not restarted for at the next start",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.2.0", 0);
+    const int restarts_before = moonraker_restarts();
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", "1"); // the mock reports 1.0.1
+
+    run_plugin_probe();
+    settle();
+    REQUIRE(moonraker_restarts() == restarts_before + 1);
+
+    // The next app start: Moonraker still runs 1.0.1.
+    PluginSelfHealTestAccess::set_ran_this_start(false);
+    forget_script_run();
+    set_plugin_installed(false);
+    run_plugin_probe();
+    settle();
+    REQUIRE(scripts.script_args() == "--no-restart --relink ");
+    CHECK(moonraker_restarts() == restarts_before + 1);
+
+    // An app update brings a new pair, which gets one attempt.
+    ship("1.3.0", 0);
+    PluginSelfHealTestAccess::set_ran_this_start(false);
+    set_plugin_installed(false);
+    run_plugin_probe();
+    settle();
+    CHECK(moonraker_restarts() == restarts_before + 2);
 }
 
 TEST_CASE_METHOD(SelfHealFixture,

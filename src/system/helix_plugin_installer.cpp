@@ -477,6 +477,11 @@ PluginSelfHealStep decide_plugin_self_heal(const PluginSelfHealFacts& facts) {
     if (!facts.local) {
         return version_differs ? PluginSelfHealStep::ReportOnly : PluginSelfHealStep::Nothing;
     }
+    if (facts.link == PluginLinkCheck::Current && version_differs &&
+        facts.restarted_for_bundled == facts.bundled_version &&
+        facts.restarted_for_reported == facts.reported_version) {
+        return PluginSelfHealStep::GiveUp;
+    }
     const bool needs_restart = facts.link == PluginLinkCheck::Relinked ||
                                (facts.link == PluginLinkCheck::Current && version_differs);
     if (!needs_restart) {

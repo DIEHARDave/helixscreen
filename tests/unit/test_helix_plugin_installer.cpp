@@ -187,6 +187,33 @@ TEST_CASE("decide_plugin_self_heal: what the startup check does about the plugin
         f.reported_version = "1.1.0";
         CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::Nothing);
     }
+    SECTION("a mismatch an earlier start already restarted for is not restarted for again") {
+        f.link = PluginLinkCheck::Current;
+        f.reported_version = "1.1.0";
+        f.restarted_for_bundled = "1.2.0";
+        f.restarted_for_reported = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::GiveUp);
+        // ... nor while a job holds the machine.
+        f.job_holds = true;
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::GiveUp);
+    }
+    SECTION("a new version pair gets one fresh attempt") {
+        f.link = PluginLinkCheck::Current;
+        f.reported_version = "1.1.0";
+        f.restarted_for_bundled = "1.1.5"; // the app updated since
+        f.restarted_for_reported = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
+        f.restarted_for_bundled = "1.2.0";
+        f.restarted_for_reported = "1.0.9"; // the plugin moved since
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
+    }
+    SECTION("a re-pointed link restarts even for a pair already tried") {
+        f.link = PluginLinkCheck::Relinked;
+        f.reported_version = "1.1.0";
+        f.restarted_for_bundled = "1.2.0";
+        f.restarted_for_reported = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
+    }
     SECTION("a remote Moonraker's mismatch is only reported, whatever the link") {
         f.local = false;
         f.link = PluginLinkCheck::Relinked;
@@ -476,19 +503,19 @@ TEST_CASE("script_output_lines strips install.sh color codes and blank lines",
     CHECK(lines[2] == "trailing without newline");
 }
 
-TEST_CASE("decide_plugin_prompt keeps the prompt off a print and what follows it",
+TEST_CASE("decide_plugin_turn keeps a plugin action off a print and what follows it",
           "[plugin_installer]") {
-    using helix::decide_plugin_prompt;
-    using Step = helix::PluginPromptStep;
+    using helix::decide_plugin_turn;
+    using Step = helix::PluginTurnStep;
 
-    // absent, job_holds, waited_for_job, modal_up, print_status_open
-    CHECK(decide_plugin_prompt(false, false, false, false, false) == Step::Stop);
-    CHECK(decide_plugin_prompt(false, true, true, true, true) == Step::Stop);
-    CHECK(decide_plugin_prompt(true, true, false, false, false) == Step::WaitForJob);
-    CHECK(decide_plugin_prompt(true, true, true, true, true) == Step::WaitForJob);
+    // wanted, job_holds, waited_for_job, {modal_up, print_status_open}
+    CHECK(decide_plugin_turn(false, false, false, {false, false}) == Step::Stop);
+    CHECK(decide_plugin_turn(false, true, true, {true, true}) == Step::Stop);
+    CHECK(decide_plugin_turn(true, true, false, {false, false}) == Step::WaitForJob);
+    CHECK(decide_plugin_turn(true, true, true, {true, true}) == Step::WaitForJob);
     // The first look after a job lets go waits for its completion flow.
-    CHECK(decide_plugin_prompt(true, false, true, false, false) == Step::WaitForScreen);
-    CHECK(decide_plugin_prompt(true, false, false, true, false) == Step::WaitForScreen);
-    CHECK(decide_plugin_prompt(true, false, false, false, true) == Step::WaitForScreen);
-    CHECK(decide_plugin_prompt(true, false, false, false, false) == Step::Offer);
+    CHECK(decide_plugin_turn(true, false, true, {false, false}) == Step::WaitForScreen);
+    CHECK(decide_plugin_turn(true, false, false, {true, false}) == Step::WaitForScreen);
+    CHECK(decide_plugin_turn(true, false, false, {false, true}) == Step::WaitForScreen);
+    CHECK(decide_plugin_turn(true, false, false, {false, false}) == Step::Go);
 }

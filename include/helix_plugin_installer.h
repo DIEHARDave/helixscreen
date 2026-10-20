@@ -253,42 +253,49 @@ std::string plugin_release_ref(std::string_view version);
 std::string plugin_remote_install_command(std::string_view ref);
 
 /**
- * @brief What the boot-time install prompt does when it is checked
+ * @brief When a plugin action that must not compete with a print may go
+ *
+ * The boot-time install prompt and a Moonraker restart for the plugin both
+ * follow this step.
  */
-enum class PluginPromptStep {
-    Stop,          ///< the plugin is not known absent: nothing to offer
+enum class PluginTurnStep {
+    Stop,          ///< nothing is wanted
     WaitForJob,    ///< a job holds the machine; ask again when it lets go
     WaitForScreen, ///< a modal or the print status overlay is up; ask again shortly
-    Offer,         ///< open it now (preferences permitting)
+    Go,            ///< act now
+};
+
+/// What is on screen that a plugin action waits behind.
+struct PluginScreenState {
+    bool modal_up = false;          ///< a modal is on screen
+    bool print_status_open = false; ///< the print status overlay is in the navigation stack
 };
 
 /**
- * @brief Decide the prompt's next step
+ * @brief Decide a plugin action's next step
  *
- * The prompt never competes with a print: not while a job holds the machine,
+ * The action never competes with a print: not while a job holds the machine,
  * and not over what follows one. A job that has just let go hands the screen to
  * its completion flow, which may not have put its modal up yet, so the first
  * check after a wait for the job always waits for the screen once more.
  *
- * @param plugin_absent discovery found the plugin absent (helix_plugin_installed == 0)
+ * @param wanted there is something to do (for the prompt: the plugin is absent)
  * @param job_holds job_holds_machine() of the current print lifecycle
  * @param waited_for_job the previous step was WaitForJob
- * @param modal_up a modal is on screen
- * @param print_status_open the print status overlay is in the navigation stack
+ * @param screen what is on screen now
  */
-constexpr PluginPromptStep decide_plugin_prompt(bool plugin_absent, bool job_holds,
-                                                bool waited_for_job, bool modal_up,
-                                                bool print_status_open) {
-    if (!plugin_absent) {
-        return PluginPromptStep::Stop;
+constexpr PluginTurnStep decide_plugin_turn(bool wanted, bool job_holds, bool waited_for_job,
+                                            PluginScreenState screen) {
+    if (!wanted) {
+        return PluginTurnStep::Stop;
     }
     if (job_holds) {
-        return PluginPromptStep::WaitForJob;
+        return PluginTurnStep::WaitForJob;
     }
-    if (waited_for_job || modal_up || print_status_open) {
-        return PluginPromptStep::WaitForScreen;
+    if (waited_for_job || screen.modal_up || screen.print_status_open) {
+        return PluginTurnStep::WaitForScreen;
     }
-    return PluginPromptStep::Offer;
+    return PluginTurnStep::Go;
 }
 
 /**
@@ -322,6 +329,7 @@ enum class PluginSelfHealStep {
     ReportOnly, ///< a remote Moonraker runs another plugin version: log it, change nothing
     RestartNow, ///< Moonraker must restart to load the plugin this app ships
     WaitForJob, ///< as RestartNow, once no job holds the machine
+    GiveUp,     ///< a restart for this same version pair already failed to load it: warn only
 };
 
 /**
@@ -333,6 +341,10 @@ struct PluginSelfHealFacts {
     std::string reported_version; ///< what the running plugin reports; empty when it did not answer
     std::string bundled_version;  ///< what this app ships; empty when unknown
     bool job_holds = false;       ///< job_holds_machine() of the current print lifecycle
+    /// The (bundled, reported) pair an earlier start already restarted Moonraker
+    /// for; empty when none. Persisted across starts.
+    std::string restarted_for_bundled;
+    std::string restarted_for_reported;
 };
 
 /**
@@ -342,7 +354,10 @@ struct PluginSelfHealFacts {
  * only on this host: a remote Moonraker's plugin is the user's to update with
  * the command the install modal shows. A re-pointed link, or a running plugin
  * whose version is not the one this app ships, takes a Moonraker restart to
- * load the right code, which never interrupts a job.
+ * load the right code, which never interrupts a job. A version mismatch an
+ * earlier start already restarted for is not restarted for again: the
+ * restart did not load it, and another would not either. A new pair, after
+ * either side changes, gets one attempt; a re-pointed link always does.
  */
 PluginSelfHealStep decide_plugin_self_heal(const PluginSelfHealFacts& facts);
 
