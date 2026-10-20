@@ -250,7 +250,7 @@ make cross-info          # Show cross-compilation help
 - **Runtime dependencies**: glibc, libstdc++, zlib and `libusb-1.0`. OpenSSL is static, as on
   `x86`; libsystemd is not linked.
 - **3D G-code view**: GLES2 is resolved at runtime from the SDL context
-  (`include/gles2_sdl_loader.h`), so a machine without GLES falls back to the 2D renderer
+  (`include/gles2_loader.h`), so a machine without GLES falls back to the 2D renderer
   instead of failing to start. Same for every SDL build, dev builds included.
 - **No splash or watchdog**: both exist to own a framebuffer, so `all` builds neither and
   `strip` strips only what was built.

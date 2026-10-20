@@ -5,10 +5,12 @@
 
 #include "ui_callback_helpers.h"
 #include "ui_change_host_modal.h"
+#include "ui_modal.h"
 #include "ui_overlay_network_settings.h"
 #include "ui_printer_list_overlay.h"
 
 #include "config.h"
+#include "remote_screen_settings_manager.h"
 
 #include <spdlog/spdlog.h>
 
@@ -63,6 +65,23 @@ void ConnectionSettingsOverlay::register_callbacks() {
                      get_connection_settings_overlay().refresh_printer_host();
                  }
              });
+         }},
+        {"on_remote_screen_changed",
+         [](lv_event_t* e) {
+             RemoteScreenSettingsManager::instance().set_enabled(helix::ui::event_checked(e));
+         }},
+        {"on_remote_control_changed",
+         [](lv_event_t* e) {
+             RemoteScreenSettingsManager::instance().set_control(helix::ui::event_checked(e));
+         }},
+        {"on_remote_forget_clicked",
+         [](lv_event_t*) {
+             helix::ui::modal_confirm(
+                 lv_tr("Forget Paired Browsers?"),
+                 lv_tr("Every browser that can control this screen will need the new pairing "
+                       "code."),
+                 ModalSeverity::Warning, lv_tr("Forget"),
+                 [] { RemoteScreenSettingsManager::instance().forget_paired_browsers(); });
          }},
     });
 }

@@ -171,6 +171,11 @@ class DisplayManager : public helix::ICalibrationSink {
         return m_remote_screen.any_active();
     }
 
+    /// The remote-screen sink set, for attaching the built-in screen server's sink.
+    helix::RemoteScreenManager& remote_screen() {
+        return m_remote_screen;
+    }
+
     /**
      * @brief Get current display width
      *

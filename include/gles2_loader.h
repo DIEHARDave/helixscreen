@@ -3,9 +3,10 @@
 
 #pragma once
 
-// GLES2 for SDL builds, resolved at runtime from the context SDL creates
-// instead of linked from libGLESv2. A desktop without GLES then still starts
-// the app; the 3D G-code renderer fails init and the viewer draws in 2D.
+// GLES2 resolved at runtime instead of linked from libGLESv2: on SDL builds
+// from the context SDL creates, on DRM builds from the dlopen()ed library
+// (gpu_libs::gles2_proc). A system without GLES then still starts the app;
+// the 3D G-code renderer and the GPU blur fail init and fall back to the CPU.
 //
 // Include this INSTEAD of <GLES2/gl2.h>: it asks for the header's types only,
 // so a GL call missing from the list below fails to compile rather than
@@ -15,12 +16,14 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
-// Every GLES2 function the SDL renderer calls.
+// Every GLES2 function the renderer, the backdrop blur and the EGL probe call.
 #define HELIX_GLES2_ENTRY_POINTS(X)                                                                \
+    X(PFNGLACTIVETEXTUREPROC, glActiveTexture)                                                     \
     X(PFNGLATTACHSHADERPROC, glAttachShader)                                                       \
     X(PFNGLBINDBUFFERPROC, glBindBuffer)                                                           \
     X(PFNGLBINDFRAMEBUFFERPROC, glBindFramebuffer)                                                 \
     X(PFNGLBINDRENDERBUFFERPROC, glBindRenderbuffer)                                               \
+    X(PFNGLBINDTEXTUREPROC, glBindTexture)                                                         \
     X(PFNGLBLENDFUNCPROC, glBlendFunc)                                                             \
     X(PFNGLBUFFERDATAPROC, glBufferData)                                                           \
     X(PFNGLCHECKFRAMEBUFFERSTATUSPROC, glCheckFramebufferStatus)                                   \
@@ -35,6 +38,7 @@
     X(PFNGLDELETEPROGRAMPROC, glDeleteProgram)                                                     \
     X(PFNGLDELETERENDERBUFFERSPROC, glDeleteRenderbuffers)                                         \
     X(PFNGLDELETESHADERPROC, glDeleteShader)                                                       \
+    X(PFNGLDELETETEXTURESPROC, glDeleteTextures)                                                   \
     X(PFNGLDEPTHFUNCPROC, glDepthFunc)                                                             \
     X(PFNGLDEPTHMASKPROC, glDepthMask)                                                             \
     X(PFNGLDISABLEPROC, glDisable)                                                                 \
@@ -44,9 +48,11 @@
     X(PFNGLENABLEVERTEXATTRIBARRAYPROC, glEnableVertexAttribArray)                                 \
     X(PFNGLFINISHPROC, glFinish)                                                                   \
     X(PFNGLFRAMEBUFFERRENDERBUFFERPROC, glFramebufferRenderbuffer)                                 \
+    X(PFNGLFRAMEBUFFERTEXTURE2DPROC, glFramebufferTexture2D)                                       \
     X(PFNGLGENBUFFERSPROC, glGenBuffers)                                                           \
     X(PFNGLGENFRAMEBUFFERSPROC, glGenFramebuffers)                                                 \
     X(PFNGLGENRENDERBUFFERSPROC, glGenRenderbuffers)                                               \
+    X(PFNGLGENTEXTURESPROC, glGenTextures)                                                         \
     X(PFNGLGETATTRIBLOCATIONPROC, glGetAttribLocation)                                             \
     X(PFNGLGETBOOLEANVPROC, glGetBooleanv)                                                         \
     X(PFNGLGETERRORPROC, glGetError)                                                               \
@@ -63,7 +69,11 @@
     X(PFNGLREADPIXELSPROC, glReadPixels)                                                           \
     X(PFNGLRENDERBUFFERSTORAGEPROC, glRenderbufferStorage)                                         \
     X(PFNGLSHADERSOURCEPROC, glShaderSource)                                                       \
+    X(PFNGLTEXIMAGE2DPROC, glTexImage2D)                                                           \
+    X(PFNGLTEXPARAMETERIPROC, glTexParameteri)                                                     \
     X(PFNGLUNIFORM1FPROC, glUniform1f)                                                             \
+    X(PFNGLUNIFORM1IPROC, glUniform1i)                                                             \
+    X(PFNGLUNIFORM2FPROC, glUniform2f)                                                             \
     X(PFNGLUNIFORM3FVPROC, glUniform3fv)                                                           \
     X(PFNGLUNIFORM4FPROC, glUniform4f)                                                             \
     X(PFNGLUNIFORM4FVPROC, glUniform4fv)                                                           \
@@ -79,8 +89,10 @@ namespace helix::gles2 {
 HELIX_GLES2_ENTRY_POINTS(HELIX_GLES2_DECLARE)
 #undef HELIX_GLES2_DECLARE
 
-/// Resolve every entry point through @p get_proc (SDL_GL_GetProcAddress) with
-/// a GL context current. All or nothing; logs the missing names on failure.
+/// Resolve every entry point through @p get_proc (SDL_GL_GetProcAddress with a
+/// GL context current, or gpu_libs::gles2_proc). All or nothing; logs the
+/// missing names on failure. Runs once per process: later calls return the
+/// first call's answer and ignore their @p get_proc.
 bool load(void* (*get_proc)(const char*));
 
 } // namespace helix::gles2

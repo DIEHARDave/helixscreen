@@ -60,6 +60,27 @@ class NetworkSettingsOverlayTestAccess {
         strncpy(o.current_ssid_, ssid.c_str(), sizeof(o.current_ssid_) - 1);
         o.current_ssid_[sizeof(o.current_ssid_) - 1] = '\0';
     }
+    /// Fold a radio answer back in, as the async completion and the backstop do.
+    static void finish_wlan_toggle(NetworkSettingsOverlay& o, bool requested, bool success,
+                                   bool actual) {
+        o.finish_wlan_toggle(requested, success, actual);
+    }
+    /// The wifi_hardware_available subject (0/1).
+    static lv_subject_t& wifi_hardware_available(NetworkSettingsOverlay& o) {
+        return o.wifi_hardware_available_;
+    }
+    /// The wifi_toggle_locked subject (0/1) the switch's disabled state binds to.
+    static lv_subject_t& wifi_toggle_locked(NetworkSettingsOverlay& o) {
+        return o.wifi_toggle_locked_;
+    }
+    /// The wifi_enabled subject (0/1) the switch's checked state binds to.
+    static lv_subject_t& wifi_enabled(NetworkSettingsOverlay& o) {
+        return o.wifi_enabled_;
+    }
+    /// The production handler behind the WiFi switch's value_changed.
+    static void wlan_toggle_changed(NetworkSettingsOverlay& o, lv_event_t* e) {
+        o.handle_wlan_toggle_changed(e);
+    }
     /// The production handler behind the password modal's Connect button.
     static void password_connect_clicked(NetworkSettingsOverlay& o) {
         o.handle_password_connect_clicked();

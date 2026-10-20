@@ -20,6 +20,7 @@
 #include "display_settings_manager.h"
 #include "input_settings_manager.h"
 #include "persisted_setting.h"
+#include "remote_screen_settings_manager.h"
 #include "safety_settings_manager.h"
 #include "system/telemetry_manager.h"
 #include "system_settings_manager.h"
@@ -37,7 +38,7 @@ using namespace helix;
 
 namespace {
 
-enum class Mgr { Settings, Display, System, Input, Audio, Safety };
+enum class Mgr { Settings, Display, System, Input, Audio, Safety, RemoteScreen };
 
 struct Row {
     const char* xml;
@@ -71,6 +72,9 @@ AudioSettingsManager& am() {
 SafetySettingsManager& safety() {
     return SafetySettingsManager::instance();
 }
+RemoteScreenSettingsManager& rs() {
+    return RemoteScreenSettingsManager::instance();
+}
 
 #define SETB(expr) [](int v) { expr(v != 0); }
 #define SETI(expr) [](int v) { expr(v); }
@@ -101,6 +105,21 @@ const std::vector<Row>& rows() {
          SETB(safety().set_tool_change_require_confirmation),
          GET(safety().get_tool_change_require_confirmation),
          SUBJ(safety().subject_tool_change_require_confirmation)},
+
+        // RemoteScreenSettingsManager
+        {"settings_remote_screen_enabled", Mgr::RemoteScreen, false, "/remote_screen/enabled", true,
+         0, 0, 1, "remote_screen_enabled", true, SETB(rs().set_enabled), GET(rs().get_enabled),
+         SUBJ(rs().subject_enabled)},
+        // Control only holds while sharing is on, so its setter turns sharing on first.
+        {"settings_remote_screen_control", Mgr::RemoteScreen, false, "/remote_screen/control", true,
+         0, 0, 1, "remote_screen_control", true,
+         [](int v) {
+             if (!rs().get_enabled()) {
+                 rs().set_enabled(true);
+             }
+             rs().set_control(v != 0);
+         },
+         GET(rs().get_control), SUBJ(rs().subject_control)},
 
         // InputSettingsManager
         {"settings_scroll_throw", Mgr::Input, false, "/input/scroll_throw", false, 25, 5, 50,
@@ -312,6 +331,10 @@ void reinit(Mgr m) {
         safety().deinit_subjects();
         safety().init_subjects();
         break;
+    case Mgr::RemoteScreen:
+        rs().deinit_subjects();
+        rs().init_subjects();
+        break;
     }
 }
 
@@ -475,9 +498,13 @@ TEST_CASE_METHOD(LVGLTestFixture, "Persisted settings: exactly the telemetry-key
 namespace {
 /// Every manager's real static table, in the order the managers are listed.
 std::vector<settings::TableView> real_tables() {
-    return {SettingsManager::persisted_table(),       DisplaySettingsManager::persisted_table(),
-            SystemSettingsManager::persisted_table(), InputSettingsManager::persisted_table(),
-            AudioSettingsManager::persisted_table(),  SafetySettingsManager::persisted_table()};
+    return {SettingsManager::persisted_table(),
+            DisplaySettingsManager::persisted_table(),
+            SystemSettingsManager::persisted_table(),
+            InputSettingsManager::persisted_table(),
+            AudioSettingsManager::persisted_table(),
+            SafetySettingsManager::persisted_table(),
+            RemoteScreenSettingsManager::persisted_table()};
 }
 } // namespace
 

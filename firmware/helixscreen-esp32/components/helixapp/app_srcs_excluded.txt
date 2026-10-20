@@ -43,6 +43,7 @@ src/api/ethernet_backend_mock.cpp  # not in the v1 Core+AMS cut
 src/api/ethernet_backend_netd.cpp  # not in the v1 Core+AMS cut
 src/api/ethernet_manager.cpp  # not in the v1 Core+AMS cut
 src/api/fbdev_size_helper.cpp  # not in the v1 Core+AMS cut
+src/api/gpu_libs.cpp  # not in the v1 Core+AMS cut
 src/api/input_device_scanner.cpp  # not in the v1 Core+AMS cut
 src/api/mock_http_file_server.cpp  # not in the v1 Core+AMS cut
 src/api/moonraker_api_mock.cpp  # not in the v1 Core+AMS cut
@@ -109,6 +110,13 @@ src/application/lan_client_auth_router.cpp  # not in the v1 Core+AMS cut
 src/application/main_loop_handler.cpp  # not in the v1 Core+AMS cut
 src/application/remote_screen_fb0_sink.cpp  # not in the v1 Core+AMS cut
 src/application/remote_screen_manager.cpp  # not in the v1 Core+AMS cut
+src/application/remote_screen_blit.cpp  # no screen server on the K-Touch: nothing to mirror into
+src/application/remote_screen_server_sink.cpp  # no screen server on the K-Touch
+src/application/remote_screen_http_server.cpp  # no screen server on the K-Touch
+src/application/remote_screen_service.cpp  # no screen server on the K-Touch
+src/application/remote_screen_webcam.cpp  # no screen server on the K-Touch
+src/application/remote_pointer.cpp  # not in the v1 Core+AMS cut
+src/application/remote_screen_control.cpp  # no screen server on the K-Touch
 src/application/splash_screen_manager.cpp  # not in the v1 Core+AMS cut
 src/application/xml_hot_reloader.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_capture.cpp  # not in the v1 Core+AMS cut
@@ -172,7 +180,7 @@ src/rendering/gcode_streaming_config.cpp  # not in the v1 Core+AMS cut
 src/rendering/gcode_streaming_controller.cpp  # not in the v1 Core+AMS cut
 src/rendering/geometry_budget_manager.cpp  # not in the v1 Core+AMS cut
 src/rendering/gl_entry_points.cpp  # not in the v1 Core+AMS cut
-src/rendering/gles2_sdl_loader.cpp  # not in the v1 Core+AMS cut
+src/rendering/gles2_loader.cpp  # not in the v1 Core+AMS cut
 src/spoolman/spoolman_slot_saver.cpp  # scope decision 2026-08-12: unreachable while ESP discovery omits server.info#2; re-adding requires restoring these TUs + verifying flash budget; until then the UI entry points fail with an error toast
 src/system/alsa_sound_backend.cpp  # not in the v1 Core+AMS cut
 src/system/android_update_source.cpp  # Android only
@@ -373,5 +381,8 @@ src/plugin/plugin_dialog.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_presenter.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_surfaces.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_consts.cpp  # not in the v1 Core+AMS cut
+src/system/jpeg_encode.cpp  # no screen server on the K-Touch: nothing to encode
+src/system/http_listen_socket.cpp  # only the screen server and the mock file server listen
+src/system/random_bytes.cpp  # its callers (telemetry, screen server pairing) are not in the firmware
 src/system/android_lan_route.cpp  # Android only
 src/utils/lan_host.cpp  # only the Android LAN routing uses it

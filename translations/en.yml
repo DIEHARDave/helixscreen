@@ -258,6 +258,7 @@ translations:
   All time: All time
   Allow: Allow
   Allow Home Screen Editing: Allow Home Screen Editing
+  Allow Remote Control: Allow Remote Control
   Allow cold load/unload: Allow cold load/unload
   Allow display to sleep during active prints: Allow display to sleep during active
     prints
@@ -1212,6 +1213,8 @@ translations:
   Ethernet: Ethernet
   Events appear here after sessions and prints: Events appear here after sessions
     and prints
+  Every browser needs a new code to control this screen: Every browser needs a new code to control this screen
+  Every browser that can control this screen will need the new pairing code.: Every browser that can control this screen will need the new pairing code.
   Every extruder's temperature at once: Every extruder's temperature at once
   Every unit keeps its filament gripped: Every unit keeps its filament gripped
   Everything else was saved. Change them in Spoolman.: Everything else was saved. Change them in Spoolman.
@@ -1527,6 +1530,8 @@ translations:
   Force/weight sensors: Force/weight sensors
   Forget: Forget
   Forget Network?: Forget Network?
+  Forget Paired Browsers: Forget Paired Browsers
+  Forget Paired Browsers?: Forget Paired Browsers?
   Forget network '{}'? You will need the password to reconnect.: Forget network '{}'? You will need the password to reconnect.
   Form tip: Form tip
   Form tip & retract: Form tip & retract
@@ -1961,6 +1966,7 @@ translations:
   Length of filament to purge: Length of filament to purge
   Length of the cooling tube section: Length of the cooling tube section
   'Length:': 'Length:'
+  Let a browser tap and drag on this screen: Let a browser tap and drag on this screen
   Let's take a quick tour so you can find things fast.: Let's take a quick tour so you can find things fast.
   Level: Level
   Leveling Gantry...: Leveling Gantry...
@@ -2541,6 +2547,7 @@ translations:
   Pair with: Pair with
   Paired: Paired
   Paired successfully: Paired successfully
+  Pairing Code: Pairing Code
   Pairing did not complete — the scanner did not bond. Try turning it off and on, then tap Pair again.: Pairing
     did not complete — the scanner did not bond. Try turning it off and on, then tap
     Pair again.
@@ -3326,6 +3333,7 @@ translations:
   Shadow Intensity: Shadow Intensity
   Shake&Tune: Shake&Tune
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.
+  Share Screen: Share Screen
   Share Usage Data: Share Usage Data
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: Share
     anonymous usage statistics to help us make HelixScreen better. No personal data
@@ -3344,6 +3352,7 @@ translations:
   Show temp for: Show temp for
   Show text labels on icon-only home screen widgets: Show text labels on icon-only
     home screen widgets
+  Show this screen as a webcam in Mainsail and Fluidd: Show this screen as a webcam in Mainsail and Fluidd
   Show up/down buttons on long lists: Show up/down buttons on long lists
   Show whatever curves you last had visible on the full graph.: Show whatever curves
     you last had visible on the full graph.

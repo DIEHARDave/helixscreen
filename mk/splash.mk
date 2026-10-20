@@ -39,7 +39,7 @@ endif
 # Add platform-specific libraries for display backend
 ifneq ($(UNAME_S),Darwin)
     # Linux: may need DRM/input libraries
-    ifeq ($(DISPLAY_BACKEND),drm)
+    ifeq ($(DISPLAY_BACKEND)-$(DLOPEN_GPU_LIBS),drm-)
         SPLASH_LDFLAGS += -ldrm -linput
         ifneq ($(filter yes,$(ENABLE_OPENGLES) $(ENABLE_GLES_3D)),)
             SPLASH_LDFLAGS += -lEGL -lGLESv2 -lgbm -ldl
@@ -95,6 +95,12 @@ SPLASH_EXTRA_OBJS := \
     $(BUILD_DIR)/splash/prerender_size_class.o \
     $(BUILD_DIR)/splash/splash_asset_choice.o \
     $(BUILD_DIR)/splash/helix_lvgl_anomaly_stub.o
+
+# Display and GPU libraries load at runtime in a DLOPEN_GPU_LIBS build (mk/implib.mk).
+ifeq ($(DLOPEN_GPU_LIBS),yes)
+    SPLASH_EXTRA_OBJS += $(IMPLIB_OBJS)
+    SPLASH_LDFLAGS += -ldl
+endif
 
 # Compile config for splash (with HELIX_SPLASH_ONLY to guard get_runtime_config dependency)
 $(BUILD_DIR)/splash/config.o: src/system/config.cpp $(LIBHV_LIB) $(LIBHV_JSON_HEADER) $(ABI_STAMP) | $(BUILD_DIR)/splash

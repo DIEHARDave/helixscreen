@@ -313,3 +313,27 @@ void MoonrakerTimelapseAPI::get_webcam_list(WebcamListCallback on_success, Error
         },
         on_error);
 }
+
+void MoonrakerTimelapseAPI::post_webcam(const json& item, SuccessCallback on_success,
+                                        ErrorCallback on_error) {
+    spdlog::debug("[Timelapse API] post_webcam({})", item.value("name", ""));
+    client_.send_jsonrpc(
+        "server.webcams.post_item", item,
+        [on_success](const json&) {
+            if (on_success)
+                on_success();
+        },
+        on_error);
+}
+
+void MoonrakerTimelapseAPI::delete_webcam(const std::string& name, SuccessCallback on_success,
+                                          ErrorCallback on_error) {
+    spdlog::debug("[Timelapse API] delete_webcam({})", name);
+    client_.send_jsonrpc(
+        "server.webcams.delete_item", json{{"name", name}},
+        [on_success](const json&) {
+            if (on_success)
+                on_success();
+        },
+        on_error);
+}

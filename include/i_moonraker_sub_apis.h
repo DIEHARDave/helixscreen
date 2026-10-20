@@ -694,6 +694,14 @@ class ITimelapseAPI {
                                      ErrorCallback on_error) = 0;
 
     virtual void get_webcam_list(WebcamListCallback on_success, ErrorCallback on_error) = 0;
+
+    /// Add or replace (by name) a webcam in Moonraker's registry: server.webcams.post_item.
+    virtual void post_webcam(const nlohmann::json& item, SuccessCallback on_success,
+                             ErrorCallback on_error) = 0;
+
+    /// Remove the webcam called @p name: server.webcams.delete_item.
+    virtual void delete_webcam(const std::string& name, SuccessCallback on_success,
+                               ErrorCallback on_error) = 0;
 };
 
 } // namespace helix

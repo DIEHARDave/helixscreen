@@ -1,6 +1,6 @@
 # Settings: Connection
 
-**Settings > Connection** is about how HelixScreen reaches your network and your printers. Come here to join a Wi-Fi network, check your Ethernet connection, add or switch printers, or point HelixScreen at a different Moonraker address.
+**Settings > Connection** is about how HelixScreen reaches your network and your printers. Come here to join a Wi-Fi network, check your Ethernet connection, add or switch printers, point HelixScreen at a different Moonraker address, or share the screen with Mainsail and Fluidd.
 
 On the Settings screen, the **Connection** row shows how the screen is connected right now: the Wi-Fi network name (for example *Wi-Fi HomeNet*), *Ethernet*, or *Not connected*.
 
@@ -61,6 +61,20 @@ To connect to a different address:
 4. Tap **Save**. HelixScreen disconnects and reconnects at the new address.
 
 Host names are looked up again every time HelixScreen reconnects, so if your router gives the printer a new IP address, HelixScreen finds it again without a restart.
+
+---
+
+## Screen Sharing
+
+> Hidden on printers whose own firmware already shares the screen (the Snapmaker U1 with its stock screen page).
+
+- **Share Screen** shows this screen live in a web browser, and as a **HelixScreen Screen** webcam in Mainsail and Fluidd.
+- **Allow Remote Control** lets a browser tap and drag on it.
+- **Pairing Code** and **Forget Paired Browsers** appear on printers where a browser needs a code before it can control the screen.
+
+![Screen Sharing settings](../../../images/user/screen-sharing-settings.png)
+
+How to open it, which printers ask for a code, and troubleshooting: [Screen Sharing and Remote Control](../screen-sharing.md).
 
 ---
 

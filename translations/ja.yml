@@ -252,6 +252,7 @@ translations:
   All time: '全期間'
   Allow: '許可'
   Allow Home Screen Editing: 'ホーム画面の編集を許可'
+  Allow Remote Control: 'リモート操作を許可'
   Allow cold load/unload: コールド時の装填/取り出しを許可
   Allow display to sleep during active prints: 印刷中のスリープを許可
   Allwinner: Allwinner
@@ -1177,6 +1178,8 @@ translations:
   Estimating...: 推定中...
   Ethernet: イーサネット
   Events appear here after sessions and prints: セッションと印刷の後にイベントがここに表示されます
+  Every browser needs a new code to control this screen: 'この画面を操作するには、各ブラウザに新しいコードが必要です'
+  Every browser that can control this screen will need the new pairing code.: 'この画面を操作できるすべてのブラウザで、新しいペアリングコードが必要になります。'
   Every extruder's temperature at once: 全エクストルーダーの温度を一覧表示
   Every unit keeps its filament gripped: "すべてのユニットがフィラメントを保持したままです"
   Everything else was saved. Change them in Spoolman.: その他はすべて保存されました。変更は Spoolman で行ってください。
@@ -1486,6 +1489,8 @@ translations:
   Force/weight sensors: '力/重量センサー'
   Forget: 登録解除
   Forget Network?: ネットワークを登録解除しますか？
+  Forget Paired Browsers: 'ペアリング済みブラウザを削除'
+  Forget Paired Browsers?: 'ペアリング済みブラウザを削除しますか？'
   Forget network '{}'? You will need the password to reconnect.: ネットワーク '{}' を登録解除しますか？再接続にはパスワードが必要です。
   Form tip: '先端を成形'
   Form tip & retract: '先端を成形して引き戻し'
@@ -1900,6 +1905,7 @@ translations:
   Length of filament to purge: 'パージするフィラメントの長さ'
   Length of the cooling tube section: '冷却チューブ区間の長さ'
   'Length:': '長さ:'
+  Let a browser tap and drag on this screen: 'ブラウザからこの画面のタップとドラッグを許可'
   Let's take a quick tour so you can find things fast.: 機能をすぐに見つけられるよう、簡単なツアーを始めましょう。
   Level: レベル
   Leveling Gantry...: ガントリーレベリング中...
@@ -2469,6 +2475,7 @@ translations:
   Pair with: ペアリング先
   Paired: ペアリング済み
   Paired successfully: ペアリング成功
+  Pairing Code: 'ペアリングコード'
   Pairing did not complete — the scanner did not bond. Try turning it off and on, then tap Pair again.: ペアリングが完了しませんでした
     — スキャナーがボンディングされませんでした。スキャナーの電源を入れ直してから、もう一度 Pair をタップしてください。
   Pairing failed: ペアリング失敗
@@ -3220,6 +3227,7 @@ translations:
   Shadow Intensity: 影の強度
   Shake&Tune: 'Shake&Tune'
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: ツールヘッドを対角線ごとに動かし、2つの結果を同時に表示します。張りが同じベルトは同じ位置でピークになります。
+  Share Screen: '画面を共有'
   Share Usage Data: 使用データを共有
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: 匿名の使用統計を共有して、HelixScreen
     の改善にご協力ください。個人データは一切収集されません。
@@ -3235,6 +3243,7 @@ translations:
   Show sliced colors: スライスした色を表示
   Show temp for: 温度表示対象
   Show text labels on icon-only home screen widgets: アイコンのみのホーム画面ウィジェットにテキストラベルを表示
+  Show this screen as a webcam in Mainsail and Fluidd: 'この画面をMainsailとFluiddでウェブカメラとして表示'
   Show up/down buttons on long lists: 長いリストに上下ボタンを表示
   Show whatever curves you last had visible on the full graph.: フルグラフで最後に表示していた曲線を表示します。
   Showing the 50 newest files. See more in the printer's web UI.: '最新の50ファイルを表示しています。それ以外はプリンターのWeb画面で確認してください。'

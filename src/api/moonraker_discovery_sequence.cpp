@@ -349,6 +349,10 @@ void MoonrakerDiscoverySequence::detect_webcam(json service_state, bool probe_lo
                         spdlog::debug("[Discovery] Skipping disabled webcam '{}'", cam.name);
                         continue;
                     }
+                    if (webcam::is_own_screen_webcam(cam)) {
+                        spdlog::debug("[Discovery] Skipping our own screen webcam");
+                        continue;
+                    }
                     // Cross-check the SERVICE before the URL. server.webcams.list
                     // answers "is a webcam configured", never "is the thing
                     // serving it running": a crashed crowsnest leaves its entry
