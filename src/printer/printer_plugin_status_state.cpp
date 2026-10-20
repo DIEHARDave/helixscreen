@@ -58,15 +58,9 @@ void PrinterPluginStatusState::deinit_subjects() {
 }
 
 void PrinterPluginStatusState::set_installed(bool installed) {
-    set_presence(installed ? kHelixPluginInstalled : kHelixPluginAbsent);
-}
-
-void PrinterPluginStatusState::set_presence(int presence) {
-    lv_subject_set_int(&helix_plugin_installed_, presence);
-    spdlog::info("[PrinterPluginStatusState] HelixPrint plugin {}",
-                 presence == kHelixPluginInstalled  ? "installed"
-                 : presence == kHelixPluginDisabled ? "installed but disabled"
-                                                    : "not installed");
+    lv_subject_set_int(&helix_plugin_installed_,
+                       installed ? kHelixPluginInstalled : kHelixPluginAbsent);
+    spdlog::info("[PrinterPluginStatusState] HelixPrint plugin installed: {}", installed);
 }
 
 void PrinterPluginStatusState::set_link_dir(const std::string& dir) {

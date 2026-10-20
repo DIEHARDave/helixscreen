@@ -7,21 +7,10 @@
 
 namespace helix {
 
-/// helix_plugin_installed values once the probe has answered (-1 before).
+/// helix_plugin_installed values once the probe has answered (-1 before). A
+/// plugin set to `enabled: False` serves nothing, so it reads as absent.
 constexpr int kHelixPluginAbsent = 0;
 constexpr int kHelixPluginInstalled = 1;
-/// Loaded with `enabled: False`: the component and its config section are in
-/// place, so there is nothing to install, yet it serves no modified prints.
-constexpr int kHelixPluginDisabled = 2;
-
-/// The helix_plugin_installed value for a server.helix.status probe: whether
-/// the component answered at all, and whether it reported itself enabled.
-constexpr int helix_plugin_presence(bool answered, bool enabled) {
-    if (!answered) {
-        return kHelixPluginAbsent;
-    }
-    return enabled ? kHelixPluginInstalled : kHelixPluginDisabled;
-}
 
 enum class MacroInstallStatus;
 
@@ -93,9 +82,6 @@ class PrinterPluginStatusState {
      */
     void set_installed(bool installed);
 
-    /// One of the kHelixPlugin* values. Main thread only, like set_installed().
-    void set_presence(int presence);
-
     /// The plugin's link directory (its status' `symlink_dir`); empty when it
     /// reported none. Also tells the filename helpers to recognise it.
     void set_link_dir(const std::string& dir);
@@ -140,7 +126,7 @@ class PrinterPluginStatusState {
     // Subject accessors
     // ========================================================================
 
-    /// -1 unknown, else a kHelixPlugin* value (0 absent, 1 installed, 2 disabled)
+    /// -1 unknown, else a kHelixPlugin* value (0 absent, 1 installed and enabled)
     lv_subject_t* get_helix_plugin_installed_subject() {
         return &helix_plugin_installed_;
     }

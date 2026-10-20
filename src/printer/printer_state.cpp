@@ -644,14 +644,10 @@ void PrinterState::merge_firmware_option_defaults(std::map<std::string, bool> de
 }
 
 void PrinterState::set_helix_plugin_installed(bool installed) {
-    set_helix_plugin_presence(installed ? kHelixPluginInstalled : kHelixPluginAbsent);
-}
-
-void PrinterState::set_helix_plugin_presence(int presence) {
     // Thread-safe: Use ui_queue_update to update LVGL subject from any thread
     // We handle the async dispatch here because we need to update composite subjects after
-    async_lifetime_.defer("PrinterState::set_helix_plugin_presence", [this, presence]() {
-        plugin_status_state_.set_presence(presence);
+    async_lifetime_.defer("PrinterState::set_helix_plugin_installed", [this, installed]() {
+        plugin_status_state_.set_installed(installed);
 
         // Update composite subjects for G-code modification options
         update_gcode_modification_visibility();

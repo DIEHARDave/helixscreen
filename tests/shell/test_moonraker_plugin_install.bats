@@ -1038,3 +1038,51 @@ exec $real \"\$@\""
     # The survivor is the uninstall's: the file with the section in it.
     grep -q '^\[helix_print\]' "$c"/moonraker.conf.bak.* || fail "kept the wrong backup"
 }
+
+@test "installing over a section set to enabled: False turns the plugin on" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[helix_print]\nenabled: False\ncleanup_delay: 3600\n\n[octoprint_compat]\n' \
+        > "$c/moonraker.conf"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    [ "$(count_helix_sections "$c")" -eq 1 ] || fail "duplicate [helix_print]: $(cat "$c/moonraker.conf")"
+    grep -qx 'enabled: True' "$c/moonraker.conf" || fail "not enabled: $(cat "$c/moonraker.conf")"
+    ! grep -qi '^enabled[[:space:]]*[:=][[:space:]]*false' "$c/moonraker.conf" || fail "still disabled"
+    grep -qx 'cleanup_delay: 3600' "$c/moonraker.conf" || fail "the section's other options were lost"
+    grep -q '^\[octoprint_compat\]' "$c/moonraker.conf" || fail "the next section was lost"
+    [ -L "$home/moonraker/moonraker/components/helix_print.py" ]
+}
+
+@test "installing turns on a disabled section in an included file, whatever the false spelling" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[include helix.conf]\n' > "$c/moonraker.conf"
+    printf '[helix_print]\n  Enabled = no\n' > "$c/helix.conf"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    grep -qx 'enabled: True' "$c/helix.conf" || fail "not enabled: $(cat "$c/helix.conf")"
+    [ "$(count_helix_sections "$c")" -eq 1 ]
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" || fail "moonraker.conf was edited"
+}
+
+@test "installing over an enabled section leaves the config untouched" {
+    local home="$BATS_TEST_TMPDIR/home"
+    setup_plain_home "$home"
+    local c="$home/printer_data/config"
+    printf '[server]\nhost: 0.0.0.0\n\n[helix_print]\nenabled: True\n# enabled: False\n' > "$c/moonraker.conf"
+    cp "$c/moonraker.conf" "$BATS_TEST_TMPDIR/conf.before"
+
+    run env HOME="$home" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    cmp -s "$BATS_TEST_TMPDIR/conf.before" "$c/moonraker.conf" || fail "edited: $(cat "$c/moonraker.conf")"
+    [ -z "$(find "$c" -name 'moonraker.conf.bak.*')" ] || fail "backed up a file it did not change"
+}

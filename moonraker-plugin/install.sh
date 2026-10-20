@@ -310,6 +310,23 @@ ensure_visible_symlink_dir() {
         '{ print } !done && /^\[helix_print\]/ { print "symlink_dir: helix_print"; done = 1 }'
 }
 
+# Set `enabled: True` in place of any `enabled` option in @1's [helix_print]
+# section that reads as false to Moonraker (false, no, off or 0, any case),
+# with a backup. A file with no such line is left untouched. Exits through
+# error() when the file needs the edit and cannot take it.
+enable_helix_section() {
+    file="$1"
+    # shellcheck disable=SC2016  # awk's own $ fields
+    _eh_disabled='/^\[/ { s = ($0 ~ /^\[helix_print\]/) }
+        s && tolower($0) ~ /^[ \t]*enabled[ \t]*[:=][ \t]*(false|no|off|0)[ \t\r]*$/'
+    awk "$_eh_disabled { found = 1 } END { exit !found }" "$file" || return 0
+    backup_file=$(backup_config "$file") || error "Could not back up $file"
+    info "Created backup: $backup_file"
+    info "Turning the plugin back on: enabled: True in $(basename "$file")"
+    rewrite_with_awk "$file" "$_eh_disabled { print \"enabled: True\"; next } { print }" ||
+        error "Could not write $file - see $backup_file"
+}
+
 # Copy config file @1 to @1.bak.<timestamp>, keeping only that newest of the
 # backups this script makes of it, and print the backup's path. Returns 1 when
 # the copy failed; older backups are then left alone.
@@ -688,8 +705,10 @@ auto_install() {
         # writes a second one beside it.
         section_holder=""
         for file in $(helix_print_section_files "$config_dir/moonraker.conf" "$(running_moonraker_root)"); do
-            section_holder="$file"
-            break
+            [ -n "$section_holder" ] || section_holder="$file"
+            # An install ends with the plugin working, so a section that
+            # switches it off is switched back on.
+            enable_helix_section "$file"
         done
         if [ -n "$section_holder" ]; then
             info "Config section [helix_print] already exists in $section_holder"

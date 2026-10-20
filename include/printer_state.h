@@ -674,10 +674,6 @@ class PrinterState {
      */
     void set_helix_plugin_installed(bool installed);
 
-    /// The plugin's presence as a kHelixPlugin* value (printer_plugin_status_state.h),
-    /// which also tells a disabled plugin from an absent one. Any thread.
-    void set_helix_plugin_presence(int presence);
-
     /// The plugin's link directory from its status (empty when not reported);
     /// any thread.
     void set_helix_plugin_link_dir(const std::string& dir);
