@@ -288,6 +288,16 @@ std::vector<FrChartRun> fr_chart_finite_runs(const float* amps, size_t count) {
 }
 
 // NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
+lv_opa_t fr_chart_fill_opa_at(int32_t y, int32_t plot_y1, int32_t plot_y2) {
+    if (plot_y2 <= plot_y1) {
+        return LV_OPA_TRANSP;
+    }
+    const int32_t row = std::clamp(y, plot_y1, plot_y2);
+    return static_cast<lv_opa_t>(static_cast<int32_t>(kFrFillTopOpa) * (plot_y2 - row) /
+                                 (plot_y2 - plot_y1));
+}
+
+// NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
 std::vector<std::string> fr_chart_amplitude_labels(float amp_min, float amp_max, int divisions,
                                                    bool percent) {
     std::vector<std::string> labels;
@@ -1384,12 +1394,13 @@ static void draw_styled_series_cb(lv_event_t* e) {
             lv_draw_triangle_dsc_t tri_dsc;
             lv_draw_triangle_dsc_init(&tri_dsc);
             tri_dsc.opa = LV_OPA_COVER;
-            // Vertical gradient per triangle: the series color at ~35% opacity
-            // at the curve fading to transparent at the plot bottom.
+            // LVGL spans a triangle's vertical gradient over that triangle's own
+            // bounding box. Every triangle here reaches the plot bottom, so
+            // starting each one at the plot-wide ramp's value for its top row
+            // shades every row identically across triangles.
             tri_dsc.grad.dir = LV_GRAD_DIR_VER;
             tri_dsc.grad.stops_count = 2;
             tri_dsc.grad.stops[0].color = series->color;
-            tri_dsc.grad.stops[0].opa = 90;
             tri_dsc.grad.stops[0].frac = 0;
             tri_dsc.grad.stops[1].color = series->color;
             tri_dsc.grad.stops[1].opa = LV_OPA_TRANSP;
@@ -1409,11 +1420,15 @@ static void draw_styled_series_cb(lv_event_t* e) {
                     tri_dsc.p[1] = top_b;
                     tri_dsc.p[2].x = top_a.x;
                     tri_dsc.p[2].y = plot.y2;
+                    tri_dsc.grad.stops[0].opa = fr_chart_fill_opa_at(
+                        static_cast<int32_t>(std::min(top_a.y, top_b.y)), plot.y1, plot.y2);
                     lv_draw_triangle(layer, &tri_dsc);
 
                     tri_dsc.p[0] = top_b;
                     tri_dsc.p[1].x = top_b.x;
                     tri_dsc.p[1].y = plot.y2;
+                    tri_dsc.grad.stops[0].opa =
+                        fr_chart_fill_opa_at(static_cast<int32_t>(top_b.y), plot.y1, plot.y2);
                     lv_draw_triangle(layer, &tri_dsc);
                 }
             }

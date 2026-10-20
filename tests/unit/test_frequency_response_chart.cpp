@@ -1520,3 +1520,28 @@ TEST_CASE("amplitude labels are distinct and compact", "[frequency_response_char
     CHECK(fr_chart_amplitude_labels(0.0f, 100.0f, 4, true) == V{"100%", "75%", "50%", "25%", "0%"});
     CHECK(fr_chart_amplitude_labels(0.0f, 1.0f, 0, false).empty());
 }
+
+TEST_CASE("fr_chart_fill_opa_at shades a row the same from any triangle top",
+          "[frequency_response_chart][fill]") {
+    constexpr int32_t kTop = 20;
+    constexpr int32_t kBottom = 220;
+    CHECK(fr_chart_fill_opa_at(kTop, kTop, kBottom) == kFrFillTopOpa);
+    CHECK(fr_chart_fill_opa_at(kBottom, kTop, kBottom) == 0);
+    CHECK(fr_chart_fill_opa_at(kTop - 10, kTop, kBottom) == kFrFillTopOpa);
+    CHECK(fr_chart_fill_opa_at(kBottom + 10, kTop, kBottom) == 0);
+    CHECK(fr_chart_fill_opa_at(100, kTop, kTop) == 0);
+
+    // A triangle's vertical gradient runs from its top row's opacity down to 0
+    // at the plot bottom. Two adjacent triangles with different tops must give
+    // a row they share the same opacity, or the seam between them shows.
+    auto shade = [&](int32_t tri_top, int32_t row) {
+        const double top_opa = fr_chart_fill_opa_at(tri_top, kTop, kBottom);
+        return top_opa * static_cast<double>(kBottom - row) /
+               static_cast<double>(kBottom - tri_top);
+    };
+    for (const int32_t row : {160, 190, 215}) {
+        INFO("row " << row);
+        CHECK(std::abs(shade(25, row) - shade(55, row)) <= 1.0);
+        CHECK(std::abs(shade(40, row) - shade(150, row)) <= 1.0);
+    }
+}

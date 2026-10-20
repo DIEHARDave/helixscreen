@@ -360,6 +360,21 @@ struct FrChartRun {
 // NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
 [[nodiscard]] std::vector<FrChartRun> fr_chart_finite_runs(const float* amps, size_t count);
 
+/// Fill opacity at the top of the plot; it fades linearly to transparent at the
+/// plot bottom.
+// NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
+inline constexpr lv_opa_t kFrFillTopOpa = 90;
+
+/**
+ * @brief Fill opacity at screen row @p y of a plot spanning [plot_y1, plot_y2] (pure)
+ *
+ * One ramp for the whole plot, so every fill triangle that reaches the plot
+ * bottom and starts its gradient here at its own top row shades a row the same
+ * as its neighbours do: kFrFillTopOpa at plot_y1, 0 at plot_y2, clamped outside.
+ */
+// NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
+[[nodiscard]] lv_opa_t fr_chart_fill_opa_at(int32_t y, int32_t plot_y1, int32_t plot_y2);
+
 // ============================================================================
 // Data Management
 // ============================================================================
