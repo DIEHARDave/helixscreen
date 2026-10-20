@@ -215,7 +215,11 @@ class HomePanel : public PanelBase {
     /// through the same on_edit_pages_changed() rebuild, on the next tick.
     void add_page_from_slot();
     void update_arrow_visibility(int page);
-    void populate_page(int page_index, bool force);
+    /// Build page @p page_index's widgets. False when queued work run by its
+    /// drain rebuilt the carousel (every page is refilled on the next tick) or
+    /// freed the panel: the caller's page list is stale, and it must return
+    /// without touching the panel.
+    [[nodiscard]] bool populate_page(int page_index, bool force);
     /// Re-seats every page in place when the new config holds the same widgets with the
     /// same config and only placement differs (a printer switch between printers whose
     /// layouts differ in placement only). False, having changed nothing, when any page

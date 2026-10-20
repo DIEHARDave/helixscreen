@@ -38,6 +38,7 @@
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/grid_edit_mode_test_access.h"
 #include "../test_helpers/home_panel_test_access.h"
+#include "../test_helpers/log_capture.h"
 #include "../test_helpers/mock_config_storage.h"
 #include "../test_helpers/scoped_animations_enabled.h"
 #include "../test_helpers/scoped_config_write_counter.h"
@@ -4620,4 +4621,30 @@ TEST_CASE_METHOD(EditHomeFixture,
     CHECK(carousel() == nullptr);
     CHECK(slot_container() == nullptr);
     settle();
+}
+
+// A build whose page population drains a rebuild that shrinks the page set must
+// stop: its own page count no longer describes the carousel.
+TEST_CASE_METHOD(EditHomeFixture,
+                 "a carousel build whose population drains a smaller rebuild stops there",
+                 "[home][drain_reentrancy]") {
+    build_home();
+    REQUIRE(page_count() == 2);
+
+    // Queued from inside the teardown's frozen drain, so it lands in the first
+    // page population's drain of the build that follows.
+    helix::ui::UpdateQueue::instance().queue("test::requeue_shrink", [this]() {
+        helix::ui::UpdateQueue::instance().queue("test::shrink_and_rebuild", [this]() {
+            REQUIRE(config().remove_page(1));
+            HomePanelTestAccess::rebuild_carousel(panel(), 0);
+        });
+    });
+
+    helix::LogCapture log(512);
+    HomePanelTestAccess::rebuild_carousel(panel(), 0);
+    settle();
+
+    CHECK(log.count_containing("out of range") == 0);
+    REQUIRE(page_count() == 1);
+    CHECK(widget_on(0, "temperature") != nullptr);
 }
