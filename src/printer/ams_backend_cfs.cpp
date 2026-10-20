@@ -3978,6 +3978,7 @@ AmsError AmsBackendCfs::dispatch_action_script(std::string gcode) {
 
 void AmsBackendCfs::begin_phase_tracking() {
     phase_tracker_ = PhaseTracker{};
+    phase_fault_ = PhaseVerdict::Ok;
     phase_tracker_.active = true;
     // Latch the intent NOW. Every caller sets system_info_.action immediately
     // before calling us, and apply_synthesized_action_locked() will overwrite
@@ -3995,6 +3996,7 @@ void AmsBackendCfs::end_phase_tracking() {
 
 void AmsBackendCfs::on_filament_transition_locked(bool new_detected) {
     if (!phase_tracker_.active) {
+        retire_resolved_phase_fault_locked(new_detected);
         spdlog::debug("[AMS CFS] Phase: filament {} -> {} (no active op)", last_filament_detected_,
                       new_detected);
         return;
@@ -4144,6 +4146,34 @@ std::string AmsBackendCfs::phase_verdict_message(PhaseVerdict verdict) {
     return {};
 }
 
+bool AmsBackendCfs::phase_fault_resolved(PhaseVerdict verdict, bool filament_detected) {
+    switch (verdict) {
+    case PhaseVerdict::UnloadLeftFilament:
+        return !filament_detected;
+    case PhaseVerdict::LoadDidNotReachNozzle:
+        return filament_detected;
+    case PhaseVerdict::Ok:
+    case PhaseVerdict::Unverifiable:
+        break;
+    }
+    return false;
+}
+
+void AmsBackendCfs::retire_resolved_phase_fault_locked(bool filament_detected) {
+    // Only the fault finish_action raised. A runout or box error may have
+    // replaced it since, and the toolhead switch says nothing about those.
+    if (system_info_.action != AmsAction::ERROR ||
+        system_info_.operation_detail != phase_verdict_message(phase_fault_) ||
+        !phase_fault_resolved(phase_fault_, filament_detected)) {
+        return;
+    }
+    spdlog::info("{} Toolhead sensor now reads {} - phase fault resolved, ERROR -> IDLE",
+                 backend_log_tag(), filament_detected ? "filament" : "empty");
+    system_info_.action = AmsAction::IDLE;
+    system_info_.operation_detail.clear();
+    phase_fault_ = PhaseVerdict::Ok;
+}
+
 std::optional<bool> AmsBackendCfs::toolhead_filament_unaccounted() const {
     std::lock_guard<std::mutex> lock(mutex_);
     // Klipper reports filament_detected null until the sensor takes a first
@@ -4177,6 +4207,7 @@ void AmsBackendCfs::finish_action() {
                       ams_action_to_string(intent), failure);
         system_info_.action = AmsAction::ERROR;
         system_info_.operation_detail = failure;
+        phase_fault_ = verdict;
         // No PostOpCooldownManager::schedule() here: the nozzle stays hot so
         // the user can retry or clear without a reheat wait.
         return;

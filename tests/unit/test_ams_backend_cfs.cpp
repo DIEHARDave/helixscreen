@@ -5401,6 +5401,57 @@ TEST_CASE("CFS phase verify: starting a new operation clears the fault", "[ams][
     CHECK(backend.get_system_info().action == AmsAction::LOADING);
 }
 
+namespace {
+nlohmann::json toolhead_sensor_frame(bool detected) {
+    return {{"params", nlohmann::json::array({{{"filament_switch_sensor filament_sensor",
+                                                {{"filament_detected", detected}}}}})}};
+}
+} // namespace
+
+TEST_CASE("CFS phase verify: clearing the toolhead by hand retires an unload fault",
+          "[ams][cfs][968]") {
+    CfsRemapHelper backend;
+
+    CfsTestAccess::force_phase_intent(backend, AmsAction::UNLOADING);
+    CfsTestAccess::set_filament_sensor(backend, /*seen=*/true, /*detected=*/true);
+    CfsTestAccess::complete_action(backend);
+    REQUIRE(backend.get_system_info().action == AmsAction::ERROR);
+    REQUIRE(backend.current_error().has_value());
+
+    // Still blocked: the condition the fault names has not changed.
+    CfsTestAccess::handle_status(backend, toolhead_sensor_frame(true));
+    REQUIRE(backend.current_error().has_value());
+
+    // The user pulls the stub out and the switch reads empty: the fault named
+    // exactly this condition, so it no longer holds.
+    CfsTestAccess::handle_status(backend, toolhead_sensor_frame(false));
+    CHECK_FALSE(backend.current_error().has_value());
+    CHECK(backend.get_system_info().action == AmsAction::IDLE);
+}
+
+TEST_CASE("CFS phase verify: filament arriving retires a load fault", "[ams][cfs][968]") {
+    CfsRemapHelper backend;
+
+    CfsTestAccess::force_phase_intent(backend, AmsAction::LOADING);
+    CfsTestAccess::set_filament_sensor(backend, true, false);
+    CfsTestAccess::complete_action(backend);
+    REQUIRE(backend.current_error().has_value());
+
+    CfsTestAccess::handle_status(backend, toolhead_sensor_frame(true));
+    CHECK_FALSE(backend.current_error().has_value());
+    CHECK(backend.get_system_info().action == AmsAction::IDLE);
+}
+
+TEST_CASE("CFS phase verify: only the matching sensor edge retires a fault", "[ams][cfs][968]") {
+    using V = AmsBackendCfs::PhaseVerdict;
+    CHECK(AmsBackendCfs::phase_fault_resolved(V::UnloadLeftFilament, /*filament_detected=*/false));
+    CHECK_FALSE(AmsBackendCfs::phase_fault_resolved(V::UnloadLeftFilament, true));
+    CHECK(AmsBackendCfs::phase_fault_resolved(V::LoadDidNotReachNozzle, true));
+    CHECK_FALSE(AmsBackendCfs::phase_fault_resolved(V::LoadDidNotReachNozzle, false));
+    CHECK_FALSE(AmsBackendCfs::phase_fault_resolved(V::Ok, false));
+    CHECK_FALSE(AmsBackendCfs::phase_fault_resolved(V::Unverifiable, true));
+}
+
 TEST_CASE("CFS phase verify: a good load completes to IDLE with no fault", "[ams][cfs][968]") {
     CfsRemapHelper backend;
 

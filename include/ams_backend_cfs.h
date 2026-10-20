@@ -666,6 +666,12 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// touching the policy or its tests.
     [[nodiscard]] static std::string phase_verdict_message(PhaseVerdict verdict);
 
+    /// True when the toolhead switch now contradicts the condition a failed
+    /// verdict reported: filament gone after UnloadLeftFilament, or arrived
+    /// after LoadDidNotReachNozzle. The user fixing it by hand is the usual
+    /// way out, and nothing else would retire the fault.
+    [[nodiscard]] static bool phase_fault_resolved(PhaseVerdict verdict, bool filament_detected);
+
     /// Surface a verification failure to `AmsErrorBridge`, which polls this on
     /// the rising edge into `AmsAction::ERROR`.
     [[nodiscard]] std::optional<helix::ErrorEvent> current_error() const override;
@@ -1241,6 +1247,12 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
         int baseline_target_deci = 0;      // extruder target when heating first completed
     };
     PhaseTracker phase_tracker_;
+    // The verdict behind a phase-verification ERROR, so a later sensor edge can
+    // tell whether it resolves that fault. Ok when no such fault is raised.
+    PhaseVerdict phase_fault_ = PhaseVerdict::Ok;
+    /// Drop a phase-verification fault the toolhead switch shows is fixed.
+    /// **Caller must hold mutex_.**
+    void retire_resolved_phase_fault_locked(bool filament_detected);
     int last_extruder_target_deci_ = 0;
     int last_extruder_temp_deci_ = 0;
     bool last_filament_detected_ = false;
