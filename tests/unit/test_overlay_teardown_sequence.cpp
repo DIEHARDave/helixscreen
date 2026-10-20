@@ -214,9 +214,9 @@ TEST_CASE_METHOD(LVGLTestFixture,
     process_async_timers();
 }
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && !defined(HELIX_RELEASE_BUILD)
 // The teardown writes through `root` and runs the owner's hooks after its
-// drain, so an owner freed by the drained work is a use-after-free. Debug
+// drain, so an owner freed by the drained work is a use-after-free. Non-release
 // builds stop there instead. Forked: the assert aborts the process.
 TEST_CASE_METHOD(LVGLTestFixture,
                  "teardown_overlay_ui: an owner freed by its own drain trips the debug assert",
@@ -241,3 +241,27 @@ TEST_CASE_METHOD(LVGLTestFixture,
     CHECK(WTERMSIG(status) == SIGABRT);
 }
 #endif
+
+// The drained close can be followed, in the same drain, by an open that builds
+// a fresh tree into the same pointer. The outer teardown must leave that tree.
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "teardown_overlay_ui: a tree re-created inside the drain survives the outer call",
+                 "[overlay_teardown][drain_reentrancy]") {
+    lv_obj_t* root = lv_obj_create(lv_screen_active());
+    lv_obj_t* fresh = nullptr;
+    int after_runs = 0;
+
+    helix::ui::UpdateQueue::instance().queue("test::close_then_reopen", [&]() {
+        teardown_overlay_ui(root, "ReopenCase", TeardownDelete::Deferred, nullptr,
+                            TeardownHooks::after([&] { ++after_runs; }));
+        root = fresh = lv_obj_create(lv_screen_active());
+    });
+    CHECK_FALSE(teardown_overlay_ui(root, "ReopenCase", TeardownDelete::Deferred, nullptr,
+                                    TeardownHooks::after([&] { ++after_runs; })));
+
+    CHECK(after_runs == 1);
+    CHECK(root == fresh);
+    process_async_timers();
+    CHECK(lv_obj_is_valid(fresh));
+    lv_obj_delete(fresh);
+}

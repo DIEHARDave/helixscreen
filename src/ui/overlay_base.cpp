@@ -152,13 +152,23 @@ bool helix::ui::teardown_overlay_ui(lv_obj_t*& root, const char* owner_name, Tea
     // Drain deferred observer callbacks while all pointers are still valid.
     // observe<int> queues lambdas via queue_update() that capture raw
     // panel pointers. Processing them here prevents use-after-free.
+    lv_obj_t* const doomed = root;
     auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
     helix::ui::UpdateQueue::instance().drain();
-    assert((!hooks.owner || !hooks.owner->expired()) &&
-           "teardown_overlay_ui: the owner was freed by work its own drain ran");
+    if (hooks.owner && hooks.owner->expired()) {
+        spdlog::error("[{}] Overlay owner freed by work its own teardown drained; root and "
+                      "hooks point into it, so the teardown stops",
+                      owner_name);
+#ifndef HELIX_RELEASE_BUILD
+        assert(false && "teardown_overlay_ui: the owner was freed by work its own drain ran");
+#endif
+        return false;
+    }
     // The drained work can include a close callback that tore this overlay
-    // down already; its hooks have run and must not run twice.
-    if (!root) {
+    // down already, and an open that built a fresh tree into `root` after it.
+    // That teardown ran the hooks; this one must neither run them again nor
+    // delete the fresh tree.
+    if (root != doomed) {
         return false;
     }
 

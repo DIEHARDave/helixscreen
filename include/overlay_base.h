@@ -453,8 +453,9 @@ struct TeardownHooks {
     std::function<void()> after_delete;
     /// The object @p root lives in. It must outlive the step-1 drain: the
     /// teardown keeps writing through @p root and runs the hooks after it.
-    /// Debug builds assert that it did; every owner today is a static or
-    /// lazy_global panel, freed only outside any drain.
+    /// A non-release build asserts that it did, and a release build logs and
+    /// stops the teardown; every owner today is a static or lazy_global panel,
+    /// freed only outside any drain.
     std::optional<helix::LifetimeToken> owner{};
 
     static TeardownHooks before(std::function<void()> fn) {
@@ -477,7 +478,8 @@ struct TeardownHooks {
  * Performs, in order:
  * 1. Drains the UpdateQueue under a scoped freeze while all pointers are
  *    still valid (observe<int> callbacks capture raw panel pointers), and
- *    stops there when that drain ran a teardown of the same root
+ *    stops there when that drain tore the same root down (leaving @p root
+ *    null, or pointing at a tree re-created after it)
  * 2. Unregisters the close callback and overlay instance from
  *    NavigationManager (before deletion, so a manual destroy while the panel
  *    is still stacked cannot double-invoke)
@@ -501,7 +503,7 @@ struct TeardownHooks {
  * The owner must outlive the step-1 drain: @p root and the hooks point into it.
  * Every owner is a static or lazy_global panel, freed only by
  * StaticPanelRegistry teardown, which never runs inside a drain; an owner that
- * passes TeardownHooks::owner is asserted on in debug builds.
+ * passes TeardownHooks::owner is checked (see TeardownHooks::owner).
  *
  * @param root Root widget to tear down; nulled on return
  * @param owner_name Logged and breadcrumbed owner name
