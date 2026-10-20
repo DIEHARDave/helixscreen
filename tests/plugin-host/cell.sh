@@ -13,7 +13,7 @@
 #   sections          how many [helix_print] sections the config tree holds
 #   link              the state of <components>/helix_print.py
 #   confdiff          the config against the staged copy, backups aside (ours
-#                     are *.bak.<ts>; Moonraker keeps its own .moonraker.conf.bkp)
+#                     are *.bak.helix.<ts>; Moonraker keeps its own .moonraker.conf.bkp)
 #   backups           the *.bak* files the config dir gained
 #   env               the cell's facts, KEY=value
 #

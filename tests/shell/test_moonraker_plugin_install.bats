@@ -1046,24 +1046,25 @@ exec $real \"\$@\""
         || fail "unexpected result: $(cat "$c/moonraker.conf")"
 }
 
-@test "install and uninstall keep only the newest backup of each config file" {
+@test "install and uninstall keep only the newest of their own backups, and nobody else's" {
     local home="$BATS_TEST_TMPDIR/home"
     setup_plain_home "$home"
     local c="$home/printer_data/config"
-    printf 'old\n' > "$c/moonraker.conf.bak.20200101_000000"
-    printf 'old\n' > "$c/moonraker.conf.bak.20200101_000001"
+    printf 'mine\n' > "$c/moonraker.conf.bak.20200101_000000"
+    printf 'old\n' > "$c/moonraker.conf.bak.helix.20200101_000001"
 
     run env HOME="$home" sh "$SCRIPT" --no-restart --auto
     [ "$status" -eq 0 ] || fail "install failed: $output"
     run env HOME="$home" sh "$SCRIPT" --no-restart --uninstall-auto
     [ "$status" -eq 0 ] || fail "uninstall failed: $output"
 
+    grep -qx mine "$c/moonraker.conf.bak.20200101_000000" || fail "deleted a backup it did not make"
     local backups
-    backups=$(find "$c" -name 'moonraker.conf.bak.*' | wc -l | tr -d ' ')
-    [ "$backups" -eq 1 ] || fail "want 1 backup, have: $(ls "$c")"
-    [ ! -e "$c/moonraker.conf.bak.20200101_000000" ]
+    backups=$(find "$c" -name 'moonraker.conf.bak.helix.*' | wc -l | tr -d ' ')
+    [ "$backups" -eq 1 ] || fail "want 1 backup of ours, have: $(ls "$c")"
+    [ ! -e "$c/moonraker.conf.bak.helix.20200101_000001" ]
     # The survivor is the uninstall's: the file with the section in it.
-    grep -q '^\[helix_print\]' "$c"/moonraker.conf.bak.* || fail "kept the wrong backup"
+    grep -q '^\[helix_print\]' "$c"/moonraker.conf.bak.helix.* || fail "kept the wrong backup"
 }
 
 @test "installing over a section set to enabled: False turns the plugin on" {

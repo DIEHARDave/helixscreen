@@ -320,13 +320,14 @@ enable_helix_section() {
         error "Could not write $file - see $backup_file"
 }
 
-# Copy config file @1 to @1.bak.<timestamp>, keeping only that newest of the
-# backups this script makes of it, and print the backup's path. Returns 1 when
-# the copy failed; older backups are then left alone.
+# Copy config file @1 to @1.bak.helix.<timestamp>, keeping only that newest of
+# the backups this script makes of it, and print the backup's path. Backups
+# anyone else made are never touched. Returns 1 when the copy failed; older
+# backups are then left alone.
 backup_config() {
-    _bk_new="$1.bak.$(date +%Y%m%d_%H%M%S)"
+    _bk_new="$1.bak.helix.$(date +%Y%m%d_%H%M%S)"
     cp "$1" "$_bk_new" || return 1
-    for _bk_old in "$1".bak.[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]; do
+    for _bk_old in "$1".bak.helix.[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]; do
         if [ -f "$_bk_old" ] && [ "$_bk_old" != "$_bk_new" ]; then
             rm -f "$_bk_old"
         fi
