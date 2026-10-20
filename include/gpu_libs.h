@@ -34,8 +34,23 @@ Failure failure_for(const char* name, const ReturnKind* table, size_t count);
 /// The stand-in function that returns @p failure.
 void* stand_in(Failure failure);
 
-/// The soname a library is loaded by.
-const char* soname(Lib lib);
+/// The soname a library is loaded by. Inline so code that only names a library
+/// links on hosts that build no GPU path.
+inline const char* soname(Lib lib) {
+    switch (lib) {
+    case Lib::Drm:
+        return "libdrm.so.2";
+    case Lib::Gbm:
+        return "libgbm.so.1";
+    case Lib::Egl:
+        return "libEGL.so.1";
+    case Lib::Gles2:
+        return "libGLESv2.so.2";
+    case Lib::Input:
+        return "libinput.so.10";
+    }
+    return "";
+}
 
 /// Whether the library loads on this system. Probed once per library and
 /// cached, since the answer cannot change while the process runs; a library
@@ -45,6 +60,28 @@ bool available(Lib lib);
 
 /// Whether every one of @p libs loads.
 bool available_all(std::initializer_list<Lib> libs);
+
+/// Answers whether a library loads. available() in the app; tests pass their own.
+using LoadCheck = bool (*)(Lib);
+
+/// Whether every library the DRM backend calls into loads: libdrm, plus GBM,
+/// EGL and GLES2 when it presents through EGL.
+bool drm_libs_present(bool egl_presentation, LoadCheck loads = available);
+
+/// How the DRM backend finds and opens its input devices.
+enum class InputDiscovery {
+    /// libinput finds the devices; LVGL's evdev driver opens the touchscreen
+    /// for multi-touch, with libinput as its fallback.
+    Libinput,
+    /// The sysfs scanner (input_device_scanner.h) finds the devices and LVGL's
+    /// evdev driver opens them.
+    SysfsEvdev,
+};
+
+/// libinput when the build carries LVGL's libinput driver and the library
+/// loads, the sysfs scanner otherwise. Asks @p loads only when the driver is
+/// built in, so a build without it never dlopen()s libinput.
+InputDiscovery input_discovery(bool libinput_built, LoadCheck loads = available);
 
 /// Handle from dlopen() for the library, or nullptr when it does not load.
 void* handle(Lib lib);
