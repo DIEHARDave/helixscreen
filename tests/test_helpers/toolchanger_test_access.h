@@ -129,6 +129,18 @@ class ToolChangerTestAccess {
         helix::test::file_override_as_lane_records(b, slot_index, ovr);
     }
 
+    /// Run the lane_data re-read a firmware change scheduled, now rather than
+    /// after its debounce.
+    static void fire_lane_record_reread(AmsBackendToolChanger& b) {
+        b.lane_reread_pending_.store(false);
+        b.reread_lane_records();
+    }
+
+    /// Whether a lane_data re-read is scheduled and has not run yet.
+    static bool lane_reread_pending(const AmsBackendToolChanger& b) {
+        return b.lane_reread_pending_.load();
+    }
+
     /// True once any slot holds a stored override.
     static bool has_overrides(const AmsBackendToolChanger& b) {
         std::lock_guard<std::mutex> lock(b.mutex_);
