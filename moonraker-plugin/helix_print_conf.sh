@@ -591,12 +591,19 @@ moonraker_restart() {
     # sleeps as it has seconds whatever the clock says.
     _mrs_end=$(($(helix_now) + _mrs_secs))
     # The instance that accepted an in-place restart answers for a moment
-    # after it; one that still answers then is not the one coming back.
+    # after it, and may miss a probe while busy stopping; it is gone once two
+    # probes in a row go unanswered, or after 10 seconds.
     if [ "$_mrs_mode" = config ]; then
-        _mrs_gone=$(($(helix_now) + 5))
+        _mrs_gone=$(($(helix_now) + 10))
         _mrs_n=0
-        while [ "$_mrs_n" -lt 5 ] && [ "$(helix_now)" -lt "$_mrs_gone" ] &&
-            moonraker_request GET "$_mrs_url/server/info" 2; do
+        _mrs_down=0
+        while [ "$_mrs_down" -lt 2 ] && [ "$_mrs_n" -lt 10 ] && [ "$(helix_now)" -lt "$_mrs_gone" ]; do
+            moonraker_request GET "$_mrs_url/server/info" 2 || :
+            if [ -z "$HTTP_STATUS" ]; then
+                _mrs_down=$((_mrs_down + 1))
+            else
+                _mrs_down=0
+            fi
             sleep 1
             _mrs_n=$((_mrs_n + 1))
         done

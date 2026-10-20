@@ -1347,21 +1347,21 @@ setup_forgex_bind_mounted_app() {
 }
 
 @test "after asking Moonraker to restart in place, the wait skips the instance that is still stopping" {
-    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/curl.log" n="$BATS_TEST_TMPDIR/info.count"
-    setup_plain_home "$home"
-    # /server/info answers the first look and once more from the stopping
-    # instance, fails once while it is down, then answers from the new one.
+    local log="$BATS_TEST_TMPDIR/curl.log" n="$BATS_TEST_TMPDIR/info.count"
+    # /server/info answers the first look, then the stopping instance answers
+    # around one probe it was too busy for, goes quiet, and the new one answers.
     mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
 printf '%s\\n' \"\$*\" >> '$log'
 case \"\$*\" in *server/info*) c=\$((\$(cat '$n' 2>/dev/null || echo 0) + 1)); echo \"\$c\" > '$n'
-    if [ \"\$c\" -eq 3 ]; then printf '\\n000'; exit 7; fi ;;
+    case \"\$c\" in 3 | 5 | 6) printf '\\n000'; exit 7 ;; esac ;;
 esac
 printf '\\n200'"
+    mock_fake_clock
 
     run_moonraker_restart config
     [ "$status" -eq 0 ] || fail "want 0, got $status: $output"
     contains "Asked Moonraker to restart itself" "$output"
-    [ "$(cat "$n")" -eq 4 ] || fail "the wait read /server/info $(cat "$n") times, want 4 (before, old, down, new)"
+    [ "$(cat "$n")" -eq 7 ] || fail "the wait read /server/info $(cat "$n") times, want 7 (before, old, busy, old, down, down, new)"
     contains "Moonraker is ready" "$output"
 }
 
