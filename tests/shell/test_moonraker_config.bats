@@ -1837,7 +1837,7 @@ stage_private_install() {
     [ "$status" -eq 0 ]
 
     local plugin="$INSTALL_DIR/moonraker-plugin"
-    [ "$(mode_of "$INSTALL_DIR")" = 755 ] || fail "INSTALL_DIR $(mode_of "$INSTALL_DIR")"
+    [ "$(mode_of "$INSTALL_DIR")" = 711 ] || fail "INSTALL_DIR $(mode_of "$INSTALL_DIR")"
     [ "$(mode_of "$plugin")" = 755 ] || fail "plugin dir $(mode_of "$plugin")"
     [ "$(mode_of "$plugin/tests")" = 755 ] || fail "plugin subdir $(mode_of "$plugin/tests")"
     [ "$(mode_of "$plugin/helix_print.py")" = 644 ] || fail "helix_print.py $(mode_of "$plugin/helix_print.py")"
@@ -1857,7 +1857,7 @@ stage_private_install() {
 
     run open_plugin_to_moonraker
     [ "$status" -eq 0 ]
-    [ "$(mode_of "$INSTALL_DIR")" = 755 ] || fail "took the editor (root) for Moonraker"
+    [ "$(mode_of "$INSTALL_DIR")" = 711 ] || fail "took the editor (root) for Moonraker"
 }
 
 @test "open_plugin_to_moonraker: leaves the tree alone when Moonraker owns it, runs as root, is not running, or the root is a mod payload" {
@@ -1881,4 +1881,31 @@ stage_private_install() {
 @test "the install path opens the plugin to Moonraker right after it sets the tree's owner" {
     run grep -A1 '^    fix_install_ownership$' "$WORKTREE_ROOT/scripts/lib/installer/main.sh"
     contains "open_plugin_to_moonraker" "$output"
+}
+
+@test "open_plugin_to_moonraker: INSTALL_DIR gets search only, and a world-readable settings.json stays out of other users' reach" {
+    stage_private_install 4242
+    # The archive's config/ (0755) and a settings.json the app wrote under umask 022.
+    chmod 0755 "$INSTALL_DIR/config"
+    chmod 0644 "$INSTALL_DIR/config/settings.json"
+
+    run open_plugin_to_moonraker
+    [ "$status" -eq 0 ]
+
+    [ "$(mode_of "$INSTALL_DIR")" = 711 ] || fail "INSTALL_DIR $(mode_of "$INSTALL_DIR"): other users can list it"
+    [ "$(mode_of "$INSTALL_DIR/config")" = 700 ] ||
+        fail "config/ $(mode_of "$INSTALL_DIR/config"): other users reach settings.json by name"
+    [ "$(mode_of "$INSTALL_DIR/moonraker-plugin/helix_print.py")" = 644 ] || fail "the plugin was not opened"
+}
+
+@test "open_plugin_to_moonraker: a config/ that links into printer_data is left alone" {
+    stage_private_install 4242
+    mkdir -p "$BATS_TEST_TMPDIR/printer_data/config/helixscreen"
+    chmod 0755 "$BATS_TEST_TMPDIR/printer_data/config/helixscreen"
+    rm -rf "$INSTALL_DIR/config"
+    ln -s "$BATS_TEST_TMPDIR/printer_data/config/helixscreen" "$INSTALL_DIR/config"
+
+    run open_plugin_to_moonraker
+    [ "$status" -eq 0 ]
+    [ "$(mode_of "$BATS_TEST_TMPDIR/printer_data/config/helixscreen")" = 755 ] || fail "chmodded printer_data through the link"
 }

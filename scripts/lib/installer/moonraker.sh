@@ -850,11 +850,14 @@ installer_moonraker_url() {
 # Moonraker loads the HelixPrint plugin from INSTALL_DIR/moonraker-plugin, so a
 # Moonraker running as a user other than INSTALL_DIR's owner needs search on
 # INSTALL_DIR and read on the plugin tree, which an install under umask 077
-# leaves it neither of. Adds exactly that (0755 directories, files gain read
-# for all, executables keep their x): INSTALL_DIR and the plugin tree only,
-# never a directory above INSTALL_DIR, which the installer did not make, nor
-# anything else inside it. A root Moonraker reads everything; with none running
-# there is no user to open the tree to; a mod payload root is the mod's.
+# leaves it neither of. Adds exactly that: search, never list, on INSTALL_DIR,
+# and on the plugin tree 0755 directories with files readable by all
+# (executables keep their x). INSTALL_DIR/config, when it is a directory of its
+# own, is closed to other users, since the search bit lets anyone reach a path
+# inside INSTALL_DIR they can name and config/ holds the API key and pairing
+# secrets. Nothing above INSTALL_DIR, which the installer did not make, and
+# nothing else inside it changes. A root Moonraker reads everything; with none
+# running there is no user to open the tree to; a mod payload root is the mod's.
 open_plugin_to_moonraker() {
     local plugin="${INSTALL_DIR}/moonraker-plugin" pdir uid owner s
     [ "${HELIX_MOD_PAYLOAD:-}" = "1" ] && return 0
@@ -868,7 +871,11 @@ open_plugin_to_moonraker() {
     [ "$uid" != "$owner" ] || return 0
     log_info "Moonraker runs as uid ${uid}: making the HelixPrint plugin readable to it"
     s=$(file_sudo "$INSTALL_DIR")
-    if ! { $s chmod go+rx "$INSTALL_DIR" && $s chmod -R go+rX "$plugin"; }; then
+    if [ -d "$INSTALL_DIR/config" ] && [ ! -L "$INSTALL_DIR/config" ]; then
+        $s chmod go-rwx "$INSTALL_DIR/config" ||
+            log_warn "Could not close ${INSTALL_DIR}/config to other users"
+    fi
+    if ! { $s chmod go+x "$INSTALL_DIR" && $s chmod -R go+rX "$plugin"; }; then
         log_warn "Could not open ${plugin} to Moonraker; installing the plugin will refuse until it can read it"
     fi
     return 0
