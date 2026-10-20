@@ -446,20 +446,25 @@ port reads empty under `PRINTING=1`, and raises 525 (`extruder[N]: state: ..., e
 when its own test, `channel_state == load_finish` with `channel_error == ok`, fails at the
 end. The head presence switch reads present for filament that reached the toolhead and
 stopped short of the nozzle, so it vouches for nothing. A load that errors, times out, or
-answers OK with the feeder short of that test (the refeed, a Load from the filament panel,
-or a `*_fail` load state from any source) marks the head's load unconfirmed for the
-current print. While one is marked, `prepare_for_resume` never reaches RESUME: on the head
-it resumes on it retries the refeed, and on any other head it refuses, since loading that
-head would leave it picked up when RESUME runs. A Resume after a failed load is the
+answers OK with the feeder short of that test (the refeed, a Load from the filament panel),
+and a feeder frame naming a `*_fail` state or a channel_error fault from any source, mark
+the head's load unconfirmed for the current print. The refeed's OK can arrive before the
+frame naming `load_finish`, so it is judged on the head's next settled frame, or after 3 s
+without one. While a head is marked, `prepare_for_resume` never reaches RESUME: on the head
+it resumes on it retries the refeed, and on another head the print uses (`extruders_used`)
+it refuses, since loading that head would leave it picked up when RESUME runs; a head the
+print does not use holds nothing. A Resume after a failed load is the
 dangerous action: `INNER_RESUME` extrudes 20 mm (`_CLIENT_EXTRUDE LENGTH=20`) into
 whatever jammed. The refusal names the head and points at the hardware ("Toolhead 2 (T1)
 didn't load. Check that its hotend is seated and do a test extrude before resuming."),
 with tapping Resume to retry the load as the way forward. Even with nothing marked, a head
-an automatic feeder serves resumes only from `load_finish` with no channel fault; the
-motion sensor's present reading is not taken as a load, and any other state runs the
-refeed first. The mark
-clears when that feeder reaches `load_finish` with no error, when the print leaves
-printing/paused, and on disconnect
+an automatic feeder serves whose feeder reports a failure runs the refeed first, the motion
+sensor's present reading notwithstanding. Settled states that are no failure resume as they
+are: `load_finish`, `unload_finish` (filament back at the feeder), `manual_sta_finish` (a hand
+load), `preload_finish`. The mark clears when that feeder reaches `load_finish` with no
+error and when the print leaves printing/paused. It survives a reconnect to a print still
+running, since the first print state a connection reads is no change of print, and the
+subscription's first frame marks any head whose feeder still reports a failure
 (`src/printer/ams_backend_snapmaker.cpp#mark_load_unconfirmed_locked`).
 
 **A print started without the task setup.** A slicer upload-and-print or a Fluidd start

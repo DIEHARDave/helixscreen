@@ -6,6 +6,8 @@
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_modal.h"
+#include "ui_panel_print_select.h"
+#include "ui_print_start_controller.h"
 #include "ui_update_queue.h"
 
 #include "ams_backend.h"
@@ -76,44 +78,61 @@ void restart_print_from_beginning(IMoonrakerAPI* api, const std::string& filenam
     // A filament system whose firmware forgets per-print preferences between
     // prints gets them again here, once the cancel has left the printer idle.
     // The restart carries no routing, so a firmware that holds a map for the
-    // next print gets only its clear.
-    std::string prep = "SDCARD_RESET_FILE\nCANCEL_PRINT_BASE";
-    if (AmsBackend* backend = AmsState::instance().get_backend();
-        backend && backend->requires_preprint_send()) {
-        backend->note_print_start_from_here();
-        if (const std::string prefs = backend->build_preprint_gcode({}, {}); !prefs.empty())
-            prep += "\n" + prefs;
-    }
-    api->execute_gcode(
-        prep,
-        [api, filename, log_prefix, on_failure]() {
-            queue_update("ui_resume_dispatch::restart_start_print", [api, filename, log_prefix,
-                                                                     on_failure]() {
-                api->job().start_print(
-                    filename,
-                    [log_prefix, filename]() {
-                        spdlog::info("{} Restart succeeded for {}", log_prefix, filename);
-                    },
-                    [log_prefix, on_failure](const MoonrakerError& err) {
-                        spdlog::error("{} start_print after restart failed: {}", log_prefix,
-                                      err.message);
-                        queue_update("ui_resume_dispatch::restart_start_error", [err,
-                                                                                 on_failure]() {
-                            NOTIFY_ERROR(lv_tr("Failed to restart: {}"), err.localized_message());
-                            if (on_failure)
-                                on_failure();
+    // next print gets only its clear; one whose routing returns to identity at
+    // each print end is told which heads the file uses, as a reprint is.
+    auto send = [api, filename, log_prefix, on_failure](const std::set<int>& tools) {
+        std::string prep = "SDCARD_RESET_FILE\nCANCEL_PRINT_BASE";
+        if (AmsBackend* backend = AmsState::instance().get_backend();
+            backend && backend->requires_preprint_send()) {
+            const std::string prefs = backend->print_routing_resets_to_identity()
+                                          ? backend->build_unrouted_preprint_gcode(tools)
+                                          : backend->build_preprint_gcode({}, {});
+            if (!prefs.empty())
+                prep += "\n" + prefs;
+        }
+        api->execute_gcode(
+            prep,
+            [api, filename, log_prefix, on_failure]() {
+                queue_update("ui_resume_dispatch::restart_start_print", [api, filename, log_prefix,
+                                                                         on_failure]() {
+                    if (AmsBackend* backend = AmsState::instance().get_backend()) {
+                        backend->note_print_start_from_here();
+                    }
+                    api->job().start_print(
+                        filename,
+                        [log_prefix, filename]() {
+                            spdlog::info("{} Restart succeeded for {}", log_prefix, filename);
+                        },
+                        [log_prefix, on_failure](const MoonrakerError& err) {
+                            spdlog::error("{} start_print after restart failed: {}", log_prefix,
+                                          err.message);
+                            queue_update("ui_resume_dispatch::restart_start_error",
+                                         [err, on_failure]() {
+                                             NOTIFY_ERROR(lv_tr("Failed to restart: {}"),
+                                                          err.localized_message());
+                                             if (on_failure)
+                                                 on_failure();
+                                         });
                         });
-                    });
+                });
+            },
+            [log_prefix, on_failure](const MoonrakerError& err) {
+                spdlog::error("{} restart prep gcode failed: {}", log_prefix, err.message);
+                queue_update("ui_resume_dispatch::restart_prep_error", [err, on_failure]() {
+                    NOTIFY_ERROR(lv_tr("Failed to clear print state: {}"), err.localized_message());
+                    if (on_failure)
+                        on_failure();
+                });
             });
-        },
-        [log_prefix, on_failure](const MoonrakerError& err) {
-            spdlog::error("{} restart prep gcode failed: {}", log_prefix, err.message);
-            queue_update("ui_resume_dispatch::restart_prep_error", [err, on_failure]() {
-                NOTIFY_ERROR(lv_tr("Failed to clear print state: {}"), err.localized_message());
-                if (on_failure)
-                    on_failure();
-            });
-        });
+    };
+
+    AmsBackend* backend = AmsState::instance().get_backend();
+    if (backend && backend->requires_preprint_send() &&
+        backend->print_routing_resets_to_identity()) {
+        print_start_controller_for(get_printer_state(), api).read_file_tools(filename, send);
+        return;
+    }
+    send({});
 }
 
 void show_restart_required_modal(IMoonrakerAPI* api, const std::string& filename,

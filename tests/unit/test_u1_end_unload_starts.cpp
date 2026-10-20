@@ -12,6 +12,7 @@
 #include "ui_update_queue.h"
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/planted_gcode.h"
 #include "../test_helpers/registered_backend.h"
 #include "../test_helpers/snapmaker_test_access.h"
 #include "ams_backend_snapmaker.h"
@@ -91,8 +92,32 @@ TEST_CASE_METHOD(U1StartFx,
     report_heads(*backend);
 
     helix::ui::restart_print_from_beginning(&api, "cal.gcode", "[test]", nullptr);
-    helix::ui::UpdateQueue::instance().drain();
+    // The restart reads the file's tools first; this one is not on the printer.
+    for (int i = 0; i < 8; ++i) {
+        helix::ui::UpdateQueue::instance().drain();
+    }
     CHECK(all_scripts().find(std::string("CANCEL_PRINT_BASE\n") + kUnload) != std::string::npos);
+}
+
+TEST_CASE_METHOD(U1StartFx, "a U1 restart from the beginning names the file's heads",
+                 "[end_unload][preprint][reprint]") {
+    MoonrakerAPI api{client, ps};
+    test::RegisteredBackend<AmsBackendSnapmaker> backend(nullptr, nullptr);
+    report_heads(*backend);
+    helix::PlantedGcode file("restart_t0t2.gcode", "",
+                             "; filament_type = PLA;PLA;PETG\n"
+                             "; filament_colour = #FF0000;#00FF00;#0000FF\n"
+                             "G28\nT0\nT2\n"
+                             "; filament used [g] = 1.50, 0.00, 2.25\n");
+
+    helix::ui::restart_print_from_beginning(&api, file.name(), "[test]", nullptr);
+    for (int i = 0; i < 8; ++i) {
+        helix::ui::UpdateQueue::instance().drain();
+    }
+    const std::string sent = all_scripts();
+    CHECK(sent.find("CANCEL_PRINT_BASE\nSET_PRINT_USED_EXTRUDERS EXTRUDERS=0,2") !=
+          std::string::npos);
+    CHECK(sent.find("SET_PRINT_EXTRUDER_MAP") == std::string::npos);
 }
 
 #endif // HELIX_HAS_SNAPMAKER

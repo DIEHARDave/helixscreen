@@ -927,7 +927,7 @@ TEST_CASE_METHOD(MultiAceFixture, "a failed ACE load holds Resume until the head
     CHECK(b.sent.empty());
 }
 
-TEST_CASE_METHOD(MultiAceFixture, "an ACE head short of load_finish holds Resume without a refeed",
+TEST_CASE_METHOD(MultiAceFixture, "an ACE head whose feeder failed holds Resume without a refeed",
                  "[multiace][resume][load_unconfirmed]") {
     lv_init_safe();
     helix::ui::UpdateQueue::instance().init();
@@ -935,7 +935,7 @@ TEST_CASE_METHOD(MultiAceFixture, "an ACE head short of load_finish holds Resume
     CapturingMultiAce b;
     b.frame(ace_frame("head_mode_4ace.json"));
     b.frame(json{{"print_stats", {{"state", "paused"}}}});
-    b.frame(fed_head(1, "preload_finish"));
+    b.frame(fed_head(1, "load_fail"));
     b.sent.clear();
 
     const AmsError held = resume_head(b, 1);

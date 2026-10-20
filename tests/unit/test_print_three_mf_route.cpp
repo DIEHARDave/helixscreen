@@ -544,8 +544,9 @@ TEST_CASE_METHOD(ArchiveStart, "a reprint before Print Files is built runs the p
 
     PrintStatusPanel panel{printer.state, &printer.api};
     panel.init_subjects();
-    PrintStatusPanelTestAccess::reprint_with_own_controller(
-        panel, helix::gcode::ReprintTarget{"benchy.gcode", 0});
+    helix::ui::PrintStartController controller(printer.state, &printer.api);
+    PrintStatusPanelTestAccess::reprint_through(panel, controller,
+                                                helix::gcode::ReprintTarget{"benchy.gcode", 0});
     drain_until_quiet();
     REQUIRE(printer.api.job_mock().started_prints().size() == 1);
 
@@ -568,14 +569,15 @@ TEST_CASE_METHOD(ArchiveStart, "a plate reprint before Print Files is built is r
                  "[print_status][reprint][three_mf]") {
     PrintStatusPanel panel{printer.state, &printer.api};
     panel.init_subjects();
-    PrintStatusPanelTestAccess::reprint_with_own_controller(
-        panel, helix::gcode::ReprintTarget{kArchive, 9});
+    helix::ui::PrintStartController controller(printer.state, &printer.api);
+    PrintStatusPanelTestAccess::reprint_through(panel, controller,
+                                                helix::gcode::ReprintTarget{kArchive, 9});
     drain_until_quiet();
     CHECK(printer.api.job_mock().started_prints().empty());
 
     SECTION("a plain file still starts") {
-        PrintStatusPanelTestAccess::reprint_with_own_controller(
-            panel, helix::gcode::ReprintTarget{"benchy.gcode", 0});
+        PrintStatusPanelTestAccess::reprint_through(panel, controller,
+                                                    helix::gcode::ReprintTarget{"benchy.gcode", 0});
         drain_until_quiet();
         REQUIRE(printer.api.job_mock().started_prints().size() == 1);
         CHECK(printer.api.job_mock().started_prints()[0] == "benchy.gcode");
