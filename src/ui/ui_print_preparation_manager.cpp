@@ -1660,10 +1660,8 @@ std::vector<std::string> PrintPreparationManager::collect_pre_start_gcode_lines(
     std::vector<std::string> lines;
 
     const auto& db_options = get_cached_options();
-    if (!db_options.fixed_gcode.empty()) {
-        spdlog::debug("[PrintPreparationManager] Fixed pre-start gcode: {}",
-                      db_options.fixed_gcode);
-        lines.push_back(db_options.fixed_gcode);
+    if (db_options.options.empty()) {
+        return lines;
     }
 
     for (const auto& opt : db_options.options) {

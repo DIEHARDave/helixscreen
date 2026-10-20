@@ -870,15 +870,14 @@ END_LED_TURN_OFF=<0/1>  END_UNLOAD_FILAMENT=<python-list-literal>  FORCE=<0/1>
 - The values are stored in `<printer_data>/config/snapmaker/print_task.json` on the printer and survive a
   reboot. When a print ends, `reset_print_info()` clears `flow_calibrate`, `auto_bed_leveling`,
   `time_lapse_camera` and `end_unload_filament`, but **not** `shaper_calibrate`: a 1 written once
-  (by the stock screen, say) stays set for every print after it.
+  stays stored for every print after it.
 
-**Input shaping is never a pre-print option in HelixScreen.** Bed leveling, flow calibration and
-timelapse are toggles on the print-start screen, each sending its own `SET_PRINT_PREFERENCES` line
-whether on or off. `SHAPER_CALIBRATE` has no toggle. Because the firmware keeps it across prints,
-every HelixScreen print start sends `SET_PRINT_PREFERENCES SHAPER_CALIBRATE=0` anyway, so a value
-left behind by another screen cannot run a resonance sweep at the start of our print. It comes from
-the U1 entry's `pre_print_options.fixed_gcode` in `assets/config/printer_database.json`, and the
-firmware's stored `shaper_calibrate` is not read into any option.
+**Input shaping is never a pre-print option in HelixScreen**, and HelixScreen never sends
+`SHAPER_CALIBRATE`. The firmware stores the field and keeps it across prints, but nothing on the
+printer consumes it: no macro (`PRINT_START` included) and no klippy extra other than
+the `print_task_config` module, which only sets it, reads `shaper_calibrate`. Bed leveling, flow
+calibration and timelapse are the U1's pre-print toggles, each sending its own
+`SET_PRINT_PREFERENCES` line whether on or off.
 
 HelixScreen surfaces the filament-side subset of these prefs as device actions in the printer's
 settings: `get_device_sections()` publishes one "Print Behavior" section (`print_prefs`) and

@@ -465,7 +465,7 @@ The primary source for filament info. Populated by the stock firmware's task man
 | `filament_entangle_detect` | `false` | ❌ | Entangle detection enabled |
 | `filament_entangle_sen` | `"medium"` | ❌ | Sensitivity level |
 | `flow_calibrate` | `false` | ❌ | Flow calibration pre-print option |
-| `shaper_calibrate` | `false` | ❌ | Input shaper calibration at print start. Not offered as an option; every HelixScreen start sends `SHAPER_CALIBRATE=0` (`FILAMENT_BACKEND_SNAPMAKER_U1.md`, `SET_PRINT_PREFERENCES`) |
+| `shaper_calibrate` | `false` | ❌ | Stored by the firmware but read by nothing on the printer. Not offered as a pre-print option, never sent (`FILAMENT_BACKEND_SNAPMAKER_U1.md`, `SET_PRINT_PREFERENCES`) |
 | `time_lapse_camera` | `false` | ❌ | Timelapse pre-print option |
 | `auto_bed_leveling` | `false` | ❌ | ABL pre-print option |
 

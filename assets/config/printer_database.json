@@ -6987,7 +6987,6 @@
         }
       ],
       "pre_print_options": {
-        "fixed_gcode": "SET_PRINT_PREFERENCES SHAPER_CALIBRATE=0",
         "options": [
           {
             "id": "bed_mesh",
