@@ -28,7 +28,9 @@
 #              --auto as the app user exits 0 (remote: the REMOTE-mode
 #              command, against a release served inside the container;
 #              relocate: installed from another directory, moved, and
-#              repaired by install.sh --relink)
+#              repaired by install.sh --relink; forgex: then install.sh
+#              --relink twice from the host side, each finding the link
+#              current)
 #   loaded     after POST /server/restart: helix_print in components,
 #              /server/helix/status answers, no failed component, no warning
 #              the baseline lacked

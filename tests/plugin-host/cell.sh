@@ -23,7 +23,10 @@
 #   k1                Creality K1: root, the repo nested in /usr/data/moonraker
 #   forgex            Forge-X: Moonraker chrooted in /data/.mod/.forge-x, its
 #                     moonraker.conf a symlink into the mod's tree including
-#                     mod_data/user.moonraker.conf, /opt/config bind-mounted in
+#                     mod_data/user.moonraker.conf, /opt/config bind-mounted in;
+#                     the install step also runs the app's startup relink
+#                     twice from the host side, and both must find the link
+#                     current
 #   modconf           plain, with a mod-owned symlinked moonraker.conf that
 #                     includes user.moonraker.conf
 #   incsec            plain, with [helix_print] already in an included file
@@ -207,6 +210,19 @@ relocated_install() {
     touch /var/tmp/cell-relocated
 }
 
+# Run the app's startup relink twice: each must find the link the install
+# made current (exit 0), or Moonraker restarts at every app start.
+relink_stays_current() {
+    for run in 1 2; do
+        status=0
+        ( as_app --no-restart --relink ) || status=$?
+        if [ "$status" -ne 0 ]; then
+            echo "relink run $run exited $status, want 0 (current)" >&2
+            return 1
+        fi
+    done
+}
+
 # Run install.sh with <args> as the app, confined as its service confines it.
 # APP_PLUGIN_DIR names another copy of the plugin to run it from.
 as_app() { # <args...>
@@ -257,6 +273,11 @@ case "${1:-}" in
         if [ "$LAYOUT" = remote ]; then remote_command; exit; fi
         if [ "$LAYOUT" = relocate ] && [ ! -e /var/tmp/cell-relocated ]; then
             relocated_install
+            exit
+        fi
+        if [ "$LAYOUT" = forgex ]; then
+            ( as_app --no-restart --auto ) || exit 1
+            relink_stays_current
             exit
         fi
         as_app --no-restart --auto ;;

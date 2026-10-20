@@ -190,8 +190,8 @@ TEST_CASE("decide_plugin_self_heal: what the startup check does about the plugin
     SECTION("a mismatch an earlier start already restarted for is not restarted for again") {
         f.link = PluginLinkCheck::Current;
         f.reported_version = "1.1.0";
-        f.restarted_for_bundled = "1.2.0";
-        f.restarted_for_reported = "1.1.0";
+        f.memory.restarted_for_bundled = "1.2.0";
+        f.memory.restarted_for_reported = "1.1.0";
         CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::GiveUp);
         // ... nor while a job holds the machine.
         f.job_holds = true;
@@ -200,18 +200,30 @@ TEST_CASE("decide_plugin_self_heal: what the startup check does about the plugin
     SECTION("a new version pair gets one fresh attempt") {
         f.link = PluginLinkCheck::Current;
         f.reported_version = "1.1.0";
-        f.restarted_for_bundled = "1.1.5"; // the app updated since
-        f.restarted_for_reported = "1.1.0";
+        f.memory.restarted_for_bundled = "1.1.5"; // the app updated since
+        f.memory.restarted_for_reported = "1.1.0";
         CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
-        f.restarted_for_bundled = "1.2.0";
-        f.restarted_for_reported = "1.0.9"; // the plugin moved since
+        f.memory.restarted_for_bundled = "1.2.0";
+        f.memory.restarted_for_reported = "1.0.9"; // the plugin moved since
         CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
     }
     SECTION("a re-pointed link restarts even for a pair already tried") {
         f.link = PluginLinkCheck::Relinked;
         f.reported_version = "1.1.0";
-        f.restarted_for_bundled = "1.2.0";
-        f.restarted_for_reported = "1.1.0";
+        f.memory.restarted_for_bundled = "1.2.0";
+        f.memory.restarted_for_reported = "1.1.0";
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
+    }
+    SECTION("a link re-pointed at the same file again after its restart is not restarted for") {
+        f.link = PluginLinkCheck::Relinked;
+        f.plugin_file = "/opt/helixscreen/moonraker-plugin/helix_print.py";
+        f.memory.relinked_for = f.plugin_file;
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::GiveUp);
+        f.job_holds = true;
+        CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::GiveUp);
+        // A link re-pointed at another file is a new problem.
+        f.job_holds = false;
+        f.memory.relinked_for = "/home/pi/helixscreen/moonraker-plugin/helix_print.py";
         CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::RestartNow);
     }
     SECTION("a remote Moonraker's mismatch is only reported, whatever the link") {
@@ -221,6 +233,49 @@ TEST_CASE("decide_plugin_self_heal: what the startup check does about the plugin
         CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::ReportOnly);
         f.reported_version = "1.2.0";
         CHECK(decide_plugin_self_heal(f) == PluginSelfHealStep::Nothing);
+    }
+}
+
+TEST_CASE("remember_plugin_self_heal: what the startup check keeps for the next start",
+          "[plugin_installer]") {
+    PluginSelfHealFacts f;
+    f.local = true;
+    f.bundled_version = "1.2.0";
+    f.reported_version = "1.1.0";
+    f.plugin_file = "/opt/helixscreen/moonraker-plugin/helix_print.py";
+
+    SECTION("a restart for a mismatch keeps the pair it is for") {
+        f.link = PluginLinkCheck::Current;
+        const auto m = remember_plugin_self_heal(f, PluginSelfHealStep::RestartNow);
+        CHECK(m.restarted_for_bundled == "1.2.0");
+        CHECK(m.restarted_for_reported == "1.1.0");
+        CHECK(m.relinked_for.empty());
+    }
+    SECTION("a restart for a re-pointed link keeps the file, even when it waits for a job") {
+        f.link = PluginLinkCheck::Relinked;
+        f.reported_version = "";
+        const auto m = remember_plugin_self_heal(f, PluginSelfHealStep::WaitForJob);
+        CHECK(m.relinked_for == f.plugin_file);
+        CHECK(m.restarted_for_bundled.empty());
+    }
+    SECTION("a link found current forgets the file; agreeing versions forget the pair") {
+        f.link = PluginLinkCheck::Current;
+        f.reported_version = "1.2.0";
+        f.memory = {"1.2.0", "1.1.0", f.plugin_file};
+        const auto m = remember_plugin_self_heal(f, PluginSelfHealStep::Nothing);
+        CHECK(m == PluginSelfHealMemory{});
+    }
+    SECTION("giving up keeps what the restart was for") {
+        f.link = PluginLinkCheck::Relinked;
+        f.memory.relinked_for = f.plugin_file;
+        const auto m = remember_plugin_self_heal(f, PluginSelfHealStep::GiveUp);
+        CHECK(m.relinked_for == f.plugin_file);
+    }
+    SECTION("a failed check forgets nothing about the link") {
+        f.link = PluginLinkCheck::Failed;
+        f.memory.relinked_for = f.plugin_file;
+        CHECK(remember_plugin_self_heal(f, PluginSelfHealStep::Nothing).relinked_for ==
+              f.plugin_file);
     }
 }
 

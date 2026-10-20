@@ -165,6 +165,13 @@ class HelixPluginInstaller {
     [[nodiscard]] std::string bundled_plugin_version() const;
 
     /**
+     * @brief The helix_print.py beside install.sh: the plugin this app ships
+     *
+     * Empty when no install.sh is found.
+     */
+    [[nodiscard]] std::string bundled_plugin_file() const;
+
+    /**
      * @brief Get path to bundled install.sh script
      *
      * Searches for install.sh relative to the executable.
@@ -329,7 +336,20 @@ enum class PluginSelfHealStep {
     ReportOnly, ///< a remote Moonraker runs another plugin version: log it, change nothing
     RestartNow, ///< Moonraker must restart to load the plugin this app ships
     WaitForJob, ///< as RestartNow, once no job holds the machine
-    GiveUp,     ///< a restart for this same version pair already failed to load it: warn only
+    GiveUp,     ///< a restart for this same version pair or link already failed: warn only
+};
+
+/**
+ * @brief What the startup check keeps in the config from one app start to the next
+ */
+struct PluginSelfHealMemory {
+    /// The (bundled, reported) version pair a restart was requested for; empty when none.
+    std::string restarted_for_bundled;
+    std::string restarted_for_reported;
+    /// The plugin file a re-pointed link was restarted for; empty when none.
+    std::string relinked_for;
+
+    bool operator==(const PluginSelfHealMemory&) const = default;
 };
 
 /**
@@ -340,12 +360,16 @@ struct PluginSelfHealFacts {
     PluginLinkCheck link = PluginLinkCheck::NotOurs; ///< install.sh --relink's outcome (local only)
     std::string reported_version; ///< what the running plugin reports; empty when it did not answer
     std::string bundled_version;  ///< what this app ships; empty when unknown
+    std::string plugin_file;      ///< the helix_print.py this app ships, which a relink names
     bool job_holds = false;       ///< job_holds_machine() of the current print lifecycle
-    /// The (bundled, reported) pair an earlier start already restarted Moonraker
-    /// for; empty when none. Persisted across starts.
-    std::string restarted_for_bundled;
-    std::string restarted_for_reported;
+    PluginSelfHealMemory memory;  ///< what earlier starts did
 };
+
+/**
+ * @brief Whether the running plugin reports another version than this app
+ *        ships; false when either is unknown
+ */
+bool plugin_versions_differ(const PluginSelfHealFacts& facts);
 
 /**
  * @brief Decide what the startup check does about the installed plugin
@@ -357,9 +381,23 @@ struct PluginSelfHealFacts {
  * load the right code, which never interrupts a job. A version mismatch an
  * earlier start already restarted for is not restarted for again: the
  * restart did not load it, and another would not either. A new pair, after
- * either side changes, gets one attempt; a re-pointed link always does.
+ * either side changes, gets one attempt. So does a re-pointed link: a link
+ * re-pointed at the same file again, with no start finding it current in
+ * between, is one install.sh cannot see as current, and restarting for it
+ * would restart Moonraker at every app start.
  */
 PluginSelfHealStep decide_plugin_self_heal(const PluginSelfHealFacts& facts);
+
+/**
+ * @brief What the startup check keeps for the next start after taking @p step
+ *
+ * A restart records the version pair it is for when the versions differ, and
+ * the plugin file when it is for a re-pointed link. Versions that agree clear
+ * the pair, and a link found current clears the file: a later mismatch or
+ * relink is a new problem.
+ */
+PluginSelfHealMemory remember_plugin_self_heal(const PluginSelfHealFacts& facts,
+                                               PluginSelfHealStep step);
 
 /**
  * @brief Split install.sh output into log lines: color escapes removed,

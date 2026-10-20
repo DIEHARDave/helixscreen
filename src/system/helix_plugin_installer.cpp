@@ -470,16 +470,23 @@ std::string parse_plugin_version(std::string_view text) {
     return "";
 }
 
+bool plugin_versions_differ(const PluginSelfHealFacts& facts) {
+    return !facts.reported_version.empty() && !facts.bundled_version.empty() &&
+           facts.reported_version != facts.bundled_version;
+}
+
 PluginSelfHealStep decide_plugin_self_heal(const PluginSelfHealFacts& facts) {
-    const bool version_differs = !facts.reported_version.empty() &&
-                                 !facts.bundled_version.empty() &&
-                                 facts.reported_version != facts.bundled_version;
+    const bool version_differs = plugin_versions_differ(facts);
     if (!facts.local) {
         return version_differs ? PluginSelfHealStep::ReportOnly : PluginSelfHealStep::Nothing;
     }
     if (facts.link == PluginLinkCheck::Current && version_differs &&
-        facts.restarted_for_bundled == facts.bundled_version &&
-        facts.restarted_for_reported == facts.reported_version) {
+        facts.memory.restarted_for_bundled == facts.bundled_version &&
+        facts.memory.restarted_for_reported == facts.reported_version) {
+        return PluginSelfHealStep::GiveUp;
+    }
+    if (facts.link == PluginLinkCheck::Relinked && !facts.plugin_file.empty() &&
+        facts.memory.relinked_for == facts.plugin_file) {
         return PluginSelfHealStep::GiveUp;
     }
     const bool needs_restart = facts.link == PluginLinkCheck::Relinked ||
@@ -490,12 +497,41 @@ PluginSelfHealStep decide_plugin_self_heal(const PluginSelfHealFacts& facts) {
     return facts.job_holds ? PluginSelfHealStep::WaitForJob : PluginSelfHealStep::RestartNow;
 }
 
-std::string HelixPluginInstaller::bundled_plugin_version() const {
+PluginSelfHealMemory remember_plugin_self_heal(const PluginSelfHealFacts& facts,
+                                               PluginSelfHealStep step) {
+    PluginSelfHealMemory memory = facts.memory;
+    const bool version_differs = plugin_versions_differ(facts);
+    if (step == PluginSelfHealStep::RestartNow || step == PluginSelfHealStep::WaitForJob) {
+        if (version_differs) {
+            memory.restarted_for_bundled = facts.bundled_version;
+            memory.restarted_for_reported = facts.reported_version;
+        }
+        if (facts.link == PluginLinkCheck::Relinked) {
+            memory.relinked_for = facts.plugin_file;
+        }
+    } else if (!version_differs) {
+        memory.restarted_for_bundled.clear();
+        memory.restarted_for_reported.clear();
+    }
+    if (facts.link == PluginLinkCheck::Current) {
+        memory.relinked_for.clear();
+    }
+    return memory;
+}
+
+std::string HelixPluginInstaller::bundled_plugin_file() const {
     const std::string script = get_install_script_path();
     if (script.empty()) {
         return "";
     }
-    const std::string plugin = std::string(hfs::parent_path(script)) + "/helix_print.py";
+    return std::string(hfs::parent_path(script)) + "/helix_print.py";
+}
+
+std::string HelixPluginInstaller::bundled_plugin_version() const {
+    const std::string plugin = bundled_plugin_file();
+    if (plugin.empty()) {
+        return "";
+    }
     // PLUGIN_VERSION sits near the top; the rest of the file is not needed.
     const auto text = text_io::read_file(plugin, 16 * 1024);
     if (!text) {

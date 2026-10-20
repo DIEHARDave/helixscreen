@@ -684,12 +684,16 @@ relink() {
     fi
 
     # The link text is Moonraker's path, which differs from ours in a chroot.
+    # Compared as files, not paths: through a bind mount (Forge-X binds
+    # /opt/config) one file has two paths that resolve apart. -ef is in dash,
+    # BusyBox ash and bash, every shell this runs under.
     mroot=$(running_moonraker_root)
     case "$current" in
         /*) seen="$mroot$current" ;;
         *) seen="$components_dir/$current" ;;
     esac
-    if [ -e "$seen" ] && [ "$(readlink -f "$seen")" = "$(readlink -f "$PLUGIN_FILE")" ]; then
+    # shellcheck disable=SC3013
+    if [ -e "$seen" ] && [ "$seen" -ef "$PLUGIN_FILE" ]; then
         info "The plugin link already names $PLUGIN_FILE"
         return "$EXIT_RELINK_CURRENT"
     fi

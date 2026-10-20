@@ -1203,3 +1203,33 @@ setup_moved_install() {
         sh "$chroot$FORGEX_PLUGIN/install.sh" --no-restart --relink
     [ "$status" -eq 0 ] || fail "want 0 (current) on the second run, got $status: $output"
 }
+
+# The app on the host side of Forge-X's bind mount: its tree and the chroot's
+# view of it are two paths to the same files. A hard link stands in for the
+# bind mount, so the two paths resolve apart and name one inode.
+setup_forgex_bind_mounted_app() {
+    local root="$1"
+    local chroot="$root/data/.mod/.forge-x"
+    local host="$root/opt/config/mod_data/helixscreen/moonraker-plugin"
+    mkdir -p "$(dirname "$host")" "$chroot$host"
+    cp -R "$REPO_ROOT/moonraker-plugin" "$host"
+    ln "$host/helix_print.py" "$chroot$host/helix_print.py"
+    printf '%s' "$host"
+}
+
+@test "relink from the host side of a Forge-X bind mount finds its own link current" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local host
+    host=$(setup_forgex_bind_mounted_app "$root")
+    local link="$root/data/.mod/.forge-x/root/moonraker-env/moonraker/components/helix_print.py"
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" sh "$host/install.sh" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    [ "$(readlink "$link")" = "$host/helix_print.py" ] || fail "setup: link $(readlink "$link")"
+
+    local run_no
+    for run_no in 1 2; do
+        run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" sh "$host/install.sh" --no-restart --relink
+        [ "$status" -eq 0 ] || fail "relink run $run_no: want 0 (current), got $status: $output"
+    done
+}

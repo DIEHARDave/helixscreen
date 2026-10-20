@@ -451,6 +451,14 @@ struct SelfHealFixture : PromptFixture {
         drain();
     }
 
+    /// The plugin reads as absent at a new app start, and the check runs again.
+    void next_start_reports_absent() {
+        set_plugin_installed(true);
+        PluginSelfHealTestAccess::set_ran_this_start(false);
+        set_plugin_installed(false);
+        settle();
+    }
+
     void forget_script_run() {
         std::filesystem::remove(scripts.root + "/args");
     }
@@ -607,6 +615,31 @@ TEST_CASE_METHOD(SelfHealFixture,
     set_plugin_installed(false);
     run_plugin_probe();
     settle();
+    CHECK(moonraker_restarts() == restarts_before + 2);
+}
+
+TEST_CASE_METHOD(SelfHealFixture,
+                 "a link re-pointed again after its restart is not restarted for at the next start",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.0.1", 3);
+    const int restarts_before = moonraker_restarts();
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", nullptr);
+
+    run_plugin_probe();
+    settle();
+    REQUIRE(moonraker_restarts() == restarts_before + 1);
+
+    // The next app start: install.sh re-points the same link again.
+    forget_script_run();
+    next_start_reports_absent();
+    REQUIRE(scripts.script_args() == "--no-restart --relink ");
+    CHECK(moonraker_restarts() == restarts_before + 1);
+
+    // A start that finds the link current ends the wait; a later relink is new.
+    ship("1.0.1", 0);
+    next_start_reports_absent();
+    ship("1.0.1", 3);
+    next_start_reports_absent();
     CHECK(moonraker_restarts() == restarts_before + 2);
 }
 

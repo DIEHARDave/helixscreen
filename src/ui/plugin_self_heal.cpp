@@ -22,9 +22,10 @@ constexpr int kRelinkTimeoutSeconds = 30;
 constexpr uint32_t kRestartToastMs = 4000;
 // How often a restart waiting for the screen looks again.
 constexpr uint32_t kRestartRecheckMs = 1000;
-// The (bundled, reported) plugin version pair a restart was last requested for.
+// PluginSelfHealMemory, kept across starts.
 constexpr const char* kPrefRestartedForBundled = "/plugin_self_heal/restarted_for_bundled";
 constexpr const char* kPrefRestartedForReported = "/plugin_self_heal/restarted_for_reported";
+constexpr const char* kPrefRelinkedFor = "/plugin_self_heal/relinked_for";
 } // namespace
 
 bool PluginSelfHeal::ran_this_start_ = false;
@@ -76,30 +77,31 @@ void PluginSelfHeal::act(bool local, PluginLinkCheck link) {
     facts.link = link;
     facts.reported_version = printer_state_.plugin_status_state().version();
     facts.bundled_version = installer_.bundled_plugin_version();
+    facts.plugin_file = installer_.bundled_plugin_file();
     facts.job_holds = job_holds_machine(printer_state_.print_state().get_print_lifecycle());
     Config* config = Config::get_instance();
-    facts.restarted_for_bundled = config->get<std::string>(kPrefRestartedForBundled, "");
-    facts.restarted_for_reported = config->get<std::string>(kPrefRestartedForReported, "");
+    facts.memory.restarted_for_bundled = config->get<std::string>(kPrefRestartedForBundled, "");
+    facts.memory.restarted_for_reported = config->get<std::string>(kPrefRestartedForReported, "");
+    facts.memory.relinked_for = config->get<std::string>(kPrefRelinkedFor, "");
 
     const PluginSelfHealStep step = decide_plugin_self_heal(facts);
-    const bool version_differs = !facts.reported_version.empty() &&
-                                 !facts.bundled_version.empty() &&
-                                 facts.reported_version != facts.bundled_version;
-    if (step == PluginSelfHealStep::RestartNow || step == PluginSelfHealStep::WaitForJob) {
-        if (version_differs) {
-            config->set<std::string>(kPrefRestartedForBundled, facts.bundled_version);
-            config->set<std::string>(kPrefRestartedForReported, facts.reported_version);
-            config->save();
-        }
-    } else if (!version_differs && !facts.restarted_for_bundled.empty()) {
-        // The versions agree now: a later mismatch is a new problem.
-        config->set<std::string>(kPrefRestartedForBundled, "");
-        config->set<std::string>(kPrefRestartedForReported, "");
+    const PluginSelfHealMemory memory = remember_plugin_self_heal(facts, step);
+    if (!(memory == facts.memory)) {
+        config->set<std::string>(kPrefRestartedForBundled, memory.restarted_for_bundled);
+        config->set<std::string>(kPrefRestartedForReported, memory.restarted_for_reported);
+        config->set<std::string>(kPrefRelinkedFor, memory.relinked_for);
         config->save();
     }
 
     switch (step) {
     case PluginSelfHealStep::GiveUp:
+        if (link == PluginLinkCheck::Relinked) {
+            spdlog::warn("[PluginSelfHeal] The plugin link was re-pointed at {} again after a "
+                         "restart for it; not restarting until a start finds it current. Check "
+                         "how Moonraker's components directory reaches that file",
+                         facts.plugin_file);
+            return;
+        }
         spdlog::warn("[PluginSelfHeal] Moonraker still runs HelixPrint plugin {} after a restart "
                      "for this app's {}; not restarting again until either version changes. "
                      "Check which helix_print.py Moonraker loads",
