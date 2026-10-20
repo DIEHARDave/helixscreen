@@ -4704,3 +4704,35 @@ TEST_CASE_METHOD(
     CHECK(widget_on(0, "temperature") != nullptr);
     CHECK(widget_on(1, "fan") != nullptr);
 }
+
+// A page that cannot be re-seated in place is populated instead, with a drain of
+// its own. A rebuild run by that drain owns the pages, so the re-seat stops
+// rather than re-seating the rebuild's pages from its stale loop.
+TEST_CASE_METHOD(EditHomeFixture,
+                 "a re-seat whose page population drains a carousel rebuild stops there",
+                 "[home][drain_reentrancy]") {
+    build_home();
+    settle();
+    // An entry with no cell cannot be re-seated, so page 0 is populated.
+    auto& entries = config().page_entries_mut(0);
+    auto temp = std::find_if(entries.begin(), entries.end(), [](const helix::PanelWidgetEntry& e) {
+        return e.id == "temperature";
+    });
+    REQUIRE(temp != entries.end());
+    temp->col = -1;
+    temp->row = -1;
+
+    bool ran = false;
+    helix::ui::UpdateQueue::instance().queue("test::rebuild_mid_reseat", [this, &ran]() {
+        ran = true;
+        HomePanelTestAccess::rebuild_carousel(panel(), 0);
+    });
+
+    helix::LogCapture log(512);
+    CHECK(HomePanelTestAccess::reseat(panel()));
+    REQUIRE(ran);
+    CHECK(log.count_containing("re-seated") == 0);
+    settle();
+    REQUIRE(page_count() == 2);
+    CHECK(widget_on(1, "fan") != nullptr);
+}

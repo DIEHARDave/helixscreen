@@ -57,6 +57,11 @@ struct HomePanelTestAccess {
         panel.populate_widgets(/*force=*/false);
     }
 
+    /// Re-seat every page in place, as a placement-only config change does.
+    static bool reseat(HomePanel& panel) {
+        return panel.reseat_widgets();
+    }
+
     /// The widget ids page @p page was last built from.
     static std::vector<std::string> built_ids(const HomePanel& panel, size_t page) {
         const auto& ids = panel.pages_.at(page).visible_ids;

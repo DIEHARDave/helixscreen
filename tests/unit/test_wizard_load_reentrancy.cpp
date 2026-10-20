@@ -179,3 +179,45 @@ TEST_CASE_METHOD(WizardLoadFixture,
     cfg->set<std::string>(preset_key, prior_preset);
     helix::wizard_reset_preset_session_state();
 }
+
+// A load superseded by a completion leaves the step it cleaned behind for the
+// load its drain runs. A wizard created by that drain starts from no step, so
+// its first load decides no PrinterIdentify redirect.
+TEST_CASE_METHOD(WizardLoadFixture,
+                 "wizard: a wizard created in a load's drain starts with no step left behind",
+                 "[wizard][drain_reentrancy]") {
+    auto* cfg = helix::Config::get_instance();
+    const bool was_completed = cfg->get<bool>("/wizard_completed", false);
+    const std::string preset_key = cfg->df() + "preset";
+    const auto prior_preset = cfg->get<std::string>(preset_key, "");
+    navigate(StepId::PrinterIdentify);
+    REQUIRE(current_step() == static_cast<int>(StepId::PrinterIdentify));
+
+    // A preset skips FanSelect, which a load leaving PrinterIdentify would
+    // redirect past.
+    cfg->set<std::string>(preset_key, "drain_reentrancy_preset");
+    helix::wizard_mark_preset_applied_this_session();
+    const auto skips = helix::wizard::skip_vector(helix::wizard::build_context());
+    const auto fan = std::find_if(skips.begin(), skips.end(), [](const helix::StepSkip& s) {
+        return s.id == StepId::FanSelect;
+    });
+    REQUIRE(fan != skips.end());
+    REQUIRE(fan->skipped);
+
+    lv_obj_t* fresh = nullptr;
+    helix::ui::UpdateQueue::instance().queue("test::complete_then_create", [this, &fresh]() {
+        ui_wizard_complete();
+        fresh = ui_wizard_create(test_screen());
+    });
+    ui_wizard_navigate_to_step(StepId::HeaterSelect);
+    REQUIRE(fresh != nullptr);
+
+    ui_wizard_navigate_to_step(StepId::FanSelect);
+    process_lvgl(80);
+    CHECK(current_step() == static_cast<int>(StepId::FanSelect));
+
+    cfg->set<std::string>(preset_key, prior_preset);
+    helix::wizard_reset_preset_session_state();
+    cfg->set<bool>("/wizard_completed", was_completed);
+    cfg->set<bool>(cfg->df() + "wizard_completed", was_completed);
+}

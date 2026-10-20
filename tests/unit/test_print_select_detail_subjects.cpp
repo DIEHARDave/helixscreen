@@ -953,7 +953,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AMS slots landing after show() reveal the m
 
     // The view observes AmsState's slots version from init_subjects(), so the
     // subjects exist before any backend does.
-    helix::AmsState::instance().init_subjects(false);
+    helix::AmsState::instance().init_subjects(true);
     helix::ui::PrintSelectDetailView view;
     view.init_subjects();
     lv_obj_t* const root = view.create(test_screen());
