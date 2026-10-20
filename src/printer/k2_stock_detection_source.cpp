@@ -32,7 +32,7 @@
 #include "hv/json.hpp"
 
 extern "C" {
-char** environ; // the libc environment, handed to posix_spawn
+extern char** environ; // the libc environment, handed to posix_spawn
 }
 
 namespace helix::detection {
