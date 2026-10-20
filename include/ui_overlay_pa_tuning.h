@@ -149,6 +149,9 @@ class PaTuningOverlay : public OverlayBase {
     void apply_pick_for_test() {
         apply_pick();
     }
+    void save_to_spool_for_test() {
+        save_to_spool();
+    }
     /// Nudge K by @p delta when a run is printing; false (nothing sent)
     /// otherwise. The Tune overlay's PA row goes through here during a run.
     bool nudge_by(float delta);

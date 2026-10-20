@@ -64,7 +64,7 @@ class PrintLayerPauseControls {
     void on_print_ended();
 
   private:
-    /// False when nothing was sent (beta off, no API).
+    /// False when nothing was sent (no API).
     bool send(const std::string& gcode, const char* what, std::function<void()> on_sent);
 
     helix::IMoonrakerAPI* api_ = nullptr;
@@ -87,11 +87,6 @@ class PrintLayerPauseControls {
 
     helix::AsyncLifetimeGuard lifetime_;
 };
-
-/// Pause at layer is a beta feature: with beta off its UI is hidden (the XML
-/// gates on show_beta_features, the progress tick on this) and nothing opens,
-/// picks or sends.
-bool layer_pause_beta_enabled();
 
 /**
  * @brief The modal's status line: where the print is, what is pending, or why

@@ -457,12 +457,9 @@ void AmsEnvironmentOverlay::publish_dry_gates() {
     const int unit = acting_unit_index();
     const DryerInfo dryer = (backend && unit >= 0) ? backend->get_dryer_info(unit) : DryerInfo{};
 
-    // One chip per heated gate on the unit. Choosing gates is a beta feature: with beta
-    // off there are no chips, so Start and Stop send the whole-unit command.
-    lv_subject_t* beta = lv_xml_get_subject(nullptr, "show_beta_features");
-    const bool beta_on = beta && lv_subject_get_int(beta) != 0;
+    // One chip per heated gate on the unit.
     dry_gates_.clear();
-    if (beta_on && dryer.supported && dryer.supports_gate_selection) {
+    if (dryer.supported && dryer.supports_gate_selection) {
         for (const auto& z : backend->get_environment_zones(unit)) {
             if (z.dryer.supported) {
                 dry_gates_.insert(dry_gates_.end(), z.gates.begin(), z.gates.end());

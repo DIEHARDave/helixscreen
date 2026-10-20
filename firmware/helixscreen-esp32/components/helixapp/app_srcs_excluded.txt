@@ -29,6 +29,7 @@ src/remote/  # all 8 src/ files beneath
 src/tools/  # all 1 src/ files beneath
 
 # --- individual files (same dir, partially compiled) ---
+src/api/accel_batch_source_mock.cpp  # not in the v1 Core+AMS cut
 src/api/backlight_backend.cpp  # not in the v1 Core+AMS cut
 src/api/display_backend.cpp  # not in the v1 Core+AMS cut
 src/api/display_backend_drm.cpp  # not in the v1 Core+AMS cut
@@ -115,17 +116,22 @@ src/calibration/belt_capture.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_dsp_probe.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_gating.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_listen_session.cpp  # not in the v1 Core+AMS cut
+src/calibration/belt_settle.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_live_data.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_stream_client.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_tension_calibrator.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_tension_types.cpp  # not in the v1 Core+AMS cut
+src/calibration/belt_tune_session.cpp  # not in the v1 Core+AMS cut
 src/calibration/calibration_abort.cpp  # not in the v1 Core+AMS cut
 src/calibration/input_shaper_calibrator.cpp  # not in the v1 Core+AMS cut
+src/calibration/live_sweep_preview.cpp  # not in the v1 Core+AMS cut
 src/calibration/pitch_estimator.cpp  # not in the v1 Core+AMS cut
 src/calibration/pluck_aggregator.cpp  # not in the v1 Core+AMS cut
 src/calibration/pluck_detector.cpp  # not in the v1 Core+AMS cut
 src/calibration/shaper_response.cpp  # not in the v1 Core+AMS cut
 src/calibration/shaper_selection.cpp  # not in the v1 Core+AMS cut
+src/calibration/sweep_response_estimator.cpp  # not in the v1 Core+AMS cut
+src/calibration/sweep_synth.cpp  # not in the v1 Core+AMS cut
 src/helix_splash.cpp  # not in the v1 Core+AMS cut
 src/helix_watchdog.cpp  # not in the v1 Core+AMS cut
 src/main.cpp  # not in the v1 Core+AMS cut
@@ -294,6 +300,8 @@ src/ui/ui_overlay_timelapse_settings.cpp  # scope decision 2026-08-12: unreachab
 src/ui/ui_overlay_timelapse_videos.cpp  # viewer UI is gated off here; its helix::ui entry points and the global accessors are stubbed in excluded_subsystems_stub.cpp, which is where kept callers resolve them
 src/ui/ui_panel_bed_mesh.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_belt_path_sketch.cpp  # only the Belt Tension panel draws it; not in the v1 Core+AMS cut
+src/ui/ui_belt_gap_gauge.cpp  # only the Belt Tension panel draws it; not in the v1 Core+AMS cut
+src/ui/ui_belt_retest_menu.cpp  # only the Belt Tension panel raises it; not in the v1 Core+AMS cut
 src/ui/ui_panel_belt_tension.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_pid.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_tool_offset.cpp  # not in the v1 Core+AMS cut
@@ -309,6 +317,7 @@ src/ui/ui_screensaver.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_screws_tilt_share_modal.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_settings_barcode_scanner.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_settings_label_printer.cpp  # not in the v1 Core+AMS cut
+src/ui/ui_shaper_sweep_chart.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_spoolman_context_menu.cpp  # scope decision 2026-08-12: unreachable while ESP discovery omits server.info#2; re-adding requires restoring these TUs + verifying flash budget; until then the UI entry points fail with an error toast
 src/ui/ui_spoolman_edit_modal.cpp  # scope decision 2026-08-12: unreachable while ESP discovery omits server.info#2; re-adding requires restoring these TUs + verifying flash budget; until then the UI entry points fail with an error toast
 src/ui/ui_spoolman_list_view.cpp  # scope decision 2026-08-12: unreachable while ESP discovery omits server.info#2; re-adding requires restoring these TUs + verifying flash budget; until then the UI entry points fail with an error toast

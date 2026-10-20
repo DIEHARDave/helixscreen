@@ -13,11 +13,13 @@
  */
 
 #include "async_lifetime_guard.h"
+#include "belt_settle.h"
 #include "belt_tension_types.h"
 #include "i_moonraker_sub_apis.h"
 
 #include <atomic>
 #include <functional>
+#include <optional>
 #include <string>
 
 // Forward declaration
@@ -34,6 +36,7 @@ class BeltTensionCalibrator {
         IDLE,               ///< Ready to start, no measurement in progress
         DETECTING_HARDWARE, ///< Querying printer for capabilities
         HOMING,             ///< Homing printer axes
+        SETTLING,           ///< Running the settling laps
         MEASURING,          ///< Running the resonance sweep on one path
         ERROR,              ///< An error occurred
     };
@@ -102,16 +105,31 @@ class BeltTensionCalibrator {
      * @brief Home if needed, then sweep one belt path
      *
      * Runs TEST_RESONANCES on the path's diagonal and reports the parsed
-     * curve. All three callbacks run on the LVGL thread. A run already in
+     * curves. All three callbacks run on the LVGL thread. A run already in
      * progress is cancelled first.
      *
      * @param path Which belt diagonal to sweep
      * @param on_progress (percent 0-100, current sweep frequency Hz)
-     * @param on_complete Parsed (frequency_hz, psd_xyz) curve, ascending
+     * @param on_complete The parsed curves: psd_xyz and psd_x + psd_y, ascending
      * @param on_error Error message on failure (homing or sweep)
+     * @param window Optional frequency range to limit the sweep to
      */
     void measure_path(BeltPath path, std::function<void(int percent, float freq_hz)> on_progress,
-                      std::function<void(BeltCurve)> on_complete, BeltErrorCallback on_error);
+                      std::function<void(BeltResponse)> on_complete, BeltErrorCallback on_error,
+                      std::optional<BeltSweepWindow> window = std::nullopt);
+
+    /**
+     * @brief Home if XY is not homed, then run the settling laps
+     *
+     * Homing goes through ensure_homed_then(). plan_belt_settle() decides the
+     * moves before homing; a refusal reaches on_refused and nothing is sent,
+     * not even the G28. Otherwise the script is sent with the plan's timeout and on_done
+     * fires on its ack (the script's M400 holds the ack until the laps
+     * finish). All callbacks run on the LVGL thread. A run already in
+     * progress is cancelled first, and cancel() silences this one the same way.
+     */
+    void settle(const BeltSettleInputs& inputs, std::function<void()> on_done,
+                std::function<void(BeltSettleRefusal)> on_refused, BeltErrorCallback on_error);
 
     // ========================================================================
     // Control

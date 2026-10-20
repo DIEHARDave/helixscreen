@@ -268,7 +268,6 @@
         <lv_obj width="100%"
                 height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_sm" scrollable="false">
           <ui_button name="pa_btn_save_spool" width="1" flex_grow="1" icon="spoolman" text="Save to Spool">
-            <bind_flag_if_eq subject="show_beta_features" flag="hidden" ref_value="0"/>
             <bind_state_if_eq subject="pa_tune_can_save_spool" state="disabled" ref_value="0"/>
             <event_cb trigger="clicked" callback="on_pa_tune_save_spool"/>
           </ui_button>

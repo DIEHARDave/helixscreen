@@ -50,7 +50,7 @@ constexpr const char* MACRO = "UNLOAD_FILAMENT";
 constexpr const char* kDiscretionary = "M106 S128";
 /// A light tap: discretionary, and on its own enough to read idle_timeout
 /// "Printing" for most of a second.
-constexpr const char* LIGHT = "SET_PIN PIN=relay_light VALUE=1";
+constexpr const char* kLight = "SET_PIN PIN=relay_light VALUE=1";
 
 class MacroActivityFixture : public helix::BusyGuardFixture {
   public:
@@ -375,7 +375,7 @@ TEST_CASE_METHOD(MacroActivityFixture, "a light tap on an idle printer is stampe
                  "[busy_guard][1206][mock]") {
     // The normal path, not just the busy branch, records the send: the tap
     // that starts a burst goes out while the printer is still idle.
-    api->execute_gcode(LIGHT, nullptr, nullptr);
+    api->execute_gcode(kLight, nullptr, nullptr);
     REQUIRE(mock_client.last_send_method() == "printer.gcode.script");
     REQUIRE_FALSE(macro_note_done_fired());
 
@@ -395,7 +395,7 @@ TEST_CASE_METHOD(MacroActivityFixture,
 
     const size_t sent_before = mock_client.gcode_script_history().size();
     for (int tap = 0; tap < 10; ++tap) {
-        api->execute_gcode(LIGHT, nullptr, nullptr);
+        api->execute_gcode(kLight, nullptr, nullptr);
     }
 
     // Every tap still went out, and none of them toasted: the latch is unclaimed.
@@ -408,7 +408,7 @@ TEST_CASE_METHOD(MacroActivityFixture, "an episode the user's light taps began s
     begin_blocking_episode();
     state.app_command_episode().note_untracked_send(episode_start(state) -
                                                     std::chrono::milliseconds(200));
-    api->execute_gcode(LIGHT, nullptr, nullptr);
+    api->execute_gcode(kLight, nullptr, nullptr);
     REQUIRE(state.is_busy_episode_app_initiated());
 
     // Toast attribution never reaches the predicate motion is gated on.
@@ -427,7 +427,7 @@ TEST_CASE_METHOD(MacroActivityFixture,
     state.app_command_episode().note_untracked_send(episode_start(state) +
                                                     std::chrono::milliseconds(500));
 
-    api->execute_gcode(LIGHT, nullptr, nullptr);
+    api->execute_gcode(kLight, nullptr, nullptr);
 
     CHECK_FALSE(state.is_busy_episode_app_initiated());
     CHECK_FALSE(state.calibration_state().claim_busy_queue_toast());
@@ -442,7 +442,7 @@ TEST_CASE_METHOD(MacroActivityFixture,
         std::chrono::seconds(1));
     begin_blocking_episode();
 
-    api->execute_gcode(LIGHT, nullptr, nullptr);
+    api->execute_gcode(kLight, nullptr, nullptr);
 
     CHECK_FALSE(state.calibration_state().claim_busy_queue_toast());
 }
@@ -452,10 +452,10 @@ TEST_CASE_METHOD(MacroActivityFixture,
                  "[busy_guard][1206][mock]") {
     // LedAutoState reacting to a state change sends silently, right as an
     // external op starts. That send is not the user's, so it claims nothing.
-    api->execute_gcode(LIGHT, nullptr, nullptr, /*timeout_ms=*/0, /*silent=*/true);
+    api->execute_gcode(kLight, nullptr, nullptr, /*timeout_ms=*/0, /*silent=*/true);
     begin_blocking_episode();
 
-    api->execute_gcode(LIGHT, nullptr, nullptr);
+    api->execute_gcode(kLight, nullptr, nullptr);
 
     CHECK_FALSE(state.calibration_state().claim_busy_queue_toast());
 }
@@ -538,7 +538,7 @@ TEST_CASE("BusyEpisodeOwner reads an episode as not owned once its start falls o
 TEST_CASE_METHOD(MacroActivityFixture,
                  "a light tap on an idle printer keeps its episode past the grace window",
                  "[busy_guard][1206][mock]") {
-    api->execute_gcode(LIGHT, nullptr, nullptr);
+    api->execute_gcode(kLight, nullptr, nullptr);
     const auto sent = BusyEpisodeOwner::clock::now();
 
     const auto episode = sent + std::chrono::milliseconds(500);
@@ -550,7 +550,7 @@ TEST_CASE_METHOD(MacroActivityFixture,
                  "a light tap queued into a busy episode keeps the next one past the grace window",
                  "[busy_guard][1206][mock]") {
     begin_blocking_episode();
-    api->execute_gcode(LIGHT, nullptr, nullptr);
+    api->execute_gcode(kLight, nullptr, nullptr);
     const auto sent = BusyEpisodeOwner::clock::now();
 
     const auto episode = sent + std::chrono::milliseconds(500);

@@ -101,8 +101,9 @@ lv_subject_t* beta_subject() {
     return &subject;
 }
 
-RecordingLaneRig* show_overlay(bool per_lane, bool beta = true) {
-    lv_subject_set_int(beta_subject(), beta ? 1 : 0);
+RecordingLaneRig* show_overlay(bool per_lane) {
+    // Choosing gates needs no beta features, so every case runs with them off.
+    lv_subject_set_int(beta_subject(), 0);
     auto backend = std::make_unique<RecordingLaneRig>(per_lane);
     auto* raw = backend.get();
     AmsState::instance().set_backend(std::move(backend));
@@ -131,6 +132,7 @@ void press_start_stop() {
 void finish() {
     reset_overlay_singleton();
     AmsState::instance().set_backend(nullptr);
+    lv_subject_set_int(beta_subject(), 1);
 }
 
 } // namespace
@@ -266,29 +268,4 @@ TEST_CASE_METHOD(XMLTestFixture, "An overlay with no zone offers no lane chips",
 TEST_CASE("A Stop on some lanes names the lanes it stopped", "[ams][dryer][dry_gates]") {
     CHECK(stopped_lanes_text({1, 2}, LaneNoun::Gate) == "Stopped drying Gate 2, Gate 3");
     CHECK(stopped_lanes_text({0}, LaneNoun::Lane) == "Stopped drying Lane 1");
-}
-
-TEST_CASE_METHOD(XMLTestFixture, "With beta features off a per-lane dryer starts the whole unit",
-                 "[ams][dryer][dry_gates][overlay][beta]") {
-    reset_overlay_singleton();
-    auto* backend = show_overlay(true, false);
-
-    CHECK(subject_int("env_dry_gate_count") == 0);
-    CHECK(subject_int("env_dry_rotate_visible") == 0);
-    CHECK(lv_obj_has_flag(find_widget("dry_gate_row"), LV_OBJ_FLAG_HIDDEN));
-    CHECK_FALSE(lv_obj_has_flag(find_widget("zone_slots_label"), LV_OBJ_FLAG_HIDDEN));
-
-    press_start_stop();
-    REQUIRE(backend->starts.size() == 1);
-    CHECK(backend->starts[0].gates.empty());
-    CHECK_FALSE(backend->starts[0].rotate);
-
-    backend->report_active = true;
-    get_ams_environment_overlay().refresh();
-    press_start_stop();
-    REQUIRE(backend->stops.size() == 1);
-    CHECK(backend->stops[0].empty());
-
-    lv_subject_set_int(beta_subject(), 1);
-    finish();
 }

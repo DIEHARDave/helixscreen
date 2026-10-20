@@ -173,6 +173,7 @@ static constexpr const char* VERTICAL_AXIS_TOKENS[] = {
     "dialog_content_recovery_max",
     "spinner_lg",
     "header_button_height",
+    "belt_tune_hero_h",
 };
 
 bool theme_manager_token_uses_vertical_axis(const char* base_name) {
@@ -373,8 +374,10 @@ void theme_manager_refresh_orientation(lv_display_t* display) {
     // STANDARD; detect_layout_type() gives the right physical answer, using the
     // caller's display when provided so a non-default display (tests, a
     // specific refresh target) is not confused with the default. See #1255.
+    // ui_is_ultrawide follows the same source for the same reason.
     lv_subject_t* portrait_subject = lv_xml_get_subject(nullptr, "ui_is_portrait");
-    if (!portrait_subject) {
+    lv_subject_t* ultrawide_subject = lv_xml_get_subject(nullptr, "ui_is_ultrawide");
+    if (!portrait_subject && !ultrawide_subject) {
         return;
     }
 
@@ -384,7 +387,13 @@ void theme_manager_refresh_orientation(lv_display_t* display) {
     }
     const int w = disp ? lv_display_get_horizontal_resolution(disp) : 0;
     const int h = disp ? lv_display_get_vertical_resolution(disp) : 0;
-    lv_subject_set_int(portrait_subject, app_layout_is_portrait(w, h) ? 1 : 0);
+    const LayoutType type = app_layout_type(w, h);
+    if (portrait_subject) {
+        lv_subject_set_int(portrait_subject, is_portrait_layout(type) ? 1 : 0);
+    }
+    if (ultrawide_subject) {
+        lv_subject_set_int(ultrawide_subject, type == LayoutType::ULTRAWIDE ? 1 : 0);
+    }
 }
 
 namespace {

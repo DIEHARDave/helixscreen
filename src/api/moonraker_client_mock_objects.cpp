@@ -409,11 +409,7 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                       // Resonance sweep bounds — the input shaper collector
                       // reads these to scale sweep progress to the range this
                       // printer will actually test.
-                      {"resonance_tester",
-                       {{"min_freq", self->get_resonance_min_freq()},
-                        {"max_freq", self->get_resonance_max_freq()},
-                        {"accel_per_hz", 75.0},
-                        {"hz_per_sec", self->get_resonance_hz_per_sec()}}},
+                      {"resonance_tester", self->resonance_tester_settings()},
                       // Bed screw geometry — the screws-tilt panel reads
                       // screw_thread from here to size its level tolerance.
                       {"screws_tilt_adjust",
@@ -597,7 +593,8 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                     status_obj[name] = status;
                 }
             }
-            for (const auto& [name, status] : self->layer_pause_status().items()) {
+            const json layer_pause_status = self->layer_pause_status();
+            for (const auto& [name, status] : layer_pause_status.items()) {
                 if (objects.contains(name)) {
                     status_obj[name] = status;
                 }
@@ -1003,7 +1000,8 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                     status_obj[name] = status;
                 }
             }
-            for (const auto& [name, status] : self->layer_pause_status().items()) {
+            const json layer_pause_status = self->layer_pause_status();
+            for (const auto& [name, status] : layer_pause_status.items()) {
                 if (objects.contains(name)) {
                     status_obj[name] = status;
                 }
@@ -1040,11 +1038,7 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                         {"position_max", axis_max.z},
                         {"position_endstop", 235.0}}},
                       {"extruder", extruder_settings2},
-                      {"resonance_tester",
-                       {{"min_freq", self->get_resonance_min_freq()},
-                        {"max_freq", self->get_resonance_max_freq()},
-                        {"accel_per_hz", 75.0},
-                        {"hz_per_sec", self->get_resonance_hz_per_sec()}}},
+                      {"resonance_tester", self->resonance_tester_settings()},
                       {"heater_bed",
                        {{"min_temp", 0.0},
                         {"max_temp", 120.0},
