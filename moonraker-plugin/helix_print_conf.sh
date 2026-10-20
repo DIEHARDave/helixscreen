@@ -385,6 +385,8 @@ moonraker_plugin_version() {
 # imports one it has not; "plugin" when it runs another version, which only
 # a new process reads; "none" when it runs @2 already, or any version with
 # @2 empty.
+# UNCALLED_OK: moonraker-plugin/install.sh calls it; the main installer never
+# restarts Moonraker for the plugin.
 plugin_restart_mode() {
     _prm_running=$(moonraker_plugin_version "$1")
     if [ -z "$_prm_running" ]; then
