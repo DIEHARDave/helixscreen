@@ -2,6 +2,8 @@
 
 Get HelixScreen running on your Creality K1C (also works for K1 and K1 Max).
 
+> **Easy installer:** the [HelixScreen easy installer](https://helixscreen.org/installer/) can do this install from a desktop app, with no terminal. This guide is the same thing done by hand.
+
 **Time required:** ~20 minutes
 
 ---

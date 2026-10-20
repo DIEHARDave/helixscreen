@@ -4,7 +4,27 @@ The BigTreeTech K-Touch is a small standalone touchscreen built around an ESP32-
 
 > **This is an alpha.** Expect rough edges and missing features (see [what doesn't work yet](#what-doesnt-work-yet-on-the-k-touch)). It replaces the K-Touch's stock BigTreeTech firmware. The 1.0.x releases do not include it: use a 1.1 beta release or newer.
 
-**Easiest: flash from your browser.** Open [helixscreen.org/flash](https://helixscreen.org/flash/) in desktop Chrome or Edge, plug in the K-Touch with a USB-C data cable, and click **Install**. Tick **Erase device** for a first install over BigTreeTech's firmware; leave it unticked when updating to keep your WiFi and settings. Then continue at [First boot](#first-boot-wifi-and-printer-setup). The rest of this page does the same thing from a terminal.
+**Easiest: flash from your browser.** Open [helixscreen.org/flash](https://helixscreen.org/flash/) in desktop Chrome or Edge, plug in the K-Touch with a USB-C data cable, and click **Install**. Tick **Erase device** for a first install over BigTreeTech's firmware; leave it unticked when updating to keep your WiFi and settings. Then continue at [First boot](#first-boot-wifi-and-printer-setup). The [easy installer](#with-the-easy-installer) does the same from a desktop app, and the rest of this page does it from a terminal.
+
+## With the Easy Installer
+
+The [HelixScreen easy installer](https://helixscreen.org/installer/) is a desktop app (Windows, macOS, Linux) that flashes the K-Touch over USB, with no Python, esptool or browser needed. It installs the newest 1.1 beta build.
+
+1. Plug the K-Touch into your computer with a USB-C data cable and switch it on.
+2. Open the installer. The K-Touch shows up in the printer list (a K-Touch plugged in by USB is listed alongside network printers). Pick it.
+3. The installer reads the chip before it writes anything. It only goes ahead on an ESP32-S3 with 16 MB of flash, which is what the K-Touch has. Any other USB device is refused untouched.
+4. A first install over BigTreeTech's firmware erases the panel first, including its WiFi and settings. Keep it plugged in until the installer says it is done.
+5. The panel restarts into HelixScreen and ends on its **own setup screen**, not in the installer. Finish there as described in [First boot](#first-boot-wifi-and-printer-setup): if it shows **Set Up WiFi**, join the `HelixScreen-XXXX` network from your phone and enter your WiFi and printer address.
+
+**Updating:** plug the panel in and run the installer again. An update writes the new firmware and keeps the panel's WiFi network and settings. The installer won't install an older version over a newer one. If a panel is not running HelixScreen when you run the installer, it treats the run as a fresh install and erases first.
+
+**Per operating system:**
+
+- **Linux:** your user needs permission to use the serial port, which is normally the `dialout` group. Run `sudo usermod -aG dialout $USER`, then log out and back in. The panel shows up as `/dev/ttyUSB0`.
+- **Windows:** if no new COM port appears when you plug the panel in, install the CH340 USB driver from WCH, then plug it in again.
+- **macOS:** the driver is built in. Nothing to install.
+
+If the panel isn't listed, try another cable (some only charge) and see [Recovery](#recovery) if it was already misbehaving.
 
 **What you need:**
 

@@ -9,6 +9,8 @@ This guide walks you through installing HelixScreen on your 3D printer's touchsc
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+  - [Easy installer (desktop app)](#easy-installer-desktop-app)
+  - [From the command line](#from-the-command-line)
 - [Which printer are you installing on?](#which-printer-are-you-installing-on)
 - [Remote Screen Setup (Run on a Separate Device)](#remote-screen-setup-run-on-a-separate-device)
 - [Android App (Experimental)](#android-app-experimental)
@@ -22,6 +24,33 @@ This guide walks you through installing HelixScreen on your 3D printer's touchsc
 ---
 
 ## Quick Start
+
+### Easy installer (desktop app)
+
+If you would rather not use a terminal, the HelixScreen easy installer does the install for you from a Windows, macOS or Linux computer. [Download it](https://helixscreen.org/installer/), switch your printer on, and open the app. It looks for printers on your network, shows the ones it knows how to set up, and walks you through the rest, including the steps that need a hand at the printer (turning on root access, plugging in a USB stick).
+
+What it does for you:
+
+- Identifies the printer from what it reports about itself, and refuses anything it isn't sure about instead of guessing. Nothing is changed on a printer it stops on
+- Signs in over SSH (it asks for a password or uses your SSH key), checks the printer, and installs the right HelixScreen build
+- Updates a printer that already runs HelixScreen, without ever installing an older version over a newer one
+- Flashes a BigTreeTech K-Touch over USB
+
+Printers it covers today:
+
+| Printer | Guide |
+|---------|-------|
+| Raspberry Pi, BTT CB1/CB2 and other Klipper hosts | [Klipper host install](guide/install-generic.md) |
+| Creality K1 / K1C / K1 Max | [K1 series install](guide/install-k1.md) |
+| Creality K2 / K2 Plus / K2 Pro | [K2 series install](guide/install-k2.md) |
+| Flashforge Adventurer 5M / 5M Pro | [Adventurer 5M install](guide/install-ad5m.md) |
+| FlashForge Adventurer 5X | [Adventurer 5X install](guide/install-ad5x.md) |
+| QIDI Q2 / Max 4 / Plus 5 | [QIDI install](guide/install-qidi.md) |
+| BigTreeTech K-Touch | [K-Touch install](guide/install-esp32.md#with-the-easy-installer) |
+
+The list grows as recipes are tested. A printer it recognizes but can't set up yet sends you to [Printers the easy installer doesn't handle](guide/easy-installer-unsupported.md), which says what works today. The app is not code-signed yet, so macOS and Windows warn the first time you open it; the [download page](https://helixscreen.org/installer/) shows the two clicks that get past that.
+
+### From the command line
 
 > **⚠️ Run these commands on your printer's host, not your local computer.**
 >
@@ -49,14 +78,15 @@ The one-liner above works on every supported platform, but each printer family h
 
 | Printer | Install guide |
 |---------|---------------|
-| Generic Linux - Raspberry Pi, BTT CB1/CB2/Manta, x86 | This page - see [Generic Linux Install](#generic-linux-install-raspberry-pi-btt-x86) below |
-| Creality K1 / K1C / K1 Max | [Creality K1C Setup Guide](guide/creality-k1c-setup.md) - root access plus Simple AF or Guilouz firmware |
+| Generic Linux - Raspberry Pi, BTT CB1/CB2/Manta, x86 | This page - see [Generic Linux Install](#generic-linux-install-raspberry-pi-btt-x86) below, or the [easy installer on a Klipper host](guide/install-generic.md) |
+| Creality K1 / K1C / K1 Max | [K1 Series Install](guide/install-k1.md) - the easy installer path; [Creality K1C Setup Guide](guide/creality-k1c-setup.md) - the same by hand, root access plus Simple AF or Guilouz firmware |
 | Creality K2 / K2 Plus / K2 Pro | [K2 Series Install](guide/install-k2.md) - works on stock firmware, no custom firmware needed |
 | Flashforge Adventurer 5M / 5M Pro | [Adventurer 5M Install](guide/install-ad5m.md) - Forge-X (recommended) or ZMOD firmware mod first |
 | FlashForge Adventurer 5X | [Adventurer 5X Install (ZMOD)](guide/install-ad5x.md) - the ZMOD firmware mod manages install and updates |
 | FlashForge Creator 5 / Creator 5 Pro | [Z-Mod wiki](https://wiki.zmod.link/C5PRO/) - Z-Mod installs and updates HelixScreen itself; on [Reforge](https://github.com/Klipper4FlashForge/firmware), HelixScreen ships with the firmware |
 | Elegoo Centauri Carbon | [Centauri Carbon Install](guide/install-cc1.md) - requires the OpenCentauri COSMOS firmware, 26.07.0 or newer |
 | Creality Sonic Pad | [Sonic Pad Install](guide/install-sonicpad.md) - requires the SonicPad-Debian firmware |
+| QIDI Q2 / Max 4 / Plus 5 | [QIDI Install](guide/install-qidi.md) - replaces QIDI's screen program; read the QIDI Studio and cloud notice first |
 | Snapmaker U1 | [Snapmaker U1 Install](guide/install-u1.md) - stock firmware 1.2+ with Root access, or PAXX Extended Firmware |
 | BigTreeTech K-Touch (standalone ESP32 screen) | [K-Touch Install](guide/install-esp32.md) - alpha firmware, flashed from your browser or over USB; 1.1 betas and newer |
 
