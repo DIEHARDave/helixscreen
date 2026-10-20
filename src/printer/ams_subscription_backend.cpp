@@ -552,6 +552,22 @@ AmsError AmsSubscriptionBackend::refuse_motion_if_printing() const {
     return AmsErrorHelper::busy_with_print();
 }
 
+AmsError AmsSubscriptionBackend::send_endless_spool_switch(const std::string& gcode,
+                                                           std::function<void()> on_sent) {
+    auto token = lifetime_.token();
+    return execute_gcode(
+        gcode,
+        [on_sent = std::move(on_sent)]() {
+            if (on_sent) {
+                on_sent();
+            }
+        },
+        [this, token](const MoonrakerError&) {
+            token.defer("AmsSubscriptionBackend::endless_spool_refused",
+                        [this]() { emit_event(kEventEndlessSpoolRefused); });
+        });
+}
+
 AmsError AmsSubscriptionBackend::execute_device_action(const std::string& action_id,
                                                        const std::any& value) {
     // Only an action the backend offers right now runs: one it no longer lists

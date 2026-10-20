@@ -376,6 +376,12 @@ class AmsSubscriptionBackend : public AmsBackend {
     /// when refused; success when api_ is null (print state unknown).
     AmsError refuse_motion_if_printing() const;
 
+    /// Send an Endless Spool on/off command. A rejection Klipper reports after
+    /// the send emits kEventEndlessSpoolRefused, so a switch the user flipped
+    /// returns to the backend's state. @p on_sent runs once Klipper has run it.
+    AmsError send_endless_spool_switch(const std::string& gcode,
+                                       std::function<void()> on_sent = {});
+
     /// Backend implementation of execute_device_action(), reached only after the
     /// moves_machine gate has passed. Default refuses.
     virtual AmsError do_execute_device_action(const std::string& action_id, const std::any& value) {

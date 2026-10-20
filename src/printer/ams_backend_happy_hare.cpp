@@ -3227,8 +3227,8 @@ AmsBackendHappyHare::get_endless_spool_capabilities() const {
 
 AmsError AmsBackendHappyHare::apply_endless_spool_enabled(bool enabled) {
     // Happy Hare persists the choice itself (mmu_state_enable_endless_spool).
-    return execute_gcode(std::string("MMU_ENDLESS_SPOOL ENABLE=") + (enabled ? "1" : "0") +
-                         " QUIET=1");
+    return send_endless_spool_switch(std::string("MMU_ENDLESS_SPOOL ENABLE=") +
+                                     (enabled ? "1" : "0") + " QUIET=1");
 }
 
 helix::printer::EndlessSpoolConfig AmsBackendHappyHare::get_endless_spool_config() const {

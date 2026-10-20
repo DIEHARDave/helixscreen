@@ -2017,7 +2017,8 @@ helix::printer::EndlessSpoolCapabilities AmsBackendAce::get_endless_spool_capabi
 }
 
 AmsError AmsBackendAce::apply_endless_spool_enabled(bool enabled) {
-    return execute_gcode(enabled ? "ACE_ENABLE_ENDLESS_SPOOL" : "ACE_DISABLE_ENDLESS_SPOOL");
+    return send_endless_spool_switch(enabled ? "ACE_ENABLE_ENDLESS_SPOOL"
+                                             : "ACE_DISABLE_ENDLESS_SPOOL");
 }
 
 helix::printer::EndlessSpoolConfig AmsBackendAce::get_endless_spool_config() const {

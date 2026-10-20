@@ -173,6 +173,9 @@ class AmsBackend {
         "UNLOAD_COMPLETE";                                           ///< Unload operation finished
     static constexpr const char* kEventToolChanged = "TOOL_CHANGED"; ///< Tool change completed
     static constexpr const char* kEventError = "ERROR";              ///< Error occurred
+    /// Klipper rejected an Endless Spool switch after it was sent: the switch the
+    /// user flipped goes back to what the backend still reports.
+    static constexpr const char* kEventEndlessSpoolRefused = "ENDLESS_SPOOL_REFUSED";
     static constexpr const char* kEventAttentionRequired =
         "ATTENTION"; ///< User intervention needed
 

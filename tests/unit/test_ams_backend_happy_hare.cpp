@@ -68,7 +68,7 @@ class AmsBackendHappyHareTestHelper : public AmsBackendHappyHare {
   public:
     AmsBackendHappyHareTestHelper(IMoonrakerAPI* api = nullptr,
                                   helix::IMoonrakerClient* client = nullptr)
-        : AmsBackendHappyHare(api, client) {}
+        : AmsBackendHappyHare(api, client), has_api_(api != nullptr) {}
 
     /**
      * @brief Initialize test gates with default SlotInfo
@@ -287,9 +287,34 @@ class AmsBackendHappyHareTestHelper : public AmsBackendHappyHare {
         return AmsErrorHelper::success();
     }
 
+    /// The completion form (the Endless Spool switch) captures into the same list;
+    /// fail_gcode answers its on_error.
+    AmsError execute_gcode(const std::string& gcode, std::function<void()> on_complete,
+                           std::function<void(const MoonrakerError&)> on_error,
+                           bool silent) override {
+        // A test that hands in a recording API reads the sends there.
+        if (has_api_) {
+            return AmsBackendHappyHare::execute_gcode(gcode, std::move(on_complete),
+                                                      std::move(on_error), silent);
+        }
+        captured_gcodes.push_back(gcode);
+        if (!fail_gcode.empty() && gcode == fail_gcode) {
+            if (on_error) {
+                on_error(MoonrakerError{});
+            }
+        } else if (on_complete) {
+            on_complete();
+        }
+        return AmsErrorHelper::success();
+    }
+
     /// A command execute_gcode() answers with an error.
     std::string fail_gcode;
 
+  private:
+    bool has_api_ = false;
+
+  public:
     /// Mark unit @p u so a test can tell whether the unit list was rebuilt.
     void mark_unit(int u, const std::string& marker) {
         std::lock_guard<std::mutex> lock(mutex_);

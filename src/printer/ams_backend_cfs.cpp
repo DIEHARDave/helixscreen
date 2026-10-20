@@ -4442,7 +4442,7 @@ AmsError AmsBackendCfs::apply_endless_spool_enabled(bool enabled) {
     // dialect without the command or a rejected send must leave the cache on
     // the box's last word.
     auto token = lifetime_.token();
-    return execute_gcode(setter + (enabled ? "1" : "0"), [this, token, enabled]() {
+    return send_endless_spool_switch(setter + (enabled ? "1" : "0"), [this, token, enabled]() {
         token.defer("AmsBackendCfs::auto_refill_sent",
                     [this, enabled]() { record_auto_refill_sent(enabled); });
     });

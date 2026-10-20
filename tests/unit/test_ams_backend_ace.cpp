@@ -242,6 +242,7 @@ json make_native_filament_hub_payload() {
  */
 class AmsBackendAceTestHelper : public AmsBackendAce {
   public:
+    using AmsSubscriptionBackend::send_endless_spool_switch;
     AmsBackendAceTestHelper() : AmsBackendAce(nullptr, nullptr) {}
     explicit AmsBackendAceTestHelper(helix::IMoonrakerClient* client)
         : AmsBackendAce(nullptr, client) {}
@@ -3270,6 +3271,21 @@ TEST_CASE("ACE endless spool switch and match mode send the driver commands",
     CHECK_FALSE(
         helper.execute_device_action("ace_endless_spool_mode", std::string("bogus")).success());
     CHECK(helper.captured_gcodes.size() == 3);
+}
+
+TEST_CASE("ACE endless spool switch rejected after the send reports it", "[ams][ace][endless]") {
+    AmsBackendAceTestHelper helper;
+    std::vector<std::string> events;
+    helper.set_event_callback(
+        [&](const std::string& event, const std::string&) { events.push_back(event); });
+    // Send through the real dispatch, which refuses with no API: the same
+    // on_error leg Klipper's rejection takes.
+    helper.dispatch_via_base = true;
+    REQUIRE(helper.send_endless_spool_switch("ACE_ENABLE_ENDLESS_SPOOL").result ==
+            helix::AmsResult::NOT_CONNECTED);
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(std::count(events.begin(), events.end(),
+                     std::string(helix::AmsBackend::kEventEndlessSpoolRefused)) == 1);
 }
 
 TEST_CASE("ACE endless spool switch is refused before the driver reports it",
