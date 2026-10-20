@@ -495,6 +495,37 @@ client_->register_notify_update(
 `[UpdateQueue] DROPPED (shutdown): <tag>` line in a device log means a background thread is
 enqueueing after `update_queue_shutdown()` ran — that is a real bug, not noise.
 
+### Drain only when queued work can still reach what you delete
+
+`drain()` runs every pending callback synchronously under your stack frame, whoever queued
+it. One of them can free or rebuild the object that called the drain (a page rebuild, a
+widget recycle, a panel rebuilt by hot reload), and the caller then carries on through
+freed or replaced state. Before draining, ask what the drain protects:
+
+| What is being deleted | Drain? |
+|-----------------------|--------|
+| Objects only you own, deleted through `safe_delete_deferred()` / `lv_obj_delete_async()` | No: nothing queued can reach them, and the deletion already runs outside the batch |
+| Widget data behind `observe<>` callbacks reset in the same teardown | No: the reset expires the callback's `weak_alive` token, so the queued callback no-ops |
+| Objects that raw-pointer callbacks queued earlier may still touch | Yes, and check liveness after it (below) |
+
+A caller that keeps using its own state after a drain takes a token from a guard that expires
+with that state, and stops when `helix::drain_updates_survived(tok)` answers false:
+
+```cpp
+// HomePanel: carousel_lifetime_ is invalidated by every carousel build and teardown.
+auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
+if (!helix::drain_updates_survived(carousel_lifetime_.token())) {
+    return;   // queued work replaced the pages this call was filling
+}
+helix::ui::safe_clean_children(container);
+```
+
+Nested drains compose: a drain inside a callback (`UpdateQueue::is_draining()` true) runs
+only work queued since the outer batch began, and the token check means the same thing at
+any depth. Do not build anything that destroys whole panels or sessions to run inside a
+drain: `PrinterSwitchFlow` defers to the next tick when `is_draining()` for exactly that
+reason.
+
 ---
 
 ## 5. Subject lifecycle

@@ -4,7 +4,6 @@
 #include "ui_ams_lane_bar.h"
 
 #include "ui_observer_guard.h"
-#include "ui_update_queue.h"
 
 #include "ams_lane_state.h"
 #include "ams_state.h"
@@ -93,8 +92,6 @@ static void register_lane_bar_data(lv_obj_t* obj, LaneBarData* data) {
 static void unregister_lane_bar_data(lv_obj_t* obj) {
     auto it = s_lane_bar_registry.find(obj);
     if (it != s_lane_bar_registry.end()) {
-        auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-        helix::ui::UpdateQueue::instance().drain();
         std::unique_ptr<LaneBarData> data(it->second);
         if (data) {
             // Reset the dynamic-subject lifetime BEFORE its observer so the

@@ -1,0 +1,209 @@
+// Copyright (C) 2025-2026 356C LLC
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * @file test_teardown_drain_reentrancy.cpp
+ * @brief Teardown that runs no queued UI work under its own stack frame
+ *
+ * A drain runs every queued callback synchronously inside its caller, so a
+ * teardown that drains can be freed, or have its container rebuilt, by work it
+ * never asked for. The edit-mode chrome and the AMS widget delete handlers
+ * release objects that no queued callback can reach (the chrome is
+ * async-deleted and owned by edit mode alone; every AMS observer callback is
+ * guarded by its ObserverGuard and a registry lookup), so they must not drain.
+ *
+ * Each case queues a canary that destroys what the teardown is working on,
+ * runs the teardown, and checks the canary waited for the next tick.
+ */
+
+#include "ui_ams_lane_bar.h"
+#include "ui_ams_lane_spool.h"
+#include "ui_ams_slot.h"
+#include "ui_update_queue.h"
+
+#include "../test_fixtures.h"
+#include "../test_helpers/grid_edit_mode_test_access.h"
+#include "ams_state.h"
+#include "config.h"
+#include "grid_edit_mode.h"
+#include "grid_layout.h"
+#include "panel_widget.h"
+#include "panel_widget_config.h"
+#include "panel_widget_manager.h"
+
+#include <memory>
+#include <string>
+
+#include "../catch_amalgamated.hpp"
+
+using namespace helix;
+
+namespace {
+
+class ChromeWidget : public PanelWidget {
+  public:
+    void attach(lv_obj_t*, lv_obj_t*) override {}
+    void detach() override {}
+    const char* id() const override {
+        return "humidity";
+    }
+    bool has_edit_configure() const override {
+        return true;
+    }
+};
+
+void queue_canary(bool& ran, std::function<void()> destroy) {
+    helix::ui::UpdateQueue::instance().queue("test::drain_canary", [&ran, destroy]() {
+        ran = true;
+        destroy();
+    });
+}
+
+} // namespace
+
+TEST_CASE_METHOD(XMLTestFixture, "edit-mode chrome teardown runs no queued callback",
+                 "[grid_edit][drain_reentrancy]") {
+    const int gutter = GridLayout::gutter_px();
+    REQUIRE(gutter > 0);
+    constexpr int content_w = 715;
+    constexpr int content_h = 475;
+    const auto dims = GridLayout::get_dimensions(UiBreakpoint::Medium, content_w, content_h);
+
+    lv_obj_t* container = lv_obj_create(test_screen());
+    lv_obj_remove_flag(container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_pad_all(container, 0, 0);
+    lv_obj_set_style_border_width(container, 0, 0);
+    lv_obj_set_size(container, content_w, content_h);
+    auto col_dsc = GridLayout::make_col_dsc(dims.cols);
+    auto row_dsc = GridLayout::make_row_dsc(dims.rows);
+    lv_obj_set_grid_dsc_array(container, col_dsc.data(), row_dsc.data());
+    lv_obj_set_style_pad_column(container, gutter, 0);
+    lv_obj_set_style_pad_row(container, gutter, 0);
+
+    ChromeWidget pw;
+    lv_obj_t* widget = lv_obj_create(container);
+    lv_obj_set_name(widget, "humidity");
+    lv_obj_set_grid_cell(widget, LV_GRID_ALIGN_STRETCH, 0, GridLayout::TRACKS_PER_CELL,
+                         LV_GRID_ALIGN_STRETCH, 0, GridLayout::TRACKS_PER_CELL);
+    lv_obj_set_user_data(widget, &pw);
+    lv_obj_update_layout(container);
+
+    // A second page, so the lattice carries the delete-page button.
+    const std::string panel_id = "test_teardown_drain_reentrancy";
+    auto* cfg = Config::get_instance();
+    cfg->set<nlohmann::json>(
+        cfg->df() + "panel_widgets/" + panel_id,
+        nlohmann::json{{"main_page_index", 0},
+                       {"next_page_id", 2},
+                       {"pages",
+                        {{{"id", "main"}, {"widgets", nlohmann::json::array()}},
+                         {{"id", "second"},
+                          {"widgets",
+                           {{{"id", "humidity"},
+                             {"enabled", true},
+                             {"col", 0},
+                             {"row", 0},
+                             {"colspan", GridLayout::TRACKS_PER_CELL},
+                             {"rowspan", GridLayout::TRACKS_PER_CELL}}}}}}}});
+    auto& mgr = PanelWidgetManager::instance();
+    mgr.get_widget_config(panel_id).mark_dirty();
+    mgr.clear_panel_config(panel_id);
+    auto& config = mgr.get_widget_config(panel_id);
+
+    // The canary frees the edit session the teardown runs in.
+    auto em = std::make_unique<GridEditMode>();
+    em->enter(container, &config, 1);
+    em->select_widget(widget);
+    REQUIRE(GridEditModeTestAccess::remove_button(*em) != nullptr);
+    REQUIRE(GridEditModeTestAccess::delete_page_button(*em) != nullptr);
+    bool ran = false;
+
+    SECTION("selection chrome") {
+        queue_canary(ran, [&em]() { em.reset(); });
+        GridEditModeTestAccess::destroy_selection_chrome(*em);
+        REQUIRE_FALSE(ran);
+        CHECK(GridEditModeTestAccess::remove_button(*em) == nullptr);
+    }
+
+    SECTION("snap preview") {
+        GridEditModeTestAccess::update_snap_preview(*em, 0, 0, GridLayout::TRACKS_PER_CELL,
+                                                    GridLayout::TRACKS_PER_CELL, true);
+        REQUIRE(GridEditModeTestAccess::snap_preview(*em) != nullptr);
+        queue_canary(ran, [&em]() { em.reset(); });
+        GridEditModeTestAccess::destroy_snap_preview(*em);
+        REQUIRE_FALSE(ran);
+        CHECK(GridEditModeTestAccess::snap_preview(*em) == nullptr);
+    }
+
+    SECTION("lattice delete-page button") {
+        lv_obj_t* old_btn = GridEditModeTestAccess::delete_page_button(*em);
+        // A new content size is a new lattice, which replaces the button.
+        lv_obj_set_size(container, content_w - 40, content_h - 40);
+        lv_obj_update_layout(container);
+        queue_canary(ran, [&em]() { em.reset(); });
+        GridEditModeTestAccess::rebuild_lattice(*em);
+        REQUIRE_FALSE(ran);
+        CHECK(GridEditModeTestAccess::delete_page_button(*em) != old_btn);
+    }
+
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(ran);
+    CHECK(em == nullptr);
+    process_lvgl(20);
+}
+
+namespace {
+
+lv_obj_t* make_ams_widget(lv_obj_t* parent, const char* component, int slot_index) {
+    const std::string idx = std::to_string(slot_index);
+    const char* attrs[] = {"slot_index", idx.c_str(), nullptr};
+    return static_cast<lv_obj_t*>(lv_xml_create(parent, component, attrs));
+}
+
+} // namespace
+
+TEST_CASE_METHOD(XMLTestFixture, "AMS widget delete runs no queued callback",
+                 "[ams][drain_reentrancy]") {
+    ui_ams_lane_spool_register();
+    ui_ams_lane_bar_register();
+    ui_ams_slot_register();
+    AmsState::instance().init_subjects(true);
+
+    const char* component = nullptr;
+    SECTION("ams_slot") {
+        component = "ams_slot";
+    }
+    SECTION("ams_lane_spool") {
+        component = "ams_lane_spool";
+    }
+    SECTION("ams_lane_bar") {
+        component = "ams_lane_bar";
+    }
+    CAPTURE(component);
+
+    lv_obj_t* doomed = make_ams_widget(test_screen(), component, 0);
+    REQUIRE(doomed != nullptr);
+    process_lvgl(20);
+
+    // The canary grows the registry the delete handler is erasing from, enough
+    // to rehash it, as a queued panel rebuild that creates lanes would.
+    std::vector<lv_obj_t*> created;
+    bool ran = false;
+    queue_canary(ran, [&created, component]() {
+        for (int i = 0; i < 32; ++i) {
+            created.push_back(make_ams_widget(lv_screen_active(), component, i % 4));
+        }
+    });
+
+    lv_obj_delete(doomed);
+    CHECK_FALSE(ran);
+
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(ran);
+    CHECK(created.size() == 32);
+    for (lv_obj_t* obj : created) {
+        REQUIRE(obj != nullptr);
+        lv_obj_delete(obj);
+    }
+    process_lvgl(20);
+}
