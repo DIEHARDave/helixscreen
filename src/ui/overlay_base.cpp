@@ -14,7 +14,9 @@
 
 #include <spdlog/spdlog.h>
 
+#include <cassert>
 #include <string>
+#include <utility>
 
 OverlayBase::~OverlayBase() {
     // Fallback unregister in case cleanup() wasn't called. A no-op once
@@ -133,9 +135,10 @@ void OverlayBase::close() {
 }
 
 void OverlayBase::destroy_overlay_ui(lv_obj_t*& cached_panel) {
-    helix::ui::teardown_overlay_ui(
-        overlay_root_, get_name(), helix::ui::TeardownDelete::Deferred, &cached_panel,
-        helix::ui::TeardownHooks::after([this]() { on_ui_destroyed(); }));
+    auto hooks = helix::ui::TeardownHooks::after([this]() { on_ui_destroyed(); });
+    hooks.owner = teardown_owner_.token();
+    helix::ui::teardown_overlay_ui(overlay_root_, get_name(), helix::ui::TeardownDelete::Deferred,
+                                   &cached_panel, std::move(hooks));
 }
 
 bool helix::ui::teardown_overlay_ui(lv_obj_t*& root, const char* owner_name, TeardownDelete how,
@@ -151,6 +154,8 @@ bool helix::ui::teardown_overlay_ui(lv_obj_t*& root, const char* owner_name, Tea
     // panel pointers. Processing them here prevents use-after-free.
     auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
     helix::ui::UpdateQueue::instance().drain();
+    assert((!hooks.owner || !hooks.owner->expired()) &&
+           "teardown_overlay_ui: the owner was freed by work its own drain ran");
     // The drained work can include a close callback that tore this overlay
     // down already; its hooks have run and must not run twice.
     if (!root) {

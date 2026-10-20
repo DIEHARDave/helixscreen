@@ -16,6 +16,11 @@
 #include "../test_helpers/process_async_timers.h"
 #include "overlay_base.h"
 
+#include <csignal>
+#include <memory>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include "../catch_amalgamated.hpp"
 
 namespace {
@@ -208,3 +213,31 @@ TEST_CASE_METHOD(LVGLTestFixture,
     CHECK(after_runs == 1);
     process_async_timers();
 }
+
+#ifndef NDEBUG
+// The teardown writes through `root` and runs the owner's hooks after its
+// drain, so an owner freed by the drained work is a use-after-free. Debug
+// builds stop there instead. Forked: the assert aborts the process.
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "teardown_overlay_ui: an owner freed by its own drain trips the debug assert",
+                 "[overlay_teardown][drain_reentrancy]") {
+    const pid_t pid = fork();
+    if (pid == 0) {
+        // Catch2's own SIGABRT handler would report instead of dying.
+        signal(SIGABRT, SIG_DFL);
+        auto owner = std::make_unique<helix::AsyncLifetimeGuard>();
+        lv_obj_t* root = lv_obj_create(lv_screen_active());
+        TeardownHooks hooks;
+        hooks.owner = owner->token();
+        helix::ui::UpdateQueue::instance().queue("test::free_owner", [&owner]() { owner.reset(); });
+        (void)teardown_overlay_ui(root, "FreedOwner", TeardownDelete::Deferred, nullptr,
+                                  std::move(hooks));
+        _exit(0);
+    }
+    int status = 0;
+    REQUIRE(pid > 0);
+    REQUIRE(waitpid(pid, &status, 0) == pid);
+    CHECK(WIFSIGNALED(status));
+    CHECK(WTERMSIG(status) == SIGABRT);
+}
+#endif

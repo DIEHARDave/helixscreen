@@ -60,6 +60,7 @@
 #include <spdlog/spdlog.h>
 
 #include <functional>
+#include <optional>
 
 // Include for SubjectManager (needed for deinit_subjects_base)
 #include "subject_managed_panel.h"
@@ -399,6 +400,10 @@ class OverlayBase : public ViewLifecycleBase {
     /// a root freed with its screen still reads non-null in overlay_root_.
     lv_obj_t* shown_root_ = nullptr;
     helix::ui::WidgetRef shown_root_ref_;
+
+    /// Expires only with this object: destroy_overlay_ui() hands it to
+    /// teardown_overlay_ui() as the owner that must outlive its drain.
+    helix::AsyncLifetimeGuard teardown_owner_;
 };
 
 /**
@@ -446,6 +451,11 @@ struct TeardownHooks {
     std::function<void()> before_delete;
     /// Step 7 — free already queued; tree hidden and off-tree but still alive.
     std::function<void()> after_delete;
+    /// The object @p root lives in. It must outlive the step-1 drain: the
+    /// teardown keeps writing through @p root and runs the hooks after it.
+    /// Debug builds assert that it did; every owner today is a static or
+    /// lazy_global panel, freed only outside any drain.
+    std::optional<helix::LifetimeToken> owner{};
 
     static TeardownHooks before(std::function<void()> fn) {
         return {std::move(fn), nullptr};
@@ -488,11 +498,10 @@ struct TeardownHooks {
  * The owner object (subjects, state) survives — only the widget tree is
  * destroyed; the next open re-creates it.
  *
- * The owner must outlive the step-1 drain: @p root and the hooks point into it,
- * and nothing here detects an owner freed by queued work. Every owner is a
- * static or lazy_global panel, freed only by StaticPanelRegistry teardown,
- * which never runs inside a drain. An owner without that lifetime must not
- * call this.
+ * The owner must outlive the step-1 drain: @p root and the hooks point into it.
+ * Every owner is a static or lazy_global panel, freed only by
+ * StaticPanelRegistry teardown, which never runs inside a drain; an owner that
+ * passes TeardownHooks::owner is asserted on in debug builds.
  *
  * @param root Root widget to tear down; nulled on return
  * @param owner_name Logged and breadcrumbed owner name
