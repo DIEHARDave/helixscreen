@@ -185,8 +185,9 @@ FilamentLabelParts resolve_filament_label_parts(const SlotInfo& slot, const Spoo
     return parts;
 }
 
-std::string slot_card_name(const SlotInfo& slot, const SpoolIdentity* identity) {
-    return resolve_filament_label_parts(slot, identity, std::string_view()).name;
+std::string slot_card_name(const SlotInfo& slot, const SpoolIdentity* identity,
+                           std::string_view color_fallback) {
+    return resolve_filament_label_parts(slot, identity, color_fallback).name;
 }
 
 SlotCardLines slot_card_lines(std::string_view name, std::string_view material,

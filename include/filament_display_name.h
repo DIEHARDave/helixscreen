@@ -166,16 +166,18 @@ bool name_states_material(std::string_view name, std::string_view material);
 /**
  * @brief The spool name an AMS slot card shows above its material
  *
- * `slot.spool_name` -> `identity->filament_name` -> `slot.color_name`, the name
- * precedence of resolve_filament_label_parts() with no algorithmic colour
- * layer: a lane nothing names (AFC never fills color_name) shows its material
- * alone, not a guessed "Light Pink".
+ * `slot.spool_name` -> `identity->filament_name` -> `slot.color_name` ->
+ * @p color_fallback, the same precedence resolve_filament_label() uses for the
+ * current-filament label, so the card and that label name a lane alike.
  *
- * @param slot     Slot to name
- * @param identity Cached Spoolman identity, or nullptr on a miss
+ * @param slot           Slot to name
+ * @param identity       Cached Spoolman identity, or nullptr on a miss
+ * @param color_fallback Algorithmic colour name, used when nothing else names
+ *                       the spool (`helix::get_color_name_from_hex(slot.color_rgb)`)
  * @return Whitespace-normalized name; empty when nothing names the spool
  */
-std::string slot_card_name(const SlotInfo& slot, const SpoolIdentity* identity);
+std::string slot_card_name(const SlotInfo& slot, const SpoolIdentity* identity,
+                           std::string_view color_fallback);
 
 /// Slot counts above this share the row too tightly for a name line; the card
 /// keeps its single, truncated material line.

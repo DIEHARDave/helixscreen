@@ -125,24 +125,30 @@ TEST_CASE("slot_card_name: spool name, then Spoolman name, then colour name",
     identity.filament_name = "Ambrosia Pink";
     identity.material = "PLA";
 
-    CHECK(helix::slot_card_name(named_slot("Bone White", "White", "PLA"), &identity) ==
+    CHECK(helix::slot_card_name(named_slot("Bone White", "White", "PLA"), &identity, "Gray") ==
           "Bone White");
-    CHECK(helix::slot_card_name(named_slot("", "White", "PLA"), &identity) == "Ambrosia Pink");
-    CHECK(helix::slot_card_name(named_slot("", "White", "PLA"), nullptr) == "White");
+    CHECK(helix::slot_card_name(named_slot("", "White", "PLA"), &identity, "Gray") ==
+          "Ambrosia Pink");
+    CHECK(helix::slot_card_name(named_slot("", "White", "PLA"), nullptr, "Gray") == "White");
 }
 
-TEST_CASE("slot_card_name: an unnamed lane gets no algorithmic colour name",
+TEST_CASE("slot_card_name: an unnamed lane falls back to the colour's name",
           "[ams][slot_name][pure]") {
-    // AFC's shape: a colour and a material, and nothing that names the spool.
+    // AFC's shape, and a colour the user set without naming it: a colour and a
+    // material, nothing that names the spool. The card names the colour the
+    // same way the current-filament label does, so the two never disagree.
     SlotInfo slot = named_slot("", "", "PLA");
-    slot.color_rgb = 0xFFB6C1;
-    CHECK(helix::slot_card_name(slot, nullptr).empty());
+    slot.color_rgb = 0xFFFFFF;
+    CHECK(helix::slot_card_name(slot, nullptr, "White") == "White");
 
     // An identity with nothing a label can use is a miss, not a name.
     SpoolIdentity ids_only;
     ids_only.filament_id = 7;
-    ids_only.color_hex = "#FFB6C1";
-    CHECK(helix::slot_card_name(slot, &ids_only).empty());
+    ids_only.color_hex = "#FFFFFF";
+    CHECK(helix::slot_card_name(slot, &ids_only, "White") == "White");
+
+    // A real name still outranks the fallback.
+    CHECK(helix::slot_card_name(named_slot("", "Snow", "PLA"), nullptr, "White") == "Snow");
 }
 
 TEST_CASE("slot_card_lines: the name sits over the material", "[ams][slot_name][pure]") {
