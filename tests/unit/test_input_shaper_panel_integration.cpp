@@ -916,7 +916,7 @@ bool overlaps(lv_obj_t* a, lv_obj_t* b) {
 
 } // namespace
 
-TEST_CASE_METHOD(InputShaperPreviewFixture, "the results view's legend and colors",
+TEST_CASE_METHOD(InputShaperPreviewFixture, "the results view's legend, colors and table fit",
                  "[input_shaper][panel][results]") {
     ispta::InputShaperPanelTestAccess::set_parent_screen(*panel_, test_screen());
     REQUIRE(panel_->rebuild());
@@ -953,5 +953,31 @@ TEST_CASE_METHOD(InputShaperPreviewFixture, "the results view's legend and color
             CHECK(fully_visible(w));
             CHECK_FALSE(overlaps(w, save));
         }
+    }
+
+    SECTION("every comparison table row fits its table") {
+        lv_obj_t* table = view_widget(view_, "shaper_table_x");
+        lv_area_t table_box;
+        lv_obj_get_coords(table, &table_box);
+        const uint32_t rows = lv_obj_get_child_count(table);
+        int checked = 0;
+        for (uint32_t r = 0; r < rows; ++r) {
+            lv_obj_t* row = lv_obj_get_child(table, static_cast<int32_t>(r));
+            if (lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN) || lv_obj_get_child_count(row) < 4) {
+                continue;
+            }
+            lv_area_t row_box;
+            lv_obj_get_coords(row, &row_box);
+            const int32_t content_right =
+                row_box.x2 - lv_obj_get_style_pad_right(row, LV_PART_MAIN);
+            lv_area_t last;
+            lv_obj_get_coords(lv_obj_get_child(row, -1), &last);
+            INFO("row " << r << " last cell ends at " << last.x2 << ", content at " << content_right
+                        << ", table at " << table_box.x2);
+            CHECK(last.x2 <= content_right);
+            CHECK(row_box.x2 <= table_box.x2);
+            ++checked;
+        }
+        CHECK(checked >= 6);
     }
 }

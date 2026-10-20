@@ -365,10 +365,10 @@
                       style_pad_top="#space_xs" style_pad_bottom="#space_xs" flex_flow="row"
                       style_flex_cross_place="center" style_border_width="1" style_border_color="#border"
                       style_border_side="bottom" scrollable="false">
-                <text_small width="28%" text="Type" style_text_color="#text_muted"/>
-                <text_small width="22%" text="Peak Freq" style_text_color="#text_muted"/>
-                <text_small width="25%" text="Vibration" style_text_color="#text_muted"/>
-                <text_small width="25%" text="Max Accel" style_text_color="#text_muted"/>
+                <text_small flex_grow="28" text="Type" style_text_color="#text_muted"/>
+                <text_small flex_grow="22" text="Peak Freq" style_text_color="#text_muted"/>
+                <text_small flex_grow="25" text="Vibration" style_text_color="#text_muted"/>
+                <text_small flex_grow="25" text="Max Accel" style_text_color="#text_muted"/>
               </lv_obj>
               <!-- Row 0 -->
               <lv_obj width="100%"
@@ -377,10 +377,10 @@
                       style_flex_cross_place="center" style_bg_opa="0" style_bg_opa-checked="40"
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_state_if_eq subject="is_x_recommended_row" state="checked" ref_value="0"/>
-                <text_small width="28%" bind_text="is_x_cmp_0_type"/>
-                <text_small width="22%" bind_text="is_x_cmp_0_freq"/>
-                <text_small width="25%" bind_text="is_x_cmp_0_vib"/>
-                <text_small width="25%" bind_text="is_x_cmp_0_accel"/>
+                <text_small flex_grow="28" bind_text="is_x_cmp_0_type"/>
+                <text_small flex_grow="22" bind_text="is_x_cmp_0_freq"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_0_vib"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_0_accel"/>
               </lv_obj>
               <!-- Row 1 -->
               <lv_obj width="100%"
@@ -389,10 +389,10 @@
                       style_flex_cross_place="center" style_bg_opa="0" style_bg_opa-checked="40"
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_state_if_eq subject="is_x_recommended_row" state="checked" ref_value="1"/>
-                <text_small width="28%" bind_text="is_x_cmp_1_type"/>
-                <text_small width="22%" bind_text="is_x_cmp_1_freq"/>
-                <text_small width="25%" bind_text="is_x_cmp_1_vib"/>
-                <text_small width="25%" bind_text="is_x_cmp_1_accel"/>
+                <text_small flex_grow="28" bind_text="is_x_cmp_1_type"/>
+                <text_small flex_grow="22" bind_text="is_x_cmp_1_freq"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_1_vib"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_1_accel"/>
               </lv_obj>
               <!-- Row 2 -->
               <lv_obj width="100%"
@@ -401,10 +401,10 @@
                       style_flex_cross_place="center" style_bg_opa="0" style_bg_opa-checked="40"
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_state_if_eq subject="is_x_recommended_row" state="checked" ref_value="2"/>
-                <text_small width="28%" bind_text="is_x_cmp_2_type"/>
-                <text_small width="22%" bind_text="is_x_cmp_2_freq"/>
-                <text_small width="25%" bind_text="is_x_cmp_2_vib"/>
-                <text_small width="25%" bind_text="is_x_cmp_2_accel"/>
+                <text_small flex_grow="28" bind_text="is_x_cmp_2_type"/>
+                <text_small flex_grow="22" bind_text="is_x_cmp_2_freq"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_2_vib"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_2_accel"/>
               </lv_obj>
               <!-- Row 3 -->
               <lv_obj width="100%"
@@ -413,10 +413,10 @@
                       style_flex_cross_place="center" style_bg_opa="0" style_bg_opa-checked="40"
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_state_if_eq subject="is_x_recommended_row" state="checked" ref_value="3"/>
-                <text_small width="28%" bind_text="is_x_cmp_3_type"/>
-                <text_small width="22%" bind_text="is_x_cmp_3_freq"/>
-                <text_small width="25%" bind_text="is_x_cmp_3_vib"/>
-                <text_small width="25%" bind_text="is_x_cmp_3_accel"/>
+                <text_small flex_grow="28" bind_text="is_x_cmp_3_type"/>
+                <text_small flex_grow="22" bind_text="is_x_cmp_3_freq"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_3_vib"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_3_accel"/>
               </lv_obj>
               <!-- Row 4 -->
               <lv_obj width="100%"
@@ -425,10 +425,10 @@
                       style_flex_cross_place="center" style_bg_opa="0" style_bg_opa-checked="40"
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_state_if_eq subject="is_x_recommended_row" state="checked" ref_value="4"/>
-                <text_small width="28%" bind_text="is_x_cmp_4_type"/>
-                <text_small width="22%" bind_text="is_x_cmp_4_freq"/>
-                <text_small width="25%" bind_text="is_x_cmp_4_vib"/>
-                <text_small width="25%" bind_text="is_x_cmp_4_accel"/>
+                <text_small flex_grow="28" bind_text="is_x_cmp_4_type"/>
+                <text_small flex_grow="22" bind_text="is_x_cmp_4_freq"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_4_vib"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_4_accel"/>
               </lv_obj>
               <!-- Row 5 -->
               <lv_obj width="100%"
@@ -438,10 +438,10 @@
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_flag_if_le subject="is_x_num_shapers" flag="hidden" ref_value="5"/>
                 <bind_state_if_eq subject="is_x_recommended_row" state="checked" ref_value="5"/>
-                <text_small width="28%" bind_text="is_x_cmp_5_type"/>
-                <text_small width="22%" bind_text="is_x_cmp_5_freq"/>
-                <text_small width="25%" bind_text="is_x_cmp_5_vib"/>
-                <text_small width="25%" bind_text="is_x_cmp_5_accel"/>
+                <text_small flex_grow="28" bind_text="is_x_cmp_5_type"/>
+                <text_small flex_grow="22" bind_text="is_x_cmp_5_freq"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_5_vib"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_5_accel"/>
               </lv_obj>
               <!-- Row 6 -->
               <lv_obj width="100%"
@@ -451,10 +451,10 @@
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_flag_if_le subject="is_x_num_shapers" flag="hidden" ref_value="6"/>
                 <bind_state_if_eq subject="is_x_recommended_row" state="checked" ref_value="6"/>
-                <text_small width="28%" bind_text="is_x_cmp_6_type"/>
-                <text_small width="22%" bind_text="is_x_cmp_6_freq"/>
-                <text_small width="25%" bind_text="is_x_cmp_6_vib"/>
-                <text_small width="25%" bind_text="is_x_cmp_6_accel"/>
+                <text_small flex_grow="28" bind_text="is_x_cmp_6_type"/>
+                <text_small flex_grow="22" bind_text="is_x_cmp_6_freq"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_6_vib"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_6_accel"/>
               </lv_obj>
               <!-- Row 7 -->
               <lv_obj width="100%"
@@ -464,10 +464,10 @@
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_flag_if_le subject="is_x_num_shapers" flag="hidden" ref_value="7"/>
                 <bind_state_if_eq subject="is_x_recommended_row" state="checked" ref_value="7"/>
-                <text_small width="28%" bind_text="is_x_cmp_7_type"/>
-                <text_small width="22%" bind_text="is_x_cmp_7_freq"/>
-                <text_small width="25%" bind_text="is_x_cmp_7_vib"/>
-                <text_small width="25%" bind_text="is_x_cmp_7_accel"/>
+                <text_small flex_grow="28" bind_text="is_x_cmp_7_type"/>
+                <text_small flex_grow="22" bind_text="is_x_cmp_7_freq"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_7_vib"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_7_accel"/>
               </lv_obj>
               <!-- Row 8 -->
               <lv_obj width="100%"
@@ -477,10 +477,10 @@
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_flag_if_le subject="is_x_num_shapers" flag="hidden" ref_value="8"/>
                 <bind_state_if_eq subject="is_x_recommended_row" state="checked" ref_value="8"/>
-                <text_small width="28%" bind_text="is_x_cmp_8_type"/>
-                <text_small width="22%" bind_text="is_x_cmp_8_freq"/>
-                <text_small width="25%" bind_text="is_x_cmp_8_vib"/>
-                <text_small width="25%" bind_text="is_x_cmp_8_accel"/>
+                <text_small flex_grow="28" bind_text="is_x_cmp_8_type"/>
+                <text_small flex_grow="22" bind_text="is_x_cmp_8_freq"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_8_vib"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_8_accel"/>
               </lv_obj>
               <!-- Row 9 -->
               <lv_obj width="100%"
@@ -490,10 +490,10 @@
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_flag_if_le subject="is_x_num_shapers" flag="hidden" ref_value="9"/>
                 <bind_state_if_eq subject="is_x_recommended_row" state="checked" ref_value="9"/>
-                <text_small width="28%" bind_text="is_x_cmp_9_type"/>
-                <text_small width="22%" bind_text="is_x_cmp_9_freq"/>
-                <text_small width="25%" bind_text="is_x_cmp_9_vib"/>
-                <text_small width="25%" bind_text="is_x_cmp_9_accel"/>
+                <text_small flex_grow="28" bind_text="is_x_cmp_9_type"/>
+                <text_small flex_grow="22" bind_text="is_x_cmp_9_freq"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_9_vib"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_9_accel"/>
               </lv_obj>
               <!-- Row 10 -->
               <lv_obj width="100%"
@@ -503,10 +503,10 @@
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_flag_if_le subject="is_x_num_shapers" flag="hidden" ref_value="10"/>
                 <bind_state_if_eq subject="is_x_recommended_row" state="checked" ref_value="10"/>
-                <text_small width="28%" bind_text="is_x_cmp_10_type"/>
-                <text_small width="22%" bind_text="is_x_cmp_10_freq"/>
-                <text_small width="25%" bind_text="is_x_cmp_10_vib"/>
-                <text_small width="25%" bind_text="is_x_cmp_10_accel"/>
+                <text_small flex_grow="28" bind_text="is_x_cmp_10_type"/>
+                <text_small flex_grow="22" bind_text="is_x_cmp_10_freq"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_10_vib"/>
+                <text_small flex_grow="25" bind_text="is_x_cmp_10_accel"/>
               </lv_obj>
               <!-- Explanation -->
               <text_small width="100%"
@@ -711,10 +711,10 @@
                       style_pad_top="#space_xs" style_pad_bottom="#space_xs" flex_flow="row"
                       style_flex_cross_place="center" style_border_width="1" style_border_color="#border"
                       style_border_side="bottom" scrollable="false">
-                <text_small width="28%" text="Type" style_text_color="#text_muted"/>
-                <text_small width="22%" text="Peak Freq" style_text_color="#text_muted"/>
-                <text_small width="25%" text="Vibration" style_text_color="#text_muted"/>
-                <text_small width="25%" text="Max Accel" style_text_color="#text_muted"/>
+                <text_small flex_grow="28" text="Type" style_text_color="#text_muted"/>
+                <text_small flex_grow="22" text="Peak Freq" style_text_color="#text_muted"/>
+                <text_small flex_grow="25" text="Vibration" style_text_color="#text_muted"/>
+                <text_small flex_grow="25" text="Max Accel" style_text_color="#text_muted"/>
               </lv_obj>
               <!-- Row 0 -->
               <lv_obj width="100%"
@@ -723,10 +723,10 @@
                       style_flex_cross_place="center" style_bg_opa="0" style_bg_opa-checked="40"
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_state_if_eq subject="is_y_recommended_row" state="checked" ref_value="0"/>
-                <text_small width="28%" bind_text="is_y_cmp_0_type"/>
-                <text_small width="22%" bind_text="is_y_cmp_0_freq"/>
-                <text_small width="25%" bind_text="is_y_cmp_0_vib"/>
-                <text_small width="25%" bind_text="is_y_cmp_0_accel"/>
+                <text_small flex_grow="28" bind_text="is_y_cmp_0_type"/>
+                <text_small flex_grow="22" bind_text="is_y_cmp_0_freq"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_0_vib"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_0_accel"/>
               </lv_obj>
               <!-- Row 1 -->
               <lv_obj width="100%"
@@ -735,10 +735,10 @@
                       style_flex_cross_place="center" style_bg_opa="0" style_bg_opa-checked="40"
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_state_if_eq subject="is_y_recommended_row" state="checked" ref_value="1"/>
-                <text_small width="28%" bind_text="is_y_cmp_1_type"/>
-                <text_small width="22%" bind_text="is_y_cmp_1_freq"/>
-                <text_small width="25%" bind_text="is_y_cmp_1_vib"/>
-                <text_small width="25%" bind_text="is_y_cmp_1_accel"/>
+                <text_small flex_grow="28" bind_text="is_y_cmp_1_type"/>
+                <text_small flex_grow="22" bind_text="is_y_cmp_1_freq"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_1_vib"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_1_accel"/>
               </lv_obj>
               <!-- Row 2 -->
               <lv_obj width="100%"
@@ -747,10 +747,10 @@
                       style_flex_cross_place="center" style_bg_opa="0" style_bg_opa-checked="40"
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_state_if_eq subject="is_y_recommended_row" state="checked" ref_value="2"/>
-                <text_small width="28%" bind_text="is_y_cmp_2_type"/>
-                <text_small width="22%" bind_text="is_y_cmp_2_freq"/>
-                <text_small width="25%" bind_text="is_y_cmp_2_vib"/>
-                <text_small width="25%" bind_text="is_y_cmp_2_accel"/>
+                <text_small flex_grow="28" bind_text="is_y_cmp_2_type"/>
+                <text_small flex_grow="22" bind_text="is_y_cmp_2_freq"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_2_vib"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_2_accel"/>
               </lv_obj>
               <!-- Row 3 -->
               <lv_obj width="100%"
@@ -759,10 +759,10 @@
                       style_flex_cross_place="center" style_bg_opa="0" style_bg_opa-checked="40"
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_state_if_eq subject="is_y_recommended_row" state="checked" ref_value="3"/>
-                <text_small width="28%" bind_text="is_y_cmp_3_type"/>
-                <text_small width="22%" bind_text="is_y_cmp_3_freq"/>
-                <text_small width="25%" bind_text="is_y_cmp_3_vib"/>
-                <text_small width="25%" bind_text="is_y_cmp_3_accel"/>
+                <text_small flex_grow="28" bind_text="is_y_cmp_3_type"/>
+                <text_small flex_grow="22" bind_text="is_y_cmp_3_freq"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_3_vib"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_3_accel"/>
               </lv_obj>
               <!-- Row 4 -->
               <lv_obj width="100%"
@@ -771,10 +771,10 @@
                       style_flex_cross_place="center" style_bg_opa="0" style_bg_opa-checked="40"
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_state_if_eq subject="is_y_recommended_row" state="checked" ref_value="4"/>
-                <text_small width="28%" bind_text="is_y_cmp_4_type"/>
-                <text_small width="22%" bind_text="is_y_cmp_4_freq"/>
-                <text_small width="25%" bind_text="is_y_cmp_4_vib"/>
-                <text_small width="25%" bind_text="is_y_cmp_4_accel"/>
+                <text_small flex_grow="28" bind_text="is_y_cmp_4_type"/>
+                <text_small flex_grow="22" bind_text="is_y_cmp_4_freq"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_4_vib"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_4_accel"/>
               </lv_obj>
               <!-- Row 5 -->
               <lv_obj width="100%"
@@ -784,10 +784,10 @@
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_flag_if_le subject="is_y_num_shapers" flag="hidden" ref_value="5"/>
                 <bind_state_if_eq subject="is_y_recommended_row" state="checked" ref_value="5"/>
-                <text_small width="28%" bind_text="is_y_cmp_5_type"/>
-                <text_small width="22%" bind_text="is_y_cmp_5_freq"/>
-                <text_small width="25%" bind_text="is_y_cmp_5_vib"/>
-                <text_small width="25%" bind_text="is_y_cmp_5_accel"/>
+                <text_small flex_grow="28" bind_text="is_y_cmp_5_type"/>
+                <text_small flex_grow="22" bind_text="is_y_cmp_5_freq"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_5_vib"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_5_accel"/>
               </lv_obj>
               <!-- Row 6 -->
               <lv_obj width="100%"
@@ -797,10 +797,10 @@
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_flag_if_le subject="is_y_num_shapers" flag="hidden" ref_value="6"/>
                 <bind_state_if_eq subject="is_y_recommended_row" state="checked" ref_value="6"/>
-                <text_small width="28%" bind_text="is_y_cmp_6_type"/>
-                <text_small width="22%" bind_text="is_y_cmp_6_freq"/>
-                <text_small width="25%" bind_text="is_y_cmp_6_vib"/>
-                <text_small width="25%" bind_text="is_y_cmp_6_accel"/>
+                <text_small flex_grow="28" bind_text="is_y_cmp_6_type"/>
+                <text_small flex_grow="22" bind_text="is_y_cmp_6_freq"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_6_vib"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_6_accel"/>
               </lv_obj>
               <!-- Row 7 -->
               <lv_obj width="100%"
@@ -810,10 +810,10 @@
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_flag_if_le subject="is_y_num_shapers" flag="hidden" ref_value="7"/>
                 <bind_state_if_eq subject="is_y_recommended_row" state="checked" ref_value="7"/>
-                <text_small width="28%" bind_text="is_y_cmp_7_type"/>
-                <text_small width="22%" bind_text="is_y_cmp_7_freq"/>
-                <text_small width="25%" bind_text="is_y_cmp_7_vib"/>
-                <text_small width="25%" bind_text="is_y_cmp_7_accel"/>
+                <text_small flex_grow="28" bind_text="is_y_cmp_7_type"/>
+                <text_small flex_grow="22" bind_text="is_y_cmp_7_freq"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_7_vib"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_7_accel"/>
               </lv_obj>
               <!-- Row 8 -->
               <lv_obj width="100%"
@@ -823,10 +823,10 @@
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_flag_if_le subject="is_y_num_shapers" flag="hidden" ref_value="8"/>
                 <bind_state_if_eq subject="is_y_recommended_row" state="checked" ref_value="8"/>
-                <text_small width="28%" bind_text="is_y_cmp_8_type"/>
-                <text_small width="22%" bind_text="is_y_cmp_8_freq"/>
-                <text_small width="25%" bind_text="is_y_cmp_8_vib"/>
-                <text_small width="25%" bind_text="is_y_cmp_8_accel"/>
+                <text_small flex_grow="28" bind_text="is_y_cmp_8_type"/>
+                <text_small flex_grow="22" bind_text="is_y_cmp_8_freq"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_8_vib"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_8_accel"/>
               </lv_obj>
               <!-- Row 9 -->
               <lv_obj width="100%"
@@ -836,10 +836,10 @@
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_flag_if_le subject="is_y_num_shapers" flag="hidden" ref_value="9"/>
                 <bind_state_if_eq subject="is_y_recommended_row" state="checked" ref_value="9"/>
-                <text_small width="28%" bind_text="is_y_cmp_9_type"/>
-                <text_small width="22%" bind_text="is_y_cmp_9_freq"/>
-                <text_small width="25%" bind_text="is_y_cmp_9_vib"/>
-                <text_small width="25%" bind_text="is_y_cmp_9_accel"/>
+                <text_small flex_grow="28" bind_text="is_y_cmp_9_type"/>
+                <text_small flex_grow="22" bind_text="is_y_cmp_9_freq"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_9_vib"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_9_accel"/>
               </lv_obj>
               <!-- Row 10 -->
               <lv_obj width="100%"
@@ -849,10 +849,10 @@
                       style_bg_color-checked="#primary" style_radius-checked="4" scrollable="false">
                 <bind_flag_if_le subject="is_y_num_shapers" flag="hidden" ref_value="10"/>
                 <bind_state_if_eq subject="is_y_recommended_row" state="checked" ref_value="10"/>
-                <text_small width="28%" bind_text="is_y_cmp_10_type"/>
-                <text_small width="22%" bind_text="is_y_cmp_10_freq"/>
-                <text_small width="25%" bind_text="is_y_cmp_10_vib"/>
-                <text_small width="25%" bind_text="is_y_cmp_10_accel"/>
+                <text_small flex_grow="28" bind_text="is_y_cmp_10_type"/>
+                <text_small flex_grow="22" bind_text="is_y_cmp_10_freq"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_10_vib"/>
+                <text_small flex_grow="25" bind_text="is_y_cmp_10_accel"/>
               </lv_obj>
               <!-- Explanation -->
               <text_small width="100%"
