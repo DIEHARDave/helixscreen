@@ -309,3 +309,21 @@ TEST_CASE_METHOD(LVGLUITestFixture, "OverlayBase::show does not adopt the destro
     process_lvgl(100);
     CHECK(old_deletes == 1);
 }
+
+TEST_CASE_METHOD(LVGLUITestFixture, "fan overlay cleanup runs no queued callback",
+                 "[overlays][fan_control][drain_reentrancy]") {
+    FreshOverlays fresh;
+    state().fan_state().init_fans({"fan", "fan_generic chamber"});
+    seed_nav_panels(test_screen());
+    auto& overlay = get_fan_control_overlay();
+    REQUIRE(helix::open_fan_control_overlay(test_screen()) != nullptr);
+    REQUIRE(FanControlOverlayTestAccess::dial_count(overlay) > 0);
+
+    bool ran = false;
+    helix::ui::UpdateQueue::instance().queue("test::drain_canary", [&ran]() { ran = true; });
+    overlay.cleanup();
+    CHECK_FALSE(ran);
+    CHECK(FanControlOverlayTestAccess::dial_count(overlay) == 0);
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(ran);
+}

@@ -246,3 +246,19 @@ TEST_CASE_METHOD(TempGraphReattachFixture,
     controller.reset();
     settle();
 }
+
+TEST_CASE_METHOD(TempGraphReattachFixture, "Detach runs no queued callback",
+                 "[temp_graph][drain_reentrancy]") {
+    TempGraphControllerConfig cfg;
+    cfg.series = {{"heater_bed", lv_color_hex(0x88C0D0), true, "Bed"}};
+    auto controller = std::make_unique<TempGraphController>(test_screen(), cfg);
+    REQUIRE(controller->is_valid());
+    settle();
+
+    bool ran = false;
+    helix::ui::UpdateQueue::instance().queue("test::drain_canary", [&ran]() { ran = true; });
+    controller->detach();
+    CHECK_FALSE(ran);
+    settle();
+    CHECK(ran);
+}
