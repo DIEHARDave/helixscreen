@@ -691,7 +691,7 @@ void PaTuningOverlay::end_test() {
     }
     modal_confirm(
         lv_tr("End the test print?"),
-        lv_tr("The print is cancelled and you pick the best band from what has printed so far."),
+        lv_tr("The print is canceled and you pick the best band from what has printed so far."),
         ModalSeverity::Warning, lv_tr("End Test"),
         []() {
             auto& self = get_global_pa_tuning_overlay();

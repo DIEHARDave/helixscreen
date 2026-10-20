@@ -12,8 +12,11 @@
 // wait for a SAVE_CONFIG, which is exactly what the per-tool offset save path
 // (helix::tool_offsets, ToolState's dirty tracking) already handles.
 //
-// This module is the ONLY place that knows the macro's name. The panel asks
-// these questions and never names the firmware. There is no per-tool entry point: the macro is
+// This module is the ONLY place that knows which printers calibrate their tool
+// offsets and how. Two procedures exist: the macro above, run by the tool offset
+// panel, and a printer's own multi-step guided flow (a Snapmaker U1's), which
+// the Calibration entry starts instead. Callers ask these questions and never
+// name the firmware. There is no per-tool entry point: the macro is
 // all-or-nothing, so this module offers exactly one gcode.
 //
 // Nothing is parsed off the console. Everything the screen needs is already in
@@ -38,9 +41,14 @@ namespace helix::tool_offset_calibration {
 inline constexpr const char* kMacro = "CALIBRATE_TOOL_OFFSETS";
 
 /// Whether this printer can calibrate its tool offsets automatically: a tool
-/// changer that defines the macro. False on every single-toolhead printer and
-/// on a tool changer whose config never adopted the example macro.
+/// changer that defines the macro, or a printer with its own guided flow. False
+/// on every single-toolhead printer and on a tool changer whose config never
+/// adopted the example macro.
 bool supported(const PrinterDiscovery& hw);
+
+/// The guided device flow (ui_guided_device_flow.h) that calibrates this
+/// printer's tool offsets, or an empty string when the macro panel does.
+std::string guided_flow(const PrinterDiscovery& hw);
 
 /// Gcode that calibrates every tool, or an empty string when the printer has
 /// no such procedure. Blocking on the printer: Moonraker's printer.gcode.script

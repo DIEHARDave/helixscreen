@@ -102,9 +102,15 @@ target_compile_options(${COMPONENT_LIB} PRIVATE
 # Real v1 Core+AMS gate set (the plan's compile definitions). Excluded
 # subsystems compile out via these; kept files that touch them see the #else
 # no-op branch. HELIX_ENABLE_MOCKS is never defined here (see the NOTE below).
+idf_build_get_property(helix_version HELIX_VERSION)
+idf_build_get_property(helix_version_major HELIX_VERSION_MAJOR)
+idf_build_get_property(helix_version_minor HELIX_VERSION_MINOR)
+idf_build_get_property(helix_version_patch HELIX_VERSION_PATCH)
 target_compile_definitions(${COMPONENT_LIB} PRIVATE
-    HELIX_VERSION="0.0.0-esp32"
-    HELIX_VERSION_MAJOR=0 HELIX_VERSION_MINOR=0 HELIX_VERSION_PATCH=0
+    HELIX_VERSION="${helix_version}"
+    HELIX_VERSION_MAJOR=${helix_version_major}
+    HELIX_VERSION_MINOR=${helix_version_minor}
+    HELIX_VERSION_PATCH=${helix_version_patch}
     HELIX_GIT_HASH="esp32"
     INSTALLER_FILENAME="install.sh"
     HELIX_MAX_FONT_TIER=6

@@ -5,6 +5,7 @@
 
 #if HELIX_HAS_CFS
 
+#include "ui_ams_device_section_detail_overlay.h"
 #include "ui_cfs_chute_calibration_overlay.h"
 #include "ui_error_reporting.h"
 #include "ui_modal.h"
@@ -13,6 +14,7 @@
 #include "ams_backend_cfs.h"
 #include "ams_state.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "static_panel_registry.h"
 
 #include <spdlog/fmt/fmt.h>
 
@@ -54,18 +56,11 @@ void set_cutter_row_state(const char* status_text, bool busy) {
     lv_subject_copy_string(&s_cfs_cutter_status, status_text);
     // 0 = nothing to report (line hidden), 1 = sweep running, 2 = result.
     lv_subject_set_int(&s_cfs_cutter_phase, busy ? 1 : (status_text[0] != '\0' ? 2 : 0));
-    // Both calibration actions home the machine; neither may start while a
-    // sweep owns it. The buttons are built dynamically from backend data
-    // (the section overlay's documented exception), so their state is set here.
-    lv_obj_t* screen = lv_screen_active();
-    for (const char* name : {"calibrate_cutter", "calibrate_purge_chute"}) {
-        if (lv_obj_t* btn = lv_obj_find_by_name(screen, name)) {
-            if (busy) {
-                lv_obj_add_state(btn, LV_STATE_DISABLED);
-            } else {
-                lv_obj_remove_state(btn, LV_STATE_DISABLED);
-            }
-        }
+    // The backend greys both calibration actions while one runs; the section
+    // shows that once rebuilt from them.
+    // Never builds the overlay: a completion can land during teardown.
+    if (auto* overlay = lazy_global_if_exists<AmsDeviceSectionDetailOverlay>()) {
+        overlay->refresh();
     }
 }
 
@@ -83,7 +78,6 @@ void confirm_cutter_calibration() {
             if (!backend) {
                 return;
             }
-            set_cutter_row_state(lv_tr("Calibrating... (about 1 minute)"), true);
             AmsError result = backend->calibrate_cutter([](bool ok, const std::string& line) {
                 char axis = '\0';
                 double value_mm = 0.0;
@@ -100,7 +94,9 @@ void confirm_cutter_calibration() {
                 }
                 set_cutter_row_state(text.c_str(), false);
             });
-            if (!result.success()) {
+            if (result.success()) {
+                set_cutter_row_state(lv_tr("Calibrating... (about 1 minute)"), true);
+            } else {
                 set_cutter_row_state("", false);
                 helix::ui::notify_ams_error(result);
             }

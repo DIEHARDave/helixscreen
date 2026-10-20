@@ -207,6 +207,21 @@ TEST_CASE_METHOD(ResumeRefusalFixture,
     REQUIRE(explanation_on_screen());
 }
 
+TEST_CASE_METHOD(ResumeRefusalFixture,
+                 "a resume that turns into a restart question ends its pending state at once",
+                 "[resume][restart]") {
+    // A dirty-bed pause cannot resume; the user is asked about a restart.
+    get_printer_state().update_from_status(
+        {{"print_stats", {{"state", "paused"}, {"message", "detected dirty bed"}}},
+         {"virtual_sdcard", {{"is_active", false}}}});
+    press_resume();
+    settle();
+    // The resume's spinner and its backstop end before the user answers, so a
+    // restart taking longer cannot be reported as a resume that timed out.
+    CHECK(failures == 1);
+    get_printer_state().update_from_status({{"print_stats", {{"state", "standby"}}}});
+}
+
 TEST_CASE_METHOD(ResumeRefusalFixture, "an unclassified resume error keeps the caller's toast",
                  "[resume][error-router]") {
     attach_router();

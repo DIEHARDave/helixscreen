@@ -492,7 +492,7 @@ TEST_CASE("describe_last_print: only a completed job says Completed",
 
     auto cancelled = job_with(PrintJobStatus::CANCELLED, start, end);
     REQUIRE(describe_last_print(cancelled, kNow).when ==
-            std::string(lv_tr("Cancelled")) + " • " + relative(kNow - end));
+            std::string(lv_tr("Canceled")) + " • " + relative(kNow - end));
 
     auto failed = job_with(PrintJobStatus::ERROR, start, end);
     REQUIRE(describe_last_print(failed, kNow).when ==
@@ -573,12 +573,12 @@ TEST_CASE("describe_last_print: an end_time ahead of the clock reads as just now
           "[print_status][last_print]") {
     auto job = job_with(PrintJobStatus::CANCELLED, kNow - 600.0, kNow + 120.0);
     REQUIRE(describe_last_print(job, kNow).when ==
-            std::string(lv_tr("Cancelled")) + " • " + relative(0.0));
+            std::string(lv_tr("Canceled")) + " • " + relative(0.0));
 }
 
 TEST_CASE("status_to_label names every job status", "[print_status][last_print][history]") {
     REQUIRE(std::string(status_to_label(PrintJobStatus::COMPLETED)) == "Completed");
-    REQUIRE(std::string(status_to_label(PrintJobStatus::CANCELLED)) == "Cancelled");
+    REQUIRE(std::string(status_to_label(PrintJobStatus::CANCELLED)) == "Canceled");
     REQUIRE(std::string(status_to_label(PrintJobStatus::ERROR)) == "Failed");
     REQUIRE(std::string(status_to_label(PrintJobStatus::IN_PROGRESS)) == "In Progress");
     REQUIRE(std::string(status_to_label(PrintJobStatus::UNKNOWN)) == "Unknown");

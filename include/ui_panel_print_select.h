@@ -1305,3 +1305,11 @@ PrintSelectPanel& get_global_print_select_panel();
 /// The global PrintSelectPanel, or nullptr before it is created.
 // NAMESPACE_OK: beside get_global_print_select_panel, the global accessor it complements
 PrintSelectPanel* find_print_select_panel();
+
+/// The controller a start with no file view of its own goes through (a
+/// reprint, a restart): Print Files' controller, or one kept for these starts
+/// until Print Files is built (the ESP32 build defers that panel to its first
+/// visit). Main thread.
+// NAMESPACE_OK: beside get_print_select_panel, whose controller it hands out
+helix::ui::PrintStartController& print_start_controller_for(helix::PrinterState& printer_state,
+                                                            helix::IMoonrakerAPI* api);

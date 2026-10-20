@@ -6,6 +6,8 @@
 #include "ui_insert_notice.h"
 #include "ui_update_queue.h"
 
+#include "ams_device_action_value.h"
+#include "ams_device_sections.h"
 #include "ams_error.h"
 #include "color_utils.h"
 #include "display_numbering.h"
@@ -25,6 +27,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
 #include <ctime>
 #include <optional>
@@ -224,9 +227,8 @@ constexpr size_t kQidiFilasListCapBytes = 32 * 1024;
 
 // Manual lane-eject via FORCE_MOVE on the box_stepper (#1041). Distance/velocity
 // from the QIDI Discord (xenon) + Camden's Q2 measurement: 878 mm fully ejects,
-// ~100 mm/s matches the stock feel. These are now user-configurable via
-// SettingsManager (settings_qidi_eject_distance / settings_qidi_eject_velocity);
-// the defaults below match the historic hardcoded values. May need refining for
+// ~100 mm/s matches the stock feel. Both are the user's, through the eject
+// sliders (get_device_actions()) stored in SettingsManager. May need refining for
 // Plus 4 / Max 4 boxes.
 int load_temp_for_slot(const SlotInfo& slot) {
     if (slot.nozzle_temp_max > 0) {
@@ -1509,8 +1511,8 @@ AmsError AmsBackendQidi::eject_lane(int slot_index) {
     // historic defaults (878 mm / 100 mm/s) if SettingsManager hasn't been
     // initialized — a FORCE_MOVE with VELOCITY=0/DISTANCE=0 is a degenerate no-op
     // that Klipper rejects, so the eject must always carry real numbers.
-    int eject_velocity = helix::SettingsManager::instance().get_qidi_eject_velocity();
-    int eject_distance_mm = helix::SettingsManager::instance().get_qidi_eject_distance();
+    int eject_velocity = helix::SettingsManager::instance().get_ams_eject_velocity();
+    int eject_distance_mm = helix::SettingsManager::instance().get_ams_eject_distance();
     if (eject_velocity <= 0) {
         eject_velocity = 100;
     }
@@ -2089,6 +2091,50 @@ AmsError AmsBackendQidi::stop_drying(int unit) {
     }
     return execute_gcode("SET_HEATER_TEMPERATURE HEATER=heater_box" + std::to_string(box) +
                          " TARGET=0");
+}
+
+// ============================================================================
+// Device actions: lane eject distance and speed
+// ============================================================================
+
+std::vector<helix::printer::DeviceSection> AmsBackendQidi::get_device_sections() const {
+    return {helix::printer::device_section("filament_control", 0,
+                                           TR_NOOP("How far and how fast a lane ejects"))};
+}
+
+std::vector<helix::printer::DeviceAction> AmsBackendQidi::get_device_actions() const {
+    using helix::printer::DeviceAction;
+    const auto& settings = helix::SettingsManager::instance();
+    return {
+        DeviceAction::slider("eject_distance", "Eject Distance", "filament_control",
+                             static_cast<float>(settings.get_ams_eject_distance()), 100.0f, 2000.0f,
+                             "mm", "filament",
+                             "How far filament is pushed back into the box on eject"),
+        DeviceAction::slider("eject_velocity", "Eject Speed", "filament_control",
+                             static_cast<float>(settings.get_ams_eject_velocity()), 10.0f, 300.0f,
+                             "mm/s", "speed", "How fast filament is pushed back on eject"),
+    };
+}
+
+AmsError AmsBackendQidi::do_execute_device_action(const std::string& action_id,
+                                                  const std::any& value) {
+    const bool distance = action_id == "eject_distance";
+    if (!distance && action_id != "eject_velocity") {
+        return AmsErrorHelper::not_supported("Unknown action: " + action_id);
+    }
+    const auto [number, err] = helix::printer::device_action_value<float>(
+        value, distance ? "eject distance" : "eject speed");
+    if (!err) {
+        return err;
+    }
+    auto& settings = helix::SettingsManager::instance();
+    const int rounded = static_cast<int>(std::lround(number));
+    if (distance) {
+        settings.set_ams_eject_distance(rounded);
+    } else {
+        settings.set_ams_eject_velocity(rounded);
+    }
+    return AmsErrorHelper::success();
 }
 
 } // namespace helix

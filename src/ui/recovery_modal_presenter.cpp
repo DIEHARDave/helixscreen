@@ -383,7 +383,7 @@ void RecoveryModalPresenter::poll_preheat() {
 
     spdlog::error("[RecoveryModal] Preheat to {}C timed out at {}C after {}s; abandoning {}",
                   target, current, preheat_budget_ms_ / 1000, tag);
-    NOTIFY_ERROR(lv_tr("Nozzle did not reach {}°C — {} cancelled"), target, label);
+    NOTIFY_ERROR(lv_tr("Nozzle did not reach {}°C — {} canceled"), target, label);
 }
 
 void RecoveryModalPresenter::cancel_preheat_timer() {

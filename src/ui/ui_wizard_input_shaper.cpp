@@ -568,7 +568,7 @@ bool WizardInputShaperStep::abort_in_progress_calibration() {
         lv_subject_set_int(&calibration_started_, 0);
         lv_subject_set_int(&calibration_active_, 0);
         lv_subject_set_int(&calibration_progress_, 0);
-        lv_subject_copy_string(&calibration_status_, lv_tr("Cancelled"));
+        lv_subject_copy_string(&calibration_status_, lv_tr("Canceled"));
     }
     lv_subject_set_int(&wizard_show_skip, 1);
     lv_subject_set_int(&connection_test_passed, 0);

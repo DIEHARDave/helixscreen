@@ -309,6 +309,12 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// empty on stock, with no plan published, or with swapping off.
     /// @note Takes `mutex_`; callers must NOT hold it.
     [[nodiscard]] helix::printer::EndlessSpoolConfig get_endless_spool_config() const override;
+
+  protected:
+    /// The auto-refill setter: BOX_ENABLE_AUTO_REFILL, or the fork's _BOX_SET_RUNOUT_SWAP.
+    AmsError apply_endless_spool_enabled(bool enabled) override;
+
+  public:
     [[nodiscard]] std::vector<int> get_tool_mapping() const override;
 
     /// True except on K1, where BOX_MODIFY_TN no-ops (#968) so no confirming
@@ -398,8 +404,7 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     }
     [[nodiscard]] std::vector<helix::printer::DeviceSection> get_device_sections() const override;
     [[nodiscard]] std::vector<helix::printer::DeviceAction> get_device_actions() const override;
-    AmsError execute_device_action(const std::string& action_id,
-                                   const std::any& value = {}) override;
+    AmsError do_execute_device_action(const std::string& action_id, const std::any& value) override;
 
     // --- Cutter / purge-chute calibration (K1 stock dialect only) ---
     //
@@ -866,6 +871,9 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// SUCCESS for stock schemas and the identified Fork dialect; returns
     /// not_supported for an unidentified Flat implementation.
     [[nodiscard]] AmsError reject_if_flat_schema(const char* operation) const;
+    /// Whether the box speaks a command set we have verified: any non-flat box,
+    /// or a flat one paired with the Fork dialect.
+    [[nodiscard]] bool flat_schema_verified() const;
 
     /// Stock-dialect bypass derivation: filament at the toolhead with no
     /// active CFS lane means the user hand-fed the external holder — map

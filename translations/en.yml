@@ -443,6 +443,7 @@ translations:
   Bowden: Bowden
   Bowden Length: Bowden Length
   Bowden tube length from hub to toolhead: Bowden tube length from hub to toolhead
+  Bowden tube length to this tool: Bowden tube length to this tool
   Box: Box
   Brand: Brand
   Brand and material come from Spoolman: Brand and material come from Spoolman
@@ -480,6 +481,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   Bypass mode is not currently active: Bypass mode is not currently active
+  Bypass off macro: Bypass off macro
+  Bypass on macro: Bypass on macro
   Bypass toggle failed: Bypass toggle failed
   C: C
   CALIBRATION: CALIBRATION
@@ -534,7 +537,7 @@ translations:
   Calibration Failed: Calibration Failed
   Calibration Saved: Calibration Saved
   Calibration and system configuration: Calibration and system configuration
-  Calibration cancelled.: Calibration cancelled.
+  Calibration canceled.: Calibration canceled.
   Calibration complete: Calibration complete
   Calibration complete - save to keep the offsets: Calibration complete - save to keep the offsets
   Calibration complete!: Calibration complete!
@@ -543,6 +546,7 @@ translations:
   Calibration failed: Calibration failed
   Calibration failed - touch targets more precisely.: Calibration failed - touch targets
     more precisely.
+  Calibration in progress: Calibration in progress
   Calibration kept timing out. Your previous settings were kept.: Calibration kept timing out. Your previous settings were kept.
   Calibration may still be running — printer connection was interrupted: Calibration may still be running — printer connection was interrupted
   Calibration may still be running — response timed out: Calibration may still be running — response timed out
@@ -567,8 +571,8 @@ translations:
   Cancel Scheduled Pause: Cancel Scheduled Pause
   Cancel macro not configured: Cancel macro not configured
   Cancel print: Cancel print
-  Cancelled: Cancelled
-  Cancelling turns the chamber target off so the wait ends, then stops the print.: Cancelling turns the chamber target off so the wait ends, then stops the print.
+  Canceled: Canceled
+  Canceling turns the chamber target off so the wait ends, then stops the print.: Canceling turns the chamber target off so the wait ends, then stops the print.
   'Cannot add to queue: internal error': 'Cannot add to queue: internal error'
   Cannot be changed from here on a multi-unit MMU: Cannot be changed from here on a multi-unit MMU
   Cannot change the HelixPrint plugin while printing: Cannot change the HelixPrint plugin while printing
@@ -694,8 +698,8 @@ translations:
   Choose rendering mode for bed mesh visualization: Choose rendering mode for bed
     mesh visualization
   Choose sound style: Choose sound style
-  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses.
-  : Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses.
+  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses.
+  : Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses.
   Choose what to power off or restart.: Choose what to power off or restart.
   'Chute position: X {:.1f}, Y {:.1f}': 'Chute position: X {:.1f}, Y {:.1f}'
   Clean Brush: Clean Brush
@@ -1093,6 +1097,8 @@ translations:
   ETA {}: ETA {}
   EXTRAS: EXTRAS
   Each fan can only be selected once: Each fan can only be selected once
+  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
+  : Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
   Edit: Edit
   Edit Filament: Edit Filament
   Edit Slot: Edit Slot
@@ -1105,6 +1111,7 @@ translations:
   Effects: Effects
   Eject: Eject
   Eject Distance: Eject Distance
+  Eject Speed: Eject Speed
   Eject Velocity: Eject Velocity
   Eject failed: Eject failed
   Eject needs [force_move] enabled in printer config: Eject needs [force_move] enabled
@@ -1155,6 +1162,7 @@ translations:
   Ended: Ended
   Endless Spool: Endless Spool
   Endless Spool backups cleared: Endless Spool backups cleared
+  Endless Spool change failed: Endless Spool change failed
   Endless Spool is configured in its package, not from here: Endless Spool is configured in its package, not from here
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout
   Endless Spool is turned off on this MMU: Endless Spool is turned off on this MMU
@@ -1209,6 +1217,7 @@ translations:
   Every browser needs a new code to control this screen: Every browser needs a new code to control this screen
   Every browser that can control this screen will need the new pairing code.: Every browser that can control this screen will need the new pairing code.
   Every extruder's temperature at once: Every extruder's temperature at once
+  Every unit keeps its filament gripped: Every unit keeps its filament gripped
   Everything else was saved. Change them in Spoolman.: Everything else was saved. Change them in Spoolman.
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /
   Every object is set to skip, so there is nothing to print: Every object is set to skip, so there is nothing to print
@@ -1222,7 +1231,7 @@ translations:
   Exclude Objects: Exclude Objects
   Excluded: Excluded
   Excluding "{}"...: Excluding "{}"...
-  Exclusion cancelled: Exclusion cancelled
+  Exclusion canceled: Exclusion canceled
   Execute printer macros: Execute printer macros
   Exhaust Fan: Exhaust Fan
   Exit Code: Exit Code
@@ -1394,6 +1403,7 @@ translations:
   Feature not available: Feature not available
   'Features: ': 'Features: '
   Feed Assist: Feed Assist
+  Feed assist and bypass macros: Feed assist and bypass macros
   Feed assist and debug tools: Feed assist and debug tools
   Feed failed: Feed failed
   Feed filament: Feed filament
@@ -1408,6 +1418,7 @@ translations:
   Filament Control: Filament Control
   Filament Detected: Filament Detected
   Filament Dryer: Filament Dryer
+  Filament Feeder: Filament Feeder
   Filament Grade Mismatch: Filament Grade Mismatch
   Filament Humidity: Filament Humidity
   Filament In The Toolhead: Filament In The Toolhead
@@ -1488,6 +1499,7 @@ translations:
   Fine-tune: Fine-tune
   Finish: Finish
   Finish or cancel the print before loading, unloading, or changing filament: Finish or cancel the print before loading, unloading, or changing filament
+  Finish or cancel the print first: Finish or cancel the print first
   'Finishing clean...': 'Finishing clean...'
   Finishing up...: Finishing up...
   Fireflies: Fireflies
@@ -1649,6 +1661,7 @@ translations:
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen Crashed
   HelixScreen Macros: HelixScreen Macros
+  HelixScreen couldn't read which toolheads this file uses, so the printer wasn't told.: HelixScreen couldn't read which toolheads this file uses, so the printer wasn't told.
   HelixScreen is detecting your display orientation: HelixScreen is detecting your
     display orientation
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
@@ -1710,8 +1723,11 @@ translations:
   Hotend Fan: Hotend Fan
   Hotend Heater: Hotend Heater
   How Z-axis movement is displayed: How Z-axis movement is displayed
+  How far and how fast a lane ejects: How far and how fast a lane ejects
+  How far filament is pushed back into the box on eject: How far filament is pushed back into the box on eject
   How far filament is pushed back into the box on eject (mm): How far filament is
     pushed back into the box on eject (mm)
+  How fast filament is pushed back on eject: How fast filament is pushed back on eject
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   How many labels to print: How many labels to print
@@ -1930,7 +1946,7 @@ translations:
   Last 30 days: Last 30 days
   Last 7 days: Last 7 days
   Last measured: Last measured
-  Last print cancelled: Last print cancelled
+  Last print canceled: Last print canceled
   Last print failed: Last print failed
   Later: Later
   Layer: Layer
@@ -1979,12 +1995,13 @@ translations:
   Load a filament first before trying to unload: Load a filament first before trying to unload
   Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one
   Load and unload filament at the tool by hand: Load and unload filament at the tool by hand
-  'Load cancelled: nozzle target dropped': 'Load cancelled: nozzle target dropped'
+  'Load canceled: nozzle target dropped': 'Load canceled: nozzle target dropped'
   Load complete: Load complete
   Load failed: Load failed
   Load filament: Load filament
   Load filament first: Load filament first
   Load into which tool?: Load into which tool?
+  Load it in the filament panel, then tap Resume.: Load it in the filament panel, then tap Resume.
   Load or unload filament.: Load or unload filament.
   Load Profile: Load Profile
   Load the required filaments or start anyway?: Load the required filaments or start
@@ -1998,6 +2015,7 @@ translations:
   Loading Error: Loading Error
   Loading Filament...: Loading Filament...
   Loading G-code...: Loading G-code...
+  Loading configuration...: Loading configuration...
   Loading devices...: Loading devices...
   Loading filament...: Loading filament...
   Loading filaments...: Loading filaments...
@@ -2343,6 +2361,7 @@ translations:
   No prints this week: No prints this week
   No prints yet: No prints yet
   No profiles available: No profiles available
+  No sensor fitted for this distance: No sensor fitted for this distance
   No sensors detected: No sensors detected
   No shared peaks: No shared peaks
   No slot currently matches.: No slot currently matches.
@@ -2356,6 +2375,10 @@ translations:
   No timelapse videos found: No timelapse videos found
   No tools to calibrate: No tools to calibrate
   'No turn: the gap moved {:.1f} Hz': 'No turn: the gap moved {:.1f} Hz'
+  No unit has a filament buffer: No unit has a filament buffer
+  No unit has a moving selector: No unit has a moving selector
+  No unit has a servo: No unit has a servo
+  No unit has an encoder: No unit has an encoder
   'No unload macro found: unload by hand, then start again': 'No unload macro found: unload by hand, then start again'
   No vendors found: No vendors found
   No verified bypass command for this CFS firmware: No verified bypass command for this CFS firmware
@@ -2374,6 +2397,7 @@ translations:
   Not Now: Not Now
   Not Supported: Not Supported
   Not available here. Update from a terminal.: Not available here. Update from a terminal.
+  Not available now: Not available now
   Not available on Android: Not available on Android
   Not calibrated: Not calibrated
   Not configured: Not configured
@@ -2424,7 +2448,7 @@ translations:
   Nozzle Temps: Nozzle Temps
   'Nozzle clean complete': 'Nozzle clean complete'
   Nozzle clog detected: Nozzle clog detected
-  Nozzle did not reach {}°C — {} cancelled: Nozzle did not reach {}°C — {} cancelled
+  Nozzle did not reach {}°C — {} canceled: Nozzle did not reach {}°C — {} canceled
   Nozzle interval: Nozzle interval
   Nozzle min cannot exceed max: Nozzle min cannot exceed max
   Nozzle target set to {}°C: Nozzle target set to {}°C
@@ -2641,7 +2665,7 @@ translations:
   Preheat %s (%d/%d): Preheat %s (%d/%d)
   Preheat Macro: Preheat Macro
   Preheat PLA: Preheat PLA
-  Preheat cancelled: Preheat cancelled
+  Preheat canceled: Preheat canceled
   'Preheat: all {} tools + bed set': 'Preheat: all {} tools + bed set'
   'Preheat: {} + bed set': 'Preheat: {} + bed set'
   Preheating and homing...: Preheating and homing...
@@ -2677,8 +2701,8 @@ translations:
   Priming...: Priming...
   Print: Print
   Print Anyway: Print Anyway
-  'Print Behaviour': 'Print Behaviour'
-  Print Cancelled: Print Cancelled
+  Print Behavior: Print Behavior
+  Print Canceled: Print Canceled
   Print Complete!: Print Complete!
   Print Completion Alert: Print Completion Alert
   Print Controls: Print Controls
@@ -2702,7 +2726,7 @@ translations:
   Print Tuning: Print Tuning
   Print Was Terminated: Print Was Terminated
   Print a test tower and tune K by eye: Print a test tower and tune K by eye
-  Print cancelled: Print cancelled
+  Print canceled: Print canceled
   'Print complete': 'Print complete'
   Print details: Print details
   Print did not start: Print did not start
@@ -2820,6 +2844,7 @@ translations:
   Provide a numeric {}: Provide a numeric {}
   Provide a speed multiplier value: Provide a speed multiplier value
   Provide a {}: Provide a {}
+  Provide an on/off value: Provide an on/off value
   Provide {}: Provide {}
   Pulling filament back: Pulling filament back
   Purge: Purge
@@ -2869,6 +2894,7 @@ translations:
   RFID reader malfunction (left): RFID reader malfunction (left)
   RFID reader malfunction (right): RFID reader malfunction (right)
   RFID, Auto-Refill, nozzle and link care: RFID, Auto-Refill, nozzle and link care
+  RFID, nozzle and link care: RFID, nozzle and link care
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3427,6 +3453,7 @@ translations:
   Spoolman needs a material for this filament.: Spoolman needs a material for this filament.
   Spoolman removed.: Spoolman removed.
   Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.
+  Spoolman support is off in Happy Hare: Spoolman support is off in Happy Hare
   Spoolman unavailable — filament weights may be stale: Spoolman unavailable — filament
     weights may be stale
   Spoolman was not configured.: Spoolman was not configured.
@@ -3523,6 +3550,7 @@ translations:
   Switch the active tool or extruder: Switch the active tool or extruder
   Switch to a backup slot on runout: Switch to a backup slot on runout
   Switch to a matching slot on runout: Switch to a matching slot on runout
+  Switch to a matching spool when one runs out: Switch to a matching spool when one runs out
   Switch to v%s: Switch to v%s
   Switch to {}?: Switch to {}?
   Switched to {}: Switched to {}
@@ -3563,6 +3591,7 @@ translations:
   'Tangle sensitivity': 'Tangle sensitivity'
   Tap + to add: Tap + to add
   Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge: Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge
+  Tap Resume to try the load again from {}.: Tap Resume to try the load again from {}.
   Tap again to confirm this orientation: Tap again to confirm this orientation
   Tap an empty spot inside the enclosure: Tap an empty spot inside the enclosure
   Tap any tile to open its full controls or toggle its state.: Tap any tile to open its full controls or toggle its state.
@@ -3696,7 +3725,7 @@ translations:
   The plate and the spools are still hot. Use gloves.: The plate and the spools are still hot. Use gloves.
   The plate finishes its current move, but drying will not start.: The plate finishes its current move, but drying will not start.
   The print ended before any layer was printed. Nothing was changed.: The print ended before any layer was printed. Nothing was changed.
-  The print is cancelled and you pick the best band from what has printed so far.: The print is cancelled and you pick the best band from what has printed so far.
+  The print is canceled and you pick the best band from what has printed so far.: The print is canceled and you pick the best band from what has printed so far.
   The print is on its last layer.: The print is on its last layer.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
@@ -3815,6 +3844,7 @@ translations:
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: This
     print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?
   This print never reports layer {}.: This print never reports layer {}.
+  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.
   This printer cannot calibrate tool offsets automatically: This printer cannot calibrate tool offsets automatically
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.
@@ -3836,7 +3866,7 @@ translations:
   This tool probes each bed screw and tells you how much to adjust.: This tool probes
     each bed screw and tells you how much to adjust.
   'This update asks for new permissions:': 'This update asks for new permissions:'
-  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': 'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.'
+  'This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart.': 'This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart.'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
@@ -3909,6 +3939,7 @@ translations:
   Toggle Auto-Refill: Toggle Auto-Refill
   Toggle Quiet Mode: Toggle Quiet Mode
   Toggle external spool bypass: Toggle external spool bypass
+  Toggle this tool's toolhead LED: Toggle this tool's toolhead LED
   Toggle toolhead LED for an extruder: Toggle toolhead LED for an extruder
   'Toggle:': 'Toggle:'
   Too humid: Too humid
@@ -3968,9 +3999,12 @@ translations:
   Turn Endless Spool on, then set the Backup Gate: Turn Endless Spool on, then set the Backup Gate
   'Turn LED off when the print ends': 'Turn LED off when the print ends'
   Turn Off: Turn Off
+  Turn Off LEDs: Turn Off LEDs
+  Turn Off Toolhead LED: Turn Off Toolhead LED
   Turn Off WiFi?: Turn Off WiFi?
   Turn On: Turn On
   Turn On LEDs: Turn On LEDs
+  Turn On Toolhead LED: Turn On Toolhead LED
   Turn off bed check: Turn off bed check
   Turn off detection: Turn off detection
   Turn on the lights your light buttons control: Turn on the lights your light buttons control
@@ -4027,6 +4061,7 @@ translations:
   Unload from toolhead first: Unload from toolhead first
   Unload macro not configured: Unload macro not configured
   Unload the CFS filament before enabling bypass: Unload the CFS filament before enabling bypass
+  Unload the toolhead when a print ends: Unload the toolhead when a print ends
   Unload this unit first: Unload this unit first
   Unload which tool?: Unload which tool?
   Unload...: Unload...
@@ -4155,11 +4190,14 @@ translations:
   Welcome to HelixScreen: Welcome to HelixScreen
   Went past {} by {:.1f} Hz. Back it off a little.: Went past {} by {:.1f} Hz. Back it off a little.
   What We Collect: What We Collect
+  What happens when a print ends: What happens when a print ends
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: When
     enabled, only the macro runs. When disabled, temperatures are set first, then
     the macro runs.
   Where UI sounds play: Where UI sounds play
   Whether filament is loaded: Whether filament is loaded
+  Which macro switches the ACE path back on: Which macro switches the ACE path back on
+  Which macro switches the ACE path off for bypass: Which macro switches the ACE path off for bypass
   Which macro the Close feeder button sends: Which macro the Close feeder button sends
   Which macro the Open feeder button sends: Which macro the Open feeder button sends
   White: White
@@ -4389,6 +4427,7 @@ translations:
   '{} configured items not found': '{} configured items not found'
   '{} critical': '{} critical'
   '{} critical hardware issues': '{} critical hardware issues'
+  "{} didn't load. Check that its hotend is seated and do a test extrude before resuming.": "{} didn't load. Check that its hotend is seated and do a test extrude before resuming."
   '{} disabled': '{} disabled'
   '{} enabled': '{} enabled'
   '{} failed: {}': '{} failed: {}'

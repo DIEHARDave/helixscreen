@@ -6,9 +6,7 @@
  * @brief Every DeviceAction must name a section its own backend declares.
  *
  * AmsDeviceOperationsOverlay::populate_section_list() renders a row only for
- * actions whose `section` string equals a declared section id, and
- * AmsOperationSidebar::update_settings_visibility() hides the settings gear
- * entirely when a backend declares no sections. A backend that returns
+ * actions whose `section` string equals a declared section id. A backend that returns
  * actions with an empty or undeclared section therefore returns actions the
  * UI can never reach. This pins the pairing for every backend at once, so a
  * new backend (or a conditionally-hidden section whose actions survive)

@@ -216,7 +216,7 @@ A locked device behaves as follows **for the whole time a job owns the printer**
 - A **lock icon** appears on the row
 - The status text reads **"Locked during print"**
 
-When no job is running, the device unlocks and toggles normally again — that includes cancelling during preparation, which unlocks the device without a print ever having started. Devices without `locked_while_printing` are never locked.
+When no job is running, the device unlocks and toggles normally again — that includes canceling during preparation, which unlocks the device without a print ever having started. Devices without `locked_while_printing` are never locked.
 
 ---
 
@@ -224,7 +224,7 @@ When no job is running, the device unlocks and toggles normally again — that i
 
 ![Print History](../../images/user/advanced-history.png)
 
-HelixScreen keeps a record of your completed, failed, and cancelled prints, sourced from Moonraker's job history. Open it from **Advanced > Print History**. You get a dashboard of statistics and trend charts, a searchable and sortable list of past jobs, and per-job details with reprint and delete.
+HelixScreen keeps a record of your completed, failed, and canceled prints, sourced from Moonraker's job history. Open it from **Advanced > Print History**. You get a dashboard of statistics and trend charts, a searchable and sortable list of past jobs, and per-job details with reprint and delete.
 
 See [Print History](print-history.md) for the full guide.
 

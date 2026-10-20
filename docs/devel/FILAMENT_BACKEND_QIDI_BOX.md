@@ -149,7 +149,7 @@ the clear's zeros still read as no identity because all three fields land on
 | Auto-Heat on Load | Yes | The backend drives `EXTRUDER_LOAD` with its own heat → load → wipe → cool envelope (`supports_auto_heat_on_load() = true`); the UI must not run its own preheat |
 | Dryer | Yes | Per-box PTC heater + aht20 humidity, 35-90°C (ceiling refined from configfile), up to 720 min, allowed during print (#1019). `ENABLE_BOX_DRY` when the box_extras timer is present, `SET_HEATER_TEMPERATURE` otherwise; countdown from `box_drying_state` end_time |
 | Lane Eject | Yes (capability-gated) | `supports_lane_eject()` only when `[force_move]` is enabled or the Max 4 `multi_color_controller` dialect is detected (#1041, #1083) |
-| Device Actions | Eject params | `supports_configurable_eject_params() = true` — user-tunable eject distance/velocity surface as device-ops slider rows |
+| Device Actions | Eject params | `get_device_actions()` publishes the user-tunable eject distance and speed as two sliders in Filament Control |
 | Error channel | Yes | A blocked slot (`slot<N>` negative) raises a sticky CRITICAL `ErrorEvent` with a dismiss-only affordance (#1172, #1041) |
 
 Not implemented: `recover()` / `reset()` / `cancel()` (return `not_supported`), bypass (above), and path visualization (`get_filament_segment()` returns `NONE`). `clear_slot_override()` IS implemented - see Slot Metadata below. `select_slot()` is deliberately `not_supported` — `load_filament()` is the only path. Filament ops gate at `FilamentOpGate::PrintActiveOnly`, a deliberate narrowing (the box reports `AmsAction::LOADING` itself).

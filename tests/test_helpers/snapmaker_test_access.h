@@ -6,6 +6,7 @@
 #include "ams_backend_snapmaker.h"
 #include "filament_slot_override.h"
 #include "filament_slot_override_store.h"
+#include "print_start_inputs.h"
 #include "test_helpers/seeded_override.h"
 
 #include <memory>
@@ -39,6 +40,11 @@ class SnapmakerTestAccess {
     /// all a backend ever has.
     static void call_on_started(AmsBackendSnapmaker& b) {
         b.on_started();
+    }
+    /// Whether Resume is holding @p head for a load nothing has confirmed.
+    static bool load_unconfirmed(AmsBackendSnapmaker& b, int head) {
+        std::lock_guard<std::mutex> lock(b.mutex_);
+        return b.load_unconfirmed_[static_cast<size_t>(head)];
     }
     static void seed_override(AmsBackendSnapmaker& b, int slot_index,
                               const helix::ams::FilamentSlotOverride& ovr) {
@@ -89,6 +95,36 @@ class SnapmakerTestAccess {
     static std::optional<std::string> last_rfid_uid(const AmsBackendSnapmaker& b, int slot_index) {
         std::lock_guard<std::mutex> lock(b.mutex_);
         return b.rfid_tracker_.baseline(slot_index);
+    }
+    /// End a refeed's wait for its head's frame, as its timer does.
+    static void expire_refeed_wait(AmsBackendSnapmaker& b) {
+        b.finish_refeed_wait();
+    }
+    /// Forget the print state, as a reconnect's on_started() does.
+    static void forget_print_state(AmsBackendSnapmaker& b) {
+        std::lock_guard<std::mutex> lock(b.mutex_);
+        b.print_state_.reset();
+    }
+    /// What start() sets once the subscription is up; filament ops refuse
+    /// until it is.
+    static void set_running(AmsBackendSnapmaker& b, bool running) {
+        b.running_ = running;
+    }
+    /// Answer the print-file tool check without reading a file.
+    static void
+    set_file_tools_probe(AmsBackendSnapmaker& b,
+                         std::function<void(const std::string&, std::function<void(bool)>)> probe) {
+        b.file_tools_probe_ = std::move(probe);
+    }
+    /// Move this screen's last start mark @p by into the past.
+    static void age_start_from_here(AmsBackendSnapmaker& b, std::chrono::seconds by) {
+        std::lock_guard<std::mutex> lock(b.mutex_);
+        if (b.start_from_here_at_) {
+            *b.start_from_here_at_ -= by;
+        }
+    }
+    static bool file_uses_later_tool(const FileStartFacts& facts) {
+        return AmsBackendSnapmaker::file_uses_later_tool(facts);
     }
     static void set_sensor_present(AmsBackendSnapmaker& b, int slot_index, bool present) {
         std::lock_guard<std::mutex> lock(b.mutex_);

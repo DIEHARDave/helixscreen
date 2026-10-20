@@ -157,11 +157,6 @@ class AmsOperationSidebar {
     void paint_loaded_filament();
 
     /**
-     * @brief Hide settings button if backend has no device sections
-     */
-    void update_settings_visibility();
-
-    /**
      * @brief Show/hide Check gates button based on whether the active backend supports it.
      */
     void update_check_gates_visibility();

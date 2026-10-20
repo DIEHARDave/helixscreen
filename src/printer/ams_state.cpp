@@ -435,6 +435,7 @@ void AmsState::reset_backend_subjects() {
     lv_subject_set_int(&supports_bypass_, 0);
     lv_subject_set_int(&ams_feeder_open_, 0);
     lv_subject_set_int(&ams_slot_count_, 0);
+    lv_subject_set_int(&ams_has_device_ops_, 0);
     lv_subject_set_int(&active_tool_port_present_, 1);
 
     lv_subject_set_int(&toolchange_visible_, 0);
@@ -614,6 +615,10 @@ void AmsState::sync_from_backend() {
     sync_feeder(backend);
     lv_subject_set_int(&ams_slot_count_, info.total_slots);
     warn_if_slots_exceed_subjects(info.total_slots);
+    // The overlay's Quick Actions, status line and bypass rows (the force-bypass
+    // row covers firmware that reports none) apply to every backend, so a
+    // backend being present is the whole condition.
+    lv_subject_set_int(&ams_has_device_ops_, 1);
 
     // Update tool change progress raw data (text formatting in UI layer)
     if (info.number_of_toolchanges > 0) {
@@ -1580,25 +1585,48 @@ void AmsState::on_backend_event(int backend_index, const std::string& event,
         // User intervention needed
         queue_sync(true, -1);
         spdlog::warn("[AMS State] Attention required - {}", data);
+    } else if (event == AmsBackend::kEventEndlessSpoolRefused) {
+        // The switch flipped itself on the tap; the backend's state never moved,
+        // so an unchanged set would not notify. Re-announce it.
+        helix::ui::queue_update("AmsState::endless_spool_refused", []() {
+            if (ams_state_detail::shutting_down()) {
+                return;
+            }
+            lv_subject_notify(AmsState::instance().get_endless_spool_on_subject());
+        });
     }
 }
 
 void AmsState::sync_endless_spool_from_backend(AmsBackend* backend) {
+    using helix::printer::EndlessSpoolCapabilities;
+    using helix::printer::EndlessSpoolEnabled;
     using helix::printer::EndlessSpoolStatus;
     using helix::printer::EndlessSpoolStatusKind;
 
     // Capabilities take the backend's own mutex_, which is the lock order
     // sync_from_backend() already established with get_system_info().
-    EndlessSpoolStatus status;
-    if (backend != nullptr) {
-        status = helix::printer::endless_spool_status(backend->get_endless_spool_capabilities());
-    }
+    const EndlessSpoolCapabilities caps =
+        backend != nullptr ? backend->get_endless_spool_capabilities() : EndlessSpoolCapabilities{};
+    const EndlessSpoolStatus status =
+        backend != nullptr ? helix::printer::endless_spool_status(caps) : EndlessSpoolStatus{};
 
     const int kind = static_cast<int>(status.kind);
     if (lv_subject_get_int(&ams_endless_state_) != kind) {
         spdlog::debug("[AmsState] endless spool status -> kind={} text='{}'", kind, status.text);
         lv_subject_set_int(&ams_endless_state_, kind);
     }
+    const int switchable = caps.available() && caps.switchable ? 1 : 0;
+    const int on = (caps.enabled == EndlessSpoolEnabled::On ||
+                    caps.enabled == EndlessSpoolEnabled::OnWithoutBackup)
+                       ? 1
+                       : 0;
+    if (lv_subject_get_int(&ams_endless_spool_switchable_) != switchable) {
+        lv_subject_set_int(&ams_endless_spool_switchable_, switchable);
+    }
+    if (lv_subject_get_int(&ams_endless_spool_on_) != on) {
+        lv_subject_set_int(&ams_endless_spool_on_, on);
+    }
+
     // The kind can hold while the sentence changes (a CFS box that keeps
     // auto-refill on but gains a restriction reason), so the text is compared
     // independently rather than gated on the kind having moved.

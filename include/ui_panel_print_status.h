@@ -25,6 +25,9 @@
 // Forward declaration
 namespace helix {
 class IMoonrakerAPI;
+namespace ui {
+class PrintStartController;
+} // namespace ui
 struct MemoryInfo;
 } // namespace helix
 
@@ -595,10 +598,11 @@ class PrintStatusPanel : public OverlayBase {
     [[nodiscard]] std::string reprint_filename() const;
     /// reprint_filename() with the archive plate to extract, for a .3mf printed that way.
     [[nodiscard]] helix::gcode::ReprintTarget reprint_target() const;
-    /// Reprints @p target with no print controller to route through: a plain
-    /// file starts directly; an archive plate, which only the controller can
-    /// extract, is refused.
-    void reprint_without_controller(const helix::gcode::ReprintTarget& target);
+    /// Reprints @p target through @p controller, which owns the pre-print step a
+    /// firmware needs (the U1's used heads) and the preparing window.
+    void reprint_through(helix::ui::PrintStartController& controller,
+                         const helix::gcode::ReprintTarget& target);
+
     void handle_files_click(); ///< Open print select while this overlay holds the screen
     void handle_resize();
 

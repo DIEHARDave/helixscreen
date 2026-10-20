@@ -1,6 +1,6 @@
 # Fans
 
-HelixScreen automatically discovers every fan your printer reports to Klipper and groups them by whether you can control them. You can adjust controllable fan speeds, watch automatic fans, and rename any fan so it's easier to recognise across the UI.
+HelixScreen automatically discovers every fan your printer reports to Klipper and groups them by whether you can control them. You can adjust controllable fan speeds, watch automatic fans, and rename any fan so it's easier to recognize across the UI.
 
 ---
 

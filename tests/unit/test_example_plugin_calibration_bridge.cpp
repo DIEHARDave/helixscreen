@@ -204,7 +204,7 @@ TEST_CASE_METHOD(XMLTestFixture, "a cancelled calibration print returns to avail
     set_print_state("printing");
     set_print_state("cancelled");
     CHECK(cb_int("calibration-bridge__state") == 1);
-    CHECK(cb_str("calibration-bridge__status_line") == "print cancelled");
+    CHECK(cb_str("calibration-bridge__status_line") == "print canceled");
     CHECK(cb_int("calibration-bridge__start_on") == 1);
 }
 

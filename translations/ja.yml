@@ -428,6 +428,7 @@ translations:
   Bowden: ボーデン
   Bowden Length: 'ボーデン長'
   Bowden tube length from hub to toolhead: 'ハブからツールヘッドまでのボーデンチューブ長'
+  Bowden tube length to this tool: "このツールまでのボーデンチューブ長"
   Box: ボックス
   Brand: ブランド
   Brand and material come from Spoolman: ブランドと素材は Spoolman から取得されます
@@ -463,6 +464,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : バイパスが有効ですが、この印刷はAMSスロットを使用します。バイパスのフィラメントがツールヘッドにある間は、プリンターがスロットの装填を拒否する場合があります。印刷前にフィラメントを取り除き、バイパスをオフにしてください。それでも印刷を開始しますか？
   Bypass mode is not currently active: 'バイパスモードは現在アクティブではありません'
+  Bypass off macro: 'バイパスオフのマクロ'
+  Bypass on macro: 'バイパスオンのマクロ'
   Bypass toggle failed: バイパス切替に失敗しました
   C: C
   CALIBRATION: キャリブレーション
@@ -515,13 +518,14 @@ translations:
   Calibration Failed: キャリブレーション失敗
   Calibration Saved: キャリブレーションを保存しました
   Calibration and system configuration: 'キャリブレーションとシステム設定'
-  Calibration cancelled.: キャリブレーションをキャンセルしました。
+  Calibration canceled.: キャリブレーションをキャンセルしました。
   Calibration complete: キャリブレーション完了
   Calibration complete - save to keep the offsets: キャリブレーション完了 - 保存してオフセットを保持してください
   Calibration complete!: キャリブレーション完了！
   Calibration complete! Press 'Next' to continue.: '"キャリブレーション完了！「次へ」を押して続行してください。"'
   Calibration failed: キャリブレーション失敗
   Calibration failed - touch targets more precisely.: キャリブレーション失敗 – ターゲットをより正確にタッチしてください。
+  Calibration in progress: "キャリブレーション中"
   Calibration kept timing out. Your previous settings were kept.: キャリブレーションが繰り返しタイムアウトしました。以前の設定を維持しました。
   Calibration may still be running — printer connection was interrupted: 'キャリブレーションがまだ実行中の可能性があります — プリンター接続が中断されました'
   Calibration may still be running — response timed out: 'キャリブレーションがまだ実行中の可能性があります — 応答タイムアウト'
@@ -544,8 +548,8 @@ translations:
   Cancel Scheduled Pause: '予約した一時停止を取り消す'
   Cancel macro not configured: キャンセルマクロが未設定です
   Cancel print: '印刷をキャンセル'
-  Cancelled: キャンセル済み
-  Cancelling turns the chamber target off so the wait ends, then stops the print.: 'キャンセルするとチャンバーの目標温度をオフにして待機を終了し、その後印刷を停止します。'
+  Canceled: キャンセル済み
+  Canceling turns the chamber target off so the wait ends, then stops the print.: 'キャンセルするとチャンバーの目標温度をオフにして待機を終了し、その後印刷を停止します。'
   'Cannot add to queue: internal error': 'キューに追加できません: 内部エラー'
   Cannot be changed from here on a multi-unit MMU: マルチユニット MMU ではここから変更できません
   Cannot change the HelixPrint plugin while printing: 印刷中はHelixPrintプラグインを変更できません
@@ -659,7 +663,7 @@ translations:
   Choose rendering mode for G-code visualization: G-codeの視覚化レンダリングモードを選択
   Choose rendering mode for bed mesh visualization: ベッドメッシュの視覚化レンダリングモードを選択
   Choose sound style: サウンドスタイルを選択
-  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses.
+  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses.
   : お使いのプリンターに一致するモデルを選択してください。これにより、HelixScreenが使用する印刷マクロ、ファンの役割、キャリブレーション動作が設定されます。
   Choose what to power off or restart.: 電源オフまたは再起動する対象を選択してください。
   'Chute position: X {:.1f}, Y {:.1f}': 'パージシュート位置: X {:.1f}, Y {:.1f}'
@@ -1060,6 +1064,8 @@ translations:
   ETA {}: '終了予定 {}'
   EXTRAS: その他
   Each fan can only be selected once: 各ファンは一度のみ選択できます
+  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
+  : 'プリンターがロードもプライミングも行わないため、2番目以降のツールヘッドは初めて使われるときに印刷を一時停止します。印刷終了時にフィラメントは排出されません。'
   Edit: 編集
   Edit Filament: フィラメントを編集
   Edit Slot: スロットを編集
@@ -1072,6 +1078,7 @@ translations:
   Effects: エフェクト
   Eject: 取り出し
   Eject Distance: 取り出し距離
+  Eject Speed: "取り出し速度"
   Eject Velocity: 取り出し速度
   Eject failed: イジェクトに失敗しました
   Eject needs [force_move] enabled in printer config: 取り出しにはプリンター設定で [force_move]
@@ -1123,6 +1130,7 @@ translations:
   Ended: 終了
   Endless Spool: 'エンドレススプール'
   Endless Spool backups cleared: エンドレススプールの予備を消去しました
+  Endless Spool change failed: 'エンドレススプールの変更に失敗しました'
   Endless Spool is configured in its package, not from here: エンドレススプールはプラグイン側で設定します
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: エンドレススプールはオンですが、フィラメントが一致するスロットが2つないため、フィラメント切れになっても何も切り替わりません
   Endless Spool is turned off on this MMU: 'この MMU ではエンドレススプールが無効です'
@@ -1174,6 +1182,7 @@ translations:
   Every browser needs a new code to control this screen: 'この画面を操作するには、各ブラウザに新しいコードが必要です'
   Every browser that can control this screen will need the new pairing code.: 'この画面を操作できるすべてのブラウザで、新しいペアリングコードが必要になります。'
   Every extruder's temperature at once: 全エクストルーダーの温度を一覧表示
+  Every unit keeps its filament gripped: "すべてのユニットがフィラメントを保持したままです"
   Everything else was saved. Change them in Spoolman.: その他はすべて保存されました。変更は Spoolman で行ってください。
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: 'その他はすべて保存されました。材料名は英字・数字・スペース・+ - _ . ( ) / で構成される名前に変更してください'
   Every object is set to skip, so there is nothing to print: 'すべてのオブジェクトがスキップ対象のため、印刷するものがありません'
@@ -1187,7 +1196,7 @@ translations:
   Exclude Objects: 'オブジェクトの除外'
   Excluded: 除外
   Excluding "{}"...: '「{}」を除外中...'
-  Exclusion cancelled: 除外がキャンセルされました
+  Exclusion canceled: 除外がキャンセルされました
   Execute printer macros: プリンターマクロを実行
   Exhaust Fan: 排気ファン
   Exit Code: 終了コード
@@ -1354,6 +1363,7 @@ translations:
   Feature not available: この機能は利用できません
   'Features: ': '機能: '
   Feed Assist: '送りアシスト'
+  Feed assist and bypass macros: '送りアシストとバイパスマクロ'
   Feed assist and debug tools: 送りアシストとデバッグツール
   Feed failed: 送り出しに失敗しました
   Feed filament: フィラメントを送る
@@ -1368,6 +1378,7 @@ translations:
   Filament Control: フィラメント制御
   Filament Detected: フィラメント検出
   Filament Dryer: フィラメントドライヤー
+  Filament Feeder: "フィラメントフィーダー"
   Filament Grade Mismatch: フィラメントグレード不一致
   Filament Humidity: フィラメント湿度
   Filament In The Toolhead: ツールヘッドにフィラメントがあります
@@ -1446,6 +1457,7 @@ translations:
   Fine-tune: "微調整"
   Finish: 完了
   Finish or cancel the print before loading, unloading, or changing filament: フィラメントの装填・排出・交換の前に、印刷を完了またはキャンセルしてください
+  Finish or cancel the print first: 先に印刷を完了またはキャンセルしてください
   Finishing clean...: 清掃の仕上げ中...
   Finishing up...: 完了中...
   Fireflies: ホタル
@@ -1605,6 +1617,7 @@ translations:
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen がクラッシュしました
   HelixScreen Macros: 'HelixScreenマクロ'
+  HelixScreen couldn't read which toolheads this file uses, so the printer wasn't told.: 'HelixScreenはこのファイルが使うツールヘッドを読み取れなかったため、プリンターに伝えていません。'
   HelixScreen is detecting your display orientation: HelixScreenがディスプレイの向きを検出しています
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     はマルチスプール/カラー印刷操作のためにフィラメントチェンジャーと連携します。
@@ -1663,8 +1676,11 @@ translations:
   Hotend Fan: ホットエンドファン
   Hotend Heater: ホットエンドヒーター
   How Z-axis movement is displayed: Z軸の移動表示方法
+  How far and how fast a lane ejects: "レーンの取り出し距離と速度"
+  How far filament is pushed back into the box on eject: "取り出し時にフィラメントをボックスへ押し戻す距離"
   How far filament is pushed back into the box on eject (mm): 取り出し時にフィラメントをボックスへ押し戻す距離
     (mm)
+  How fast filament is pushed back on eject: "取り出し時にフィラメントを押し戻す速度"
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : '長押しと判定されるまでの保持時間（ミリ秒）。編集モードなどが誤動作する場合は大きくしてください'
   How many labels to print: 印刷するラベル枚数
@@ -1870,7 +1886,7 @@ translations:
   Last 30 days: '過去30日間'
   Last 7 days: '過去7日間'
   Last measured: '前回の測定値'
-  Last print cancelled: 前回の印刷がキャンセルされました
+  Last print canceled: 前回の印刷がキャンセルされました
   Last print failed: 前回の印刷が失敗しました
   Later: 後で
   Layer: レイヤー
@@ -1918,12 +1934,13 @@ translations:
   Load a filament first before trying to unload: 排出する前にまずフィラメントを装填してください
   Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: このスロットに新しいスプールをセットするか、自動補充を有効にして一致するスプールに切り替えてください
   Load and unload filament at the tool by hand: 'フィラメントはツールで手動でロード・アンロードしてください'
-  'Load cancelled: nozzle target dropped': '装填をキャンセル: ノズルの目標温度が下がりました'
+  'Load canceled: nozzle target dropped': '装填をキャンセル: ノズルの目標温度が下がりました'
   Load complete: 'ロード完了'
   Load failed: 装填に失敗しました
   Load filament: 'フィラメントをロード'
   Load filament first: 先にフィラメントを装填してください
   Load into which tool?: 'どのツールにロードしますか？'
+  Load it in the filament panel, then tap Resume.: 'フィラメントパネルでロードしてから、再開をタップしてください。'
   Load or unload filament.: フィラメントを装填または排出します。
   Load Profile: 'プロファイルを読み込む'
   Load the required filaments or start anyway?: 必要なフィラメントを装填しますか？それともこのまま開始しますか？
@@ -1936,6 +1953,7 @@ translations:
   Loading Error: 装填エラー
   Loading Filament...: フィラメントを装填中...
   Loading G-code...: G-codeを読み込み中...
+  Loading configuration...: "設定を読み込み中..."
   Loading devices...: デバイスを読み込み中...
   Loading filament...: フィラメントを装填中...
   Loading filaments...: フィラメントを読み込み中...
@@ -2269,6 +2287,7 @@ translations:
   No prints this week: 今週の印刷なし
   No prints yet: 印刷履歴なし
   No profiles available: 利用可能なプロファイルがありません
+  No sensor fitted for this distance: "この距離用のセンサーが取り付けられていません"
   No sensors detected: センサーが検出されませんでした
   No shared peaks: "共通のピークなし"
   No slot currently matches.: '現在、一致するスロットはありません。'
@@ -2283,6 +2302,10 @@ translations:
   No timelapse videos found: タイムラプス動画が見つかりません
   No tools to calibrate: キャリブレートするツールがありません
   'No turn: the gap moved {:.1f} Hz': "回していません: 差は{:.1f} Hz動きました"
+  No unit has a filament buffer: "フィラメントバッファを持つユニットがありません"
+  No unit has a moving selector: "可動セレクターを持つユニットがありません"
+  No unit has a servo: "サーボを持つユニットがありません"
+  No unit has an encoder: "エンコーダーを持つユニットがありません"
   'No unload macro found: unload by hand, then start again': '排出マクロが見つかりません: 手で排出してから、もう一度始めてください'
 
   No vendors found: ベンダーが見つかりません
@@ -2302,6 +2325,7 @@ translations:
   Not Now: 今はしない
   Not Supported: 'サポートされていません'
   Not available here. Update from a terminal.: ここでは利用できません。ターミナルから更新してください。
+  Not available now: 現在は利用できません
   Not available on Android: Androidでは利用できません
   Not calibrated: キャリブレーション未実施
   Not configured: 未設定
@@ -2352,7 +2376,7 @@ translations:
   Nozzle Temps: ノズル温度
   Nozzle clean complete: ノズル清掃完了
   Nozzle clog detected: ノズルの詰まりを検出しました
-  Nozzle did not reach {}°C — {} cancelled: ノズルが{}°Cに達しませんでした — {}を中止しました
+  Nozzle did not reach {}°C — {} canceled: ノズルが{}°Cに達しませんでした — {}を中止しました
   Nozzle interval: 'ノズルの間隔'
   Nozzle min cannot exceed max: ノズル温度の最小値は最大値を超えられません
   Nozzle target set to {}°C: ノズル目標温度を {}°C に設定しました
@@ -2565,7 +2589,7 @@ translations:
   Preheat %s (%d/%d): '予熱 %s (%d/%d)'
   Preheat Macro: 予熱マクロ
   Preheat PLA: PLA 予熱
-  Preheat cancelled: 予熱がキャンセルされました
+  Preheat canceled: 予熱がキャンセルされました
   'Preheat: all {} tools + bed set': '予熱: 全 {} ツール + ベッド設定済み'
   'Preheat: {} + bed set': '予熱: {} + ベッド設定済み'
   Preheating and homing...: 予熱とホーミング中...
@@ -2600,8 +2624,8 @@ translations:
   Priming...: プライミング中...
   Print: 印刷
   Print Anyway: それでも印刷
-  'Print Behaviour': '印刷の動作'
-  Print Cancelled: 印刷キャンセル
+  Print Behavior: "印刷時の動作"
+  Print Canceled: 印刷キャンセル
   Print Complete!: 印刷完了！
   Print Completion Alert: 印刷完了通知
   Print Controls: '印刷コントロール'
@@ -2625,9 +2649,9 @@ translations:
   Print Tuning: 印刷チューニング
   Print Was Terminated: 印刷が中止されました
   Print a test tower and tune K by eye: テストタワーを印刷して目視でKを調整
-  Print cancelled: 印刷がキャンセルされました
   Print details: '印刷の詳細'
   Print did not start: 印刷は開始されませんでした
+  Print canceled: 印刷がキャンセルされました
   Print complete: 印刷完了
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): 印刷が開始されませんでした
     — プリンターがビジー状態またはオフラインの可能性があります (B3 polls={}, status=0x{:02X}, error=0x{:02X})
@@ -2738,6 +2762,7 @@ translations:
   Provide a numeric {}: '{} を数値で入力してください'
   Provide a speed multiplier value: '速度の倍率を入力してください'
   Provide a {}: '{} を入力してください'
+  Provide an on/off value: 'オン/オフの値を入力してください'
   Provide {}: '{} を入力してください'
   Pulling filament back: フィラメントを引き戻し中
   Purge: パージ
@@ -2786,6 +2811,7 @@ translations:
   RFID reader malfunction (left): RFID リーダーの異常（左）
   RFID reader malfunction (right): RFID リーダーの異常（右）
   RFID, Auto-Refill, nozzle and link care: RFID、自動補充、ノズルと接続のメンテナンス
+  RFID, nozzle and link care: 'RFID、ノズルと接続のメンテナンス'
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3312,6 +3338,7 @@ translations:
   Spoolman needs a material for this filament.: Spoolman にはこのフィラメントの素材が必要です。
   Spoolman removed.: Spoolman を削除しました。
   Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolmanに価格、場所、ロット、メモは保存されましたが、それ以外は保存されませんでした。このプリンターではほかに何も変更されていません。'
+  Spoolman support is off in Happy Hare: "Happy Hare の Spoolman サポートはオフです"
   Spoolman unavailable — filament weights may be stale: Spoolmanが利用できません — フィラメント重量が古い可能性があります
   Spoolman was not configured.: Spoolman は設定されていませんでした。
   'Spoolman: %zu Spool': 'Spoolman: %zu 個のスプール'
@@ -3408,6 +3435,7 @@ translations:
   Switch the active tool or extruder: アクティブなツールやエクストルーダーを切り替え
   Switch to a backup slot on runout: フィラメント切れ時に予備スロットへ切り替え
   Switch to a matching slot on runout: フィラメント切れ時に一致するスロットへ切り替え
+  Switch to a matching spool when one runs out: 'スプールが切れたら一致するスプールに切り替え'
   Switch to v%s: 'v%s に切り替え'
   Switch to {}?: '{} に切り替えますか?'
   Switched to {}: '{} に切替えました'
@@ -3446,6 +3474,7 @@ translations:
   'Tangle sensitivity': '絡み検出の感度'
   Tap + to add: + をタップして追加
   Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge: 「ファームウェア再起動」をタップして復旧してください。K2 では rpi MCU ブリッジも再起動されます
+  Tap Resume to try the load again from {}.: '再開をタップすると、{}からもう一度ロードします。'
   Tap again to confirm this orientation: もう一度タップしてこの向きを確定
   Tap an empty spot inside the enclosure: 筐体内の空いている場所をタップ
   Tap any tile to open its full controls or toggle its state.: タイルをタップすると、全機能のコントロールを開いたり、状態を切り替えたりできます。
@@ -3577,7 +3606,7 @@ translations:
 
   The plate finishes its current move, but drying will not start.: 'ベッドは現在の移動を完了しますが、乾燥は開始しません。'
   The print ended before any layer was printed. Nothing was changed.: レイヤーが印刷される前に印刷が終了しました。何も変更されていません。
-  The print is cancelled and you pick the best band from what has printed so far.: 印刷をキャンセルし、ここまで印刷された中から最適な区間を選びます。
+  The print is canceled and you pick the best band from what has printed so far.: 印刷をキャンセルし、ここまで印刷された中から最適な区間を選びます。
   The print is on its last layer.: '最後のレイヤーを印刷中です。'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : 印刷は一時停止中です。ここでツールを交換すると、ツールヘッドが移動してノズルのフィラメントが入れ替わります。交換が完了したら印刷を再開してください。
@@ -3688,6 +3717,7 @@ translations:
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: この印刷には約
     %.0fg 必要ですが、スプールの残量は約 %.0fg です。それでも開始しますか？
   This print never reports layer {}.: 'この印刷はレイヤー {} を報告しません。'
+  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: 'この印刷はHelixScreen以外から開始されたため、プリンターはどのツールヘッドを使うかを知りません。'
   This printer cannot calibrate tool offsets automatically: このプリンターはツールオフセットを自動でキャリブレートできません
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: このプリンターのゲートは Spoolman から設定されます。HelixScreen 側のコピーはクリアしました。Spoolman でスプールを削除してください。
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: このプリンターのゲートは Spoolman から設定されます。色・素材・スプールの変更は Spoolman で行ってください。
@@ -3708,7 +3738,7 @@ translations:
   This system does not support bypass mode: 'このシステムはバイパスモードに対応していません'
   This tool probes each bed screw and tells you how much to adjust.: このツールは各ベッドネジをプローブし、どのくらい調整が必要かを教えます。
   'This update asks for new permissions:': 'この更新は新しい権限を要求します：'
-  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': 'この待機は温度に達するまで終わりません。キャンセルには緊急停止とファームウェアの再起動が必要です。'
+  'This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart.': 'この待機は温度に達するまで終わりません。キャンセルには緊急停止とファームウェアの再起動が必要です。'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : Z-offset をエンドストップに適用し、設定を保存するために Klipper を再起動します。プリンターは一時的に切断されます。
@@ -3771,6 +3801,7 @@ translations:
   Toggle Auto-Refill: '自動補充を切り替え'
   Toggle Quiet Mode: '静音モードを切り替え'
   Toggle external spool bypass: 外部スプールバイパスを切り替え
+  Toggle this tool's toolhead LED: "このツールのツールヘッドLEDを切り替え"
   Toggle toolhead LED for an extruder: 'エクストルーダーのツールヘッドLEDを切り替え'
   'Toggle:': '切り替え:'
   Too humid: 湿度が高すぎます
@@ -3829,9 +3860,12 @@ translations:
   Turn Endless Spool on, then set the Backup Gate: 'エンドレススプールを有効にしてから、バックアップゲートを設定してください'
   'Turn LED off when the print ends': '印刷終了時に LED を消灯'
   Turn Off: オフにする
+  Turn Off LEDs: "LEDを消灯"
+  Turn Off Toolhead LED: "ツールヘッドLEDを消灯"
   Turn Off WiFi?: WiFiをオフにしますか？
   Turn On: オンにする
   Turn On LEDs: 'LEDを点灯'
+  Turn On Toolhead LED: "ツールヘッドLEDを点灯"
   Turn off bed check: 'ベッドチェックをオフにする'
   Turn off detection: 検出をオフにする
   Turn on the lights your light buttons control: ライトボタンが操作するライトを点灯します
@@ -3885,6 +3919,7 @@ translations:
   Unload from toolhead first: '先にツールヘッドから取り出してください'
   Unload macro not configured: アンロードマクロが未設定です
   Unload the CFS filament before enabling bypass: 'バイパスを有効にする前に CFS のフィラメントを取り出してください'
+  Unload the toolhead when a print ends: '印刷終了時にツールヘッドからアンロード'
   Unload this unit first: '先にこのユニットを排出してください'
   Unload which tool?: 'どのツールをアンロードしますか？'
   Unload...: 排出...
@@ -4006,9 +4041,12 @@ translations:
   Welcome to HelixScreen: HelixScreen へようこそ
   Went past {} by {:.1f} Hz. Back it off a little.: "{}を{:.1f} Hz超えました。少し戻してください。"
   What We Collect: 収集する情報
+  What happens when a print ends: '印刷終了時の動作'
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: 有効時はマクロのみ実行されます。無効時は先に温度を設定してからマクロが実行されます。
   Where UI sounds play: UIサウンドの再生先
   Whether filament is loaded: フィラメントの装填状態
+  Which macro switches the ACE path back on: 'ACE経路を再びオンにするマクロ'
+  Which macro switches the ACE path off for bypass: 'バイパスのためにACE経路をオフにするマクロ'
   Which macro the Close feeder button sends: 「フィーダーを閉じる」ボタンが送信するマクロ
   Which macro the Open feeder button sends: 「フィーダーを開く」ボタンが送信するマクロ
   White: ホワイト
@@ -4239,6 +4277,7 @@ translations:
   '{} configured items not found': 設定された項目 {} 個が見つかりません
   '{} critical': '重大 {} 件'
   '{} critical hardware issues': '{} 個の重要なハードウェアの問題'
+  "{} didn't load. Check that its hotend is seated and do a test extrude before resuming.": '{}がロードされませんでした。再開する前に、ホットエンドが正しく取り付けられているか確認し、テスト押し出しを行ってください。'
   '{} disabled': '{} を無効にしました'
   '{} enabled': '{} を有効にしました'
   '{} failed: {}': '{} に失敗しました: {}'

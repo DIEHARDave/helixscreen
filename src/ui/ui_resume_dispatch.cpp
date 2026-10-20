@@ -6,6 +6,8 @@
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_modal.h"
+#include "ui_panel_print_select.h"
+#include "ui_print_start_controller.h"
 #include "ui_update_queue.h"
 
 #include "ams_backend.h"
@@ -76,43 +78,78 @@ void restart_print_from_beginning(IMoonrakerAPI* api, const std::string& filenam
     // A filament system whose firmware forgets per-print preferences between
     // prints gets them again here, once the cancel has left the printer idle.
     // The restart carries no routing, so a firmware that holds a map for the
-    // next print gets only its clear.
-    std::string prep = "SDCARD_RESET_FILE\nCANCEL_PRINT_BASE";
-    if (AmsBackend* backend = AmsState::instance().get_backend();
-        backend && backend->requires_preprint_send()) {
-        if (const std::string prefs = backend->build_preprint_gcode({}, {}); !prefs.empty())
-            prep += "\n" + prefs;
-    }
-    api->execute_gcode(
-        prep,
-        [api, filename, log_prefix, on_failure]() {
-            queue_update("ui_resume_dispatch::restart_start_print", [api, filename, log_prefix,
-                                                                     on_failure]() {
-                api->job().start_print(
-                    filename,
-                    [log_prefix, filename]() {
-                        spdlog::info("{} Restart succeeded for {}", log_prefix, filename);
-                    },
-                    [log_prefix, on_failure](const MoonrakerError& err) {
-                        spdlog::error("{} start_print after restart failed: {}", log_prefix,
-                                      err.message);
-                        queue_update("ui_resume_dispatch::restart_start_error", [err,
-                                                                                 on_failure]() {
-                            NOTIFY_ERROR(lv_tr("Failed to restart: {}"), err.localized_message());
-                            if (on_failure)
-                                on_failure();
+    // next print gets only its clear. One that tells which heads a print uses
+    // without a map is told the file's (build_unrouted_preprint_gcode()). This
+    // cancel does not reset the firmware's map (SDCARD_RESET_FILE never reaches
+    // its print-end reset), so that builder names heads only while the live
+    // map still reads its default for every used tool.
+    auto send = [api, filename, log_prefix, on_failure](const std::set<int>& tools) {
+        // The file read answers later; a printer switch meanwhile replaces the
+        // API this restart was asked of, and the restart belongs to the old one.
+        if (IMoonrakerAPI* now = get_moonraker_api(); now && now != api) {
+            spdlog::warn("{} restart of {} dropped: the printer connection changed", log_prefix,
+                         filename);
+            if (on_failure)
+                on_failure();
+            return;
+        }
+        std::string prep = "SDCARD_RESET_FILE\nCANCEL_PRINT_BASE";
+        if (AmsBackend* backend = AmsState::instance().get_backend();
+            backend && backend->requires_preprint_send()) {
+            const std::string prefs = backend->print_routing_resets_to_identity()
+                                          ? backend->build_unrouted_preprint_gcode(tools)
+                                          : backend->build_preprint_gcode({}, {});
+            if (!prefs.empty())
+                prep += "\n" + prefs;
+        }
+        api->execute_gcode(
+            prep,
+            [api, filename, log_prefix, on_failure]() {
+                queue_update("ui_resume_dispatch::restart_start_print", [api, filename, log_prefix,
+                                                                         on_failure]() {
+                    if (AmsBackend* backend = AmsState::instance().get_backend()) {
+                        backend->note_print_start_from_here();
+                    }
+                    api->job().start_print(
+                        filename,
+                        [log_prefix, filename]() {
+                            spdlog::info("{} Restart succeeded for {}", log_prefix, filename);
+                        },
+                        [log_prefix, on_failure](const MoonrakerError& err) {
+                            spdlog::error("{} start_print after restart failed: {}", log_prefix,
+                                          err.message);
+                            queue_update("ui_resume_dispatch::restart_start_error",
+                                         [err, on_failure]() {
+                                             NOTIFY_ERROR(lv_tr("Failed to restart: {}"),
+                                                          err.localized_message());
+                                             if (on_failure)
+                                                 on_failure();
+                                         });
                         });
-                    });
+                });
+            },
+            [log_prefix, on_failure](const MoonrakerError& err) {
+                spdlog::error("{} restart prep gcode failed: {}", log_prefix, err.message);
+                queue_update("ui_resume_dispatch::restart_prep_error", [err, on_failure]() {
+                    NOTIFY_ERROR(lv_tr("Failed to clear print state: {}"), err.localized_message());
+                    if (on_failure)
+                        on_failure();
+                });
             });
-        },
-        [log_prefix, on_failure](const MoonrakerError& err) {
-            spdlog::error("{} restart prep gcode failed: {}", log_prefix, err.message);
-            queue_update("ui_resume_dispatch::restart_prep_error", [err, on_failure]() {
-                NOTIFY_ERROR(lv_tr("Failed to clear print state: {}"), err.localized_message());
-                if (on_failure)
-                    on_failure();
-            });
-        });
+    };
+
+    AmsBackend* backend = AmsState::instance().get_backend();
+    if (backend && backend->requires_preprint_send() &&
+        backend->print_routing_resets_to_identity()) {
+        // The footer at most: a download of the whole file would hold the
+        // cancel back for as long as the transfer takes. Slicers that write no
+        // per-tool weights into Moonraker's metadata (Orca's U1 profile) still
+        // write them in the footer.
+        print_start_controller_for(get_printer_state(), api)
+            .read_file_tools(filename, send, FileRead::Footer);
+        return;
+    }
+    send({});
 }
 
 void show_restart_required_modal(IMoonrakerAPI* api, const std::string& filename,
@@ -212,6 +249,11 @@ void dispatch_prepared_resume(IMoonrakerAPI* api, std::string log_prefix,
     backend->prepare_for_resume(slot, [api, dispatch = std::move(dispatch), log_prefix,
                                        on_failure](const AmsError& err) mutable {
         if (err.result == AmsResult::RESUME_REQUIRES_RESTART) {
+            // The resume is over: what follows is a restart the user may or
+            // may not ask for, so the resume's pending state ends here and its
+            // backstop cannot fire over a restart in progress.
+            if (on_failure)
+                on_failure();
             // virtual_sdcard.is_active=false — RESUME would no-op.
             // Surface the restart-from-beginning modal instead of
             // firing the resume macro chain. Filename comes from

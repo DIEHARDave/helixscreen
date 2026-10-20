@@ -212,7 +212,7 @@ A tool that has never been calibrated shows `--` on each axis instead of a numbe
 
 5. If the run fails partway through, the status line explains why and the run stops there — clean the affected tool's nozzle and try again
 
-Tapping **Stop** during a run performs an emergency stop, since the calibration macro can't be paused partway through, only cancelled outright.
+Tapping **Stop** during a run performs an emergency stop, since the calibration macro can't be paused partway through, only canceled outright.
 
 ---
 
@@ -243,7 +243,7 @@ The sweeps stay inside the frequency range set in your printer's `[resonance_tes
 
 The check always uses Klipper's plain pulse test, even on printers set up for the newer sweeping test: the sweeping test smooths over exactly the kind of mechanical difference a belt comparison looks for.
 
-**Stop** ends the run with an emergency stop followed by a firmware restart: a sweep cannot be paused or cancelled partway. Use it only when something is actually wrong.
+**Stop** ends the run with an emergency stop followed by a firmware restart: a sweep cannot be paused or canceled partway. Use it only when something is actually wrong.
 
 ### Reading the Results
 
@@ -283,7 +283,7 @@ What the screen shows:
 
 - **The instruction** at the top: which path to adjust and which way ("Tighten A", "Loosen B"). A higher frequency means a tighter belt, and clockwise tightens
 - **The amount**, on printers HelixScreen knows have screw tensioners (the Voron 2.4 and Trident): how far to turn, in quarter turns, from half a turn up to two, or a quarter turn once the belts are nearly matched. The calibration turn gives a first idea of how many Hz a turn moves on your machine, and later rounds refine it
-- **The gap gauge**: the distance between the two paths. The middle band is "matched". The solid marker is this round's gap and the hollow one is last round's, so you can see which way it moved. The colour tells you how far off you are
+- **The gap gauge**: the distance between the two paths. The middle band is "matched". The solid marker is this round's gap and the hollow one is last round's, so you can see which way it moved. The color tells you how far off you are
 - **The chart**: the zone being tuned, with the adjusted path's earlier rounds fading behind it
 
 To work through it:

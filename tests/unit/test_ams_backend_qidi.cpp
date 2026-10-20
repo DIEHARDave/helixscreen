@@ -8,6 +8,7 @@
 #include "../test_helpers/print_state_test_drivers.h"
 #include "ams_backend_mock.h"
 #include "ams_backend_qidi.h"
+#include "ams_device_action_value.h"
 #include "ams_error.h"
 #include "ams_types.h"
 #include "filament_slot_override.h"
@@ -802,23 +803,34 @@ TEST_CASE("QIDI Box lane eject accepts global slots from later boxes",
             "FORCE_MOVE STEPPER=\"box_stepper slot5\" VELOCITY=100 DISTANCE=-878");
 }
 
-TEST_CASE("QIDI Box lane eject honors configurable distance/velocity settings",
-          "[ams][qidi_box][write_path]") {
-    // The eject FORCE_MOVE distance/velocity are user-tunable (#1041) because
-    // different QIDI Box variants need different push-out distances. Verify
-    // eject_lane reads the SettingsManager values, not the hardcoded defaults,
-    // and that the stored positive magnitude is negated into the box direction.
+TEST_CASE("QIDI Box eject sliders set the distance and speed lane eject uses",
+          "[ams][qidi_box][write_path][device_actions]") {
+    // Different QIDI Box variants need different push-out distances (#1041). The
+    // stored positive magnitude is negated into the box direction.
     auto& settings = helix::SettingsManager::instance();
     settings.init_subjects(); // idempotent; ensures the subjects hold real values
-    const int saved_dist = settings.get_qidi_eject_distance();
-    const int saved_vel = settings.get_qidi_eject_velocity();
-
-    settings.set_qidi_eject_distance(500);
-    settings.set_qidi_eject_velocity(60);
+    const int saved_dist = settings.get_ams_eject_distance();
+    const int saved_vel = settings.get_ams_eject_velocity();
 
     RecordingQidiBackend backend;
     QidiBoxTestAccess::apply_config_settings(backend,
                                              json{{"force_move", {{"enable_force_move", true}}}});
+
+    const auto sections = backend.get_device_sections();
+    REQUIRE(sections.size() == 1);
+    const auto actions = backend.get_device_actions();
+    REQUIRE(actions.size() == 2);
+    for (const auto& a : actions) {
+        CHECK(a.type == helix::printer::ActionType::SLIDER);
+        CHECK(a.section == sections[0].id);
+    }
+
+    // The sliders send float, as the section overlay does.
+    REQUIRE(backend.execute_device_action("eject_distance", std::any(500.0f)).success());
+    REQUIRE(backend.execute_device_action("eject_velocity", std::any(60.0f)).success());
+    CHECK(backend.sent.empty());
+    CHECK(helix::printer::device_action_number(backend.get_device_actions()[0].current_value) ==
+          500.0);
 
     auto err = backend.eject_lane(2);
     REQUIRE(err.success());
@@ -826,9 +838,12 @@ TEST_CASE("QIDI Box lane eject honors configurable distance/velocity settings",
     REQUIRE(backend.sent[0] ==
             "FORCE_MOVE STEPPER=\"box_stepper slot2\" VELOCITY=60 DISTANCE=-500");
 
+    CHECK_FALSE(backend.execute_device_action("eject_distance").success());
+    CHECK_FALSE(backend.execute_device_action("eject_nonsense", std::any(1.0f)).success());
+
     // Restore defaults so sibling tests in this shard see the default eject gcode.
-    settings.set_qidi_eject_distance(saved_dist > 0 ? saved_dist : 878);
-    settings.set_qidi_eject_velocity(saved_vel > 0 ? saved_vel : 100);
+    settings.set_ams_eject_distance(saved_dist > 0 ? saved_dist : 878);
+    settings.set_ams_eject_velocity(saved_vel > 0 ? saved_vel : 100);
 }
 
 TEST_CASE("QIDI Box [force_move] disabled keeps lane eject off", "[ams][qidi_box][write_path]") {

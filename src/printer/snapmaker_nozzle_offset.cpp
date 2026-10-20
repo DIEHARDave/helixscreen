@@ -85,22 +85,6 @@ bool supported(const helix::PrinterDiscovery& discovery) {
     return true;
 }
 
-helix::printer::DeviceSection device_section() {
-    return {kSectionId, "Calibration", 60, "Toolhead offset calibration"};
-}
-
-helix::printer::DeviceAction device_action(bool print_holds_heads) {
-    auto action = helix::printer::DeviceAction::button(
-        kActionId, "Calibrate Toolhead Offsets", kSectionId, "",
-        "Measure each toolhead's X, Y and Z offset (about 20 minutes)");
-    action.guided_flow = kGuidedFlowId;
-    if (print_holds_heads) {
-        action.enabled = false;
-        action.disable_reason = "Printer is busy with a print";
-    }
-    return action;
-}
-
 std::vector<Step> build_sequence() {
     std::vector<Step> steps;
     steps.push_back({StepKind::Prestart, -1, "EXTRUDER_OFFSET_ACTION_PRESTART", Prompt::None});
@@ -392,6 +376,15 @@ Prompt Runner::prompt() const {
 void Runner::start() {
     if (phase_ == Phase::Running || phase_ == Phase::AwaitingUser || phase_ == Phase::Finishing) {
         return;
+    }
+    if (hooks_.start_refusal) {
+        std::string refused = hooks_.start_refusal();
+        if (!refused.empty()) {
+            spdlog::warn("[NozzleOffsetCal] Not starting: {}", refused);
+            error_ = std::move(refused);
+            set_phase(Phase::Failed);
+            return;
+        }
     }
     ++run_;
     index_ = 0;

@@ -74,12 +74,12 @@ It matters for [drying filament on the bed](../temperature.md#drying-filament-on
 
 > Only shown when HelixScreen finds a multi-filament system.
 
-Opens quick actions, calibration and speed settings for your filament system: AFC, Happy Hare, ACE and the other systems HelixScreen supports. Most of what's inside depends on your hardware, but four switches can appear on any system:
+Opens quick actions, calibration and speed settings for your filament system: AFC, Happy Hare, ACE and the other systems HelixScreen supports. Most of what's inside depends on your hardware, but these switches can appear on any system:
 
 | Switch | When it appears | What it does |
 |--------|-----------------|--------------|
-| **Unloads After Print** | AFC only | Pulls the filament back to its lane when a print finishes |
-| **Keep Spool Info on Eject** | Systems that track a spool per lane (AFC, Happy Hare) | Remembers a lane's spool when you eject it, so putting the same spool back after maintenance needs no new selection. On by default. Only applies to spools chosen in HelixScreen: spools assigned elsewhere clear with the lane (for those, use your firmware's own option, such as AFC's `remember_spool`). If your firmware's option already covers every lane, it takes over and this switch is greyed out |
+| **Endless Spool** | Systems whose firmware takes an on/off switch (Creality CFS, Anycubic ACE, Snapmaker U1, single-unit Happy Hare) | Switches to a matching spool when one runs out mid-print. The firmware picks which spool |
+| **Keep Spool Info on Eject** | Systems that track a spool per lane (AFC, Happy Hare) | Remembers a lane's spool when you eject it, so putting the same spool back after maintenance needs no new selection. On by default. Only applies to spools chosen in HelixScreen: spools assigned elsewhere clear with the lane (for those, use your firmware's own option, such as AFC's `remember_spool`). If your firmware's option already covers every lane, it takes over and this switch is grayed out |
 | **Always Show Bypass Spool** | AFC only | Keeps the external spool on the filament path even while bypass is off. AFC reports a bypass sensor whether or not one is wired, so the spool is hidden until you actually use bypass |
 | **Enable Bypass Controls** | Only when your firmware reports **no** bypass | Shows the bypass controls and external spool anyway, for printers where you feed filament straight to the extruder. Applies to the Anycubic ACE Pro, Snapmaker U1, tool changers, QIDI Box and any Happy Hare setup with `has_bypass: 0` |
 
@@ -90,6 +90,8 @@ What **Enable Bypass Controls** gets you depends on the system:
 - **Snapmaker, tool changers, QIDI Box, and an ACE without a bypass switch**: there's no bypass command, so the Bypass switch says the operation isn't supported. The setting still lets you record the material and color you loaded by hand, which keeps filament tracking and temperature presets right. An ACE Pro with a fifth spool on its bypass switch and bypass macros does get a working Bypass switch.
 
 See [Filament: When Bypass Doesn't Appear](../filament.md#when-bypass-doesnt-appear).
+
+**Unload at end** lives in the **Print Behavior** section on AFC and Snapmaker U1 systems. On AFC it records whether your end-of-print macros unload the toolhead, so an empty toolhead at the next print start is not flagged. The U1 has one switch per toolhead.
 
 ---
 
@@ -233,7 +235,7 @@ The Controls panel's **Quick Actions** card has four quick buttons under the Hom
 | **Quick Button 3** | (Empty) |
 | **Quick Button 4** | (Empty) |
 
-- **A standard action** runs whatever macro that action is assigned to under Standard Macros. If your printer has no macro for it, the button shows greyed out.
+- **A standard action** runs whatever macro that action is assigned to under Standard Macros. If your printer has no macro for it, the button shows grayed out.
 - **Light** turns the button into an on/off switch for the chamber light, like a home screen LED Light widget left on its default. It hides while no light is controllable.
 - **(Empty)** hides the button.
 
@@ -260,7 +262,7 @@ HelixScreen looks for common macros in your Klipper config and uses them for eac
 | **Purge** | Purging or priming the nozzle | PURGE, PURGE_LINE, LINE_PURGE, PRIME_LINE |
 | **Pause** | Pausing a print | PAUSE, M600 |
 | **Resume** | Resuming a print | RESUME |
-| **Cancel** | Cancelling a print | CANCEL_PRINT |
+| **Cancel** | Canceling a print | CANCEL_PRINT |
 | **Bed Mesh** | Bed mesh calibration | BED_MESH_CALIBRATE |
 | **Bed Level** | Manual bed leveling | BED_SCREWS_ADJUST, SCREWS_TILT_CALCULATE |
 | **Clean Nozzle** | Nozzle cleaning | CLEAN_NOZZLE, NOZZLE_CLEAN |

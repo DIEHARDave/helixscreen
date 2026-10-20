@@ -89,8 +89,6 @@ struct BackendTraits {
     bool supports_gate_check = false;
     bool should_suppress_idle_runout_modal = false;
     bool bypass_is_virtual = false;
-    bool supports_configurable_unload_after_print = false;
-    bool supports_configurable_eject_params = false;
     bool allows_implicit_chaining = true;
     bool has_physical_tray = true;
     bool slot_status_tracks_filament = true;
@@ -175,6 +173,9 @@ class AmsBackend {
         "UNLOAD_COMPLETE";                                           ///< Unload operation finished
     static constexpr const char* kEventToolChanged = "TOOL_CHANGED"; ///< Tool change completed
     static constexpr const char* kEventError = "ERROR";              ///< Error occurred
+    /// Klipper rejected an Endless Spool switch after it was sent: the switch the
+    /// user flipped goes back to what the backend still reports.
+    static constexpr const char* kEventEndlessSpoolRefused = "ENDLESS_SPOOL_REFUSED";
     static constexpr const char* kEventAttentionRequired =
         "ATTENTION"; ///< User intervention needed
 
@@ -2614,6 +2615,18 @@ class AmsBackend {
     AmsError set_endless_spool_backup(int slot_index, int backup_slot);
 
     /**
+     * @brief Switch Endless Spool on or off.
+     *
+     * **Deliberately NOT virtual**, like set_endless_spool_backup(): the
+     * refusals live here, and backends supply the command through
+     * apply_endless_spool_enabled(). Rejects when the feature is unavailable or
+     * not EndlessSpoolCapabilities::switchable.
+     *
+     * @note Holds no lock.
+     */
+    AmsError set_endless_spool_enabled(bool enabled);
+
+    /**
      * @brief May @p backup_slot stand in for @p slot_index?
      *
      * Backends own the eligibility rule. The base default asks two questions in
@@ -2672,6 +2685,19 @@ class AmsBackend {
         (void)slot_index;
         (void)backup_slot;
         return AmsErrorHelper::not_supported("Endless spool");
+    }
+
+    /**
+     * @brief Command-only hook behind set_endless_spool_enabled().
+     *
+     * Reached only after the base accepted the request, for a backend that
+     * reports EndlessSpoolCapabilities::switchable.
+     *
+     * @note Called with NO backend lock held.
+     */
+    virtual AmsError apply_endless_spool_enabled(bool enabled) {
+        (void)enabled;
+        return AmsErrorHelper::not_supported("Endless Spool");
     }
 
     /**
@@ -2737,13 +2763,43 @@ class AmsBackend {
      * tools states that default rather than guessing one; a reprint sends it to
      * overwrite any map the printer still holds for its next print. A backend
      * whose jobs carry their own crossover (Snapmaker U1) answers false: there
-     * an identity map is a confident wrong answer, and an unknown routing sends
-     * no map at all.
+     * an identity map written for a reprint is a confident wrong answer, so an
+     * unknown routing writes no map. What such a reprint may still send is
+     * print_routing_resets_to_identity()'s question.
      *
      * Default false.
      */
     [[nodiscard]] virtual bool default_print_routing_is_identity() const {
         return false;
+    }
+
+    /**
+     * @brief Does the firmware return its routing to identity when each print ends?
+     *
+     * Then a print whose start writes no map runs file tool n at slot n, so a
+     * reprint with an unknown routing can still tell the firmware which slots
+     * the file uses (build_unrouted_preprint_gcode()) without writing a map.
+     * Without it, that reprint sends only the routing-free part of the
+     * pre-print step.
+     *
+     * Default false.
+     */
+    [[nodiscard]] virtual bool print_routing_resets_to_identity() const {
+        return false;
+    }
+
+    /**
+     * @brief The pre-print step for a reprint whose routing is unknown.
+     *
+     * Asked only of a backend answering print_routing_resets_to_identity(): the
+     * slots @p tools_used run at under the firmware's default routing, and no
+     * map. A backend that cannot vouch for that default right now answers the
+     * routing-free part instead. Default: the routing-free part.
+     */
+    [[nodiscard]] virtual std::string
+    build_unrouted_preprint_gcode(const std::set<int>& tools_used) const {
+        (void)tools_used;
+        return build_preprint_gcode({}, {});
     }
 
     /**
@@ -3012,35 +3068,6 @@ class AmsBackend {
     }
 
     /**
-     * @brief Whether the user decides, from this screen, whether the toolhead
-     *        unloads after a print.
-     *
-     * Drives the unload-after-print toggle row in the device-operations
-     * overlay. Backends whose firmware fixes the behavior one way (always
-     * unloads, or never does) have nothing for the toggle to decide, so the
-     * row stays hidden there; the setting the toggle writes is what the
-     * backend's end-of-print macros consult.
-     *
-     * @return true if the post-print toolhead unload is a user setting here
-     */
-    [[nodiscard]] bool supports_configurable_unload_after_print() const {
-        return traits().supports_configurable_unload_after_print;
-    }
-
-    /**
-     * @brief Whether the backend exposes user-configurable eject parameters
-     *        (distance + velocity) that the UI should surface as sliders.
-     *
-     * QIDI Box lets the user tune the per-lane eject distance and velocity; the
-     * device-operations overlay renders the slider rows only for such backends.
-     *
-     * @return true if eject distance/velocity are configurable for this backend
-     */
-    [[nodiscard]] bool supports_configurable_eject_params() const {
-        return traits().supports_configurable_eject_params;
-    }
-
-    /**
      * @brief Whether the UI may synthesise a prerequisite operation on the
      *        user's behalf to make a requested action succeed.
      *
@@ -3235,6 +3262,15 @@ class AmsBackend {
         (void)remap;
         return "";
     }
+
+    /**
+     * @brief This screen is about to start a print on a pre-print-send backend.
+     *
+     * Called by every start that runs the pre-print step, before the step is
+     * sent and whatever it holds, so the backend can tell the print that
+     * follows from one another client started. Main thread. Default: no-op.
+     */
+    virtual void note_print_start_from_here() {}
 
     /**
      * @brief Whether the pre-print send can honor this remap right now.

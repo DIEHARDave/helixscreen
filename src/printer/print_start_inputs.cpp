@@ -95,6 +95,20 @@ std::vector<GcodeToolInfo> used_tool_info_for(const FileStartFacts& facts) {
 
 } // namespace
 
+std::set<int> file_tools_used(const FileStartFacts& facts) {
+    if (!facts.tools_used.empty() || !facts.metadata) {
+        return facts.tools_used;
+    }
+    std::set<int> tools;
+    const auto& weights = facts.metadata->filament_weights;
+    for (size_t i = 0; i < weights.size(); ++i) {
+        if (weights[i] > 0.0) {
+            tools.insert(static_cast<int>(i));
+        }
+    }
+    return tools;
+}
+
 void fill_file_context(PrintStartContext& ctx, const FileStartFacts& facts) {
     auto card = card_mapping_for(facts);
     ctx.has_file_facts = true;
@@ -105,7 +119,7 @@ void fill_file_context(PrintStartContext& ctx, const FileStartFacts& facts) {
     ctx.tool_info = std::move(card.tool_info);
     ctx.available_slots = std::move(card.slots);
     ctx.filament_materials = facts.palette.materials;
-    ctx.tools_used = facts.tools_used;
+    ctx.tools_used = file_tools_used(facts);
     ctx.tool_grams = facts.tool_grams;
 }
 
@@ -131,7 +145,7 @@ void FileStartFactsLoader::cancel() {
 }
 
 void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, DownloadFn download,
-                                MetadataFn on_metadata) {
+                                MetadataFn on_metadata, FileRead read) {
     const uint32_t generation = ++generation_;
     if (!api_) {
         FileStartFacts facts;
@@ -141,8 +155,8 @@ void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, D
     }
 
     auto after_metadata = [this, generation, filename, on_ready = std::move(on_ready),
-                           download = std::move(download), on_metadata = std::move(on_metadata)](
-                              std::optional<FileMetadata> metadata) {
+                           download = std::move(download), on_metadata = std::move(on_metadata),
+                           read](std::optional<FileMetadata> metadata) {
         if (generation != generation_) {
             return;
         }
@@ -161,6 +175,10 @@ void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, D
         if (cached) {
             facts->tools_used = *cached;
         }
+        if (read == FileRead::MetadataOnly) {
+            on_ready(std::move(*facts));
+            return;
+        }
 
         ScanRequest req;
         req.file_key = filename;
@@ -170,6 +188,7 @@ void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, D
             gcode::footer_read_need(cached.has_value(), !facts->palette.colors.empty(), false);
         req.palette_size = facts->palette.colors.size();
         req.download = download;
+        req.allow_full_scan = read == FileRead::Whole;
 
         auto answer = [facts, on_ready]() { on_ready(std::move(*facts)); };
 
@@ -252,7 +271,8 @@ void FileStartFactsLoader::start_tail_read(uint32_t generation, ScanRequest req,
 
     // Callable from any thread: `this` is only dereferenced inside the defer.
     auto fall_back = [this, tok, generation, shared_req, shared_hooks](const char* why) {
-        const bool full_scan = shared_req->need.full_scan_justified();
+        const bool full_scan =
+            shared_req->allow_full_scan && shared_req->need.full_scan_justified();
         if (full_scan) {
             spdlog::debug("[FileStartFacts] Footer read did not answer ({}) — full scan", why);
         } else {

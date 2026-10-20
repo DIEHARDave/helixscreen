@@ -7,6 +7,7 @@
 #include "ui_update_queue.h"
 
 #include "ams_bypass_policy.h"
+#include "ams_device_action_value.h"
 #include "ams_fault_event.h"
 #include "ams_state.h"
 #include "config.h"
@@ -25,6 +26,7 @@
 #include "printer_state.h" // PrinterState: mid-print clear guard
 #include "settings_manager.h"
 #include "text_io.h"
+#include "translation_loader.h" // TR_NOOP
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -3217,7 +3219,16 @@ AmsBackendHappyHare::get_endless_spool_capabilities() const {
         return caps;
     }
     caps.editability = EndlessSpoolEditability::Group;
+    // ENABLE= goes through the same unit-less command, so the switch is offered
+    // where the groups are editable.
+    caps.switchable = true;
     return caps;
+}
+
+AmsError AmsBackendHappyHare::apply_endless_spool_enabled(bool enabled) {
+    // Happy Hare persists the choice itself (mmu_state_enable_endless_spool).
+    return send_endless_spool_switch(std::string("MMU_ENDLESS_SPOOL ENABLE=") +
+                                     (enabled ? "1" : "0") + " QUIET=1");
 }
 
 helix::printer::EndlessSpoolConfig AmsBackendHappyHare::get_endless_spool_config() const {
@@ -3940,20 +3951,25 @@ std::vector<helix::printer::DeviceAction> AmsBackendHappyHare::get_device_action
         for (auto& a : actions) {
             if (a.id == "spoolman_refresh") {
                 a.enabled = false;
-                a.disable_reason = "Spoolman support is off in Happy Hare";
+                a.disable_reason = TR_NOOP("Spoolman support is off in Happy Hare");
             }
         }
     }
 
-    // If config hasn't loaded yet, disable all non-button actions
-    if (!config_defaults_.loaded) {
+    // Settings whose value comes from the configfile (and is written back with
+    // MMU_TEST_CONFIG) wait for it to load; live commands do not.
+    const bool config_loaded = config_defaults_.loaded;
+    auto config_backed = [](const DeviceAction& a) {
+        return a.type == ActionType::SLIDER || a.id == "sync_to_extruder" ||
+               a.id == "clog_detection";
+    };
+    if (!config_loaded) {
         for (auto& a : actions) {
-            if (a.type != ActionType::BUTTON) {
+            if (config_backed(a)) {
                 a.enabled = false;
-                a.disable_reason = "Loading configuration...";
+                a.disable_reason = TR_NOOP("Loading configuration...");
             }
         }
-        return actions;
     }
 
     // Helper: effective float value (user override > config default)
@@ -3964,6 +3980,11 @@ std::vector<helix::printer::DeviceAction> AmsBackendHappyHare::get_device_action
 
     // Overlay effective values onto actions
     for (auto& a : actions) {
+        // Clog detection's value is the encoder mode the mmu status reports,
+        // which needs no config; only its write waits.
+        if (!config_loaded && config_backed(a) && a.id != "clog_detection") {
+            continue;
+        }
         // --- Speed sliders ---
         if (a.id == "gear_from_buffer_speed") {
             a.current_value = eff_f(user_overrides_.gear_from_buffer_speed,
@@ -4040,48 +4061,34 @@ std::vector<helix::printer::DeviceAction> AmsBackendHappyHare::get_device_action
             a.enabled = false;
             switch (*feature) {
             case happy_hare::UnitFeature::Servo:
-                a.disable_reason = "No unit has a servo";
+                a.disable_reason = TR_NOOP("No unit has a servo");
                 break;
             case happy_hare::UnitFeature::SelectorSpeed:
-                a.disable_reason = "No unit has a moving selector";
+                a.disable_reason = TR_NOOP("No unit has a moving selector");
                 break;
             case happy_hare::UnitFeature::Encoder:
-                a.disable_reason = "No unit has an encoder";
+                a.disable_reason = TR_NOOP("No unit has an encoder");
                 break;
             case happy_hare::UnitFeature::SyncToExtruder:
-                a.disable_reason = "Every unit keeps its filament gripped";
+                a.disable_reason = TR_NOOP("Every unit keeps its filament gripped");
                 break;
             case happy_hare::UnitFeature::FilamentBuffer:
-                a.disable_reason = "No unit has a filament buffer";
+                a.disable_reason = TR_NOOP("No unit has a filament buffer");
                 break;
             }
         } else if ((a.id == "toolhead_sensor_to_nozzle" || a.id == "toolhead_entry_to_extruder") &&
                    !test_config_unit_locked(a.id)) {
             a.enabled = false;
-            a.disable_reason = "No sensor fitted for this distance";
+            a.disable_reason = TR_NOOP("No sensor fitted for this distance");
         }
     }
 
     return actions;
 }
 
-AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id,
-                                                    const std::any& value) {
+AmsError AmsBackendHappyHare::do_execute_device_action(const std::string& action_id,
+                                                       const std::any& value) {
     spdlog::info("[AMS HappyHare] Executing device action: {}", action_id);
-
-    // Helper to extract a typed value from std::any with uniform error handling
-    auto require_string = [&](const char* label) -> std::pair<std::string, AmsError> {
-        if (!value.has_value()) {
-            return {"", AmsError(AmsResult::WRONG_STATE, fmt::format("{} value required", label),
-                                 lv_tr("Missing value"), fmt::format(lv_tr("Select a {}"), label))};
-        }
-        if (const auto* s = std::any_cast<std::string>(&value)) {
-            return {*s, AmsErrorHelper::success()};
-        }
-        return {"", AmsError(AmsResult::WRONG_STATE, fmt::format("Invalid {} type", label),
-                             lv_tr("Invalid value type"),
-                             fmt::format(lv_tr("Select a valid {}"), label))};
-    };
 
     // Helper to look up an action's min/max range from defaults
     auto get_action_range = [](const std::string& id) -> std::pair<float, float> {
@@ -4091,36 +4098,6 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
                 return {a.min_value, a.max_value};
         }
         return {-1e6f, 1e6f};
-    };
-
-    // Helper to extract double from std::any (UI sends doubles)
-    auto require_double = [&](const char* label) -> std::pair<double, AmsError> {
-        if (!value.has_value()) {
-            return {0.0,
-                    AmsError(AmsResult::WRONG_STATE, fmt::format("{} value required", label),
-                             lv_tr("Missing value"), fmt::format(lv_tr("Provide a {}"), label))};
-        }
-        if (const auto* d = std::any_cast<double>(&value)) {
-            return {*d, AmsErrorHelper::success()};
-        }
-        return {0.0, AmsError(AmsResult::WRONG_STATE, fmt::format("Invalid {} type", label),
-                              lv_tr("Invalid value type"),
-                              fmt::format(lv_tr("Provide a numeric {}"), label))};
-    };
-
-    // Helper to extract bool from std::any
-    auto require_bool = [&](const char* label) -> std::pair<bool, AmsError> {
-        if (!value.has_value()) {
-            return {false,
-                    AmsError(AmsResult::WRONG_STATE, fmt::format("{} value required", label),
-                             lv_tr("Missing value"), fmt::format(lv_tr("Provide {}"), label))};
-        }
-        if (const auto* b = std::any_cast<bool>(&value)) {
-            return {*b, AmsErrorHelper::success()};
-        }
-        return {false, AmsError(AmsResult::WRONG_STATE, fmt::format("Invalid {} type", label),
-                                lv_tr("Invalid value type"),
-                                fmt::format(lv_tr("Provide a boolean {}"), label))};
     };
 
     // --- Simple button actions (no value required) ---
@@ -4179,11 +4156,12 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
 
     // Extruder-only moves drive the toolhead extruder, and HH puts no print
     // check on MMU_LOAD/MMU_UNLOAD; an EXTRUDER_ONLY unload forms a tip and
-    // retracts over the part. HH heats the nozzle itself.
+    // retracts over the part, so both are moves_machine and the base refuses
+    // them during a print. HH heats the nozzle itself.
     if (action_id == "load_extruder" || action_id == "unload_extruder") {
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            AmsError precondition = check_preconditions(/*requires_toolhead_motion=*/true);
+            AmsError precondition = check_preconditions();
             if (!precondition) {
                 return precondition;
             }
@@ -4202,7 +4180,7 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
 
     // --- LED mode dropdown ---
     if (action_id == "led_mode") {
-        auto [mode, err] = require_string("LED mode");
+        auto [mode, err] = printer::device_action_value<std::string>(value, "LED mode");
         if (!err)
             return err;
         return execute_gcode("MMU_LED EXIT_EFFECT=" + mode);
@@ -4235,7 +4213,7 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
     // clang-format on
     for (const auto& [id, key] : speed_params) {
         if (action_id == id) {
-            auto [speed, err] = require_double("speed");
+            auto [speed, err] = printer::device_action_value<double>(value, "speed");
             if (!err)
                 return err;
             auto [lo, hi] = get_action_range(id);
@@ -4257,7 +4235,7 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
     };
     for (const char* key : toolhead_params) {
         if (action_id == key) {
-            auto [dist, err] = require_double("distance");
+            auto [dist, err] = printer::device_action_value<double>(value, "distance");
             if (!err)
                 return err;
             auto [lo, hi] = get_action_range(key);
@@ -4272,7 +4250,7 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
 
     // --- sync_to_extruder toggle ---
     if (action_id == "sync_to_extruder") {
-        auto [enable, err] = require_bool("sync state");
+        auto [enable, err] = printer::device_action_value<bool>(value, "sync state");
         if (!err)
             return err;
         int val = enable ? 1 : 0;
@@ -4285,7 +4263,7 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
 
     // --- eSpooler mode dropdown ---
     if (action_id == "espooler_mode") {
-        auto [mode, err] = require_string("eSpooler mode");
+        auto [mode, err] = printer::device_action_value<std::string>(value, "eSpooler mode");
         if (!err)
             return err;
         return execute_gcode("MMU_ESPOOLER OPERATION=" + mode);
@@ -4293,7 +4271,8 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
 
     // --- Clog detection dropdown ---
     if (action_id == "clog_detection") {
-        auto [mode_str, err] = require_string("clog detection mode");
+        auto [mode_str, err] =
+            printer::device_action_value<std::string>(value, "clog detection mode");
         if (!err)
             return err;
         int mode_int = 0;
@@ -4310,7 +4289,7 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
 
     // --- Runtime gear-motor sync (live action, distinct from config sync_to_extruder) ---
     if (action_id == "gear_sync") {
-        auto [enable, err] = require_bool("gear sync state");
+        auto [enable, err] = printer::device_action_value<bool>(value, "gear sync state");
         if (!err)
             return err;
         return execute_gcode(enable ? "MMU_SYNC_GEAR_MOTOR SYNC=1" : "MMU_SYNC_GEAR_MOTOR SYNC=0");
@@ -4318,7 +4297,7 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
 
     // --- Motors toggle ---
     if (action_id == "motors_toggle") {
-        auto [enable, err] = require_bool("motor state");
+        auto [enable, err] = printer::device_action_value<bool>(value, "motor state");
         if (!err)
             return err;
         std::string cmd = enable ? "MMU_MOTORS_ON" : "MMU_MOTORS_OFF";

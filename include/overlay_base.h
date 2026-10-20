@@ -324,6 +324,19 @@ class OverlayBase : public ViewLifecycleBase {
     virtual void before_show() {}
 
     /**
+     * @brief Called when a destroy_on_close() overlay leaves the stack
+     *
+     * Runs from the close callback show() registers, whatever popped the
+     * overlay (its own Back, a backdrop tap, another screen's navigation),
+     * before the tree is destroyed. An overlay that is shown again while
+     * its slide-out is still running stays open, and its next close runs
+     * this once.
+     *
+     * Default implementation does nothing.
+     */
+    virtual void on_dismissed() {}
+
+    /**
      * @brief Called after widget tree is destroyed by destroy_overlay_ui()
      *
      * Override to null derived-class widget pointers so that create()

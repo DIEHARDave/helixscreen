@@ -9,11 +9,14 @@
 #include "../test_helpers/backend_user_edit.h"
 #include "../test_helpers/mock_printer.h"
 #include "../test_helpers/print_state_test_drivers.h"
+#include "../test_helpers/printer_state_test_access.h"
 #include "../test_helpers/snapmaker_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
+#include "../ui_test_utils.h"
 #include "ams_backend_multiace.h"
 #include "ams_backend_snapmaker.h"
 #include "ams_state.h"
+#include "app_globals.h"
 #include "filament_slot_override_store.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
@@ -816,6 +819,47 @@ TEST_CASE_METHOD(MultiAceFixture, "coded 525 error files under its head", "[mult
     CHECK_FALSE(b.classify_error("// 0003-0525-0002-0207 echo", idle));
 }
 
+TEST_CASE_METHOD(MultiAceFixture, "a load the firmware fails marks its head unconfirmed",
+                 "[multiace][resume][load_unconfirmed]") {
+    CapturingMultiAce b;
+
+    SECTION("a head the engine does not feed") {
+        b.frame(ace_frame("multi_mode_2ace.json"));
+        REQUIRE(b.load_filament(3).success());
+        REQUIRE(b.sent.back() == "ACE_LOAD_HEAD HEAD=3");
+        b.answer_error("load failed");
+        CHECK(SnapmakerTestAccess::load_unconfirmed(b, 3));
+    }
+    SECTION("a head load from its recorded bay in multi mode") {
+        b.frame(ace_frame("multi_mode_2ace.json"));
+        REQUIRE(b.load_filament(1).success());
+        REQUIRE(b.sent.back() == "ACE_LOAD_HEAD HEAD=1 ACE=1 SLOT=1");
+        b.answer_error("load failed");
+        CHECK(SnapmakerTestAccess::load_unconfirmed(b, 1));
+    }
+    SECTION("a bay loaded into an empty head") {
+        b.frame(ace_frame("head_mode_4ace.json"));
+        REQUIRE(b.load_filament(multiace::bay_global(1, 1)).success());
+        REQUIRE(b.sent.back() == "ACE_LOAD_HEAD HEAD=1 ACE=1 SLOT=1");
+        b.answer_error("load failed");
+        CHECK(SnapmakerTestAccess::load_unconfirmed(b, 1));
+    }
+    SECTION("a bay load that waited for its head to empty") {
+        b.frame(ace_frame("head_mode_4ace.json"));
+        b.frame(json{{"toolhead", {{"extruder", "extruder"}}}});
+        REQUIRE(b.load_filament(multiace::bay_global(0, 1)).success());
+        REQUIRE(b.sent.back() == "ACE_UNLOAD_HEAD HEAD=0");
+        b.answer_ok();
+        json emptied = {{"ace", {{"head_source", {{"2", {{"ace_index", 2}, {"slot", 3}}}}}}}};
+        emptied.update(feed_frame(0, "preload_finish"));
+        b.frame(emptied);
+        REQUIRE(b.sent.back() == "ACE_LOAD_HEAD HEAD=0 ACE=0 SLOT=1");
+        CHECK_FALSE(SnapmakerTestAccess::load_unconfirmed(b, 0));
+        b.answer_error("load failed");
+        CHECK(SnapmakerTestAccess::load_unconfirmed(b, 0));
+    }
+}
+
 TEST_CASE_METHOD(MultiAceFixture, "a failed head load surfaces once", "[multiace]") {
     CapturingMultiAce b;
     b.record_errors();
@@ -840,6 +884,123 @@ TEST_CASE_METHOD(MultiAceFixture, "a failed head load surfaces once", "[multiace
         json{{"ace",
               {{"head_source", {{"1", {{"ace_index", 0}, {"slot", 1}, {"load_failed", true}}}}}}}});
     CHECK(b.errors.size() == 2);
+}
+
+namespace {
+/// The app paused on a recoverable cause, as prepare_for_resume classifies it.
+void pause_app_print() {
+    PrinterState& ps = get_printer_state();
+    PrinterStateTestAccess::reset(ps);
+    ps.init_subjects(false);
+    ps.update_from_status(json{{"webhooks", {{"state", "ready"}}},
+                               {"print_stats", {{"state", "paused"}}},
+                               {"virtual_sdcard", {{"is_active", false}}}});
+}
+
+/// Head @p head's feed channel as an automatic feeder reports it.
+json fed_head(int head, const std::string& state) {
+    json frame = feed_frame(head, state);
+    auto& channel = frame.begin().value()["extruder" + std::to_string(head)];
+    channel["module_exist"] = true;
+    channel["disable_auto"] = false;
+    return frame;
+}
+
+AmsError resume_head(CapturingMultiAce& b, int head) {
+    AmsError captured{AmsResult::RESUME_REQUIRES_RESTART}; // poison
+    bool fired = false;
+    b.prepare_for_resume(head, [&](const AmsError& err) {
+        fired = true;
+        captured = err;
+    });
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    REQUIRE(fired);
+    return captured;
+}
+} // namespace
+
+TEST_CASE_METHOD(MultiAceFixture, "Resume proceeds from a loaded ACE head",
+                 "[multiace][resume][load_unconfirmed]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    pause_app_print();
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_4ace.json"));
+    b.frame(json{{"print_stats", {{"state", "paused"}}}});
+    // An ACE-fed head the engine loaded ends at load_finish like a stock head.
+    b.frame(fed_head(1, "preload_finish"));
+    b.frame(fed_head(1, "load_finish"));
+    b.sent.clear();
+
+    CHECK(resume_head(b, 1).success());
+    CHECK(b.sent.empty());
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "a failed ACE load holds Resume until the head loads",
+                 "[multiace][resume][load_unconfirmed]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    pause_app_print();
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_4ace.json"));
+    b.frame(json{{"print_stats", {{"state", "paused"}}}});
+    // The channel still reads the last good load when the engine reports the
+    // failed one, so only the engine's load_failed holds Resume here.
+    b.frame(fed_head(1, "preload_finish"));
+    b.frame(fed_head(1, "load_finish"));
+    b.frame(
+        json{{"ace",
+              {{"head_source", {{"1", {{"ace_index", 0}, {"slot", 1}, {"load_failed", true}}}}}}}});
+    b.sent.clear();
+
+    // The engine owns the feed, so Resume sends no stock AUTO_FEEDING; it
+    // refuses and sends the user to the filament panel.
+    const AmsError held = resume_head(b, 1);
+    CHECK_FALSE(held.success());
+    CHECK(held.user_msg.find("Toolhead 2 (T1) didn't load") == 0);
+    CHECK(held.suggestion == "Load it in the filament panel, then tap Resume.");
+    CHECK(b.sent.empty());
+
+    // The engine's next load reaching load_finish releases it.
+    b.frame(fed_head(1, "preload_finish"));
+    b.frame(fed_head(1, "load_finish"));
+    CHECK(resume_head(b, 1).success());
+    CHECK(b.sent.empty());
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "an ACE head whose feeder failed holds Resume without a refeed",
+                 "[multiace][resume][load_unconfirmed]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    pause_app_print();
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_4ace.json"));
+    b.frame(json{{"print_stats", {{"state", "paused"}}}});
+    b.frame(fed_head(1, "load_fail"));
+    b.sent.clear();
+
+    const AmsError held = resume_head(b, 1);
+    CHECK_FALSE(held.success());
+    CHECK(held.suggestion == "Load it in the filament panel, then tap Resume.");
+    CHECK(b.sent.empty());
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "a runout on an engine-fed head refuses Resume without a refeed",
+                 "[multiace][resume][load_unconfirmed]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    pause_app_print();
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_4ace.json"));
+    b.frame(json{{"print_stats", {{"state", "paused"}}}});
+    SnapmakerTestAccess::set_sensor_present(b, 1, false);
+    b.sent.clear();
+
+    const AmsError held = resume_head(b, 1);
+    CHECK_FALSE(held.success());
+    CHECK(held.user_msg == "Toolhead 2 (T1): Filament runout");
+    CHECK(held.suggestion == "Load it in the filament panel, then tap Resume.");
+    CHECK(b.sent.empty());
 }
 
 TEST_CASE_METHOD(MultiAceFixture, "only the four heads are tools", "[multiace]") {

@@ -4,9 +4,12 @@
 #include "ams_backend_snapmaker.h"
 
 #include "ui_insert_notice.h"
+#include "ui_notification.h"
 #include "ui_snapmaker_nozzle_offset_overlay.h"
 #include "ui_toast_manager.h"
 
+#include "ams_device_action_value.h"
+#include "ams_device_sections.h"
 #include "ams_error.h"
 #include "ams_fault_event.h"
 #include "ams_state.h"
@@ -27,6 +30,7 @@
 #include "multiace_status.h"
 #include "pause_cause.h"
 #include "post_op_cooldown_manager.h"
+#include "print_start_inputs.h"
 #include "printer_discovery.h"
 #include "settings_manager.h"
 #include "snapmaker_channel_state.h"
@@ -53,6 +57,9 @@
 namespace helix {
 
 namespace {
+
+/// The section the firmware's print preferences sit in.
+constexpr const char* kPrintPrefsSection = "print_prefs";
 
 /// Parses a pending insert verdict may hold while waiting for the tag
 /// reader's filament_detect.info entry. Status frames arrive about once a
@@ -358,6 +365,8 @@ void AmsBackendSnapmaker::on_started() {
         tag_readings_.fill(std::nullopt);
         tag_has_card_.fill(std::nullopt);
         card_seen_.fill(false);
+        // The first print state the connection reads decides whether the
+        // per-print marks survive (apply_print_state_locked).
         print_state_.reset();
         main_state_.reset();
         // The overrides reload below; a held save belongs to the session that
@@ -622,7 +631,7 @@ AmsError AmsBackendSnapmaker::do_load_filament(int slot_index) {
         break;
     }
     return dispatch_feed(fmt::format("AUTO_FEEDING EXTRUDER={} LOAD=1", slot_index),
-                         kEventLoadComplete);
+                         kEventLoadComplete, slot_index);
 }
 
 bool AmsBackendSnapmaker::unload_heats_hotend(int slot_index) const {
@@ -670,10 +679,15 @@ AmsError AmsBackendSnapmaker::do_unload_filament(int slot_index) {
                          kEventUnloadComplete);
 }
 
-AmsError AmsBackendSnapmaker::dispatch_feed(std::string gcode, const char* complete_event) {
+AmsError AmsBackendSnapmaker::dispatch_feed(std::string gcode, const char* complete_event,
+                                            int load_head) {
     return dispatch_feed(
         std::move(gcode), [this, complete_event] { emit_event(complete_event); },
-        [this](const MoonrakerError& err) {
+        [this, load_head](const MoonrakerError& err) {
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                mark_load_unconfirmed_locked(load_head, err.message);
+            }
             if (err.type != MoonrakerErrorType::TIMEOUT) {
                 emit_event(kEventError, err.message);
             }
@@ -901,9 +915,7 @@ AmsBackend::FilamentOpEligibility AmsBackendSnapmaker::slot_op_eligibility(int s
     // The firmware reports channel_error="no_filament" for ANY empty lane, and
     // ""/"none" when a channel has nothing to say — none of the three is a
     // hard fault, or every empty feeder would read as an error.
-    const bool hard_fault = snap.error != "ok" && !snap.error.empty() && snap.error != "none" &&
-                            snap.error != "no_filament";
-    if (hard_fault) {
+    if (channel_error_is_fault(snap.error)) {
         return E::Error;
     }
     // An empty lane answers Empty ahead of the settled-state test: an idle
@@ -1071,13 +1083,101 @@ void AmsBackendSnapmaker::prepare_for_resume(int slot_index, ResumeReadyCallback
         return;
     }
 
+    // A load or hand feed still moving filament on the head (started from the
+    // printer's own screen, say) is answered before anything is sent: RESUME
+    // would extrude into it, and a refeed would race it.
+    if (slot >= 0 && slot < kNumTools) {
+        ChannelSnapshot snap;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            snap = channel_snapshots_[slot];
+        }
+        if (feeder_serves_head(snap) && helix::snapmaker::channel_state_in_progress(snap.state)) {
+            spdlog::warn("{} prepare_for_resume: tool {} feeder is mid-operation ('{}') — "
+                         "refusing RESUME",
+                         backend_log_tag(), slot, snap.state);
+            if (on_ready) {
+                on_ready(AmsErrorHelper::busy(snap.state));
+            }
+            return;
+        }
+    }
+
+    // The presence switch cannot vouch for a head whose last load failed:
+    // filament can reach it and stop short of the nozzle. Resume is the retry
+    // for the head it resumes on; any other head has to be loaded first, since
+    // loading it would leave it picked up when RESUME runs.
+    int unconfirmed = -1;
+    bool may_refeed = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        unconfirmed = unconfirmed_load_head_locked(slot);
+        may_refeed = slot >= 0 && slot < kNumTools && resume_may_refeed_locked(slot);
+    }
+    if (unconfirmed >= 0 && unconfirmed == slot && may_refeed) {
+        spdlog::warn("{} prepare_for_resume: tool {} last load unconfirmed — retrying it "
+                     "before RESUME",
+                     backend_log_tag(), slot);
+        run_runout_refeed(slot, std::move(on_ready));
+        return;
+    }
+    if (unconfirmed >= 0) {
+        spdlog::warn("{} prepare_for_resume: tool {} last load unconfirmed — refusing RESUME "
+                     "on tool {}",
+                     backend_log_tag(), unconfirmed, slot);
+        if (on_ready) {
+            on_ready(unconfirmed_load_error(unconfirmed, "load unconfirmed, not refed here",
+                                            /*retry_on_resume=*/false));
+        }
+        return;
+    }
+
     if (slot >= 0 && slot < kNumTools && !sensor_present) {
         // A runout leaves no record repair: the user may have loaded a
         // different spool, and the material remembered for the old one would
         // be recorded against it. The firmware's refusal and classify_error's
         // explanation are the answer there.
+        if (!may_refeed) {
+            spdlog::warn("{} prepare_for_resume: tool {} ran out and this backend does not "
+                         "refeed it — refusing RESUME",
+                         backend_log_tag(), slot);
+            if (on_ready) {
+                on_ready(
+                    AmsError(AmsResult::COMMAND_FAILED, "runout: refeed left to the user",
+                             helix::ui::tool_label_in_form(tool_noun(), helix::ui::tool_label(slot),
+                                                           slot, helix::ui::ToolLabelForm::Full) +
+                                 ": " + lv_tr("Filament runout"),
+                             lv_tr("Load it in the filament panel, then tap Resume.")));
+            }
+            return;
+        }
         run_runout_refeed(slot, std::move(on_ready));
         return;
+    }
+
+    if (slot >= 0 && slot < kNumTools) {
+        ChannelSnapshot snap;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            snap = channel_snapshots_[slot];
+        }
+        // The motion sensor reads present partway through a load that then
+        // fails, so on a head an automatic feeder serves, a feeder reporting a
+        // failure outranks it. RESUME extrudes into the head before it prints,
+        // which is the wrong thing to do to a jam.
+        if (feeder_serves_head(snap) && feed_failure_reported(snap)) {
+            spdlog::warn("{} prepare_for_resume: tool {} sensor reads present but the feeder "
+                         "reads '{}' (error '{}') — {} before RESUME",
+                         backend_log_tag(), slot, snap.state, snap.error,
+                         may_refeed ? "loading" : "refusing");
+            if (may_refeed) {
+                run_runout_refeed(slot, std::move(on_ready));
+            } else if (on_ready) {
+                on_ready(unconfirmed_load_error(slot, "feeder has not confirmed a load",
+                                                /*retry_on_resume=*/false));
+            }
+            return;
+        }
     }
 
     if (slot < 0 || slot >= kNumTools) {
@@ -1125,6 +1225,20 @@ void AmsBackendSnapmaker::run_runout_refeed(int slot, ResumeReadyCallback on_rea
         }
         return;
     }
+    {
+        // One refeed at a time: a second Resume tap while one runs would send a
+        // second AUTO_FEEDING and leave the first caller unanswered.
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (refeed_in_flight_) {
+            spdlog::warn("{} prepare_for_resume: tool {} refeed already running", backend_log_tag(),
+                         slot);
+            if (on_ready) {
+                on_ready(AmsErrorHelper::busy("refeed"));
+            }
+            return;
+        }
+        refeed_in_flight_ = true;
+    }
 
     std::string chain = fmt::format("AUTO_FEEDING EXTRUDER={0} LOAD=1 PRINTING=1", slot);
     spdlog::info("{} prepare_for_resume: tool {} runout latched — driving AMS load "
@@ -1149,39 +1263,253 @@ void AmsBackendSnapmaker::run_runout_refeed(int slot, ResumeReadyCallback on_rea
             // IMoonrakerAPI callbacks fire on the libhv WebSocket thread; defer to
             // main so on_ready (and the backstop arm) run on the UI thread.
             tok.defer("AmsBackendSnapmaker::prepare_for_resume.ok",
-                      [this, cb = std::move(on_ready), tag, slot]() {
-                          spdlog::info("{} prepare_for_resume: tool {} AMS load complete "
-                                       "(load_finish)",
-                                       tag, slot);
-                          // Hand control back so the caller dispatches RESUME.
-                          if (cb) {
-                              cb(AmsErrorHelper::success());
-                          }
+                      [this, cb = std::move(on_ready), slot]() mutable {
+                          await_refeed_outcome(slot, std::move(cb));
                       });
         },
         [this, tok, on_ready, tag, slot](const MoonrakerError& err) mutable {
             std::string msg = err.message;
-            tok.defer("AmsBackendSnapmaker::prepare_for_resume.err",
-                      [this, cb = std::move(on_ready), tag, slot, msg]() {
-                          spdlog::error("{} prepare_for_resume: tool {} AMS load failed: {}", tag,
-                                        slot, msg);
-                          // Load failed → RESUME is never dispatched; report failure.
-                          // Name the slot, not the firmware's own error text, which
-                          // may spell it with a 0-based extruder name we don't own.
-                          if (cb) {
-                              // Bare prefix before the colon — the frame must not agree
-                              // with a noun that varies per locale and backend.
-                              cb(AmsError(AmsResult::COMMAND_FAILED,
-                                          "prepare_for_resume AMS load failed: " + msg,
-                                          helix::ui::lane_label(lane_noun(), slot) + ": " +
-                                              lv_tr("Filament reload failed")));
-                          }
-                      });
+            tok.defer("AmsBackendSnapmaker::prepare_for_resume.err", [this,
+                                                                      cb = std::move(on_ready), tag,
+                                                                      slot, msg]() {
+                spdlog::error("{} prepare_for_resume: tool {} AMS load failed: {}", tag, slot, msg);
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    mark_load_unconfirmed_locked(slot, msg);
+                    refeed_in_flight_ = false;
+                }
+                // Load failed → RESUME is never dispatched; report failure.
+                // The copy names the head, not the firmware's own error
+                // text, which spells it with a 0-based extruder name.
+                if (cb) {
+                    cb(unconfirmed_load_error(slot, "prepare_for_resume AMS load failed: " + msg));
+                }
+            });
         },
         // AUTO_FEEDING heats from cold + feeds + flushes; measured ~86s live, so
         // give generous headroom.
         /*timeout_ms=*/150000,
         /*silent=*/true);
+}
+
+void AmsBackendSnapmaker::mark_load_unconfirmed_locked(int head, std::string_view why) {
+    if (head < 0 || head >= kNumTools) {
+        return;
+    }
+    // A state no frame has named yet could be a print; only a known idle
+    // printer has no Resume to hold.
+    if (print_state_ && !print_in_progress_locked()) {
+        return;
+    }
+    if (!load_unconfirmed_[head]) {
+        spdlog::warn("{} tool {} load unconfirmed ({}); Resume waits for load_finish",
+                     backend_log_tag(), head, why);
+    }
+    load_unconfirmed_[head] = true;
+}
+
+int AmsBackendSnapmaker::unconfirmed_load_head_locked(int preferred) const {
+    if (preferred >= 0 && preferred < kNumTools && load_unconfirmed_[preferred]) {
+        return preferred;
+    }
+    // Another head holds Resume only when the print is known to use it.
+    for (int head = 0; head < kNumTools; ++head) {
+        if (load_unconfirmed_[head] && static_cast<size_t>(head) < extruders_used_.size() &&
+            extruders_used_[static_cast<size_t>(head)]) {
+            return head;
+        }
+    }
+    return -1;
+}
+
+void AmsBackendSnapmaker::await_refeed_outcome(int slot, ResumeReadyCallback on_ready) {
+    bool wait = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        wait = !feeder_reports_loaded(channel_snapshots_[slot]);
+        if (wait) {
+            // The status frame naming load_finish can trail the command's
+            // answer; the head's next settled frame, or the timeout, decides.
+            refeed_wait_ = RefeedWait{slot, std::move(on_ready)};
+        }
+    }
+    if (!wait) {
+        settle_refeed(slot, std::move(on_ready));
+        return;
+    }
+    // The guard cancels the timer when the backend is destroyed.
+    refeed_wait_timer_.reset(lv_timer_create(
+        [](lv_timer_t* timer) {
+            auto* self = static_cast<AmsBackendSnapmaker*>(lv_timer_get_user_data(timer));
+            self->finish_refeed_wait();
+        },
+        static_cast<uint32_t>(kRefeedFrameWait.count()), this));
+    lv_timer_set_repeat_count(refeed_wait_timer_.get(), 1);
+}
+
+void AmsBackendSnapmaker::finish_refeed_wait() {
+    std::optional<RefeedWait> wait;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        wait.swap(refeed_wait_);
+    }
+    // Cancelling is safe from inside the timer's own callback.
+    refeed_wait_timer_.reset();
+    if (wait) {
+        settle_refeed(wait->slot, std::move(wait->on_ready));
+    }
+}
+
+void AmsBackendSnapmaker::settle_refeed(int slot, ResumeReadyCallback on_ready) {
+    bool confirmed = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        confirmed = feeder_reports_loaded(channel_snapshots_[slot]);
+        refeed_in_flight_ = false;
+        if (confirmed) {
+            load_unconfirmed_[slot] = false;
+        } else {
+            mark_load_unconfirmed_locked(slot, "no load_finish after OK");
+        }
+    }
+    if (!confirmed) {
+        spdlog::error("{} prepare_for_resume: tool {} AUTO_FEEDING answered OK but the feeder "
+                      "never reported load_finish",
+                      backend_log_tag(), slot);
+        if (on_ready) {
+            on_ready(unconfirmed_load_error(slot, "prepare_for_resume AMS load unconfirmed"));
+        }
+        return;
+    }
+    spdlog::info("{} prepare_for_resume: tool {} AMS load complete (load_finish)",
+                 backend_log_tag(), slot);
+    if (on_ready) {
+        on_ready(AmsErrorHelper::success());
+    }
+}
+
+AmsError AmsBackendSnapmaker::unconfirmed_load_error(int head, std::string technical,
+                                                     bool retry_on_resume) const {
+    const std::string tool = helix::ui::tool_label_in_form(tool_noun(), helix::ui::tool_label(head),
+                                                           head, helix::ui::ToolLabelForm::Full);
+    return AmsError(
+        AmsResult::COMMAND_FAILED, std::move(technical),
+        fmt::format(fmt::runtime(lv_tr("{} didn't load. Check that its hotend is seated and do a "
+                                       "test extrude before resuming.")),
+                    tool),
+        retry_on_resume
+            ? fmt::format(fmt::runtime(lv_tr("Tap Resume to try the load again from {}.")),
+                          AmsErrorHelper::position_label(lane_noun(), head))
+            : std::string(lv_tr("Load it in the filament panel, then tap Resume.")));
+}
+
+bool AmsBackendSnapmaker::print_in_progress_locked() const {
+    return print_state_ && (*print_state_ == "printing" || *print_state_ == "paused");
+}
+
+void AmsBackendSnapmaker::apply_print_state_locked(const std::string& state) {
+    const bool had_state = print_state_.has_value();
+    const bool was_in_progress = print_in_progress_locked();
+    print_state_ = state;
+    const bool in_progress = print_in_progress_locked();
+    // A load's outcome and the task judgement each belong to one print. The
+    // first state a connection reads is no change of print: a reconnect
+    // mid-print keeps them, and one that finds no print forgets them.
+    if ((had_state && was_in_progress != in_progress) || (!had_state && !in_progress)) {
+        load_unconfirmed_.fill(false);
+        task_config_judged_ = false;
+        ++print_generation_;
+        print_started_here_ = false;
+    }
+    if (was_in_progress != in_progress) {
+        if (in_progress && start_from_here_at_) {
+            print_started_here_ =
+                std::chrono::steady_clock::now() - *start_from_here_at_ <= kStartFromHereWindow;
+            start_from_here_at_.reset();
+        }
+    }
+}
+
+void AmsBackendSnapmaker::note_print_start_from_here() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    start_from_here_at_ = std::chrono::steady_clock::now();
+    if (print_in_progress_locked()) {
+        // A restart cancels and starts again; the two can reach this backend
+        // as one unbroken print, so the new print's state starts here.
+        load_unconfirmed_.fill(false);
+        task_config_judged_ = false;
+        ++print_generation_;
+        print_started_here_ = true;
+    }
+}
+
+bool AmsBackendSnapmaker::file_uses_later_tool(const FileStartFacts& facts) {
+    if (const std::set<int> tools = file_tools_used(facts); !tools.empty()) {
+        return std::any_of(tools.begin(), tools.end(), [](int tool) { return tool > 0; });
+    }
+    if (!facts.metadata) {
+        return true;
+    }
+    if (!facts.metadata->filament_weights.empty()) {
+        return false; // weights given, none past zero
+    }
+    return facts.metadata->filament_colors.size() > 1;
+}
+
+void AmsBackendSnapmaker::warn_if_unset_task_uses_later_tool(const std::string& filename,
+                                                             uint32_t print,
+                                                             TaskConfigNotice notice) {
+    auto on_answer = [this, filename, print, notice](bool later_tool) {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (print != print_generation_) {
+                return;
+            }
+        }
+        spdlog::warn("{} '{}' running with no used heads in print_task_config; {}",
+                     backend_log_tag(), filename,
+                     later_tool ? "it uses a tool past the first, warning"
+                                : "it uses the first tool only, no warning");
+        if (!later_tool) {
+            return;
+        }
+        ui_notification_warning_sticky(
+            notice == TaskConfigNotice::ToolsUnknown
+                ? lv_tr("HelixScreen couldn't read which toolheads this file uses, so the "
+                        "printer wasn't told.")
+                : lv_tr("This print was started outside HelixScreen, so the printer doesn't "
+                        "know which toolheads it uses."),
+            lv_tr("Each toolhead after the first will pause the print the first time it is "
+                  "used, because the printer won't load or prime it. Filament won't unload "
+                  "when the print ends."));
+    };
+    if (file_tools_probe_) {
+        file_tools_probe_(filename, std::move(on_answer));
+        return;
+    }
+    if (!api_ || filename.empty()) {
+        on_answer(true);
+        return;
+    }
+    if (!file_facts_) {
+        file_facts_ = std::make_unique<FileStartFactsLoader>(api_);
+    }
+    // The loader is owned here and drops its answer when destroyed.
+    file_facts_->load(filename, [on_answer = std::move(on_answer)](FileStartFacts facts) {
+        on_answer(file_uses_later_tool(facts));
+    });
+}
+
+AmsBackendSnapmaker::TaskConfigNotice AmsBackendSnapmaker::judge_task_config_locked() {
+    if (task_config_judged_ || !print_in_progress_locked() || extruders_used_.empty()) {
+        return TaskConfigNotice::None;
+    }
+    task_config_judged_ = true;
+    if (std::any_of(extruders_used_.begin(), extruders_used_.end(),
+                    [](bool used) { return used; })) {
+        return TaskConfigNotice::None;
+    }
+    return print_started_here_ ? TaskConfigNotice::ToolsUnknown : TaskConfigNotice::OtherClient;
 }
 
 // ============================================================================
@@ -1663,6 +1991,7 @@ void AmsBackendSnapmaker::apply_feed_channel_locked(const snapmaker::FeedChannel
     // never carries the motion sensor's enabled flag, so that field rides the
     // same rule).
     ChannelSnapshot snap = channel_snapshots_[static_cast<size_t>(i)];
+    const bool was_load_confirmed = feeder_reports_loaded(snap);
     const std::string prev_state = snap.state;
     const std::string prev_action_state = snap.action_state;
     if (channel.channel_state) {
@@ -1689,6 +2018,11 @@ void AmsBackendSnapmaker::apply_feed_channel_locked(const snapmaker::FeedChannel
     // when the outcome survives in channel_action_state alone.
     const std::optional<std::string> settled_outcome =
         helix::snapmaker::settled_op_outcome(snap.state, prev_action_state, snap.action_state);
+    if (feeder_reports_loaded(snap) && !was_load_confirmed && load_unconfirmed_[i]) {
+        spdlog::info("{} tool {} reports '{}' with no error; Resume may proceed", backend_log_tag(),
+                     i, snap.state);
+        load_unconfirmed_[i] = false;
+    }
     channel_snapshots_[static_cast<size_t>(i)] = std::move(snap);
     // A terminal ends the op or marks the lane only when this
     // frame moved the channel to it; see observed_change.
@@ -1714,6 +2048,24 @@ void AmsBackendSnapmaker::apply_feed_channel_locked(const snapmaker::FeedChannel
     } else if (!state.empty()) {
         preload_in_flight_[i] = false;
         unload_in_flight_[i] = false;
+    }
+
+    // A frame carries a channel's state or error only when it changed, or
+    // whole when a subscription starts, which rebuilds the marks after a
+    // reconnect.
+    if ((channel.channel_state || channel.channel_error) &&
+        feed_failure_reported(channel_snapshots_[static_cast<size_t>(i)])) {
+        mark_load_unconfirmed_locked(i, op_state);
+    }
+    // A frame settles the refeed only when it is decisive: loaded with no
+    // error, or a failure. load_finish can land a frame before channel_error
+    // turns ok; that frame waits for the next one, within the timeout.
+    if (refeed_wait_ && refeed_wait_->slot == i &&
+        (channel.channel_state || channel.channel_error)) {
+        const ChannelSnapshot& now = channel_snapshots_[static_cast<size_t>(i)];
+        if (feeder_reports_loaded(now) || feed_failure_reported(now)) {
+            fx.refeed_settled = true;
+        }
     }
 
     apply_channel_progress_locked(i, state, info, fx);
@@ -2033,7 +2385,13 @@ void AmsBackendSnapmaker::apply_print_task_config_locked(const snapmaker::Status
     // Firmware-stored preferences are held as told, never filed as lane
     // observations: they are a write surface like the filament_type/vendor/color
     // fields below.
+    const auto replenish_before = print_preferences_.auto_replenish;
     print_preferences_.merge(ptc.preferences);
+    // Auto-replenish is the Endless Spool switch, which AmsState republishes
+    // only on a change event.
+    if (print_preferences_.auto_replenish != replenish_before) {
+        fx.changed = true;
+    }
 
     apply_task_routing_locked(ptc, fx);
     apply_task_slot_identity_locked(ptc, fx);
@@ -2568,9 +2926,13 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
         std::lock_guard<std::mutex> lock(mutex_);
 
         if (const nlohmann::json* ps = helix::json_util::find_member(status, "print_stats")) {
+            if (const nlohmann::json* file = helix::json_util::find_member(*ps, "filename");
+                file && file->is_string()) {
+                print_filename_ = file->get<std::string>();
+            }
             if (const nlohmann::json* state = helix::json_util::find_member(*ps, "state");
                 state && state->is_string()) {
-                print_state_ = state->get<std::string>();
+                apply_print_state_locked(state->get<std::string>());
             }
         }
         if (const auto main_state = snapmaker::screws_tilt::main_state_from_status(status)) {
@@ -2593,6 +2955,9 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
         apply_working_slot_locked(fx);
 
         apply_print_task_config_locked(delta, fx);
+        fx.task_config_unset = judge_task_config_locked();
+        fx.task_config_unset_file = print_filename_;
+        fx.task_config_print = print_generation_;
 
         apply_toolhead_sensors_locked(delta, fx);
 
@@ -2656,6 +3021,19 @@ void AmsBackendSnapmaker::dispatch_effects(const FrameEffects& fx) {
                             "in the feeder; writing the declaration back");
     for (const auto& [head, pending] : fx.record_flushes) {
         write_task_filament_record(head, pending.info, pending.material_declared);
+    }
+
+    if (fx.refeed_settled) {
+        finish_refeed_wait();
+    }
+
+    if (fx.task_config_unset != TaskConfigNotice::None) {
+        std::string file = fx.task_config_unset_file;
+        if (file.empty()) {
+            file = lv_subject_get_string(
+                get_printer_state().print_state().get_print_filename_subject());
+        }
+        warn_if_unset_task_uses_later_tool(file, fx.task_config_print, fx.task_config_unset);
     }
 
     if (fx.changed) {
@@ -2809,6 +3187,51 @@ std::string AmsBackendSnapmaker::build_preprint_gcode(const std::set<int>& tools
     return gcode;
 }
 
+std::string AmsBackendSnapmaker::used_extruders_line(const std::set<int>& heads) {
+    std::string csv;
+    for (int head : heads) {
+        if (!csv.empty()) {
+            csv += ',';
+        }
+        csv += std::to_string(head);
+    }
+    return fmt::format("SET_PRINT_USED_EXTRUDERS EXTRUDERS={}", csv);
+}
+
+std::string
+AmsBackendSnapmaker::build_unrouted_preprint_gcode(const std::set<int>& tools_used) const {
+    const helix::FirmwareRouting routing = default_routing();
+    std::set<int> heads;
+    bool map_at_default = true;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        for (int t : tools_used) {
+            const int head = routing.head(t);
+            if (head < 0) {
+                continue;
+            }
+            heads.insert(head);
+            if (static_cast<size_t>(t) < extruder_map_table_.size() &&
+                extruder_map_table_[static_cast<size_t>(t)] != head) {
+                map_at_default = false;
+            }
+        }
+    }
+    const std::string unload = end_unload_gcode();
+    if (heads.empty() || !map_at_default) {
+        if (!map_at_default) {
+            spdlog::warn("[Snapmaker] preprint: the firmware holds a non-default extruder map; "
+                         "sending no used heads for an unrouted reprint");
+        }
+        return unload;
+    }
+    std::string gcode = used_extruders_line(heads);
+    if (!unload.empty()) {
+        gcode += "\n" + unload;
+    }
+    return gcode;
+}
+
 std::string AmsBackendSnapmaker::preprint_gcode(const std::set<int>& tools_used,
                                                 const std::map<int, int>& remap) {
     if (tools_used.empty()) {
@@ -2871,14 +3294,7 @@ std::string AmsBackendSnapmaker::preprint_gcode(const std::set<int>& tools_used,
         used_heads.insert(physical);
     }
 
-    std::string csv;
-    for (int head : used_heads) {
-        if (!csv.empty()) {
-            csv += ',';
-        }
-        csv += std::to_string(head);
-    }
-    lines.push_back(fmt::format("SET_PRINT_USED_EXTRUDERS EXTRUDERS={}", csv));
+    lines.push_back(used_extruders_line(used_heads));
 
     // Join with newlines, no trailing newline.
     std::string out;
@@ -3392,19 +3808,7 @@ std::vector<helix::printer::DeviceSection> AmsBackendSnapmaker::get_device_secti
     std::vector<DeviceSection> out;
     // Nothing reported yet - an empty section is worse than none.
     if (!print_preferences().empty()) {
-        DeviceSection s;
-        s.id = "snapmaker_print_prefs";
-        s.label = lv_tr("Print Behaviour");
-        s.display_order = 50;
-        out.push_back(std::move(s));
-    }
-    bool nozzle_offset = false;
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        nozzle_offset = nozzle_offset_supported_;
-    }
-    if (nozzle_offset) {
-        out.push_back(snapmaker::nozzle_offset::device_section());
+        out.push_back(helix::printer::device_section(kPrintPrefsSection, 50, ""));
     }
     return out;
 }
@@ -3418,29 +3822,26 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
     std::vector<DeviceAction> out;
 
     auto add_toggle = [&](const char* id, const char* label, bool value) {
-        out.push_back(DeviceAction::toggle(id, lv_tr(label), "snapmaker_print_prefs", value));
+        out.push_back(DeviceAction::toggle(id, label, kPrintPrefsSection, value));
     };
 
     // Only settings the firmware has reported become actions: a toggle whose
     // state is unknown renders off and invites "changing" it to its own value.
-    if (p.auto_replenish) {
-        add_toggle("snapmaker_auto_replenish", "Auto-Replenish", *p.auto_replenish);
-    }
     if (p.replenish_ignore_color) {
-        add_toggle("snapmaker_replenish_ignore_color", "Replenish ignores color",
+        add_toggle("snapmaker_replenish_ignore_color", TR_NOOP("Replenish ignores color"),
                    *p.replenish_ignore_color);
     }
     if (p.filament_entangle_detect) {
-        add_toggle("snapmaker_entangle_detect", "Detect filament tangles",
+        add_toggle("snapmaker_entangle_detect", TR_NOOP("Detect filament tangles"),
                    *p.filament_entangle_detect);
     }
     if (p.filament_entangle_sen) {
-        out.push_back(DeviceAction::dropdown("snapmaker_entangle_sen", lv_tr("Tangle sensitivity"),
-                                             "snapmaker_print_prefs", {"low", "medium", "high"},
+        out.push_back(DeviceAction::dropdown("snapmaker_entangle_sen", "Tangle sensitivity",
+                                             kPrintPrefsSection, {"low", "medium", "high"},
                                              std::string(*p.filament_entangle_sen)));
     }
     if (p.end_led_turn_off) {
-        add_toggle("snapmaker_end_led_off", "Turn LED off when the print ends",
+        add_toggle("snapmaker_end_led_off", TR_NOOP("Turn LED off when the print ends"),
                    *p.end_led_turn_off);
     }
     // The firmware's list says how many heads there are; the values are the
@@ -3452,30 +3853,15 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
         // proxy type on some platforms, not bool, and the UI casts the value back to bool.
         const bool unload = saved[t];
         const int tool = static_cast<int>(t);
-        DeviceAction a = DeviceAction::toggle(
-            "snapmaker_end_unload_t" + std::to_string(t),
-            std::string(lv_tr("Unload at end")) + " - " +
-                helix::ui::tool_label_in_form(tool_noun(), helix::ui::tool_label(tool), tool,
-                                              helix::ui::ToolLabelForm::Full),
-            "snapmaker_print_prefs", unload);
+        DeviceAction a = DeviceAction::toggle("snapmaker_end_unload_t" + std::to_string(t),
+                                              "Unload at end", kPrintPrefsSection, unload);
         a.slot_index = static_cast<int>(t);
+        a.tool_index = tool;
         if (head_is_soft(soft, t)) {
             a.enabled = false;
-            a.disable_reason = lv_tr("Soft filament is never unloaded");
+            a.disable_reason = TR_NOOP("Soft filament is never unloaded");
         }
         out.push_back(std::move(a));
-    }
-
-    bool nozzle_offset = false;
-    bool print_holds_heads = false;
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        nozzle_offset = nozzle_offset_supported_;
-        print_holds_heads =
-            print_state_ && (*print_state_ == "printing" || *print_state_ == "paused");
-    }
-    if (nozzle_offset) {
-        out.push_back(snapmaker::nozzle_offset::device_action(print_holds_heads));
     }
     return out;
 }
@@ -3488,36 +3874,30 @@ std::string AmsBackendSnapmaker::build_preference_gcode(const std::string& actio
     // pointer-form: a value whose type does not match the action reads as
     // absent and refuses like a malformed id, never as a bad_any_cast out
     // of the callback.
-    if (action_id == "snapmaker_auto_replenish") {
-        if (const auto* v = std::any_cast<bool>(&value)) {
-            changes.auto_replenish = *v;
-        } else {
+    if (action_id == "snapmaker_replenish_ignore_color") {
+        const auto [v, err] = printer::device_action_value<bool>(value, "setting");
+        if (!err) {
             return {};
         }
-    } else if (action_id == "snapmaker_replenish_ignore_color") {
-        if (const auto* v = std::any_cast<bool>(&value)) {
-            changes.replenish_ignore_color = *v;
-        } else {
-            return {};
-        }
+        changes.replenish_ignore_color = v;
     } else if (action_id == "snapmaker_entangle_detect") {
-        if (const auto* v = std::any_cast<bool>(&value)) {
-            changes.filament_entangle_detect = *v;
-        } else {
+        const auto [v, err] = printer::device_action_value<bool>(value, "setting");
+        if (!err) {
             return {};
         }
+        changes.filament_entangle_detect = v;
     } else if (action_id == "snapmaker_end_led_off") {
-        if (const auto* v = std::any_cast<bool>(&value)) {
-            changes.end_led_turn_off = *v;
-        } else {
+        const auto [v, err] = printer::device_action_value<bool>(value, "setting");
+        if (!err) {
             return {};
         }
+        changes.end_led_turn_off = v;
     } else if (action_id == "snapmaker_entangle_sen") {
-        if (const auto* v = std::any_cast<std::string>(&value)) {
-            changes.filament_entangle_sen = *v;
-        } else {
+        const auto [v, err] = printer::device_action_value<std::string>(value, "sensitivity");
+        if (!err) {
             return {};
         }
+        changes.filament_entangle_sen = v;
     } else if (const auto tool = end_unload_tool(action_id)) {
         // END_UNLOAD_FILAMENT takes the whole list, so the untouched tools
         // travel at their saved values or they are cleared. The firmware's
@@ -3529,15 +3909,15 @@ std::string AmsBackendSnapmaker::build_preference_gcode(const std::string& actio
         if (*tool >= prefs.end_unload_filament.size()) {
             return {};
         }
-        const auto* v = std::any_cast<bool>(&value);
+        const auto [v, err] = printer::device_action_value<bool>(value, "setting");
         // The end macro skips a soft-filament head, so turning it on would
         // promise an unload that never happens.
         const auto soft = soft_heads();
-        if (v == nullptr || (*v && head_is_soft(soft, *tool))) {
+        if (!err || (v && head_is_soft(soft, *tool))) {
             return {};
         }
         auto list = end_unload_list(prefs, soft);
-        list[*tool] = *v;
+        list[*tool] = v;
         changes.end_unload_filament = std::move(list);
     } else {
         return {};
@@ -3545,8 +3925,8 @@ std::string AmsBackendSnapmaker::build_preference_gcode(const std::string& actio
     return snapmaker::write_print_preferences_gcode(changes);
 }
 
-AmsError AmsBackendSnapmaker::execute_device_action(const std::string& action_id,
-                                                    const std::any& value) {
+AmsError AmsBackendSnapmaker::do_execute_device_action(const std::string& action_id,
+                                                       const std::any& value) {
     const std::string gcode = build_preference_gcode(action_id, value);
     if (gcode.empty()) {
         return AmsErrorHelper::not_supported(action_id);
@@ -3554,8 +3934,8 @@ AmsError AmsBackendSnapmaker::execute_device_action(const std::string& action_id
     if (const auto tool = end_unload_tool(action_id)) {
         // The saved choice is what every print start sends, so it is written
         // whether or not the firmware can take it now.
-        SettingsManager::instance().set_end_of_print_unload_tool(static_cast<int>(*tool),
-                                                                 *std::any_cast<bool>(&value));
+        SettingsManager::instance().set_end_of_print_unload_tool(
+            static_cast<int>(*tool), printer::device_action_value<bool>(value, "setting").first);
         // The firmware refuses END_UNLOAD_FILAMENT while printing or paused
         // unless FORCE=1, which we do not pass; the next print start carries it.
         bool heads_free = false;
@@ -3571,6 +3951,28 @@ AmsError AmsBackendSnapmaker::execute_device_action(const std::string& action_id
         }
     }
     return execute_gcode(gcode);
+}
+
+helix::printer::EndlessSpoolCapabilities
+AmsBackendSnapmaker::get_endless_spool_capabilities() const {
+    using namespace helix::printer;
+    // The firmware's auto-replenish picks the backup head itself; until it has
+    // reported the flag, the feature's state is unknown and nothing is offered.
+    const auto replenish = print_preferences().auto_replenish;
+    if (!replenish) {
+        return {};
+    }
+    return {.availability = EndlessSpoolAvailability::Available,
+            .enabled = *replenish ? EndlessSpoolEnabled::On : EndlessSpoolEnabled::Off,
+            .editability = EndlessSpoolEditability::ReadOnly,
+            .restriction = EndlessSpoolRestriction::FirmwareManaged,
+            .switchable = true};
+}
+
+AmsError AmsBackendSnapmaker::apply_endless_spool_enabled(bool enabled) {
+    snapmaker::PrintPreferences changes;
+    changes.auto_replenish = enabled;
+    return execute_gcode(snapmaker::write_print_preferences_gcode(changes));
 }
 
 std::string AmsBackendSnapmaker::end_unload_gcode() const {

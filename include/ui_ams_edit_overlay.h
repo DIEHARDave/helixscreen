@@ -124,9 +124,16 @@ class AmsEditOverlay : public OverlayBase {
     [[nodiscard]] const char* get_name() const override {
         return "AMS Slot Editor";
     }
+    /// The tree (dropdown form, preset swatches, picker, colour view) is large
+    /// and only needed while a spool is being edited.
+    bool destroy_on_close() const override {
+        return true;
+    }
     void on_activate() override;
     void on_deactivating(DeactivateReason reason) override;
     void on_ui_destroyed() override;
+    /// A close that bypassed Save and Back completes the session as "not saved".
+    void on_dismissed() override;
     /// The dropdown options, the colour selection ring and the logistics field
     /// text are populated on view entry, not by the XML — re-apply them for
     /// the view that is showing when a hot-reload rebuilds the tree.

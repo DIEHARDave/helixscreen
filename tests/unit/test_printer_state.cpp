@@ -986,7 +986,7 @@ TEST_CASE("PrintJobState: print_job_state_to_string converts to display strings"
     REQUIRE(std::string(print_job_state_to_string(PrintJobState::PRINTING)) == "Printing");
     REQUIRE(std::string(print_job_state_to_string(PrintJobState::PAUSED)) == "Paused");
     REQUIRE(std::string(print_job_state_to_string(PrintJobState::COMPLETE)) == "Complete");
-    REQUIRE(std::string(print_job_state_to_string(PrintJobState::CANCELLED)) == "Cancelled");
+    REQUIRE(std::string(print_job_state_to_string(PrintJobState::CANCELLED)) == "Canceled");
     REQUIRE(std::string(print_job_state_to_string(PrintJobState::ERROR)) == "Error");
 }
 

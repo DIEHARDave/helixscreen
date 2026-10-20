@@ -1,7 +1,10 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "ui_ams_device_section_detail_overlay.h"
+#include "ui_nav_manager.h"
 #include "ui_update_queue.h"
+#include "ui_utils.h"
 
 #include "../lvgl_test_fixture.h"
 #include "../ui_test_utils.h"
@@ -23,6 +26,7 @@
 #include "spoolman_types.h"
 #include "test_helpers/backend_user_edit.h"
 #include "test_helpers/config_test_access.h"
+#include "test_helpers/device_action_controls.h"
 #include "test_helpers/gcode_recording_api.h"
 #include "test_helpers/happy_hare_fixture.h"
 #include "test_helpers/happy_hare_test_access.h"
@@ -64,7 +68,7 @@ class AmsBackendHappyHareTestHelper : public AmsBackendHappyHare {
   public:
     AmsBackendHappyHareTestHelper(IMoonrakerAPI* api = nullptr,
                                   helix::IMoonrakerClient* client = nullptr)
-        : AmsBackendHappyHare(api, client) {}
+        : AmsBackendHappyHare(api, client), has_api_(api != nullptr) {}
 
     /**
      * @brief Initialize test gates with default SlotInfo
@@ -283,9 +287,34 @@ class AmsBackendHappyHareTestHelper : public AmsBackendHappyHare {
         return AmsErrorHelper::success();
     }
 
+    /// The completion form (the Endless Spool switch) captures into the same list;
+    /// fail_gcode answers its on_error.
+    AmsError execute_gcode(const std::string& gcode, std::function<void()> on_complete,
+                           std::function<void(const MoonrakerError&)> on_error,
+                           bool silent) override {
+        // A test that hands in a recording API reads the sends there.
+        if (has_api_) {
+            return AmsBackendHappyHare::execute_gcode(gcode, std::move(on_complete),
+                                                      std::move(on_error), silent);
+        }
+        captured_gcodes.push_back(gcode);
+        if (!fail_gcode.empty() && gcode == fail_gcode) {
+            if (on_error) {
+                on_error(MoonrakerError{});
+            }
+        } else if (on_complete) {
+            on_complete();
+        }
+        return AmsErrorHelper::success();
+    }
+
     /// A command execute_gcode() answers with an error.
     std::string fail_gcode;
 
+  private:
+    bool has_api_ = false;
+
+  public:
     /// Mark unit @p u so a test can tell whether the unit list was rebuilt.
     void mark_unit(int u, const std::string& marker) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -1120,6 +1149,30 @@ TEST_CASE("Happy Hare set_endless_spool_backup removal makes gate standalone",
     REQUIRE(helper.has_gcode("MMU_ENDLESS_SPOOL QUIET=1 GROUPS=2,0,1,1"));
 }
 
+TEST_CASE("Happy Hare Endless Spool switch sends MMU_ENDLESS_SPOOL ENABLE",
+          "[ams][happy_hare][endless_spool][endless]") {
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.initialize_test_gates(4);
+
+    REQUIRE(helper.get_endless_spool_capabilities().switchable);
+    REQUIRE(helper.set_endless_spool_enabled(true).success());
+    CHECK(helper.has_gcode("MMU_ENDLESS_SPOOL ENABLE=1 QUIET=1"));
+    REQUIRE(helper.set_endless_spool_enabled(false).success());
+    CHECK(helper.has_gcode("MMU_ENDLESS_SPOOL ENABLE=0 QUIET=1"));
+}
+
+TEST_CASE("Happy Hare Endless Spool switch is refused on multi-unit",
+          "[ams][happy_hare][endless_spool][endless]") {
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.initialize_test_gates_multi({4, 4});
+
+    CHECK_FALSE(helper.get_endless_spool_capabilities().switchable);
+    CHECK_FALSE(helper.set_endless_spool_enabled(true).success());
+    CHECK(helper.captured_gcodes.empty());
+}
+
 TEST_CASE("Happy Hare endless spool is read-only on multi-unit",
           "[ams][happy_hare][endless_spool]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
@@ -1824,6 +1877,7 @@ TEST_CASE("Happy Hare device sections include accessories", "[ams][happy_hare][v
 TEST_CASE("Happy Hare espooler_mode action sends MMU_ESPOOLER", "[ams][happy_hare][v4]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
     helper.set_running(true);
 
@@ -1835,6 +1889,7 @@ TEST_CASE("Happy Hare espooler_mode action sends MMU_ESPOOLER", "[ams][happy_har
 TEST_CASE("Happy Hare clog_detection action sends MMU_TEST_CONFIG", "[ams][happy_hare][v4]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
     helper.set_running(true);
 
@@ -2486,6 +2541,7 @@ TEST_CASE("Happy Hare espooler_mode without value returns error", "[ams][happy_h
 TEST_CASE("Happy Hare clog_detection Manual maps to 1", "[ams][happy_hare][v4][edge]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
     helper.set_running(true);
 
@@ -3723,7 +3779,7 @@ TEST_CASE("get_device_actions returns live config values", "[ams][happy_hare][de
     }
 }
 
-TEST_CASE("get_device_actions disables non-buttons when config not loaded",
+TEST_CASE("get_device_actions waits for the config only on config-backed settings",
           "[ams][happy_hare][device_actions]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
@@ -3731,13 +3787,35 @@ TEST_CASE("get_device_actions disables non-buttons when config not loaded",
     // Do NOT call set_config_defaults_for_test() — config_defaults_.loaded is false
 
     auto actions = helper.get_device_actions();
-
-    for (const auto& a : actions) {
-        if (a.type != helix::printer::ActionType::BUTTON) {
-            REQUIRE_FALSE(a.enabled);
-            REQUIRE(a.disable_reason == "Loading configuration...");
+    auto find_action = [](const auto& list, const char* id) -> const helix::printer::DeviceAction* {
+        for (const auto& a : list) {
+            if (a.id == id) {
+                return &a;
+            }
         }
+        return nullptr;
+    };
+    for (const char* id : {"gear_from_buffer_speed", "sync_to_extruder", "clog_detection"}) {
+        INFO(id);
+        const auto* a = find_action(actions, id);
+        REQUIRE(a != nullptr);
+        CHECK_FALSE(a->enabled);
+        CHECK(a->disable_reason == "Loading configuration...");
     }
+    for (const char* id : {"gear_sync", "motors_toggle", "led_mode", "espooler_mode"}) {
+        INFO(id);
+        const auto* a = find_action(actions, id);
+        REQUIRE(a != nullptr);
+        CHECK(a->enabled);
+    }
+
+    // A live command runs; a config-backed setting is refused until the config loads.
+    REQUIRE(helper.execute_device_action("gear_sync", std::any(true)).success());
+    CHECK(helper.has_gcode("MMU_SYNC_GEAR_MOTOR SYNC=1"));
+    helper.clear_captured_gcodes();
+    CHECK(helper.execute_device_action("gear_from_buffer_speed", std::any(200.0f)).result ==
+          AmsResult::WRONG_STATE);
+    CHECK(helper.captured_gcodes.empty());
 }
 
 TEST_CASE("get_device_actions overlays sync_to_extruder as bool",
@@ -3777,6 +3855,28 @@ TEST_CASE("parse_mmu_state extracts flowguard encoder_mode", "[ams][happy_hare][
             REQUIRE(val == "Auto");
         }
     }
+}
+
+TEST_CASE("clog detection shows the encoder's reported mode while it waits for the config",
+          "[ams][happy_hare][device_actions]") {
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.initialize_test_gates(4);
+    // config_defaults_.loaded stays false: the configfile has not arrived.
+
+    nlohmann::json mmu_data;
+    mmu_data["flowguard"] = {{"encoder_mode", 2}};
+    helper.test_parse_mmu_state(mmu_data);
+
+    const auto actions = helper.get_device_actions();
+    const auto it = std::find_if(actions.begin(), actions.end(),
+                                 [](const auto& a) { return a.id == "clog_detection"; });
+    REQUIRE(it != actions.end());
+    CHECK_FALSE(it->enabled);
+    CHECK(it->disable_reason == "Loading configuration...");
+    const auto* shown = std::any_cast<std::string>(&it->current_value);
+    REQUIRE(shown != nullptr);
+    CHECK(*shown == "Auto");
 }
 
 TEST_CASE("parse_mmu_state extracts LED exit_effect", "[ams][happy_hare][device_actions]") {
@@ -3858,6 +3958,35 @@ TEST_CASE("Type A topology shows all actions", "[ams][happy_hare][device_actions
     }
 }
 
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "a Happy Hare speed slider in the section overlay opens at its value and applies",
+                 "[ams][happy_hare][device_actions][device-section]") {
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.initialize_test_gates(4);
+    helper.set_config_defaults_for_test();
+
+    auto& overlay = helix::ui::get_ams_device_section_detail_overlay();
+    overlay.init_subjects();
+    overlay.show(test_screen(), "speed", "Speed");
+    helix::ui::UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    lv_obj_t* slider =
+        helix::test::find_device_action_slider(overlay.get_root(), "gear_from_buffer_speed");
+    REQUIRE(slider != nullptr);
+    CHECK(lv_slider_get_value(slider) == 180);
+
+    lv_slider_set_value(slider, 200, LV_ANIM_OFF);
+    lv_obj_send_event(slider, LV_EVENT_RELEASED, nullptr);
+    CHECK(helper.has_gcode_containing("GEAR_FROM_BUFFER_SPEED=200"));
+
+    NavigationManager::instance().go_back();
+    helix::ui::UpdateQueue::instance().drain();
+    process_lvgl(10);
+    helix::ui::destroy_static_panels();
+}
+
 // ============================================================================
 // Task 7: execute_device_action Tests
 // ============================================================================
@@ -3866,6 +3995,7 @@ TEST_CASE("execute_device_action sends correct G-code for speed sliders",
           "[ams][happy_hare][device_actions]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
 
     SECTION("gear_from_buffer_speed") {
@@ -3909,6 +4039,7 @@ TEST_CASE("execute_device_action sends correct G-code for toolhead distances",
           "[ams][happy_hare][device_actions]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
 
     SECTION("toolhead_sensor_to_nozzle") {
@@ -3940,6 +4071,7 @@ TEST_CASE("execute_device_action sends correct G-code for sync toggle",
           "[ams][happy_hare][device_actions]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
 
     SECTION("enable sync") {
@@ -4316,6 +4448,7 @@ TEST_CASE("Happy Hare runtime gear_sync toggles MMU_SYNC_GEAR_MOTOR",
           "[ams][happy_hare][device_actions]") {
     helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
     AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
     helper.initialize_test_gates(4);
 
     REQUIRE(helper.execute_device_action("gear_sync", std::any(true)).success());
@@ -5190,6 +5323,7 @@ find_action(const std::vector<helix::printer::DeviceAction>& all, const std::str
 TEST_CASE("Happy Hare motors toggle turns motors on and off without homing",
           "[ams][happy_hare][device_actions]") {
     AmsBackendHappyHareTestHelper helper;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
 
     REQUIRE(helper.execute_device_action("motors_toggle", std::any(true)).success());
     REQUIRE(helper.execute_device_action("motors_toggle", std::any(false)).success());
@@ -5257,6 +5391,75 @@ TEST_CASE("Happy Hare extruder-only load and unload are refused mid-print",
     CHECK(helper.execute_device_action("load_extruder").result == AmsResult::WRONG_STATE);
     CHECK(helper.execute_device_action("unload_extruder").result == AmsResult::WRONG_STATE);
     CHECK(helper.captured_gcodes.empty());
+}
+
+TEST_CASE("Happy Hare refuses a listed but unavailable device action",
+          "[ams][happy_hare][device_actions]") {
+    AmsBackendHappyHareTestHelper helper;
+    helper.initialize_test_gates(4);
+    helper.set_config_defaults_for_test();
+    helper.set_selector_type("VirtualSelector"); // no servo on any unit
+    const auto actions = helper.get_device_actions();
+    const auto* buzz = find_action(actions, "servo_buzz");
+    REQUIRE(buzz != nullptr);
+    REQUIRE_FALSE(buzz->enabled);
+
+    const AmsError refused = helper.execute_device_action("servo_buzz");
+    CHECK(refused.result == AmsResult::WRONG_STATE);
+    CHECK(helper.captured_gcodes.empty());
+}
+
+TEST_CASE("Happy Hare runs only the device actions it offers",
+          "[ams][happy_hare][device_actions]") {
+    AmsBackendHappyHareTestHelper helper;
+    CHECK(helper.execute_device_action("not_an_action").result == AmsResult::NOT_SUPPORTED);
+    CHECK(helper.captured_gcodes.empty());
+}
+
+TEST_CASE("Happy Hare machine-motion actions are refused while a print holds the printer",
+          "[ams][happy_hare][device_actions]") {
+    PrintLifecycleFixture fx;
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg(fx.api.get(),
+                                                                             &fx.mock_client);
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.set_config_defaults_for_test(); // config-backed actions are offered once it loads
+    helper.initialize_test_gates(4);
+    helper.set_running(true);
+
+    const auto actions = helper.get_device_actions();
+    for (const char* id : {"calibrate_bowden", "load_extruder", "test_move"}) {
+        const auto* a = find_action(actions, id);
+        REQUIRE(a != nullptr);
+        CHECK(a->moves_machine);
+    }
+
+    for (auto state : {helix::PrintJobState::PRINTING, helix::PrintJobState::PAUSED}) {
+        helix::test::set_wire_state(fx.state, state);
+        const AmsError refused = helper.execute_device_action("calibrate_bowden");
+        CHECK(refused.result == AmsResult::WRONG_STATE);
+        CHECK(refused.user_msg == "Printer is busy with a print");
+        CHECK(helper.captured_gcodes.empty());
+        // An action that leaves the printer still is not the gate's business.
+        CHECK(helper.execute_device_action("led_mode", std::any(std::string("off"))).success());
+        helper.clear_captured_gcodes();
+    }
+
+    // Extruder-only load/unload is how a paused print recovers, so pausing
+    // releases it; printing still refuses it.
+    const auto* load = find_action(actions, "load_extruder");
+    REQUIRE(load != nullptr);
+    CHECK(load->allowed_while_paused);
+    helix::test::set_wire_state(fx.state, helix::PrintJobState::PRINTING);
+    CHECK(helper.execute_device_action("load_extruder").result == AmsResult::WRONG_STATE);
+    CHECK(helper.captured_gcodes.empty());
+    helix::test::set_wire_state(fx.state, helix::PrintJobState::PAUSED);
+    REQUIRE(helper.execute_device_action("load_extruder").success());
+    CHECK(helper.has_gcode_containing("MMU_LOAD EXTRUDER_ONLY=1"));
+    helper.clear_captured_gcodes();
+
+    helix::test::set_wire_state(fx.state, helix::PrintJobState::STANDBY);
+    REQUIRE(helper.execute_device_action("calibrate_bowden").success());
+    CHECK(helper.has_gcode_containing("MMU_CALIBRATE_BOWDEN"));
 }
 
 // ============================================================================

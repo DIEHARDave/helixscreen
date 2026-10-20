@@ -104,6 +104,7 @@ bool OverlayBase::show(lv_obj_t* parent_screen) {
             }
             helix::nav::on_close(overlay_root_, [this, tok = object_lifetime_.token()] {
                 if (!tok.expired()) {
+                    on_dismissed();
                     destroy_overlay_ui();
                 }
             });

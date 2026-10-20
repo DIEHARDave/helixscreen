@@ -5,6 +5,7 @@
 #include "ui_callback_helpers.h"
 #include "ui_emergency_stop.h"
 #include "ui_error_reporting.h"
+#include "ui_guided_device_flow.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
 #include "ui_update_queue.h"
@@ -519,6 +520,18 @@ ToolOffsetCalibrationPanel& get_global_tool_offset_cal_panel() {
 }
 
 void open_tool_offset_cal_panel(lv_obj_t* parent_screen) {
+    // A printer whose calibration is its own guided flow runs that instead of the
+    // macro panel.
+    const std::string flow_id = cal::guided_flow(get_printer_state().get_discovery());
+    if (!flow_id.empty()) {
+        const GuidedDeviceFlow* flow = find_guided_device_flow(flow_id);
+        if (flow && flow->start) {
+            flow->start(lv_tr("Tool Offsets"));
+        } else {
+            spdlog::warn("[ToolOffsetCal] Guided flow '{}' is not registered", flow_id);
+        }
+        return;
+    }
     get_global_tool_offset_cal_panel().show(parent_screen);
 }
 

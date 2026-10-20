@@ -112,6 +112,17 @@ class CfsRemapHelper : public AmsBackendCfs {
         return AmsErrorHelper::success();
     }
 
+    // The completion form (the Endless Spool switch) captures into the same list.
+    AmsError execute_gcode(const std::string& gcode, std::function<void()> on_complete,
+                           std::function<void(const MoonrakerError&)> /*on_error*/,
+                           bool /*silent*/) override {
+        captured.push_back(gcode);
+        if (on_complete) {
+            on_complete();
+        }
+        return AmsErrorHelper::success();
+    }
+
     // Expose protected firmware-writeback helper for direct test calls.
     // push_slot_identity_to_firmware is protected (called from apply_user_edit
     // but not part of the public IAmsBackend surface).
@@ -440,9 +451,15 @@ class CfsAutoRefillHelper : public CfsRemapHelper {
   public:
     using CfsRemapHelper::execute_gcode;
 
-    AmsError execute_gcode(const std::string& gcode, std::function<void()> on_complete) override {
+    AmsError execute_gcode(const std::string& gcode, std::function<void()> on_complete,
+                           std::function<void(const MoonrakerError&)> on_error,
+                           bool /*silent*/) override {
         captured.push_back(gcode);
-        if (!reject && on_complete) {
+        if (reject) {
+            if (on_error) {
+                on_error(MoonrakerError{});
+            }
+        } else if (on_complete) {
             on_complete();
         }
         return AmsErrorHelper::success();
@@ -451,16 +468,15 @@ class CfsAutoRefillHelper : public CfsRemapHelper {
     bool reject = false;
 };
 
-TEST_CASE("CFS auto-refill device action sends an explicit ENABLE", "[ams][cfs]") {
+TEST_CASE("CFS Endless Spool switch sends an explicit ENABLE", "[ams][cfs]") {
     // BOX_ENABLE_AUTO_REFILL is a setter, not a toggle: the handler reads
     // ENABLE via gcmd.get_int, and Creality's own master-server sends
-    // ENABLE=1/0 explicitly on both families. The device action must invert
-    // the last box-reported flag and send the spelled-out command.
+    // ENABLE=1/0 explicitly on both families.
     CfsAutoRefillHelper backend;
     backend.mark_running();
     backend.captured.clear();
 
-    SECTION("auto-refill currently off → ENABLE=1") {
+    SECTION("switching on while the box reports off sends ENABLE=1") {
         CfsTestAccess::set_loaded_state(backend, false, -1);
         {
             // Seed endless_spool_enabled=false via a box frame (auto_refill=0).
@@ -473,13 +489,13 @@ TEST_CASE("CFS auto-refill device action sends an explicit ENABLE", "[ams][cfs]"
                           "material_type":["-1"]}})")));
         }
         backend.captured.clear();
-        auto err = backend.execute_device_action("toggle_auto_refill");
+        auto err = backend.set_endless_spool_enabled(true);
         REQUIRE(err.result == AmsResult::SUCCESS);
         REQUIRE(backend.captured == std::vector<std::string>{"BOX_ENABLE_AUTO_REFILL ENABLE=1"});
         drain_calib_queue();
     }
 
-    SECTION("auto-refill currently on → ENABLE=0") {
+    SECTION("switching off while the box reports on sends ENABLE=0") {
         CfsTestAccess::handle_status(
             backend, make_cfs_notification(json::parse(
                          R"({"state":"connect","filament":0,"auto_refill":1,"enable":1,
@@ -488,7 +504,7 @@ TEST_CASE("CFS auto-refill device action sends an explicit ENABLE", "[ams][cfs]"
                       "remain_len":["-1"],"color_value":["-1"],
                       "material_type":["-1"]}})")));
         backend.captured.clear();
-        auto err = backend.execute_device_action("toggle_auto_refill");
+        auto err = backend.set_endless_spool_enabled(false);
         REQUIRE(err.result == AmsResult::SUCCESS);
         REQUIRE(backend.captured == std::vector<std::string>{"BOX_ENABLE_AUTO_REFILL ENABLE=0"});
         drain_calib_queue();
@@ -507,10 +523,9 @@ TEST_CASE("CFS actions name their guided flows", "[ams][cfs][calib]") {
     CHECK(chute->guided_flow == "cfs_purge_chute");
 
     // An ordinary action runs straight through the backend.
-    const auto refill = find_action(backend, "toggle_auto_refill");
-    if (refill.has_value()) {
-        CHECK(refill->guided_flow.empty());
-    }
+    const auto rfid = find_action(backend, "refresh_rfid");
+    REQUIRE(rfid.has_value());
+    CHECK(rfid->guided_flow.empty());
 }
 
 TEST_CASE("CFS calibration section and actions are K1-stock only (#1282)", "[ams][cfs][calib]") {
@@ -569,6 +584,31 @@ TEST_CASE("CFS cutter calibration sends BOX_FIND_CUT_POS through the long-send p
     REQUIRE(backend.captured == std::vector<std::string>{"BOX_FIND_CUT_POS"});
     drain_calib_queue();
     CHECK(got_result);
+}
+
+TEST_CASE("CFS calibration actions move the machine and lock while one runs", "[ams][cfs][calib]") {
+    CfsCalibHelper backend;
+    for (const char* id : {"calibrate_cutter", "calibrate_purge_chute", "nozzle_clean"}) {
+        INFO(id);
+        const auto a = find_action(backend, id);
+        REQUIRE(a.has_value());
+        CHECK(a->moves_machine);
+        CHECK(a->enabled);
+    }
+
+    backend.hold = {"BOX_FIND_CUT_POS"};
+    REQUIRE(backend.calibrate_cutter(nullptr).success());
+    for (const char* id : {"calibrate_cutter", "calibrate_purge_chute"}) {
+        INFO(id);
+        const auto a = find_action(backend, id);
+        REQUIRE(a.has_value());
+        CHECK_FALSE(a->enabled);
+        CHECK(a->disable_reason == "Calibration in progress");
+    }
+
+    backend.release_held();
+    drain_calib_queue();
+    CHECK(find_action(backend, "calibrate_cutter")->enabled);
 }
 
 TEST_CASE("CFS chute calibration homes, prepares, then reports ready (#1282)",
@@ -745,26 +785,26 @@ TEST_CASE("CFS calibration refuses while a print owns the machine (#1282)", "[am
     drain_calib_queue();
 }
 
-TEST_CASE("CFS calibration actions grey out while a print owns the machine (#1282)",
+TEST_CASE("CFS calibration is refused while a print owns the machine (#1282)",
           "[ams][cfs][calib]") {
     CfsCalibHelper backend;
+    // The UI greys them through moves_machine; the backend refuses whatever gets past.
+    for (const char* id : {"calibrate_cutter", "calibrate_purge_chute"}) {
+        const auto a = find_action(backend, id);
+        REQUIRE(a.has_value());
+        CHECK(a->moves_machine);
+    }
 
-    auto cutter = find_action(backend, "calibrate_cutter");
-    REQUIRE(cutter.has_value());
-    CHECK(cutter->enabled);
-    CHECK(cutter->disable_reason.empty());
-
-    helix::test::set_wire_state(backend.state, helix::PrintJobState::PRINTING);
+    for (auto state : {helix::PrintJobState::PRINTING, helix::PrintJobState::PAUSED}) {
+        helix::test::set_wire_state(backend.state, state);
+        helix::ui::UpdateQueue::instance().drain();
+        const AmsError refused = backend.calibrate_cutter(nullptr);
+        CHECK(refused.user_msg == "Printer is busy with a print");
+        CHECK(backend.start_chute_calibration(nullptr).user_msg == "Printer is busy with a print");
+        CHECK(backend.captured.empty());
+    }
+    helix::test::set_wire_state(backend.state, helix::PrintJobState::STANDBY);
     helix::ui::UpdateQueue::instance().drain();
-    cutter = find_action(backend, "calibrate_cutter");
-    REQUIRE(cutter.has_value());
-    CHECK_FALSE(cutter->enabled);
-    CHECK_FALSE(cutter->disable_reason.empty());
-
-    const auto chute = find_action(backend, "calibrate_purge_chute");
-    REQUIRE(chute.has_value());
-    CHECK_FALSE(chute->enabled);
-    CHECK_FALSE(chute->disable_reason.empty());
 }
 
 TEST_CASE("CFS type enum", "[ams][cfs]") {
@@ -5826,44 +5866,43 @@ TEST_CASE("CFS endless spool: boot-frame grouping and tool map survive units com
     CHECK(map[0] == 1);
 }
 
-TEST_CASE("CFS auto-refill toggle shows the box-reported state", "[ams][cfs][endless_spool]") {
+TEST_CASE("CFS Endless Spool switch follows the box-reported state", "[ams][cfs][endless_spool]") {
     CfsRemapHelper backend;
 
-    SECTION("before any frame the switch carries no value") {
-        const auto toggle = find_action(backend, "toggle_auto_refill");
-        REQUIRE(toggle.has_value());
-        CHECK_FALSE(toggle->current_value.has_value());
+    SECTION("before any frame the switch is not offered") {
+        CHECK_FALSE(backend.get_endless_spool_capabilities().switchable);
+        CHECK_FALSE(backend.set_endless_spool_enabled(true).success());
     }
 
-    SECTION("auto_refill=1 renders the switch on") {
+    SECTION("auto_refill=1 reports on, switchable") {
         CfsTestAccess::handle_status(backend, make_cfs_notification(make_runout_box(0)));
-        const auto toggle = find_action(backend, "toggle_auto_refill");
-        REQUIRE(toggle.has_value());
-        const bool* on = std::any_cast<bool>(&toggle->current_value);
-        REQUIRE(on != nullptr);
-        CHECK(*on);
+        const auto caps = backend.get_endless_spool_capabilities();
+        CHECK(caps.switchable);
+        CHECK(caps.enabled == EndlessSpoolEnabled::On);
     }
 
-    SECTION("auto_refill=0 renders the switch off") {
+    SECTION("auto_refill=0 reports off, switchable") {
         json box = make_runout_box(0);
         box["auto_refill"] = 0;
         CfsTestAccess::handle_status(backend, make_cfs_notification(box));
-        const auto toggle = find_action(backend, "toggle_auto_refill");
-        REQUIRE(toggle.has_value());
-        const bool* on = std::any_cast<bool>(&toggle->current_value);
-        REQUIRE(on != nullptr);
-        CHECK_FALSE(*on);
+        const auto caps = backend.get_endless_spool_capabilities();
+        CHECK(caps.switchable);
+        CHECK(caps.enabled == EndlessSpoolEnabled::Off);
+    }
+
+    SECTION("the old per-backend toggle action is gone") {
+        CHECK_FALSE(find_action(backend, "toggle_auto_refill").has_value());
     }
 }
 
-TEST_CASE("CFS auto-refill toggle sends the switch's value", "[ams][cfs][endless_spool]") {
+TEST_CASE("CFS Endless Spool switch sends the switch's value", "[ams][cfs][endless_spool]") {
     CfsAutoRefillHelper backend;
     backend.mark_running();
 
     SECTION("switch on while the box reports on sends ENABLE=1") {
         CfsTestAccess::handle_status(backend, make_cfs_notification(make_runout_box(0)));
         backend.captured.clear();
-        REQUIRE(backend.execute_device_action("toggle_auto_refill", std::any(true)).success());
+        REQUIRE(backend.set_endless_spool_enabled(true).success());
         CHECK(backend.captured == std::vector<std::string>{"BOX_ENABLE_AUTO_REFILL ENABLE=1"});
         drain_calib_queue();
     }
@@ -5873,13 +5912,13 @@ TEST_CASE("CFS auto-refill toggle sends the switch's value", "[ams][cfs][endless
         box["auto_refill"] = 0;
         CfsTestAccess::handle_status(backend, make_cfs_notification(box));
         backend.captured.clear();
-        REQUIRE(backend.execute_device_action("toggle_auto_refill", std::any(false)).success());
+        REQUIRE(backend.set_endless_spool_enabled(false).success());
         CHECK(backend.captured == std::vector<std::string>{"BOX_ENABLE_AUTO_REFILL ENABLE=0"});
         drain_calib_queue();
     }
 }
 
-TEST_CASE("CFS auto-refill toggle: the sent state is what the status and switch show",
+TEST_CASE("CFS Endless Spool switch: the sent state is what the status and switch show",
           "[ams][cfs][endless_spool]") {
     // The box resends auto_refill only when it changes, so nothing else will
     // tell the status line about a send.
@@ -5889,16 +5928,9 @@ TEST_CASE("CFS auto-refill toggle: the sent state is what the status and switch 
     CfsTestAccess::handle_status(backend, make_cfs_notification(full));
     REQUIRE(backend.get_endless_spool_capabilities().enabled == EndlessSpoolEnabled::On);
 
-    REQUIRE(backend.execute_device_action("toggle_auto_refill", std::any(false)).success());
+    REQUIRE(backend.set_endless_spool_enabled(false).success());
     drain_calib_queue();
     CHECK(backend.get_endless_spool_capabilities().enabled == EndlessSpoolEnabled::Off);
-    {
-        const auto toggle = find_action(backend, "toggle_auto_refill");
-        REQUIRE(toggle.has_value());
-        const bool* on = std::any_cast<bool>(&toggle->current_value);
-        REQUIRE(on != nullptr);
-        CHECK_FALSE(*on);
-    }
 
     // A unit delta afterwards must not resurrect the pre-send value.
     CfsTestAccess::handle_status(backend, make_cfs_notification(make_unit_up_delta(full)));
@@ -5909,7 +5941,7 @@ TEST_CASE("CFS auto-refill toggle: the sent state is what the status and switch 
     CHECK(backend.get_endless_spool_capabilities().enabled == EndlessSpoolEnabled::On);
 }
 
-TEST_CASE("CFS auto-refill toggle: a send Klipper does not complete changes nothing",
+TEST_CASE("CFS Endless Spool switch: a send Klipper does not complete changes nothing",
           "[ams][cfs][endless_spool]") {
     CfsAutoRefillHelper backend;
     backend.mark_running();
@@ -5917,19 +5949,14 @@ TEST_CASE("CFS auto-refill toggle: a send Klipper does not complete changes noth
     CfsTestAccess::handle_status(backend, make_cfs_notification(make_runout_box(0)));
     REQUIRE(backend.get_endless_spool_capabilities().enabled == EndlessSpoolEnabled::On);
 
-    REQUIRE(backend.execute_device_action("toggle_auto_refill", std::any(false)).success());
+    REQUIRE(backend.set_endless_spool_enabled(false).success());
     drain_calib_queue();
     REQUIRE(backend.captured.back() == "BOX_ENABLE_AUTO_REFILL ENABLE=0");
 
     CHECK(backend.get_endless_spool_capabilities().enabled == EndlessSpoolEnabled::On);
-    const auto toggle = find_action(backend, "toggle_auto_refill");
-    REQUIRE(toggle.has_value());
-    const bool* on = std::any_cast<bool>(&toggle->current_value);
-    REQUIRE(on != nullptr);
-    CHECK(*on);
 }
 
-TEST_CASE("CFS auto-refill toggle speaks the box module's dialect",
+TEST_CASE("CFS Endless Spool switch speaks the box module's dialect",
           "[ams][cfs][flat][endless_spool]") {
     CfsAutoRefillHelper backend;
     backend.mark_running();
@@ -5937,7 +5964,7 @@ TEST_CASE("CFS auto-refill toggle speaks the box module's dialect",
     SECTION("the identified fork sends its runout-swap setter") {
         CfsTestAccess::handle_status(backend, make_cfs_notification(make_flat_fork_box()));
         backend.captured.clear();
-        REQUIRE(backend.execute_device_action("toggle_auto_refill", std::any(false)).success());
+        REQUIRE(backend.set_endless_spool_enabled(false).success());
         CHECK(backend.captured == std::vector<std::string>{"_BOX_SET_RUNOUT_SWAP ENABLE=0"});
         drain_calib_queue();
         CHECK(backend.get_endless_spool_capabilities().enabled == EndlessSpoolEnabled::Off);
@@ -5948,7 +5975,8 @@ TEST_CASE("CFS auto-refill toggle speaks the box module's dialect",
         box.erase("api_version");
         CfsTestAccess::handle_status(backend, make_cfs_notification(box));
         backend.captured.clear();
-        CHECK_FALSE(backend.execute_device_action("toggle_auto_refill", std::any(true)).success());
+        CHECK_FALSE(backend.get_endless_spool_capabilities().switchable);
+        CHECK_FALSE(backend.set_endless_spool_enabled(true).success());
         CHECK(backend.captured.empty());
     }
 }

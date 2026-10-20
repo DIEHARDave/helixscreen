@@ -361,37 +361,37 @@ class SettingsManager {
     void reset_jog_distances();
 
     // =========================================================================
-    // QIDI BOX EJECT (owned by SettingsManager — persisted per-printer)
+    // LANE EJECT (owned by SettingsManager — persisted per-printer)
     // =========================================================================
 
-    /** @brief Get QIDI Box eject distance magnitude in mm (default 878, range 100-2000) */
-    int get_qidi_eject_distance() const {
-        return settings_.get(Key::QidiEjectDistance);
+    /** @brief Lane eject distance magnitude in mm (default 878, range 100-2000) */
+    int get_ams_eject_distance() const {
+        return settings_.get(Key::AmsEjectDistance);
     }
 
-    /** @brief Set QIDI Box eject distance magnitude in mm (clamped 100-2000, persisted) */
-    void set_qidi_eject_distance(int mm) {
-        settings_.set(Key::QidiEjectDistance, mm);
+    /** @brief Set the lane eject distance magnitude in mm (clamped 100-2000, persisted) */
+    void set_ams_eject_distance(int mm) {
+        settings_.set(Key::AmsEjectDistance, mm);
     }
 
-    /** @brief QIDI eject distance subject (integer: mm) for UI binding */
-    lv_subject_t* subject_qidi_eject_distance() {
-        return settings_.subject(Key::QidiEjectDistance);
+    /** @brief Lane eject distance subject (integer: mm) */
+    lv_subject_t* subject_ams_eject_distance() {
+        return settings_.subject(Key::AmsEjectDistance);
     }
 
-    /** @brief Get QIDI Box eject velocity in mm/s (default 100, range 10-300) */
-    int get_qidi_eject_velocity() const {
-        return settings_.get(Key::QidiEjectVelocity);
+    /** @brief Lane eject velocity in mm/s (default 100, range 10-300) */
+    int get_ams_eject_velocity() const {
+        return settings_.get(Key::AmsEjectVelocity);
     }
 
-    /** @brief Set QIDI Box eject velocity in mm/s (clamped 10-300, persisted) */
-    void set_qidi_eject_velocity(int mm_per_sec) {
-        settings_.set(Key::QidiEjectVelocity, mm_per_sec);
+    /** @brief Set the lane eject velocity in mm/s (clamped 10-300, persisted) */
+    void set_ams_eject_velocity(int mm_per_sec) {
+        settings_.set(Key::AmsEjectVelocity, mm_per_sec);
     }
 
-    /** @brief QIDI eject velocity subject (integer: mm/s) for UI binding */
-    lv_subject_t* subject_qidi_eject_velocity() {
-        return settings_.subject(Key::QidiEjectVelocity);
+    /** @brief Lane eject velocity subject (integer: mm/s) */
+    lv_subject_t* subject_ams_eject_velocity() {
+        return settings_.subject(Key::AmsEjectVelocity);
     }
 
     // =========================================================================
@@ -493,25 +493,26 @@ class SettingsManager {
     // =========================================================================
 
     /**
-     * @brief Get whether AFC unloads filament from the toolhead after a print.
+     * @brief Whether the filament system unloads the toolhead when a print ends,
+     * on systems where that is the user's end-of-print macros' choice (AFC).
      *
-     * AFC behavior depends on the user's end-of-print macros: some retract
-     * filament out of the extruder, leaving the toolhead empty by design,
-     * others leave it loaded. When enabled, the pre-print runout warning is
-     * suppressed (an empty toolhead is expected, not a fault). Default false.
+     * Some end macros retract filament out of the extruder, leaving the
+     * toolhead empty by design, others leave it loaded. When enabled, the
+     * pre-print runout warning is suppressed (an empty toolhead is expected,
+     * not a fault). Default false.
      */
-    bool get_afc_unload_after_print() const {
-        return settings_.get_bool(Key::AfcUnloadAfterPrint);
+    bool get_unload_after_print() const {
+        return settings_.get_bool(Key::UnloadAfterPrint);
     }
 
-    /** @brief Set whether AFC unloads filament from the toolhead after a print */
-    void set_afc_unload_after_print(bool enabled) {
-        settings_.set(Key::AfcUnloadAfterPrint, enabled);
+    /** @brief Set whether the toolhead is unloaded when a print ends */
+    void set_unload_after_print(bool enabled) {
+        settings_.set(Key::UnloadAfterPrint, enabled);
     }
 
-    /** @brief AFC unload-after-print subject (integer: 0=off, 1=on) */
-    lv_subject_t* subject_afc_unload_after_print() {
-        return settings_.subject(Key::AfcUnloadAfterPrint);
+    /** @brief Unload-after-print subject (integer: 0=off, 1=on) */
+    lv_subject_t* subject_unload_after_print() {
+        return settings_.subject(Key::UnloadAfterPrint);
     }
 
     // =========================================================================
@@ -906,13 +907,13 @@ class SettingsManager {
         MotionShowActualPosition,
         BedMapClearance,
         MotionLayout,
-        QidiEjectDistance,
-        QidiEjectVelocity,
+        AmsEjectDistance,
+        AmsEjectVelocity,
         ToolheadStyle,
         ShowPrinterSwitcher,
         ShowWidgetLabels,
         AutoColorMap,
-        AfcUnloadAfterPrint,
+        UnloadAfterPrint,
         EndOfPrintUnloadTools,
         AmsAlwaysShowBypassSpool,
         AmsKeepSpoolInfoOnEject,

@@ -266,7 +266,7 @@ static void show_rich_completion_modal(PrintJobState state, const char* filename
     case PrintJobState::CANCELLED:
         icon_src = "cancel";
         icon_variant = "warning";
-        title = "Print Cancelled";
+        title = "Print Canceled";
         break;
     case PrintJobState::ERROR:
         icon_src = "alert";
@@ -476,7 +476,7 @@ void apply_preparing_exit(PreparingExit reason) {
     const PreparingExitAction action = decide_preparing_exit_action(reason);
 
     if (action.notify_cancelled) {
-        NOTIFY_INFO(lv_tr("Print cancelled"));
+        NOTIFY_INFO(lv_tr("Print canceled"));
     } else if (action.notify_failure) {
         NOTIFY_ERROR(lv_tr("Print did not start"));
     }

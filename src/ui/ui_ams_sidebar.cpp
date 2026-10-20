@@ -213,32 +213,48 @@ HELIX_PSRAM_BSS lv_subject_t s_supports_reset{};
 bool s_gating_subjects_initialized = false;
 SubjectManager s_subjects;
 
+/// The sidebar whose refresh last wrote the subjects above. They describe that
+/// sidebar's backend, so they go back to their defaults when it goes away: a
+/// sidebar built later for another backend must not inherit a hidden Unload.
+const AmsOperationSidebar* s_gating_owner = nullptr;
+
+/// The values nothing has refreshed yet.
+void reset_button_gating_subjects() {
+    // Disabled: nothing is known about the backend or the job until the first
+    // refresh, and an over-eager button is the failure that matters here.
+    lv_subject_set_int(&s_unload_disabled, 1);
+    lv_subject_set_int(&s_load_disabled, 1);
+    lv_subject_set_int(&s_reset_disabled, 1);
+    lv_subject_set_int(&s_check_gates_disabled, 1);
+    // Shown, as on most printers; setup() refreshes them before the first draw.
+    lv_subject_set_int(&s_load_hidden, 0);
+    lv_subject_set_int(&s_unload_hidden, 0);
+    lv_subject_set_int(&s_unload_picks, 0);
+    // Mount and Park appear only where a backend says its heads dock.
+    lv_subject_set_int(&s_mount_hidden, 1);
+    lv_subject_set_int(&s_mount_disabled, 1);
+    lv_subject_set_int(&s_park_hidden, 1);
+    lv_subject_set_int(&s_park_disabled, 1);
+    lv_subject_copy_string(&s_action_reason, "");
+    lv_subject_set_int(&s_action_reason_shown, 0);
+    // Shown by default, as on most backends; refresh_button_gating() hides it
+    // where Reset has nothing to clear.
+    lv_subject_set_int(&s_supports_reset, 1);
+}
+
 void init_button_gating_subjects() {
     if (s_gating_subjects_initialized) {
         return;
     }
-    // Start disabled: nothing is known about the backend or the job until the
-    // first refresh, and an over-eager button is the failure that matters here.
-    lv_subject_init_int(&s_unload_disabled, 1);
-    lv_subject_init_int(&s_load_disabled, 1);
-    lv_subject_init_int(&s_reset_disabled, 1);
-    lv_subject_init_int(&s_check_gates_disabled, 1);
-    // Shown, as on most printers; setup() refreshes them before the first draw.
-    lv_subject_init_int(&s_load_hidden, 0);
-    lv_subject_init_int(&s_unload_hidden, 0);
-    lv_subject_init_int(&s_unload_picks, 0);
-    // Mount and Park appear only where a backend says its heads dock.
-    lv_subject_init_int(&s_mount_hidden, 1);
-    lv_subject_init_int(&s_mount_disabled, 1);
-    lv_subject_init_int(&s_park_hidden, 1);
-    lv_subject_init_int(&s_park_disabled, 1);
+    for (lv_subject_t* subject :
+         {&s_unload_disabled, &s_load_disabled, &s_reset_disabled, &s_check_gates_disabled,
+          &s_load_hidden, &s_unload_hidden, &s_unload_picks, &s_mount_hidden, &s_mount_disabled,
+          &s_park_hidden, &s_park_disabled, &s_action_reason_shown, &s_supports_reset}) {
+        lv_subject_init_int(subject, 0);
+    }
     lv_subject_init_string(&s_action_reason, s_action_reason_buf, nullptr,
                            sizeof(s_action_reason_buf), "");
-    lv_subject_init_int(&s_action_reason_shown, 0);
-    // Shown by default, as on most backends; refresh_button_gating() runs in
-    // setup(), before the sidebar is first drawn, and hides it where Reset has
-    // nothing to clear.
-    lv_subject_init_int(&s_supports_reset, 1);
+    reset_button_gating_subjects();
     s_subjects.publish("ams_sidebar_unload_disabled", &s_unload_disabled);
     s_subjects.publish("ams_sidebar_load_disabled", &s_load_disabled);
     s_subjects.publish("ams_sidebar_reset_disabled", &s_reset_disabled);
@@ -255,13 +271,29 @@ void init_button_gating_subjects() {
     s_subjects.publish("ams_sidebar_supports_reset", &s_supports_reset);
     s_gating_subjects_initialized = true;
 
-    StaticSubjectRegistry::instance().register_deinit("AmsSidebarButtonGating", []() {
-        if (s_gating_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_gating_subjects_initialized = false;
-            spdlog::trace("[AmsSidebar] Button gating subjects deinitialized");
-        }
-    });
+    // The subjects are created once, from the AMS panels' process-once XML
+    // registration, so a printer switch must not deinit them: nothing would
+    // create them again. The switch resets their values instead.
+    StaticSubjectRegistry::instance().register_deinit(
+        "AmsSidebarButtonGating",
+        []() {
+            if (s_gating_subjects_initialized && lv_is_initialized()) {
+                s_gating_owner = nullptr;
+                s_subjects.deinit_all();
+                s_gating_subjects_initialized = false;
+                spdlog::trace("[AmsSidebar] Button gating subjects deinitialized");
+            }
+        },
+        StaticSubjectRegistry::Lifetime::Process);
+    StaticSubjectRegistry::instance().register_deinit(
+        "AmsSidebarButtonGatingReset",
+        []() {
+            if (s_gating_subjects_initialized && lv_is_initialized()) {
+                s_gating_owner = nullptr;
+                reset_button_gating_subjects();
+            }
+        },
+        StaticSubjectRegistry::Lifetime::ProcessRunOnSwitch);
 }
 
 } // namespace
@@ -453,9 +485,6 @@ bool AmsOperationSidebar::setup(lv_obj_t* panel) {
 
     if (lv_subject_t* portrait = lv_xml_get_subject(nullptr, "ui_is_portrait"))
         place_summary(lv_subject_get_int(portrait) != 0);
-
-    // Hide settings button if no device sections
-    update_settings_visibility();
 
     active_ = true;
 
@@ -737,6 +766,13 @@ void AmsOperationSidebar::cleanup() {
     clog_meter_.reset();
     buffer_slider_.reset();
 
+    if (s_gating_owner == this) {
+        s_gating_owner = nullptr;
+        if (s_gating_subjects_initialized) {
+            reset_button_gating_subjects();
+        }
+    }
+
     // A preheat still waiting outlives this sidebar: FilamentOpHeater runs the
     // op once the nozzle is hot. Only the stepper's held action goes with us.
     bypass_toggle_.cancel_pending();
@@ -776,32 +812,9 @@ void AmsOperationSidebar::sync_from_state() {
     // Sync loaded card display
     update_current_loaded_display();
 
-    // Update settings visibility (backend may have changed)
-    update_settings_visibility();
     update_check_gates_visibility();
     sync_reset_button_label();
     refresh_button_gating();
-}
-
-// ============================================================================
-// Settings Visibility
-// ============================================================================
-
-void AmsOperationSidebar::update_settings_visibility() {
-    if (!sidebar_root_) {
-        return;
-    }
-
-    auto* backend = AmsState::instance().get_backend(0);
-    lv_obj_t* btn_settings = lv_obj_find_by_name(sidebar_root_, "btn_settings");
-    if (btn_settings && backend) {
-        auto sections = backend->get_device_sections();
-        if (sections.empty()) {
-            lv_obj_add_flag(btn_settings, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_remove_flag(btn_settings, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
 }
 
 // ============================================================================
@@ -1425,6 +1438,7 @@ void AmsOperationSidebar::refresh_button_gating() {
     if (!s_gating_subjects_initialized) {
         return;
     }
+    s_gating_owner = this;
     const helix::ui::FilamentActionSet actions = read_filament_actions();
     lv_subject_set_int(&s_load_hidden, actions.load.visible ? 0 : 1);
     lv_subject_set_int(&s_load_disabled, actions.load.enabled ? 0 : 1);

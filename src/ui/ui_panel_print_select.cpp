@@ -134,6 +134,29 @@ PrintSelectPanel* find_print_select_panel() {
     return g_print_select_panel.get();
 }
 
+namespace {
+std::unique_ptr<helix::ui::PrintStartController> g_fallback_print_controller;
+}
+
+// NAMESPACE_OK: beside get_print_select_panel, whose controller it hands out
+helix::ui::PrintStartController& print_start_controller_for(helix::PrinterState& printer_state,
+                                                            helix::IMoonrakerAPI* api) {
+    auto* panel = get_print_select_panel(printer_state, api);
+    if (auto* controller = panel ? panel->get_print_start_controller() : nullptr) {
+        return *controller;
+    }
+    if (!g_fallback_print_controller) {
+        spdlog::info("[PrintSelectPanel] Print Files not built yet; starting through a "
+                     "controller kept for starts with no file view");
+        g_fallback_print_controller =
+            std::make_unique<helix::ui::PrintStartController>(printer_state, api);
+        StaticPanelRegistry::instance().register_destroy(
+            "FallbackPrintStartController", []() { g_fallback_print_controller.reset(); });
+    }
+    g_fallback_print_controller->set_api(api);
+    return *g_fallback_print_controller;
+}
+
 PrintSelectPanel& get_global_print_select_panel() {
     if (!g_print_select_panel) {
         spdlog::error(

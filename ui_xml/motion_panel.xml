@@ -30,6 +30,17 @@
     <px name="bed_map_home_size_small" value="60"/>
     <px name="bed_map_home_size_medium" value="72"/>
     <px name="bed_map_home_size_large" value="88"/>
+    <!-- The landscape jog mode row: button_height, except the compact height on
+         a 480x320 screen, which leaves the jog pad its room. A px value cannot
+         reference another token, so these repeat button_height's ladder; the
+         "motion_mode_row_h follows button_height" test pins the copy. -->
+    <px name="motion_mode_row_h_micro" value="26"/>
+    <px name="motion_mode_row_h_tiny" value="28"/>
+    <px name="motion_mode_row_h_small" value="48"/>
+    <px name="motion_mode_row_h_medium" value="52"/>
+    <px name="motion_mode_row_h_large" value="72"/>
+    <px name="motion_mode_row_h_xlarge" value="80"/>
+    <px name="motion_mode_row_h_xxlarge" value="96"/>
   </consts>
   <subjects>
     <!-- From small up the landscape Z keys stack their arrow over the distance,
@@ -450,7 +461,7 @@
             <!-- Fine/Coarse/Turbo jog mode toggle -->
             <!-- Landscape keeps full-width mode buttons at button height: a taller
                  near-square key would take its height from the pad above. -->
-            <motion_jog_modes name="jog_modes" button_height="#button_height" max_width="100%" icon_position="left">
+            <motion_jog_modes name="jog_modes" button_height="#motion_mode_row_h" max_width="100%" icon_position="left">
               <bind_flag_if_not_eq subject="motion_tab" flag="hidden" ref_value="0"/>
               <bind_flag_if_not_eq subject="settings_motion_layout" flag="hidden" ref_value="0"/>
             </motion_jog_modes>

@@ -441,6 +441,66 @@ recorded as live-verified (#991) is the `AUTO_FEEDING` command itself - it block
 (`src/printer/ams_backend_snapmaker.cpp#prepare_for_resume`, `:722-724`). The full chain - runout pause ->
 runout dialog -> refeed -> RESUME -> print continues - is **not field-tested**.
 
+**Resume waits for a confirmed load.** `FEED_AUTO` answers OK without feeding when the
+port reads empty under `PRINTING=1`, and raises 525 (`extruder[N]: state: ..., error: ...!`)
+when its own test, `channel_state == load_finish` with `channel_error == ok`, fails at the
+end. The head presence switch reads present for filament that reached the toolhead and
+stopped short of the nozzle, so it vouches for nothing. A load that errors, times out, or
+answers OK with the feeder short of that test (the refeed, a Load from the filament panel),
+and a feeder frame naming a `*_fail` state or a channel_error fault from any source, mark
+the head's load unconfirmed for the current print. The refeed's OK can arrive before the
+frame naming `load_finish`, so it is judged on the head's next decisive frame (loaded with
+no error, or a failure; `load_finish` can land a frame before its error reads `ok`), or
+after 3 s without one. One refeed runs at a time: another Resume meanwhile is answered busy.
+A feeder still mid-load or mid-hand-feed on the head (a `load_*` or `manual_sta_*` state in
+progress, e.g. started from the printer's own screen) refuses Resume outright. While a head is marked, `prepare_for_resume` never reaches RESUME: on the head
+it resumes on it retries the refeed, and on another head the print uses (`extruders_used`)
+it refuses, since loading that head would leave it picked up when RESUME runs; a head the
+print does not use holds nothing. A Resume after a failed load is the
+dangerous action: `INNER_RESUME` extrudes 20 mm (`_CLIENT_EXTRUDE LENGTH=20`) into
+whatever jammed. The refusal names the head and points at the hardware ("Toolhead 2 (T1)
+didn't load. Check that its hotend is seated and do a test extrude before resuming."),
+with tapping Resume to retry the load as the way forward. Even with nothing marked, a head
+an automatic feeder serves whose feeder reports a failure runs the refeed first, the motion
+sensor's present reading notwithstanding. Settled states that are no failure resume as they
+are: `load_finish`, `unload_finish` (filament back at the feeder), `manual_sta_finish` (a hand
+load), `preload_finish`. The mark clears when that feeder reaches `load_finish`, or finishes a
+hand feed (`manual_sta_finish`), with no error, and when the print leaves printing/paused.
+A bare sensor reading never clears it: `FEED_AUTO` returns OK without feeding on an empty
+port, and filament stopped at the head switch reads present. For a head already loaded,
+`<klipper>/klippy/extras/filament_feed.py`'s `cmd_FEED_AUTO` returns OK at once when
+`channel_state` is `load_finish` and `channel_error` is `ok`, changing nothing and sending
+no frame, so the refeed judges it on the snapshot it already holds; a hand-loaded head
+(`manual_sta_finish`) is not that early return, and its own frame clears the mark before
+Resume refeeds anything. The marks live in the app: after the app restarts (not a websocket
+drop), a mark from an `AUTO_FEEDING` error or an OK with no `load_finish` is gone, and only
+a feeder still reporting a `*_fail` state or an error fault marks the head again. A restart
+from the beginning reads the file's tools from Moonraker's metadata, the tools cache and at
+most the footer's one range read (`FileRead::Footer`), never downloading the file: Orca's U1
+profile leaves `filament_weights` out of the metadata but writes `; filament used [g] = ...`
+per filament in the footer. A printer switch during that read drops the restart It survives a reconnect to a print still
+running, since the first print state a connection reads is no change of print, and the
+subscription's first frame marks any head whose feeder still reports a failure
+(`src/printer/ams_backend_snapmaker.cpp#mark_load_unconfirmed_locked`).
+
+**A print started without the task setup.** A slicer upload-and-print or a Fluidd start
+arrives as a plain `SDCARD_PRINT_FILE`, so `extruders_used` stays all false: the firmware's
+per-head runout feed (`sm_print_auto_feed`) and the end-of-print unload
+(`SM_PRINT_END_AUTO_UNLOAD_FILAMENT`) both skip every head. `SET_PRINT_USED_EXTRUDERS` and
+`SET_PRINT_TASK_PARAMETERS` are refused while `print_stats.state` is printing or paused
+(`id=531, code=16`), so the backend cannot repair it mid-print. With `extruders_used` all
+false the firmware also skips `SM_PRINT_PREEXTRUDE_FILAMENT` and the switch check, so every
+toolhead after the first pauses the print on its first use. The backend judges each print
+once, on the first frame that names it printing or paused; when its task names no used
+head it reads the file's tools (`FileStartFactsLoader`: scanned tools, else per-tool
+weights, else palette size, else assumed) and, when one past T0 is used and the print is
+still the same one, raises one sticky warning saying so. Every start from this screen
+calls `note_print_start_from_here()` before its pre-print step (the start controller and
+the restart-from-beginning path), and the print that begins within two minutes counts as
+this screen's: it never gets the "started outside HelixScreen" line, and one whose file's
+tools went unread gets "HelixScreen couldn't read which toolheads this file uses" instead
+(`src/printer/ams_backend_snapmaker.cpp#judge_task_config_locked`).
+
 Related capability flags: `recovers_filament_on_resume() = true` (Resume re-feeds, so
 the runout dialog presents Resume as primary) and
 `should_suppress_idle_runout_modal() = true` (the U1 drives load/unload itself, so an
@@ -500,6 +560,22 @@ firmware's `extruder_map_table` holds the live logical-to-physical answer for th
 print, and `get_tool_mapping()` publishes it (read-only; the write side is the pre-print
 gcode).
 
+**A reprint with no known routing.** A reprint replays the routing the backend saw the
+last print configured with (`last_print_tool_mapping()`). When it saw none (a slicer or
+Fluidd start, or the app restarted since), no map is written: an identity map is a wrong
+answer for a crossover print. The used heads still go out. `<klipper>/klippy/extras/print_task_config.py`'s
+`reset_print_info()` sets `extruder_map_table` back to its default at every print end
+(complete, cancel, error), so a print whose start writes no map runs tool n on head n, and
+`build_unrouted_preprint_gcode()` sends `SET_PRINT_USED_EXTRUDERS` for the file's tools at
+those heads, plus the unload choice (`print_routing_resets_to_identity()`). The file's tools
+come from `file_tools_used()` (scanned tools, else per-tool weights). Nothing goes when the
+tools cannot be read, or when the firmware's live map reads other than its default for a
+used tool (a map a start that never printed left behind). A file cannot set its own
+routing: `SET_PRINT_EXTRUDER_MAP`, `SET_PRINT_USED_EXTRUDERS` and
+`SET_PRINT_TASK_PARAMETERS` all refuse while `print_stats.state` is printing or paused
+(`id=531`), which is when a file's lines run
+(`src/ui/ui_print_start_controller.cpp#reprint_impl`).
+
 ### Slot Overrides and lane_data
 
 Per-slot user overrides persist through `FilamentSlotOverrideStore` under the
@@ -545,7 +621,7 @@ later drops to `NONE` is written back from it while the spool stays in the lane.
 
 ### Toolhead Offset Calibration
 
-The stock firmware's multi-toolhead offset calibration is a device action (`snapmaker_nozzle_offset_cal`, section `snapmaker_calibration`) that starts the `snapmaker_nozzle_offset` guided flow. The backend offers it only when `snapmaker::nozzle_offset::supported()` finds `_EXTRUDER_OFFSET_ACTION_PRESTART`, `_EXTRUDER_OFFSET_ACTION_EXIT` and the five per-head hook macros for T0..T3 in the objects list (`include/snapmaker_nozzle_offset.h`); it greys out while `print_stats.state` is printing or paused.
+The stock firmware's multi-toolhead offset calibration is the `snapmaker_nozzle_offset` guided flow, started from Controls > Calibration > Tool Offsets: `helix::tool_offset_calibration::guided_flow()` names it for a U1, so the generic entry opens it instead of the macro panel, with no beta gate. It is offered only when `snapmaker::nozzle_offset::supported()` finds `_EXTRUDER_OFFSET_ACTION_PRESTART`, `_EXTRUDER_OFFSET_ACTION_EXIT` and the five per-head hook macros for T0..T3 in the objects list (`include/snapmaker_nozzle_offset.h`); the Calibration tile is `moves_machine`, so it greys out while a print, running or paused, holds the printer.
 
 The commands are registered in Python by `ExtruderOffsetCalibration` in `<klipper>/klippy/extras/probe_inductance_coil.py` (status object `extruder_offset_calibration`), with no `desc=`, so they never appear in `printer.gcode.help`. Each `EXTRUDER_OFFSET_ACTION_<STEP>` is one blocking step that runs the matching `_EXTRUDER_OFFSET_ACTION_<STEP>[_Tn]` macro from `xyz_offset_calibration.cfg`. Every step but PRESTART refuses with coded fault `0003-0530-0000-0009` unless `machine_state_manager.main_state` is `XYZ_OFFSET_CALIBRATE`, which PRESTART enters and EXIT leaves. The stock screen (`/usr/bin/gui`, view source cali_extruders_offset.c) sequences them; its step table and its Next-button handler fix this order:
 
@@ -793,11 +869,11 @@ END_LED_TURN_OFF=<0/1>  END_UNLOAD_FILAMENT=<python-list-literal>  FORCE=<0/1>
 - `END_UNLOAD_FILAMENT` is parsed with `ast.literal_eval` and must be a Python list (e.g. `[1,0,1,0]`).
 
 HelixScreen surfaces the filament-side subset of these prefs as device actions in the printer's
-settings: `get_device_sections()` publishes one "Print Behaviour" section and
+settings: `get_device_sections()` publishes one "Print Behavior" section (`print_prefs`) and
 `get_device_actions()` one row per pref the firmware has actually reported
 (`src/printer/ams_backend_snapmaker.cpp#get_device_actions`) - auto-replenish, replenish-ignores-colour,
 tangle detect, tangle sensitivity (dropdown low/medium/high), end-of-print LED, and one
-"Unload at end" toggle per toolhead ("Unload at end - Toolhead 1 (T0)"). A pref with no reported value
+"Unload at end" toggle per toolhead, carrying its `tool_index` so the UI names it ("Unload at end - Toolhead 1 (T0)"). A pref with no reported value
 renders no row at all: a toggle whose state is unknown would render off and invite "changing" it
 to its own value. Toggles are written back through `build_preference_gcode()`, which emits
 `SET_PRINT_PREFERENCES` with only the changed parameter (omitted parameters keep their firmware

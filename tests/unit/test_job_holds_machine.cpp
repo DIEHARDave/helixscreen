@@ -509,6 +509,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/create_filament_modal.xml",
     "ui_xml/create_vendor_modal.xml",
     "ui_xml/debug_bundle_modal.xml",
+    "ui_xml/device_action_button.xml",
     "ui_xml/estop_confirmation_dialog.xml",
     "ui_xml/exclude_object_modal.xml",
     "ui_xml/factory_reset_modal.xml",

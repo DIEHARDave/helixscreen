@@ -538,6 +538,67 @@ AmsError AmsSubscriptionBackend::refuse_if_printing(bool paused_blocks) const {
     return AmsErrorHelper::print_active(is_paused, /*pause_allows_ops=*/!self_homes);
 }
 
+AmsError AmsSubscriptionBackend::refuse_motion_if_printing() const {
+    if (!api_) {
+        return AmsErrorHelper::success();
+    }
+    const auto lifecycle = api_->printer_state().print_state().get_print_lifecycle();
+    // self_homes=true: PAUSED blocks too, the same span machine_motion_blocked greys.
+    if (!print_blocks_filament_op(lifecycle, /*backend_self_homes=*/true)) {
+        return AmsErrorHelper::success();
+    }
+    spdlog::warn("{} Refusing machine motion while a print holds the printer (lifecycle={})",
+                 backend_log_tag(), static_cast<int>(lifecycle));
+    return AmsErrorHelper::busy_with_print();
+}
+
+AmsError AmsSubscriptionBackend::send_endless_spool_switch(const std::string& gcode,
+                                                           std::function<void()> on_sent) {
+    auto token = lifetime_.token();
+    return execute_gcode(
+        gcode,
+        [on_sent = std::move(on_sent)]() {
+            if (on_sent) {
+                on_sent();
+            }
+        },
+        [this, token](const MoonrakerError&) {
+            token.defer("AmsSubscriptionBackend::endless_spool_refused",
+                        [this]() { emit_event(kEventEndlessSpoolRefused); });
+        });
+}
+
+AmsError AmsSubscriptionBackend::execute_device_action(const std::string& action_id,
+                                                       const std::any& value) {
+    // Only an action the backend offers right now runs: one it no longer lists
+    // (its hardware went away, its config changed) has no moves_machine answer
+    // to gate it by.
+    const auto actions = get_device_actions();
+    const auto it = std::find_if(actions.begin(), actions.end(),
+                                 [&](const auto& a) { return a.id == action_id; });
+    if (it == actions.end()) {
+        spdlog::warn("{} Refusing device action '{}': not offered now", backend_log_tag(),
+                     action_id);
+        return AmsErrorHelper::not_supported("Device action " + action_id);
+    }
+    // Listed but unavailable (no hardware for it, config still loading): every
+    // caller is refused, the UI's own checks aside.
+    if (!it->enabled) {
+        spdlog::warn("{} Refusing device action '{}': {}", backend_log_tag(), action_id,
+                     it->disable_reason);
+        return AmsError(AmsResult::WRONG_STATE, "Device action " + action_id + " is unavailable",
+                        lv_tr("Not available now"), lv_tr(it->disable_reason.c_str()));
+    }
+    if (it->moves_machine) {
+        AmsError refused =
+            it->allowed_while_paused ? refuse_if_printing() : refuse_motion_if_printing();
+        if (!refused.success()) {
+            return refused;
+        }
+    }
+    return do_execute_device_action(action_id, value);
+}
+
 bool AmsSubscriptionBackend::toolhead_homed() const {
     if (!api_) {
         // No connection: callers fall back to dispatching directly, so the

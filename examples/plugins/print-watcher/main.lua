@@ -245,7 +245,7 @@ end
 -- edge is one event.
 local TITLES = {
     started = "Started", resumed = "Resumed", paused = "Paused",
-    completed = "Completed", cancelled = "Cancelled", failed = "Failed",
+    completed = "Completed", cancelled = "Canceled", failed = "Failed",
 }
 
 -- A print ends only if one was running: the state a printer rests in after

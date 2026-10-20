@@ -87,7 +87,7 @@
       <!-- Orange warning badge with cancel icon (animated on appearance) -->
       <!-- Uses ui_button for auto-contrast text via update_button_text_contrast() -->
       <ui_button name="cancel_badge"
-                 width="content" height="content" variant="warning" icon="cancel" text="Print Cancelled"
+                 width="content" height="content" variant="warning" icon="cancel" text="Print Canceled"
                  clickable="false" focusable="false" style_radius="#space_lg" style_pad_left="#space_md"
                  style_pad_right="#space_md" style_pad_top="#space_sm" style_pad_bottom="#space_sm"/>
     </lv_obj>

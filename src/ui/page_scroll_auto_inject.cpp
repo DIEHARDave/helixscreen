@@ -53,6 +53,13 @@ bool PageScrollAutoInject::qualifies(lv_obj_t* obj) {
     if ((lv_obj_get_scroll_dir(obj) & LV_DIR_VER) == 0) {
         return false; // horizontal-only (e.g. carousel)
     }
+    // An image is scrollable by default and measures its source pixels as content,
+    // so a picture larger than its box overflows on paper. It draws scaled to the
+    // box and ignores the scroll offset: paging it moves nothing and the gutter
+    // would sit on the picture.
+    if (lv_obj_check_type(obj, &lv_image_class)) {
+        return false;
+    }
     return lv_obj_get_scroll_bottom(obj) > 0 || lv_obj_get_scroll_y(obj) > 0;
 }
 

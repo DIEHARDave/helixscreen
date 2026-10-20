@@ -454,6 +454,7 @@ translations:
   Bowden: Bowden
   Bowden Length: 'Comprimento do bowden'
   Bowden tube length from hub to toolhead: 'Comprimento do tubo bowden do hub ao cabeçote'
+  Bowden tube length to this tool: "Comprimento do tubo Bowden até esta ferramenta"
   Box: Caixa
   Brand: Marca
   Brand and material come from Spoolman: Marca e material vêm do Spoolman
@@ -490,6 +491,8 @@ translations:
   ? Bypass is active, but this print uses AMS slots. The printer may refuse to load a slot while bypass filament is in the toolhead. Remove the filament and turn bypass off before printing. Start anyway?
   : O bypass está ativo, mas esta impressão usa slots AMS. A impressora pode não conseguir carregar um slot enquanto houver filamento de bypass no cabeçote. Remova o filamento e desative o bypass antes de imprimir. Iniciar mesmo assim?
   Bypass mode is not currently active: 'O modo bypass não está ativo no momento'
+  Bypass off macro: 'Macro de desligar bypass'
+  Bypass on macro: 'Macro de ligar bypass'
   Bypass toggle failed: Falha ao alternar bypass
   C: C
   CALIBRATION: CALIBRAÇÃO
@@ -544,7 +547,7 @@ translations:
   Calibration Failed: Calibração Falhou
   Calibration Saved: Calibração salva
   Calibration and system configuration: 'Calibração e configuração do sistema'
-  Calibration cancelled.: Calibração cancelada.
+  Calibration canceled.: Calibração cancelada.
   Calibration complete: Calibração concluída
   Calibration complete - save to keep the offsets: Calibração concluída - salve para manter os offsets
   Calibration complete!: Calibração concluída!
@@ -553,6 +556,7 @@ translations:
   Calibration failed: Calibração falhou
   Calibration failed - touch targets more precisely.: Calibração falhou – toque nos
     alvos com mais precisão.
+  Calibration in progress: "Calibração em andamento"
   Calibration kept timing out. Your previous settings were kept.: A calibração expirou repetidamente. Suas configurações anteriores foram mantidas.
   Calibration may still be running — printer connection was interrupted: 'A calibração pode ainda estar em execução — a conexão com a impressora foi interrompida'
   Calibration may still be running — response timed out: 'A calibração pode ainda estar em execução — tempo esgotado'
@@ -580,8 +584,8 @@ translations:
   Cancel Scheduled Pause: 'Cancelar pausa agendada'
   Cancel macro not configured: Macro de cancelar não configurado
   Cancel print: 'Cancelar impressão'
-  Cancelled: Cancelado
-  Cancelling turns the chamber target off so the wait ends, then stops the print.: 'Cancelar desliga o alvo da câmara para que a espera termine e depois para a impressão.'
+  Canceled: Cancelado
+  Canceling turns the chamber target off so the wait ends, then stops the print.: 'Cancelar desliga o alvo da câmara para que a espera termine e depois para a impressão.'
   'Cannot add to queue: internal error': 'Não foi possível adicionar à fila: erro interno'
   Cannot be changed from here on a multi-unit MMU: Não pode ser alterado aqui em um MMU de várias unidades
   Cannot change the HelixPrint plugin while printing: Não é possível alterar o plugin HelixPrint durante a impressão
@@ -711,7 +715,7 @@ translations:
   Choose rendering mode for bed mesh visualization: Escolha o modo de renderização
     para visualização da malha da mesa
   Choose sound style: Escolher estilo de som
-  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses.
+  ? Choose the model that matches your printer. This sets the print macros, fan roles and calibration behavior HelixScreen uses.
   : Escolha o modelo que corresponde à sua impressora. Isso define as macros de impressão, as funções das ventoinhas e o comportamento de calibração que o HelixScreen usa.
   Choose what to power off or restart.: Escolha o que desligar ou reiniciar.
   'Chute position: X {:.1f}, Y {:.1f}': 'Posição da calha de purga: X {:.1f}, Y {:.1f}'
@@ -1129,6 +1133,8 @@ translations:
   ETA {}: 'Término {}'
   EXTRAS: EXTRAS
   Each fan can only be selected once: Cada ventoinha só pode ser selecionada uma vez
+  ? Each toolhead after the first will pause the print the first time it is used, because the printer won't load or prime it. Filament won't unload when the print ends.
+  : 'Cada cabeçote depois do primeiro pausará a impressão na primeira vez em que for usado, porque a impressora não vai carregá-lo nem prepará-lo. O filamento não será descarregado ao final da impressão.'
   Edit: Editar
   Edit Filament: Editar Filamento
   Edit Slot: Editar Slot
@@ -1141,6 +1147,7 @@ translations:
   Effects: Efeitos
   Eject: Ejetar
   Eject Distance: Distância de Ejeção
+  Eject Speed: "Velocidade de Ejeção"
   Eject Velocity: Velocidade de Ejeção
   Eject failed: Falha ao ejetar
   Eject needs [force_move] enabled in printer config: A ejeção precisa de [force_move]
@@ -1193,6 +1200,7 @@ translations:
   Ended: Finalizado
   Endless Spool: 'Carretel infinito'
   Endless Spool backups cleared: Reservas do carretel infinito limpas
+  Endless Spool change failed: 'Falha ao alterar o carretel infinito'
   Endless Spool is configured in its package, not from here: O carretel infinito é configurado no seu plugin, não aqui
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: O carretel infinito está ligado, mas nenhum par de slots tem filamento compatível, então nada trocará ao acabar o filamento
   Endless Spool is turned off on this MMU: 'O carretel infinito está desativado neste MMU'
@@ -1249,6 +1257,7 @@ translations:
   Every browser needs a new code to control this screen: 'Cada navegador precisará de um novo código para controlar esta tela'
   Every browser that can control this screen will need the new pairing code.: 'Cada navegador que pode controlar esta tela precisará do novo código de pareamento.'
   Every extruder's temperature at once: A temperatura de todos os extrusores
+  Every unit keeps its filament gripped: "Cada unidade mantém o filamento preso"
   Everything else was saved. Change them in Spoolman.: Todo o resto foi salvo. Altere-os no Spoolman.
   Everything else was saved. Rename the material using letters, digits, spaces, and + - _ . ( ) /: 'Todo o resto foi salvo. Renomeie o material usando letras, dígitos, espaços e + - _ . ( ) /'
   Every object is set to skip, so there is nothing to print: 'Todos os objetos estão marcados para pular, não há nada para imprimir'
@@ -1262,7 +1271,7 @@ translations:
   Exclude Objects: 'Excluir objetos'
   Excluded: Excluído
   Excluding "{}"...: 'Excluindo "{}"...'
-  Exclusion cancelled: Exclusão cancelada
+  Exclusion canceled: Exclusão cancelada
   Execute printer macros: Executar macros da impressora
   Exhaust Fan: Ventoinha de Exaustão
   Exit Code: Código de Saída
@@ -1436,6 +1445,7 @@ translations:
   Feature not available: Recurso não disponível
   'Features: ': 'Recursos: '
   Feed Assist: 'Assistência de alimentação'
+  Feed assist and bypass macros: 'Assistência de alimentação e macros de bypass'
   Feed assist and debug tools: Assistência de alimentação e ferramentas de depuração
   Feed failed: Falha na alimentação
   Feed filament: Alimentar filamento
@@ -1450,6 +1460,7 @@ translations:
   Filament Control: Controle de Filamento
   Filament Detected: Filamento Detectado
   Filament Dryer: Secador de filamento
+  Filament Feeder: "Alimentador de Filamento"
   Filament Grade Mismatch: Grau de Filamento Incompatível
   Filament Humidity: Umidade do Filamento
   Filament In The Toolhead: Filamento no cabeçote
@@ -1531,6 +1542,7 @@ translations:
   Fine-tune: "Ajuste fino"
   Finish: Finalizar
   Finish or cancel the print before loading, unloading, or changing filament: Termine ou cancele a impressão antes de carregar, descarregar ou trocar o filamento
+  Finish or cancel the print first: Termine ou cancele a impressão primeiro
   Finishing clean...: Finalizando limpeza...
   Finishing up...: Finalizando...
   Fireflies: Vaga-lumes
@@ -1697,6 +1709,7 @@ translations:
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen Travou
   HelixScreen Macros: 'Macros do HelixScreen'
+  HelixScreen couldn't read which toolheads this file uses, so the printer wasn't told.: 'O HelixScreen não conseguiu ler quais cabeçotes este arquivo usa, então a impressora não foi informada.'
   HelixScreen is detecting your display orientation: HelixScreen está detectando a
     orientação do seu ecrã
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
@@ -1761,8 +1774,11 @@ translations:
   Hotend Fan: Ventoinha do Hotend
   Hotend Heater: Aquecedor do Hotend
   How Z-axis movement is displayed: Como o movimento do eixo Z é exibido
+  How far and how fast a lane ejects: "Quanto e com que rapidez uma via ejeta"
+  How far filament is pushed back into the box on eject: "Quanto o filamento é empurrado de volta para a caixa ao ejetar"
   How far filament is pushed back into the box on eject (mm): Quão longe o filamento
     é empurrado de volta para a caixa na ejeção (mm)
+  How fast filament is pushed back on eject: "Com que rapidez o filamento é empurrado de volta ao ejetar"
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : 'Quanto tempo segurar para contar como pressão longa, em ms (aumente se o modo de edição ou outras ações dispararem por acidente)'
   How many labels to print: Quantas etiquetas imprimir
@@ -1988,7 +2004,7 @@ translations:
   Last 30 days: 'Últimos 30 dias'
   Last 7 days: 'Últimos 7 dias'
   Last measured: 'Última medição'
-  Last print cancelled: Última impressão cancelada
+  Last print canceled: Última impressão cancelada
   Last print failed: Última impressão falhou
   Later: Depois
   Layer: Camada
@@ -2038,12 +2054,13 @@ translations:
   Load a filament first before trying to unload: Carregue primeiro filamento antes de tentar descarregar
   Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: Carregue um novo carretel neste slot, ou ative o reabastecimento automático para mudar para um equivalente
   Load and unload filament at the tool by hand: 'Carregue e descarregue o filamento à mão na ferramenta'
-  'Load cancelled: nozzle target dropped': 'Carregamento cancelado: o alvo do bico caiu'
+  'Load canceled: nozzle target dropped': 'Carregamento cancelado: o alvo do bico caiu'
   Load complete: 'Carregamento concluído'
   Load failed: Falha ao carregar
   Load filament: 'Carregar filamento'
   Load filament first: Carregue filamento primeiro
   Load into which tool?: 'Carregar em qual ferramenta?'
+  Load it in the filament panel, then tap Resume.: 'Carregue-o no painel de filamento e toque em Retomar.'
   Load or unload filament.: Carregue ou descarregue o filamento.
   Load Profile: 'Carregar perfil'
   Load the required filaments or start anyway?: Carregar os filamentos necessários
@@ -2057,6 +2074,7 @@ translations:
   Loading Error: Erro de Carregamento
   Loading Filament...: Carregando Filamento...
   Loading G-code...: Carregando G-code...
+  Loading configuration...: "Carregando configuração..."
   Loading devices...: Carregando dispositivos...
   Loading filament...: Carregando filamento...
   Loading filaments...: Carregando filamentos...
@@ -2405,6 +2423,7 @@ translations:
   No prints this week: Sem impressões esta semana
   No prints yet: Sem impressões ainda
   No profiles available: Nenhum perfil disponível
+  No sensor fitted for this distance: "Nenhum sensor instalado para esta distância"
   No sensors detected: Nenhum sensor detectado
   No shared peaks: "Nenhum pico em comum"
   No slot currently matches.: 'Nenhum slot corresponde no momento.'
@@ -2419,6 +2438,10 @@ translations:
   No timelapse videos found: Nenhum vídeo timelapse encontrado
   No tools to calibrate: Nenhuma ferramenta para calibrar
   'No turn: the gap moved {:.1f} Hz': "Sem volta: a diferença moveu {:.1f} Hz"
+  No unit has a filament buffer: "Nenhuma unidade tem buffer de filamento"
+  No unit has a moving selector: "Nenhuma unidade tem seletor móvel"
+  No unit has a servo: "Nenhuma unidade tem servo"
+  No unit has an encoder: "Nenhuma unidade tem encoder"
   'No unload macro found: unload by hand, then start again': 'Nenhuma macro de descarga encontrada: descarregue à mão e comece de novo'
 
   No vendors found: Nenhum fornecedor encontrado
@@ -2438,6 +2461,7 @@ translations:
   Not Now: Agora Não
   Not Supported: 'Não suportado'
   Not available here. Update from a terminal.: Não disponível aqui. Atualize a partir de um terminal.
+  Not available now: Indisponível no momento
   Not available on Android: Não disponível no Android
   Not calibrated: Não calibrado
   Not configured: Não configurado
@@ -2488,7 +2512,7 @@ translations:
   Nozzle Temps: Temps do bico
   Nozzle clean complete: Limpeza do bico concluída
   Nozzle clog detected: Entupimento do bico detectado
-  Nozzle did not reach {}°C — {} cancelled: O bico não atingiu {}°C — {} cancelado
+  Nozzle did not reach {}°C — {} canceled: O bico não atingiu {}°C — {} cancelado
   Nozzle interval: 'Intervalo do bico'
   Nozzle min cannot exceed max: O mínimo do bico não pode exceder o máximo
   Nozzle target set to {}°C: Bico configurado para {}°C
@@ -2707,7 +2731,7 @@ translations:
   Preheat %s (%d/%d): 'Pré-aquecer %s (%d/%d)'
   Preheat Macro: Macro de Pré-aquecimento
   Preheat PLA: Pré-aquecer PLA
-  Preheat cancelled: Pré-aquecimento cancelado
+  Preheat canceled: Pré-aquecimento cancelado
   'Preheat: all {} tools + bed set': 'Pré-aquecer: todas as {} ferramentas + mesa
     configurada'
   'Preheat: {} + bed set': 'Pré-aquecer: {} + mesa configurada'
@@ -2743,8 +2767,8 @@ translations:
   Priming...: Preparando...
   Print: Imprimir
   Print Anyway: Imprimir Mesmo Assim
-  'Print Behaviour': 'Comportamento de impressão'
-  Print Cancelled: Impressão Cancelada
+  Print Behavior: "Comportamento de Impressão"
+  Print Canceled: Impressão Cancelada
   Print Complete!: Impressão Concluída!
   Print Completion Alert: Alerta de Conclusão de Impressão
   Print Controls: 'Controles de impressão'
@@ -2768,9 +2792,9 @@ translations:
   Print Tuning: Ajuste de Impressão
   Print Was Terminated: A impressão foi terminada
   Print a test tower and tune K by eye: Imprima uma torre de teste e ajuste K a olho
-  Print cancelled: Impressão cancelada
   Print details: 'Detalhes da impressão'
   Print did not start: A impressão não iniciou
+  Print canceled: Impressão cancelada
   Print complete: Impressão concluída
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): A
     impressão não iniciou — a impressora pode estar ocupada ou offline (B3 polls={},
@@ -2890,6 +2914,7 @@ translations:
   Provide a numeric {}: 'Forneça um valor numérico para {}'
   Provide a speed multiplier value: 'Forneça um multiplicador de velocidade'
   Provide a {}: 'Forneça {}'
+  Provide an on/off value: 'Forneça um valor ligado/desligado'
   Provide {}: 'Forneça {}'
   Pulling filament back: Retraindo filamento
   Purge: Purgar
@@ -2940,6 +2965,7 @@ translations:
   RFID reader malfunction (left): Falha do leitor RFID (esquerdo)
   RFID reader malfunction (right): Falha do leitor RFID (direito)
   RFID, Auto-Refill, nozzle and link care: RFID, reabastecimento automático, cuidados com bico e enlace
+  RFID, nozzle and link care: 'RFID, cuidados com bico e enlace'
   RH: UR
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3512,6 +3538,7 @@ translations:
   Spoolman needs a material for this filament.: O Spoolman precisa de um material para este filamento.
   Spoolman removed.: Spoolman removido.
   Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'O Spoolman salvou o preço, a localização, o lote e as notas, mas não o resto. Nada mais mudou nesta impressora.'
+  Spoolman support is off in Happy Hare: "O suporte ao Spoolman está desligado no Happy Hare"
   Spoolman unavailable — filament weights may be stale: Spoolman indisponível — os
     pesos do filamento podem estar desatualizados
   Spoolman was not configured.: Spoolman não estava configurado.
@@ -3615,6 +3642,7 @@ translations:
   Switch the active tool or extruder: Trocar a ferramenta ou extrusor ativo
   Switch to a backup slot on runout: Trocar para um slot de reserva ao acabar o filamento
   Switch to a matching slot on runout: Trocar para um slot compatível ao acabar o filamento
+  Switch to a matching spool when one runs out: 'Trocar para um carretel compatível quando um acabar'
   Switch to v%s: 'Mudar para a v%s'
   Switch to {}?: 'Trocar para {}?'
   Switched to {}: 'Alterado para {}'
@@ -3655,6 +3683,7 @@ translations:
   'Tangle sensitivity': 'Sensibilidade a emaranhados'
   Tap + to add: Toque em + para adicionar
   Tap Firmware Restart to recover — on K2 this also bounces the rpi MCU bridge: Toque em Reiniciar firmware para recuperar. Na K2 isso também reinicia a ponte MCU rpi
+  Tap Resume to try the load again from {}.: 'Toque em Retomar para tentar carregar novamente a partir de {}.'
   Tap again to confirm this orientation: Toque novamente para confirmar esta orientação
   Tap an empty spot inside the enclosure: Toque em um ponto vazio dentro do gabinete
   Tap any tile to open its full controls or toggle its state.: Toque em qualquer bloco para abrir seus controles completos ou alternar seu estado.
@@ -3791,7 +3820,7 @@ translations:
 
   The plate finishes its current move, but drying will not start.: 'A mesa termina o movimento atual, mas a secagem não vai começar.'
   The print ended before any layer was printed. Nothing was changed.: A impressão terminou antes de qualquer camada ser impressa. Nada foi alterado.
-  The print is cancelled and you pick the best band from what has printed so far.: A impressão é cancelada e você escolhe a melhor faixa do que foi impresso até agora.
+  The print is canceled and you pick the best band from what has printed so far.: A impressão é cancelada e você escolhe a melhor faixa do que foi impresso até agora.
   The print is on its last layer.: 'A impressão está na última camada.'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : A impressão está pausada. Trocar a ferramenta agora move o cabeçote e troca o
@@ -3919,6 +3948,7 @@ translations:
     impressão precisa de cerca de %.0fg, mas o carretel tem cerca de %.0fg restantes.
     Iniciar mesmo assim?
   This print never reports layer {}.: 'Esta impressão nunca informa a camada {}.'
+  This print was started outside HelixScreen, so the printer doesn't know which toolheads it uses.: 'Esta impressão foi iniciada fora do HelixScreen, então a impressora não sabe quais cabeçotes ela usa.'
   This printer cannot calibrate tool offsets automatically: Esta impressora não consegue calibrar os offsets de ferramenta automaticamente
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Esta impressora preenche seus gates a partir do Spoolman. O HelixScreen limpou a própria cópia; remova a bobina no Spoolman.
   This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: Esta impressora preenche seus gates a partir do Spoolman. Faça alterações de cor, material e bobina no Spoolman.
@@ -3940,7 +3970,7 @@ translations:
   This tool probes each bed screw and tells you how much to adjust.: Esta ferramenta
     sonda cada parafuso da mesa e informa quanto ajustar.
   'This update asks for new permissions:': 'Esta atualização pede novas permissões:'
-  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': 'Esta espera só termina na sua temperatura: cancelar exige uma parada de emergência e uma reinicialização do firmware.'
+  'This wait ends only at its temperature: canceling takes an emergency stop and a firmware restart.': 'Esta espera só termina na sua temperatura: cancelar exige uma parada de emergência e uma reinicialização do firmware.'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : Isso aplicará o Z-offset ao seu endstop e reiniciará o Klipper para salvar a configuração.
@@ -4013,6 +4043,7 @@ translations:
   Toggle Auto-Refill: 'Alternar o reabastecimento automático'
   Toggle Quiet Mode: 'Alternar o modo silencioso'
   Toggle external spool bypass: Alternar bypass do carretel externo
+  Toggle this tool's toolhead LED: "Alternar o LED do cabeçote desta ferramenta"
   Toggle toolhead LED for an extruder: 'Alternar o LED do cabeçote para um extrusor'
   'Toggle:': 'Alternar:'
   Too humid: Muito úmido
@@ -4072,9 +4103,12 @@ translations:
   Turn Endless Spool on, then set the Backup Gate: 'Ative o carretel infinito e depois defina o Gate de reserva'
   'Turn LED off when the print ends': 'Desligar o LED ao terminar a impressão'
   Turn Off: Desligar
+  Turn Off LEDs: "Desligar os LEDs"
+  Turn Off Toolhead LED: "Desligar o LED do cabeçote"
   Turn Off WiFi?: Desligar WiFi?
   Turn On: Ligar
   Turn On LEDs: 'Ligar os LEDs'
+  Turn On Toolhead LED: "Ligar o LED do cabeçote"
   Turn off bed check: 'Desligar verificação da mesa'
   Turn off detection: Desligar detecção
   Turn on the lights your light buttons control: Liga as luzes que os botões de luz controlam
@@ -4131,6 +4165,7 @@ translations:
   Unload from toolhead first: 'Descarregue primeiro do cabeçote'
   Unload macro not configured: Macro de descarga não configurado
   Unload the CFS filament before enabling bypass: 'Descarregue o filamento do CFS antes de ativar o bypass'
+  Unload the toolhead when a print ends: 'Descarregar o cabeçote ao terminar uma impressão'
   Unload this unit first: 'Descarregue primeiro esta unidade'
   Unload which tool?: 'Descarregar qual ferramenta?'
   Unload...: Descarregar...
@@ -4257,11 +4292,14 @@ translations:
   Welcome to HelixScreen: Bem-vindo ao HelixScreen
   Went past {} by {:.1f} Hz. Back it off a little.: "Passou de {} por {:.1f} Hz. Volte um pouco."
   What We Collect: O Que Coletamos
+  What happens when a print ends: 'O que acontece ao terminar uma impressão'
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: Quando
     habilitado, apenas a macro é executada. Quando desabilitado, as temperaturas são
     definidas primeiro, depois a macro é executada.
   Where UI sounds play: Onde os sons da interface são reproduzidos
   Whether filament is loaded: Se há filamento carregado
+  Which macro switches the ACE path back on: 'Qual macro religa o caminho do ACE'
+  Which macro switches the ACE path off for bypass: 'Qual macro desliga o caminho do ACE para o bypass'
   Which macro the Close feeder button sends: Qual macro o botão Fechar alimentador envia
   Which macro the Open feeder button sends: Qual macro o botão Abrir alimentador envia
   White: Branco
@@ -4498,6 +4536,7 @@ translations:
   '{} configured items not found': '{} itens configurados não encontrados'
   '{} critical': '{} crítico(s)'
   '{} critical hardware issues': '{} problemas críticos de hardware'
+  "{} didn't load. Check that its hotend is seated and do a test extrude before resuming.": '{} não carregou. Verifique se o hotend está bem encaixado e faça uma extrusão de teste antes de retomar.'
   '{} disabled': '{} desabilitado'
   '{} enabled': '{} habilitado'
   '{} failed: {}': '{} falhou: {}'

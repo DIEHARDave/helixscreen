@@ -34,6 +34,18 @@ const DeviceAction* find_action(const std::vector<DeviceAction>& as, const std::
     return it == as.end() ? nullptr : &(*it);
 }
 
+class CapturingU1 : public AmsBackendSnapmaker {
+  public:
+    CapturingU1() : AmsBackendSnapmaker(nullptr, nullptr) {
+        running_.store(true);
+    }
+    std::vector<std::string> captured;
+    AmsError execute_gcode(const std::string& gcode) override {
+        captured.push_back(gcode);
+        return AmsErrorHelper::success();
+    }
+};
+
 /// The per-tool unload-at-end choice lives in a SettingsManager subject, which
 /// answers its default until init_subjects() runs.
 struct EndUnloadFixture : LVGLTestFixture {
@@ -59,10 +71,8 @@ TEST_CASE("snapmaker exposes its firmware settings as device actions",
                                                        {"end_led_turn_off", true}}));
     const auto actions = backend.get_device_actions();
 
-    const DeviceAction* rep = find_action(actions, "snapmaker_auto_replenish");
-    REQUIRE(rep != nullptr);
-    REQUIRE(rep->type == ActionType::TOGGLE);
-    REQUIRE(std::any_cast<bool>(rep->current_value) == true);
+    // Auto-replenish is the generic Endless Spool switch, not a device action.
+    REQUIRE(find_action(actions, "snapmaker_auto_replenish") == nullptr);
 
     const DeviceAction* color = find_action(actions, "snapmaker_replenish_ignore_color");
     REQUIRE(color != nullptr);
@@ -87,7 +97,8 @@ TEST_CASE("a setting the firmware has not reported is not offered", "[ams][snapm
     HelixTestFixture fixture;
     AmsBackendSnapmaker backend(nullptr, nullptr);
     const auto actions = backend.get_device_actions();
-    REQUIRE(find_action(actions, "snapmaker_auto_replenish") == nullptr);
+    REQUIRE(find_action(actions, "snapmaker_replenish_ignore_color") == nullptr);
+    REQUIRE_FALSE(backend.get_endless_spool_capabilities().available());
 }
 
 TEST_CASE_METHOD(EndUnloadFixture, "end-unload offers one toggle per reported toolhead",
@@ -108,14 +119,17 @@ TEST_CASE_METHOD(EndUnloadFixture, "end-unload offers one toggle per reported to
             false);
 }
 
-TEST_CASE_METHOD(EndUnloadFixture, "end-unload toggles name the toolhead and its T index",
+TEST_CASE_METHOD(EndUnloadFixture, "end-unload toggles carry their tool for the UI to name",
                  "[ams][snapmaker][actions][end_unload]") {
     AmsBackendSnapmaker backend(nullptr, nullptr);
     SnapmakerTestAccess::handle_status(
         backend, frame({{"end_unload_filament", {false, false, false, false}}}));
     const auto actions = backend.get_device_actions();
-    REQUIRE(find_action(actions, "snapmaker_end_unload_t1")->label ==
-            "Unload at end - Toolhead 2 (T1)");
+    const DeviceAction* t1 = find_action(actions, "snapmaker_end_unload_t1");
+    REQUIRE(t1 != nullptr);
+    CHECK(t1->label == "Unload at end");
+    CHECK(t1->tool_index == 1);
+    CHECK(t1->section == "print_prefs");
 }
 
 TEST_CASE_METHOD(EndUnloadFixture, "quick end-unload toggles compose instead of wiping each other",
@@ -195,8 +209,9 @@ TEST_CASE_METHOD(
     REQUIRE(find_action(actions, "snapmaker_end_unload_t0")->enabled);
 
     REQUIRE(backend.build_preference_gcode("snapmaker_end_unload_t1", std::any(true)).empty());
+    // Listed disabled, so the device-action gate refuses it before the backend.
     REQUIRE(backend.execute_device_action("snapmaker_end_unload_t1", std::any(true)).result ==
-            AmsResult::NOT_SUPPORTED);
+            AmsResult::WRONG_STATE);
     // The saved choice stays for when the head holds a hard filament again.
     REQUIRE(SettingsManager::instance().get_end_of_print_unload_tools() == 0b0011);
 
@@ -336,8 +351,6 @@ TEST_CASE("a value whose type does not match the action is refused, not thrown",
     HelixTestFixture fixture;
     AmsBackendSnapmaker backend(nullptr, nullptr);
     SnapmakerTestAccess::handle_status(backend, frame({{"end_unload_filament", {false, false}}}));
-    REQUIRE(backend.build_preference_gcode("snapmaker_auto_replenish", std::any(std::string("on")))
-                .empty());
     REQUIRE(
         backend
             .build_preference_gcode("snapmaker_replenish_ignore_color", std::any(std::string("on")))
@@ -374,49 +387,72 @@ helix::PrinterDiscovery nozzle_offset_discovery() {
 }
 } // namespace
 
-TEST_CASE("toolhead offset calibration is offered when the firmware has it",
+TEST_CASE("toolhead offset calibration is not a Multi-Filament setting",
           "[ams][snapmaker][actions][nozzle_offset]") {
+    // It lives under Controls > Calibration, through helix::tool_offset_calibration.
     HelixTestFixture fixture;
     AmsBackendSnapmaker backend(nullptr, nullptr);
+    backend.set_discovery(nozzle_offset_discovery());
+    for (const auto& a : backend.get_device_actions()) {
+        CHECK(a.guided_flow != snapmaker::nozzle_offset::kGuidedFlowId);
+    }
+    CHECK(backend.get_device_sections().empty());
+}
 
-    SECTION("absent without the macros") {
-        backend.set_discovery(helix::PrinterDiscovery{});
-        REQUIRE(find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId) ==
-                nullptr);
-        REQUIRE(backend.get_device_sections().empty());
+TEST_CASE("snapmaker auto-replenish is the Endless Spool switch", "[ams][snapmaker][endless]") {
+    HelixTestFixture fixture;
+    CapturingU1 backend;
+
+    SECTION("unreported, the switch is not offered and refuses") {
+        CHECK_FALSE(backend.get_endless_spool_capabilities().available());
+        CHECK_FALSE(backend.set_endless_spool_enabled(true).success());
+        CHECK(backend.captured.empty());
     }
 
-    SECTION("a button that starts the guided flow, in its own section") {
-        backend.set_discovery(nozzle_offset_discovery());
-        const auto actions = backend.get_device_actions();
-        const DeviceAction* cal = find_action(actions, snapmaker::nozzle_offset::kActionId);
-        REQUIRE(cal != nullptr);
-        REQUIRE(cal->type == ActionType::BUTTON);
-        REQUIRE(cal->guided_flow == snapmaker::nozzle_offset::kGuidedFlowId);
-        REQUIRE(cal->section == snapmaker::nozzle_offset::kSectionId);
-        REQUIRE(cal->enabled);
+    SECTION("the reported flag is the enabled state") {
+        SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", false}}));
+        auto caps = backend.get_endless_spool_capabilities();
+        CHECK(caps.available());
+        CHECK(caps.switchable);
+        CHECK(caps.enabled == EndlessSpoolEnabled::Off);
 
-        // The section stands even before the firmware reports its print
-        // preferences, which is what the other section waits for.
-        const auto sections = backend.get_device_sections();
-        REQUIRE(sections.size() == 1);
-        REQUIRE(sections[0].id == snapmaker::nozzle_offset::kSectionId);
+        SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", true}}));
+        CHECK(backend.get_endless_spool_capabilities().enabled == EndlessSpoolEnabled::On);
     }
 
-    SECTION("greyed out while a print holds the heads") {
-        backend.set_discovery(nozzle_offset_discovery());
-        for (const char* state : {"printing", "paused"}) {
-            SnapmakerTestAccess::handle_status(backend,
-                                               nlohmann::json{{"print_stats", {{"state", state}}}});
-            const DeviceAction* cal =
-                find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId);
-            REQUIRE(cal != nullptr);
-            REQUIRE_FALSE(cal->enabled);
-            REQUIRE_FALSE(cal->disable_reason.empty());
+    SECTION("switching it sends the firmware preference") {
+        SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", false}}));
+        REQUIRE(backend.set_endless_spool_enabled(true).success());
+        REQUIRE(backend.captured.size() == 1);
+        CHECK(backend.captured[0] == "SET_PRINT_PREFERENCES AUTO_REPLENISH_FILAMENT=1");
+    }
+}
+
+TEST_CASE("the retired auto-replenish action id is refused and sends nothing",
+          "[ams][snapmaker][actions][endless_spool]") {
+    HelixTestFixture fixture;
+    CapturingU1 backend;
+    SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", false}}));
+    CHECK(backend.build_preference_gcode("snapmaker_auto_replenish", std::any(true)).empty());
+    CHECK_FALSE(
+        backend.execute_device_action("snapmaker_auto_replenish", std::any(true)).success());
+    CHECK(backend.captured.empty());
+}
+
+TEST_CASE("an auto-replenish change announces a state change and a repeat does not",
+          "[ams][snapmaker][actions][endless_spool]") {
+    HelixTestFixture fixture;
+    AmsBackendSnapmaker backend(nullptr, nullptr);
+    SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", false}}));
+    int changes = 0;
+    backend.set_event_callback([&](const std::string& ev, const std::string&) {
+        if (ev == AmsBackend::EVENT_STATE_CHANGED) {
+            ++changes;
         }
-        SnapmakerTestAccess::handle_status(
-            backend, nlohmann::json{{"print_stats", {{"state", "complete"}}}});
-        REQUIRE(find_action(backend.get_device_actions(), snapmaker::nozzle_offset::kActionId)
-                    ->enabled);
-    }
+    });
+
+    SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", true}}));
+    CHECK(changes == 1);
+    SnapmakerTestAccess::handle_status(backend, frame({{"auto_replenish_filament", true}}));
+    CHECK(changes == 1);
 }

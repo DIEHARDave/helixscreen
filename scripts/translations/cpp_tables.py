@@ -204,8 +204,8 @@ _DEVICE_SECTION_FN_RE = re.compile(
 _SECTION_FIELDS = (1, 3)
 
 # DeviceAction: id, label, icon, section, description, type, ...
-# disable_reason (13) is excluded on purpose: the UI only logs it (see
-# ui_ams_device_section_detail_overlay.cpp), it is never shown.
+# disable_reason is assigned after construction, never positionally, so backends
+# mark each one with TR_NOOP() for the extractor.
 _DEVICE_ACTION_POSITIONAL_RE = re.compile(r"\b(?:DA|DeviceAction)\s*\{")
 _ACTION_FIELDS = (1, 4)
 

@@ -18,6 +18,8 @@
 #include "ui_update_queue.h"
 
 #include "ams_bypass_policy.h"
+#include "ams_device_action_value.h"
+#include "ams_device_sections.h"
 #include "exception_policy.h"
 #include "helix_thread.h"
 #include "i_moonraker_api.h"
@@ -28,6 +30,7 @@
 #include "lane_source_store.h"
 #include "lane_translation.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "macro_choice.h"
 #include "post_op_cooldown_manager.h"
 #include "printer_discovery.h"
 #include "settings_manager.h"
@@ -728,6 +731,11 @@ std::vector<int> AmsBackendAce::get_tool_mapping() const {
 // ============================================================================
 
 void AmsBackendAce::set_discovery(const helix::PrinterDiscovery& discovery) {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        bypass_detected_ = helix::detect_bypass_macros(discovery);
+        bypass_macro_options_ = helix::bypass_macro_options(discovery);
+    }
     set_bypass_macros(helix::resolve_bypass_macros_for(discovery));
 }
 
@@ -1860,15 +1868,15 @@ bool AmsBackendAce::parse_slots_response(const json& data) {
 // ============================================================================
 
 std::vector<helix::printer::DeviceSection> AmsBackendAce::get_device_sections() const {
-    using DS = helix::printer::DeviceSection;
-    std::vector<DS> sections = {
-        DS{"filament_control", "Filament Control", 0, "Manual feed and retract operations"},
-        DS{"maintenance", "Maintenance", 1, "Feed assist and debug tools"},
+    using helix::printer::device_section;
+    std::vector<helix::printer::DeviceSection> sections = {
+        device_section("filament_control", 0, TR_NOOP("Manual feed and retract operations")),
+        device_section("maintenance", 1, TR_NOOP("Feed assist and bypass macros")),
     };
     std::lock_guard<std::mutex> lock(mutex_);
     if (endless_spool_seen_) {
         sections.push_back(
-            DS{"endless_spool", "Endless Spool", 2, "Switch to a backup slot on runout"});
+            device_section("endless_spool", 2, TR_NOOP("Switch to a backup slot on runout")));
     }
     return sections;
 }
@@ -1877,26 +1885,40 @@ std::vector<helix::printer::DeviceAction> AmsBackendAce::get_device_actions() co
     using DA = helix::printer::DeviceAction;
     std::vector<DA> actions = {
         DA::button("ace_manual_feed", "Manual Feed", "filament_control", "",
-                   "Feed filament from current slot"),
+                   "Feed filament from current slot")
+            .with_machine_motion(),
         DA::button("ace_manual_retract", "Manual Retract", "filament_control", "",
-                   "Retract filament to current slot"),
+                   "Retract filament to current slot")
+            .with_machine_motion(),
         DA::toggle("ace_feed_assist_toggle", "Feed Assist", "maintenance", {}, "",
                    "Enable feed assist for active slot during printing"),
     };
     std::lock_guard<std::mutex> lock(mutex_);
     if (endless_spool_seen_) {
-        actions.push_back(DA::toggle("ace_endless_spool_toggle", "Endless Spool", "endless_spool",
-                                     endless_spool_on_, "",
-                                     "Swap to another slot automatically when one runs out"));
         actions.push_back(DA::dropdown("ace_endless_spool_mode", "Match Mode", "endless_spool",
                                        {"exact", "material", "next"}, endless_spool_mode_, "",
                                        "exact: same material and color. material: same material. "
                                        "next: any ready slot, even a different material"));
     }
+    // Which macros throw the ACE master switch. The conventional pair is
+    // ACE_BYPASS_ON/OFF; an owner whose macros are named differently picks them
+    // here from the ones the printer reports.
+    if (ace_pro_enabled_seen_ && !bypass_macro_options_.empty()) {
+        auto& settings = helix::SettingsManager::instance();
+        actions.push_back(DA::dropdown(
+            "ace_bypass_on_macro", "Bypass on macro", "maintenance", bypass_macro_options_,
+            helix::macro_choice_or_auto(settings.get_ace_bypass_on_macro()), "",
+            "Which macro switches the ACE path off for bypass"));
+        actions.push_back(DA::dropdown(
+            "ace_bypass_off_macro", "Bypass off macro", "maintenance", bypass_macro_options_,
+            helix::macro_choice_or_auto(settings.get_ace_bypass_off_macro()), "",
+            "Which macro switches the ACE path back on"));
+    }
     return actions;
 }
 
-AmsError AmsBackendAce::execute_device_action(const std::string& action_id, const std::any& value) {
+AmsError AmsBackendAce::do_execute_device_action(const std::string& action_id,
+                                                 const std::any& value) {
     if (action_id == "ace_manual_feed") {
         int slot = get_current_slot();
         if (slot < 0)
@@ -1924,14 +1946,10 @@ AmsError AmsBackendAce::execute_device_action(const std::string& action_id, cons
         if (slot < 0)
             slot = 0;
 
-        bool enable = true;
-        if (value.has_value()) {
-            // Default to enable if cast fails
-            if (const auto* v = std::any_cast<bool>(&value)) {
-                enable = *v;
-            }
+        const auto [enable, err] = printer::device_action_value<bool>(value, "feed assist state");
+        if (!err) {
+            return err;
         }
-
         if (enable) {
             return execute_gcode("ACE_ENABLE_FEED_ASSIST INDEX=" + std::to_string(slot));
         } else {
@@ -1939,22 +1957,37 @@ AmsError AmsBackendAce::execute_device_action(const std::string& action_id, cons
         }
     }
 
-    if (action_id == "ace_endless_spool_toggle") {
-        const auto* v = std::any_cast<bool>(&value);
-        bool enable;
+    if (action_id == "ace_bypass_on_macro" || action_id == "ace_bypass_off_macro") {
+        const auto [chosen, err] = printer::device_action_macro_choice(value);
+        if (!err) {
+            return err;
+        }
+        auto& settings = helix::SettingsManager::instance();
+        if (action_id == "ace_bypass_on_macro") {
+            settings.set_ace_bypass_on_macro(chosen);
+        } else {
+            settings.set_ace_bypass_off_macro(chosen);
+        }
+        helix::BypassMacros detected;
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            enable = v ? *v : !endless_spool_on_;
+            detected = bypass_detected_;
         }
-        return execute_gcode(enable ? "ACE_ENABLE_ENDLESS_SPOOL" : "ACE_DISABLE_ENDLESS_SPOOL");
+        set_bypass_macros(helix::resolve_bypass_macros(detected, settings.get_ace_bypass_on_macro(),
+                                                       settings.get_ace_bypass_off_macro()));
+        emit_event(EVENT_STATE_CHANGED);
+        return AmsErrorHelper::success();
     }
 
     if (action_id == "ace_endless_spool_mode") {
-        const auto* mode = std::any_cast<std::string>(&value);
-        if (!mode || (*mode != "exact" && *mode != "material" && *mode != "next")) {
+        const auto [mode, err] = printer::device_action_value<std::string>(value, "match mode");
+        if (!err) {
+            return err;
+        }
+        if (mode != "exact" && mode != "material" && mode != "next") {
             return AmsErrorHelper::invalid_parameter("Unknown endless spool match mode");
         }
-        return execute_gcode("ACE_SET_ENDLESS_SPOOL_MODE MODE=" + *mode);
+        return execute_gcode("ACE_SET_ENDLESS_SPOOL_MODE MODE=" + mode);
     }
 
     return AmsErrorHelper::not_supported("Unknown ACE action: " + action_id);
@@ -1979,7 +2012,13 @@ helix::printer::EndlessSpoolCapabilities AmsBackendAce::get_endless_spool_capabi
             .enabled = enabled,
             .editability = EndlessSpoolEditability::ReadOnly,
             .restriction = EndlessSpoolRestriction::FirmwareManaged,
+            .switchable = true,
             .provider = {}};
+}
+
+AmsError AmsBackendAce::apply_endless_spool_enabled(bool enabled) {
+    return send_endless_spool_switch(enabled ? "ACE_ENABLE_ENDLESS_SPOOL"
+                                             : "ACE_DISABLE_ENDLESS_SPOOL");
 }
 
 helix::printer::EndlessSpoolConfig AmsBackendAce::get_endless_spool_config() const {

@@ -1,6 +1,6 @@
 # Print History
 
-HelixScreen keeps a record of your completed, failed, and cancelled prints (sourced from Moonraker's job history). The history view has two parts: a dashboard with summary statistics and trend charts, and a full searchable list with per-job details and reprinting.
+HelixScreen keeps a record of your completed, failed, and canceled prints (sourced from Moonraker's job history). The history view has two parts: a dashboard with summary statistics and trend charts, and a full searchable list with per-job details and reprinting.
 
 Open it from **Advanced > Print History**.
 
@@ -22,7 +22,7 @@ All is the default. For accurate lifetime figures, the All Time view pulls Total
 
 ### Statistics
 
-Four stat cards summarise the selected range:
+Four stat cards summarize the selected range:
 
 | Stat | What it shows |
 |------|---------------|
@@ -51,7 +51,7 @@ The full list shows individual jobs and gives you tools to find a specific one.
 ### Search, filter, and sort
 
 - **Search** — type to filter jobs by filename; a clear button resets it.
-- **Status filter** — All, Completed, Failed, or Cancelled.
+- **Status filter** — All, Completed, Failed, or Canceled.
 - **Sort** — Date (newest), Date (oldest), Duration, or Filename.
 
 Each row shows the job's filename, status, and key details. When filters are active and nothing matches, the list tells you no jobs match; otherwise the empty state hints that completed prints will appear there.
@@ -66,7 +66,7 @@ Each row shows the job's filename, status, and key details. When filters are act
 
 Tap a job to open its detail view, which shows:
 
-- Filename and status (Completed / Cancelled / Failed / In Progress) with a matching icon
+- Filename and status (Completed / Canceled / Failed / In Progress) with a matching icon
 - Start time, end time, and duration
 - Layer count and layer height
 - Nozzle and bed temperatures

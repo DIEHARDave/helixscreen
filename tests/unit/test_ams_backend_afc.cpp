@@ -2542,10 +2542,22 @@ TEST_CASE("AFC device action toolhead_calibration dispatches gcode", "[ams][afc]
     AmsBackendAfcTestHelper helper;
     helper.initialize_test_lanes_with_slots(4);
 
-    auto result = helper.execute_device_action("toolhead_calibration");
+    SECTION("refused while the backend does not offer it") {
+        // Offered or not, the id is handled; only the list says whether it may run.
+        auto result = helper.execute_device_action("toolhead_calibration");
+        CHECK(result.result == AmsResult::NOT_SUPPORTED);
+        CHECK_FALSE(helper.has_gcode("AFC_TOOLHEAD_CALIBRATION"));
+    }
 
-    REQUIRE(result.success());
-    REQUIRE(helper.has_gcode("AFC_TOOLHEAD_CALIBRATION"));
+    SECTION("sent once AFC lists the command") {
+        nlohmann::json reply = {
+            {"jsonrpc", "2.0"},
+            {"result", {{"AFC_TOOLHEAD_CALIBRATION", "Open the toolhead calibration menu"}}}};
+        REQUIRE(AfcTestAccess::apply_gcode_help_response(helper, reply));
+        auto result = helper.execute_device_action("toolhead_calibration");
+        REQUIRE(result.success());
+        REQUIRE(helper.has_gcode("AFC_TOOLHEAD_CALIBRATION"));
+    }
 }
 
 TEST_CASE("AFC device action change_blade dispatches gcode", "[ams][afc][device_actions][phase3]") {
@@ -5034,7 +5046,7 @@ TEST_CASE("AFC get_type returns AFC", "[ams][afc][spoolman]") {
 //
 // Unlike CFS/IFS (which hardcode auto_unloads_after_print()==true), AFC's
 // post-print unload depends on the user's macros. The behaviour is controlled
-// by a per-printer setting: get_afc_unload_after_print() (default false). The
+// by a per-printer setting: get_unload_after_print() (default false). The
 // pre-print runout warning is suppressed only when the setting is enabled.
 
 TEST_CASE_METHOD(LVGLTestFixture, "AFC auto_unloads_after_print defaults to false (setting off)",
@@ -5043,7 +5055,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "AFC auto_unloads_after_print defaults to fals
     helix::SettingsManager::instance().init_subjects();
 
     // Ensure the setting starts disabled
-    helix::SettingsManager::instance().set_afc_unload_after_print(false);
+    helix::SettingsManager::instance().set_unload_after_print(false);
 
     AmsBackendAfcTestHelper helper;
     REQUIRE(helper.auto_unloads_after_print() == false);
@@ -5054,44 +5066,79 @@ TEST_CASE_METHOD(LVGLTestFixture, "AFC auto_unloads_after_print returns true whe
     helix::Config::get_instance();
     helix::SettingsManager::instance().init_subjects();
 
-    helix::SettingsManager::instance().set_afc_unload_after_print(true);
+    helix::SettingsManager::instance().set_unload_after_print(true);
 
     AmsBackendAfcTestHelper helper;
     REQUIRE(helper.auto_unloads_after_print() == true);
 
     // Toggling the setting back off must flip the capability back
-    helix::SettingsManager::instance().set_afc_unload_after_print(false);
+    helix::SettingsManager::instance().set_unload_after_print(false);
     REQUIRE(helper.auto_unloads_after_print() == false);
 }
 
-TEST_CASE_METHOD(LVGLTestFixture, "SettingsManager afc_unload_after_print round-trips and persists",
+TEST_CASE_METHOD(LVGLTestFixture, "AFC Unload at end is a device action over the setting",
+                 "[ams][afc][capability][device_actions]") {
+    helix::Config::get_instance();
+    auto& settings = helix::SettingsManager::instance();
+    settings.init_subjects();
+    settings.set_unload_after_print(false);
+
+    AmsBackendAfcTestHelper helper;
+    auto find = [&]() -> std::optional<helix::printer::DeviceAction> {
+        for (auto& a : helper.get_device_actions()) {
+            if (a.id == "unload_at_end") {
+                return a;
+            }
+        }
+        return std::nullopt;
+    };
+
+    auto action = find();
+    REQUIRE(action.has_value());
+    CHECK(action->type == helix::printer::ActionType::TOGGLE);
+    CHECK(action->label == "Unload at end");
+    CHECK(std::any_cast<bool>(action->current_value) == false);
+
+    REQUIRE(helper.execute_device_action("unload_at_end", std::any(true)).success());
+    CHECK(settings.get_unload_after_print());
+    CHECK(helper.auto_unloads_after_print());
+    CHECK(std::any_cast<bool>(find()->current_value) == true);
+
+    CHECK_FALSE(helper.execute_device_action("unload_at_end", std::any(1)).success());
+    CHECK(settings.get_unload_after_print());
+
+    REQUIRE(helper.execute_device_action("unload_at_end", std::any(false)).success());
+    CHECK_FALSE(helper.auto_unloads_after_print());
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "SettingsManager unload_after_print round-trips and persists",
                  "[ams][afc][settings]") {
     helix::Config* config = helix::Config::get_instance();
     auto& settings = helix::SettingsManager::instance();
     settings.init_subjects();
 
-    const std::string path = config->df() + "ams/afc_unload_after_print";
+    const std::string path = config->df() + "ams/unload_after_print";
 
     SECTION("defaults to false") {
-        settings.set_afc_unload_after_print(false);
-        REQUIRE(settings.get_afc_unload_after_print() == false);
+        settings.set_unload_after_print(false);
+        REQUIRE(settings.get_unload_after_print() == false);
     }
 
     SECTION("set true -> get true -> persisted to per-printer config path") {
-        settings.set_afc_unload_after_print(true);
-        REQUIRE(settings.get_afc_unload_after_print() == true);
+        settings.set_unload_after_print(true);
+        REQUIRE(settings.get_unload_after_print() == true);
         REQUIRE(config->get<bool>(path, false) == true);
 
         // subject reflects the new value
-        REQUIRE(lv_subject_get_int(settings.subject_afc_unload_after_print()) == 1);
+        REQUIRE(lv_subject_get_int(settings.subject_unload_after_print()) == 1);
     }
 
     SECTION("set false after true clears the value") {
-        settings.set_afc_unload_after_print(true);
-        settings.set_afc_unload_after_print(false);
-        REQUIRE(settings.get_afc_unload_after_print() == false);
+        settings.set_unload_after_print(true);
+        settings.set_unload_after_print(false);
+        REQUIRE(settings.get_unload_after_print() == false);
         REQUIRE(config->get<bool>(path, true) == false);
-        REQUIRE(lv_subject_get_int(settings.subject_afc_unload_after_print()) == 0);
+        REQUIRE(lv_subject_get_int(settings.subject_unload_after_print()) == 0);
     }
 }
 
@@ -5342,6 +5389,51 @@ TEST_CASE("AFC get_device_actions includes per-extruder LED toggles in toolchang
             found_generic = true;
     }
     REQUIRE_FALSE(found_generic);
+}
+
+TEST_CASE("AFC per-tool device actions carry the tool as data, not in the label",
+          "[ams][afc][toolchanger][led]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+    helper.setup_toolchanger(2);
+
+    auto find = [](const std::vector<helix::printer::DeviceAction>& actions,
+                   const std::string& id) -> const helix::printer::DeviceAction* {
+        for (const auto& a : actions) {
+            if (a.id == id) {
+                return &a;
+            }
+        }
+        return nullptr;
+    };
+
+    const auto actions = helper.get_device_actions();
+    for (int t = 0; t < 2; ++t) {
+        const std::string suffix = "_T" + std::to_string(t);
+        const struct {
+            const char* id;
+            const char* label;
+        } expected[] = {{"tool_stn", "Sensor to Nozzle"},
+                        {"tool_stn_unload", "Unload Distance"},
+                        {"tool_sensor_after_extruder", "Post-Sensor Clear"},
+                        {"led_extruder", "Turn On Toolhead LED"}};
+        for (const auto& e : expected) {
+            const auto* a = find(actions, e.id + suffix);
+            INFO(e.id << suffix);
+            REQUIRE(a != nullptr);
+            CHECK(a->label == e.label);
+            CHECK(a->tool_index == t);
+        }
+    }
+
+    // The LED label names the action the tap performs next.
+    REQUIRE(helper.execute_device_action("led_extruder_T1").success());
+    const auto after = helper.get_device_actions();
+    REQUIRE(find(after, "led_extruder_T1") != nullptr);
+    CHECK(find(after, "led_extruder_T1")->label == "Turn Off Toolhead LED");
+    CHECK(find(after, "led_extruder_T1")->icon == "light_off");
+    CHECK(find(after, "led_extruder_T0")->label == "Turn On Toolhead LED");
+    CHECK(find(after, "led_extruder_T0")->icon == "lightbulb_on");
 }
 
 TEST_CASE("AFC get_device_actions does not include LED toggles in single-extruder mode",

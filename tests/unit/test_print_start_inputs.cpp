@@ -16,18 +16,23 @@
 #include "ui_callback_helpers.h"
 #include "ui_filament_mapping_card.h"
 #include "ui_print_select_detail_view.h"
+#include "ui_print_start_controller.h"
 #include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/planted_gcode.h"
 #include "../test_helpers/scoped_cache_dir.h"
 #include "../test_helpers/scoped_mock_ams.h"
+#include "../test_helpers/snapmaker_test_access.h"
+#include "../ui_test_utils.h"
+#include "ams_backend_snapmaker.h"
 #include "app_globals.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "print_start_checks.h"
 #include "print_start_inputs.h"
 #include "printer_state.h"
+#include "test_helpers/registered_backend.h"
 #include "tools_used_cache.h"
 
 #include <filesystem>
@@ -242,6 +247,20 @@ TEST_CASE_METHOD(LVGLUITestFixture, "fill_file_context leaves no mapping on a pr
     CHECK(helix::unresolved_tools_in(ctx).empty());
 }
 
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "fill_file_context takes the file's tools from its weights when none were scanned",
+                 "[print_start_inputs][reprint]") {
+    FileStartFacts facts;
+    facts.filename = "weights_only.gcode";
+    facts.metadata = FileMetadata{};
+    facts.metadata->filament_weights = {1.5, 0.0, 2.25};
+    facts.metadata->filament_colors = {"#FF0000", "#00FF00", "#0000FF"};
+
+    helix::PrintStartContext ctx;
+    helix::fill_file_context(ctx, facts);
+    CHECK(ctx.tools_used == std::set<int>{0, 2});
+}
+
 // ============================================================================
 // FileStartFactsLoader
 // ============================================================================
@@ -316,6 +335,78 @@ TEST_CASE_METHOD(LoaderFixture, "a failed metadata read still answers",
     CHECK(answer->palette.colors.size() == 2);
 }
 
+TEST_CASE_METHOD(LoaderFixture, "a metadata-only load reads nothing of the file",
+                 "[print_start_inputs][loader]") {
+    helix::PlantedGcode file("loader_metaonly.gcode", "", kTwoToolFooter);
+    FileStartFactsLoader loader(api.get());
+    // Without the metadata only the file's own footer could name its tools.
+    client.fail_next("server.files.metadata");
+
+    int downloads = 0;
+    std::optional<FileStartFacts> answer;
+    loader.load(
+        file.name(), [&answer](FileStartFacts facts) { answer = std::move(facts); },
+        [&downloads](std::function<void(bool, const std::string&)> done) {
+            ++downloads;
+            done(false, {});
+        },
+        nullptr, helix::FileRead::MetadataOnly);
+    drain();
+
+    REQUIRE(answer.has_value());
+    CHECK(answer->tools_used.empty());
+    CHECK(downloads == 0);
+}
+
+namespace {
+/// The footer of an Orca job for the Snapmaker U1 ("BMCU 370C_ASA_18.4g_54m6s.gcode",
+/// read off a printer), whose Moonraker metadata carries no per-tool weights.
+constexpr const char* kOrcaU1Footer = "G28\n"
+                                      "T0\n"
+                                      "T1\n"
+                                      "; CONFIG_BLOCK_END\n"
+                                      "\n"
+                                      "; filament used [mm] = 7140.18, 245.42, 0.00, 0.00\n"
+                                      "; filament used [cm3] = 17.17, 0.59, 0.00, 0.00\n"
+                                      "; filament used [g] = 17.86, 0.63, 0.00, 0.00\n"
+                                      "; filament cost = 0.36, 0.01, 0.00, 0.00\n"
+                                      "; total filament used [g] = 18.49\n"
+                                      "; total filament cost = 0.37\n"
+                                      "; total filament change = 14\n"
+                                      "; total layers count = 91\n";
+} // namespace
+
+TEST_CASE_METHOD(LoaderFixture, "a footer-bounded load reads the footer and never downloads",
+                 "[print_start_inputs][loader]") {
+    FileStartFactsLoader loader(api.get());
+    int downloads = 0;
+    auto download = [&downloads](std::function<void(bool, const std::string&)> done) {
+        ++downloads;
+        done(false, {});
+    };
+    std::optional<FileStartFacts> answer;
+    auto record = [&answer](FileStartFacts facts) { answer = std::move(facts); };
+
+    SECTION("an Orca U1 footer names its tools from the per-filament grams") {
+        helix::PlantedGcode file("loader_orca_u1.gcode", "", kOrcaU1Footer);
+        client.fail_next("server.files.metadata"); // only the footer can answer
+        loader.load(file.name(), record, download, nullptr, helix::FileRead::Footer);
+        drain();
+        REQUIRE(answer.has_value());
+        CHECK(answer->tools_used == std::set<int>{0, 1});
+        CHECK(downloads == 0);
+    }
+    SECTION("a footer that does not answer ends the read") {
+        helix::PlantedGcode file("loader_no_usage.gcode", "", "G28\nT0\nT1\nG1 X10\n");
+        client.fail_next("server.files.metadata");
+        loader.load(file.name(), record, download, nullptr, helix::FileRead::Footer);
+        drain();
+        REQUIRE(answer.has_value());
+        CHECK(answer->tools_used.empty());
+        CHECK(downloads == 0);
+    }
+}
+
 TEST_CASE_METHOD(LoaderFixture, "a later load supersedes an unanswered one",
                  "[print_start_inputs][loader]") {
     helix::PlantedGcode first("loader_first.gcode", "", kTwoToolFooter);
@@ -332,4 +423,169 @@ TEST_CASE_METHOD(LoaderFixture, "a later load supersedes an unanswered one",
     drain();
 
     CHECK(answered == std::vector<std::string>{second.name()});
+}
+
+// ============================================================================
+// The file's tools, as the pre-print step and the slicer-start check read them
+// ============================================================================
+
+TEST_CASE("file_tools_used reads scanned tools, then per-tool weights",
+          "[print_start_inputs][reprint]") {
+    FileStartFacts facts;
+    CHECK(helix::file_tools_used(facts).empty());
+    facts.metadata = FileMetadata{};
+    facts.metadata->filament_weights = {1.5, 0.0, 2.25};
+    facts.metadata->filament_colors = {"#FF0000", "#00FF00", "#0000FF"};
+    CHECK(helix::file_tools_used(facts) == std::set<int>{0, 2});
+    facts.tools_used = {1};
+    CHECK(helix::file_tools_used(facts) == std::set<int>{1});
+}
+
+namespace {
+constexpr const char* kT0T2Footer = "; filament_type = PLA;PLA;PETG\n"
+                                    "; filament_colour = #FF0000;#00FF00;#0000FF\n"
+                                    "G28\n"
+                                    "T0\n"
+                                    "T2\n"
+                                    "; filament used [g] = 1.50, 0.00, 2.25\n";
+} // namespace
+
+TEST_CASE_METHOD(LoaderFixture,
+                 "a reprint with no tools in hand reads them from the file for the pre-print step",
+                 "[print_start_inputs][reprint]") {
+    get_printer_state().update_from_status(nlohmann::json{{"webhooks", {{"state", "ready"}}}});
+    helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> backend_reg(api.get(), nullptr);
+    // The last print ran configured (T0, T2 at their own heads), so a reprint
+    // has its routing; only the tools are missing.
+    helix::SnapmakerTestAccess::handle_status(
+        *backend_reg, nlohmann::json{{"print_task_config",
+                                      {{"extruders_used", {true, false, true, false}},
+                                       {"extruder_map_table", {0, 1, 2, 3, 0, 0, 0, 0}}}}});
+    helix::PlantedGcode file("reprint_t0t2.gcode", "", kT0T2Footer);
+    helix::ui::PrintStartController controller(get_printer_state(), api.get());
+    client.clear_gcode_script_history();
+
+    bool started = false;
+    controller.initiate_reprint(
+        file.name(), "", /*tools_used=*/{}, [&started]() { started = true; }, []() {});
+    drain();
+
+    const auto history = client.gcode_script_history();
+    bool used_heads = false;
+    for (const auto& script : history) {
+        if (script.find("SET_PRINT_USED_EXTRUDERS EXTRUDERS=0,2") != std::string::npos) {
+            used_heads = true;
+        }
+    }
+    INFO("gcode sent: " << history.size() << " script(s)");
+    CHECK(used_heads);
+    CHECK(started);
+}
+
+namespace {
+/// A U1 backend whose firmware is not known to reset its routing.
+class NoResetSnapmaker : public helix::AmsBackendSnapmaker {
+  public:
+    using AmsBackendSnapmaker::AmsBackendSnapmaker;
+    [[nodiscard]] bool print_routing_resets_to_identity() const override {
+        return false;
+    }
+};
+
+std::vector<std::string> scripts_containing(MoonrakerClientMock& client, const std::string& what) {
+    std::vector<std::string> out;
+    for (const auto& script : client.gcode_script_history()) {
+        if (script.find(what) != std::string::npos) {
+            out.push_back(script);
+        }
+    }
+    return out;
+}
+
+/// No configured task seen: the firmware map as @p map reads, nothing used.
+nlohmann::json unconfigured_task(const std::vector<int>& map) {
+    return nlohmann::json{
+        {"print_task_config",
+         {{"extruders_used", {false, false, false, false}}, {"extruder_map_table", map}}}};
+}
+} // namespace
+
+TEST_CASE_METHOD(LoaderFixture, "an unrouted U1 reprint names the file's heads and writes no map",
+                 "[print_start_inputs][reprint]") {
+    get_printer_state().update_from_status(nlohmann::json{{"webhooks", {{"state", "ready"}}}});
+    helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> backend_reg(api.get(), nullptr);
+    helix::PlantedGcode file("reprint_unrouted.gcode", "", kT0T2Footer);
+    helix::ui::PrintStartController controller(get_printer_state(), api.get());
+
+    SECTION("the firmware map at its default: the heads go, no map") {
+        helix::SnapmakerTestAccess::handle_status(*backend_reg,
+                                                  unconfigured_task({0, 1, 2, 3, 0, 0, 0, 0}));
+        client.clear_gcode_script_history();
+        controller.initiate_reprint(file.name(), "", {}, [] {}, [] {});
+        drain();
+        CHECK(scripts_containing(client, "SET_PRINT_USED_EXTRUDERS EXTRUDERS=0,2").size() == 1);
+        CHECK(scripts_containing(client, "SET_PRINT_EXTRUDER_MAP").empty());
+    }
+    SECTION("a map left pending routes elsewhere: no heads") {
+        helix::SnapmakerTestAccess::handle_status(*backend_reg,
+                                                  unconfigured_task({2, 1, 0, 3, 0, 0, 0, 0}));
+        client.clear_gcode_script_history();
+        controller.initiate_reprint(file.name(), "", {}, [] {}, [] {});
+        drain();
+        CHECK(scripts_containing(client, "SET_PRINT_USED_EXTRUDERS").empty());
+        CHECK(scripts_containing(client, "SET_PRINT_EXTRUDER_MAP").empty());
+    }
+    SECTION("a file whose tools cannot be read: no heads") {
+        helix::SnapmakerTestAccess::handle_status(*backend_reg,
+                                                  unconfigured_task({0, 1, 2, 3, 0, 0, 0, 0}));
+        client.clear_gcode_script_history();
+        controller.initiate_reprint("not_on_the_printer.gcode", "", {}, [] {}, [] {});
+        drain();
+        CHECK(scripts_containing(client, "SET_PRINT_USED_EXTRUDERS").empty());
+    }
+}
+
+TEST_CASE_METHOD(LoaderFixture,
+                 "an unrouted reprint on firmware that keeps its routing sends no heads",
+                 "[print_start_inputs][reprint]") {
+    get_printer_state().update_from_status(nlohmann::json{{"webhooks", {{"state", "ready"}}}});
+    helix::test::RegisteredBackend<NoResetSnapmaker> backend_reg(api.get(), nullptr);
+    helix::SnapmakerTestAccess::handle_status(*backend_reg,
+                                              unconfigured_task({0, 1, 2, 3, 0, 0, 0, 0}));
+    helix::PlantedGcode file("reprint_noreset.gcode", "", kT0T2Footer);
+    helix::ui::PrintStartController controller(get_printer_state(), api.get());
+    client.clear_gcode_script_history();
+
+    bool started = false;
+    controller.initiate_reprint(file.name(), "", {}, [&started] { started = true; }, [] {});
+    drain();
+    CHECK(scripts_containing(client, "SET_PRINT_USED_EXTRUDERS").empty());
+    CHECK(scripts_containing(client, "SET_PRINT_EXTRUDER_MAP").empty());
+    CHECK(started);
+}
+
+TEST_CASE_METHOD(LoaderFixture, "a start whose pre-print step fails leaves no started-here mark",
+                 "[print_start_inputs][reprint][task_config_notice]") {
+    get_printer_state().update_from_status(nlohmann::json{{"webhooks", {{"state", "ready"}}}});
+    helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> backend_reg(api.get(), nullptr);
+    helix::SnapmakerTestAccess::set_file_tools_probe(
+        *backend_reg, [](const std::string&, std::function<void(bool)> answer) { answer(true); });
+    std::vector<std::string> warnings;
+    helix::ui::set_test_notification_sticky_warning_hook(
+        [&warnings](const std::string& m) { warnings.push_back(m); });
+    helix::ui::PrintStartController controller(get_printer_state(), api.get());
+
+    client.fail_next("printer.gcode.script");
+    controller.initiate_reprint("benchy.gcode", "", {0, 2}, [] {}, [] {});
+    drain();
+
+    // A print another client starts next is not mistaken for this screen's.
+    helix::SnapmakerTestAccess::handle_status(
+        *backend_reg,
+        nlohmann::json{{"print_task_config", {{"extruders_used", {false, false, false, false}}}},
+                       {"print_stats", {{"state", "printing"}, {"filename", "other.gcode"}}}});
+    drain();
+    REQUIRE(warnings.size() == 1);
+    CHECK(warnings[0].find("outside HelixScreen") != std::string::npos);
+    helix::ui::set_test_notification_sticky_warning_hook(nullptr);
 }

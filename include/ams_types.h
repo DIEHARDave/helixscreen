@@ -2347,6 +2347,11 @@ struct EndlessSpoolCapabilities {
     EndlessSpoolEditability editability = EndlessSpoolEditability::ReadOnly;
     EndlessSpoolRestriction restriction = EndlessSpoolRestriction::None;
 
+    /// The UI may switch the feature on and off (AmsBackend::set_endless_spool_enabled).
+    /// Independent of editability: a box whose firmware picks the backup itself
+    /// can still take an on/off command.
+    bool switchable = false;
+
     /// Proper noun of the package implementing the feature ("lessWaste",
     /// "bambufy"); empty when the backend or firmware implements it natively.
     /// A product name is never translated, which is why this is the one
@@ -2556,6 +2561,7 @@ struct DeviceSection {
     std::string label;       ///< Display label (e.g., "Calibration")
     int display_order;       ///< Sort order (0 = first)
     std::string description; ///< Short description for settings row
+    std::string icon;        ///< Icon name; device_section() fills it from the shared table
 };
 
 /**
@@ -2574,10 +2580,20 @@ struct DeviceAction {
     std::vector<std::string> options; ///< Options for dropdown type
     float min_value = 0;              ///< Min value for slider type
     float max_value = 100;            ///< Max value for slider type
+    float step = 1;                   ///< Slider resolution: 1, 0.1 or 0.01
     std::string unit;                 ///< Display unit (e.g., "mm", "%")
     int slot_index = -1;              ///< If action is per-slot (-1 = system-wide)
-    bool enabled = true;              ///< Whether action is currently available
-    std::string disable_reason;       ///< Why disabled (if applicable)
+    /// The tool this action applies to (0-based G-code number), or -1. The UI names
+    /// the tool after the label, in the app's one tool-label form.
+    int tool_index = -1;
+    bool enabled = true; ///< Whether action is currently available
+    /// Running it moves the printer (toolhead, homing, a purge or wipe): the UI greys it
+    /// while anything forbids motion and the backend refuses it during a print.
+    bool moves_machine = false;
+    /// A moves_machine action that stays available while the print is paused, the way a
+    /// paused print recovers (filament ops' rule: AmsSubscriptionBackend::refuse_if_printing).
+    bool allowed_while_paused = false;
+    std::string disable_reason; ///< Why disabled (if applicable)
     /// Id of a registered guided flow (ui_guided_device_flow.h) the UI starts instead of
     /// executing the action directly. Empty for an ordinary action.
     std::string guided_flow;
@@ -2629,6 +2645,20 @@ struct DeviceAction {
         a.type = ActionType::DROPDOWN;
         a.options = std::move(options);
         return a;
+    }
+
+    /// This action, marked as one that moves the printer. @p while_paused leaves it
+    /// available on a paused print, where a filament op is how the print recovers.
+    [[nodiscard]] DeviceAction with_machine_motion(bool while_paused = false) && {
+        moves_machine = true;
+        allowed_while_paused = while_paused;
+        return std::move(*this);
+    }
+
+    /// This slider, moving in steps of @p resolution instead of whole units.
+    [[nodiscard]] DeviceAction with_step(float resolution) && {
+        step = resolution;
+        return std::move(*this);
     }
 };
 

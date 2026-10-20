@@ -211,7 +211,7 @@
                             description="Print a test tower and tune K by eye">
           <event_cb trigger="clicked" callback="on_pa_tuning_clicked"/>
         </setting_action_row>
-        <!-- Tool Offsets (tool changers with the calibration macro only) -->
+        <!-- Tool Offsets (printers with a tool offset calibration) -->
         <setting_action_row name="row_tool_offsets"
                             label="Tool Offsets" icon="axis_arrow"
                             description="Measure every tool's XYZ offset automatically">

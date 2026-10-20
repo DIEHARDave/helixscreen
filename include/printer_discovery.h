@@ -850,6 +850,14 @@ class PrinterDiscovery {
     }
 
     /**
+     * @brief Take the Klipper version and the Kalico marker from printer.info's result
+     *
+     * A missing or non-string software_version reads as "unknown". Call after
+     * parse_objects(), which clears both.
+     */
+    void apply_printer_info(const nlohmann::json& result);
+
+    /**
      * @brief Set kinematics type from toolhead subscription
      */
     void set_kinematics(const std::string& kinematics) {

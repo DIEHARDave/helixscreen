@@ -17,9 +17,11 @@
 #include "ams_backend_ace.h"
 #include "ams_backend_mock.h"
 #include "ams_backend_toolchanger.h"
+#include "ams_device_action_value.h"
 #include "ams_types.h"
 
 #include <any>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -726,11 +728,68 @@ TEST_CASE("ACE device actions - execute valid actions", "[ams][device_actions][a
         CHECK(result.result == helix::AmsResult::NOT_CONNECTED);
     }
 
-    SECTION("ace_feed_assist_toggle with no value returns not_connected") {
+    SECTION("ace_feed_assist_toggle with no value is refused before anything is sent") {
         auto result = backend.execute_device_action("ace_feed_assist_toggle");
         CHECK_FALSE(result);
-        CHECK(result.result == helix::AmsResult::NOT_CONNECTED);
+        CHECK(result.result == helix::AmsResult::WRONG_STATE);
     }
+}
+
+// =============================================================================
+// device_action_value: the one reader of a control's value
+// =============================================================================
+
+TEST_CASE("device_action_value reads a number whatever type carries it",
+          "[ams][device_actions][device_action_value]") {
+    // The section overlay's sliders send float; backends and tests hold double or int.
+    for (const std::any& v : {std::any(42.0f), std::any(42.0), std::any(42), std::any(42L)}) {
+        const auto [as_double, err_d] = device_action_value<double>(v, "speed");
+        CHECK(err_d.success());
+        CHECK(as_double == 42.0);
+        const auto [as_float, err_f] = device_action_value<float>(v, "speed");
+        CHECK(err_f.success());
+        CHECK(as_float == 42.0f);
+    }
+    CHECK(device_action_number(std::any(-2.5f)) == -2.5);
+}
+
+TEST_CASE("device_action_value refuses a missing, mistyped or non-finite value",
+          "[ams][device_actions][device_action_value]") {
+    SECTION("missing") {
+        const auto [v, err] = device_action_value<double>(std::any{}, "speed");
+        CHECK(err.result == helix::AmsResult::WRONG_STATE);
+        CHECK(err.user_msg == "Missing value");
+    }
+    SECTION("a string where a number belongs") {
+        const auto [v, err] = device_action_value<float>(std::any(std::string("42")), "speed");
+        CHECK(err.result == helix::AmsResult::WRONG_STATE);
+        CHECK(err.user_msg == "Invalid value type");
+    }
+    SECTION("a number where a bool belongs") {
+        const auto [v, err] = device_action_value<bool>(std::any(1), "sync state");
+        CHECK_FALSE(err.success());
+    }
+    SECTION("NaN") {
+        CHECK_FALSE(device_action_number(std::any(std::nan(""))).has_value());
+        CHECK_FALSE(device_action_value<double>(std::any(std::nan("")), "speed").second.success());
+    }
+}
+
+TEST_CASE("device_action_macro_choice reads a picker's macro",
+          "[ams][device_actions][device_action_value]") {
+    CHECK(device_action_macro_choice(std::any(std::string("ACE_BYPASS_ON"))).first ==
+          "ACE_BYPASS_ON");
+    CHECK(device_action_macro_choice(std::any(std::string(""))).second.result ==
+          helix::AmsResult::WRONG_STATE);
+    CHECK_FALSE(device_action_macro_choice(std::any(3)).second.success());
+    CHECK_FALSE(device_action_macro_choice(std::any{}).second.success());
+}
+
+TEST_CASE("device_action_value reads bools and strings exactly",
+          "[ams][device_actions][device_action_value]") {
+    CHECK(device_action_value<bool>(std::any(true), "state").first);
+    CHECK(device_action_value<std::string>(std::any(std::string("Auto")), "mode").first == "Auto");
+    CHECK_FALSE(device_action_value<std::string>(std::any("Auto"), "mode").second.success());
 }
 
 // =============================================================================

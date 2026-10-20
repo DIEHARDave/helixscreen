@@ -19,11 +19,11 @@ The confirmation guards against stopping a print by accident. Turn it off if you
 
 ## Cancel Escalation
 
-Some printers take a long time to finish cancelling a print: parking tools, cooling down, running a long `CANCEL_PRINT` macro. Cancel Escalation is a safety net. If a cancel hasn't finished after a set time, HelixScreen sends an emergency stop (`M112`).
+Some printers take a long time to finish canceling a print: parking tools, cooling down, running a long `CANCEL_PRINT` macro. Cancel Escalation is a safety net. If a cancel hasn't finished after a set time, HelixScreen sends an emergency stop (`M112`).
 
 **Off** by default.
 
-**Leave it off** on tool changers that park tools when cancelling, on printers with long `CANCEL_PRINT` macros, and on any printer whose cancel is expected to take more than a few seconds.
+**Leave it off** on tool changers that park tools when canceling, on printers with long `CANCEL_PRINT` macros, and on any printer whose cancel is expected to take more than a few seconds.
 
 **Turn it on** on simple printers where a cancel should be quick, or if you've had cancels that got stuck and never returned to idle.
 
@@ -66,7 +66,7 @@ The first time HelixScreen starts on a K2 Plus that had its own detection settin
 | **On** (default) | A detected failure pauses the print and opens a dialog where you can resume, cancel, or turn detection off |
 | **Off** | A detected failure only shows a warning. The print keeps going |
 
-Greyed out while Spaghetti Detection is off. Hidden on printers whose firmware pauses the print on its own when it sees a failure (the Snapmaker U1).
+Grayed out while Spaghetti Detection is off. Hidden on printers whose firmware pauses the print on its own when it sees a failure (the Snapmaker U1).
 
 See [Print Monitoring](../print-monitoring.md) for what the detection dialog offers.
 
@@ -74,7 +74,7 @@ See [Print Monitoring](../print-monitoring.md) for what the detection dialog off
 
 ## Print Completion Alert
 
-How HelixScreen tells you a print has finished, been cancelled or failed, when you're not already looking at the print status screen.
+How HelixScreen tells you a print has finished, been canceled or failed, when you're not already looking at the print status screen.
 
 | Setting | What you get |
 |---------|--------------|
@@ -84,7 +84,7 @@ How HelixScreen tells you a print has finished, been cancelled or failed, when y
 
 A failed print always gets the full alert, whatever you choose, because errors need your attention. If the print status screen is already open when the print ends, there's no extra alert: that screen shows the result.
 
-The end-of-print sound plays for every finished, cancelled or failed print as long as the master Sounds switch is on.
+The end-of-print sound plays for every finished, canceled or failed print as long as the master Sounds switch is on.
 
 ---
 

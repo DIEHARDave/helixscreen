@@ -59,6 +59,11 @@ namespace helix::ui {
 /// cell around the widget subtracts this to know what is left beside it.
 inline constexpr int32_t kAmsLaneSpoolBadgeMarginPx = 8;
 
+/// True when /ams/spool_style asks for the pseudo-3D spools (the default),
+/// false for flat concentric rings. Every AMS surface that draws differently
+/// per style asks this, so the setting is read in one place.
+bool ams_spool_style_3d();
+
 /**
  * @brief Point an ams_lane_spool widget at a slot of a backend
  *

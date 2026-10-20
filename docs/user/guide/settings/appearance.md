@@ -12,7 +12,7 @@ On the Settings screen, the **Appearance** row shows the mode and the theme you'
 
 ## Dark Mode
 
-Switches between the light and dark version of your theme. **On** (dark) by default. The switch is greyed out when your theme only comes in one version (see the Modes column in [Built-in Themes](#built-in-themes)).
+Switches between the light and dark version of your theme. **On** (dark) by default. The switch is grayed out when your theme only comes in one version (see the Modes column in [Built-in Themes](#built-in-themes)).
 
 ---
 
@@ -39,7 +39,7 @@ Eighteen themes come with HelixScreen, listed alphabetically in the Theme Preset
 |-------|------|-------|
 | **Ayu** | Warm gold accent with coral errors on slate | Light + dark |
 | **Catppuccin** | Soft pastels on gentle lavender | Light + dark |
-| **ChatGPT** | Understated greys with green and red status colors | Light + dark |
+| **ChatGPT** | Understated grays with green and red status colors | Light + dark |
 | **Cupertino** | Apple-style system colors on near-black | Light + dark |
 | **Dracula** | Violet on deep slate with bright green highlights | Dark only |
 | **Everforest** | Muted forest green and clay | Light + dark |
@@ -47,14 +47,14 @@ Eighteen themes come with HelixScreen, listed alphabetically in the Theme Preset
 | **Hazard** | Safety-vest yellow, warning orange and danger red on powder-black, with sharp corners and brass seams | Dark only |
 | **HelixScreen** | The default: balanced blue on charcoal | Light + dark |
 | **Kanagawa** | Soft wave-blue and gold on deep indigo | Light + dark |
-| **Material Design** | Material blues and greens on grey | Light + dark |
+| **Material Design** | Material blues and greens on gray | Light + dark |
 | **Midnight** | Near-black navy, dim and low-glare | Dark only |
 | **Nord** | Arctic blues and frost tones | Light + dark |
 | **One Dark** | The Atom editor look: blue and green on charcoal | Light + dark |
 | **Rose Pine** | Muted rose, iris and pine on soft charcoal | Light + dark |
 | **Solarized** | The classic muted scheme on deep teal | Light + dark |
 | **Tokyo Night** | City-at-night blues with pastel highlights | Light + dark |
-| **Yami** | Vivid blue on deep grey, high contrast | Dark only |
+| **Yami** | Vivid blue on deep gray, high contrast | Dark only |
 
 ### Editing a Custom Theme
 
@@ -86,7 +86,7 @@ Three buttons sit at the bottom of the editor:
 |--------|--------------|
 | **Reset** | For a built-in theme, puts the original colors back. For a theme you made, goes back to its last saved state |
 | **Save As New** | Saves your changes as a new theme and leaves the original alone |
-| **Save** | Saves over the current theme. Greyed out until you've changed something |
+| **Save** | Saves over the current theme. Grayed out until you've changed something |
 
 **Save As New** asks for a name. It suggests "*theme name* Copy". Tap **Save** and the new theme is applied and added to the Theme Preset menu.
 

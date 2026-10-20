@@ -40,9 +40,9 @@
       <!-- ================================================================== -->
       <setting_group name="group_filament">
         <setting_group_header title="FILAMENT"/>
-        <!-- MULTI-FILAMENT MANAGEMENT (hidden if no AMS detected) -->
+        <!-- MULTI-FILAMENT MANAGEMENT: same gate as the AMS sidebar's Settings button -->
         <lv_obj name="container_ams_settings" width="100%" style_pad_all="0" scrollable="false">
-          <bind_flag_if_eq subject="ams_slot_count" flag="hidden" ref_value="0"/>
+          <bind_flag_if_eq subject="ams_has_device_ops" flag="hidden" ref_value="0"/>
           <setting_action_row name="row_ams_settings"
                               label="Multi-Filament System Management" icon="filament"
                               description="Quick actions, calibration, speed" callback="on_ams_settings_clicked"/>

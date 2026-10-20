@@ -12,6 +12,7 @@
 #include "action_prompt_manager.h"
 #include "afc_defaults.h"
 #include "ams_bypass_policy.h"
+#include "ams_device_action_value.h"
 #include "ams_fault_event.h"
 #include "config.h"
 #include "humidity_sensor_types.h"
@@ -301,7 +302,7 @@ bool AmsBackendAfc::owns_filament_sensor(const std::string& bare_name,
 bool AmsBackendAfc::auto_unloads_after_print() const {
     // AFC's post-print unload depends on the user's end-of-print macros, so
     // this is a per-printer user setting rather than a firmware constant.
-    return SettingsManager::instance().get_afc_unload_after_print();
+    return SettingsManager::instance().get_unload_after_print();
 }
 
 // ============================================================================
@@ -6503,9 +6504,12 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
             a.current_value = bowden_length_;
             a.max_value = std::max(2000.0f, bowden_length_ * 1.5f);
         }
+        if (a.id == "unload_at_end") {
+            a.current_value = SettingsManager::instance().get_unload_after_print();
+        }
         if (a.id == "led_toggle") {
-            a.label = afc_led_state_ ? "Turn Off LEDs" : "Turn On LEDs";
-            a.icon = afc_led_state_ ? "lightbulb-off" : "lightbulb-on";
+            a.label = afc_led_state_ ? TR_NOOP("Turn Off LEDs") : TR_NOOP("Turn On LEDs");
+            a.icon = afc_led_state_ ? "light_off" : "lightbulb_on";
         }
     }
 
@@ -6529,12 +6533,13 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
                                      [](const DeviceAction& a) { return a.id == "bowden_length"; }),
                       actions.end());
         for (int i = 0; i < static_cast<int>(extruders_.size()); ++i) {
-            std::string id = "bowden_T" + std::to_string(i);
-            std::string label = "Bowden Length (T" + std::to_string(i) + ")";
-            std::string desc = "Bowden tube length for tool " + std::to_string(i);
-            actions.push_back(DeviceAction::slider(
-                id, label, "setup", bowden_length_, // shared default until per-extruder tracking
-                100.0f, std::max(2000.0f, bowden_length_ * 1.5f), "mm", "ruler", desc));
+            DeviceAction a =
+                DeviceAction::slider("bowden_T" + std::to_string(i), "Bowden Length", "setup",
+                                     bowden_length_, // shared default until per-extruder tracking
+                                     100.0f, std::max(2000.0f, bowden_length_ * 1.5f), "mm",
+                                     "ruler", "Bowden tube length to this tool");
+            a.tool_index = i;
+            actions.push_back(std::move(a));
         }
     }
 
@@ -6549,21 +6554,21 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
 
         for (int i = 0; i < static_cast<int>(extruders_.size()); ++i) {
             const auto& ext = extruders_[i];
-            std::string suffix = "_T" + std::to_string(i);
-            std::string tool_label = " (T" + std::to_string(i) + ")";
-
-            actions.push_back(DeviceAction::slider(
-                "tool_stn" + suffix, "Sensor to Nozzle" + tool_label, "toolhead",
-                std::any(ext.tool_stn), 0.0f, 200.0f, "mm", "ruler",
-                "Distance from toolhead sensor to nozzle for T" + std::to_string(i)));
-            actions.push_back(
-                DeviceAction::slider("tool_stn_unload" + suffix, "Unload Distance" + tool_label,
-                                     "toolhead", std::any(ext.tool_stn_unload), 0.0f, 200.0f, "mm",
-                                     "ruler", "Retraction distance for T" + std::to_string(i)));
-            actions.push_back(DeviceAction::slider(
-                "tool_sensor_after_extruder" + suffix, "Post-Sensor Clear" + tool_label, "toolhead",
-                std::any(ext.tool_sensor_after_extruder), 0.0f, 100.0f, "mm", "ruler",
-                "Extra clear distance for T" + std::to_string(i)));
+            const std::string suffix = "_T" + std::to_string(i);
+            for (DeviceAction a :
+                 {DeviceAction::slider("tool_stn" + suffix, "Sensor to Nozzle", "toolhead",
+                                       std::any(ext.tool_stn), 0.0f, 200.0f, "mm", "ruler",
+                                       "Distance from toolhead sensor to nozzle tip"),
+                  DeviceAction::slider("tool_stn_unload" + suffix, "Unload Distance", "toolhead",
+                                       std::any(ext.tool_stn_unload), 0.0f, 200.0f, "mm", "ruler",
+                                       "Retraction distance to clear extruder gears"),
+                  DeviceAction::slider("tool_sensor_after_extruder" + suffix, "Post-Sensor Clear",
+                                       "toolhead", std::any(ext.tool_sensor_after_extruder), 0.0f,
+                                       100.0f, "mm", "ruler",
+                                       "Extra distance to move once sensors clear")}) {
+                a.tool_index = i;
+                actions.push_back(std::move(a));
+            }
         }
     }
 
@@ -6575,11 +6580,13 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
         for (int i = 0; i < static_cast<int>(extruders_.size()); ++i) {
             auto it = toolhead_led_state_.find(i);
             bool led_on = (it != toolhead_led_state_.end()) && it->second;
-            actions.push_back(DeviceAction::button(
-                fmt::format("led_extruder_T{}", i),
-                fmt::format("{} Toolhead LED (T{})", led_on ? "Turn Off" : "Turn On", i), "setup",
-                led_on ? "lightbulb-off" : "lightbulb-on",
-                fmt::format("Toggle toolhead LED for T{}", i)));
+            const char* label =
+                led_on ? TR_NOOP("Turn Off Toolhead LED") : TR_NOOP("Turn On Toolhead LED");
+            DeviceAction a = DeviceAction::button(fmt::format("led_extruder_T{}", i), label,
+                                                  "setup", led_on ? "light_off" : "lightbulb_on",
+                                                  "Toggle this tool's toolhead LED");
+            a.tool_index = i;
+            actions.push_back(std::move(a));
         }
     }
 
@@ -6607,7 +6614,7 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
     bool loaded = configs_loaded_.load(std::memory_order_acquire);
     bool cfg_ready = loaded && afc_config_ && afc_config_->is_loaded();
     bool macro_ready = loaded && macro_vars_config_ && macro_vars_config_->is_loaded();
-    std::string not_loaded_reason = "Loading configuration...";
+    std::string not_loaded_reason = TR_NOOP("Loading configuration...");
 
     // Find first AFC_hub section from config (for hub actions)
     std::string hub_section;
@@ -6735,24 +6742,31 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
     return actions;
 }
 
-AmsError AmsBackendAfc::execute_device_action(const std::string& action_id, const std::any& value) {
+AmsError AmsBackendAfc::do_execute_device_action(const std::string& action_id,
+                                                 const std::any& value) {
     spdlog::info("[AMS AFC] Executing device action: {}", action_id);
 
+    if (action_id == "unload_at_end") {
+        // AFC unloads from the user's own end macros; the setting records which
+        // they do, so the pre-print check expects an empty toolhead.
+        const auto [unload, value_err] =
+            printer::device_action_value<bool>(value, "unload at end setting");
+        if (!value_err) {
+            return value_err;
+        }
+        SettingsManager::instance().set_unload_after_print(unload);
+        return AmsErrorHelper::success();
+    }
     if (action_id == "calibration_wizard") {
         return execute_gcode("AFC_CALIBRATION");
     } else if (action_id == "toolhead_calibration") {
         return execute_gcode("AFC_TOOLHEAD_CALIBRATION");
     } else if (action_id == "bowden_length") {
-        if (!value.has_value()) {
-            return AmsError(AmsResult::WRONG_STATE, "Bowden length value required",
-                            lv_tr("Missing value"), lv_tr("Provide a bowden length value"));
+        const auto [length, value_err] =
+            printer::device_action_value<float>(value, "bowden length");
+        if (!value_err) {
+            return value_err;
         }
-        const float* length_p = std::any_cast<float>(&value);
-        if (!length_p) {
-            return AmsError(AmsResult::WRONG_STATE, "Invalid bowden length type",
-                            lv_tr("Invalid value type"), lv_tr("Provide a numeric value"));
-        }
-        const float length = *length_p;
         std::lock_guard<std::mutex> lock(mutex_);
         float max_len = std::max(2000.0f, bowden_length_ * 1.5f);
         if (length < 100.0f || length > max_len) {
@@ -6770,16 +6784,11 @@ AmsError AmsBackendAfc::execute_device_action(const std::string& action_id, cons
         return AmsErrorHelper::not_supported("No AFC hubs configured");
     } else if (action_id.rfind("bowden_T", 0) == 0) {
         // Per-extruder bowden length (toolchanger): bowden_T0, bowden_T1, etc.
-        if (!value.has_value()) {
-            return AmsError(AmsResult::WRONG_STATE, "Bowden length value required",
-                            lv_tr("Missing value"), lv_tr("Provide a bowden length value"));
+        const auto [length, value_err] =
+            printer::device_action_value<float>(value, "bowden length");
+        if (!value_err) {
+            return value_err;
         }
-        const float* length_p = std::any_cast<float>(&value);
-        if (!length_p) {
-            return AmsError(AmsResult::WRONG_STATE, "Invalid bowden length type",
-                            lv_tr("Invalid value type"), lv_tr("Provide a numeric value"));
-        }
-        const float length = *length_p;
         std::lock_guard<std::mutex> lock(mutex_);
         float max_len = std::max(2000.0f, bowden_length_ * 1.5f);
         if (length < 100.0f || length > max_len) {
@@ -6813,16 +6822,11 @@ AmsError AmsBackendAfc::execute_device_action(const std::string& action_id, cons
         }
         return AmsErrorHelper::not_supported("Invalid extruder index: " + std::to_string(tool_idx));
     } else if (action_id == "speed_fwd" || action_id == "speed_rev") {
-        if (!value.has_value()) {
-            return AmsError(AmsResult::WRONG_STATE, "Speed multiplier value required",
-                            lv_tr("Missing value"), lv_tr("Provide a speed multiplier value"));
+        const auto [multiplier, value_err] =
+            printer::device_action_value<float>(value, "speed multiplier");
+        if (!value_err) {
+            return value_err;
         }
-        const float* multiplier_p = std::any_cast<float>(&value);
-        if (!multiplier_p) {
-            return AmsError(AmsResult::WRONG_STATE, "Invalid speed multiplier type",
-                            lv_tr("Invalid value type"), lv_tr("Provide a numeric value"));
-        }
-        const float multiplier = *multiplier_p;
         if (multiplier < 0.5f || multiplier > 2.0f) {
             return AmsError(AmsResult::WRONG_STATE, "Speed multiplier must be 0.5-2.0x",
                             lv_tr("Invalid value"),
@@ -6918,15 +6922,10 @@ AmsError AmsBackendAfc::execute_device_action(const std::string& action_id, cons
     // Per-lane dist_hub actions
     if (action_id.rfind("dist_hub_", 0) == 0) {
         std::string lane_name = action_id.substr(9);
-        if (!value.has_value()) {
-            return AmsError(AmsResult::WRONG_STATE, "Value required", lv_tr("Missing value"), "");
+        const auto [val, value_err] = printer::device_action_value<float>(value, "distance");
+        if (!value_err) {
+            return value_err;
         }
-        const float* val_p = std::any_cast<float>(&value);
-        if (!val_p) {
-            return AmsError(AmsResult::WRONG_STATE, lv_tr("Invalid value type"),
-                            lv_tr("Expected float"), "");
-        }
-        const float val = *val_p;
         AmsError err =
             execute_gcode(fmt::format("SET_HUB_DIST LANE={} LENGTH={:g}", lane_name, val));
         if (!err)
@@ -6959,15 +6958,10 @@ AmsError AmsBackendAfc::execute_device_action(const std::string& action_id, cons
 
     auto [th_field, th_tool] = parse_toolhead_action(action_id);
     if (!th_field.empty()) {
-        if (!value.has_value()) {
-            return AmsError(AmsResult::WRONG_STATE, "Value required", lv_tr("Missing value"), "");
+        const auto [val, value_err] = printer::device_action_value<float>(value, "distance");
+        if (!value_err) {
+            return value_err;
         }
-        const float* val_p = std::any_cast<float>(&value);
-        if (!val_p) {
-            return AmsError(AmsResult::WRONG_STATE, lv_tr("Invalid value type"),
-                            lv_tr("Expected float"), "");
-        }
-        const float val = *val_p;
 
         // UPDATE_TOOLHEAD_SENSORS / SAVE_EXTRUDER_VALUES are mux commands
         // keyed on the AFC_extruder SECTION name (AFC_extruder.py:364-369,
@@ -7021,40 +7015,38 @@ AmsError AmsBackendAfc::execute_device_action(const std::string& action_id, cons
         const std::string& hub_section = hubs[0];
 
         if (action_id == "hub_cut_enabled") {
-            const bool* val_p = std::any_cast<bool>(&value);
-            if (!val_p) {
-                return AmsError(AmsResult::WRONG_STATE, "Invalid value type for toggle",
-                                lv_tr("Expected boolean"), "");
+            const auto [val, value_err] = printer::device_action_value<bool>(value, "hub cut");
+            if (!value_err) {
+                return value_err;
             }
-            afc_config_->parser().set(hub_section, "cut", *val_p ? "True" : "False");
+            afc_config_->parser().set(hub_section, "cut", val ? "True" : "False");
             afc_config_->mark_dirty();
             return AmsErrorHelper::success();
         } else if (action_id == "hub_cut_dist") {
-            const float* val_p = std::any_cast<float>(&value);
-            if (!val_p) {
-                return AmsError(AmsResult::WRONG_STATE, "Invalid value type for slider",
-                                lv_tr("Expected float"), "");
+            const auto [val, value_err] =
+                printer::device_action_value<float>(value, "cut distance");
+            if (!value_err) {
+                return value_err;
             }
-            afc_config_->parser().set(hub_section, "cut_dist", fmt::format("{:g}", *val_p));
+            afc_config_->parser().set(hub_section, "cut_dist", fmt::format("{:g}", val));
             afc_config_->mark_dirty();
             return AmsErrorHelper::success();
         } else if (action_id == "hub_bowden_length") {
-            const float* val_p = std::any_cast<float>(&value);
-            if (!val_p) {
-                return AmsError(AmsResult::WRONG_STATE, "Invalid value type for slider",
-                                lv_tr("Expected float"), "");
+            const auto [val, value_err] =
+                printer::device_action_value<float>(value, "bowden length");
+            if (!value_err) {
+                return value_err;
             }
-            afc_config_->parser().set(hub_section, "afc_bowden_length",
-                                      fmt::format("{:g}", *val_p));
+            afc_config_->parser().set(hub_section, "afc_bowden_length", fmt::format("{:g}", val));
             afc_config_->mark_dirty();
             return AmsErrorHelper::success();
         } else if (action_id == "assisted_retract") {
-            const bool* val_p = std::any_cast<bool>(&value);
-            if (!val_p) {
-                return AmsError(AmsResult::WRONG_STATE, "Invalid value type for toggle",
-                                lv_tr("Expected boolean"), "");
+            const auto [val, value_err] =
+                printer::device_action_value<bool>(value, "assisted retract");
+            if (!value_err) {
+                return value_err;
             }
-            afc_config_->parser().set(hub_section, "assisted_retract", *val_p ? "True" : "False");
+            afc_config_->parser().set(hub_section, "assisted_retract", val ? "True" : "False");
             afc_config_->mark_dirty();
             return AmsErrorHelper::success();
         }
@@ -7073,34 +7065,31 @@ AmsError AmsBackendAfc::execute_device_action(const std::string& action_id, cons
             return AmsError(AmsResult::WRONG_STATE, "Macro vars config not loaded",
                             lv_tr("Configuration not available"), lv_tr("Wait for config to load"));
         }
-        const float* val_p = std::any_cast<float>(&value);
-        if (!val_p) {
-            return AmsError(AmsResult::WRONG_STATE, "Invalid value type for slider",
-                            lv_tr("Expected float"), "");
+        const auto [val, value_err] = printer::device_action_value<float>(value, "value");
+        if (!value_err) {
+            return value_err;
         }
         macro_vars_config_->parser().set("gcode_macro AFC_MacroVars", it->second,
-                                         fmt::format("{:g}", *val_p));
+                                         fmt::format("{:g}", val));
         macro_vars_config_->mark_dirty();
         return AmsErrorHelper::success();
     }
 
     // ---- Purge/wipe toggles — immediate via AFC_TOGGLE_MACRO G-code ----
     if (action_id == "purge_enabled") {
-        const bool* val_p = std::any_cast<bool>(&value);
-        if (!val_p) {
-            return AmsError(AmsResult::WRONG_STATE, lv_tr("Invalid value type"),
-                            lv_tr("Expected boolean"), "");
+        const auto [val, value_err] = printer::device_action_value<bool>(value, "purge state");
+        if (!value_err) {
+            return value_err;
         }
-        execute_gcode(fmt::format("AFC_TOGGLE_MACRO POOP={}", *val_p ? 1 : 0));
+        execute_gcode(fmt::format("AFC_TOGGLE_MACRO POOP={}", val ? 1 : 0));
         return AmsErrorHelper::success();
     }
     if (action_id == "brush_enabled") {
-        const bool* val_p = std::any_cast<bool>(&value);
-        if (!val_p) {
-            return AmsError(AmsResult::WRONG_STATE, lv_tr("Invalid value type"),
-                            lv_tr("Expected boolean"), "");
+        const auto [val, value_err] = printer::device_action_value<bool>(value, "brush state");
+        if (!value_err) {
+            return value_err;
         }
-        execute_gcode(fmt::format("AFC_TOGGLE_MACRO WIPE={}", *val_p ? 1 : 0));
+        execute_gcode(fmt::format("AFC_TOGGLE_MACRO WIPE={}", val ? 1 : 0));
         return AmsErrorHelper::success();
     }
 
@@ -7110,12 +7099,11 @@ AmsError AmsBackendAfc::execute_device_action(const std::string& action_id, cons
             return AmsError(AmsResult::WRONG_STATE, "AFC config not loaded",
                             lv_tr("Configuration not available"), lv_tr("Wait for config to load"));
         }
-        const float* val_p = std::any_cast<float>(&value);
-        if (!val_p) {
-            return AmsError(AmsResult::WRONG_STATE, lv_tr("Invalid value type"),
-                            lv_tr("Expected float"), "");
+        const auto [val, value_err] = printer::device_action_value<float>(value, "purge length");
+        if (!value_err) {
+            return value_err;
         }
-        afc_config_->parser().set("AFC_poop", "purge_length", fmt::format("{:g}", *val_p));
+        afc_config_->parser().set("AFC_poop", "purge_length", fmt::format("{:g}", val));
         afc_config_->mark_dirty();
         afc_config_->save("AFC/AFC.cfg", [](bool ok, const std::string& err) {
             if (!ok)

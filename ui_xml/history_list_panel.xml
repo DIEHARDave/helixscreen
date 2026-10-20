@@ -54,8 +54,8 @@
         <bind_flag_if_eq subject="history_filters_expanded" flag="hidden" ref_value="0"/>
         <!-- Status filter dropdown -->
         <lv_dropdown name="filter_status"
-                     options="All&#10;Completed&#10;Failed&#10;Cancelled"
-                     options_tag="All&#10;Completed&#10;Failed&#10;Cancelled" flex_grow="1">
+                     options="All&#10;Completed&#10;Failed&#10;Canceled"
+                     options_tag="All&#10;Completed&#10;Failed&#10;Canceled" flex_grow="1">
           <event_cb trigger="value_changed" callback="history_filter_status_changed"/>
         </lv_dropdown>
         <!-- Sort dropdown -->

@@ -16,7 +16,6 @@
 #include "ams_backend.h"
 #include "ams_lane_state.h"
 #include "ams_state.h"
-#include "config.h"
 #include "display_numbering.h"
 #include "helix-xml/src/xml/lv_xml_parser.h"
 #include "helix-xml/src/xml/lv_xml_utils.h"
@@ -804,9 +803,7 @@ static void rebuild_spools(AmsMiniStatusData* data) {
         }
     } rg{data};
 
-    // Resolve the current spool style once (matches ams_draw's /ams/spool_style read).
-    const bool cur_3d =
-        helix::Config::get_instance()->get<std::string>("/ams/spool_style", "3d") == "3d";
+    const bool cur_3d = helix::ui::ams_spool_style_3d();
 
     if (!data->spools_container) {
         lv_obj_t* sc = lv_obj_create(data->container);
