@@ -66,8 +66,11 @@ new probe in that list, never a branch in the generic code.
 When Moonraker runs in a chroot (Forge-X), the installer finds it through
 `/proc/<pid>/root` and links the plugin by the path Moonraker sees. When `moonraker.conf`
 is a symlink that includes a `user.moonraker.conf` (a firmware mod owns the main file),
-`[helix_print]` is added to that user file instead. With no `systemctl` or `service` to
-restart Moonraker, `--auto` asks Moonraker to restart itself (`POST /server/restart`).
+`[helix_print]` is added to that user file instead. `--auto` restarts Moonraker over its
+own HTTP API and never through a service manager: `POST /server/restart` when it runs no
+plugin yet or only the config changed, and `POST /machine/services/restart` for the service
+Moonraker reports as its own when it runs another plugin version, which only a new process
+reads.
 
 ### Update Manager (Auto-Updates)
 

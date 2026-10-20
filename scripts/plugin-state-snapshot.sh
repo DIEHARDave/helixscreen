@@ -93,7 +93,7 @@ conf_sh() {
 # fails the snapshot instead of recording a wrong path.
 REQUIRED_FUNCS="components_under running_moonraker_proc running_moonraker_args
 install_sh_moonraker_root running_moonraker_arg find_moonraker_components
-find_config_dir helix_conf_file moonraker_conf_files proc_start_ticks systemd_is_init"
+find_config_dir helix_conf_file moonraker_conf_files"
 
 emit_remote() {
     printf '%s\n' "SNAP_ROOT=$(shquote "$ROOT")"
@@ -106,6 +106,19 @@ emit_remote() {
 for f in $SNAP_REQUIRED; do
     command -v "$f" >/dev/null 2>&1 || { echo "@@ERROR install.sh discovery lacks $f"; exit 3; }
 done
+
+# The start time of the process at /proc directory @1, in clock ticks since
+# boot: field 22 of its stat, counted after the last ')' since the command
+# name may hold spaces.
+proc_start_ticks() {
+    sed 's/.*) //' "$1/stat" 2>/dev/null | awk '{ print $20 }'
+}
+
+# Whether systemd is the init of the host whose /run is @1, judged by its
+# runtime directory there: a systemctl on PATH can be a vendor's stand-in.
+systemd_is_init() {
+    [ -d "$1/systemd/system" ]
+}
 
 HELIX_PROC_ROOT="$SNAP_ROOT/proc"
 

@@ -877,11 +877,11 @@ BINEOF
 
 # A Klipper home whose moonraker.conf serves on port $1, no Moonraker process
 # visible, Moonraker's HTTP API (mock_moonraker_http: state and request log
-# under $BATS_TEST_TMPDIR/mr), and a systemctl, sudo and init script that log
-# any call to $BATS_TEST_TMPDIR/service.log.
+# under $BATS_TEST_TMPDIR/mr), and a systemctl, sudo and service that log any
+# call to $BATS_TEST_TMPDIR/service.log.
 stage_moonraker_on_port() {
     export KLIPPER_HOME="$BATS_TEST_TMPDIR/home"
-    mkdir -p "$KLIPPER_HOME/printer_data/config" "$BATS_TEST_TMPDIR/proc" "$BATS_TEST_TMPDIR/etc/init.d"
+    mkdir -p "$KLIPPER_HOME/printer_data/config" "$BATS_TEST_TMPDIR/proc"
     printf '[server]\nhost: 0.0.0.0\nport: %s\n' "$1" > "$KLIPPER_HOME/printer_data/config/moonraker.conf"
     export HELIX_PROC_ROOT="$BATS_TEST_TMPDIR/proc"
     unset MOONRAKER_URL
@@ -889,9 +889,6 @@ stage_moonraker_on_port() {
     for cmd in systemctl sudo service; do
         mock_command_script "$cmd" "printf '%s %s\\n' $cmd \"\$*\" >> '$BATS_TEST_TMPDIR/service.log'; exit 1"
     done
-    printf '#!/bin/sh\necho "init $*" >> "%s"\n' "$BATS_TEST_TMPDIR/service.log" > "$BATS_TEST_TMPDIR/etc/init.d/moonraker"
-    chmod +x "$BATS_TEST_TMPDIR/etc/init.d/moonraker"
-    export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d"
     mock_moonraker_http "$BATS_TEST_TMPDIR/mr"
 }
 

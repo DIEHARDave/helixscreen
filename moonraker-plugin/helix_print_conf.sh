@@ -91,11 +91,12 @@ moonraker_local_url() {
 
 # The awk program that reads a process's argv, one element per line, and
 # prints what makes it Moonraker: the moonraker.py it runs, or "-m" and the
-# module it runs (python3 -m moonraker.moonraker on the CC1). Moonraker is a
-# python interpreter (argv[0] python, python3, python3.11, ...); an init
-# script, editor or log viewer whose argv names the file comes and goes
-# beside it and is not Moonraker. scripts/helix-launcher.sh matches the same
-# two shapes. Prints nothing for any other process.
+# module it runs (python3 -m moonraker.moonraker on the CC1), joined
+# (-mmoonraker) or not. Moonraker is a python interpreter (argv[0] python,
+# python3, python3.11, ...); an init script, editor or log viewer whose argv
+# names the file comes and goes beside it and is not Moonraker.
+# scripts/helix-launcher.sh looks for the same two shapes by substring, the
+# module only in its spaced form. Prints nothing for any other process.
 # shellcheck disable=SC2016  # awk's own $
 HELIX_MOONRAKER_ARGV_AWK='
     NR == 1 { n = split($0, part, "/"); if (part[n] !~ /^python[0-9.]*$/) exit; next }
@@ -106,10 +107,8 @@ HELIX_MOONRAKER_ARGV_AWK='
 
 # Print one line per running Moonraker: its /proc/<pid> directory under
 # HELIX_PROC_ROOT (tests point it at a fixture tree), else /proc, a blank, and
-# what HELIX_MOONRAKER_ARGV_AWK prints for it. Moonraker is a python interpreter (argv[0]
-# python, python3, python3.11, ...) running moonraker.py; an init script, editor
-# or log viewer whose argv names the file comes and goes beside it and is not
-# Moonraker. Prints nothing when no Moonraker runs.
+# what HELIX_MOONRAKER_ARGV_AWK prints for it. Prints nothing when no
+# Moonraker runs.
 running_moonrakers() {
     _rms_root="${HELIX_PROC_ROOT:-/proc}"
     for _rms_f in "$_rms_root"/[0-9]*/cmdline; do
@@ -122,8 +121,8 @@ running_moonrakers() {
 }
 
 # Print the first running Moonraker's /proc/<pid> directory and, on the next
-# line, its moonraker.py (running_moonrakers). Returns 1, printing nothing,
-# when no Moonraker runs.
+# line, what it runs: its moonraker.py, or "-m" and its module
+# (running_moonrakers). Returns 1, printing nothing, when no Moonraker runs.
 running_moonraker_process() {
     _rmp_first=$(running_moonrakers | sed -n 1p)
     [ -n "$_rmp_first" ] || return 1
@@ -201,23 +200,6 @@ running_moonraker_ids() {
     awk '/^Uid:/ { u = $3 } /^Gid:/ { g = $3 }
         /^Groups:/ { for (i = 2; i <= NF; i++) gs = gs " " $i }
         END { if (u != "") print u " " g gs }' "$_rmi_proc/status" 2>/dev/null || true
-}
-
-# Print the start time of the process at /proc directory @1, in clock ticks
-# since boot: field 22 of its stat, counted after the last ')' since the
-# command name may hold spaces.
-# UNCALLED_OK: scripts/plugin-state-snapshot.sh records it on the printer.
-proc_start_ticks() {
-    sed 's/.*) //' "$1/stat" 2>/dev/null | awk '{ print $20 }'
-}
-
-# Whether systemd is the init of the host whose /run is @1, judged by its
-# runtime directory there. A systemctl on PATH proves nothing: Creality K1
-# firmware ships /usr/bin/systemctl as a shell script that handles reboot and
-# poweroff and exits 0 for anything else.
-# UNCALLED_OK: scripts/plugin-state-snapshot.sh records it on the printer.
-systemd_is_init() {
-    [ -d "$1/systemd/system" ]
 }
 
 # The same probe as _has_real_curl in scripts/lib/installer/release.sh and

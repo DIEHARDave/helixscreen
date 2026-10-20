@@ -1561,7 +1561,7 @@ run_perm_install() {
     done
 }
 
-@test "an auto install on a K1 asks Moonraker to restart itself and runs neither its fake systemctl nor its init script" {
+@test "an auto install on a K1 asks Moonraker to restart itself and never runs its fake systemctl" {
     local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/service.log"
     setup_plain_home "$home"
     mkdir -p "$BATS_TEST_TMPDIR/run"
@@ -1569,13 +1569,9 @@ run_perm_install() {
     mock_command_script "systemctl" "echo \"systemctl \$*\" >> '$log'; exit 0"
     mock_command_script "sudo" "echo \"sudo \$*\" >> '$log'; exec \"\$@\""
     mock_moonraker_http "$BATS_TEST_TMPDIR/mr"
-    local initd="$BATS_TEST_TMPDIR/etc/init.d"
-    mkdir -p "$initd"
-    printf '#!/bin/sh\necho "init $*" >> "%s"\n' "$log" > "$initd/S56moonraker_service"
-    chmod +x "$initd/S56moonraker_service"
     bundled_version > "$BATS_TEST_TMPDIR/mr/new_version"
 
-    run env HOME="$home" HELIX_INITD_DIR="$initd" sh "$SCRIPT" --auto
+    run env HOME="$home" sh "$SCRIPT" --auto
     [ "$status" -eq 0 ] || fail "install failed: $output"
     grep -qx 'POST http://127.0.0.1:7125/server/restart' "$BATS_TEST_TMPDIR/mr/log" || fail "no self-restart request: $output"
     [ ! -e "$log" ] || fail "ran a service manager: $(cat "$log")"
