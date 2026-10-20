@@ -327,7 +327,7 @@ exec $real \"\$@\""
 }
 
 # Moonraker's /server/info never answers; every other URL goes to the fetcher
-# stubs. sleep is a no-op so install.sh's 30-attempt wait costs no real time.
+# stubs. The restart's waits run on a fake clock, so they cost no real time.
 silence_moonraker() {
     local name
     for name in curl wget; do
@@ -335,10 +335,10 @@ silence_moonraker() {
         stub "$name" "case \"\$*\" in *moonraker.test*) exit 7 ;; esac
 exec \"$BATS_TEST_TMPDIR/bin/$name.real\" \"\$@\""
     done
-    stub sleep 'exit 0'
+    mock_fake_clock
 }
 
-@test "a Moonraker that never answers after the restart warns and keeps the finished install" {
+@test "a Moonraker that is down after the restart is reported, and the finished install kept" {
     local home="$BATS_TEST_TMPDIR/home"
     setup_home "$home"
     setup_git_clone_install "$home"
@@ -349,7 +349,7 @@ exec \"$BATS_TEST_TMPDIR/bin/$name.real\" \"\$@\""
         sh "$WRAPPER" v1.2.3
     [ "$status" -eq 0 ] || fail "a slow restart failed the install: $output"
 
-    contains "Moonraker did not come back up in time" "$output"
+    contains "Moonraker is not running" "$output"
     [ "$(readlink "$link")" = "$home/helix_print/helix_print.py" ] || fail "link: $(readlink "$link")"
     [ -e "$link" ] || fail "the plugin link dangles"
     [ ! -e "$home/helix_print/.git" ] || fail "the old clone was restored over the new install"
