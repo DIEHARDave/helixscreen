@@ -1786,6 +1786,31 @@ TEST_CASE("DebugBundleCollector: condense_klipper_log collapses NON-Stats period
     REQUIRE(line_count(out) < 1000);
 }
 
+TEST_CASE("DebugBundleCollector: condense_klipper_log collapses serial chatter with varying bytes",
+          "[debug-bundle][klippy]") {
+    // A Creality CFS logs every RS-485 poll with its payload, as hex tokens and
+    // as a Python bytes literal. The bytes change every poll, so only folding
+    // hex and bytes payloads makes these lines one shape.
+    std::string raw;
+    for (int i = 0; i < 2000; ++i) {
+        const std::string hx = fmt::format("{:x}", i % 256);
+        const char printable = static_cast<char>('(' + i % 40);
+        raw += "[INFO] 2026-10-20 10:12:18,798 [root] [reactor:invoke:53] "
+               "cmd_485_send_data_with_response params: 0xf7 0x1 0x" +
+               hx + " 0x0 0xa 0x1a 0x28\n";
+        raw += "[WARNING] 2026-10-20 10:12:22,827 [root] [threading:run:910] Serial_485: got "
+               "{'#msgid': 9, '#msg': b'\\xf7\\x01\\t\\x" +
+               hx + std::string(1, printable) + "\\x00', '#name': '#unknown'}\n";
+    }
+    raw += "!! {\"code\":\"key852\", \"msg\":\"check extruder filament sensor\"}\n";
+
+    auto out = helix::DebugBundleCollector::condense_klipper_log(raw);
+
+    REQUIRE(count_lines_with(out, "key852") == 1);
+    REQUIRE(count_lines_with(out, "cmd_485_send_data_with_response") <= 40 + 200);
+    REQUIRE(count_lines_with(out, "Serial_485: got") <= 40 + 200);
+}
+
 TEST_CASE("DebugBundleCollector: condense_klipper_log keeps rare lines and recent repeats",
           "[debug-bundle][klippy]") {
     SECTION("a shape under the threshold is kept in full") {

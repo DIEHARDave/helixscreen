@@ -38,6 +38,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <deque>
 #include <filesystem>
@@ -1710,21 +1711,53 @@ json DebugBundleCollector::collect_printer_config() {
 /// Collapse digit runs so lines that differ only by numbers share a shape:
 /// "Stats 14645.9: ... sysload=0.60" and "Stats 14646.9: ... sysload=0.58"
 /// both become "Stats N.N: ... sysload=N.N".
+static bool is_hex_digit(char c) {
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+/// End of a Python bytes literal (b'...' or b"...") opening at `i`, or npos.
+static size_t bytes_literal_end(const std::string& line, size_t i) {
+    if (line[i] != 'b' || i + 1 >= line.size() || (line[i + 1] != '\'' && line[i + 1] != '"'))
+        return std::string::npos;
+    if (i > 0 && (std::isalnum(static_cast<unsigned char>(line[i - 1])) || line[i - 1] == '_'))
+        return std::string::npos; // the tail of a word, not a literal
+    const char quote = line[i + 1];
+    for (size_t j = i + 2; j < line.size(); ++j) {
+        if (line[j] == '\\')
+            ++j;
+        else if (line[j] == quote)
+            return j + 1;
+    }
+    return std::string::npos;
+}
+
+/// A line's shape: every number folded to N, so repeats of one message collapse.
+/// A number runs on through hex digits (0x1a, 3f), and a Python bytes literal
+/// folds whole, because serial-bus logging (a Creality CFS polls over RS-485)
+/// prints a fresh payload on every line of otherwise identical chatter.
 static std::string line_shape(const std::string& line) {
     std::string shape;
     shape.reserve(line.size());
-    bool in_digits = false;
-    for (char c : line) {
-        const bool is_digit = (c >= '0' && c <= '9');
-        if (is_digit) {
-            if (!in_digits) {
-                shape += 'N';
-                in_digits = true;
-            }
+    size_t i = 0;
+    while (i < line.size()) {
+        const size_t literal_end = bytes_literal_end(line, i);
+        if (literal_end != std::string::npos) {
+            shape += "b'N'";
+            i = literal_end;
             continue;
         }
-        in_digits = false;
+        const char c = line[i];
+        if (c >= '0' && c <= '9') {
+            shape += 'N';
+            ++i;
+            if (c == '0' && i < line.size() && (line[i] == 'x' || line[i] == 'X'))
+                ++i;
+            while (i < line.size() && is_hex_digit(line[i]))
+                ++i;
+            continue;
+        }
         shape += c;
+        ++i;
     }
     return shape;
 }

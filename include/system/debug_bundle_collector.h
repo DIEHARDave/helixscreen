@@ -222,7 +222,11 @@ class DebugBundleCollector {
 
     static std::string collect_crash_txt();
     static nlohmann::json collect_sanitized_settings();
-    static std::string collect_klipper_log_tail(int num_lines = 2000);
+    /// The line cap is a backstop; the byte window (kKlipperTailBytes) is what
+    /// bounds history. A chatty host (a CFS logs every RS-485 poll) still
+    /// condenses to thousands of distinct event lines across that window, and
+    /// the bundle upload accepts at most 500 KB gzipped.
+    static std::string collect_klipper_log_tail(int num_lines = 8000);
 
     /// Read klippy.log / moonraker.log straight off the local disk, for when
     /// Moonraker cannot serve them. Only for a same-host printer; the paths come
