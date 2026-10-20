@@ -759,6 +759,45 @@ TEST_CASE_METHOD(SelfHealFixture,
 }
 
 TEST_CASE_METHOD(SelfHealFixture,
+                 "a restart that needs a manual one is asked once per version pair",
+                 "[plugin_installer][print_select][self_heal]") {
+    ship("1.2.0", 0);
+    ScopedEnv plugin("HELIX_MOCK_HELIX_PLUGIN", "1"); // the mock reports 1.0.1
+    std::vector<ToastSeverity> toasts;
+    helix::ui::set_test_toast_hook(
+        [&](ToastSeverity severity, const std::string&, uint32_t) { toasts.push_back(severity); });
+    auto next_start = [this]() {
+        PluginSelfHealTestAccess::set_ran_this_start(false);
+        set_plugin_installed(false);
+        run_plugin_probe();
+        settle();
+    };
+
+    // 6 and 7 can clear by themselves: the next start tries again.
+    set_restart_exit(7);
+    run_plugin_probe();
+    settle();
+    REQUIRE(restarts() == 1);
+    set_restart_exit(6);
+    next_start();
+    REQUIRE(restarts() == 2);
+
+    // Moonraker refused, or kept the old plugin: one warning for this pair.
+    set_restart_exit(3);
+    next_start();
+    REQUIRE(restarts() == 3);
+    next_start();
+    CHECK(restarts() == 3);
+    CHECK(toasts.size() == 3);
+
+    // An app update brings a new pair, which gets one fresh attempt.
+    ship("1.3.0", 0);
+    set_restart_exit(3);
+    next_start();
+    CHECK(restarts() == 4);
+}
+
+TEST_CASE_METHOD(SelfHealFixture,
                  "a restart still waiting for a job when the app stops is tried at the next start",
                  "[plugin_installer][print_select][self_heal]") {
     ship("1.0.1", 3);

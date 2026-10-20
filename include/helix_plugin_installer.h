@@ -339,7 +339,11 @@ enum class PluginRestartOutcome {
 /**
  * @brief Whether a restart with @p outcome counts as done for the plugin it was for
  *
- * Only a restart that finished counts; the next app start repeats any other.
+ * A restart that finished counts, and so does one Moonraker refused or that
+ * left the old plugin running: asking again for the same versions would only
+ * repeat the warning. The next app start repeats any other (a print hold, an
+ * unreadable print state, a Moonraker that did not answer), which can clear
+ * by itself.
  */
 bool plugin_restart_finished(PluginRestartOutcome outcome);
 

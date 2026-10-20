@@ -494,11 +494,12 @@ TEST_CASE("restart_moonraker_for_plugin reads install.sh --restart-moonraker's e
     }
 }
 
-TEST_CASE("plugin_restart_finished: only a finished restart is not repeated at the next start",
+TEST_CASE("plugin_restart_finished: a finished restart, or one needing a manual restart, is "
+          "not repeated for the same versions",
           "[plugin_installer]") {
     using Outcome = helix::PluginRestartOutcome;
     CHECK(helix::plugin_restart_finished(Outcome::Restarted));
-    CHECK_FALSE(helix::plugin_restart_finished(Outcome::NeedsManual));
+    CHECK(helix::plugin_restart_finished(Outcome::NeedsManual));
     CHECK_FALSE(helix::plugin_restart_finished(Outcome::HeldForPrint));
     CHECK_FALSE(helix::plugin_restart_finished(Outcome::JobUnknown));
     CHECK_FALSE(helix::plugin_restart_finished(Outcome::NotAnswering));
