@@ -441,9 +441,13 @@ void HomePanel::build_carousel(int initial_page) {
     }
     active_page_index_ = shown;
 
-    // Populate all pages, activate only the shown page's widgets
+    // Populate all pages, activate only the shown page's widgets. A population
+    // whose drain rebuilt the carousel leaves this build stale: the rebuild
+    // owns the pages and the page observer now.
     for (int i = 0; i < num_pages; ++i) {
-        populate_page(i, true);
+        if (!populate_page(i, true)) {
+            return;
+        }
     }
 
     update_arrow_visibility(active_page_index_);
@@ -536,15 +540,15 @@ void HomePanel::teardown_carousel() {
     subjects_.deinit_all();
 }
 
-void HomePanel::populate_page(int page_index, bool force) {
+bool HomePanel::populate_page(int page_index, bool force) {
     if (populating_widgets_) {
         spdlog::debug("[{}] populate_page: already in progress, skipping", get_name());
-        return;
+        return true;
     }
 
     if (page_index < 0 || page_index >= static_cast<int>(pages_.size())) {
         spdlog::error("[{}] populate_page: page_index {} out of range", get_name(), page_index);
-        return;
+        return true;
     }
 
     populating_widgets_ = true;
@@ -566,7 +570,7 @@ void HomePanel::populate_page(int page_index, bool force) {
     if (!container) {
         spdlog::error("[{}] populate_page: null container for page {}", get_name(), page_index);
         populating_widgets_ = false;
-        return;
+        return true;
     }
 
     // Compute the widget ID list once per populate_page call; the cache below
@@ -585,7 +589,7 @@ void HomePanel::populate_page(int page_index, bool force) {
             spdlog::debug("[{}] Page {} widget list unchanged, skipping rebuild", get_name(),
                           page_index);
             populating_widgets_ = false;
-            return;
+            return true;
         }
 
         // A change that only flips hardware gates re-creates just those tiles,
@@ -600,7 +604,7 @@ void HomePanel::populate_page(int page_index, bool force) {
                     auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
                     if (!drain_keeps_carousel()) {
                         abandon_populate();
-                        return;
+                        return false;
                     }
                 }
                 auto fresh = helix::PanelWidgetManager::instance().swap_gated_tiles(
@@ -621,7 +625,7 @@ void HomePanel::populate_page(int page_index, bool force) {
                     pages_[idx].visible_ids = std::move(snapshot_ids);
                     pages_[idx].widget_gen = gen;
                     populating_widgets_ = false;
-                    return;
+                    return true;
                 }
             }
         }
@@ -654,7 +658,7 @@ void HomePanel::populate_page(int page_index, bool force) {
         auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
         if (!drain_keeps_carousel()) {
             abandon_populate();
-            return;
+            return false;
         }
         lv_obj_update_layout(container);
         helix::ui::safe_clean_children(container);
@@ -692,6 +696,7 @@ void HomePanel::populate_page(int page_index, bool force) {
     pages_[idx].widget_gen = helix::runtime_widget_generation();
 
     populating_widgets_ = false;
+    return true;
 }
 
 std::map<std::string, nlohmann::json>
@@ -735,7 +740,9 @@ bool HomePanel::reseat_widgets() {
         if (mgr.reseat_tiles("home", pages_[i].container, static_cast<int>(i), pages_[i].widgets)) {
             ++reseated;
         } else {
-            populate_page(static_cast<int>(i), /*force=*/true);
+            if (!populate_page(static_cast<int>(i), /*force=*/true)) {
+                return true;
+            }
         }
     }
     spdlog::info(
@@ -880,7 +887,9 @@ void HomePanel::populate_widgets(bool force) {
     auto& config = helix::PanelWidgetManager::instance().get_widget_config("home");
     int num_pages = static_cast<int>(config.page_count());
     for (int i = 0; i < num_pages && i < static_cast<int>(pages_.size()); ++i) {
-        populate_page(i, force);
+        if (!populate_page(i, force)) {
+            return;
+        }
     }
     update_populated_pages_subject();
 }

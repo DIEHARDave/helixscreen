@@ -76,10 +76,11 @@ class FilamentMappingCard {
      * remap and the auto assignment. Used by the detail view's live AMS-change
      * handler.
      *
-     * Visibility is NOT re-decided here (nothing it refreshes is an input to
-     * the rule), so unlike update() and set_used_tools() this needs no publish.
-     * It does honour the current answer: a card whose `should_show()` is false
-     * ends up with no chips rather than a hidden set of stale ones.
+     * Visibility IS re-decided first, since the slots feed the rule (the slot
+     * count, availability, bypass), so the caller publishes afterwards. A card
+     * whose `should_show()` turns false ends up with no chips rather than a
+     * hidden set of stale ones; one that was hidden has no mappings to keep,
+     * and the detail view rebuilds it with update() instead.
      */
     void refresh_slot_data();
 

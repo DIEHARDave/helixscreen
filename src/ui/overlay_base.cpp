@@ -15,6 +15,7 @@
 #include <spdlog/spdlog.h>
 
 #include <string>
+#include <utility>
 
 OverlayBase::~OverlayBase() {
     // Fallback unregister in case cleanup() wasn't called. A no-op once
@@ -133,9 +134,10 @@ void OverlayBase::close() {
 }
 
 void OverlayBase::destroy_overlay_ui(lv_obj_t*& cached_panel) {
-    helix::ui::teardown_overlay_ui(
-        overlay_root_, get_name(), helix::ui::TeardownDelete::Deferred, &cached_panel,
-        helix::ui::TeardownHooks::after([this]() { on_ui_destroyed(); }));
+    auto hooks = helix::ui::TeardownHooks::after([this]() { on_ui_destroyed(); });
+    hooks.owner = teardown_owner_.token();
+    helix::ui::teardown_overlay_ui(overlay_root_, get_name(), helix::ui::TeardownDelete::Deferred,
+                                   &cached_panel, std::move(hooks));
 }
 
 bool helix::ui::teardown_overlay_ui(lv_obj_t*& root, const char* owner_name, TeardownDelete how,
@@ -149,11 +151,22 @@ bool helix::ui::teardown_overlay_ui(lv_obj_t*& root, const char* owner_name, Tea
     // Drain deferred observer callbacks while all pointers are still valid.
     // observe<int> queues lambdas via queue_update() that capture raw
     // panel pointers. Processing them here prevents use-after-free.
+    lv_obj_t* const doomed = root;
     auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
     helix::ui::UpdateQueue::instance().drain();
+    if (hooks.owner && hooks.owner->expired()) {
+        // root and the hooks point into the freed owner.
+        const std::string msg = std::string("[") + owner_name +
+                                "] overlay owner freed by work its own teardown drained; the "
+                                "teardown stops";
+        helix::ui::report_ui_contract_breach(msg.c_str());
+        return false;
+    }
     // The drained work can include a close callback that tore this overlay
-    // down already; its hooks have run and must not run twice.
-    if (!root) {
+    // down already, and an open that built a fresh tree into `root` after it.
+    // That teardown ran the hooks; this one must neither run them again nor
+    // delete the fresh tree.
+    if (root != doomed) {
         return false;
     }
 

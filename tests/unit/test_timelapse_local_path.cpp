@@ -14,7 +14,9 @@
  */
 
 #include "ui_overlay_timelapse_videos.h"
+#include "ui_update_queue.h"
 
+#include "../lvgl_test_fixture.h"
 #include "moonraker_types.h"
 
 #include <string>
@@ -28,6 +30,14 @@ struct TimelapseVideosOverlayTestAccess {
     }
     static std::string local_path(const TimelapseVideosOverlay& o, const std::string& filename) {
         return o.local_video_path(filename);
+    }
+    /// Stand in for the grid create() finds, so a case can clear it without
+    /// the overlay's XML.
+    static void set_video_grid(TimelapseVideosOverlay& o, lv_obj_t* grid) {
+        o.video_grid_container_ = grid;
+    }
+    static void clear_video_grid(TimelapseVideosOverlay& o) {
+        o.clear_video_grid();
     }
 };
 
@@ -68,4 +78,27 @@ TEST_CASE("timelapse local path follows Moonraker's reported root", "[timelapse]
         std::string p = TimelapseVideosOverlayTestAccess::local_path(overlay, "a.mp4");
         CHECK(p.find("printer_data/timelapse/a.mp4") != std::string::npos);
     }
+}
+
+// A refresh clears the grid from inside the queued scan result; queued work,
+// such as a thumbnail that finds its card by filename, waits for the next tick
+// instead of running under the clear.
+TEST_CASE_METHOD(LVGLTestFixture, "timelapse grid clears without running queued work",
+                 "[timelapse][drain_reentrancy]") {
+    TimelapseVideosOverlay overlay(nullptr);
+    lv_obj_t* grid = lv_obj_create(test_screen());
+    lv_obj_create(grid);
+    lv_obj_create(grid);
+    TimelapseVideosOverlayTestAccess::set_video_grid(overlay, grid);
+
+    bool ran = false;
+    helix::ui::UpdateQueue::instance().queue("test::drain_canary", [&ran]() { ran = true; });
+    TimelapseVideosOverlayTestAccess::clear_video_grid(overlay);
+    CHECK_FALSE(ran);
+    CHECK(lv_obj_get_child_count(grid) == 0);
+
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(ran);
+    TimelapseVideosOverlayTestAccess::set_video_grid(overlay, nullptr);
+    process_lvgl(20);
 }

@@ -105,6 +105,9 @@ class NetworkSettingsOverlayTestAccess {
                                const std::vector<WiFiNetwork>& networks) {
         o.populate_network_list(networks);
     }
+    static void clear_network_list(NetworkSettingsOverlay& o) {
+        o.clear_network_list();
+    }
     static void update_wifi_status(NetworkSettingsOverlay& o) {
         o.update_wifi_status();
     }

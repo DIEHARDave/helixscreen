@@ -51,6 +51,24 @@ struct HomePanelTestAccess {
         panel.populate_widgets(/*force=*/true);
     }
 
+    /// Populate every page as a gate observer does: an unchanged widget list
+    /// is skipped, and one that only flips hardware gates swaps those tiles.
+    static void populate_unforced(HomePanel& panel) {
+        panel.populate_widgets(/*force=*/false);
+    }
+
+    /// The widget ids page @p page was last built from.
+    static std::vector<std::string> built_ids(const HomePanel& panel, size_t page) {
+        const auto& ids = panel.pages_.at(page).visible_ids;
+        return ids ? *ids : std::vector<std::string>{};
+    }
+
+    /// Overwrite the ids page @p page records it was built from, so the next
+    /// unforced population compares against them.
+    static void set_built_ids(HomePanel& panel, size_t page, std::vector<std::string> ids) {
+        panel.pages_.at(page).visible_ids = std::move(ids);
+    }
+
     static void clear_page_containers(HomePanel& panel) {
         panel.pages_.clear();
         panel.active_page_index_ = 0;

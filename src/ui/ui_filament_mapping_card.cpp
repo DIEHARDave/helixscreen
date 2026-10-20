@@ -202,6 +202,12 @@ void FilamentMappingCard::refresh_slot_data() {
     if (!card_ || !rows_container_) {
         return;
     }
+    // The slots can take away what made the card worth showing (the backend
+    // going away, bypass engaging), so the rule runs again first.
+    if (!recompute_visibility()) {
+        rebuild_compact_view();
+        return;
+    }
     if (!AmsState::instance().is_available()) {
         return;
     }
@@ -281,9 +287,7 @@ void FilamentMappingCard::rebuild_compact_view() {
     // Idempotent render: identical (tools, mappings, slot state) + existing
     // children => nothing visible changed => skip the destroy/recreate. Kills
     // the late "gray -> real" rebuild when AMS resync data arrives after the
-    // panel opens. MUST stay below the post-drain null check above: a
-    // container destroyed during the drain returns before this, and no render
-    // happened, so no fingerprint is written either.
+    // panel opens.
     //
     // material is the only free-form string in the encoding (every other field
     // is numeric or a single flag char), so it is the only one that can smuggle
