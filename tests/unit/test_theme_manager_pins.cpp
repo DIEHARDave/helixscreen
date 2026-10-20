@@ -65,7 +65,7 @@ std::set<std::string> token_names() {
          {"border_radius", "border_width", "border_opacity", "shadow_intensity", "shadow_opa",
           "shadow_offset_y", "shadow_cast", "overlay_shadow_opa", "overlay_width_transient",
           "overlay_width_destination", "nav_width", "font_body", "font_small", "font_heading",
-          "text_on_primary", "text_on_danger"}) {
+          "text_on_primary", "text_on_danger", "chart_measured"}) {
         names.insert(name);
     }
     for (int i = 1; i <= 8; ++i) {
