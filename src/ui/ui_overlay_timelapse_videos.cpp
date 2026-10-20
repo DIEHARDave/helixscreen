@@ -13,7 +13,6 @@
 #include "ui_gradient_canvas.h"
 #include "ui_modal.h"
 #include "ui_notification.h"
-#include "ui_update_queue.h"
 #include "ui_utils.h"
 
 #include "app_globals.h"
@@ -599,9 +598,9 @@ void TimelapseVideosOverlay::load_thumbnail_for_card(lv_obj_t* card, const std::
 }
 
 void TimelapseVideosOverlay::clear_video_grid() {
+    // Queued thumbnails find their card by filename among the live children,
+    // so none reaches a card cleared here.
     if (video_grid_container_) {
-        auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-        helix::ui::UpdateQueue::instance().drain();
         helix::ui::safe_clean_children(video_grid_container_);
     }
     videos_.clear();
