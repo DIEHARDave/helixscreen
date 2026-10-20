@@ -1698,6 +1698,25 @@ bundled_version() {
     if grep -q '^POST' "$BATS_TEST_TMPDIR/mr/log"; then fail "restarted while the app holds a job"; fi
 }
 
+@test "moonraker_restart: only a Klipper shut down or in error rules a print out unasked" {
+    local state
+    for state in startup disconnected; do
+        mock_moonraker_http "$BATS_TEST_TMPDIR/mr"
+        printf '%s' "$state" > "$BATS_TEST_TMPDIR/mr/klippy_state"
+        printf printing > "$BATS_TEST_TMPDIR/mr/print_state"
+        run_moonraker_restart config
+        [ "$status" -eq 4 ] || fail "$state: want 4, got $status: $output"
+        if grep -q '^POST' "$BATS_TEST_TMPDIR/mr/log"; then fail "$state: restarted a Klipper that may be printing"; fi
+    done
+    for state in shutdown error; do
+        mock_moonraker_http "$BATS_TEST_TMPDIR/mr"
+        printf '%s' "$state" > "$BATS_TEST_TMPDIR/mr/klippy_state"
+        printf printing > "$BATS_TEST_TMPDIR/mr/print_state"
+        run_moonraker_restart config
+        [ "$status" -eq 0 ] || fail "$state: want 0, got $status: $output"
+    done
+}
+
 @test "moonraker_restart: a print Moonraker reports holds it even when the caller says the printer is idle" {
     mock_moonraker_http "$BATS_TEST_TMPDIR/mr"
     printf printing > "$BATS_TEST_TMPDIR/mr/print_state"
