@@ -314,6 +314,62 @@ jobs:
         retention-days: 30
 
   # ============================================================================
+  # Run the packaged x86 binary with its GPU libraries removed
+  # ============================================================================
+  # The Pi/x86 helix-screen reaches libdrm, libgbm, libEGL, libGLESv2 and
+  # libinput through runtime-loaded trampolines and falls back to fbdev without
+  # them; helix-tests builds without the DRM path, so this is the only check
+  # that runs it. scripts/ci/gpu_libs_hidden_smoke.sh says what it asserts. The
+  # toolchain image is the x86 build's own (its buildx cache), which has the
+  # libraries installed for the pass that keeps them.
+  gpu-libs-hidden-smoke:
+    name: GPU libraries hidden (x86)
+    needs: [build-platforms, plan]
+    if: ${{ !cancelled() && contains(format(' {0} ', needs.plan.outputs.platforms), ' x86 ') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+      with:
+        submodules: false
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4
+
+    - name: Build x86 toolchain image
+      run: |
+        docker buildx build \
+          --cache-from type=gha,scope=toolchain-x86 \
+          --load \
+          -t helixscreen/toolchain-x86 \
+          -f docker/Dockerfile.x86 \
+          docker/
+
+    - name: Download x86 release
+      uses: actions/download-artifact@v8
+      with:
+        name: release-x86
+        path: dist
+
+    - name: Unpack x86 release
+      run: |
+        set -euo pipefail
+        mkdir -p dist/install
+        tar -xzf dist/helixscreen-x86-*.tar.gz -C dist/install
+        test -x dist/install/helixscreen/bin/helix-screen
+
+    - name: Run with the GPU libraries hidden and present
+      run: |
+        docker run --rm --network none \
+          -v "${{ github.workspace }}":/src \
+          -w /src/dist/install/helixscreen \
+          -e GPU_SMOKE_WORK=/tmp/gpu-libs-smoke \
+          helixscreen/toolchain-x86 \
+          /src/scripts/ci/gpu_libs_hidden_smoke.sh run bin/helix-screen
+
+  # ============================================================================
   # Build Android APKs (runs in parallel with embedded platform builds)
   # ============================================================================
   build-android:
@@ -668,12 +724,14 @@ jobs:
     # with no Android assets and nothing went red.
     # No cycle: publish-android needs [build-android, release], and build-android
     # needs only validate-shell.
-    needs: [build-platforms, build-android, build-esp32, plan]
+    # gpu-libs-hidden-smoke is skipped when a dry run builds no x86.
+    needs: [build-platforms, build-android, build-esp32, gpu-libs-hidden-smoke, plan]
     if: >-
       ${{ !cancelled()
       && needs.plan.result == 'success'
       && needs.build-platforms.result == 'success'
-      && needs.build-android.result == 'success' }}
+      && needs.build-android.result == 'success'
+      && needs.gpu-libs-hidden-smoke.result != 'failure' }}
     permissions:
       contents: write  # Required to create releases
     env:

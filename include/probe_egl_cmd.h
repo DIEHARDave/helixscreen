@@ -3,6 +3,10 @@
 
 #pragma once
 
+#include "gpu_libs.h"
+
+#include <string>
+
 namespace helix {
 namespace probe {
 
@@ -17,6 +21,23 @@ inline constexpr int kProbeDeclined = 1;
 inline constexpr int kProbeNoRungs = 2;
 /// libdrm does not load here, so neither DRM rung can run: take fbdev.
 inline constexpr int kProbeNoDrm = 3;
+
+/// What `--probe-egl` answers before it touches the GPU.
+struct ProbeGate {
+    /// Nothing the probe needs is missing: open the card nodes and bring EGL up.
+    bool probe = false;
+    /// The exit status when there is nothing to probe.
+    int status = kProbeDeclined;
+    /// The line printed with that status.
+    std::string reason;
+};
+
+/// The verdict table ahead of the GPU probe, first match wins: a binary that
+/// does not carry the display rungs (HELIX_DLOPEN_GPU_LIBS) answers
+/// kProbeNoRungs; no libdrm, kProbeNoDrm; a binary without the EGL
+/// presentation path, or a missing GBM, EGL or GLES2, kProbeDeclined; anything
+/// else is probed. @p loads is asked only once the rungs are known to exist.
+ProbeGate probe_gate(bool carries_rungs, bool egl_presentation, gpu_libs::LoadCheck loads);
 
 /// Bring EGL up on this board's scanout node, report what answered, and tear it
 /// down again. Implements the `--probe-egl` one-shot.

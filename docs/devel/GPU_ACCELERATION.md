@@ -128,6 +128,9 @@ vendored in `tools/implib`), GLES2 resolves through `include/gles2_loader.h`,
 and every path into them asks `include/gpu_libs.h` whether the library loads
 first, because a trampoline whose library is missing aborts the process. So the
 binary starts on a system without a GPU userspace and takes the fbdev rung.
+The release workflow's `gpu-libs-hidden-smoke` job proves it on every x86
+release: `scripts/ci/gpu_libs_hidden_smoke.sh` runs the packaged binary with
+those libraries removed and again with them installed.
 
 Which of LVGL's two DRM drivers a translation unit carries is a compile-time
 choice, so `mk/egl-link.mk` compiles the units that read the EGL config macros
