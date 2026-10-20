@@ -303,7 +303,7 @@ EOF
     grep -q "http://127.0.0.1:1/access/user" "$CURL_LOG"
 }
 
-@test "moonraker answering /access/user with 401 gets the route" {
+@test "moonraker that requires a login still gets the route" {
     write_two_server_conf
     stub_nginx auth ok
     export MOONRAKER_STATUS=401
