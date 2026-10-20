@@ -687,10 +687,13 @@ TEST_CASE_METHOD(ExcludeMapFixture, "exclude_map: the tree can be deleted under 
         h->widget().on_activate();
         h->resize(1, 1, kFull.w, kFull.h);
         REQUIRE(map_children(*h) == 1);
+        REQUIRE(subject_text("exclude_map_skipped_text") == "1 skipped");
         lv_obj_delete(h->root());
         process_lvgl(30);
-        objects().set_excluded_objects({"OBJ_0"});
+        objects().set_excluded_objects({"OBJ_0", "OBJ_2"});
         drain();
+        // A widget whose tree died publishes nothing: publishing reads that tree.
+        CHECK(subject_text("exclude_map_skipped_text") == "1 skipped");
         h.reset();
         process_lvgl(30);
         CHECK(lv_obj_get_child_count(test_screen()) == baseline);

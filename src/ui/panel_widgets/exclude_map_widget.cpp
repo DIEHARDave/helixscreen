@@ -297,6 +297,15 @@ void ExcludeMapWidget::detach() {
     parent_screen_ = nullptr;
 }
 
+void ExcludeMapWidget::on_hooked_root_deleted() {
+    // Runs inside LVGL's delete event: expire the observer tokens and drop the tree
+    // pointers only. A handler already queued would otherwise publish by searching the
+    // freed tree. The map view sees its own host die and keeps nothing of it.
+    lifetime_.invalidate();
+    widget_obj_ = nullptr;
+    parent_screen_ = nullptr;
+}
+
 void ExcludeMapWidget::on_activate() {
     active_ = true;
     if (!widget_obj_)
