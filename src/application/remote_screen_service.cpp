@@ -116,7 +116,7 @@ void RemoteScreenService::watch_print_state() {
 void RemoteScreenService::apply_settings() {
     apply_server();
     if (IMoonrakerAPI* api = get_moonraker_api()) {
-        sync_remote_screen_webcam(*api);
+        sync_remote_screen_webcam(*api, get_printer_state().moonraker_locality());
     }
 }
 
@@ -130,9 +130,11 @@ void RemoteScreenService::apply_server() {
         return;
     }
 
-    const std::string route =
-        remote_screen_effective_route(get_printer_state().is_moonraker_remote(),
-                                      remote_screen_route(writable_path(".remote_screen_route")));
+    // Before this connection's verdict, assume this host: most screens run beside
+    // their Moonraker, and the verdict re-decides on connect.
+    const std::string route = remote_screen_effective_route(
+        get_printer_state().moonraker_locality() == MoonrakerLocality::Remote,
+        remote_screen_route(writable_path(".remote_screen_route")));
     const bool lan_mode = route.empty();
     settings.set_lan_mode(lan_mode);
     if (server_ && lan_mode != lan_mode_) {

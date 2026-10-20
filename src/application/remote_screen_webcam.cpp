@@ -61,10 +61,13 @@ std::optional<nlohmann::json> remote_screen_webcam_item(const std::string& name,
     return item;
 }
 
-void sync_remote_screen_webcam(IMoonrakerAPI& api) {
+void sync_remote_screen_webcam(IMoonrakerAPI& api, MoonrakerLocality locality) {
+    if (locality == MoonrakerLocality::Unknown) {
+        return;
+    }
     auto& service = RemoteScreenService::instance();
     const auto& settings = RemoteScreenSettingsManager::instance();
-    const bool remote = get_printer_state().is_moonraker_remote();
+    const bool remote = locality == MoonrakerLocality::Remote;
     char host[256] = {};
     if (gethostname(host, sizeof(host) - 1) != 0) {
         host[0] = '\0';

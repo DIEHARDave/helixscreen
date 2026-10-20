@@ -12,12 +12,17 @@
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/raw_http_client.h"
 #include "config.h"
+#include "moonraker_api.h"
+#include "moonraker_client_mock.h"
+#include "printer_state.h"
 #include "remote_pointer.h"
 #include "remote_screen_control.h"
 #include "remote_screen_server_sink.h"
 #include "remote_screen_service.h"
 #include "remote_screen_settings_manager.h"
+#include "remote_screen_webcam.h"
 #include "system/debug_bundle_collector.h"
+#include "webcam_selection.h"
 
 #include <atomic>
 #include <chrono>
@@ -367,4 +372,40 @@ TEST_CASE_METHOD(TouchFixture, "a press nobody finished is released by the house
     svc.housekeeping_tick(std::chrono::steady_clock::now() +
                           std::chrono::milliseconds(kTouchStaleMs + 100));
     CHECK_FALSE(helix::remote::RemotePointer::instance().pressed());
+}
+
+TEST_CASE_METHOD(RemoteScreenFixture,
+                 "webcam sync waits for the locality verdict, then names the entry by it",
+                 "[remote_screen][webcam]") {
+    auto& svc = RemoteScreenService::instance();
+    svc.init(nullptr);
+    RemoteScreenSettingsManager::instance().set_enabled(true);
+    REQUIRE(svc.running());
+
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24);
+    PrinterState state;
+    state.init_subjects(false);
+    MoonrakerAPI api(client, state);
+    auto screen_entries = [&] {
+        std::vector<std::string> names;
+        api.timelapse().get_webcam_list(
+            [&](const std::vector<WebcamInfo>& cams) {
+                for (const auto& c : cams) {
+                    if (webcam::is_own_screen_webcam(c)) {
+                        names.push_back(c.name);
+                    }
+                }
+            },
+            [](const MoonrakerError&) {});
+        return names;
+    };
+
+    // Before the connection says where Moonraker is, a guess would post the wrong entry.
+    sync_remote_screen_webcam(api, MoonrakerLocality::Unknown);
+    CHECK(screen_entries().empty());
+
+    sync_remote_screen_webcam(api, MoonrakerLocality::Remote);
+    auto remote = screen_entries();
+    REQUIRE(remote.size() == 1);
+    CHECK(remote[0].rfind(std::string(kRemoteScreenWebcamName) + " (", 0) == 0);
 }

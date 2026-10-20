@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "printer_network_state.h"
+
 #include <optional>
 #include <string>
 
@@ -38,6 +40,8 @@ std::string remote_screen_effective_route(bool moonraker_remote, const std::stri
 
 /// Make Moonraker's webcam list match the screen server: post the entry while it is
 /// serving (refreshing the address on every connect), delete a listed one otherwise.
-void sync_remote_screen_webcam(IMoonrakerAPI& api);
+/// Does nothing until @p locality says where that Moonraker runs, since the entry's
+/// name and URLs depend on it.
+void sync_remote_screen_webcam(IMoonrakerAPI& api, MoonrakerLocality locality);
 
 } // namespace helix
