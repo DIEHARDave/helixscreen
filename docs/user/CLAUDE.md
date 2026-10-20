@@ -50,7 +50,7 @@ These docs are **end-user facing**. They must be written for people who are NOT 
 | `guide/settings/devices.md` | Hardware health, camera, fans, sensors, LEDs, power devices, Spoolman |
 | `guide/settings/led-settings.md` | LED strip selection, auto-state, macro devices, setup guides |
 | `guide/settings/safety.md` | Safety & Alerts: E-Stop confirmation, cancel escalation, macro confirmation, spaghetti detection, print completion alert, on-screen alerts |
-| `guide/settings/connection.md` | Network settings, printers, Moonraker host, screen sharing (webcam, remote control, pairing) |
+| `guide/settings/connection.md` | Network settings, printers, Moonraker host, screen sharing rows (details in guide/screen-sharing.md) |
 | `guide/settings/language-time.md` | Language, timezone, time format |
 | `guide/settings/system.md` | Security, performance, telemetry, log level, restart, factory reset |
 | `guide/settings/updates.md` | Update channel, check and install, firmware-managed and can't-update notices |
@@ -58,6 +58,7 @@ These docs are **end-user facing**. They must be written for people who are NOT 
 | `guide/fans.md` | Discovered fans grouped by controllable vs. automatic, live speed dials, RPM readouts, per-fan renaming |
 | `guide/sensors.md` | Filament and motion sensors with per-sensor role assignment, read-only sensor types, chamber heater/sensor mapping |
 | `guide/security.md` | PIN screen lock, auto-lock tied to display sleep, lock-screen keypad, what a factory reset clears |
+| `guide/screen-sharing.md` | Screen sharing and remote control: Settings rows, opening it in a browser or Mainsail/Fluidd, code pairing vs Moonraker-decided access per printer, the remote-control icon, cost, troubleshooting |
 | `guide/camera.md` | Webcam viewing via the home widget and fullscreen viewer, rotation/flip, stream status, performance throttling |
 | `guide/print-history.md` | History dashboard with time-range statistics and trend charts, searchable job list, per-job details, reprinting |
 | `guide/advanced.md` | Console, macros, power, history, timelapse |

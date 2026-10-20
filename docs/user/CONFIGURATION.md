@@ -1670,7 +1670,7 @@ Located in the `security` section. Controls the optional PIN lock screen:
 
 ## Screen Sharing Settings
 
-Set in **Settings > Connection** (see [Screen Sharing](guide/settings/connection.md#screen-sharing)). Hidden on printers whose firmware shares the screen itself.
+Set in **Settings > Connection**; see [Screen Sharing and Remote Control](guide/screen-sharing.md). Hidden on printers whose firmware shares the screen itself.
 
 ```json
 "remote_screen": {

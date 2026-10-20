@@ -17,8 +17,9 @@
            background: rgba(0,0,0,.65); padding: 4px 10px; border-radius: 4px; display: none; }
   #pair { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
           background: rgba(0,0,0,.6); }
-  #pair form { background: #222; padding: 20px 24px; border-radius: 8px; max-width: 300px;
+  #pair form { background: #222; padding: 20px 24px; border-radius: 8px; max-width: 340px;
                text-align: center; }
+  #pair h1 { font-size: 18px; margin: 0 0 8px; }
   #pair input { font-size: 24px; letter-spacing: 6px; width: 8.5em; text-align: center;
                 margin: 12px 0; padding: 6px; }
   #pair button { font-size: 15px; padding: 6px 16px; }
@@ -31,7 +32,8 @@
 <div id="viewonly" class="badge">View only</div>
 <div id="pair">
   <form id="pair-form">
-    <div>Enter the pairing code shown on the printer, under<br>Settings &rsaquo; Connection.</div>
+    <h1>Pair this browser</h1>
+    <div>Enter the six-digit code the printer shows under Settings &rsaquo; Connection &rsaquo; Pairing Code.</div>
     <input id="pair-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
            pattern="[0-9]{6}" required>
     <div id="pair-error"></div>
