@@ -69,12 +69,13 @@ namespace {
 /// The libraries this compile of the backend calls into. The EGL presentation
 /// path needs the GPU stack on top of libdrm.
 bool drm_libs_present() {
-    using helix::gpu_libs::Lib;
-#if LV_LINUX_DRM_USE_EGL
-    return helix::gpu_libs::available_all({Lib::Drm, Lib::Gbm, Lib::Egl, Lib::Gles2});
-#else
-    return helix::gpu_libs::available(Lib::Drm);
-#endif
+    return helix::gpu_libs::drm_libs_present(LV_LINUX_DRM_USE_EGL != 0);
+}
+
+/// Whether this backend finds and opens its input devices through libinput.
+bool use_libinput() {
+    return helix::gpu_libs::input_discovery(LV_USE_LIBINPUT != 0) ==
+           helix::gpu_libs::InputDiscovery::Libinput;
 }
 
 /**
@@ -622,7 +623,7 @@ void DisplayBackendDRM::open_pointer_devices() {
     // If we have an explicit device, try it first
     if (!device_override.empty()) {
 #if LV_USE_LIBINPUT
-        if (helix::gpu_libs::available(helix::gpu_libs::Lib::Input)) {
+        if (use_libinput()) {
             pointer_ = lv_libinput_create(LV_INDEV_TYPE_POINTER, device_override.c_str());
         }
         if (pointer_ != nullptr) {
@@ -650,8 +651,8 @@ void DisplayBackendDRM::open_pointer_devices() {
     // scanner finds it otherwise. touch_path points into whichever owns it.
     const char* touch_path = nullptr;
     std::optional<helix::input::ScannedDevice> scanned_touch;
+    if (use_libinput()) {
 #if LV_USE_LIBINPUT
-    if (helix::gpu_libs::available(helix::gpu_libs::Lib::Input)) {
         // Prefer the evdev driver on the device libinput finds, for multi-touch
         // gesture recognition (pinch-to-zoom)
         char* found = lv_libinput_find_dev(LV_LIBINPUT_CAPABILITY_TOUCH, true);
@@ -674,9 +675,8 @@ void DisplayBackendDRM::open_pointer_devices() {
                 }
             }
         }
-    } else
 #endif
-    {
+    } else {
         scanned_touch = helix::input::find_touch_device();
         if (scanned_touch) {
             touch_path = scanned_touch->path.c_str();
@@ -1043,7 +1043,7 @@ void DisplayBackendDRM::open_pointer_devices() {
 
     // If no touch was found, try pointer devices
 #if LV_USE_LIBINPUT
-    if (!pointer_ && helix::gpu_libs::available(helix::gpu_libs::Lib::Input)) {
+    if (!pointer_ && use_libinput()) {
         // Try pointer devices via libinput (mouse, trackpad)
         // Don't free pointer_path — points into LVGL's internal devices[] array
         char* pointer_path = lv_libinput_find_dev(LV_LIBINPUT_CAPABILITY_POINTER, false);
@@ -1140,7 +1140,7 @@ lv_indev_t* DisplayBackendDRM::create_input_keyboard() {
     const char* env_device = std::getenv("HELIX_KEYBOARD_DEVICE");
     if (env_device && env_device[0] != '\0') {
 #if LV_USE_LIBINPUT
-        if (helix::gpu_libs::available(helix::gpu_libs::Lib::Input)) {
+        if (use_libinput()) {
             keyboard_ = lv_libinput_create(LV_INDEV_TYPE_KEYPAD, env_device);
         }
         if (keyboard_) {

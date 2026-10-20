@@ -367,6 +367,20 @@ class AsyncLifetimeGuard {
     std::shared_ptr<std::atomic<uint64_t>> gen_;
 };
 
+/**
+ * @brief Run every queued UI update now, then report whether @p tok survived
+ *
+ * A drain runs arbitrary callbacks under the caller's stack frame, and one of
+ * them can free or rebuild the very state the caller is part-way through
+ * changing. A caller that goes on using that state after the drain takes a
+ * token from the guard that expires with it, and returns when this answers
+ * false. Main thread only.
+ */
+[[nodiscard]] inline bool drain_updates_survived(const LifetimeToken& tok) {
+    ui::UpdateQueue::instance().drain();
+    return !tok.expired();
+}
+
 } // namespace helix
 
 // ============================================================================

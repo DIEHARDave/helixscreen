@@ -4574,3 +4574,50 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         CHECK(lv_xml_component_get_scope(name) != nullptr);
     }
 }
+
+// A page population and a carousel teardown both drain queued work under their
+// own frame. A drained callback that rebuilds the carousel must leave the panel
+// holding only the rebuilt carousel, with every page populated on it.
+TEST_CASE_METHOD(EditHomeFixture,
+                 "a carousel rebuilt by work a page population drains ends up populated",
+                 "[home][drain_reentrancy]") {
+    build_home();
+    bool ran = false;
+    helix::ui::UpdateQueue::instance().queue("test::rebuild_mid_populate", [this, &ran]() {
+        ran = true;
+        HomePanelTestAccess::rebuild_carousel(panel(), 0);
+    });
+
+    HomePanelTestAccess::populate(panel());
+    REQUIRE(ran);
+    settle();
+
+    REQUIRE(page_count() == 2);
+    for (int i = 0; i < page_count(); ++i) {
+        INFO("page " << i);
+        REQUIRE(lv_obj_is_valid(page(i)));
+        CHECK(helix::ui::is_on_active_screen(page(i)));
+    }
+    CHECK(widget_on(0, "temperature") != nullptr);
+    CHECK(widget_on(1, "fan") != nullptr);
+}
+
+TEST_CASE_METHOD(EditHomeFixture,
+                 "a carousel rebuilt by work a teardown drains is torn down with it",
+                 "[home][drain_reentrancy]") {
+    build_home();
+    bool ran = false;
+    helix::ui::UpdateQueue::instance().queue("test::rebuild_mid_teardown", [this, &ran]() {
+        ran = true;
+        HomePanelTestAccess::rebuild_carousel(panel(), 0);
+    });
+
+    HomePanelTestAccess::release_carousel(panel());
+    REQUIRE(ran);
+
+    // Nothing of either carousel is left for the panel to reach.
+    CHECK(page_count() == 0);
+    CHECK(carousel() == nullptr);
+    CHECK(slot_container() == nullptr);
+    settle();
+}

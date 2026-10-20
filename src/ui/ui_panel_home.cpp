@@ -301,6 +301,8 @@ void HomePanel::build_carousel(int initial_page) {
         return;
     }
 
+    carousel_lifetime_.invalidate();
+
     auto& config = helix::PanelWidgetManager::instance().get_widget_config("home");
     int num_pages = static_cast<int>(config.page_count());
     const int shown = std::clamp(initial_page, 0, std::max(num_pages - 1, 0));
@@ -472,7 +474,7 @@ void HomePanel::rebuild_carousel(int shown) {
     build_carousel(shown);
 }
 
-void HomePanel::teardown_carousel() {
+void HomePanel::release_pages() {
     // Deactivate current page widgets
     if (active_page_index_ >= 0 && active_page_index_ < static_cast<int>(pages_.size())) {
         for (auto& w : pages_[static_cast<size_t>(active_page_index_)].widgets) {
@@ -492,6 +494,15 @@ void HomePanel::teardown_carousel() {
 
     // Disconnect page observer before deiniting subject
     page_observer_.reset();
+}
+
+bool HomePanel::drain_keeps_carousel() {
+    return helix::drain_updates_survived(carousel_lifetime_.token());
+}
+
+void HomePanel::teardown_carousel() {
+    carousel_lifetime_.invalidate();
+    release_pages();
 
     // Freeze queue, drain deferred callbacks, then async-clean the carousel.
     // safe_clean_children schedules child deletion via lv_obj_delete_async
@@ -500,7 +511,15 @@ void HomePanel::teardown_carousel() {
     // when populate_page runs via the gate observer path (#776 / #834).
     {
         auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-        helix::ui::UpdateQueue::instance().drain();
+        const auto panel_alive = lifetime_.token();
+        if (!drain_keeps_carousel()) {
+            if (panel_alive.expired()) {
+                return;
+            }
+            // The drained work built a carousel of its own, under the host
+            // cleaned below: its pages go with it.
+            release_pages();
+        }
         if (carousel_host_) {
             helix::ui::safe_clean_children(carousel_host_);
         }
@@ -530,6 +549,18 @@ void HomePanel::populate_page(int page_index, bool force) {
 
     populating_widgets_ = true;
     auto idx = static_cast<size_t>(page_index);
+    // A drain below can run queued work that rebuilds the carousel, which
+    // replaces this page and skips its own population while this one holds
+    // populating_widgets_: every page is filled again on the next tick.
+    const auto panel_alive = lifetime_.token();
+    auto abandon_populate = [this, panel_alive]() {
+        if (panel_alive.expired()) {
+            return;
+        }
+        spdlog::debug("[{}] populate_page: carousel rebuilt mid-population, refilling", get_name());
+        populating_widgets_ = false;
+        helix::ui::run_next_tick(lifetime_.token(), [this]() { populate_widgets(true); });
+    };
 
     lv_obj_t* container = pages_[idx].container;
     if (!container) {
@@ -567,7 +598,10 @@ void HomePanel::populate_page(int page_index, bool force) {
                                                                         snapshot_ids)) {
                 {
                     auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-                    helix::ui::UpdateQueue::instance().drain();
+                    if (!drain_keeps_carousel()) {
+                        abandon_populate();
+                        return;
+                    }
                 }
                 auto fresh = helix::PanelWidgetManager::instance().swap_gated_tiles(
                     "home", container, page_index, snapshot_ids, *flips, pages_[idx].widgets);
@@ -618,7 +652,10 @@ void HomePanel::populate_page(int page_index, bool force) {
     // lv_obj_delete_async, escaping the UpdateQueue batch.
     {
         auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-        helix::ui::UpdateQueue::instance().drain();
+        if (!drain_keeps_carousel()) {
+            abandon_populate();
+            return;
+        }
         lv_obj_update_layout(container);
         helix::ui::safe_clean_children(container);
     }

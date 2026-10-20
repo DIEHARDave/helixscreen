@@ -4,7 +4,6 @@
 #include "ui_clog_meter.h"
 
 #include "ui_progress_arc.h"
-#include "ui_update_queue.h"
 #include "ui_utils.h"
 
 #include "clog_meter_geometry.h"
@@ -77,11 +76,6 @@ UiClogMeter::UiClogMeter(lv_obj_t* parent) {
 }
 
 UiClogMeter::~UiClogMeter() {
-    // Freeze update queue around observer teardown to prevent race with
-    // WebSocket thread enqueueing deferred callbacks between drain and destroy
-    auto freeze = UpdateQueue::instance().scoped_freeze();
-    UpdateQueue::instance().drain();
-
     // Remove SIZE_CHANGED callback to prevent dangling this pointer
     // The card is reached through root_, so root_ must still be alive to ask.
     if (root_ && lv_is_initialized() && lv_obj_is_valid(root_)) {

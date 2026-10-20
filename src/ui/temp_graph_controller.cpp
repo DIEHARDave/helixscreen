@@ -153,11 +153,9 @@ void TempGraphController::detach() {
     // would come up with the suppression still latched and never sample again.
     suppress_attach_fire_ = false;
 
+    // The invalidate above drops this controller's deferred work, and resetting
+    // each observer drops its queued callbacks.
     {
-        auto freeze =
-            helix::ui::UpdateQueue::instance().scoped_freeze("TempGraphController::detach");
-        helix::ui::UpdateQueue::instance().drain();
-
         connection_observer_.reset();
         discovery_observer_.reset();
         sensor_discovery_observer_.reset();

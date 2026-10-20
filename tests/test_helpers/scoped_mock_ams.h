@@ -27,6 +27,9 @@ struct ScopedMockAms {
         backend->set_operation_delay(0);
         ams.set_backend(std::move(owned));
         backend->start();
+        // The started backend publishes its slots through the update queue;
+        // nothing reading AmsState runs queued work on a test's behalf.
+        ui::UpdateQueue::instance().drain();
     }
 
     /// One slot per lane, loaded with {rgb, material} in order.

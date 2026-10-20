@@ -752,3 +752,24 @@ TEST_CASE_METHOD(XMLTestFixture, "Interactive map keeps its rects and close butt
     process_lvgl(20);
     lv_obj_delete(card);
 }
+
+TEST_CASE_METHOD(XMLTestFixture, "ExcludeObjectMapView destroy runs no queued callback",
+                 "[exclude_map][lifecycle][drain_reentrancy]") {
+    REQUIRE(register_component("components/exclude_object_map"));
+    seed_objects(state().excluded_objects_state());
+
+    auto view = std::make_unique<ExcludeObjectMapView>();
+    view->create(test_screen(), &state().excluded_objects_state(),
+                 helix::bed_dimensions_from_volume(0.0f, 235.0f, 0.0f, 235.0f), {},
+                 ExcludeTapMode::ExcludeOnly, nullptr);
+    process_lvgl(50);
+
+    bool ran = false;
+    helix::ui::UpdateQueue::instance().queue("test::drain_canary", [&ran]() { ran = true; });
+    view->destroy();
+    CHECK_FALSE(ran);
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(ran);
+    view.reset();
+    process_lvgl(20);
+}

@@ -33,22 +33,6 @@ size_t index(Lib lib) {
 
 } // namespace
 
-const char* soname(Lib lib) {
-    switch (lib) {
-    case Lib::Drm:
-        return "libdrm.so.2";
-    case Lib::Gbm:
-        return "libgbm.so.1";
-    case Lib::Egl:
-        return "libEGL.so.1";
-    case Lib::Gles2:
-        return "libGLESv2.so.2";
-    case Lib::Input:
-        return "libinput.so.10";
-    }
-    return "";
-}
-
 void* handle(Lib lib) {
     Slot& slot = slots()[index(lib)];
     // RTLD_GLOBAL so the trampolines' own dlopen of the same soname, and any
@@ -80,6 +64,26 @@ bool available_all(std::initializer_list<Lib> libs) {
         }
     }
     return true;
+}
+
+bool drm_libs_present(bool egl_presentation, LoadCheck loads) {
+    if (!loads(Lib::Drm)) {
+        return false;
+    }
+    if (!egl_presentation) {
+        return true;
+    }
+    for (Lib lib : {Lib::Gbm, Lib::Egl, Lib::Gles2}) {
+        if (!loads(lib)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+InputDiscovery input_discovery(bool libinput_built, LoadCheck loads) {
+    return libinput_built && loads(Lib::Input) ? InputDiscovery::Libinput
+                                               : InputDiscovery::SysfsEvdev;
 }
 
 void* gles2_proc(const char* name) {

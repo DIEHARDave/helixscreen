@@ -6,7 +6,6 @@
 #include "ui_event_safety.h"
 #include "ui_fan_control_overlay.h"
 #include "ui_text.h"
-#include "ui_update_queue.h"
 
 #include "app_globals.h"
 #include "helix-xml/src/xml/lv_xml.h"
@@ -128,8 +127,6 @@ void FanWidget::detach() {
     lifetime_.invalidate();
     picker_.hide();
     {
-        auto freeze = helix::ui::UpdateQueue::instance().scoped_freeze();
-        helix::ui::UpdateQueue::instance().drain();
         version_observer_.reset();
         speed_lifetime_.reset(); // Before observer: expire weak_ptr if subject already freed
         speed_observer_.reset();

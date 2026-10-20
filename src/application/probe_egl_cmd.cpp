@@ -6,6 +6,34 @@
 #include <cstdio>
 #include <cstdlib>
 
+namespace helix {
+namespace probe {
+
+ProbeGate probe_gate(bool carries_rungs, bool egl_presentation, gpu_libs::LoadCheck loads) {
+    using gpu_libs::Lib;
+    if (!carries_rungs) {
+        return {false, kProbeNoRungs, "built without display rungs"};
+    }
+    if (!loads(Lib::Drm)) {
+        return {false, kProbeNoDrm, std::string(gpu_libs::soname(Lib::Drm)) + " is not installed"};
+    }
+    // GLES for the 3D viewer alone compiles the probe in, but only a binary
+    // linked with the EGL presentation path can act on a yes.
+    if (!egl_presentation) {
+        return {false, kProbeDeclined, "built without EGL presentation"};
+    }
+    for (Lib lib : {Lib::Gbm, Lib::Egl, Lib::Gles2}) {
+        if (!loads(lib)) {
+            return {false, kProbeDeclined,
+                    std::string(gpu_libs::soname(lib)) + " is not installed"};
+        }
+    }
+    return {true, kProbeEgl, ""};
+}
+
+} // namespace probe
+} // namespace helix
+
 // EGL and GBM are linked only into the DRM builds that carry a GPU path. The
 // file itself always compiles: a launcher asking a binary that cannot answer
 // must get a refusal, not the "ignoring unknown argument" warning and a booted
@@ -218,27 +246,16 @@ std::vector<std::string> candidate_nodes() {
 } // namespace
 
 int run_probe_egl() {
-#ifndef HELIX_DLOPEN_GPU_LIBS
-    printf("built without display rungs\n");
-    return kProbeNoRungs;
+#ifdef HELIX_DLOPEN_GPU_LIBS
+    constexpr bool kCarriesRungs = true;
+#else
+    constexpr bool kCarriesRungs = false;
 #endif
-    using helix::gpu_libs::Lib;
-    if (!helix::gpu_libs::available(Lib::Drm)) {
-        printf("%s is not installed\n", helix::gpu_libs::soname(Lib::Drm));
-        return kProbeNoDrm;
-    }
-
-    // GLES for the 3D viewer alone compiles this probe in, but only a binary
-    // linked with the EGL presentation path can act on a yes.
-    if (helix::make_drm_egl_backend == nullptr) {
-        printf("built without EGL presentation\n");
-        return kProbeDeclined;
-    }
-    for (Lib lib : {Lib::Gbm, Lib::Egl, Lib::Gles2}) {
-        if (!helix::gpu_libs::available(lib)) {
-            printf("%s is not installed\n", helix::gpu_libs::soname(lib));
-            return kProbeDeclined;
-        }
+    const ProbeGate gate = probe_gate(kCarriesRungs, helix::make_drm_egl_backend != nullptr,
+                                      helix::gpu_libs::available);
+    if (!gate.probe) {
+        printf("%s\n", gate.reason.c_str());
+        return gate.status;
     }
 
     const std::vector<std::string> nodes = candidate_nodes();
@@ -293,8 +310,9 @@ namespace helix {
 namespace probe {
 
 int run_probe_egl() {
-    printf("built without display rungs\n");
-    return kProbeNoRungs;
+    const ProbeGate gate = probe_gate(false, false, nullptr);
+    printf("%s\n", gate.reason.c_str());
+    return gate.status;
 }
 
 } // namespace probe

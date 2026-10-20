@@ -191,6 +191,10 @@ class ThermistorWidget : public TiledPanelWidget {
     helix::AsyncLifetimeGuard lifetime_;
 
     bool binding_in_progress_ = false; // reentrancy guard for bind_carousel_sensors
+    /// The count observer's first notification repeats the bind attach just
+    /// ran; every later one is a change in the sensor set and rebinds, even at
+    /// an unchanged count.
+    bool sensor_count_seen_ = false;
 
     // The two context menus this widget raises
     SensorPicker sensor_picker_{*this};
