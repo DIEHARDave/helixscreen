@@ -1455,6 +1455,23 @@ jobs:
             exit 1
           fi
 
+          # The K-Touch zip is listed with its real hash, or not at all: an
+          # entry the installer cannot download or check is worse than none.
+          kt_zip=$(ls release-files/helixscreen-esp32-ktouch-v*.zip 2>/dev/null | head -1 || true)
+          kt_entry=$(curl -fsS "${R2_PUBLIC_URL}/${R2_PREFIX}${CHANNEL}/manifest.json" | jq -c '.assets["esp32-ktouch"] // empty')
+          if [ -n "$kt_zip" ]; then
+            want_sha=$(sha256sum "$kt_zip" | cut -d' ' -f1)
+            got_sha=$(echo "$kt_entry" | jq -r '.sha256 // empty')
+            kt_url=$(echo "$kt_entry" | jq -r '.url // empty')
+            if [ "$got_sha" != "$want_sha" ] || [ -z "$kt_url" ] || ! curl -fsSI "$kt_url" >/dev/null; then
+              echo "::error::${CHANNEL} manifest esp32-ktouch entry is missing, unreachable or has the wrong sha256 (want ${want_sha}, got '${got_sha:-<none>}')"
+              exit 1
+            fi
+          elif [ -n "$kt_entry" ]; then
+            echo "::error::${CHANNEL} manifest lists esp32-ktouch but this release built no K-Touch zip"
+            exit 1
+          fi
+
           echo "=== ${CHANNEL} manifest uploaded and verified (v${served}) ==="
         done
 
