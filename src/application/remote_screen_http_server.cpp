@@ -261,6 +261,12 @@ void ScreenHttpServer::run_streams(Impl* impl, SnapshotRateCap cap) {
                 if (s.sent_any && s.sent_generation == snap->generation) {
                     continue;
                 }
+                // A client that stopped reading (a phone that locked with Mainsail open)
+                // would otherwise have frames queued for it until libhv's 16 MB cap.
+                // Skip it until its last frame has gone out; it gets the newest one then.
+                if (s.writer->writeBufsize() > 0) {
+                    continue;
+                }
                 std::string head = std::string("--") + kStreamBoundary +
                                    "\r\nContent-Type: image/jpeg\r\nContent-Length: " +
                                    std::to_string(snap->jpeg->size()) + "\r\n\r\n";

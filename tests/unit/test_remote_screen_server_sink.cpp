@@ -283,3 +283,32 @@ TEST_CASE("store: a refresh in stripes advances the generation only on its last 
     CHECK(store.generation() == gen + 1);
     CHECK(store.wait_for_full_refresh_after(full, 1ms));
 }
+
+TEST_CASE("store: a rejected last stripe still completes a refresh whose other stripes landed",
+          "[remote_screen][server_sink]") {
+    ScreenFrameStore store;
+    store.note_request();
+    store.note_full_invalidate();
+    const uint64_t gen = store.generation();
+    std::vector<uint8_t> stripe(16 * 8 * 4, 0x40);
+    RemoteScreenFrame f;
+    f.px_map = stripe.data();
+    f.px_map_len = stripe.size();
+    f.x2 = 15;
+    f.y2 = 7;
+    f.disp_w = 16;
+    f.disp_h = 16;
+    f.src_stride = 64;
+    f.src_format = RemoteScreenPixelFormat::BGRA8888;
+    f.last_in_refresh = false;
+    store.on_frame(f);
+    // The last rect starts before its own source origin: rejected.
+    RemoteScreenFrame bad = f;
+    bad.y1 = 8;
+    bad.y2 = 15;
+    bad.px_map_y = 12;
+    bad.last_in_refresh = true;
+    store.on_frame(bad);
+    CHECK(store.generation() == gen + 1);
+    CHECK(store.full_generation() == 1);
+}

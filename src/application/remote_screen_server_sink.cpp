@@ -85,11 +85,17 @@ void ScreenFrameStore::on_frame(const RemoteScreenFrame& f) {
                              f.src_stride, static_cast<unsigned long>(f.px_map_len),
                              static_cast<int>(r.status));
             }
-            return;
+            // A refresh whose other rects landed is still the screen, less this rect.
+            if (!(f.last_in_refresh && refresh_copied_)) {
+                return;
+            }
+        } else {
+            refresh_copied_ = true;
         }
         if (!f.last_in_refresh) {
             return;
         }
+        refresh_copied_ = false;
         has_frame_ = true;
         ++generation_;
         if (awaiting_full_) {

@@ -12,6 +12,7 @@
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/raw_http_client.h"
 #include "config.h"
+#include "remote_pointer.h"
 #include "remote_screen_control.h"
 #include "remote_screen_server_sink.h"
 #include "remote_screen_service.h"
@@ -329,4 +330,41 @@ TEST_CASE_METHOD(RemoteScreenFixture, "pairing secrets never reach a debug bundl
     CHECK(bundled.find("0123456789abcdef0123456789abcdef") == std::string::npos);
     CHECK(m.get_pair_code() == "123456");
     CHECK(m.get_paired_tokens() == std::vector<std::string>{"0123456789abcdef0123456789abcdef"});
+}
+
+TEST_CASE_METHOD(TouchFixture,
+                 "turning sharing off mid-touch neither strands a press nor stalls the UI",
+                 "[remote_screen][control]") {
+    auto& svc = RemoteScreenService::instance();
+    auto headers = json_headers();
+    headers.push_back({"X-Helix-Pair", token});
+    const int port = svc.port();
+    // A press arrives and is queued for the UI thread, which is busy (nothing pumps it).
+    std::thread client([&] {
+        (void)helix::test::raw_http(port, "POST", "/touch", headers,
+                                    R"({"type":"down","x":10,"y":10})");
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // The person at the printer turns sharing off in that moment.
+    const auto start = std::chrono::steady_clock::now();
+    RemoteScreenSettingsManager::instance().set_enabled(false);
+    CHECK(std::chrono::steady_clock::now() - start < std::chrono::milliseconds(300));
+    client.join();
+
+    // The queued press now runs, after the server is gone: it must not press anything.
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK_FALSE(helix::remote::RemotePointer::instance().pressed());
+}
+
+TEST_CASE_METHOD(TouchFixture, "a press nobody finished is released by the housekeeping tick",
+                 "[remote_screen][control]") {
+    auto& svc = RemoteScreenService::instance();
+    REQUIRE(touch("down", 10, 10) == 204);
+    REQUIRE(helix::remote::RemotePointer::instance().pressed());
+    svc.housekeeping_tick(std::chrono::steady_clock::now());
+    CHECK(helix::remote::RemotePointer::instance().pressed());
+    svc.housekeeping_tick(std::chrono::steady_clock::now() +
+                          std::chrono::milliseconds(kTouchStaleMs + 100));
+    CHECK_FALSE(helix::remote::RemotePointer::instance().pressed());
 }

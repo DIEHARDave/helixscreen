@@ -214,3 +214,15 @@ TEST_CASE("control_active goes 1 on an accepted touch and 0 after kViewerIdleMs"
     CHECK(remote_control_active(t0, t0 + std::chrono::milliseconds(kRemoteControlActiveMs - 1)));
     CHECK_FALSE(remote_control_active(t0, t0 + std::chrono::milliseconds(kRemoteControlActiveMs)));
 }
+
+TEST_CASE("a move with nothing pressed is not accepted", "[remote_screen][control]") {
+    // After a stale press is released, trackpad jitter must not start a new press.
+    TouchSession s;
+    const auto t0 = std::chrono::steady_clock::time_point{} + 1h;
+    CHECK_FALSE(s.on_event({TouchEvent::Type::Move, 5, 5}, t0));
+    CHECK(s.on_event({TouchEvent::Type::Down, 5, 5}, t0));
+    CHECK(s.on_event({TouchEvent::Type::Move, 6, 6}, t0));
+    REQUIRE(s.take_stale_release(t0 + std::chrono::milliseconds(kTouchStaleMs + 1)));
+    CHECK_FALSE(s.on_event({TouchEvent::Type::Move, 7, 7}, t0 + 5s));
+    CHECK(s.on_event({TouchEvent::Type::Up, 7, 7}, t0 + 5s));
+}

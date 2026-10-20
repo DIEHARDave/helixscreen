@@ -234,11 +234,15 @@ bool remote_control_active(std::optional<std::chrono::steady_clock::time_point> 
 // TouchSession
 // ---------------------------------------------------------------------------
 
-void TouchSession::on_event(const TouchEvent& e, std::chrono::steady_clock::time_point now) {
+bool TouchSession::on_event(const TouchEvent& e, std::chrono::steady_clock::time_point now) {
     std::lock_guard<std::mutex> lock(mutex_);
+    if (e.type == TouchEvent::Type::Move && !pressed_) {
+        return false;
+    }
     pressed_ = e.type != TouchEvent::Type::Up;
     last_ = e;
     last_at_ = now;
+    return true;
 }
 
 std::optional<TouchEvent>

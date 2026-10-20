@@ -117,7 +117,9 @@ bool remote_control_active(std::optional<std::chrono::steady_clock::time_point> 
  */
 class TouchSession {
   public:
-    void on_event(const TouchEvent& e, std::chrono::steady_clock::time_point now);
+    /// Record an accepted touch. False for a move with nothing pressed (the stale press
+    /// was already released), which must be dropped rather than start a new press.
+    bool on_event(const TouchEvent& e, std::chrono::steady_clock::time_point now);
     /// The point to release at, once; nullopt while nothing is stale.
     std::optional<TouchEvent> take_stale_release(std::chrono::steady_clock::time_point now);
     /// When the last accepted touch arrived, for the remote-control indicator.

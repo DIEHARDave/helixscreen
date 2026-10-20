@@ -32,6 +32,7 @@ constexpr uint32_t kHousekeepingMs = 500;
 /// How long a touch waits for the UI thread to take it, then for LVGL to sample it.
 constexpr auto kTouchQueueWait = std::chrono::seconds(1);
 constexpr auto kTouchSampleWait = std::chrono::seconds(2);
+constexpr auto kTouchWaitSlice = std::chrono::milliseconds(20);
 /// Handed back by the UI thread when there is no display to point at.
 constexpr uint64_t kNoPointer = UINT64_MAX;
 } // namespace
@@ -227,10 +228,18 @@ void RemoteScreenService::stop_server() {
 }
 
 bool RemoteScreenService::apply_touch(const TouchEvent& e) {
+    if (!touch_session_.on_event(e, std::chrono::steady_clock::now())) {
+        return true; // a move after the stale press was released: nothing to drive
+    }
     auto baseline = std::make_shared<std::promise<uint64_t>>();
     auto taken = baseline->get_future();
-    touch_session_.on_event(e, std::chrono::steady_clock::now());
     ui::queue_update("remote_screen::touch", [baseline, e] {
+        // The server may have stopped while this waited in the queue; nothing would
+        // release a press made now.
+        if (!RemoteScreenService::instance().serving_.load()) {
+            baseline->set_value(kNoPointer);
+            return;
+        }
         // A remote tap wakes a sleeping display the way a finger does.
         lv_display_trigger_activity(nullptr);
         auto& ptr = remote::RemotePointer::instance();
@@ -242,8 +251,13 @@ bool RemoteScreenService::apply_touch(const TouchEvent& e) {
         ptr.set_logical_state(e.x, e.y, e.type != TouchEvent::Type::Up);
         baseline->set_value(before);
     });
-    if (taken.wait_for(kTouchQueueWait) != std::future_status::ready) {
-        return false;
+    // Waited in slices so stop_server(), which joins this thread from the UI thread,
+    // is never held for the whole wait by a queue only the UI thread can drain.
+    const auto deadline = std::chrono::steady_clock::now() + kTouchQueueWait;
+    while (taken.wait_for(kTouchWaitSlice) != std::future_status::ready) {
+        if (!serving_.load() || std::chrono::steady_clock::now() >= deadline) {
+            return false;
+        }
     }
     uint64_t before = kNoPointer;
     try {

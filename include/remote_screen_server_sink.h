@@ -126,6 +126,8 @@ class ScreenFrameStore {
     bool full_redraw_needed_ = true;
     uint64_t generation_ = 0;
     bool awaiting_full_ = false;
+    /// A rect of the refresh in progress was copied.
+    bool refresh_copied_ = false;
     uint64_t full_generation_ = 0;
 
     std::vector<uint8_t> rgb_;
