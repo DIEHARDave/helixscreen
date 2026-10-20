@@ -500,8 +500,8 @@ printf '%s\\n' \"\$*\" >> '$BATS_TEST_TMPDIR/curl.log'; exit 0"
 }
 
 @test "_disable_k2cam_webcam: comments the [webcam Default] block and is idempotent" {
-    # A failed init-script restart falls back to Moonraker's own, as every
-    # installer restart does.
+    # Moonraker answers, so it is asked to restart itself and the init
+    # script, which would fail, is never run.
     stage_moonraker_restart 1
 
     local mr_dir="$BATS_TEST_TMPDIR/usr/share/moonraker"
@@ -535,9 +535,9 @@ EOF
 
     # Marker records the affected conf path.
     grep -qF "$conf" "$(_k2cam_marker_file)"
-    [ -f "$BATS_TEST_TMPDIR/mr_restarted" ] || fail "the init script was not asked to restart Moonraker"
     grep -q -- "-X POST $MOONRAKER_URL/server/restart" "$BATS_TEST_TMPDIR/curl.log" ||
-        fail "no fallback to Moonraker's own restart: $(cat "$BATS_TEST_TMPDIR/curl.log" 2>/dev/null)"
+        fail "Moonraker was not asked to restart itself: $(cat "$BATS_TEST_TMPDIR/curl.log" 2>/dev/null)"
+    [ ! -f "$BATS_TEST_TMPDIR/mr_restarted" ] || fail "the init script ran while Moonraker answered"
 
     # Idempotent: a second pass must not double-comment.
     _disable_k2cam_webcam
@@ -576,10 +576,11 @@ EOF
     # No prior ustreamer install state — only the k2cam marker matters here.
     rm -f "$CAMERA_MARKER" "$WEBCAM_BACKUP"
 
-    rm -f "$BATS_TEST_TMPDIR/mr_restarted"
+    rm -f "$BATS_TEST_TMPDIR/mr_restarted" "$BATS_TEST_TMPDIR/curl.log"
     run uninstall_camera_k2 "k2"
     [ "$status" -eq 0 ]
-    [ -f "$BATS_TEST_TMPDIR/mr_restarted" ] || fail "uninstall did not restart Moonraker"
+    grep -q -- "-X POST $MOONRAKER_URL/server/restart" "$BATS_TEST_TMPDIR/curl.log" ||
+        fail "uninstall did not restart Moonraker"
 
     # The disable prefix is gone; content matches the original.
     refute grep -q 'helix-k2cam-disabled' "$conf"

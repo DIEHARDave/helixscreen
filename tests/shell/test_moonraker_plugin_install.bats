@@ -120,6 +120,16 @@ printf '%s\\n' \"\$*\" >> '$log'"
 exit $status"
 }
 
+# A real curl whose /server/info lists helix_print among Moonraker's
+# components, so a restart goes through the service manager first. $1 logs
+# every call.
+mock_curl_helix_print_loaded() {
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$1'
+case \"\$*\" in *server/info*) printf '%s' '{\"result\":{\"components\":[\"helix_print\"]}}' ;; esac
+exit 0"
+}
+
 # Point the systemd check at a /run where systemd is init.
 stage_systemd_init() {
     export HELIX_RUN_DIR="$BATS_TEST_TMPDIR/run"
@@ -217,13 +227,14 @@ setup_instrumented_home() {
 @test "without --no-restart the auto install still restarts Moonraker" {
     local home="$BATS_TEST_TMPDIR/home"
     setup_instrumented_home "$home"
-    local log="$BATS_TEST_TMPDIR/sudo.log"
+    local log="$BATS_TEST_TMPDIR/sudo.log" curl_log="$BATS_TEST_TMPDIR/curl.log"
     mock_command_script "sudo" "echo \"\$*\" >> '$log'"
     mock_command_script "service" "echo \"service \$*\" >> '$log'"
+    mock_real_curl 0 "$curl_log"
 
     run env HOME="$home" sh "$SCRIPT" --auto
     [ "$status" -eq 0 ]
-    grep -q 'restart' "$log" || fail "no restart attempted"
+    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$curl_log" || fail "no restart attempted"
 }
 
 @test "auto_uninstall strips PRINT_START, preserves helix_macros.cfg, and removes the plugin" {
@@ -1333,7 +1344,8 @@ mock_systemd_without_sudo() {
     [ -L "$home/moonraker/moonraker/components/helix_print.py" ]
     contains "Moonraker needs a restart" "$output"
     if printf '%s' "$output" | grep -qi 'complete'; then fail "claimed completion: $output"; fi
-    if grep -q '/server/info' "$log"; then fail "waited on a Moonraker nothing restarted"; fi
+    # One read of /server/info finds Moonraker not answering; more is a wait.
+    [ "$(grep -c '/server/info' "$log")" -le 1 ] || fail "waited on a Moonraker nothing restarted"
 }
 
 @test "an auto uninstall no restart reaches says Moonraker needs one, never complete" {
@@ -1355,8 +1367,9 @@ mock_systemd_without_sudo() {
     setup_plain_home "$home"
     mock_systemd_without_sudo "$log"
     mock_command_script "sleep" 'exit 0'
-    # /server/info answers twice more from the stopping instance, fails once
-    # while it is down, then answers from the new one.
+    # /server/info answers the restart's first look and once more from the
+    # stopping instance, fails once while it is down, then answers from the
+    # new one, for the restart's own wait and then the installer's.
     mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
 printf '%s\\n' \"\$*\" >> '$log'
 case \"\$*\" in *server/info*) c=\$((\$(cat '$n' 2>/dev/null || echo 0) + 1)); echo \"\$c\" > '$n'; [ \"\$c\" -ne 3 ];; esac"
@@ -1364,7 +1377,7 @@ case \"\$*\" in *server/info*) c=\$((\$(cat '$n' 2>/dev/null || echo 0) + 1)); e
     run env HOME="$home" sh "$SCRIPT" --auto
     [ "$status" -eq 0 ] || fail "install failed: $output"
     contains "Asked Moonraker to restart itself" "$output"
-    [ "$(cat "$n")" -eq 4 ] || fail "the wait read /server/info $(cat "$n") times, want 4 (old, old, down, new)"
+    [ "$(cat "$n")" -eq 5 ] || fail "the wait read /server/info $(cat "$n") times, want 5 (old, old, down, new, new)"
     contains "Moonraker is ready" "$output"
 }
 
@@ -1580,6 +1593,7 @@ exit 0'
     mkdir -p "$initd"
     printf '#!/bin/sh\n[ "$1" = restart ] && touch "%s"\n' "$BATS_TEST_TMPDIR/init.restarted" > "$initd/moonraker"
     chmod +x "$initd/moonraker"
+    mock_curl_helix_print_loaded "$BATS_TEST_TMPDIR/curl.log"
 
     run env HOME="$home" HELIX_INITD_DIR="$initd" sh "$SCRIPT" --auto
     [ "$status" -eq 0 ] || fail "install failed: $output"
@@ -1588,7 +1602,7 @@ exit 0'
     contains "Auto-install complete" "$output"
 }
 
-@test "an auto install on a K1, whose systemctl exits 0 for everything, restarts Moonraker through its init script" {
+@test "an auto install on a K1, whose systemctl exits 0 for everything, restarts a Moonraker with helix_print loaded through its init script" {
     local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/systemctl.log"
     setup_plain_home "$home"
     mkdir -p "$BATS_TEST_TMPDIR/run" "$home/proc/700"
@@ -1600,12 +1614,73 @@ exit 0'
     printf '#!/bin/sh\n[ "$1" = restart ] && mv "%s" "%s"\n' "$home/proc/700" "$home/proc/701" \
         > "$initd/S56moonraker_service"
     chmod +x "$initd/S56moonraker_service"
+    mock_curl_helix_print_loaded "$BATS_TEST_TMPDIR/curl.log"
 
     run env HOME="$home" HELIX_PROC_ROOT="$home/proc" HELIX_RUN_DIR="$BATS_TEST_TMPDIR/run" \
         HELIX_INITD_DIR="$initd" sh "$SCRIPT" --auto
     [ "$status" -eq 0 ] || fail "install failed: $output"
     [ -d "$home/proc/701" ] || fail "the init script did not restart Moonraker: $output"
     if grep -q restart "$log" 2>/dev/null; then fail "restarted through the systemctl shim: $(cat "$log")"; fi
+    contains "Auto-install complete" "$output"
+}
+
+@test "an auto install on a K1 whose Moonraker answers asks it to restart itself and never runs the init script" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/init.log" curl_log="$BATS_TEST_TMPDIR/curl.log"
+    setup_plain_home "$home"
+    mkdir -p "$BATS_TEST_TMPDIR/run" "$home/proc/700"
+    printf '%s\0' python3 "$home/moonraker/moonraker/moonraker.py" > "$home/proc/700/cmdline"
+    mock_command_script "systemctl" 'exit 0'
+    mock_command_script "sudo" 'exec "$@"'
+    mock_real_curl 0 "$curl_log"
+    mock_command_script "sleep" 'exit 0'
+    local initd="$BATS_TEST_TMPDIR/etc/init.d"
+    mkdir -p "$initd"
+    printf '#!/bin/sh\necho "$*" >> "%s"\n' "$log" > "$initd/S56moonraker_service"
+    chmod +x "$initd/S56moonraker_service"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" HELIX_RUN_DIR="$BATS_TEST_TMPDIR/run" \
+        HELIX_INITD_DIR="$initd" sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$curl_log" || fail "no self-restart request: $output"
+    [ ! -e "$log" ] || fail "the init script ran: $(cat "$log")"
+    contains "Asked Moonraker to restart itself" "$output"
+    contains "Auto-install complete" "$output"
+}
+
+@test "an auto install on a K1 whose init script restart stops Moonraker and fails to start it leaves Moonraker started" {
+    local home="$BATS_TEST_TMPDIR/home" log="$BATS_TEST_TMPDIR/init.log" up="$BATS_TEST_TMPDIR/moonraker.up"
+    setup_plain_home "$home"
+    mkdir -p "$BATS_TEST_TMPDIR/run" "$home/proc/700"
+    printf '%s\0' python3 "$home/moonraker/moonraker/moonraker.py" > "$home/proc/700/cmdline"
+    mock_command_script "systemctl" 'exit 0'
+    mock_command_script "sudo" 'exec "$@"'
+    mock_command_script "sleep" 'exit 0'
+    # helix_print is loaded, so the init script goes first; Moonraker answers
+    # only while $up exists.
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0 (x86_64-pc-linux-gnu)'; exit 0;; esac
+[ -e '$up' ] || exit 7
+case \"\$*\" in *server/info*) printf '%s' '{\"result\":{\"components\":[\"helix_print\"]}}' ;; esac
+exit 0"
+    touch "$up"
+    local initd="$BATS_TEST_TMPDIR/etc/init.d"
+    mkdir -p "$initd"
+    cat > "$initd/S56moonraker_service" << INITEOF
+#!/bin/sh
+echo "\$1" >> "$log"
+case "\$1" in
+    restart) rm -rf "$home/proc/700" "$up"; exit 1 ;;
+    start) mkdir -p "$home/proc/701"; printf '%s\\0' python3 "$home/moonraker/moonraker/moonraker.py" > "$home/proc/701/cmdline"; touch "$up" ;;
+esac
+INITEOF
+    chmod +x "$initd/S56moonraker_service"
+
+    run env HOME="$home" HELIX_PROC_ROOT="$home/proc" HELIX_RUN_DIR="$BATS_TEST_TMPDIR/run" \
+        HELIX_INITD_DIR="$initd" sh "$SCRIPT" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    grep -qx start "$log" || fail "Moonraker was left stopped: $output"
+    [ -d "$home/proc/701" ] || fail "no Moonraker runs: $output"
+    contains "so it was started with" "$output"
+    contains "Moonraker is ready" "$output"
     contains "Auto-install complete" "$output"
 }
 

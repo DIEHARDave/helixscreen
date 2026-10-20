@@ -551,7 +551,8 @@ as_root() {
 # NoNewPrivileges (the HelixScreen service) cannot sudo, so it passes
 # --no-restart and restarts Moonraker itself. Returns 1 when Moonraker still
 # needs a restart, a print having held it off included, which the caller
-# reports instead of completion; a slow comeback is only a warning.
+# reports instead of completion; a slow comeback, or a Moonraker that could
+# not be started again, is a warning on a change that is itself complete.
 finish_with_restart() {
     if [ "$NO_RESTART" = "true" ]; then
         info "Leaving the Moonraker restart to the caller"
@@ -563,6 +564,11 @@ finish_with_restart() {
     case "$restarted" in
         0) ;;
         3) info "Asked Moonraker to restart itself" ;;
+        5)
+            warn "Moonraker is down, so the change has not taken effect: start it, then check that Mainsail or Fluidd reach it"
+            warn "Moonraker did not come back up in time, but $1 itself completed"
+            return 0
+            ;;
         4)
             warn "A print is running, so Moonraker was not restarted and the change has not taken effect"
             warn "Moonraker needs a restart after the print: restart it from Mainsail or Fluidd"
