@@ -734,6 +734,11 @@ void AmsBackendToolChanger::handle_status(const nlohmann::json& params) {
                 apply_material_reading_locked(*reading);
                 state_changed = true;
             }
+            // The C5 row also watches each afclite lane's spool. Any other
+            // tool changer with AFC lanes owes no lane_data re-read for them.
+            if (auto spools = helix::toolchanger_addon::read_afc_lane_spools(params)) {
+                apply_afc_lane_spools_locked(*spools);
+            }
         }
 
         // Z-Mod's afclite shim: the firmware's own fault flag (a boolean, not a
@@ -742,9 +747,6 @@ void AmsBackendToolChanger::handle_status(const nlohmann::json& params) {
         if (auto afc = helix::toolchanger_addon::read_afc_state(params)) {
             apply_afc_state_locked(*afc);
             state_changed = true;
-        }
-        if (auto spools = helix::toolchanger_addon::read_afc_lane_spools(params)) {
-            apply_afc_lane_spools_locked(*spools);
         }
 
         // Check for individual tool updates (e.g., "tool T0", "tool T1")

@@ -2,19 +2,20 @@
 
 /**
  * @file test_toolchanger_lane_reread.cpp
- * @brief A Creator 5 head changed from outside follows the tool's lane_data record.
+ * @brief The Creator 5's lane_data re-read (prestonbrown/helixscreen#1632).
  *
- * A tool that binds a spool to a Z-Mod Creator 5 head from outside (an NFC tag
- * reader through CHANGE_ZCOLOR or zmod_afclite's SET_SPOOL_ID) writes the head's
- * lane_data record beside the change. The tool changer read lane_data only at
- * boot, so the new spool showed after a reboot. A firmware colour/material
- * change, or an afclite lane's spool_id changing, now schedules one lane_data
- * re-read - the same answer the AD5X gives (prestonbrown/helixscreen#1632).
+ * Pins what schedules a re-read (a changed zmod_color head, an afclite lane's
+ * new spool_id, on the C5 row only), which records it files (only those
+ * another tool changed since the last read, never one carrying HelixScreen's
+ * own keys), and what the head's override keeps afterwards (a rebinding
+ * record starts it afresh, any other record amends it).
  */
 
 #include "ui_update_queue.h"
 
+#include "../test_helpers/config_dir_guard.h"
 #include "../test_helpers/mock_printer.h"
+#include "../test_helpers/seeded_override.h"
 #include "../test_helpers/toolchanger_test_access.h"
 #include "../test_helpers/toolchanger_test_helper.h"
 #include "ams_backend_toolchanger.h"
@@ -26,10 +27,7 @@
 #include "toolchanger_addon.h"
 
 #include <algorithm>
-#include <cstdlib>
-#include <filesystem>
 #include <string>
-#include <unistd.h>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -57,8 +55,9 @@ PrinterDiscovery zmod_c5_afclite_discovery() {
     return hw;
 }
 
-/// A zmod_color frame whose second head holds @p head1_hex.
-json zmod_color_frame(const char* head1_hex) {
+/// A zmod_color frame whose second head holds @p head1_hex and third head
+/// @p head2_hex.
+json zmod_color_frame(const char* head1_hex, const char* head2_hex = "8C8C89") {
     return json{
         {"zmod_color",
          {{"active_tool_id", -1},
@@ -66,7 +65,7 @@ json zmod_color_frame(const char* head1_hex) {
           {"palette", json::array({"48358C", "8C8C89", "D584DE", "FFF245"})},
           {"slots", json::array({{{"ID", "1"}, {"Material", "PLA"}, {"HEX", "48358C"}},
                                  {{"ID", "2"}, {"Material", "PLA"}, {"HEX", head1_hex}},
-                                 {{"ID", "3"}, {"Material", "PLA"}, {"HEX", "8C8C89"}},
+                                 {{"ID", "3"}, {"Material", "PLA"}, {"HEX", head2_hex}},
                                  {{"ID", "4"}, {"Material", "PLA"}, {"HEX", "FFF245"}}})}}}};
 }
 
@@ -117,40 +116,12 @@ class StoreBackedC5 : public AmsBackendToolChanger {
     }
 };
 
-struct ScopedCacheDir {
-    std::filesystem::path path;
-    std::string previous;
-    bool had_previous = false;
-
-    explicit ScopedCacheDir(const std::string& suffix) {
-        if (const char* prev = std::getenv("HELIX_CONFIG_DIR"); prev != nullptr) {
-            previous = prev;
-            had_previous = true;
-        }
-        path = std::filesystem::temp_directory_path() /
-               ("toolchanger_lane_reread_" + suffix + "_" + std::to_string(::getpid()));
-        std::filesystem::remove_all(path);
-        std::filesystem::create_directories(path);
-        ::setenv("HELIX_CONFIG_DIR", path.c_str(), 1);
-    }
-
-    ~ScopedCacheDir() {
-        if (had_previous) {
-            ::setenv("HELIX_CONFIG_DIR", previous.c_str(), 1);
-        } else {
-            ::unsetenv("HELIX_CONFIG_DIR");
-        }
-        std::error_code ec;
-        std::filesystem::remove_all(path, ec);
-    }
-};
-
 } // namespace
 
 TEST_CASE("A Creator 5 head a tag reader rebinds follows the reader's lane_data record",
-          "[toolchanger][zmod][lane_data][1632][slow]") {
+          "[toolchanger][zmod][lane_data][1632]") {
     ams::reset_lane_sources();
-    ScopedCacheDir tmp("rebind");
+    ConfigDirGuard tmp("toolchanger_reread_rebind");
     MockPrinter mock_printer;
     mock_printer.client.mock_db_set("lane_data", "T1",
                                     outside_tool_record(1, "#8C9099", "Panchroma PLA Grey",
@@ -181,9 +152,9 @@ TEST_CASE("A Creator 5 head a tag reader rebinds follows the reader's lane_data 
 }
 
 TEST_CASE("A Creator 5 record carrying HelixScreen's own keys is not taken as an outside edit",
-          "[toolchanger][zmod][lane_data][1632][slow]") {
+          "[toolchanger][zmod][lane_data][1632]") {
     ams::reset_lane_sources();
-    ScopedCacheDir tmp("own_keys");
+    ConfigDirGuard tmp("toolchanger_reread_own_keys");
     MockPrinter mock_printer;
     mock_printer.client.mock_db_set("lane_data", "T1",
                                     outside_tool_record(1, "#8C9099", "Panchroma PLA Grey",
@@ -206,11 +177,116 @@ TEST_CASE("A Creator 5 record carrying HelixScreen's own keys is not taken as an
     CHECK(c5.get_slot_info(1).spoolman_id == 24);
 }
 
+TEST_CASE("A Creator 5 re-read leaves a head whose record it already read alone",
+          "[toolchanger][zmod][lane_data][1632]") {
+    // Head 1's record is the one it booted from. Spoolman has since described
+    // the spool that record links; a tag scanned into head 2 must not file
+    // head 1's old record again over what Spoolman said.
+    ams::reset_lane_sources();
+    ConfigDirGuard tmp("toolchanger_reread_unchanged");
+    MockPrinter mock_printer;
+    mock_printer.client.mock_db_set("lane_data", "T1",
+                                    outside_tool_record(1, "#8C9099", "Panchroma PLA Grey",
+                                                        "Panchroma", 24, "2026-10-20T23:00:00Z"));
+
+    test::RegisteredBackend<StoreBackedC5> reg(&mock_printer.api, 4);
+    StoreBackedC5& c5 = *reg;
+    ToolChangerTestAccess::call_on_started(c5);
+    feed(c5, zmod_color_frame("8C8C89"));
+
+    SpoolInfo spool;
+    spool.id = 24;
+    spool.vendor = "Panchroma";
+    spool.material = "PLA";
+    spool.filament_name = "Panchroma Matte Charcoal";
+    spool.color_hex = "#333333";
+    test::spool_states(c5, 1, spool);
+
+    mock_printer.client.mock_db_set("lane_data", "T2",
+                                    outside_tool_record(2, "#E364CD", "Sunlu PLA Magenta", "Sunlu",
+                                                        21, "2026-10-20T23:38:21Z"));
+    feed(c5, zmod_color_frame("8C8C89", "D584DE"));
+    ToolChangerTestAccess::fire_lane_record_reread(c5);
+    ui::UpdateQueue::instance().drain();
+
+    REQUIRE(c5.get_slot_info(2).spoolman_id == 21);
+    const SlotInfo head1 = c5.get_slot_info(1);
+    CHECK(head1.color_rgb == 0x333333u);
+    CHECK(head1.spool_name == "Panchroma Matte Charcoal");
+}
+
+TEST_CASE("A Creator 5 re-read that rebinds a head starts the override afresh",
+          "[toolchanger][zmod][lane_data][1632]") {
+    // The old spool's record named its colour; the new spool's does not. A
+    // rebinding record replaces the override, so the old spool's colour name
+    // is not saved back over the new spool's.
+    ams::reset_lane_sources();
+    ConfigDirGuard tmp("toolchanger_reread_rebind_override");
+    MockPrinter mock_printer;
+    auto old_spool = outside_tool_record(1, "#8C9099", "Panchroma PLA Grey", "Panchroma", 24,
+                                         "2026-10-20T23:00:00Z");
+    old_spool["color_name"] = "Ash Grey";
+    mock_printer.client.mock_db_set("lane_data", "T1", old_spool);
+
+    test::RegisteredBackend<StoreBackedC5> reg(&mock_printer.api, 4);
+    StoreBackedC5& c5 = *reg;
+    ToolChangerTestAccess::call_on_started(c5);
+    feed(c5, zmod_color_frame("8C8C89"));
+    REQUIRE(ToolChangerTestAccess::get_override(c5, 1).has_value());
+    REQUIRE(ToolChangerTestAccess::get_override(c5, 1)->color_name == "Ash Grey");
+
+    mock_printer.client.mock_db_set("lane_data", "T1",
+                                    outside_tool_record(1, "#E364CD", "Sunlu PLA Magenta", "Sunlu",
+                                                        21, "2026-10-20T23:38:21Z"));
+    feed(c5, zmod_color_frame("D584DE"));
+    ToolChangerTestAccess::fire_lane_record_reread(c5);
+    ui::UpdateQueue::instance().drain();
+
+    const auto ovr = ToolChangerTestAccess::get_override(c5, 1);
+    REQUIRE(ovr.has_value());
+    CHECK(ovr->spoolman_id == 21);
+    CHECK(ovr->spool_name == "Sunlu PLA Magenta");
+    CHECK(ovr->color_name.empty());
+}
+
+TEST_CASE("A Creator 5 re-read that keeps a head's spool amends the override",
+          "[toolchanger][zmod][lane_data][1632]") {
+    // Same spool, renamed: what the new record leaves out still describes the
+    // spool, so the override keeps it.
+    ams::reset_lane_sources();
+    ConfigDirGuard tmp("toolchanger_reread_amend_override");
+    MockPrinter mock_printer;
+    auto first = outside_tool_record(1, "#8C9099", "Panchroma PLA Grey", "Panchroma", 24,
+                                     "2026-10-20T23:00:00Z");
+    first["color_name"] = "Ash Grey";
+    mock_printer.client.mock_db_set("lane_data", "T1", first);
+
+    test::RegisteredBackend<StoreBackedC5> reg(&mock_printer.api, 4);
+    StoreBackedC5& c5 = *reg;
+    ToolChangerTestAccess::call_on_started(c5);
+    feed(c5, zmod_color_frame("8C8C89"));
+    REQUIRE(ToolChangerTestAccess::get_override(c5, 1)->color_name == "Ash Grey");
+
+    mock_printer.client.mock_db_set("lane_data", "T1",
+                                    outside_tool_record(1, "#E364CD", "Panchroma PLA Grey Matte",
+                                                        "Panchroma", 24, "2026-10-20T23:38:21Z"));
+    feed(c5, zmod_color_frame("D584DE"));
+    ToolChangerTestAccess::fire_lane_record_reread(c5);
+    ui::UpdateQueue::instance().drain();
+
+    const auto ovr = ToolChangerTestAccess::get_override(c5, 1);
+    REQUIRE(ovr.has_value());
+    CHECK(ovr->spoolman_id == 24);
+    CHECK(ovr->spool_name == "Panchroma PLA Grey Matte");
+    CHECK(ovr->color_name == "Ash Grey");
+}
+
 TEST_CASE("An afclite lane's new spool schedules a lane_data re-read",
           "[toolchanger][zmod][afclite][lane_data]") {
     // A new spool that snaps to the old one's palette colour restates nothing
     // zmod_color shows; the lane's spool_id is what changes.
     test::ToolChangerHelper tc(4);
+    tc.set_material_source(toolchanger_addon::resolve_material_source(zmod_c5_afclite_discovery()));
     feed(tc, json{{"AFC_lane E1", {{"spool_id", 24}}}});
     CHECK_FALSE(ToolChangerTestAccess::lane_reread_pending(tc));
 
@@ -219,6 +295,16 @@ TEST_CASE("An afclite lane's new spool schedules a lane_data re-read",
 
     feed(tc, json{{"AFC_lane E1", {{"spool_id", 21}}}});
     CHECK(ToolChangerTestAccess::lane_reread_pending(tc));
+}
+
+TEST_CASE("A tool changer off the Creator 5 row re-reads nothing for an AFC lane's new spool",
+          "[toolchanger][afclite][lane_data]") {
+    // Real AFC on a tool changer publishes AFC_lane objects too; only the C5
+    // row's heads have lane_data records an outside tool rewrites.
+    test::ToolChangerHelper tc(4);
+    feed(tc, json{{"AFC_lane E1", {{"spool_id", 24}}}});
+    feed(tc, json{{"AFC_lane E1", {{"spool_id", 21}}}});
+    CHECK_FALSE(ToolChangerTestAccess::lane_reread_pending(tc));
 }
 
 TEST_CASE("Only a changed head colour or material schedules a lane_data re-read",

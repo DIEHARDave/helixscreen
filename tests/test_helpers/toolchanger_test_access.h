@@ -141,6 +141,17 @@ class ToolChangerTestAccess {
         return b.lane_reread_pending_.load();
     }
 
+    /// The override standing for @p slot_index, or nullopt when it has none.
+    static std::optional<helix::ams::FilamentSlotOverride>
+    get_override(const AmsBackendToolChanger& b, int slot_index) {
+        std::lock_guard<std::mutex> lock(b.mutex_);
+        auto it = b.overrides_.find(slot_index);
+        if (it == b.overrides_.end()) {
+            return std::nullopt;
+        }
+        return it->second;
+    }
+
     /// True once any slot holds a stored override.
     static bool has_overrides(const AmsBackendToolChanger& b) {
         std::lock_guard<std::mutex> lock(b.mutex_);
