@@ -510,6 +510,28 @@ TEST_CASE_METHOD(MultiBackendFixture,
     CHECK(systems[0].type == helix::AmsType::AD5X_IFS);
 }
 
+// The full AFC project on a Z-Mod AD5X (the zmod_afc_full add-on): Z-Mod still
+// publishes zmod_color, but AFC's own extruder and hub objects are there, which
+// the emulation never publishes. AFC keeps the printer. Object names from AD5X-1
+// running zmod_afc_full on Z-Mod 1.7.
+TEST_CASE_METHOD(MultiBackendFixture,
+                 "PrinterDiscovery: full AFC on a Z-Mod AD5X keeps the AFC backend",
+                 "[ams][afc][ad5x][multi-backend][2033]") {
+    helix::PrinterDiscovery hw;
+    auto objects = zmod_builtin_afc_objects();
+    objects.push_back("AFC_extruder extruder");
+    objects.push_back("AFC_hub IFS");
+    objects.push_back("filament_motion_sensor ifs_motion_sensor");
+    hw.parse_objects(objects);
+
+    CHECK_FALSE(hw.has_zmod_afc());
+    REQUIRE(hw.has_mmu());
+    CHECK(hw.mmu_type() == helix::AmsType::AFC);
+    const auto& systems = hw.detected_ams_systems();
+    REQUIRE(systems.size() == 1);
+    CHECK(systems[0].type == helix::AmsType::AFC);
+}
+
 TEST_CASE_METHOD(MultiBackendFixture, "PrinterDiscovery: AFC lanes without zmod_color stay AFC",
                  "[ams][afc][multi-backend][2033]") {
     helix::PrinterDiscovery hw;
